@@ -30,7 +30,7 @@ app.get("/api/auth/instagram", (req, res) => {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
   }
   const state = generateState();
-  pendingStates.set(state, { platform: "instagram", createdAt: Date.now() });
+  pendingStates.set(state, { platform: "instagram", profileId: req.query.profile_id, createdAt: Date.now() });
   const redirectUri = `${API_BASE_URL}/api/auth/instagram/callback`;
   const url = new URL(IG_AUTH);
   url.searchParams.set("client_id", clientId);
@@ -84,7 +84,8 @@ app.get("/api/auth/instagram/callback", async (req, res) => {
       username: data.user?.username || `user_${data.user_id}`,
     });
     const username = data.user?.username || `user_${data.user_id}`;
-    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${accountId}&username=${encodeURIComponent(username)}`);
+    const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
+    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${accountId}&username=${encodeURIComponent(username)}${profileParam}`);
   } catch (err) {
     console.error("Instagram OAuth error:", err);
     res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
@@ -101,7 +102,7 @@ app.get("/api/auth/tiktok", (req, res) => {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=tiktok_not_configured`);
   }
   const state = generateState();
-  pendingStates.set(state, { platform: "tiktok", createdAt: Date.now() });
+  pendingStates.set(state, { platform: "tiktok", profileId: req.query.profile_id, createdAt: Date.now() });
   const redirectUri = `${API_BASE_URL}/api/auth/tiktok/callback`;
   const url = new URL(TIKTOK_AUTH);
   url.searchParams.set("client_key", clientKey);
@@ -172,7 +173,8 @@ app.get("/api/auth/tiktok/callback", async (req, res) => {
       openId: data.open_id,
       username,
     });
-    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}`);
+    const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
+    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileParam}`);
   } catch (err) {
     console.error("TikTok OAuth error:", err);
     res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
@@ -190,7 +192,7 @@ app.get("/api/auth/youtube", (req, res) => {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=youtube_not_configured`);
   }
   const state = generateState();
-  pendingStates.set(state, { platform: "youtube", createdAt: Date.now() });
+  pendingStates.set(state, { platform: "youtube", profileId: req.query.profile_id, createdAt: Date.now() });
   const redirectUri = `${API_BASE_URL}/api/auth/youtube/callback`;
   const url = new URL(GOOGLE_AUTH);
   url.searchParams.set("client_id", clientId);
@@ -254,7 +256,8 @@ app.get("/api/auth/youtube/callback", async (req, res) => {
     if (meData.items?.[0]?.snippet?.title) {
       username = meData.items[0].snippet.title;
     }
-    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}`);
+    const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
+    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileParam}`);
   } catch (err) {
     console.error("YouTube OAuth error:", err);
     res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);

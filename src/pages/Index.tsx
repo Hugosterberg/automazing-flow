@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Share2, ShoppingCart, CalendarDays, ArrowRight } from "lucide-react";
+import { Zap, Share2, ShoppingCart, CalendarDays, Mail, Settings, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +23,20 @@ const areas = [
     desc: "Smart schemaläggning och automatiska påminnelser",
     icon: CalendarDays,
     url: "/calendar",
+    ready: false,
+  },
+  {
+    title: "Mail",
+    desc: "Hantera och automatisera dina mejl",
+    icon: Mail,
+    url: "/mail",
+    ready: false,
+  },
+  {
+    title: "Preferences",
+    desc: "Inställningar, tema och säkerhet",
+    icon: Settings,
+    url: "/preferences",
     ready: false,
   },
 ];

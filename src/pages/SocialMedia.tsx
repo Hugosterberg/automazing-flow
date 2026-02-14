@@ -131,6 +131,7 @@ export default function SocialMedia() {
     const platform = searchParams.get("platform");
     const accountId = searchParams.get("account_id");
     const username = searchParams.get("username");
+    const profileId = searchParams.get("profile_id");
 
     if (oauthErr) {
       setOauthError(oauthErr);
@@ -138,13 +139,19 @@ export default function SocialMedia() {
       next.delete("oauth_error");
       setSearchParams(next);
     } else if (oauthSuccess && platform && accountId && username) {
-      addAccountFromOAuth(accountId, platform as SocialPlatform, decodeURIComponent(username));
+      addAccountFromOAuth(
+        accountId,
+        platform as SocialPlatform,
+        decodeURIComponent(username),
+        profileId ?? undefined
+      );
       setSelectedAccountId(accountId);
       const next = new URLSearchParams(searchParams);
       next.delete("oauth_success");
       next.delete("platform");
       next.delete("account_id");
       next.delete("username");
+      next.delete("profile_id");
       setSearchParams(next);
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps

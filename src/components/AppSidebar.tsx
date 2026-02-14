@@ -1,4 +1,14 @@
-import { Share2, ShoppingCart, CalendarDays, Zap, Plus, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+  Share2,
+  ShoppingCart,
+  CalendarDays,
+  Mail,
+  Settings,
+  Zap,
+  Plus,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -23,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
+import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
 
@@ -32,6 +43,8 @@ const navItems = [
   { title: "Social Media", url: "/social-media", icon: Share2 },
   { title: "E-commerce", url: "/ecommerce", icon: ShoppingCart },
   { title: "Calendar", url: "/calendar", icon: CalendarDays },
+  { title: "Mail", url: "/mail", icon: Mail },
+  { title: "Preferences", url: "/preferences", icon: Settings },
 ];
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
@@ -42,10 +55,11 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
 
 export function AppSidebar() {
   const location = useLocation();
-  const { accounts, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
+  const { accounts, activeProfileId, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
 
   function handleConnectPlatform(platform: SocialPlatform) {
-    window.location.href = `${API_BASE}/auth/${platform}`;
+    const params = activeProfileId ? `?profile_id=${encodeURIComponent(activeProfileId)}` : "";
+    window.location.href = `${API_BASE}/auth/${platform}${params}`;
   }
 
   return (
@@ -89,7 +103,15 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarSeparator />
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2 space-y-2">
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
+            Profil
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <ProfileSwitcher />
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between px-2">
             <span>Anslutna konton</span>

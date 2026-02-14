@@ -1,7 +1,14 @@
 export type SocialPlatform = "instagram" | "tiktok" | "youtube";
 
+export interface Profile {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface ConnectedAccount {
   id: string;
+  profileId: string;
   platform: SocialPlatform;
   username: string;
   displayName?: string;
