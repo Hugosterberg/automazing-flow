@@ -13,6 +13,7 @@ const STORAGE_KEY = "automazing-connected-accounts";
 interface AccountsContextValue {
   accounts: ConnectedAccount[];
   addAccount: (platform: SocialPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
+  addAccountFromOAuth: (accountId: string, platform: SocialPlatform, username: string) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
   selectedAccountId: string | null;
@@ -57,7 +58,27 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const removeAccount = useCallback((id: string) => {
+  const addAccountFromOAuth = useCallback((accountId: string, platform: SocialPlatform, username: string) => {
+    const newAccount: ConnectedAccount = {
+      id: accountId,
+      platform,
+      username: username.trim(),
+      connectedAt: new Date().toISOString(),
+      profileUrl: `https://${platform === "youtube" ? "youtube.com" : platform + ".com"}/${username.replace(/^@/, "")}`,
+      isOAuth: true,
+    };
+    setAccounts((prev) => {
+      if (prev.some((a) => a.id === accountId)) return prev;
+      return [...prev, newAccount];
+    });
+  }, []);
+
+  const removeAccount = useCallback(async (id: string) => {
+    try {
+      await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+    } catch {
+      // Backend kanske inte är igång eller kontot finns inte
+    }
     setAccounts((prev) => prev.filter((a) => a.id !== id));
     setSelectedAccountId((current) => (current === id ? null : current));
   }, []);
@@ -73,6 +94,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       value={{
         accounts,
         addAccount,
+        addAccountFromOAuth,
         removeAccount,
         updateAccountAnalysis,
         selectedAccountId,

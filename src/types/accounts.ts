@@ -8,6 +8,8 @@ export interface ConnectedAccount {
   avatarUrl?: string;
   profileUrl?: string;
   connectedAt: string;
+  /** Anslutet via OAuth (har token på backend) */
+  isOAuth?: boolean;
   // AI-analysad data
   analysis?: AccountAnalysis;
 }

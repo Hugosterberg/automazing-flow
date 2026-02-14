@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAccounts } from "@/context/AccountsContext";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
@@ -52,16 +53,49 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Simulerad AI-analys
-async function analyzeAccount(): Promise<{ story: string; purpose: string; targetAudience: string; contentThemes: string[] }> {
-  await new Promise((r) => setTimeout(r, 2000));
+// AI-analys – hämtar live-data om OAuth-konto, annars simulerad
+async function analyzeAccount(
+  accountId?: string
+): Promise<{ story: string; purpose: string; targetAudience: string; contentThemes: string[] }> {
+  let profileData: { media?: { caption?: string }[]; profile?: Record<string, unknown> } = {};
+
+  if (accountId) {
+    try {
+      const res = await fetch(`/api/accounts/${accountId}/data`);
+      if (res.ok) {
+        const data = await res.json();
+        profileData = { media: data.media || data.videos || [], profile: data.profile };
+      }
+    } catch {
+      // Fallback till simulerad analys
+    }
+  }
+
+  await new Promise((r) => setTimeout(r, accountId ? 1500 : 2000));
+
+  // Om vi har riktiga media – extrahera teman från captions/titles (förenklad)
+  const mediaItems = profileData.media || [];
+  const captions = mediaItems.map((m) => m.caption || m.snippet?.title || m.snippet?.description || "").filter(Boolean);
+  const hasRealData = captions.length > 0;
+
+  const themesFromData = hasRealData
+    ? Array.from(new Set(captions.flatMap((c) => (typeof c === "string" ? c.match(/#\w+/g) : []) || [])))
+        .slice(0, 5)
+        .map((t) => String(t).replace("#", ""))
+    : [];
+
   return {
-    story:
-      "Kontot berättar en historia om transformation och autentisk livsstil. Innehållet fokuserar på före/efter-moment, tips och insikter som inspirerar följare att ta kontroll över sin vardag.",
-    purpose:
-      "Att inspirera och bygga community kring personlig utveckling. Kontot fungerar som en hub för motivation, produkttips och engagerande visuellt innehåll.",
+    story: hasRealData
+      ? `Baserat på dina ${profileData.media?.length || 0} senaste inlägg: Kontot delar en konsekvent story genom visuellt innehåll. Tema och ton speglar din profil.`
+      : "Kontot berättar en historia om transformation och autentisk livsstil. Innehållet fokuserar på före/efter-moment, tips och insikter som inspirerar följare att ta kontroll över sin vardag.",
+    purpose: hasRealData
+      ? "Profilen fungerar som en central plats för ditt innehåll. Baserat på dina senaste inlägg bygger du engagemang och community."
+      : "Att inspirera och bygga community kring personlig utveckling. Kontot fungerar som en hub för motivation, produkttips och engagerande visuellt innehåll.",
     targetAudience: "Unga vuxna 25–35 år, intresserade av livsstil, wellness och visuellt innehåll.",
-    contentThemes: ["Före/efter", "Dagliga tips", "Produktrecensioner", "Bakom kulisserna", "Community"],
+    contentThemes:
+      themesFromData.length > 0
+        ? themesFromData
+        : ["Före/efter", "Dagliga tips", "Produktrecensioner", "Bakom kulisserna", "Community"],
   };
 }
 
@@ -77,9 +111,12 @@ async function generateImageVariants(): Promise<string[]> {
 }
 
 export default function SocialMedia() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [postContent, setPostContent] = useState("");
-  const { accounts, selectedAccountId, setSelectedAccountId, updateAccountAnalysis } = useAccounts();
+  const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis } =
+    useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
@@ -87,11 +124,36 @@ export default function SocialMedia() {
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
+  // Hantera OAuth callback efter redirect
+  useEffect(() => {
+    const oauthSuccess = searchParams.get("oauth_success");
+    const oauthErr = searchParams.get("oauth_error");
+    const platform = searchParams.get("platform");
+    const accountId = searchParams.get("account_id");
+    const username = searchParams.get("username");
+
+    if (oauthErr) {
+      setOauthError(oauthErr);
+      const next = new URLSearchParams(searchParams);
+      next.delete("oauth_error");
+      setSearchParams(next);
+    } else if (oauthSuccess && platform && accountId && username) {
+      addAccountFromOAuth(accountId, platform as SocialPlatform, decodeURIComponent(username));
+      setSelectedAccountId(accountId);
+      const next = new URLSearchParams(searchParams);
+      next.delete("oauth_success");
+      next.delete("platform");
+      next.delete("account_id");
+      next.delete("username");
+      setSearchParams(next);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleAnalyze() {
     if (!selectedAccount) return;
     setAnalyzing(true);
     try {
-      const result = await analyzeAccount();
+      const result = await analyzeAccount(selectedAccount.isOAuth ? selectedAccount.id : undefined);
       updateAccountAnalysis(selectedAccount.id, {
         ...result,
         analyzedAt: new Date().toISOString(),
@@ -129,6 +191,22 @@ export default function SocialMedia() {
         <h1 className="text-3xl font-bold tracking-tight">Social Media</h1>
         <p className="text-muted-foreground mt-1">Automatisera och hantera dina sociala medier</p>
       </motion.div>
+
+      {/* OAuth-fel */}
+      {oauthError && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-destructive/10 border-destructive/30">
+            <CardContent className="py-4 flex items-center justify-between">
+              <p className="text-sm text-destructive">
+                Inloggningen misslyckades: {oauthError.replace(/_/g, " ")}
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setOauthError(null)}>
+                Stäng
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Välj konto + Kontohantering */}
       <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>

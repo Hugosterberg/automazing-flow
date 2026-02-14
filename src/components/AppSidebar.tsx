@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
-import { ConnectAccountDialog } from "@/components/ConnectAccountDialog";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
-import { useState } from "react";
+
+const API_BASE = "/api";
 
 const navItems = [
   { title: "Social Media", url: "/social-media", icon: Share2 },
@@ -43,7 +43,10 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
 export function AppSidebar() {
   const location = useLocation();
   const { accounts, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
-  const [connectDialogPlatform, setConnectDialogPlatform] = useState<SocialPlatform | null>(null);
+
+  function handleConnectPlatform(platform: SocialPlatform) {
+    window.location.href = `${API_BASE}/auth/${platform}`;
+  }
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
@@ -97,15 +100,15 @@ export function AppSidebar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setConnectDialogPlatform("instagram")}>
+                <DropdownMenuItem onClick={() => handleConnectPlatform("instagram")}>
                   <InstagramIcon className="h-4 w-4 mr-2" />
                   Instagram
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConnectDialogPlatform("tiktok")}>
+                <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok")}>
                   <TikTokIcon className="h-4 w-4 mr-2" />
                   TikTok
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConnectDialogPlatform("youtube")}>
+                <DropdownMenuItem onClick={() => handleConnectPlatform("youtube")}>
                   <YoutubeIcon className="h-4 w-4 mr-2" />
                   YouTube
                 </DropdownMenuItem>
@@ -160,13 +163,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarFooter>
-      {connectDialogPlatform && (
-        <ConnectAccountDialog
-          open={!!connectDialogPlatform}
-          onOpenChange={(open) => !open && setConnectDialogPlatform(null)}
-          platform={connectDialogPlatform}
-        />
-      )}
     </Sidebar>
   );
 }
