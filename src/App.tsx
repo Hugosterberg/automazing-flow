@@ -11,6 +11,7 @@ import SocialMedia from "./pages/SocialMedia";
 import Ecommerce from "./pages/Ecommerce";
 import CalendarPage from "./pages/CalendarPage";
 import MailPage from "./pages/Mail";
+import AIRecommendationsPage from "./pages/AIRecommendations";
 import PreferencesPage from "./pages/Preferences";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/ecommerce" element={<Ecommerce />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/mail" element={<MailPage />} />
+            <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

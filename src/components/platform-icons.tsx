@@ -76,3 +76,57 @@ export function OutlookIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** Tecknad lysande glödlampa – stroke-baserad, mjuk glow */
+export function LightbulbGlowIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, className, ...rest } = props;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={width}
+      height={height}
+      className={className}
+      {...rest}
+    >
+      <defs>
+        <filter id="lightbulb-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Glödande innandöme */}
+      <ellipse
+        cx="12"
+        cy="10"
+        rx="4"
+        ry="5"
+        fill="currentColor"
+        opacity="0.4"
+        filter="url(#lightbulb-glow)"
+      />
+      <ellipse cx="12" cy="10" rx="3" ry="4" fill="currentColor" opacity="0.6" />
+      {/* Glödlampa kontur – tecknad/stroke-stil */}
+      <path
+        d="M12 3c-3.5 0-6 2.5-6 5.5 0 2 1 3.5 2.5 4.5L8 18h2l.5-3h3l.5 3h2l-.5-5c1.5-1 2.5-2.5 2.5-4.5C18 5.5 15.5 3 12 3z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Sockel */}
+      <path
+        d="M9 18h6l.5 2h-7z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

@@ -40,6 +40,7 @@ import {
   ShopifyIcon,
   GmailIcon,
   OutlookIcon,
+  LightbulbGlowIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount } from "@/types/accounts";
 
@@ -66,6 +67,7 @@ const navItems = [
     url: "/calendar",
     icon: CalendarDays,
     platforms: [] as AccountPlatform[],
+    hideAccounts: true,
   },
   {
     key: "mail",
@@ -75,11 +77,20 @@ const navItems = [
     platforms: ["gmail", "outlook"] as AccountPlatform[],
   },
   {
+    key: "ai-recommendations",
+    title: "AI Recommendations",
+    url: "/ai-recommendations",
+    icon: LightbulbGlowIcon,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
     key: "preferences",
     title: "Preferences",
     url: "/preferences",
     icon: Settings,
     platforms: [] as AccountPlatform[],
+    hideAccounts: true,
   },
 ];
 
@@ -149,6 +160,7 @@ export function AppSidebar() {
                         <span className="text-sm font-medium">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
+                    {!item.hideAccounts && (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
                       <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
                         Anslutna konton
@@ -244,6 +256,7 @@ export function AppSidebar() {
                         </p>
                       )}
                     </div>
+                    )}
                   </SidebarMenuItem>
                 );
               })}
