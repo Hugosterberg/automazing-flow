@@ -1,16 +1,32 @@
-import { Share2, ShoppingCart, CalendarDays, Zap } from "lucide-react";
+import { Share2, ShoppingCart, CalendarDays, Zap, Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAccounts } from "@/context/AccountsContext";
+import { ConnectAccountDialog } from "@/components/ConnectAccountDialog";
+import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
+import type { SocialPlatform } from "@/types/accounts";
+import { useState } from "react";
 
 const navItems = [
   { title: "Social Media", url: "/social-media", icon: Share2 },
@@ -18,8 +34,16 @@ const navItems = [
   { title: "Calendar", url: "/calendar", icon: CalendarDays },
 ];
 
+const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
+  instagram: InstagramIcon,
+  tiktok: TikTokIcon,
+  youtube: YoutubeIcon,
+};
+
 export function AppSidebar() {
   const location = useLocation();
+  const { accounts, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
+  const [connectDialogPlatform, setConnectDialogPlatform] = useState<SocialPlatform | null>(null);
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
@@ -61,6 +85,88 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarSeparator />
+      <SidebarFooter className="p-2">
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center justify-between px-2">
+            <span>Anslutna konton</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setConnectDialogPlatform("instagram")}>
+                  <InstagramIcon className="h-4 w-4 mr-2" />
+                  Instagram
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConnectDialogPlatform("tiktok")}>
+                  <TikTokIcon className="h-4 w-4 mr-2" />
+                  TikTok
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConnectDialogPlatform("youtube")}>
+                  <YoutubeIcon className="h-4 w-4 mr-2" />
+                  YouTube
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            {accounts.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">
+                Inga konton anslutna. Klicka + för att lägga till.
+              </p>
+            ) : (
+              <SidebarMenu>
+                {accounts.map((account) => {
+                  const Icon = platformIcons[account.platform];
+                  const isSelected = selectedAccountId === account.id;
+                  return (
+                    <SidebarMenuItem key={account.id}>
+                      <SidebarMenuButton
+                        onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
+                        isActive={isSelected}
+                        className="cursor-pointer"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-[10px] bg-secondary">
+                            <Icon className="h-3 w-3" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{account.username}</span>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction showOnHover onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => removeAccount(account.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Koppla bort
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarFooter>
+      {connectDialogPlatform && (
+        <ConnectAccountDialog
+          open={!!connectDialogPlatform}
+          onOpenChange={(open) => !open && setConnectDialogPlatform(null)}
+          platform={connectDialogPlatform}
+        />
+      )}
     </Sidebar>
   );
 }
