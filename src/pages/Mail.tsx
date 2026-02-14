@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Inbox, Send, Archive } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 
 const features = [
   { icon: Inbox, title: "Inkorg", desc: "Förenad vy för alla mailkonton" },
@@ -9,8 +10,15 @@ const features = [
 ];
 
 export default function MailPage() {
+  const { oauthError } = useOAuthCallback();
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-2xl mx-auto">
+      {oauthError && (
+        <div className="w-full mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          Inloggningen misslyckades: {oauthError.replace(/_/g, " ")}
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

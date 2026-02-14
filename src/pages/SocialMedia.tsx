@@ -15,8 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useRef, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
@@ -116,7 +115,6 @@ export default function SocialMedia() {
   const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis } =
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
-  const [oauthError, setOauthError] = useState<string | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
@@ -124,37 +122,7 @@ export default function SocialMedia() {
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
-  // Hantera OAuth callback efter redirect
-  useEffect(() => {
-    const oauthSuccess = searchParams.get("oauth_success");
-    const oauthErr = searchParams.get("oauth_error");
-    const platform = searchParams.get("platform");
-    const accountId = searchParams.get("account_id");
-    const username = searchParams.get("username");
-    const profileId = searchParams.get("profile_id");
-
-    if (oauthErr) {
-      setOauthError(oauthErr);
-      const next = new URLSearchParams(searchParams);
-      next.delete("oauth_error");
-      setSearchParams(next);
-    } else if (oauthSuccess && platform && accountId && username) {
-      addAccountFromOAuth(
-        accountId,
-        platform as SocialPlatform,
-        decodeURIComponent(username),
-        profileId ?? undefined
-      );
-      setSelectedAccountId(accountId);
-      const next = new URLSearchParams(searchParams);
-      next.delete("oauth_success");
-      next.delete("platform");
-      next.delete("account_id");
-      next.delete("username");
-      next.delete("profile_id");
-      setSearchParams(next);
-    }
-  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { oauthError, clearOauthError } = useOAuthCallback();
 
   async function handleAnalyze() {
     if (!selectedAccount) return;
@@ -207,7 +175,7 @@ export default function SocialMedia() {
               <p className="text-sm text-destructive">
                 Inloggningen misslyckades: {oauthError.replace(/_/g, " ")}
               </p>
-              <Button variant="ghost" size="sm" onClick={() => setOauthError(null)}>
+              <Button variant="ghost" size="sm" onClick={clearOauthError}>
                 Stäng
               </Button>
             </CardContent>

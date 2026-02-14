@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Zap, Share2, ShoppingCart, CalendarDays, Mail, Settings, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { ProfileList } from "@/components/ProfileList";
 
 const areas = [
   {
@@ -63,6 +64,15 @@ export default function Index() {
         <p className="text-lg text-muted-foreground max-w-md mx-auto">
           Automatisera dina vardagliga arbetsuppgifter. Ett verktyg i taget.
         </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="mt-10"
+      >
+        <ProfileList />
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-14 max-w-4xl w-full">

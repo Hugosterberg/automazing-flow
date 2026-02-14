@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { ConnectedAccount, Profile, SocialPlatform } from "@/types/accounts";
+import type { AccountPlatform, ConnectedAccount, Profile } from "@/types/accounts";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -21,8 +21,8 @@ interface AccountsContextValue {
   renameProfile: (id: string, name: string) => void;
   removeProfile: (id: string) => void;
   accounts: ConnectedAccount[];
-  addAccount: (platform: SocialPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
-  addAccountFromOAuth: (accountId: string, platform: SocialPlatform, username: string, profileId?: string) => void;
+  addAccount: (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
+  addAccountFromOAuth: (accountId: string, platform: AccountPlatform, username: string, profileId?: string) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
   selectedAccountId: string | null;
@@ -136,7 +136,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   }, [activeProfileId, setActiveProfileId]);
 
   const addAccount = useCallback(
-    (platform: SocialPlatform, username: string, extra?: Partial<ConnectedAccount>) => {
+    (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => {
       const newAccount: ConnectedAccount = {
         id: crypto.randomUUID(),
         profileId: effectiveProfileId,
@@ -151,15 +151,22 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   );
 
   const addAccountFromOAuth = useCallback(
-    (accountId: string, platform: SocialPlatform, username: string, profileId?: string) => {
+    (accountId: string, platform: AccountPlatform, username: string, profileId?: string) => {
       const targetProfileId = profileId ?? effectiveProfileId;
+      const profileUrls: Record<string, string> = {
+        youtube: "youtube.com",
+        shopify: "myshopify.com",
+        gmail: "mail.google.com",
+        outlook: "outlook.com",
+      };
+      const base = profileUrls[platform] ?? platform + ".com";
       const newAccount: ConnectedAccount = {
         id: accountId,
         profileId: targetProfileId,
         platform,
         username: username.trim(),
         connectedAt: new Date().toISOString(),
-        profileUrl: `https://${platform === "youtube" ? "youtube.com" : platform + ".com"}/${username.replace(/^@/, "")}`,
+        profileUrl: `https://${base}/${username.replace(/^@/, "")}`,
         isOAuth: true,
       };
       setAccounts((prev) => {

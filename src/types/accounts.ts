@@ -1,4 +1,8 @@
 export type SocialPlatform = "instagram" | "tiktok" | "youtube";
+export type EcommercePlatform = "shopify";
+export type MailPlatform = "gmail" | "outlook";
+
+export type AccountPlatform = SocialPlatform | EcommercePlatform | MailPlatform;
 
 export interface Profile {
   id: string;
@@ -9,7 +13,7 @@ export interface Profile {
 export interface ConnectedAccount {
   id: string;
   profileId: string;
-  platform: SocialPlatform;
+  platform: AccountPlatform;
   username: string;
   displayName?: string;
   avatarUrl?: string;

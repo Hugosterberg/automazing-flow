@@ -49,3 +49,30 @@ export function YoutubeIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function ShopifyIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M15.337 3.546l2.546 15.287L23.036 18l2.55-15.454L15.337 3.546zM13.238 0L0 3.069l2.5 15.232 13.238-3.069L13.238 0zm-2.2 14.66l-1.7-.39-.95-5.78 1.7.39.95 5.78zm5.06 1.17l-1.69-.39-.34-2.08 1.69.39.34 2.08zm.34-2.08l-1.69-.39-.95-5.78 1.69.39.95 5.78zM9.85 7.25l1.7.39.34 2.08-1.7-.39-.34-2.08z" />
+    </svg>
+  );
+}
+
+export function GmailIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
+    </svg>
+  );
+}
+
+export function OutlookIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M7.88 12.04q0 .46-.16.87t-.51.69-.8.44-1.01.14H4.21V8.96h1.18q.56 0 1.01.14t.8.45.51.69.16.88zm-.63-2.35q-.29-.17-.68-.25t-.86-.08h-.29v2.57h.29q.45 0 .83-.08t.71-.25q.28-.18.42-.5t.14-.79q0-.37-.13-.65t-.41-.47zM24 12.78v6.44h-6.44v-2.14l4.31-1.59.03-.08-.04-.02q-.07-.05-.12-.07l-.09-.03-.12-.04-.16-.04h-.07l-.1-.02-.12-.02-.15-.01h-.03l-.12.01-.2.02-.21.03-.15.02-.17.04-.16.05-.13.05-.15.07-.13.07-.11.09-.13.11-.1.12-.09.13-.08.14-.06.15-.05.16-.04.17-.02.17-.02.19v.01l-.01.09v.05l.01.09v3.61H0V0h24v12.78zm-9.19-1.87l.01 1.21 2.63 1.52.05.03.05.01.05.02h.05l.05-.01.05-.02.05-.01 2.88-1.67v-5.4h-6.52v3.18zm-2.89 2.16l-.58-.34-.01-2.33v-2.35l.59-.34 2.95 1.7-.01.01-2.94 1.65zm9.28-.9l-2.88 1.67-.05.02-.05.01-.05.02-.05.01h-.05l-.05-.01-.05-.02-.05-.01-.05-.03-2.63-1.52v5.39h6.52v-3.17zm0-4.36v.95l-3.26 1.88-.01-1.88 3.27-1.95zm-6.53 2.6l.01 1.89-3.26-1.88v-.95l3.25 1.94z" />
+    </svg>
+  );
+}

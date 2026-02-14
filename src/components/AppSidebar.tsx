@@ -19,7 +19,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
@@ -34,32 +33,84 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
-import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
-import type { SocialPlatform } from "@/types/accounts";
+import {
+  InstagramIcon,
+  TikTokIcon,
+  YoutubeIcon,
+  ShopifyIcon,
+  GmailIcon,
+  OutlookIcon,
+} from "@/components/platform-icons";
+import type { AccountPlatform, ConnectedAccount } from "@/types/accounts";
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
 const navItems = [
-  { title: "Social Media", url: "/social-media", icon: Share2 },
-  { title: "E-commerce", url: "/ecommerce", icon: ShoppingCart },
-  { title: "Calendar", url: "/calendar", icon: CalendarDays },
-  { title: "Mail", url: "/mail", icon: Mail },
-  { title: "Preferences", url: "/preferences", icon: Settings },
+  {
+    key: "social-media",
+    title: "Social Media",
+    url: "/social-media",
+    icon: Share2,
+    platforms: ["instagram", "tiktok", "youtube"] as AccountPlatform[],
+  },
+  {
+    key: "ecommerce",
+    title: "E-commerce",
+    url: "/ecommerce",
+    icon: ShoppingCart,
+    platforms: ["shopify"] as AccountPlatform[],
+  },
+  {
+    key: "calendar",
+    title: "Calendar",
+    url: "/calendar",
+    icon: CalendarDays,
+    platforms: [] as AccountPlatform[],
+  },
+  {
+    key: "mail",
+    title: "Mail",
+    url: "/mail",
+    icon: Mail,
+    platforms: ["gmail", "outlook"] as AccountPlatform[],
+  },
+  {
+    key: "preferences",
+    title: "Preferences",
+    url: "/preferences",
+    icon: Settings,
+    platforms: [] as AccountPlatform[],
+  },
 ];
 
-const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
+const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
   instagram: InstagramIcon,
   tiktok: TikTokIcon,
   youtube: YoutubeIcon,
+  shopify: ShopifyIcon,
+  gmail: GmailIcon,
+  outlook: OutlookIcon,
 };
+
+function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {
+  if (platforms.length === 0) return [];
+  return accounts.filter((a) => platforms.includes(a.platform));
+}
 
 export function AppSidebar() {
   const location = useLocation();
   const { accounts, activeProfileId, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
 
-  function handleConnectPlatform(platform: SocialPlatform) {
-    const params = activeProfileId ? `?profile_id=${encodeURIComponent(activeProfileId)}` : "";
-    window.location.href = `${API_BASE}/auth/${platform}${params}`;
+  function handleConnectPlatform(platform: AccountPlatform) {
+    const params = new URLSearchParams();
+    if (activeProfileId) params.set("profile_id", activeProfileId);
+    if (platform === "shopify") {
+      const shop = window.prompt("Ange din Shopify-butik (t.ex. minbutik.myshopify.com):");
+      if (!shop?.trim()) return;
+      params.set("shop", shop.trim().replace(/^https?:\/\//, "").replace(/\/$/, ""));
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
+    window.location.href = `${API_BASE}/auth/${platform}${query}`;
   }
 
   return (
@@ -78,8 +129,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = location.pathname === item.url;
+                const categoryAccounts = getAccountsForCategory(accounts, item.platforms);
+                const hasConnect = item.platforms.length > 0;
+
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
@@ -95,6 +149,101 @@ export function AppSidebar() {
                         <span className="text-sm font-medium">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
+                    <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
+                      <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
+                        Anslutna konton
+                      </p>
+                      {categoryAccounts.map((account) => {
+                        const Icon = platformIcons[account.platform];
+                        const isSelected = selectedAccountId === account.id;
+                        return (
+                          <div
+                            key={account.id}
+                            className="group/sub flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-sidebar-accent/50"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
+                              className={`flex flex-1 items-center gap-2 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
+                                isSelected ? "bg-sidebar-accent font-medium" : ""
+                              }`}
+                            >
+                              <Avatar className="h-5 w-5 shrink-0">
+                                <AvatarFallback className="text-[9px] bg-secondary">
+                                  <Icon className="h-2.5 w-2.5" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{account.username}</span>
+                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 shrink-0 opacity-0 group-hover/sub:opacity-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => removeAccount(account.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Koppla bort
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        );
+                      })}
+                      {hasConnect && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <Plus className="h-3 w-3 shrink-0" />
+                              Anslut fler
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {item.platforms.map((platform) => {
+                              const Icon = platformIcons[platform];
+                              const label =
+                                platform === "instagram"
+                                  ? "Instagram"
+                                  : platform === "tiktok"
+                                    ? "TikTok"
+                                    : platform === "youtube"
+                                      ? "YouTube"
+                                      : platform === "shopify"
+                                        ? "Shopify"
+                                        : platform === "gmail"
+                                          ? "Gmail"
+                                          : "Outlook";
+                              return (
+                                <DropdownMenuItem
+                                  key={platform}
+                                  onClick={() => handleConnectPlatform(platform)}
+                                >
+                                  <Icon className="h-4 w-4 mr-2" />
+                                  {label}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {!hasConnect && (
+                        <p className="text-[11px] text-muted-foreground/70 py-0.5 italic">
+                          Snart tillgängligt
+                        </p>
+                      )}
+                    </div>
                   </SidebarMenuItem>
                 );
               })}
@@ -103,85 +252,13 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarSeparator />
-      <SidebarFooter className="p-2 space-y-2">
+      <SidebarFooter className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
             Profil
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <ProfileSwitcher />
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between px-2">
-            <span>Anslutna konton</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => handleConnectPlatform("instagram")}>
-                  <InstagramIcon className="h-4 w-4 mr-2" />
-                  Instagram
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok")}>
-                  <TikTokIcon className="h-4 w-4 mr-2" />
-                  TikTok
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleConnectPlatform("youtube")}>
-                  <YoutubeIcon className="h-4 w-4 mr-2" />
-                  YouTube
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            {accounts.length === 0 ? (
-              <p className="px-2 py-3 text-xs text-muted-foreground">
-                Inga konton anslutna. Klicka + för att lägga till.
-              </p>
-            ) : (
-              <SidebarMenu>
-                {accounts.map((account) => {
-                  const Icon = platformIcons[account.platform];
-                  const isSelected = selectedAccountId === account.id;
-                  return (
-                    <SidebarMenuItem key={account.id}>
-                      <SidebarMenuButton
-                        onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
-                        isActive={isSelected}
-                        className="cursor-pointer"
-                      >
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-[10px] bg-secondary">
-                            <Icon className="h-3 w-3" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{account.username}</span>
-                      </SidebarMenuButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuAction showOnHover onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </SidebarMenuAction>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => removeAccount(account.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Koppla bort
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarFooter>
