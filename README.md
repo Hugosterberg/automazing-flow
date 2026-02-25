@@ -1,73 +1,79 @@
-# Welcome to your Lovable project
+# automazing flow
 
-## Project info
+Automazing Flow is a modular automation workspace for creators and teams.  
+The current app includes social media management, content planning, calendar automation, and account-level AI analysis.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## What you can automate right now
 
-## How can I edit this code?
+### Social media
+- Connect Instagram, TikTok, and YouTube accounts through OAuth.
+- Analyze account content with AI-powered profile summaries.
+- Generate AI image variants for visual experiments.
+- Track core social KPIs in a unified dashboard.
+- Schedule social posts manually.
 
-There are several ways of editing your application.
+### Content creation (newly expanded)
+- Activate predefined **social/content automation workflows** directly in the Social Media page.
+- Save workflow selections in local storage so your setup persists.
+- Generate an **automated weekly execution plan** and send it to the built-in Calendar module with one click.
+- Use a structured content pipeline (Research -> Production -> Distribution -> Follow-up) as an automation framework.
 
-**Use Lovable**
+## Social/content automations added in this update
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+The Social Media page now includes workflow templates you can toggle on/off:
 
-Changes made via Lovable will be committed automatically to this repo.
+1. **Repurpose weekly hero content**  
+   Turn one long-form asset into short-form variants for multiple platforms.
+2. **Caption + hashtag optimizer**  
+   Generate platform-ready copy options and hashtag packs.
+3. **Engagement follow-up workflow**  
+   Surface high-intent comments/questions and route follow-up tasks.
+4. **Weekly insight digest**  
+   Build a recurring performance summary and next-week test plan.
 
-**Use your preferred IDE**
+## Future plans
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Short term
+- Direct publishing integrations (Instagram/TikTok/YouTube) for true auto-posting.
+- Saved automation templates per profile/team.
+- Better AI suggestions for posting time and content format.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Mid term
+- Cross-platform campaign builder (single plan -> multi-channel output).
+- Automatic A/B testing for captions/hooks/thumbnails.
+- Team collaboration workflows (approval gates, role-based task routing).
 
-Follow these steps:
+### Long term
+- End-to-end autonomous campaigns with budget goals and KPI targets.
+- Unified attribution across Social + Mail + E-commerce modules.
+- Predictive content scoring before publication.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Local development
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Requirements
+- Node.js 18+
+- npm
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Setup
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Useful scripts
+```bash
+npm run dev         # frontend dev server
+npm run dev:server  # backend OAuth/API server
+npm run build       # production build
+npm run test        # vitest tests
+npm run lint        # eslint
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+## Tech stack
 
 - Vite
-- TypeScript
-- React
-- shadcn-ui
+- React + TypeScript
 - Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- shadcn/ui
+- Framer Motion
+- Express (OAuth + integration endpoints)
