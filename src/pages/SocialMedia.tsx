@@ -6,8 +6,6 @@ import {
   Clock,
   Heart,
   Eye,
-  BarChart3,
-  Target,
   ImagePlus,
   Loader2,
 } from "lucide-react";
@@ -15,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
@@ -27,11 +25,12 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   youtube: YoutubeIcon,
 };
 
-const stats = [
-  { label: "Followers", value: "12,847", change: "+3.2%", icon: Users },
-  { label: "Engagement", value: "8.4%", change: "+1.1%", icon: Heart },
-  { label: "Inlägg denna vecka", value: "14", change: "+5", icon: FileText },
-  { label: "Visningar", value: "48.2K", change: "+12%", icon: Eye },
+
+const defaultStats = [
+  { label: "Följare", value: "–", change: "", icon: Users, key: "followers" },
+  { label: "Följer", value: "–", change: "", icon: Users, key: "following" },
+  { label: "Antal inlägg", value: "–", change: "", icon: FileText, key: "media" },
+  { label: "Engagement", value: "8.4%", change: "+1.1%", icon: Heart, key: "engagement" },
 ];
 
 const scheduledPosts = [
@@ -53,50 +52,25 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// AI-analys – hämtar live-data om OAuth-konto, annars simulerad
-async function analyzeAccount(
-  accountId?: string
-): Promise<{ story: string; purpose: string; targetAudience: string; contentThemes: string[] }> {
-  let profileData: { media?: { caption?: string }[]; profile?: Record<string, unknown> } = {};
-
-  if (accountId) {
-    try {
-      const res = await fetch(`/api/accounts/${accountId}/data`);
-      if (res.ok) {
-        const data = await res.json();
-        profileData = { media: data.media || data.videos || [], profile: data.profile };
-      }
-    } catch {
-      // Fallback till simulerad analys
-    }
-  }
-
-  await new Promise((r) => setTimeout(r, accountId ? 1500 : 2000));
-
-  // Om vi har riktiga media – extrahera teman från captions/titles (förenklad)
-  const mediaItems = profileData.media || [];
-  const captions = mediaItems.map((m) => m.caption || m.snippet?.title || m.snippet?.description || "").filter(Boolean);
-  const hasRealData = captions.length > 0;
-
-  const themesFromData = hasRealData
-    ? Array.from(new Set(captions.flatMap((c) => (typeof c === "string" ? c.match(/#\w+/g) : []) || [])))
-        .slice(0, 5)
-        .map((t) => String(t).replace("#", ""))
-    : [];
-
-  return {
-    story: hasRealData
-      ? `Baserat på dina ${profileData.media?.length || 0} senaste inlägg: Kontot delar en konsekvent story genom visuellt innehåll. Tema och ton speglar din profil.`
-      : "Kontot berättar en historia om transformation och autentisk livsstil. Innehållet fokuserar på före/efter-moment, tips och insikter som inspirerar följare att ta kontroll över sin vardag.",
-    purpose: hasRealData
-      ? "Profilen fungerar som en central plats för ditt innehåll. Baserat på dina senaste inlägg bygger du engagemang och community."
-      : "Att inspirera och bygga community kring personlig utveckling. Kontot fungerar som en hub för motivation, produkttips och engagerande visuellt innehåll.",
-    targetAudience: "Unga vuxna 25–35 år, intresserade av livsstil, wellness och visuellt innehåll.",
-    contentThemes:
-      themesFromData.length > 0
-        ? themesFromData
-        : ["Före/efter", "Dagliga tips", "Produktrecensioner", "Bakom kulisserna", "Community"],
-  };
+// AI-analys via server (OpenAI eller smart fallback)
+async function runAIAnalysis(
+  accountId: string,
+  posts: { caption: string }[],
+  profile: { displayName?: string; username?: string; followersCount?: number }
+): Promise<{ about: string; writes: string; perception: string }> {
+  const captions = posts.map((p) => p.caption).filter(Boolean);
+  const res = await fetch(`/api/accounts/${accountId}/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      captions,
+      displayName: profile.displayName ?? "",
+      username: profile.username ?? "",
+      followersCount: profile.followersCount,
+    }),
+  });
+  if (!res.ok) throw new Error("Analysfel");
+  return res.json();
 }
 
 // Simulerad bildvariant-generering
@@ -112,9 +86,100 @@ async function generateImageVariants(): Promise<string[]> {
 
 export default function SocialMedia() {
   const [postContent, setPostContent] = useState("");
-  const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis } =
+  const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
+  const [recentPosts, setRecentPosts] = useState<{
+    id: string; caption: string; picture: string; permalink: string;
+    mediaType: string; likeCount: number; commentCount: number; createdTime: string;
+  }[]>([]);
+
+  // Ref för att accessa accounts utan att ha det som useEffect-dependency
+  // (undviker oändlig loop: updateAccountStats → accounts ändras → effect körs → updateAccountStats → ...)
+  const accountsRef = useRef(accounts);
+  accountsRef.current = accounts;
+
+  const fetchStats = useCallback((accountId: string) => {
+    const account = accountsRef.current.find((a) => a.id === accountId);
+    if (!account?.isOAuth) return;
+    setStatsLoading(true);
+    fetch(`/api/accounts/${accountId}/data`)
+      .then((res) => {
+        if (!res.ok) {
+          console.warn(`[stats] /api/accounts/${accountId}/data svarade ${res.status}`);
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        const stats = data.stats ?? data.profile?.stats;
+        const profile = data.profile || {};
+        const mediaCount =
+          stats?.mediaCount ??
+          (profile.media_count != null ? Number(profile.media_count) : undefined);
+        const followersCount = stats?.followersCount ?? (profile.followers_count != null ? Number(profile.followers_count) : undefined);
+        const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
+        const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
+        const hasAny = followersCount != null || followingCount != null || mediaCount != null;
+        if (hasAny) {
+          updateAccountStats(accountId, {
+            followersCount,
+            followingCount,
+            mediaCount,
+            accountType,
+            totalLikes: stats?.totalLikes,
+            totalComments: stats?.totalComments,
+            avgLikes: stats?.avgLikes,
+            avgComments: stats?.avgComments,
+            engagementRate: stats?.engagementRate,
+            updatedAt: stats?.updatedAt ?? new Date().toISOString(),
+          });
+        }
+        // Spara senaste inlägg och starta AI-analys automatiskt
+        if (Array.isArray(data.media) && data.media.length > 0) {
+          setRecentPosts(data.media);
+          // Auto-trigga AI-analys med de faktiska inläggstexterna
+          const account = accountsRef.current.find((a) => a.id === accountId);
+          const alreadyAnalyzed = account?.analysis?.about;
+          if (!alreadyAnalyzed) {
+            setAnalyzing(true);
+            runAIAnalysis(
+              accountId,
+              data.media.map((p: { caption: string }) => ({ caption: p.caption })),
+              {
+                displayName: data.profile?.displayName as string | undefined,
+                username: data.profile?.username as string | undefined,
+                followersCount: data.stats?.followersCount,
+              }
+            )
+              .then((result) => {
+                setAnalysisResult(result);
+                updateAccountAnalysis(accountId, { ...result, analyzedAt: new Date().toISOString() });
+              })
+              .catch(() => {})
+              .finally(() => setAnalyzing(false));
+          } else {
+            setAnalysisResult({
+              about: account.analysis.about ?? "",
+              writes: account.analysis.writes ?? "",
+              perception: account.analysis.perception ?? "",
+            });
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, [updateAccountAnalysis, updateAccountStats]);
+
+  // Kör bara när valt konto eller manuell refresh ändras – INTE när accounts ändras
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    fetchStats(selectedAccountId);
+  }, [selectedAccountId, statsRefreshKey, fetchStats]);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
@@ -123,20 +188,6 @@ export default function SocialMedia() {
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
   const { oauthError, clearOauthError } = useOAuthCallback();
-
-  async function handleAnalyze() {
-    if (!selectedAccount) return;
-    setAnalyzing(true);
-    try {
-      const result = await analyzeAccount(selectedAccount.isOAuth ? selectedAccount.id : undefined);
-      updateAccountAnalysis(selectedAccount.id, {
-        ...result,
-        analyzedAt: new Date().toISOString(),
-      });
-    } finally {
-      setAnalyzing(false);
-    }
-  }
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -187,98 +238,9 @@ export default function SocialMedia() {
         </motion.div>
       )}
 
-      {/* Välj konto + Kontohantering */}
-      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
-        {selectedAccount ? (
-          <Card className="bg-card border-border glow-border">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const Icon = platformIcons[selectedAccount.platform];
-                    return (
-                      <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <CardTitle className="text-lg">{selectedAccount.username}</CardTitle>
-                    <CardDescription>
-                      Välj ett konto i sidofältet för att analysera. Klicka här för att avmarkera.
-                    </CardDescription>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedAccountId(null)}
-                >
-                  Avmarkera
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedAccount.analysis ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 rounded-lg bg-secondary/50 p-4">
-                    <h4 className="flex items-center gap-2 font-medium text-sm">
-                      <BarChart3 className="h-4 w-4" />
-                      Kontots story
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{selectedAccount.analysis.story}</p>
-                  </div>
-                  <div className="space-y-2 rounded-lg bg-secondary/50 p-4">
-                    <h4 className="flex items-center gap-2 font-medium text-sm">
-                      <Target className="h-4 w-4" />
-                      Syfte
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{selectedAccount.analysis.purpose}</p>
-                  </div>
-                  {selectedAccount.analysis.targetAudience && (
-                    <div className="md:col-span-2 space-y-2 rounded-lg bg-secondary/50 p-4">
-                      <h4 className="font-medium text-sm">Målgrupp</h4>
-                      <p className="text-sm text-muted-foreground">{selectedAccount.analysis.targetAudience}</p>
-                    </div>
-                  )}
-                  {selectedAccount.analysis.contentThemes && selectedAccount.analysis.contentThemes.length > 0 && (
-                    <div className="md:col-span-2 space-y-2 rounded-lg bg-secondary/50 p-4">
-                      <h4 className="font-medium text-sm">Innehållsteman</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedAccount.analysis.contentThemes.map((theme) => (
-                          <span
-                            key={theme}
-                            className="px-2 py-1 rounded-md bg-accent text-xs"
-                          >
-                            {theme}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <Button
-                    onClick={handleAnalyze}
-                    disabled={analyzing}
-                    className="glow-sm"
-                  >
-                    {analyzing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
-                    )}
-                    {analyzing ? "Analyserar..." : "Analysera konto (AI)"}
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    AI analyserar kontots innehåll och beskriver story och syfte.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
+      {/* Välj konto */}
+      {!selectedAccount && (
+        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <Card className="bg-card border-border glow-border border-dashed">
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground mb-2">
@@ -289,8 +251,58 @@ export default function SocialMedia() {
               </p>
             </CardContent>
           </Card>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
+
+      {/* AI Analys */}
+      {selectedAccount && (
+        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {(() => { const Icon = platformIcons[selectedAccount.platform]; return <Icon className="h-4 w-4 text-muted-foreground" />; })()}
+              <span className="text-sm font-medium text-muted-foreground">@{selectedAccount.username}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Analys
+            </div>
+          </div>
+          <Card className="bg-card border-border">
+            <CardContent className="py-5 px-6">
+              {analyzing ? (
+                <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <span>Analyserar kontots innehåll…</span>
+                </div>
+              ) : analysisResult ? (
+                <div className="space-y-5">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Handlar om</p>
+                    <p className="text-sm leading-relaxed">{analysisResult.about}</p>
+                  </div>
+                  <div className="w-full h-px bg-border" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Skriver om</p>
+                    <p className="text-sm leading-relaxed">{analysisResult.writes}</p>
+                  </div>
+                  <div className="w-full h-px bg-border" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Uppfattning utifrån</p>
+                    <p className="text-sm leading-relaxed">{analysisResult.perception}</p>
+                  </div>
+                </div>
+              ) : statsLoading ? (
+                <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <span>Hämtar inlägg…</span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">Ingen data tillgänglig ännu.</p>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Bild till varianter */}
       <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
@@ -364,15 +376,74 @@ export default function SocialMedia() {
         </Card>
       </motion.div>
 
-      {/* Stats */}
+      {/* Stats – använder hämtad statistik för valt konto om tillgänglig */}
+      {selectedAccount?.isOAuth && (
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={statsLoading}
+            onClick={() => setStatsRefreshKey((k) => k + 1)}
+            className="text-muted-foreground"
+          >
+            {statsLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                Hämtar...
+              </>
+            ) : (
+              "Uppdatera statistik"
+            )}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Visar data för {selectedAccount.username}
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <motion.div key={stat.label} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
+        {(selectedAccount?.stats
+          ? (() => {
+              const s = selectedAccount.stats;
+              // Kort 2: Snitt-likes (prioriterat), annars followingCount, annars "–"
+              const avgLikesStat =
+                s.avgLikes != null
+                  ? { key: "avg-likes", label: "Snitt-likes", value: String(s.avgLikes), change: "", icon: Heart }
+                  : s.followingCount != null
+                    ? { ...defaultStats[1], value: s.followingCount.toLocaleString("sv-SE") }
+                    : { ...defaultStats[1], value: "–" };
+
+              // Kort 4: Verklig engagement rate om tillgänglig, annars hårdkodad
+              const engagementStat =
+                s.engagementRate != null
+                  ? { ...defaultStats[3], value: s.engagementRate.toFixed(1) + "%", change: "" }
+                  : defaultStats[3];
+
+              return [
+                {
+                  ...defaultStats[0],
+                  value: s.followersCount != null ? s.followersCount.toLocaleString("sv-SE") : "–",
+                },
+                avgLikesStat,
+                {
+                  ...defaultStats[2],
+                  value: s.mediaCount != null ? s.mediaCount.toLocaleString("sv-SE") : "–",
+                },
+                engagementStat,
+              ];
+            })()
+          : defaultStats
+        ).map((stat, i) => (
+          <motion.div key={stat.key} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
             <Card className="bg-card border-border glow-border hover:glow-sm transition-shadow duration-300">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
                   <stat.icon className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs text-green-400 font-medium">{stat.change}</span>
+                  {statsLoading && selectedAccountId && i < 3 ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : (
+                    stat.change && <span className="text-xs text-green-400 font-medium">{stat.change}</span>
+                  )}
                 </div>
                 <p className="text-2xl font-bold">{stat.value}</p>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -381,6 +452,56 @@ export default function SocialMedia() {
           </motion.div>
         ))}
       </div>
+
+      {/* Senaste inlägg med likes och kommentarer */}
+      {recentPosts.length > 0 && (
+        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
+          <Card className="bg-card border-border glow-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Eye className="h-5 w-5" />
+                Senaste inlägg
+              </CardTitle>
+              <CardDescription>Likes och kommentarer per inlägg</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {recentPosts.map((post) => (
+                  <a
+                    key={post.id}
+                    href={post.permalink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
+                  >
+                    <img
+                      src={post.picture}
+                      alt={post.caption.slice(0, 40)}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                      <div className="flex items-center gap-1 text-white text-xs font-semibold">
+                        <Heart className="h-3.5 w-3.5 fill-white" />
+                        {post.likeCount}
+                      </div>
+                      <div className="flex items-center gap-1 text-white text-xs">
+                        <FileText className="h-3.5 w-3.5" />
+                        {post.commentCount}
+                      </div>
+                    </div>
+                    {/* Alltid synliga badges */}
+                    <div className="absolute bottom-1 left-1 flex gap-1">
+                      <span className="bg-black/70 text-white text-[10px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                        <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scheduler */}
