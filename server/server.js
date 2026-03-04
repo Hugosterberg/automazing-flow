@@ -44,8 +44,42 @@ const PORT = process.env.PORT || 3001;
 const BASE_URL = process.env.BASE_URL || "http://localhost:8080";
 const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${PORT}`;
 
-// Temporär token-lagring (ersätt med databas i produktion)
-const tokenStore = new Map();
+// Persistent token-lagring – sparas till disk så att omstart inte bryter anslutningar
+const TOKEN_STORE_PATH = path.join(__dirname, "tokens.json");
+
+function loadTokenStore() {
+  try {
+    if (fs.existsSync(TOKEN_STORE_PATH)) {
+      const raw = fs.readFileSync(TOKEN_STORE_PATH, "utf8");
+      const entries = JSON.parse(raw);
+      if (Array.isArray(entries)) {
+        console.log(`[tokenStore] Laddade ${entries.length} sparade konton från tokens.json`);
+        return new Map(entries);
+      }
+    }
+  } catch (e) {
+    console.warn("[tokenStore] Kunde inte läsa tokens.json:", e.message);
+  }
+  return new Map();
+}
+
+function saveTokenStore(store) {
+  try {
+    fs.writeFileSync(TOKEN_STORE_PATH, JSON.stringify([...store.entries()]), "utf8");
+  } catch (e) {
+    console.warn("[tokenStore] Kunde inte spara tokens.json:", e.message);
+  }
+}
+
+const _tokenStoreRaw = loadTokenStore();
+const tokenStore = {
+  get: (k) => _tokenStoreRaw.get(k),
+  set: (k, v) => { _tokenStoreRaw.set(k, v); saveTokenStore(_tokenStoreRaw); return tokenStore; },
+  delete: (k) => { const r = _tokenStoreRaw.delete(k); saveTokenStore(_tokenStoreRaw); return r; },
+  has: (k) => _tokenStoreRaw.has(k),
+  entries: () => _tokenStoreRaw.entries(),
+};
+
 const pendingStates = new Map();
 
 function generateState() {
@@ -659,32 +693,138 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
 
   try {
     if (platform === "instagram" && isLate && (process.env.LATE_API_KEY || "").trim()) {
-      const lateRes = await fetch(`${LATE_API_BASE}/profiles`, {
-        headers: { Authorization: `Bearer ${(process.env.LATE_API_KEY || "").trim()}` },
-      });
+      const lateKey = (process.env.LATE_API_KEY || "").trim();
+      const lateHeaders = { Authorization: `Bearer ${lateKey}` };
+      // lookupId = Late profile-ID (t.ex. 69a7aa7d...) lagrat vid OAuth-callback
+      const lookupId = String(lateAccountId || accountId);
+
+      // GET /v1/accounts – rätt endpoint för anslutna konton (inte /profiles som är Late-arbetsytor)
+      const lateRes = await fetch(`${LATE_API_BASE}/accounts`, { headers: lateHeaders });
       if (!lateRes.ok) {
+        console.error(`[Late] GET /accounts misslyckades: ${lateRes.status}`);
         return res.status(502).json({ error: "Kunde inte hämta data från Late" });
       }
       const data = await lateRes.json();
-      const accounts = data.accounts ?? data.data ?? [];
-      const acc = accounts.find((a) => (a._id || a.id) === (lateAccountId || accountId));
+      const list = Array.isArray(data.accounts) ? data.accounts : [];
+      console.log(`[Late] GET /accounts: ${list.length} konton hittades`);
+
+      // Matcha konto: profileId._id matchar lookupId (Late profileId = Late-arbetsyta, lagrat vid OAuth)
+      // Fallback: sök på konto-_id, sedan första instagram-konto, sedan enda kontot
+      let acc =
+        list.find((a) => String(a.profileId?._id || a.profileId || "") === lookupId) ??
+        list.find((a) => String(a._id || a.id || "") === lookupId) ??
+        list.find((a) => (a.platform || "").toLowerCase() === "instagram") ??
+        (list.length === 1 ? list[0] : null);
+
+      if (acc) console.log(`[Late] Matchat konto: _id=${acc._id} username=${acc.username}`);
+      else console.warn(`[Late] Inget konto matchar lookupId=${lookupId}. Tillgängliga: ${list.map(a => a._id).join(", ")}`);
+
+      // Late lagrar Instagram-statistik i metadata.profileData
+      const profileData = acc?.metadata?.profileData ?? {};
+      const profile = {
+        username: profileData.username ?? acc?.username ?? acc?.name,
+        id: acc?._id ?? acc?.id,
+        displayName: profileData.displayName ?? acc?.displayName,
+        profilePicture: profileData.profilePicture ?? acc?.profilePicture,
+      };
+
+      const followers = profileData.followersCount ?? acc?.followers_count ?? acc?.followersCount;
+      const following = profileData.followingCount ?? acc?.follows_count ?? acc?.followingCount ?? undefined;
+      const mediaCount = profileData.mediaCount ?? acc?.media_count ?? acc?.mediaCount ?? acc?.externalPostCount;
+      const accountType = profileData.accountType ?? acc?.accountType ?? undefined;
+
+      // Hämta inlägg för likes/kommentar-statistik parallellt
+      let posts = [];
+      if (acc?._id) {
+        try {
+          const postsRes = await fetch(`${LATE_API_BASE}/accounts/${acc._id}/posts?limit=100`, { headers: lateHeaders });
+          if (postsRes.ok) {
+            const postsData = await postsRes.json();
+            posts = Array.isArray(postsData.posts) ? postsData.posts : [];
+          }
+        } catch {
+          // Ignorera om posts inte kan hämtas
+        }
+      }
+
+      // Beräkna aggregerad statistik från inlägg
+      const postsWithEngagement = posts.filter((p) => p.likeCount != null || p.commentCount != null);
+      const totalLikes = postsWithEngagement.reduce((s, p) => s + (p.likeCount || 0), 0);
+      const totalComments = postsWithEngagement.reduce((s, p) => s + (p.commentCount || 0), 0);
+      const postCount = postsWithEngagement.length;
+      const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
+      const avgComments = postCount > 0 ? Math.round(totalComments / postCount) : undefined;
+      // Engagement rate = (snitt-likes + snitt-kommentarer) / följare * 100
+      const engagementRate =
+        followers != null && followers > 0 && postCount > 0
+          ? Math.round(((totalLikes + totalComments) / postCount / Number(followers)) * 10000) / 100
+          : undefined;
+
+      console.log(`[Late] Stats: followers=${followers}, media=${mediaCount}, avgLikes=${avgLikes}, avgComments=${avgComments}, engagement=${engagementRate}%`);
+
+      const stats = [followers, following, mediaCount].some((n) => n != null && !Number.isNaN(Number(n)))
+        ? {
+            followersCount: followers != null ? Number(followers) : undefined,
+            followingCount: following != null ? Number(following) : undefined,
+            mediaCount: mediaCount != null ? Number(mediaCount) : undefined,
+            accountType: accountType ?? undefined,
+            totalLikes: postCount > 0 ? totalLikes : undefined,
+            totalComments: postCount > 0 ? totalComments : undefined,
+            avgLikes,
+            avgComments,
+            engagementRate,
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined;
+
+      // Returnera de 12 senaste inläggen med bild, likes och kommentarer
+      const recentPosts = posts.slice(0, 12).map((p) => ({
+        id: p.id,
+        caption: p.message || "",
+        picture: p.picture || "",
+        permalink: p.permalink || "",
+        mediaType: p.mediaType || "image",
+        likeCount: p.likeCount || 0,
+        commentCount: p.commentCount || 0,
+        createdTime: p.createdTime,
+      }));
+
       return res.json({
-        profile: acc ? { username: acc.username, id: acc._id || acc.id } : {},
-        media: [],
+        profile: { ...profile, ...(stats && { stats }) },
+        media: recentPosts,
+        stats,
       });
     }
     if (platform === "instagram") {
+      // Begär alla tillgängliga statistikfält (Graph API: followers_count, follows_count, media_count)
+      const fields = "id,username,account_type,media_count,followers_count,follows_count";
       const mediaRes = await fetch(
-        `https://graph.instagram.com/me?fields=id,username,account_type,media_count&access_token=${accessToken}`
+        `https://graph.instagram.com/me?fields=${fields}&access_token=${accessToken}`
       );
       const media = await mediaRes.json();
       const mediaListRes = await fetch(
         `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=${accessToken}&limit=12`
       );
       const mediaList = await mediaListRes.json();
+      let mediaCount = media.media_count != null && !media.error ? Number(media.media_count) : undefined;
+      if (mediaCount == null && Array.isArray(mediaList.data)) {
+        mediaCount = mediaList.data.length;
+      }
+      const followersCount = media.followers_count != null && !media.error ? Number(media.followers_count) : undefined;
+      const followingCount = media.follows_count != null && !media.error ? Number(media.follows_count) : undefined;
+      const hasAnyStat = followersCount != null || followingCount != null || mediaCount != null;
+      const stats = hasAnyStat
+        ? {
+            followersCount: followersCount ?? undefined,
+            followingCount: followingCount ?? undefined,
+            mediaCount: mediaCount ?? undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined;
       return res.json({
-        profile: media,
+        profile: { ...media, ...(stats && { stats }) },
         media: mediaList.data || [],
+        stats,
       });
     }
     if (platform === "tiktok") {
@@ -726,6 +866,103 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
   } catch (err) {
     console.error("Fetch data error:", err);
     res.status(500).json({ error: "Kunde inte hämta data" });
+  }
+});
+
+// --- AI-analys av konto ---
+app.post("/api/accounts/:accountId/analyze", async (req, res) => {
+  const { captions = [], displayName = "", username = "", followersCount } = req.body;
+  const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
+
+  // Hjälpfunktion: smart nyckelordsanalys som fallback
+  function keywordAnalysis() {
+    const allText = captions.join(" ").toLowerCase();
+    const words = allText.match(/\b\w{4,}\b/g) || [];
+    const freq = {};
+    for (const w of words) freq[w] = (freq[w] || 0) + 1;
+    const stopwords = new Set(["this","that","with","from","have","they","been","your","will","just","more","into","than","its","are","for","the","and","but","not","you","all","can","her","was","one","our","out","day","get","has","him","his","how","man","new","now","old","see","two","way","who","boy","did","its","let","put","say","she","too","use","com","www"]);
+    const topWords = Object.entries(freq)
+      .filter(([w]) => !stopwords.has(w))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([w]) => w);
+    const hashtags = [...new Set((captions.join(" ").match(/#\w+/g) || []).map(h => h.toLowerCase()))]
+      .slice(0, 8).map(h => h.replace("#", ""));
+
+    const mainTopic = topWords.slice(0, 3).join(", ");
+    const hashtagStr = hashtags.slice(0, 5).join(", ") || mainTopic;
+    const n = followersCount ? `med ${Number(followersCount).toLocaleString("sv-SE")} följare` : "";
+    return {
+      about: `@${username} ${n} är ett konto fokuserat på ${mainTopic}. Innehållet kretsar kring en personlig resa och delar erfarenheter inom detta område.`,
+      writes: `Kontot publicerar inlägg om ${hashtagStr}. Vanliga inläggstyper inkluderar uppdateringar, citat och milstolpar kopplade till huvudtemat.`,
+      perception: `En utomstående person ser ett engagerat konto med ett tydligt fokus och konsekvent budskap. Kontot verkar drivas av passion snarare än ett kommersiellt syfte.`,
+    };
+  }
+
+  if (!openaiKey) {
+    return res.json(keywordAnalysis());
+  }
+
+  try {
+    const captionSample = captions.slice(0, 25).join("\n---\n");
+    const prompt = `Du är en social media-analytiker. Analysera detta Instagram-konto kort och sakligt på svenska.
+
+Konto: @${username} – "${displayName}"
+Följare: ${followersCount ? Number(followersCount).toLocaleString("sv-SE") : "okänt"}
+
+Senaste inläggstexter (urval):
+${captionSample}
+
+Svara med exakt dessa tre punkter. Håll varje svar till 1–2 korta meningar. Inga rubriker, inga listor – bara löpande text.
+
+HANDLAR OM: [Vad kontot handlar om – nisch, tema och syfte]
+SKRIVER OM: [Vilka konkreta ämnen, händelser och typer av innehåll som förekommer]
+UPPFATTNING: [Hur en vanlig person utan förkunskaper om ämnet skulle beskriva och uppfatta kontot]`;
+
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.6,
+        max_tokens: 350,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      console.warn("[AI] OpenAI svarade", aiRes.status, "– använder fallback");
+      return res.json(keywordAnalysis());
+    }
+
+    const aiData = await aiRes.json();
+    const text = aiData.choices?.[0]?.message?.content || "";
+
+    // Parsa de tre delarna ur svaret
+    const extract = (label) => {
+      const match = text.match(new RegExp(`${label}:\\s*(.+?)(?=\\n[A-ZÅÄÖ]+:|$)`, "si"));
+      return match ? match[1].trim() : null;
+    };
+    const about = extract("HANDLAR OM") || extract("ABOUT");
+    const writes = extract("SKRIVER OM") || extract("WRITES");
+    const perception = extract("UPPFATTNING") || extract("PERCEPTION");
+
+    if (about && writes && perception) {
+      return res.json({ about, writes, perception });
+    }
+    // Strukturen var inte rätt – returnera hela texten uppdelad
+    const lines = text.split("\n").filter(l => l.trim()).slice(0, 3);
+    return res.json({
+      about: lines[0] || text.slice(0, 150),
+      writes: lines[1] || "",
+      perception: lines[2] || "",
+    });
+  } catch (err) {
+    console.error("[AI] Analysfel:", err.message);
+    return res.json(keywordAnalysis());
   }
 });
 

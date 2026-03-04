@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Lokalt token-cache (innehåller OAuth-tokens – ska inte committas)
+server/tokens.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -176,16 +176,32 @@ export function AppSidebar() {
                             <button
                               type="button"
                               onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
-                              className={`flex flex-1 items-center gap-2 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
+                              className={`flex flex-1 flex-col items-start gap-0 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}
                             >
-                              <Avatar className="h-5 w-5 shrink-0">
-                                <AvatarFallback className="text-[9px] bg-secondary">
-                                  <Icon className="h-2.5 w-2.5" />
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="truncate">{account.username}</span>
+                              <span className="flex items-center gap-2 w-full min-w-0">
+                                <Avatar className="h-5 w-5 shrink-0">
+                                  <AvatarFallback className="text-[9px] bg-secondary">
+                                    <Icon className="h-2.5 w-2.5" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate">{account.username}</span>
+                              </span>
+                              {account.stats && (account.stats.followersCount != null || account.stats.mediaCount != null) && (
+                                <span className="text-[10px] text-muted-foreground pl-7">
+                                  {account.stats.followersCount != null && (
+                                    <>
+                                      {account.stats.followersCount.toLocaleString("sv-SE")}
+                                      {" följare"}
+                                    </>
+                                  )}
+                                  {account.stats.followersCount != null && account.stats.mediaCount != null && " · "}
+                                  {account.stats.mediaCount != null && (
+                                    <>{account.stats.mediaCount} inlägg</>
+                                  )}
+                                </span>
+                              )}
                             </button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
