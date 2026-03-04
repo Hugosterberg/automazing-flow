@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AccountPlatform, ConnectedAccount, Profile } from "@/types/accounts";
+import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@/types/accounts";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -31,6 +31,7 @@ interface AccountsContextValue {
   ) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
+  updateAccountStats: (id: string, stats: AccountStats | undefined) => void;
   selectedAccountId: string | null;
   setSelectedAccountId: (id: string | null) => void;
   allAccounts: ConnectedAccount[];
@@ -209,6 +210,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateAccountStats = useCallback((id: string, stats: AccountStats | undefined) => {
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, stats: stats ?? undefined } : a))
+    );
+  }, []);
+
   const accountsForActiveProfile = accounts.filter((a) => a.profileId === effectiveProfileId);
 
   return (
@@ -226,6 +233,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         addAccountFromOAuth,
         removeAccount,
         updateAccountAnalysis,
+        updateAccountStats,
         selectedAccountId,
         setSelectedAccountId,
         allAccounts: accounts,
