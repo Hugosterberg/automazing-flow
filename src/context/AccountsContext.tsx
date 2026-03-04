@@ -22,7 +22,13 @@ interface AccountsContextValue {
   removeProfile: (id: string) => void;
   accounts: ConnectedAccount[];
   addAccount: (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
-  addAccountFromOAuth: (accountId: string, platform: AccountPlatform, username: string, profileId?: string) => void;
+  addAccountFromOAuth: (
+    accountId: string,
+    platform: AccountPlatform,
+    username: string,
+    profileId?: string,
+    extra?: { lateAccountId?: string }
+  ) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
   selectedAccountId: string | null;
@@ -151,7 +157,13 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   );
 
   const addAccountFromOAuth = useCallback(
-    (accountId: string, platform: AccountPlatform, username: string, profileId?: string) => {
+    (
+      accountId: string,
+      platform: AccountPlatform,
+      username: string,
+      profileId?: string,
+      extra?: { lateAccountId?: string }
+    ) => {
       const targetProfileId = profileId ?? effectiveProfileId;
       const profileUrls: Record<string, string> = {
         youtube: "youtube.com",
@@ -168,6 +180,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         connectedAt: new Date().toISOString(),
         profileUrl: `https://${base}/${username.replace(/^@/, "")}`,
         isOAuth: true,
+        ...(extra?.lateAccountId && { lateAccountId: extra.lateAccountId }),
       };
       setAccounts((prev) => {
         if (prev.some((a) => a.id === accountId)) return prev;
