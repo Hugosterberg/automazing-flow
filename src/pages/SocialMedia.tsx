@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
+import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
 
@@ -110,7 +111,6 @@ async function generateImageVariants(): Promise<string[]> {
 }
 
 export default function SocialMedia() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [postContent, setPostContent] = useState("");
   const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis } =
     useAccounts();
