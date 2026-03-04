@@ -1,7 +1,40 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.join(__dirname, "..");
+// Ladda .env från cwd (npm run dev = projektrot) eller från projektrot relativt server-mappen
+const envPath = fs.existsSync(path.join(process.cwd(), ".env"))
+  ? path.join(process.cwd(), ".env")
+  : path.join(rootDir, ".env");
+const envExamplePath = path.join(rootDir, ".env.example");
+
+if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+  fs.copyFileSync(envExamplePath, envPath);
+  console.log("Skapade .env från .env.example – fyll i LATE_API_KEY m.m. i .env");
+}
+// Läs .env från projektrot: strip BOM, trim nycklar/värden, .env ska alltid vinna över tom systemenv
+if (fs.existsSync(envPath)) {
+  let raw = fs.readFileSync(envPath, "utf8");
+  if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+  const parsed = dotenv.parse(raw);
+  for (const [k, v] of Object.entries(parsed)) {
+    const key = (k.replace(/^\uFEFF/, "") || "").trim();
+    if (!key) continue;
+    const val = v === undefined || v === null ? "" : (typeof v === "string" ? v.trim() : String(v));
+    process.env[key] = val;
+  }
+  const late = (process.env.LATE_API_KEY || "").trim();
+  console.log(".env laddad från:", path.resolve(envPath), "| LATE_API_KEY:", late ? `${late.slice(0, 6)}... (${late.length} tecken)` : "SAKNAS");
+} else {
+  dotenv.config({ path: envPath });
+  console.log(".env saknas, försökte:", path.resolve(envPath));
+}
 
 const app = express();
 app.use(cors({ origin: process.env.BASE_URL || "http://localhost:8080", credentials: true }));
@@ -23,25 +56,51 @@ function generateState() {
 // --- Late API (Instagram via getlate.dev) ---
 const LATE_API_BASE = "https://getlate.dev/api/v1";
 
+function extractProfileId(data) {
+  if (!data) return null;
+  const id = data.profile?._id ?? data.profile?.id ?? data._id ?? data.id;
+  if (id) return String(id);
+  const list = data.profiles ?? data.data ?? (Array.isArray(data) ? data : null);
+  if (Array.isArray(list) && list.length > 0) {
+    const first = list[0];
+    return String(first._id ?? first.id ?? first.profileId ?? "");
+  }
+  return null;
+}
+
 async function getOrCreateLateProfileId() {
-  const existing = process.env.LATE_PROFILE_ID;
+  const existing = (process.env.LATE_PROFILE_ID || "").trim();
   if (existing) return existing;
-  const apiKey = process.env.LATE_API_KEY;
+  const apiKey = (process.env.LATE_API_KEY || "").trim();
   if (!apiKey) return null;
+  const headers = { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
+
   try {
-    const res = await fetch(`${LATE_API_BASE}/profiles`, {
+    // 1. Hämta befintliga profiler (GET)
+    const getRes = await fetch(`${LATE_API_BASE}/profiles`, { headers });
+    const getData = await getRes.json().catch(() => ({}));
+    const idFromList = extractProfileId(getData);
+    if (idFromList) {
+      console.log("[Late] Använder befintlig profil:", idFromList.slice(0, 8) + "...");
+      return idFromList;
+    }
+    if (!getRes.ok) {
+      console.warn("[Late] GET /profiles:", getRes.status, JSON.stringify(getData).slice(0, 200));
+    }
+
+    // 2. Skapa ny profil (POST)
+    const postRes = await fetch(`${LATE_API_BASE}/profiles`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({ name: "Automazing Flow" }),
     });
-    const data = await res.json();
-    const id = data.profile?._id || data._id || data.id;
-    if (id) return id;
+    const postData = await postRes.json().catch(() => ({}));
+    const idFromCreate = extractProfileId(postData);
+    if (idFromCreate) return idFromCreate;
+
+    console.warn("[Late] POST /profiles misslyckades:", postRes.status, JSON.stringify(postData).slice(0, 300));
   } catch (e) {
-    console.warn("Late create profile:", e.message);
+    console.warn("[Late] getOrCreateLateProfileId:", e.message);
   }
   return null;
 }
@@ -51,8 +110,10 @@ const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 
 app.get("/api/auth/instagram", async (req, res) => {
-  const lateApiKey = process.env.LATE_API_KEY;
+  res.set("Cache-Control", "no-store, no-cache");
+  const lateApiKey = (process.env.LATE_API_KEY || "").trim();
   const ourProfileId = req.query.profile_id || null;
+  console.log("[Instagram] LATE_API_KEY:", lateApiKey ? "satt" : "SAKNAS – kontrollera .env och att rätt serverprocess kör");
 
   if (lateApiKey) {
     // Anslut Instagram via Late API
@@ -93,8 +154,12 @@ app.get("/api/auth/instagram", async (req, res) => {
   }
 
   // Fallback: direkt Instagram (Meta) OAuth
-  const clientId = process.env.INSTAGRAM_CLIENT_ID;
+  const clientId = (process.env.INSTAGRAM_CLIENT_ID || "").trim();
   if (!clientId) {
+    console.warn(
+      "Instagram: LATE_API_KEY saknas eller är tom (längd: %s). Lägg LATE_API_KEY i .env för Late API.",
+      (process.env.LATE_API_KEY || "").length
+    );
     return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
   }
   const state = generateState();
@@ -121,7 +186,7 @@ app.get("/api/auth/late/instagram/callback", async (req, res) => {
   }
   pendingStates.delete(state);
 
-  const apiKey = process.env.LATE_API_KEY;
+  const apiKey = (process.env.LATE_API_KEY || "").trim();
   if (!apiKey) {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=late_not_configured`);
   }
@@ -593,9 +658,9 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
   const { platform, accessToken, isLate, lateAccountId } = stored;
 
   try {
-    if (platform === "instagram" && isLate && process.env.LATE_API_KEY) {
+    if (platform === "instagram" && isLate && (process.env.LATE_API_KEY || "").trim()) {
       const lateRes = await fetch(`${LATE_API_BASE}/profiles`, {
-        headers: { Authorization: `Bearer ${process.env.LATE_API_KEY}` },
+        headers: { Authorization: `Bearer ${(process.env.LATE_API_KEY || "").trim()}` },
       });
       if (!lateRes.ok) {
         return res.status(502).json({ error: "Kunde inte hämta data från Late" });
@@ -676,7 +741,36 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
+// Diagnostik: vad ser denna process för .env och LATE_API_KEY? (endast i utveckling)
+app.get("/api/debug-env", (req, res) => {
+  const lateRaw = process.env.LATE_API_KEY || "";
+  const hasLate = lateRaw.trim().length > 0;
+  res.json({
+    envPath: path.resolve(envPath),
+    envExists: fs.existsSync(envPath),
+    LATE_API_KEY: hasLate ? "satt" : "saknas",
+    LATE_API_KEY_length: lateRaw.length,
+  });
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server kör på http://localhost:${PORT}`);
   console.log(`OAuth callbacks: ${API_BASE_URL}/api/auth/{instagram|tiktok|youtube}/callback`);
+  const hasLate = (process.env.LATE_API_KEY || "").trim().length > 0;
+  console.log(`LATE_API_KEY: ${hasLate ? "satt (Instagram via Late)" : "saknas"}`);
+});
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`
+Port ${PORT} används redan av en annan process (troligen en äldre server utan .env).
+Den gamla processen svarar på /api – därför ser du "Instagram not configured".
+
+Gör så här:
+1. Stäng ALLA terminaler där du kört "npm run dev" eller "npm run dev:server"
+2. Eller hitta och avsluta processen:  netstat -ano | findstr :${PORT}
+   Ta PID från sista kolumnen och kör:  taskkill /PID <pid> /F
+3. Starta sedan om:  npm run dev
+`);
+  }
+  throw err;
 });

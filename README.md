@@ -32,7 +32,9 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: (Valfritt) Skapa `.env` för OAuth. Kopiera `.env.example` till `.env` och fyll i t.ex. `LATE_API_KEY` från [getlate.dev](https://getlate.dev) för Instagram-inloggning.
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 

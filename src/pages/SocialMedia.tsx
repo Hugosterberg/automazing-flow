@@ -173,7 +173,11 @@ export default function SocialMedia() {
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between">
               <p className="text-sm text-destructive">
-                Inloggningen misslyckades: {oauthError.replace(/_/g, " ")}
+                {oauthError === "instagram_not_configured"
+                  ? "Instagram är inte konfigurerad. Lägg till LATE_API_KEY i .env (API-nyckel från getlate.dev) för inloggning via Late API."
+                  : oauthError === "late_profile_failed"
+                    ? "Late kunde inte skapa eller hämta en profil. Kontrollera din API-nyckel på getlate.dev. Om du redan har en profil kan du sätta LATE_PROFILE_ID i .env."
+                    : `Inloggningen misslyckades: ${oauthError.replace(/_/g, " ")}`}
               </p>
               <Button variant="ghost" size="sm" onClick={clearOauthError}>
                 Stäng
