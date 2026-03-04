@@ -21,6 +21,8 @@ export interface ConnectedAccount {
   connectedAt: string;
   /** Anslutet via OAuth (har token på backend) */
   isOAuth?: boolean;
+  /** Late API-konto-id (t.ex. acc_xxx) när anslutet via Late */
+  lateAccountId?: string;
   // AI-analysad data
   analysis?: AccountAnalysis;
 }

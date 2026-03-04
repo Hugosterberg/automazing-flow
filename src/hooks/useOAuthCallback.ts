@@ -22,11 +22,13 @@ export function useOAuthCallback() {
       next.delete("oauth_error");
       setSearchParams(next);
     } else if (oauthSuccess && platform && accountId && username) {
+      const lateAccountId = searchParams.get("late_account_id") ?? undefined;
       addAccountFromOAuth(
         accountId,
         platform as AccountPlatform,
         decodeURIComponent(username),
-        profileId ?? undefined
+        profileId ?? undefined,
+        lateAccountId ? { lateAccountId } : undefined
       );
       setSelectedAccountId(accountId);
       const next = new URLSearchParams(searchParams);
@@ -35,6 +37,7 @@ export function useOAuthCallback() {
       next.delete("account_id");
       next.delete("username");
       next.delete("profile_id");
+      next.delete("late_account_id");
       setSearchParams(next);
     }
   }, [searchParams]);

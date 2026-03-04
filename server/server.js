@@ -20,17 +20,85 @@ function generateState() {
   return state;
 }
 
-// --- Instagram OAuth ---
+// --- Late API (Instagram via getlate.dev) ---
+const LATE_API_BASE = "https://getlate.dev/api/v1";
+
+async function getOrCreateLateProfileId() {
+  const existing = process.env.LATE_PROFILE_ID;
+  if (existing) return existing;
+  const apiKey = process.env.LATE_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`${LATE_API_BASE}/profiles`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Automazing Flow" }),
+    });
+    const data = await res.json();
+    const id = data.profile?._id || data._id || data.id;
+    if (id) return id;
+  } catch (e) {
+    console.warn("Late create profile:", e.message);
+  }
+  return null;
+}
+
+// Instagram: antingen via Late API eller direkt Meta OAuth
 const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 
-app.get("/api/auth/instagram", (req, res) => {
+app.get("/api/auth/instagram", async (req, res) => {
+  const lateApiKey = process.env.LATE_API_KEY;
+  const ourProfileId = req.query.profile_id || null;
+
+  if (lateApiKey) {
+    // Anslut Instagram via Late API
+    try {
+      const lateProfileId = await getOrCreateLateProfileId();
+      if (!lateProfileId) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_profile_failed`);
+      }
+      const state = generateState();
+      pendingStates.set(state, {
+        platform: "instagram",
+        profileId: ourProfileId,
+        lateProfileId,
+        createdAt: Date.now(),
+      });
+      const redirectUrl = `${API_BASE_URL}/api/auth/late/instagram/callback?state=${state}`;
+      const connectUrl = new URL(`${LATE_API_BASE}/connect/instagram`);
+      connectUrl.searchParams.set("profileId", lateProfileId);
+      connectUrl.searchParams.set("redirect_url", redirectUrl);
+
+      const lateRes = await fetch(connectUrl.toString(), {
+        headers: { Authorization: `Bearer ${lateApiKey}` },
+      });
+      if (!lateRes.ok) {
+        const err = await lateRes.text();
+        console.error("Late connect URL error:", lateRes.status, err);
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_connect_failed`);
+      }
+      const { authUrl } = await lateRes.json();
+      if (!authUrl) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_no_auth_url`);
+      }
+      return res.redirect(authUrl);
+    } catch (err) {
+      console.error("Late Instagram init error:", err);
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=late_init_failed`);
+    }
+  }
+
+  // Fallback: direkt Instagram (Meta) OAuth
   const clientId = process.env.INSTAGRAM_CLIENT_ID;
   if (!clientId) {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
   }
   const state = generateState();
-  pendingStates.set(state, { platform: "instagram", profileId: req.query.profile_id, createdAt: Date.now() });
+  pendingStates.set(state, { platform: "instagram", profileId: ourProfileId, createdAt: Date.now() });
   const redirectUri = `${API_BASE_URL}/api/auth/instagram/callback`;
   const url = new URL(IG_AUTH);
   url.searchParams.set("client_id", clientId);
@@ -39,6 +107,62 @@ app.get("/api/auth/instagram", (req, res) => {
   url.searchParams.set("scope", "user_profile,user_media");
   url.searchParams.set("state", state);
   res.redirect(url.toString());
+});
+
+// Callback från Late efter Instagram-anslutning
+app.get("/api/auth/late/instagram/callback", async (req, res) => {
+  const { state, error, accountId: lateAccountId, username } = req.query;
+  if (error) {
+    return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(error)}`);
+  }
+  const pending = pendingStates.get(state);
+  if (!pending || pending.platform !== "instagram") {
+    return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+  }
+  pendingStates.delete(state);
+
+  const apiKey = process.env.LATE_API_KEY;
+  if (!apiKey) {
+    return res.redirect(`${BASE_URL}/social-media?oauth_error=late_not_configured`);
+  }
+
+  try {
+    let accountId = lateAccountId;
+    let displayUsername = username;
+    if (!accountId || !displayUsername) {
+      const profilesRes = await fetch(`${LATE_API_BASE}/profiles`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!profilesRes.ok) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_fetch_accounts_failed`);
+      }
+      const profilesData = await profilesRes.json();
+      const accounts = profilesData.accounts ?? profilesData.data ?? profilesData.profiles ?? [];
+      const list = Array.isArray(accounts) ? accounts : (profilesData.profile?.accounts || []);
+      const ig = list.find((a) => a.platform === "instagram" || (a.accountId && String(a.accountId).includes("instagram")));
+      const acc = ig || (list.length ? list[list.length - 1] : null);
+      if (acc) {
+        accountId = accountId || acc._id || acc.id || acc.accountId;
+        displayUsername = displayUsername || acc.username || acc.name || "Instagram";
+      }
+    }
+    if (!accountId) {
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=late_no_account`);
+    }
+    const id = String(accountId);
+    tokenStore.set(id, {
+      platform: "instagram",
+      lateAccountId: id,
+      username: displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram",
+      isLate: true,
+    });
+    const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
+    const usernameParam = encodeURIComponent(displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram");
+    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${id}&username=${usernameParam}&late_account_id=${id}${profileParam}`);
+  } catch (err) {
+    console.error("Late Instagram callback error:", err);
+    res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+  }
 });
 
 app.get("/api/auth/instagram/callback", async (req, res) => {
@@ -466,9 +590,24 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
   if (!stored) {
     return res.status(404).json({ error: "Konto inte anslutet" });
   }
-  const { platform, accessToken } = stored;
+  const { platform, accessToken, isLate, lateAccountId } = stored;
 
   try {
+    if (platform === "instagram" && isLate && process.env.LATE_API_KEY) {
+      const lateRes = await fetch(`${LATE_API_BASE}/profiles`, {
+        headers: { Authorization: `Bearer ${process.env.LATE_API_KEY}` },
+      });
+      if (!lateRes.ok) {
+        return res.status(502).json({ error: "Kunde inte hämta data från Late" });
+      }
+      const data = await lateRes.json();
+      const accounts = data.accounts ?? data.data ?? [];
+      const acc = accounts.find((a) => (a._id || a.id) === (lateAccountId || accountId));
+      return res.json({
+        profile: acc ? { username: acc.username, id: acc._id || acc.id } : {},
+        media: [],
+      });
+    }
     if (platform === "instagram") {
       const mediaRes = await fetch(
         `https://graph.instagram.com/me?fields=id,username,account_type,media_count&access_token=${accessToken}`
