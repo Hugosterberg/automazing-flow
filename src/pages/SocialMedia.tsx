@@ -16,7 +16,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { InstagramIcon, TikTokIcon, YoutubeIcon, XIcon } from "@/components/platform-icons";
+import {
+  InstagramIcon,
+  TikTokIcon,
+  YoutubeIcon,
+  XIcon,
+  FacebookIcon,
+  GoogleBusinessIcon,
+  WhatsAppIcon,
+} from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
@@ -24,6 +32,9 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   tiktok: TikTokIcon,
   youtube: YoutubeIcon,
   x: XIcon,
+  facebook: FacebookIcon,
+  google_business: GoogleBusinessIcon,
+  whatsapp: WhatsAppIcon,
 };
 
 
@@ -52,6 +63,34 @@ const fadeUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
 };
+
+/** Maps old error codes to current Zernio names */
+const OAUTH_ERROR_ALIASES: Record<string, string> = {
+  late_profile_failed: "zernio_profile_failed",
+  late_not_configured: "zernio_not_configured",
+  late_connect_failed: "zernio_connect_failed",
+  late_fetch_accounts_failed: "zernio_fetch_accounts_failed",
+  late_no_account: "zernio_no_account",
+  late_no_auth_url: "zernio_no_auth_url",
+};
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  instagram_not_configured:
+    "Add ZERNIO_API_KEY for Instagram via Zernio, or INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET for Meta only.",
+  zernio_profile_failed:
+    "Zernio could not load your workspace. Check ZERNIO_API_KEY and optional ZERNIO_PROFILE_ID in .env.",
+  zernio_not_configured: "ZERNIO_API_KEY is missing in server .env.",
+  zernio_connect_failed: "Zernio could not start Instagram login. Check your API key in the Zernio dashboard.",
+  zernio_fetch_accounts_failed: "Could not list accounts from Zernio (network or key).",
+  zernio_no_account: "No Instagram account returned—finish connecting the channel in Zernio.",
+  zernio_no_auth_url: "Zernio did not return a login URL.",
+  zernio_init_failed: "Could not start Instagram via Zernio.",
+};
+
+function messageForOAuthError(code: string): string {
+  const key = OAUTH_ERROR_ALIASES[code] || code;
+  return OAUTH_ERROR_MESSAGES[key] || `Login failed: ${code.replace(/_/g, " ")}`;
+}
 
 async function runAIAnalysis(
   accountId: string,
@@ -122,7 +161,7 @@ export default function SocialMedia() {
         const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
         const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
         const hasAny = followersCount != null || followingCount != null || mediaCount != null;
-        if (hasAny) {
+        if (hasAny || stats?.zernioNote) {
           updateAccountStats(accountId, {
             followersCount,
             followingCount,
@@ -134,6 +173,7 @@ export default function SocialMedia() {
             avgComments: stats?.avgComments,
             engagementRate: stats?.engagementRate,
             updatedAt: stats?.updatedAt ?? new Date().toISOString(),
+            zernioNote: stats?.zernioNote,
           });
         }
         if (Array.isArray(data.media) && data.media.length > 0) {
@@ -216,13 +256,7 @@ export default function SocialMedia() {
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">
-                {oauthError === "instagram_not_configured"
-                  ? "Instagram is not configured. Add LATE_API_KEY to .env (API key from getlate.dev) to log in via Late API."
-                  : oauthError === "late_profile_failed"
-                    ? "Late could not create or fetch a profile. Check your API key at getlate.dev. If you already have a profile, set LATE_PROFILE_ID in .env."
-                    : `Login failed: ${oauthError.replace(/_/g, " ")}`}
-              </p>
+              <p className="text-sm text-destructive">{messageForOAuthError(oauthError)}</p>
               <Button variant="ghost" size="sm" onClick={clearOauthError}>
                 Dismiss
               </Button>
@@ -239,7 +273,8 @@ export default function SocialMedia() {
                 Select an account in the sidebar (Connected accounts) to get started.
               </p>
               <p className="text-sm text-muted-foreground/80">
-                Connect Instagram, TikTok or YouTube via the + button in the sidebar.
+                Use the sidebar: Instagram, TikTok, YouTube, X—or extra channels via Zernio (Facebook, WhatsApp, Google
+                Business, …). See docs/KOPPLINGAR.md.
               </p>
             </CardContent>
           </Card>
@@ -395,6 +430,7 @@ export default function SocialMedia() {
           ? (() => {
               const s = selectedAccount.stats;
               const isX = selectedAccount.platform === "x";
+              const isWhatsApp = selectedAccount.platform === "whatsapp";
 
               const avgLikesStat =
                 s.avgLikes != null
@@ -416,7 +452,7 @@ export default function SocialMedia() {
                 avgLikesStat,
                 {
                   ...defaultStats[2],
-                  label: isX ? "Tweets" : "Posts",
+                  label: isX ? "Tweets" : isWhatsApp ? "Templates" : "Posts",
                   value: s.mediaCount != null ? s.mediaCount.toLocaleString("en-US") : "–",
                 },
                 engagementStat,
@@ -443,15 +479,27 @@ export default function SocialMedia() {
         ))}
       </div>
 
+      {selectedAccount?.stats?.zernioNote && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.12 }}>
+          <p className="text-xs text-muted-foreground border border-border/60 rounded-lg px-3 py-2.5 bg-muted/30 leading-relaxed">
+            {selectedAccount.stats.zernioNote}
+          </p>
+        </motion.div>
+      )}
+
       {recentPosts.length > 0 && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-5 w-5" />
-                Recent posts
+                {selectedAccount?.platform === "whatsapp" ? "WhatsApp templates" : "Recent posts"}
               </CardTitle>
-              <CardDescription>Likes and comments per post</CardDescription>
+              <CardDescription>
+                {selectedAccount?.platform === "whatsapp"
+                  ? "Approved templates from your WhatsApp Business account (via Zernio)"
+                  : "Likes and comments per post"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Image grid for visual platforms (Instagram etc.) */}
@@ -491,27 +539,43 @@ export default function SocialMedia() {
               ) : (
                 /* Text list for text-based platforms (X/Twitter) */
                 <div className="space-y-2">
-                  {recentPosts.map((post) => (
-                    <a
-                      key={post.id}
-                      href={post.permalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
+                  {recentPosts.map((post) => {
+                    const inner = (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Heart className="h-3.5 w-3.5" />
+                            {post.likeCount}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3.5 w-3.5" />
+                            {post.commentCount}
+                          </span>
+                        </div>
+                      </>
+                    );
+                    return post.permalink ? (
+                      <a
+                        key={post.id}
+                        href={post.permalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
+                      >
+                        {inner}
+                      </a>
+                    ) : (
+                      <div
+                        key={post.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20"
+                      >
+                        {inner}
                       </div>
-                      <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3.5 w-3.5" />{post.likeCount}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3.5 w-3.5" />{post.commentCount}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

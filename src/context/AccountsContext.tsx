@@ -27,7 +27,12 @@ interface AccountsContextValue {
     platform: AccountPlatform,
     username: string,
     profileId?: string,
-    extra?: { lateAccountId?: string }
+    extra?: {
+      zernioAccountId?: string;
+      profileUrl?: string;
+      displayName?: string;
+      isZernio?: boolean;
+    }
   ) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
@@ -56,10 +61,15 @@ function loadAccounts(): ConnectedAccount[] {
       const data = JSON.parse(stored);
       // Migration: add profileId to older accounts
       if (Array.isArray(data)) {
-        return data.map((a: ConnectedAccount & { profileId?: string }) => ({
-          ...a,
-          profileId: a.profileId || "default",
-        }));
+        return data.map((raw: ConnectedAccount & { profileId?: string; lateAccountId?: string }) => {
+          const { lateAccountId, ...a } = raw;
+          const zid = a.zernioAccountId || lateAccountId;
+          return {
+            ...a,
+            profileId: a.profileId || "default",
+            ...(zid ? { zernioAccountId: zid } : {}),
+          };
+        });
       }
     }
   } catch {
@@ -163,25 +173,36 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       platform: AccountPlatform,
       username: string,
       profileId?: string,
-      extra?: { lateAccountId?: string }
-    ) => {
+    extra?: {
+      zernioAccountId?: string;
+      profileUrl?: string;
+      displayName?: string;
+      isZernio?: boolean;
+    }
+  ) => {
       const targetProfileId = profileId ?? effectiveProfileId;
       const profileUrls: Record<string, string> = {
         youtube: "youtube.com",
         shopify: "myshopify.com",
         gmail: "mail.google.com",
         outlook: "outlook.com",
+        facebook: "facebook.com",
+        google_business: "google.com/maps",
+        whatsapp: "wa.me",
       };
       const base = profileUrls[platform] ?? platform + ".com";
+      const defaultProfileUrl = `https://${base}/${username.replace(/^@/, "")}`;
       const newAccount: ConnectedAccount = {
         id: accountId,
         profileId: targetProfileId,
         platform,
         username: username.trim(),
+        displayName: extra?.displayName?.trim() || undefined,
         connectedAt: new Date().toISOString(),
-        profileUrl: `https://${base}/${username.replace(/^@/, "")}`,
+        profileUrl: extra?.profileUrl?.trim() || defaultProfileUrl,
         isOAuth: true,
-        ...(extra?.lateAccountId && { lateAccountId: extra.lateAccountId }),
+        ...(extra?.zernioAccountId && { zernioAccountId: extra.zernioAccountId }),
+        ...(extra?.isZernio && { isZernio: true }),
       };
       setAccounts((prev) => {
         if (prev.some((a) => a.id === accountId)) return prev;

@@ -1,4 +1,14 @@
-export type SocialPlatform = "instagram" | "tiktok" | "youtube" | "x";
+export type SocialPlatform =
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "x"
+  /** Connected via [Zernio](https://zernio.com) (Facebook Page, etc.) */
+  | "facebook"
+  /** Google Business Profile via Zernio */
+  | "google_business"
+  /** WhatsApp Business via Zernio ([docs](https://docs.zernio.com/platforms/whatsapp)) */
+  | "whatsapp";
 export type EcommercePlatform = "shopify";
 export type MailPlatform = "gmail" | "outlook";
 
@@ -29,6 +39,8 @@ export interface AccountStats {
   engagementRate?: number;
   /** Last updated (ISO string) */
   updatedAt?: string;
+  /** Provider hint (e.g. Zernio analytics add-on or API limits) */
+  zernioNote?: string;
 }
 
 export interface ConnectedAccount {
@@ -42,8 +54,10 @@ export interface ConnectedAccount {
   connectedAt: string;
   /** Connected via OAuth (token stored on backend) */
   isOAuth?: boolean;
-  /** Late API account id (e.g. acc_xxx) when connected via Late */
-  lateAccountId?: string;
+  /** Zernio account id when connected via Zernio (e.g. Instagram OAuth through Zernio) */
+  zernioAccountId?: string;
+  /** Linked via Zernio API (same company, multiple channels) */
+  isZernio?: boolean;
   /** Followers, post count etc. (fetched from the platform API) */
   stats?: AccountStats;
   // AI-analysad data

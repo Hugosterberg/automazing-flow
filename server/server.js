@@ -16,7 +16,7 @@ const envExamplePath = path.join(rootDir, ".env.example");
 
 if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
   fs.copyFileSync(envExamplePath, envPath);
-  console.log("Created .env from .env.example – fill in LATE_API_KEY etc. in .env");
+  console.log("Created .env from .env.example – fill in ZERNIO_API_KEY etc. in .env");
 }
 // Read .env from project root: strip BOM, trim keys/values, .env should always win over empty system env
 if (fs.existsSync(envPath)) {
@@ -29,8 +29,8 @@ if (fs.existsSync(envPath)) {
     const val = v === undefined || v === null ? "" : (typeof v === "string" ? v.trim() : String(v));
     process.env[key] = val;
   }
-  const late = (process.env.LATE_API_KEY || "").trim();
-  console.log(".env loaded from:", path.resolve(envPath), "| LATE_API_KEY:", late ? `${late.slice(0, 6)}... (${late.length} chars)` : "MISSING");
+  const zk = (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").trim();
+  console.log(".env:", path.resolve(envPath), "| Zernio API key:", zk ? `${zk.slice(0, 6)}… (${zk.length} chars)` : "not set");
 } else {
   dotenv.config({ path: envPath });
   console.log(".env missing, tried:", path.resolve(envPath));
@@ -43,6 +43,18 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const BASE_URL = process.env.BASE_URL || "http://localhost:8080";
 const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${PORT}`;
+
+const ZERNIO_API_BASE = (process.env.ZERNIO_API_BASE || "https://zernio.com/api/v1").replace(/\/$/, "");
+/** Also reads LATE_API_KEY if ZERNIO_API_KEY is unset (old .env files). */
+function getZernioApiKey() {
+  return (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").trim();
+}
+
+const ERR_NO_ZERNIO_KEY = "Set ZERNIO_API_KEY in server .env";
+
+function getZernioProfileIdEnv() {
+  return (process.env.ZERNIO_PROFILE_ID || process.env.LATE_PROFILE_ID || "").trim();
+}
 
 // Persistent token storage – saved to disk so restarts don't break connections
 const TOKEN_STORE_PATH = path.join(__dirname, "tokens.json");
@@ -72,10 +84,31 @@ function saveTokenStore(store) {
 }
 
 const _tokenStoreRaw = loadTokenStore();
+
+/** Older tokens.json entries may still use isLate / lateAccountId */
+function normalizeStoredAccount(stored) {
+  if (!stored || typeof stored !== "object") return stored;
+  const s = { ...stored };
+  if (s.isLate && !s.instagramViaZernio) s.instagramViaZernio = true;
+  if (s.lateAccountId && !s.zernioAccountId) s.zernioAccountId = s.lateAccountId;
+  return s;
+}
+
 const tokenStore = {
-  get: (k) => _tokenStoreRaw.get(k),
-  set: (k, v) => { _tokenStoreRaw.set(k, v); saveTokenStore(_tokenStoreRaw); return tokenStore; },
-  delete: (k) => { const r = _tokenStoreRaw.delete(k); saveTokenStore(_tokenStoreRaw); return r; },
+  get: (k) => {
+    const v = _tokenStoreRaw.get(k);
+    return v ? normalizeStoredAccount(v) : undefined;
+  },
+  set: (k, v) => {
+    _tokenStoreRaw.set(k, v);
+    saveTokenStore(_tokenStoreRaw);
+    return tokenStore;
+  },
+  delete: (k) => {
+    const r = _tokenStoreRaw.delete(k);
+    saveTokenStore(_tokenStoreRaw);
+    return r;
+  },
   has: (k) => _tokenStoreRaw.has(k),
   entries: () => _tokenStoreRaw.entries(),
 };
@@ -86,9 +119,6 @@ function generateState() {
   const state = crypto.randomBytes(32).toString("hex");
   return state;
 }
-
-// --- Late API (Instagram via getlate.dev) ---
-const LATE_API_BASE = "https://getlate.dev/api/v1";
 
 function extractProfileId(data) {
   if (!data) return null;
@@ -102,28 +132,26 @@ function extractProfileId(data) {
   return null;
 }
 
-async function getOrCreateLateProfileId() {
-  const existing = (process.env.LATE_PROFILE_ID || "").trim();
+async function getOrCreateZernioProfileId() {
+  const existing = getZernioProfileIdEnv();
   if (existing) return existing;
-  const apiKey = (process.env.LATE_API_KEY || "").trim();
+  const apiKey = getZernioApiKey();
   if (!apiKey) return null;
   const headers = { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
 
   try {
-    // 1. Hämta befintliga profiler (GET)
-    const getRes = await fetch(`${LATE_API_BASE}/profiles`, { headers });
+    const getRes = await fetch(`${ZERNIO_API_BASE}/profiles`, { headers });
     const getData = await getRes.json().catch(() => ({}));
     const idFromList = extractProfileId(getData);
     if (idFromList) {
-      console.log("[Late] Using existing profile:", idFromList.slice(0, 8) + "...");
+      console.log("[Zernio] Using existing profile:", idFromList.slice(0, 8) + "...");
       return idFromList;
     }
     if (!getRes.ok) {
-      console.warn("[Late] GET /profiles:", getRes.status, JSON.stringify(getData).slice(0, 200));
+      console.warn("[Zernio] GET /profiles:", getRes.status, JSON.stringify(getData).slice(0, 200));
     }
 
-    // 2. Skapa ny profil (POST)
-    const postRes = await fetch(`${LATE_API_BASE}/profiles`, {
+    const postRes = await fetch(`${ZERNIO_API_BASE}/profiles`, {
       method: "POST",
       headers,
       body: JSON.stringify({ name: "Automazing Flow" }),
@@ -132,67 +160,209 @@ async function getOrCreateLateProfileId() {
     const idFromCreate = extractProfileId(postData);
     if (idFromCreate) return idFromCreate;
 
-    console.warn("[Late] POST /profiles misslyckades:", postRes.status, JSON.stringify(postData).slice(0, 300));
+    console.warn("[Zernio] POST /profiles failed:", postRes.status, JSON.stringify(postData).slice(0, 300));
   } catch (e) {
-    console.warn("[Late] getOrCreateLateProfileId:", e.message);
+    console.warn("[Zernio] getOrCreateZernioProfileId:", e.message);
   }
   return null;
 }
 
-// Instagram: antingen via Late API eller direkt Meta OAuth
+function zernioAuthHeaders() {
+  const key = getZernioApiKey();
+  return key ? { Authorization: `Bearer ${key}` } : null;
+}
+
+function mapZernioPlatform(raw) {
+  const s = String(raw || "")
+    .toLowerCase()
+    .replace(/_/g, "-");
+  if (s.includes("whatsapp")) return "whatsapp";
+  if (
+    (s.includes("google") && s.includes("business")) ||
+    s === "google-business" ||
+    s === "googlebusiness" ||
+    s.includes("gbp")
+  ) {
+    return "google_business";
+  }
+  if (s.includes("facebook") || s === "fb" || s.includes("pages")) return "facebook";
+  if (s.includes("tiktok")) return "tiktok";
+  if (s.includes("instagram")) return "instagram";
+  if (s.includes("twitter") || s === "x") return "x";
+  if (s.includes("youtube")) return "youtube";
+  return null;
+}
+
+function normalizeZernioAccountsPayload(body) {
+  if (!body || typeof body !== "object") return [];
+  const list =
+    body.data?.accounts ??
+    body.accounts ??
+    body.data ??
+    (Array.isArray(body) ? body : null);
+  return Array.isArray(list) ? list : [];
+}
+
+app.get("/api/zernio/accounts", async (req, res) => {
+  const zh = zernioAuthHeaders();
+  if (!zh) {
+    return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
+  }
+  try {
+    const r = await fetch(`${ZERNIO_API_BASE}/accounts`, { headers: zh });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return res.status(r.status).json({
+        error: body.message || body.error || "Failed to fetch Zernio accounts",
+        details: body,
+      });
+    }
+    const rawList = normalizeZernioAccountsPayload(body);
+    const accounts = rawList
+      .map((a) => {
+        const rawPlatform = a.platform || a.type || a.provider || a.channel;
+        const mappedPlatform = mapZernioPlatform(rawPlatform);
+        return { ...a, rawPlatform, mappedPlatform };
+      })
+      .filter((a) => a.mappedPlatform);
+    return res.json({ accounts });
+  } catch (e) {
+    console.error("[Zernio] /api/zernio/accounts:", e);
+    return res.status(500).json({ error: "Zernio accounts request failed" });
+  }
+});
+
+app.post("/api/zernio/link", async (req, res) => {
+  const zernioAccountId = String(req.body?.zernioAccountId || "").trim();
+  if (!zernioAccountId) {
+    return res.status(400).json({ error: "zernioAccountId is required" });
+  }
+  const zh = zernioAuthHeaders();
+  if (!zh) {
+    return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
+  }
+  try {
+    const r = await fetch(`${ZERNIO_API_BASE}/accounts`, { headers: zh });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return res.status(r.status).json({ error: body.message || body.error || "Failed to list Zernio accounts" });
+    }
+    const rawList = normalizeZernioAccountsPayload(body);
+    const acc = rawList.find(
+      (a) =>
+        String(a.id || a.accountId || a._id) === zernioAccountId ||
+        String(a.accountId) === zernioAccountId
+    );
+    if (!acc) {
+      return res.status(404).json({ error: "That account was not found in your Zernio workspace" });
+    }
+    const rawPlatform = acc.platform || acc.type || acc.provider || acc.channel;
+    const platform = mapZernioPlatform(rawPlatform);
+    if (!platform) {
+      return res.status(400).json({ error: `Unsupported Zernio platform: ${rawPlatform || "unknown"}` });
+    }
+    const appAccountId = `zernio_${String(zernioAccountId).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const username = String(
+      acc.username ||
+        acc.handle ||
+        acc.phoneNumber ||
+        acc.phone ||
+        acc.name ||
+        acc.displayName ||
+        zernioAccountId
+    ).replace(/^@/, "");
+    const displayName = acc.displayName || acc.name || undefined;
+    let profileUrl = acc.profileUrl || acc.url || acc.website || undefined;
+    if (!profileUrl) {
+      const fallbacks = {
+        facebook: `https://facebook.com/${username}`,
+        google_business: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayName || username)}`,
+        whatsapp: `https://wa.me/${String(username).replace(/\D/g, "") || username}`,
+        tiktok: `https://www.tiktok.com/@${username}`,
+        instagram: `https://instagram.com/${username}`,
+        x: `https://twitter.com/${username}`,
+        youtube: `https://youtube.com/@${username}`,
+      };
+      profileUrl = fallbacks[platform] || `https://zernio.com`;
+    }
+    tokenStore.set(appAccountId, {
+      platform,
+      accessToken: null,
+      isZernio: true,
+      zernioAccountId: String(acc.id || acc.accountId || zernioAccountId),
+      zernioPlatform: rawPlatform,
+      username,
+      displayName,
+      profileUrl,
+    });
+    return res.json({
+      account_id: appAccountId,
+      platform,
+      username,
+      displayName: displayName || username,
+      profileUrl,
+    });
+  } catch (e) {
+    console.error("[Zernio] /api/zernio/link:", e);
+    return res.status(500).json({ error: "Zernio link failed" });
+  }
+});
+
+// Instagram: via Zernio (recommended) eller direkt Meta OAuth
 const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 
 app.get("/api/auth/instagram", async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache");
-  const lateApiKey = (process.env.LATE_API_KEY || "").trim();
+  const zernioKey = getZernioApiKey();
   const ourProfileId = req.query.profile_id || null;
-  console.log("[Instagram] LATE_API_KEY:", lateApiKey ? "set" : "MISSING – check .env and that the correct server process is running");
+  console.log(
+    "[Instagram] ZERNIO_API_KEY:",
+    zernioKey ? "set" : "not set — add ZERNIO_API_KEY to .env"
+  );
 
-  if (lateApiKey) {
-    // Connect Instagram via Late API
+  if (zernioKey) {
     try {
-      const lateProfileId = await getOrCreateLateProfileId();
-      if (!lateProfileId) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_profile_failed`);
+      const zernioProfileId = await getOrCreateZernioProfileId();
+      if (!zernioProfileId) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_profile_failed`);
       }
       const state = generateState();
       pendingStates.set(state, {
         platform: "instagram",
         profileId: ourProfileId,
-        lateProfileId,
+        zernioProfileId,
         createdAt: Date.now(),
       });
-      const redirectUrl = `${API_BASE_URL}/api/auth/late/instagram/callback?state=${state}`;
-      const connectUrl = new URL(`${LATE_API_BASE}/connect/instagram`);
-      connectUrl.searchParams.set("profileId", lateProfileId);
+      const redirectUrl = `${API_BASE_URL}/api/auth/zernio/instagram/callback?state=${state}`;
+      const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/instagram`);
+      connectUrl.searchParams.set("profileId", zernioProfileId);
       connectUrl.searchParams.set("redirect_url", redirectUrl);
 
-      const lateRes = await fetch(connectUrl.toString(), {
-        headers: { Authorization: `Bearer ${lateApiKey}` },
+      const connectRes = await fetch(connectUrl.toString(), {
+        headers: { Authorization: `Bearer ${zernioKey}` },
       });
-      if (!lateRes.ok) {
-        const err = await lateRes.text();
-        console.error("Late connect URL error:", lateRes.status, err);
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_connect_failed`);
+      if (!connectRes.ok) {
+        const err = await connectRes.text();
+        console.error("[Zernio] Instagram connect URL error:", connectRes.status, err);
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_connect_failed`);
       }
-      const { authUrl } = await lateRes.json();
+      const { authUrl } = await connectRes.json();
       if (!authUrl) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_no_auth_url`);
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_auth_url`);
       }
       return res.redirect(authUrl);
     } catch (err) {
-      console.error("Late Instagram init error:", err);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=late_init_failed`);
+      console.error("[Zernio] Instagram init error:", err);
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_init_failed`);
     }
   }
 
-  // Fallback: direkt Instagram (Meta) OAuth
   const clientId = (process.env.INSTAGRAM_CLIENT_ID || "").trim();
   if (!clientId) {
     console.warn(
-      "Instagram: LATE_API_KEY is missing or empty (length: %s). Add LATE_API_KEY to .env for Late API.",
-      (process.env.LATE_API_KEY || "").length
+      "Instagram: ZERNIO_API_KEY is missing (length: %s). Add ZERNIO_API_KEY from zernio.com, or set INSTAGRAM_* for direct Meta OAuth.",
+      (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").length
     );
     return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
   }
@@ -208,9 +378,8 @@ app.get("/api/auth/instagram", async (req, res) => {
   res.redirect(url.toString());
 });
 
-// Callback från Late efter Instagram-anslutning
-app.get("/api/auth/late/instagram/callback", async (req, res) => {
-  const { state, error, accountId: lateAccountId, username } = req.query;
+async function handleZernioInstagramCallback(req, res) {
+  const { state, error, accountId: queryAccountId, username } = req.query;
   if (error) {
     return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(error)}`);
   }
@@ -220,25 +389,27 @@ app.get("/api/auth/late/instagram/callback", async (req, res) => {
   }
   pendingStates.delete(state);
 
-  const apiKey = (process.env.LATE_API_KEY || "").trim();
+  const apiKey = getZernioApiKey();
   if (!apiKey) {
-    return res.redirect(`${BASE_URL}/social-media?oauth_error=late_not_configured`);
+    return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_not_configured`);
   }
 
   try {
-    let accountId = lateAccountId;
+    let accountId = queryAccountId;
     let displayUsername = username;
     if (!accountId || !displayUsername) {
-      const profilesRes = await fetch(`${LATE_API_BASE}/profiles`, {
+      const profilesRes = await fetch(`${ZERNIO_API_BASE}/profiles`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       if (!profilesRes.ok) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=late_fetch_accounts_failed`);
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_fetch_accounts_failed`);
       }
       const profilesData = await profilesRes.json();
       const accounts = profilesData.accounts ?? profilesData.data ?? profilesData.profiles ?? [];
       const list = Array.isArray(accounts) ? accounts : (profilesData.profile?.accounts || []);
-      const ig = list.find((a) => a.platform === "instagram" || (a.accountId && String(a.accountId).includes("instagram")));
+      const ig = list.find(
+        (a) => a.platform === "instagram" || (a.accountId && String(a.accountId).includes("instagram"))
+      );
       const acc = ig || (list.length ? list[list.length - 1] : null);
       if (acc) {
         accountId = accountId || acc._id || acc.id || acc.accountId;
@@ -246,23 +417,30 @@ app.get("/api/auth/late/instagram/callback", async (req, res) => {
       }
     }
     if (!accountId) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=late_no_account`);
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_account`);
     }
     const id = String(accountId);
     tokenStore.set(id, {
       platform: "instagram",
-      lateAccountId: id,
+      zernioAccountId: id,
       username: displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram",
-      isLate: true,
+      instagramViaZernio: true,
     });
     const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
-    const usernameParam = encodeURIComponent(displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram");
-    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${id}&username=${usernameParam}&late_account_id=${id}${profileParam}`);
+    const usernameParam = encodeURIComponent(
+      displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram"
+    );
+    res.redirect(
+      `${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${id}&username=${usernameParam}&zernio_account_id=${id}${profileParam}`
+    );
   } catch (err) {
-    console.error("Late Instagram callback error:", err);
+    console.error("[Zernio] Instagram callback error:", err);
     res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
   }
-});
+}
+
+app.get("/api/auth/zernio/instagram/callback", handleZernioInstagramCallback);
+app.get("/api/auth/late/instagram/callback", handleZernioInstagramCallback);
 
 app.get("/api/auth/instagram/callback", async (req, res) => {
   const { code, state, error } = req.query;
@@ -773,26 +951,171 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
   if (!stored) {
     return res.status(404).json({ error: "Account not connected" });
   }
-  const { platform, accessToken, isLate, lateAccountId } = stored;
+  const {
+    platform,
+    accessToken,
+    isZernio,
+    zernioAccountId,
+    zernioPlatform,
+  } = stored;
+  const instagramViaZernio = stored.instagramViaZernio || stored.isLate;
+  const zernioInstagramAccountId = zernioAccountId || stored.lateAccountId;
 
   try {
-    if (platform === "instagram" && isLate && (process.env.LATE_API_KEY || "").trim()) {
-      const lateKey = (process.env.LATE_API_KEY || "").trim();
-      const lateHeaders = { Authorization: `Bearer ${lateKey}` };
-      // lookupId = Late profile-ID (e.g. 69a7aa7d...) stored at OAuth-callback
-      const lookupId = String(lateAccountId || accountId);
+    // Zernio-linked channels (same API key; WhatsApp uses templates + business profile per Zernio docs)
+    if (isZernio && zernioAccountId && getZernioApiKey()) {
+      const zh = zernioAuthHeaders();
+      const zid = String(zernioAccountId);
+      const whatsAppLike =
+        platform === "whatsapp" || String(zernioPlatform || "").toLowerCase().includes("whatsapp");
 
-      // GET /v1/accounts – correct endpoint for connected accounts (not /profiles which are Late workspaces)
-      const lateRes = await fetch(`${LATE_API_BASE}/accounts`, { headers: lateHeaders });
-      if (!lateRes.ok) {
-        console.error(`[Late] GET /accounts failed: ${lateRes.status}`);
-        return res.status(502).json({ error: "Could not fetch data from Late" });
+      if (whatsAppLike) {
+        const [tplRes, bpRes] = await Promise.all([
+          fetch(`${ZERNIO_API_BASE}/whatsapp/templates?accountId=${encodeURIComponent(zid)}`, {
+            headers: zh,
+          }),
+          fetch(`${ZERNIO_API_BASE}/whatsapp/business-profile?accountId=${encodeURIComponent(zid)}`, {
+            headers: zh,
+          }),
+        ]);
+        const templatesData = tplRes.ok ? await tplRes.json().catch(() => ({})) : {};
+        const bpData = bpRes.ok ? await bpRes.json().catch(() => ({})) : {};
+        const templates =
+          templatesData.templates ??
+          templatesData.data?.templates ??
+          (Array.isArray(templatesData.data) ? templatesData.data : []);
+        const bp =
+          bpData.businessProfile ??
+          bpData.data?.businessProfile ??
+          bpData.profile ??
+          bpData.data ??
+          {};
+        const list = Array.isArray(templates) ? templates : [];
+        const media = list.slice(0, 40).map((t, i) => ({
+          id: String(t.id || t.name || i),
+          caption: `[WhatsApp template] ${t.name || "unnamed"} — ${t.status || "?"} (${t.language || "?"})`,
+          picture: "",
+          permalink: "",
+          mediaType: "whatsapp_template",
+          likeCount: 0,
+          commentCount: 0,
+          createdTime: t.updatedAt || t.createdAt || "",
+        }));
+        const stats = {
+          mediaCount: list.length,
+          accountType: "WHATSAPP_BUSINESS",
+          updatedAt: new Date().toISOString(),
+          zernioNote:
+            "WhatsApp has no follower/post analytics in the API; showing approved templates and business profile. See Zernio WhatsApp docs.",
+        };
+        return res.json({
+          profile: {
+            username: stored.username || zid,
+            displayName: bp.description || bp.about || stored.displayName,
+            ...bp,
+          },
+          stats,
+          media,
+          source: "zernio",
+        });
       }
-      const data = await lateRes.json();
-      const list = Array.isArray(data.accounts) ? data.accounts : [];
-      console.log(`[Late] GET /accounts: ${list.length} accounts found`);
 
-      // Match account: profileId._id matches lookupId (Late profileId = Late workspace, stored at OAuth)
+      let zernioNote;
+      const anRes = await fetch(
+        `${ZERNIO_API_BASE}/analytics?accountId=${encodeURIComponent(zid)}`,
+        { headers: zh }
+      );
+      let an = {};
+      if (anRes.ok) {
+        an = await anRes.json().catch(() => ({}));
+      } else if (anRes.status === 402 || anRes.status === 403) {
+        zernioNote =
+          "Zernio analytics may require a plan add-on, or this channel has limited metrics.";
+      }
+
+      const root = an.data ?? an;
+      const data = root.analytics ?? root.metrics ?? root;
+      const followersCount =
+        data.followersCount ?? data.followers ?? data.followerCount ?? data.follower_count;
+      const followingCount =
+        data.followingCount ?? data.following ?? data.following_count;
+      const mediaCount =
+        data.postsCount ??
+        data.mediaCount ??
+        data.postCount ??
+        data.videoCount ??
+        data.videos_count;
+
+      const recent =
+        data.recentPosts ??
+        data.posts ??
+        data.media ??
+        data.items ??
+        [];
+
+      const media = Array.isArray(recent)
+        ? recent.slice(0, 25).map((p, i) => ({
+            id: String(p.id || p.postId || i),
+            caption: String(p.caption ?? p.text ?? p.title ?? p.description ?? "").slice(0, 2000),
+            picture: String(p.imageUrl ?? p.thumbnailUrl ?? p.media_url ?? p.thumbnail_url ?? ""),
+            permalink: String(p.url ?? p.permalink ?? p.platformPostUrl ?? ""),
+            mediaType: String(p.type || p.mediaType || "post"),
+            likeCount: Number(p.likeCount ?? p.likes ?? p.like_count ?? 0) || 0,
+            commentCount: Number(p.commentCount ?? p.comments ?? p.comment_count ?? 0) || 0,
+            createdTime: String(p.createdAt ?? p.timestamp ?? p.created_time ?? ""),
+          }))
+        : [];
+
+      const stats = {
+        followersCount: followersCount != null ? Number(followersCount) : undefined,
+        followingCount: followingCount != null ? Number(followingCount) : undefined,
+        mediaCount:
+          mediaCount != null
+            ? Number(mediaCount)
+            : media.length > 0
+              ? media.length
+              : undefined,
+        updatedAt: new Date().toISOString(),
+        ...(zernioNote ? { zernioNote } : {}),
+      };
+
+      const hasStats =
+        stats.followersCount != null || stats.mediaCount != null || media.length > 0;
+      if (!hasStats && !zernioNote) {
+        zernioNote =
+          "No analytics payload returned for this account. Check Zernio dashboard or your plan.";
+      }
+      if (zernioNote && !stats.zernioNote) {
+        stats.zernioNote = zernioNote;
+      }
+
+      return res.json({
+        profile: {
+          username: stored.username,
+          displayName: stored.displayName,
+          ...(typeof data.profile === "object" && data.profile ? data.profile : {}),
+        },
+        stats,
+        media,
+        source: "zernio",
+      });
+    }
+
+    if (platform === "instagram" && instagramViaZernio && getZernioApiKey()) {
+      const zernioKey = getZernioApiKey();
+      const zernioHeaders = { Authorization: `Bearer ${zernioKey}` };
+      const lookupId = String(zernioInstagramAccountId || accountId);
+
+      const accountsRes = await fetch(`${ZERNIO_API_BASE}/accounts`, { headers: zernioHeaders });
+      if (!accountsRes.ok) {
+        console.error(`[Zernio] GET /accounts failed: ${accountsRes.status}`);
+        return res.status(502).json({ error: "Could not fetch data from Zernio" });
+      }
+      const data = await accountsRes.json();
+      const list = Array.isArray(data.accounts) ? data.accounts : [];
+      console.log(`[Zernio] GET /accounts: ${list.length} accounts found`);
+
+      // Match account: profileId._id matches lookupId (Zernio workspace profile)
       // Fallback: search by account _id, then first instagram account, then single account
       let acc =
         list.find((a) => String(a.profileId?._id || a.profileId || "") === lookupId) ??
@@ -800,10 +1123,10 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         list.find((a) => (a.platform || "").toLowerCase() === "instagram") ??
         (list.length === 1 ? list[0] : null);
 
-      if (acc) console.log(`[Late] Matched account: _id=${acc._id} username=${acc.username}`);
-      else console.warn(`[Late] No account matches lookupId=${lookupId}. Available: ${list.map(a => a._id).join(", ")}`);
+      if (acc) console.log(`[Zernio] Matched account: _id=${acc._id} username=${acc.username}`);
+      else console.warn(`[Zernio] No account matches lookupId=${lookupId}. Available: ${list.map(a => a._id).join(", ")}`);
 
-      // Late stores Instagram stats in metadata.profileData
+      // Instagram stats from connected account metadata
       const profileData = acc?.metadata?.profileData ?? {};
       const profile = {
         username: profileData.username ?? acc?.username ?? acc?.name,
@@ -821,7 +1144,9 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       let posts = [];
       if (acc?._id) {
         try {
-          const postsRes = await fetch(`${LATE_API_BASE}/accounts/${acc._id}/posts?limit=100`, { headers: lateHeaders });
+          const postsRes = await fetch(`${ZERNIO_API_BASE}/accounts/${acc._id}/posts?limit=100`, {
+            headers: zernioHeaders,
+          });
           if (postsRes.ok) {
             const postsData = await postsRes.json();
             posts = Array.isArray(postsData.posts) ? postsData.posts : [];
@@ -844,7 +1169,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
           ? Math.round(((totalLikes + totalComments) / postCount / Number(followers)) * 10000) / 100
           : undefined;
 
-      console.log(`[Late] Stats: followers=${followers}, media=${mediaCount}, avgLikes=${avgLikes}, avgComments=${avgComments}, engagement=${engagementRate}%`);
+      console.log(`[Zernio] Instagram stats: followers=${followers}, media=${mediaCount}, avgLikes=${avgLikes}, avgComments=${avgComments}, engagement=${engagementRate}%`);
 
       const stats = [followers, following, mediaCount].some((n) => n != null && !Number.isNaN(Number(n)))
         ? {
@@ -1314,30 +1639,25 @@ app.delete("/api/accounts/:accountId", (req, res) => {
   if (tokenStore.delete(accountId)) {
     return res.json({ ok: true });
   }
-  res.status(404).json({ error: "Konto inte hittat" });
+  res.status(404).json({ error: "Account not found" });
 });
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });
 });
 
-// Diagnostik: vad ser denna process för .env och LATE_API_KEY? (endast i utveckling)
 app.get("/api/debug-env", (req, res) => {
-  const lateRaw = process.env.LATE_API_KEY || "";
-  const hasLate = lateRaw.trim().length > 0;
   res.json({
     envPath: path.resolve(envPath),
     envExists: fs.existsSync(envPath),
-    LATE_API_KEY: hasLate ? "satt" : "saknas",
-    LATE_API_KEY_length: lateRaw.length,
+    zernioApiKeySet: Boolean(getZernioApiKey()),
+    ZERNIO_API_BASE,
   });
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`Server kör på http://localhost:${PORT}`);
-  console.log(`OAuth callbacks: ${API_BASE_URL}/api/auth/{instagram|tiktok|youtube}/callback`);
-  const hasLate = (process.env.LATE_API_KEY || "").trim().length > 0;
-  console.log(`LATE_API_KEY: ${hasLate ? "satt (Instagram via Late)" : "saknas"}`);
+  console.log(`Server: http://localhost:${PORT}`);
+  console.log(`Zernio: ${getZernioApiKey() ? "API key loaded" : ERR_NO_ZERNIO_KEY}`);
 });
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
