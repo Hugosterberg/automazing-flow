@@ -216,6 +216,7 @@ export function AppSidebar() {
         activeProfileId ?? undefined,
         {
           isZernio: true,
+          zernioAccountId: j.zernioAccountId || zid,
           profileUrl: j.profileUrl,
           displayName: j.displayName,
         }

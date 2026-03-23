@@ -133,7 +133,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     setProfiles((prev) => [...prev, newProfile]);
     setActiveProfileId(newProfile.id);
     return newProfile;
-  }, []);
+  }, [setActiveProfileId]);
 
   const renameProfile = useCallback((id: string, name: string) => {
     setProfiles((prev) =>
@@ -212,7 +212,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         setActiveProfileId(profileId);
       }
     },
-    [effectiveProfileId, activeProfileId]
+    [effectiveProfileId, activeProfileId, setActiveProfileId]
   );
 
   const removeAccount = useCallback(async (id: string) => {

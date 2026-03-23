@@ -42,7 +42,7 @@ export function useOAuthCallback() {
       next.delete("late_account_id");
       setSearchParams(next);
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams, addAccountFromOAuth, setSelectedAccountId]);
 
   return { oauthError: error, clearOauthError: () => setError(null) };
 }

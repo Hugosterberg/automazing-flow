@@ -297,6 +297,7 @@ app.post("/api/zernio/link", async (req, res) => {
     });
     return res.json({
       account_id: appAccountId,
+      zernioAccountId: String(acc.id || acc.accountId || zernioAccountId),
       platform,
       username,
       displayName: displayName || username,
@@ -398,22 +399,19 @@ async function handleZernioInstagramCallback(req, res) {
     let accountId = queryAccountId;
     let displayUsername = username;
     if (!accountId || !displayUsername) {
-      const profilesRes = await fetch(`${ZERNIO_API_BASE}/profiles`, {
+      const accountsRes = await fetch(`${ZERNIO_API_BASE}/accounts`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
-      if (!profilesRes.ok) {
+      if (!accountsRes.ok) {
         return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_fetch_accounts_failed`);
       }
-      const profilesData = await profilesRes.json();
-      const accounts = profilesData.accounts ?? profilesData.data ?? profilesData.profiles ?? [];
-      const list = Array.isArray(accounts) ? accounts : (profilesData.profile?.accounts || []);
-      const ig = list.find(
-        (a) => a.platform === "instagram" || (a.accountId && String(a.accountId).includes("instagram"))
-      );
+      const accountsData = await accountsRes.json().catch(() => ({}));
+      const list = normalizeZernioAccountsPayload(accountsData);
+      const ig = list.find((a) => mapZernioPlatform(a.platform || a.type || a.provider || a.channel) === "instagram");
       const acc = ig || (list.length ? list[list.length - 1] : null);
       if (acc) {
         accountId = accountId || acc._id || acc.id || acc.accountId;
-        displayUsername = displayUsername || acc.username || acc.name || "Instagram";
+        displayUsername = displayUsername || acc.username || acc.name || acc.displayName || "Instagram";
       }
     }
     if (!accountId) {
@@ -1237,21 +1235,51 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       });
     }
     if (platform === "tiktok") {
-      const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=username,display_name,avatar_url", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const userData = await userRes.json();
+      const headers = {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      };
+      const userRes = await fetch(
+        "https://open.tiktokapis.com/v2/user/info/?fields=username,display_name,avatar_url",
+        { headers }
+      );
+      const userData = await userRes.json().catch(() => ({}));
+
+      // video.list scope is requested at OAuth; if unavailable, this gracefully falls back to empty list.
+      const videosRes = await fetch(
+        "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,cover_image_url,share_url,like_count,comment_count",
+        { method: "POST", headers, body: JSON.stringify({ max_count: 10 }) }
+      ).catch(() => null);
+      const videosData = videosRes && videosRes.ok ? await videosRes.json().catch(() => ({})) : {};
+      const videos = Array.isArray(videosData.data?.videos) ? videosData.data.videos : [];
+
+      const media = videos.map((v) => ({
+        id: v.id,
+        caption: v.video_description || v.title || "",
+        picture: v.cover_image_url || "",
+        permalink: v.share_url || "",
+        mediaType: "video",
+        likeCount: Number(v.like_count || 0),
+        commentCount: Number(v.comment_count || 0),
+        createdTime: v.create_time ? new Date(Number(v.create_time) * 1000).toISOString() : "",
+      }));
+      const totalLikes = media.reduce((sum, m) => sum + m.likeCount, 0);
+      const avgLikes = media.length > 0 ? Math.round(totalLikes / media.length) : undefined;
+
       return res.json({
         profile: userData.data?.user || {},
-        videos: [],
+        stats: {
+          mediaCount: media.length || undefined,
+          totalLikes: media.length > 0 ? totalLikes : undefined,
+          avgLikes,
+          updatedAt: new Date().toISOString(),
+        },
+        media,
       });
     }
     if (platform === "youtube") {
       const channelRes = await fetch(
-        "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
+        "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true",
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const channelData = await channelRes.json();
@@ -1266,9 +1294,29 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         const playData = await playRes.json();
         videos = playData.items || [];
       }
+      const media = videos.map((item) => ({
+        id: item.snippet?.resourceId?.videoId || item.id,
+        caption: item.snippet?.title || "",
+        picture: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || "",
+        permalink: item.snippet?.resourceId?.videoId
+          ? `https://www.youtube.com/watch?v=${item.snippet.resourceId.videoId}`
+          : "",
+        mediaType: "video",
+        likeCount: 0,
+        commentCount: 0,
+        createdTime: item.snippet?.publishedAt || "",
+      }));
+
       return res.json({
         profile: channel?.snippet ? { ...channel.snippet, statistics: channel.statistics } : {},
-        videos,
+        stats: channel?.statistics
+          ? {
+              followersCount: Number(channel.statistics.subscriberCount || 0) || undefined,
+              mediaCount: Number(channel.statistics.videoCount || 0) || media.length || undefined,
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+        media,
       });
     }
     if (platform === "x") {
