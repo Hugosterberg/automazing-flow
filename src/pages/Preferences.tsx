@@ -3,10 +3,10 @@ import { Bell, Palette, Globe, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
-  { icon: Bell, title: "Notifikationer", desc: "Hantera påminnelser och aviseringar" },
-  { icon: Palette, title: "Utseende", desc: "Tema och visuella inställningar" },
-  { icon: Globe, title: "Språk", desc: "Språk och region" },
-  { icon: Shield, title: "Säkerhet", desc: "Lösenord och tvåstegsverifiering" },
+  { icon: Bell, title: "Notifications", desc: "Manage reminders and alerts" },
+  { icon: Palette, title: "Appearance", desc: "Theme and visual settings" },
+  { icon: Globe, title: "Language", desc: "Language and region" },
+  { icon: Shield, title: "Security", desc: "Password and two-factor authentication" },
 ];
 
 export default function PreferencesPage() {
@@ -22,9 +22,9 @@ export default function PreferencesPage() {
           <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
           Coming soon
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Inställningar</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Anpassa automazing efter dina behov. Profil, notiser och säkerhet.
+          Customize automazing to your needs. Profile, notifications and security.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
           {features.map((f, i) => (

@@ -54,7 +54,7 @@ function loadAccounts(): ConnectedAccount[] {
     const stored = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
     if (stored) {
       const data = JSON.parse(stored);
-      // Migration: lägg till profileId på äldre konton
+      // Migration: add profileId to older accounts
       if (Array.isArray(data)) {
         return data.map((a: ConnectedAccount & { profileId?: string }) => ({
           ...a,
@@ -77,7 +77,7 @@ function ensureDefaultProfile(profiles: Profile[], accounts: ConnectedAccount[])
   const needsDefault = accounts.some((a) => !a.profileId || a.profileId === "default");
   if (!hasDefault && (profiles.length === 0 || needsDefault)) {
     return [
-      { id: "default", name: "Standard", createdAt: new Date().toISOString() },
+      { id: "default", name: "Default", createdAt: new Date().toISOString() },
       ...profiles.filter((p) => p.id !== "default"),
     ];
   }
@@ -117,7 +117,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const addProfile = useCallback((name: string): Profile => {
     const newProfile: Profile = {
       id: crypto.randomUUID(),
-      name: name.trim() || "Ny profil",
+      name: name.trim() || "New profile",
       createdAt: new Date().toISOString(),
     };
     setProfiles((prev) => [...prev, newProfile]);
@@ -198,7 +198,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     try {
       await fetch(`/api/accounts/${id}`, { method: "DELETE" });
     } catch {
-      // Backend kanske inte är igång eller kontot finns inte
+      // Backend may not be running or account does not exist
     }
     setAccounts((prev) => prev.filter((a) => a.id !== id));
     setSelectedAccountId((current) => (current === id ? null : current));

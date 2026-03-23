@@ -18,9 +18,9 @@ const platformConfig: Record<
   SocialPlatform,
   { label: string; placeholder: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  instagram: { label: "Instagram", placeholder: "@användarnamn", Icon: InstagramIcon },
-  tiktok: { label: "TikTok", placeholder: "@användarnamn", Icon: TikTokIcon },
-  youtube: { label: "YouTube", placeholder: "Kanalens användarnamn eller ID", Icon: YoutubeIcon },
+  instagram: { label: "Instagram", placeholder: "@username", Icon: InstagramIcon },
+  tiktok: { label: "TikTok", placeholder: "@username", Icon: TikTokIcon },
+  youtube: { label: "YouTube", placeholder: "Channel username or ID", Icon: YoutubeIcon },
 };
 
 interface ConnectAccountDialogProps {
@@ -39,7 +39,6 @@ export function ConnectAccountDialog({ open, onOpenChange, platform }: ConnectAc
   async function handleConnect() {
     if (!username.trim()) return;
     setLoading(true);
-    // Simulerar OAuth/API-anslutning
     await new Promise((r) => setTimeout(r, 1200));
     addAccount(platform, username.trim(), {
       displayName: username.trim(),
@@ -58,16 +57,16 @@ export function ConnectAccountDialog({ open, onOpenChange, platform }: ConnectAc
             <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
               <Icon className="h-4 w-4" />
             </div>
-            Anslut {config.label}
+            Connect {config.label}
           </DialogTitle>
           <DialogDescription>
-            Anslut ditt {config.label}-konto för att hämta data och analysera din profil. Du kommer
-            att omdirigeras för inloggning.
+            Connect your {config.label} account to fetch data and analyze your profile. You will be
+            redirected to log in.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Användarnamn</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
               id="username"
               placeholder={config.placeholder}
@@ -80,10 +79,10 @@ export function ConnectAccountDialog({ open, onOpenChange, platform }: ConnectAc
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Avbryt
+            Cancel
           </Button>
           <Button onClick={handleConnect} disabled={!username.trim() || loading}>
-            {loading ? "Ansluter..." : "Anslut"}
+            {loading ? "Connecting..." : "Connect"}
           </Button>
         </DialogFooter>
       </DialogContent>

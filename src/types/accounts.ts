@@ -1,4 +1,4 @@
-export type SocialPlatform = "instagram" | "tiktok" | "youtube";
+export type SocialPlatform = "instagram" | "tiktok" | "youtube" | "x";
 export type EcommercePlatform = "shopify";
 export type MailPlatform = "gmail" | "outlook";
 
@@ -10,24 +10,24 @@ export interface Profile {
   createdAt: string;
 }
 
-/** Statistik för sociala konton (t.ex. Instagram: följare, antal inlägg) */
+/** Stats for social accounts (e.g. Instagram: followers, post count) */
 export interface AccountStats {
   followersCount?: number;
   followingCount?: number;
   mediaCount?: number;
-  /** Kontotyp från plattformen, t.ex. "MEDIA_CREATOR", "BUSINESS" */
+  /** Account type from the platform, e.g. "MEDIA_CREATOR", "BUSINESS" */
   accountType?: string;
-  /** Totalt antal likes på senaste inläggen */
+  /** Total likes on recent posts */
   totalLikes?: number;
-  /** Totalt antal kommentarer på senaste inläggen */
+  /** Total comments on recent posts */
   totalComments?: number;
-  /** Snitt-likes per inlägg */
+  /** Average likes per post */
   avgLikes?: number;
-  /** Snitt-kommentarer per inlägg */
+  /** Average comments per post */
   avgComments?: number;
-  /** Engagement rate i procent: (likes + kommentarer) / inlägg / följare * 100 */
+  /** Engagement rate in percent: (likes + comments) / posts / followers * 100 */
   engagementRate?: number;
-  /** Senast uppdaterad (ISO-sträng) */
+  /** Last updated (ISO string) */
   updatedAt?: string;
 }
 
@@ -40,22 +40,22 @@ export interface ConnectedAccount {
   avatarUrl?: string;
   profileUrl?: string;
   connectedAt: string;
-  /** Anslutet via OAuth (har token på backend) */
+  /** Connected via OAuth (token stored on backend) */
   isOAuth?: boolean;
-  /** Late API-konto-id (t.ex. acc_xxx) när anslutet via Late */
+  /** Late API account id (e.g. acc_xxx) when connected via Late */
   lateAccountId?: string;
-  /** Följare, antal inlägg m.m. (hämtas från plattformens API) */
+  /** Followers, post count etc. (fetched from the platform API) */
   stats?: AccountStats;
   // AI-analysad data
   analysis?: AccountAnalysis;
 }
 
 export interface AccountAnalysis {
-  /** Vad kontot handlar om – nisch och syfte */
+  /** What the account is about – niche and purpose */
   about?: string;
-  /** Vilka konkreta ämnen och innehållstyper som förekommer */
+  /** Concrete topics and content types that appear */
   writes?: string;
-  /** Hur en utomstående person uppfattar kontot */
+  /** How an outside person perceives the account */
   perception?: string;
   /** Legacy fields */
   story?: string;

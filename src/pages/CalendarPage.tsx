@@ -24,7 +24,7 @@ import {
   startOfDay,
   isSameMonth,
 } from "date-fns";
-import { sv } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,10 +141,10 @@ export default function CalendarPage() {
 
   const navTitle =
     viewMode === "day"
-      ? format(currentDate, "EEEE d MMMM", { locale: sv })
+      ? format(currentDate, "EEEE d MMMM", { locale: enUS })
       : viewMode === "week"
-        ? `${format(weekStart, "d MMM", { locale: sv })} – ${format(weekEnd, "d MMM", { locale: sv })}`
-        : format(currentDate, "MMMM yyyy", { locale: sv });
+        ? `${format(weekStart, "d MMM", { locale: enUS })} – ${format(weekEnd, "d MMM", { locale: enUS })}`
+        : format(currentDate, "MMMM yyyy", { locale: enUS });
 
   const datesWithEvents = [...new Set(events.map((e) => e.date))].map((d) =>
     parseISO(d)
@@ -161,10 +161,10 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Kalender</h1>
+        <h1 className="text-2xl font-bold">Calendar</h1>
         <Button onClick={openDialog}>
           <Plus className="h-4 w-4 mr-2" />
-          Lägg till
+          Add
         </Button>
       </div>
 
@@ -178,7 +178,7 @@ export default function CalendarPage() {
                 setSelectedDate(d);
                 if (d) setCurrentDate(d);
               }}
-              locale={sv}
+              locale={enUS}
               modifiers={{ hasEvents: datesWithEvents }}
               modifiersClassNames={{
                 hasEvents: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
@@ -196,9 +196,9 @@ export default function CalendarPage() {
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {m === "day" && "Dag"}
-                  {m === "week" && "Vecka"}
-                  {m === "month" && "Månad"}
+                  {m === "day" && "Day"}
+                  {m === "week" && "Week"}
+                  {m === "month" && "Month"}
                 </button>
               ))}
             </div>
@@ -221,11 +221,11 @@ export default function CalendarPage() {
             {viewMode === "day" && (
               <div className="max-w-md">
                 <h2 className="text-lg font-semibold mb-4">
-                  {format(currentDate, "EEEE d MMMM", { locale: sv })}
+                  {format(currentDate, "EEEE d MMMM", { locale: enUS })}
                 </h2>
                 {eventsOnDate(currentDate).length === 0 ? (
                   <p className="text-muted-foreground text-sm py-8">
-                    Inga aktiviteter denna dag. Klicka på &quot;Lägg till&quot; för att skapa en.
+                    No activities on this day. Click &quot;Add&quot; to create one.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -275,7 +275,7 @@ export default function CalendarPage() {
                     >
                       <div className="text-center mb-2">
                         <p className="text-[10px] uppercase text-muted-foreground">
-                          {format(day, "EEE", { locale: sv })}
+                          {format(day, "EEE", { locale: enUS })}
                         </p>
                         <p className="text-sm font-semibold">{format(day, "d")}</p>
                       </div>
@@ -313,7 +313,7 @@ export default function CalendarPage() {
 
             {viewMode === "month" && (
               <div className="grid grid-cols-7 gap-1">
-                {["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"].map((d) => (
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <div
                     key={d}
                     className="py-1 text-center text-xs font-medium text-muted-foreground"
@@ -374,7 +374,7 @@ export default function CalendarPage() {
       {upcomingEvents.length > 0 && (
         <Card className="rounded-xl">
           <CardContent className="py-4">
-            <h2 className="text-sm font-semibold mb-3">Kommande händelser</h2>
+            <h2 className="text-sm font-semibold mb-3">Upcoming events</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {upcomingEvents.map((ev) => (
                 <div
@@ -383,7 +383,7 @@ export default function CalendarPage() {
                 >
                   <p className="font-medium text-sm truncate">{ev.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(parseISO(ev.date), "EEE d MMM", { locale: sv })}
+                    {format(parseISO(ev.date), "EEE d MMM", { locale: enUS })}
                     {ev.time && ` · ${ev.time}`}
                   </p>
                 </div>
@@ -396,14 +396,14 @@ export default function CalendarPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="rounded-xl">
           <DialogHeader>
-            <DialogTitle>Lägg till aktivitet</DialogTitle>
+            <DialogTitle>Add activity</DialogTitle>
             <DialogDescription>
-              Lägg till aktivitet eller automatiserad uppgift i kalendern
+              Add an activity or automated task to the calendar
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="cal-date">Datum</Label>
+              <Label htmlFor="cal-date">Date</Label>
               <Input
                 id="cal-date"
                 type="date"
@@ -412,16 +412,16 @@ export default function CalendarPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cal-title">Titel</Label>
+              <Label htmlFor="cal-title">Title</Label>
               <Input
                 id="cal-title"
-                placeholder="T.ex. Teammöte, Schemalagd post"
+                placeholder="E.g. Team meeting, Scheduled post"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cal-time">Tid (valfritt)</Label>
+              <Label htmlFor="cal-time">Time (optional)</Label>
               <Input
                 id="cal-time"
                 type="time"
@@ -432,10 +432,10 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
                 <Label htmlFor="cal-auto" className="font-medium">
-                  Automatiserad uppgift
+                  Automated task
                 </Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Körs automatiskt vid angiven tid
+                  Runs automatically at the specified time
                 </p>
               </div>
               <Switch
@@ -447,10 +447,10 @@ export default function CalendarPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Avbryt
+              Cancel
             </Button>
             <Button onClick={addEvent} disabled={!formTitle.trim()}>
-              Lägg till
+              Add
             </Button>
           </DialogFooter>
         </DialogContent>

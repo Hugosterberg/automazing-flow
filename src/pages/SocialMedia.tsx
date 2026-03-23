@@ -16,35 +16,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { InstagramIcon, TikTokIcon, YoutubeIcon } from "@/components/platform-icons";
+import { InstagramIcon, TikTokIcon, YoutubeIcon, XIcon } from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   instagram: InstagramIcon,
   tiktok: TikTokIcon,
   youtube: YoutubeIcon,
+  x: XIcon,
 };
 
 
 const defaultStats = [
-  { label: "Följare", value: "–", change: "", icon: Users, key: "followers" },
-  { label: "Följer", value: "–", change: "", icon: Users, key: "following" },
-  { label: "Antal inlägg", value: "–", change: "", icon: FileText, key: "media" },
-  { label: "Engagement", value: "8.4%", change: "+1.1%", icon: Heart, key: "engagement" },
+  { label: "Followers", value: "–", change: "", icon: Users, key: "followers" },
+  { label: "Following", value: "–", change: "", icon: Users, key: "following" },
+  { label: "Posts", value: "–", change: "", icon: FileText, key: "media" },
+  { label: "Engagement", value: "–", change: "", icon: Heart, key: "engagement" },
 ];
 
 const scheduledPosts = [
-  { title: "Produktlansering – Instagram", time: "Idag 14:00", platform: "Instagram" },
-  { title: "Tips & tricks video", time: "Imorgon 09:00", platform: "TikTok" },
-  { title: "Veckosammanfattning", time: "Fre 18:00", platform: "LinkedIn" },
+  { title: "Product launch – Instagram", time: "Today 14:00", platform: "Instagram" },
+  { title: "Tips & tricks video", time: "Tomorrow 09:00", platform: "TikTok" },
+  { title: "Weekly recap", time: "Fri 18:00", platform: "LinkedIn" },
 ];
 
 const contentIdeas = [
-  "Bakom kulisserna – visa er arbetsprocess",
-  "Kundrecension i karusellformat",
-  "5 tips inom er bransch (Reels)",
-  "Före/efter transformation",
-  "Frågestund med era följare",
+  "Behind the scenes – show your work process",
+  "Customer review in carousel format",
+  "5 tips in your industry (Reels)",
+  "Before/after transformation",
+  "Q&A with your followers",
 ];
 
 const fadeUp = {
@@ -52,7 +53,6 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// AI-analys via server (OpenAI eller smart fallback)
 async function runAIAnalysis(
   accountId: string,
   posts: { caption: string }[],
@@ -69,11 +69,10 @@ async function runAIAnalysis(
       followersCount: profile.followersCount,
     }),
   });
-  if (!res.ok) throw new Error("Analysfel");
+  if (!res.ok) throw new Error("Analysis failed");
   return res.json();
 }
 
-// Simulerad bildvariant-generering
 async function generateImageVariants(): Promise<string[]> {
   await new Promise((r) => setTimeout(r, 2500));
   return [
@@ -86,7 +85,7 @@ async function generateImageVariants(): Promise<string[]> {
 
 export default function SocialMedia() {
   const [postContent, setPostContent] = useState("");
-  const { accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, updateAccountAnalysis, updateAccountStats } =
+  const { accounts, selectedAccountId, setSelectedAccountId, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
@@ -97,8 +96,6 @@ export default function SocialMedia() {
     mediaType: string; likeCount: number; commentCount: number; createdTime: string;
   }[]>([]);
 
-  // Ref för att accessa accounts utan att ha det som useEffect-dependency
-  // (undviker oändlig loop: updateAccountStats → accounts ändras → effect körs → updateAccountStats → ...)
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
 
@@ -109,7 +106,7 @@ export default function SocialMedia() {
     fetch(`/api/accounts/${accountId}/data`)
       .then((res) => {
         if (!res.ok) {
-          console.warn(`[stats] /api/accounts/${accountId}/data svarade ${res.status}`);
+          console.warn(`[stats] /api/accounts/${accountId}/data responded ${res.status}`);
           return null;
         }
         return res.json();
@@ -139,10 +136,8 @@ export default function SocialMedia() {
             updatedAt: stats?.updatedAt ?? new Date().toISOString(),
           });
         }
-        // Spara senaste inlägg och starta AI-analys automatiskt
         if (Array.isArray(data.media) && data.media.length > 0) {
           setRecentPosts(data.media);
-          // Auto-trigga AI-analys med de faktiska inläggstexterna
           const account = accountsRef.current.find((a) => a.id === accountId);
           const alreadyAnalyzed = account?.analysis?.about;
           if (!alreadyAnalyzed) {
@@ -175,7 +170,6 @@ export default function SocialMedia() {
       .finally(() => setStatsLoading(false));
   }, [updateAccountAnalysis, updateAccountStats]);
 
-  // Kör bara när valt konto eller manuell refresh ändras – INTE när accounts ändras
   useEffect(() => {
     if (!selectedAccountId) return;
     fetchStats(selectedAccountId);
@@ -215,46 +209,43 @@ export default function SocialMedia() {
     <div className="space-y-8 max-w-6xl">
       <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
         <h1 className="text-3xl font-bold tracking-tight">Social Media</h1>
-        <p className="text-muted-foreground mt-1">Automatisera och hantera dina sociala medier</p>
+        <p className="text-muted-foreground mt-1">Automate and manage your social media</p>
       </motion.div>
 
-      {/* OAuth-fel */}
       {oauthError && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between">
               <p className="text-sm text-destructive">
                 {oauthError === "instagram_not_configured"
-                  ? "Instagram är inte konfigurerad. Lägg till LATE_API_KEY i .env (API-nyckel från getlate.dev) för inloggning via Late API."
+                  ? "Instagram is not configured. Add LATE_API_KEY to .env (API key from getlate.dev) to log in via Late API."
                   : oauthError === "late_profile_failed"
-                    ? "Late kunde inte skapa eller hämta en profil. Kontrollera din API-nyckel på getlate.dev. Om du redan har en profil kan du sätta LATE_PROFILE_ID i .env."
-                    : `Inloggningen misslyckades: ${oauthError.replace(/_/g, " ")}`}
+                    ? "Late could not create or fetch a profile. Check your API key at getlate.dev. If you already have a profile, set LATE_PROFILE_ID in .env."
+                    : `Login failed: ${oauthError.replace(/_/g, " ")}`}
               </p>
               <Button variant="ghost" size="sm" onClick={clearOauthError}>
-                Stäng
+                Dismiss
               </Button>
             </CardContent>
           </Card>
         </motion.div>
       )}
 
-      {/* Välj konto */}
       {!selectedAccount && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <Card className="bg-card border-border glow-border border-dashed">
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground mb-2">
-                Välj ett konto i sidofältet (Anslutna konton) för att börja.
+                Select an account in the sidebar (Connected accounts) to get started.
               </p>
               <p className="text-sm text-muted-foreground/80">
-                Anslut Instagram, TikTok eller YouTube via +-knappen i sidofältet.
+                Connect Instagram, TikTok or YouTube via the + button in the sidebar.
               </p>
             </CardContent>
           </Card>
         </motion.div>
       )}
 
-      {/* AI Analys */}
       {selectedAccount && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <div className="flex items-center justify-between mb-3">
@@ -264,7 +255,7 @@ export default function SocialMedia() {
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
               <Sparkles className="h-3.5 w-3.5" />
-              AI Analys
+              AI Analysis
             </div>
           </div>
           <Card className="bg-card border-border">
@@ -272,48 +263,47 @@ export default function SocialMedia() {
               {analyzing ? (
                 <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                  <span>Analyserar kontots innehåll…</span>
+                  <span>Analyzing account content…</span>
                 </div>
               ) : analysisResult ? (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Handlar om</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">About</p>
                     <p className="text-sm leading-relaxed">{analysisResult.about}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Skriver om</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Writes about</p>
                     <p className="text-sm leading-relaxed">{analysisResult.writes}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Uppfattning utifrån</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Perception</p>
                     <p className="text-sm leading-relaxed">{analysisResult.perception}</p>
                   </div>
                 </div>
               ) : statsLoading ? (
                 <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                  <span>Hämtar inlägg…</span>
+                  <span>Fetching posts…</span>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground py-2">Ingen data tillgänglig ännu.</p>
+                <p className="text-sm text-muted-foreground py-2">No data available yet.</p>
               )}
             </CardContent>
           </Card>
         </motion.div>
       )}
 
-      {/* Bild till varianter */}
       <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ImagePlus className="h-5 w-5" />
-              AI-bildvarianter
+              AI Image Variants
             </CardTitle>
             <CardDescription>
-              Ladda upp en bild så genererar AI olika varianter och förslag
+              Upload an image and let AI generate different variants and suggestions
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -350,16 +340,16 @@ export default function SocialMedia() {
                   ) : (
                     <Sparkles className="h-4 w-4 mr-2" />
                   )}
-                  {generatingVariants ? "Genererar varianter..." : "Generera AI-varianter"}
+                  {generatingVariants ? "Generating variants..." : "Generate AI variants"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Klicka på rutan för att ladda upp, sedan generera.
+                  Click the box to upload, then generate.
                 </p>
               </div>
             </div>
             {variants.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Förslag på varianter</h4>
+                <h4 className="text-sm font-medium">Suggested variants</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {variants.map((url, i) => (
                     <div
@@ -376,7 +366,6 @@ export default function SocialMedia() {
         </Card>
       </motion.div>
 
-      {/* Stats – använder hämtad statistik för valt konto om tillgänglig */}
       {selectedAccount?.isOAuth && (
         <div className="flex items-center gap-2">
           <Button
@@ -390,30 +379,30 @@ export default function SocialMedia() {
             {statsLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                Hämtar...
+                Loading...
               </>
             ) : (
-              "Uppdatera statistik"
+              "Refresh stats"
             )}
           </Button>
           <span className="text-xs text-muted-foreground">
-            Visar data för {selectedAccount.username}
+            Showing data for {selectedAccount.username}
           </span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(selectedAccount?.stats
+        {(        selectedAccount?.stats
           ? (() => {
               const s = selectedAccount.stats;
-              // Kort 2: Snitt-likes (prioriterat), annars followingCount, annars "–"
+              const isX = selectedAccount.platform === "x";
+
               const avgLikesStat =
                 s.avgLikes != null
-                  ? { key: "avg-likes", label: "Snitt-likes", value: String(s.avgLikes), change: "", icon: Heart }
+                  ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
                   : s.followingCount != null
-                    ? { ...defaultStats[1], value: s.followingCount.toLocaleString("sv-SE") }
+                    ? { ...defaultStats[1], value: s.followingCount.toLocaleString("en-US") }
                     : { ...defaultStats[1], value: "–" };
 
-              // Kort 4: Verklig engagement rate om tillgänglig, annars hårdkodad
               const engagementStat =
                 s.engagementRate != null
                   ? { ...defaultStats[3], value: s.engagementRate.toFixed(1) + "%", change: "" }
@@ -422,12 +411,13 @@ export default function SocialMedia() {
               return [
                 {
                   ...defaultStats[0],
-                  value: s.followersCount != null ? s.followersCount.toLocaleString("sv-SE") : "–",
+                  value: s.followersCount != null ? s.followersCount.toLocaleString("en-US") : "–",
                 },
                 avgLikesStat,
                 {
                   ...defaultStats[2],
-                  value: s.mediaCount != null ? s.mediaCount.toLocaleString("sv-SE") : "–",
+                  label: isX ? "Tweets" : "Posts",
+                  value: s.mediaCount != null ? s.mediaCount.toLocaleString("en-US") : "–",
                 },
                 engagementStat,
               ];
@@ -453,69 +443,94 @@ export default function SocialMedia() {
         ))}
       </div>
 
-      {/* Senaste inlägg med likes och kommentarer */}
       {recentPosts.length > 0 && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-5 w-5" />
-                Senaste inlägg
+                Recent posts
               </CardTitle>
-              <CardDescription>Likes och kommentarer per inlägg</CardDescription>
+              <CardDescription>Likes and comments per post</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {recentPosts.map((post) => (
-                  <a
-                    key={post.id}
-                    href={post.permalink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
-                  >
-                    <img
-                      src={post.picture}
-                      alt={post.caption.slice(0, 40)}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                      <div className="flex items-center gap-1 text-white text-xs font-semibold">
-                        <Heart className="h-3.5 w-3.5 fill-white" />
-                        {post.likeCount}
+              {/* Image grid for visual platforms (Instagram etc.) */}
+              {recentPosts[0]?.picture ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {recentPosts.map((post) => (
+                    <a
+                      key={post.id}
+                      href={post.permalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
+                    >
+                      <img
+                        src={post.picture}
+                        alt={post.caption.slice(0, 40)}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                        <div className="flex items-center gap-1 text-white text-xs font-semibold">
+                          <Heart className="h-3.5 w-3.5 fill-white" />
+                          {post.likeCount}
+                        </div>
+                        <div className="flex items-center gap-1 text-white text-xs">
+                          <FileText className="h-3.5 w-3.5" />
+                          {post.commentCount}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-white text-xs">
-                        <FileText className="h-3.5 w-3.5" />
-                        {post.commentCount}
+                      <div className="absolute bottom-1 left-1 flex gap-1">
+                        <span className="bg-black/70 text-white text-[10px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                          <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
+                        </span>
                       </div>
-                    </div>
-                    {/* Alltid synliga badges */}
-                    <div className="absolute bottom-1 left-1 flex gap-1">
-                      <span className="bg-black/70 text-white text-[10px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                        <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
-                      </span>
-                    </div>
-                  </a>
-                ))}
-              </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                /* Text list for text-based platforms (X/Twitter) */
+                <div className="space-y-2">
+                  {recentPosts.map((post) => (
+                    <a
+                      key={post.id}
+                      href={post.permalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-3.5 w-3.5" />{post.likeCount}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3.5 w-3.5" />{post.commentCount}
+                        </span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Scheduler */}
         <motion.div className="lg:col-span-2" {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5" />
-                Schemalägg inlägg
+                Schedule post
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
-                placeholder="Skriv ditt inlägg här..."
+                placeholder="Write your post here..."
                 value={postContent}
                 onChange={(e) => setPostContent(e.target.value)}
                 className="bg-secondary border-border min-h-[100px] resize-none"
@@ -524,22 +539,21 @@ export default function SocialMedia() {
                 <Input type="date" className="bg-secondary border-border w-auto" />
                 <Input type="time" className="bg-secondary border-border w-auto" />
                 <Button className="glow-sm hover:glow-md transition-shadow duration-300">
-                  Schemalägg
+                  Schedule
                 </Button>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Content Ideas */}
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border glow-border h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Sparkles className="h-5 w-5" />
-                Content-idéer
+                Content ideas
               </CardTitle>
-              <CardDescription>AI-genererade förslag</CardDescription>
+              <CardDescription>AI-generated suggestions</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
@@ -558,11 +572,10 @@ export default function SocialMedia() {
         </motion.div>
       </div>
 
-      {/* Scheduled Posts */}
       <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
-            <CardTitle className="text-lg">Schemalagda inlägg</CardTitle>
+            <CardTitle className="text-lg">Scheduled posts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

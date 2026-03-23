@@ -16,9 +16,9 @@ const envExamplePath = path.join(rootDir, ".env.example");
 
 if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
   fs.copyFileSync(envExamplePath, envPath);
-  console.log("Skapade .env från .env.example – fyll i LATE_API_KEY m.m. i .env");
+  console.log("Created .env from .env.example – fill in LATE_API_KEY etc. in .env");
 }
-// Läs .env från projektrot: strip BOM, trim nycklar/värden, .env ska alltid vinna över tom systemenv
+// Read .env from project root: strip BOM, trim keys/values, .env should always win over empty system env
 if (fs.existsSync(envPath)) {
   let raw = fs.readFileSync(envPath, "utf8");
   if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
@@ -30,10 +30,10 @@ if (fs.existsSync(envPath)) {
     process.env[key] = val;
   }
   const late = (process.env.LATE_API_KEY || "").trim();
-  console.log(".env laddad från:", path.resolve(envPath), "| LATE_API_KEY:", late ? `${late.slice(0, 6)}... (${late.length} tecken)` : "SAKNAS");
+  console.log(".env loaded from:", path.resolve(envPath), "| LATE_API_KEY:", late ? `${late.slice(0, 6)}... (${late.length} chars)` : "MISSING");
 } else {
   dotenv.config({ path: envPath });
-  console.log(".env saknas, försökte:", path.resolve(envPath));
+  console.log(".env missing, tried:", path.resolve(envPath));
 }
 
 const app = express();
@@ -44,7 +44,7 @@ const PORT = process.env.PORT || 3001;
 const BASE_URL = process.env.BASE_URL || "http://localhost:8080";
 const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${PORT}`;
 
-// Persistent token-lagring – sparas till disk så att omstart inte bryter anslutningar
+// Persistent token storage – saved to disk so restarts don't break connections
 const TOKEN_STORE_PATH = path.join(__dirname, "tokens.json");
 
 function loadTokenStore() {
@@ -53,12 +53,12 @@ function loadTokenStore() {
       const raw = fs.readFileSync(TOKEN_STORE_PATH, "utf8");
       const entries = JSON.parse(raw);
       if (Array.isArray(entries)) {
-        console.log(`[tokenStore] Laddade ${entries.length} sparade konton från tokens.json`);
+        console.log(`[tokenStore] Loaded ${entries.length} saved accounts from tokens.json`);
         return new Map(entries);
       }
     }
   } catch (e) {
-    console.warn("[tokenStore] Kunde inte läsa tokens.json:", e.message);
+    console.warn("[tokenStore] Could not read tokens.json:", e.message);
   }
   return new Map();
 }
@@ -67,7 +67,7 @@ function saveTokenStore(store) {
   try {
     fs.writeFileSync(TOKEN_STORE_PATH, JSON.stringify([...store.entries()]), "utf8");
   } catch (e) {
-    console.warn("[tokenStore] Kunde inte spara tokens.json:", e.message);
+    console.warn("[tokenStore] Could not save tokens.json:", e.message);
   }
 }
 
@@ -115,7 +115,7 @@ async function getOrCreateLateProfileId() {
     const getData = await getRes.json().catch(() => ({}));
     const idFromList = extractProfileId(getData);
     if (idFromList) {
-      console.log("[Late] Använder befintlig profil:", idFromList.slice(0, 8) + "...");
+      console.log("[Late] Using existing profile:", idFromList.slice(0, 8) + "...");
       return idFromList;
     }
     if (!getRes.ok) {
@@ -147,10 +147,10 @@ app.get("/api/auth/instagram", async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache");
   const lateApiKey = (process.env.LATE_API_KEY || "").trim();
   const ourProfileId = req.query.profile_id || null;
-  console.log("[Instagram] LATE_API_KEY:", lateApiKey ? "satt" : "SAKNAS – kontrollera .env och att rätt serverprocess kör");
+  console.log("[Instagram] LATE_API_KEY:", lateApiKey ? "set" : "MISSING – check .env and that the correct server process is running");
 
   if (lateApiKey) {
-    // Anslut Instagram via Late API
+    // Connect Instagram via Late API
     try {
       const lateProfileId = await getOrCreateLateProfileId();
       if (!lateProfileId) {
@@ -191,7 +191,7 @@ app.get("/api/auth/instagram", async (req, res) => {
   const clientId = (process.env.INSTAGRAM_CLIENT_ID || "").trim();
   if (!clientId) {
     console.warn(
-      "Instagram: LATE_API_KEY saknas eller är tom (längd: %s). Lägg LATE_API_KEY i .env för Late API.",
+      "Instagram: LATE_API_KEY is missing or empty (length: %s). Add LATE_API_KEY to .env for Late API.",
       (process.env.LATE_API_KEY || "").length
     );
     return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
@@ -400,6 +400,90 @@ app.get("/api/auth/tiktok/callback", async (req, res) => {
     res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileParam}`);
   } catch (err) {
     console.error("TikTok OAuth error:", err);
+    res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+  }
+});
+
+// --- X (Twitter) OAuth 2.0 with PKCE ---
+const X_AUTH = "https://twitter.com/i/oauth2/authorize";
+const X_TOKEN = "https://api.twitter.com/2/oauth2/token";
+const X_SCOPES = "tweet.read users.read offline.access like.read";
+
+function generateCodeVerifier() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+function generateCodeChallenge(verifier) {
+  return crypto.createHash("sha256").update(verifier).digest("base64url");
+}
+
+app.get("/api/auth/x", (req, res) => {
+  const clientId = process.env.X_CLIENT_ID;
+  if (!clientId) {
+    return res.redirect(`${BASE_URL}/social-media?oauth_error=x_not_configured`);
+  }
+  const state = generateState();
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+  pendingStates.set(state, { platform: "x", profileId: req.query.profile_id, codeVerifier, createdAt: Date.now() });
+  const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
+  const url = new URL(X_AUTH);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("scope", X_SCOPES);
+  url.searchParams.set("state", state);
+  url.searchParams.set("code_challenge", codeChallenge);
+  url.searchParams.set("code_challenge_method", "S256");
+  res.redirect(url.toString());
+});
+
+app.get("/api/auth/x/callback", async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.redirect(`${BASE_URL}/social-media?oauth_error=${error}`);
+  const pending = pendingStates.get(state);
+  if (!pending) return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+  pendingStates.delete(state);
+  const clientId = process.env.X_CLIENT_ID;
+  const clientSecret = process.env.X_CLIENT_SECRET;
+  if (!clientId) return res.redirect(`${BASE_URL}/social-media?oauth_error=x_not_configured`);
+  try {
+    const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code: String(code),
+      redirect_uri: redirectUri,
+      code_verifier: pending.codeVerifier,
+    });
+    const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+    if (clientSecret) {
+      headers["Authorization"] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+    } else {
+      body.set("client_id", clientId);
+    }
+    const tokenRes = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+    const tokenData = await tokenRes.json();
+    if (tokenData.error) {
+      console.error("[X] token error:", tokenData.error, tokenData.error_description);
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=${tokenData.error}`);
+    }
+    const userRes = await fetch(
+      "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+    );
+    const userData = await userRes.json();
+    const user = userData.data || {};
+    const accountId = crypto.randomUUID();
+    tokenStore.set(accountId, {
+      platform: "x",
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      xUserId: user.id,
+    });
+    const username = user.username || user.name || accountId.slice(0, 8);
+    const profileParam = pending.profileId ? `&profile_id=${encodeURIComponent(pending.profileId)}` : "";
+    res.redirect(`${BASE_URL}/social-media?oauth_success=1&platform=x&account_id=${accountId}&username=${encodeURIComponent(username)}${profileParam}`);
+  } catch (err) {
+    console.error("[X] OAuth error:", err);
     res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
   }
 });
@@ -687,7 +771,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
   const { accountId } = req.params;
   const stored = tokenStore.get(accountId);
   if (!stored) {
-    return res.status(404).json({ error: "Konto inte anslutet" });
+    return res.status(404).json({ error: "Account not connected" });
   }
   const { platform, accessToken, isLate, lateAccountId } = stored;
 
@@ -695,31 +779,31 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
     if (platform === "instagram" && isLate && (process.env.LATE_API_KEY || "").trim()) {
       const lateKey = (process.env.LATE_API_KEY || "").trim();
       const lateHeaders = { Authorization: `Bearer ${lateKey}` };
-      // lookupId = Late profile-ID (t.ex. 69a7aa7d...) lagrat vid OAuth-callback
+      // lookupId = Late profile-ID (e.g. 69a7aa7d...) stored at OAuth-callback
       const lookupId = String(lateAccountId || accountId);
 
-      // GET /v1/accounts – rätt endpoint för anslutna konton (inte /profiles som är Late-arbetsytor)
+      // GET /v1/accounts – correct endpoint for connected accounts (not /profiles which are Late workspaces)
       const lateRes = await fetch(`${LATE_API_BASE}/accounts`, { headers: lateHeaders });
       if (!lateRes.ok) {
-        console.error(`[Late] GET /accounts misslyckades: ${lateRes.status}`);
-        return res.status(502).json({ error: "Kunde inte hämta data från Late" });
+        console.error(`[Late] GET /accounts failed: ${lateRes.status}`);
+        return res.status(502).json({ error: "Could not fetch data from Late" });
       }
       const data = await lateRes.json();
       const list = Array.isArray(data.accounts) ? data.accounts : [];
-      console.log(`[Late] GET /accounts: ${list.length} konton hittades`);
+      console.log(`[Late] GET /accounts: ${list.length} accounts found`);
 
-      // Matcha konto: profileId._id matchar lookupId (Late profileId = Late-arbetsyta, lagrat vid OAuth)
-      // Fallback: sök på konto-_id, sedan första instagram-konto, sedan enda kontot
+      // Match account: profileId._id matches lookupId (Late profileId = Late workspace, stored at OAuth)
+      // Fallback: search by account _id, then first instagram account, then single account
       let acc =
         list.find((a) => String(a.profileId?._id || a.profileId || "") === lookupId) ??
         list.find((a) => String(a._id || a.id || "") === lookupId) ??
         list.find((a) => (a.platform || "").toLowerCase() === "instagram") ??
         (list.length === 1 ? list[0] : null);
 
-      if (acc) console.log(`[Late] Matchat konto: _id=${acc._id} username=${acc.username}`);
-      else console.warn(`[Late] Inget konto matchar lookupId=${lookupId}. Tillgängliga: ${list.map(a => a._id).join(", ")}`);
+      if (acc) console.log(`[Late] Matched account: _id=${acc._id} username=${acc.username}`);
+      else console.warn(`[Late] No account matches lookupId=${lookupId}. Available: ${list.map(a => a._id).join(", ")}`);
 
-      // Late lagrar Instagram-statistik i metadata.profileData
+      // Late stores Instagram stats in metadata.profileData
       const profileData = acc?.metadata?.profileData ?? {};
       const profile = {
         username: profileData.username ?? acc?.username ?? acc?.name,
@@ -733,7 +817,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       const mediaCount = profileData.mediaCount ?? acc?.media_count ?? acc?.mediaCount ?? acc?.externalPostCount;
       const accountType = profileData.accountType ?? acc?.accountType ?? undefined;
 
-      // Hämta inlägg för likes/kommentar-statistik parallellt
+      // Fetch posts for likes/comment stats in parallel
       let posts = [];
       if (acc?._id) {
         try {
@@ -743,18 +827,18 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
             posts = Array.isArray(postsData.posts) ? postsData.posts : [];
           }
         } catch {
-          // Ignorera om posts inte kan hämtas
+          // Ignore if posts cannot be fetched
         }
       }
 
-      // Beräkna aggregerad statistik från inlägg
+      // Calculate aggregated stats from posts
       const postsWithEngagement = posts.filter((p) => p.likeCount != null || p.commentCount != null);
       const totalLikes = postsWithEngagement.reduce((s, p) => s + (p.likeCount || 0), 0);
       const totalComments = postsWithEngagement.reduce((s, p) => s + (p.commentCount || 0), 0);
       const postCount = postsWithEngagement.length;
       const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
       const avgComments = postCount > 0 ? Math.round(totalComments / postCount) : undefined;
-      // Engagement rate = (snitt-likes + snitt-kommentarer) / följare * 100
+      // Engagement rate = (avg likes + avg comments) / followers * 100
       const engagementRate =
         followers != null && followers > 0 && postCount > 0
           ? Math.round(((totalLikes + totalComments) / postCount / Number(followers)) * 10000) / 100
@@ -777,7 +861,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
           }
         : undefined;
 
-      // Returnera de 12 senaste inläggen med bild, likes och kommentarer
+      // Return the 12 most recent posts with image, likes and comments
       const recentPosts = posts.slice(0, 12).map((p) => ({
         id: p.id,
         caption: p.message || "",
@@ -862,10 +946,269 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         videos,
       });
     }
-    res.status(400).json({ error: "Okänd plattform" });
+    if (platform === "x") {
+      const { xUserId, refreshToken } = stored;
+
+      async function refreshXToken(rt) {
+        const clientId = process.env.X_CLIENT_ID;
+        const clientSecret = process.env.X_CLIENT_SECRET;
+        if (!clientId || !rt) return null;
+        const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: rt });
+        const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+        if (clientSecret) {
+          headers["Authorization"] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+        } else {
+          body.set("client_id", clientId);
+        }
+        const r = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+        const d = await r.json();
+        if (d.access_token) {
+          tokenStore.set(accountId, { ...stored, accessToken: d.access_token, refreshToken: d.refresh_token || rt });
+          return d.access_token;
+        }
+        return null;
+      }
+
+      let token = accessToken;
+
+      // Fetch user info
+      let userRes = await fetch(
+        "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (userRes.status === 401 && refreshToken) {
+        token = await refreshXToken(refreshToken);
+        if (!token) return res.status(401).json({ error: "X token invalid. Reconnect the account." });
+        userRes = await fetch(
+          "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+      const userData = await userRes.json();
+      const user = userData.data || {};
+      const metrics = user.public_metrics || {};
+
+      // Fetch recent tweets (up to 10)
+      const userId = xUserId || user.id;
+      let tweets = [];
+      if (userId) {
+        const tweetsRes = await fetch(
+          `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (tweetsRes.ok) {
+          const tweetsData = await tweetsRes.json();
+          tweets = tweetsData.data || [];
+        }
+      }
+
+      // Calculate engagement from tweets
+      const tweetsWithMetrics = tweets.filter((t) => t.public_metrics);
+      const totalLikes = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.like_count || 0), 0);
+      const totalReplies = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.reply_count || 0), 0);
+      const totalRetweets = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.retweet_count || 0), 0);
+      const postCount = tweetsWithMetrics.length;
+      const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
+      const followers = metrics.followers_count;
+      const engagementRate =
+        followers && followers > 0 && postCount > 0
+          ? Math.round(((totalLikes + totalReplies + totalRetweets) / postCount / followers) * 10000) / 100
+          : undefined;
+
+      const stats = {
+        followersCount: metrics.followers_count,
+        followingCount: metrics.following_count,
+        mediaCount: metrics.tweet_count,
+        totalLikes,
+        avgLikes,
+        engagementRate,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const media = tweets.map((t) => ({
+        id: t.id,
+        caption: t.text || "",
+        picture: "",
+        permalink: `https://twitter.com/${user.username}/status/${t.id}`,
+        mediaType: "tweet",
+        likeCount: t.public_metrics?.like_count || 0,
+        commentCount: t.public_metrics?.reply_count || 0,
+        createdTime: t.created_at,
+      }));
+
+      return res.json({
+        profile: {
+          username: user.username,
+          displayName: user.name,
+          profilePicture: user.profile_image_url,
+          description: user.description,
+        },
+        stats,
+        media,
+      });
+    }
+
+    if (platform === "gmail") {
+      // Hjälpfunktion: försök förnya access token med refresh token
+      async function refreshGmailToken(rt) {
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+        if (!clientId || !clientSecret || !rt) return null;
+        const r = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: rt, grant_type: "refresh_token" }).toString(),
+        });
+        const d = await r.json();
+        return d.access_token ?? null;
+      }
+
+      let token = accessToken;
+      const { refreshToken } = stored;
+
+      // Hämta lista med senaste 10 inkorg-meddelanden
+      async function fetchMessages(t) {
+        const listRes = await fetch(
+          "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX",
+          { headers: { Authorization: `Bearer ${t}` } }
+        );
+        if (listRes.status === 401) return { unauthorized: true };
+        if (!listRes.ok) return { error: listRes.status };
+        return listRes.json();
+      }
+
+      let listData = await fetchMessages(token);
+
+      // Om token löpt ut – försök förnya
+      if (listData.unauthorized && refreshToken) {
+        const newToken = await refreshGmailToken(refreshToken);
+        if (newToken) {
+          token = newToken;
+          tokenStore.set(accountId, { ...stored, accessToken: newToken });
+          listData = await fetchMessages(token);
+        }
+      }
+
+      if (listData.error || listData.unauthorized) {
+        return res.status(401).json({ error: "Gmail token invalid. Reconnect the account." });
+      }
+
+      const messageIds = (listData.messages || []).map((m) => m.id);
+
+      // Hämta metadata för varje meddelande parallellt
+      const messages = await Promise.all(
+        messageIds.map((id) =>
+          fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=Subject,From,Date,To`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          ).then((r) => r.json()).catch(() => null)
+        )
+      );
+
+      const getHeader = (headers, name) =>
+        (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+      // Extrahera visningsnamn ur "Name <email@...>"
+      const parseSender = (from) => {
+        const match = from.match(/^(.+?)\s*<(.+)>$/);
+        if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
+        return { name: from, email: from };
+      };
+
+      const formatted = messages
+        .filter(Boolean)
+        .map((msg) => {
+          const headers = msg.payload?.headers ?? [];
+          const from = getHeader(headers, "Subject") ? parseSender(getHeader(headers, "From")) : { name: "", email: "" };
+          const dateRaw = getHeader(headers, "Date");
+          return {
+            id: msg.id,
+            subject: getHeader(headers, "Subject") || "(No subject)",
+            from: parseSender(getHeader(headers, "From")),
+            date: dateRaw,
+            snippet: msg.snippet || "",
+            isUnread: (msg.labelIds || []).includes("UNREAD"),
+          };
+        });
+
+      return res.json({ messages: formatted });
+    }
+
+    if (platform === "shopify") {
+      const { shop } = stored;
+      if (!shop) return res.status(400).json({ error: "No shop domain stored for this account" });
+      const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
+      const apiBase = `https://${shop}/admin/api/2024-01`;
+
+      const [shopRes, ordersRes, productsCountRes, ordersCountRes] = await Promise.all([
+        fetch(`${apiBase}/shop.json`, { headers: shopHeaders }),
+        fetch(`${apiBase}/orders.json?status=any&limit=10&order=created_at+desc`, { headers: shopHeaders }),
+        fetch(`${apiBase}/products/count.json`, { headers: shopHeaders }),
+        fetch(`${apiBase}/orders/count.json?status=any`, { headers: shopHeaders }),
+      ]);
+
+      if (!shopRes.ok) {
+        console.error(`[Shopify] shop.json failed: ${shopRes.status}`);
+        return res.status(502).json({ error: "Could not fetch Shopify store data" });
+      }
+
+      const [shopData, ordersData, productsCountData, ordersCountData] = await Promise.all([
+        shopRes.json(),
+        ordersRes.ok ? ordersRes.json() : { orders: [] },
+        productsCountRes.ok ? productsCountRes.json() : { count: 0 },
+        ordersCountRes.ok ? ordersCountRes.json() : { count: 0 },
+      ]);
+
+      const shopInfo = shopData.shop || {};
+      const orders = ordersData.orders || [];
+
+      const revenue30d = orders
+        .filter((o) => {
+          const created = new Date(o.created_at);
+          return Date.now() - created.getTime() < 30 * 86400 * 1000;
+        })
+        .reduce((sum, o) => sum + parseFloat(o.total_price || "0"), 0);
+
+      const avgOrderValue =
+        orders.length > 0
+          ? orders.reduce((s, o) => s + parseFloat(o.total_price || "0"), 0) / orders.length
+          : 0;
+
+      const formattedOrders = orders.map((o) => ({
+        id: o.id,
+        name: o.name,
+        email: o.email || "",
+        total: parseFloat(o.total_price || "0"),
+        currency: o.currency || shopInfo.currency || "USD",
+        status: o.financial_status || "pending",
+        fulfillment: o.fulfillment_status || "unfulfilled",
+        createdAt: o.created_at,
+        lineItemCount: (o.line_items || []).length,
+      }));
+
+      return res.json({
+        shop: {
+          name: shopInfo.name,
+          domain: shopInfo.domain || shop,
+          currency: shopInfo.currency,
+          plan: shopInfo.plan_display_name || shopInfo.plan_name,
+          email: shopInfo.email,
+        },
+        stats: {
+          ordersCount: ordersCountData.count || 0,
+          productsCount: productsCountData.count || 0,
+          revenue30d: Math.round(revenue30d * 100) / 100,
+          avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+          currency: shopInfo.currency || "USD",
+        },
+        orders: formattedOrders,
+      });
+    }
+
+    res.status(400).json({ error: "Unknown platform" });
   } catch (err) {
     console.error("Fetch data error:", err);
-    res.status(500).json({ error: "Kunde inte hämta data" });
+    res.status(500).json({ error: "Could not fetch data" });
   }
 });
 
@@ -874,7 +1217,7 @@ app.post("/api/accounts/:accountId/analyze", async (req, res) => {
   const { captions = [], displayName = "", username = "", followersCount } = req.body;
   const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
 
-  // Hjälpfunktion: smart nyckelordsanalys som fallback
+  // Helper: smart keyword analysis as fallback
   function keywordAnalysis() {
     const allText = captions.join(" ").toLowerCase();
     const words = allText.match(/\b\w{4,}\b/g) || [];
@@ -891,11 +1234,11 @@ app.post("/api/accounts/:accountId/analyze", async (req, res) => {
 
     const mainTopic = topWords.slice(0, 3).join(", ");
     const hashtagStr = hashtags.slice(0, 5).join(", ") || mainTopic;
-    const n = followersCount ? `med ${Number(followersCount).toLocaleString("sv-SE")} följare` : "";
+    const n = followersCount ? `with ${Number(followersCount).toLocaleString("en-US")} followers` : "";
     return {
-      about: `@${username} ${n} är ett konto fokuserat på ${mainTopic}. Innehållet kretsar kring en personlig resa och delar erfarenheter inom detta område.`,
-      writes: `Kontot publicerar inlägg om ${hashtagStr}. Vanliga inläggstyper inkluderar uppdateringar, citat och milstolpar kopplade till huvudtemat.`,
-      perception: `En utomstående person ser ett engagerat konto med ett tydligt fokus och konsekvent budskap. Kontot verkar drivas av passion snarare än ett kommersiellt syfte.`,
+      about: `@${username} ${n} is an account focused on ${mainTopic}. The content revolves around a personal journey and shares experiences within this area.`,
+      writes: `The account posts about ${hashtagStr}. Common post types include updates, quotes and milestones related to the main topic.`,
+      perception: `An outside person sees an engaged account with a clear focus and consistent message. The account appears driven by passion rather than commercial intent.`,
     };
   }
 
@@ -905,19 +1248,19 @@ app.post("/api/accounts/:accountId/analyze", async (req, res) => {
 
   try {
     const captionSample = captions.slice(0, 25).join("\n---\n");
-    const prompt = `Du är en social media-analytiker. Analysera detta Instagram-konto kort och sakligt på svenska.
+    const prompt = `You are a social media analyst. Analyze this Instagram account briefly and factually in English.
 
-Konto: @${username} – "${displayName}"
-Följare: ${followersCount ? Number(followersCount).toLocaleString("sv-SE") : "okänt"}
+Account: @${username} – "${displayName}"
+Followers: ${followersCount ? Number(followersCount).toLocaleString("en-US") : "unknown"}
 
-Senaste inläggstexter (urval):
+Recent post captions (sample):
 ${captionSample}
 
-Svara med exakt dessa tre punkter. Håll varje svar till 1–2 korta meningar. Inga rubriker, inga listor – bara löpande text.
+Reply with exactly these three points. Keep each answer to 1–2 short sentences. No headings, no lists – only flowing text.
 
-HANDLAR OM: [Vad kontot handlar om – nisch, tema och syfte]
-SKRIVER OM: [Vilka konkreta ämnen, händelser och typer av innehåll som förekommer]
-UPPFATTNING: [Hur en vanlig person utan förkunskaper om ämnet skulle beskriva och uppfatta kontot]`;
+ABOUT: [What the account is about – niche, theme and purpose]
+WRITES ABOUT: [Concrete topics, events and types of content that appear]
+PERCEPTION: [How a regular person with no prior knowledge of the topic would describe and perceive the account]`;
 
     const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -934,21 +1277,21 @@ UPPFATTNING: [Hur en vanlig person utan förkunskaper om ämnet skulle beskriva 
     });
 
     if (!aiRes.ok) {
-      console.warn("[AI] OpenAI svarade", aiRes.status, "– använder fallback");
+      console.warn("[AI] OpenAI responded", aiRes.status, "– using fallback");
       return res.json(keywordAnalysis());
     }
 
     const aiData = await aiRes.json();
     const text = aiData.choices?.[0]?.message?.content || "";
 
-    // Parsa de tre delarna ur svaret
+    // Parse the three parts from the response
     const extract = (label) => {
-      const match = text.match(new RegExp(`${label}:\\s*(.+?)(?=\\n[A-ZÅÄÖ]+:|$)`, "si"));
+      const match = text.match(new RegExp(`${label}:\\s*(.+?)(?=\\n[A-Z ]+:|$)`, "si"));
       return match ? match[1].trim() : null;
     };
-    const about = extract("HANDLAR OM") || extract("ABOUT");
-    const writes = extract("SKRIVER OM") || extract("WRITES");
-    const perception = extract("UPPFATTNING") || extract("PERCEPTION");
+    const about = extract("ABOUT");
+    const writes = extract("WRITES ABOUT") || extract("WRITES");
+    const perception = extract("PERCEPTION");
 
     if (about && writes && perception) {
       return res.json({ about, writes, perception });
@@ -999,14 +1342,14 @@ const server = app.listen(PORT, () => {
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
     console.error(`
-Port ${PORT} används redan av en annan process (troligen en äldre server utan .env).
-Den gamla processen svarar på /api – därför ser du "Instagram not configured".
+Port ${PORT} is already in use by another process (likely an older server without .env).
+The old process responds on /api – that's why you see "Instagram not configured".
 
-Gör så här:
-1. Stäng ALLA terminaler där du kört "npm run dev" eller "npm run dev:server"
-2. Eller hitta och avsluta processen:  netstat -ano | findstr :${PORT}
-   Ta PID från sista kolumnen och kör:  taskkill /PID <pid> /F
-3. Starta sedan om:  npm run dev
+To fix:
+1. Close ALL terminals where you ran "npm run dev" or "npm run dev:server"
+2. Or find and kill the process:  netstat -ano | findstr :${PORT}
+   Take the PID from the last column and run:  taskkill /PID <pid> /F
+3. Then restart:  npm run dev
 `);
   }
   throw err;

@@ -10,7 +10,18 @@ import {
   Trash2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +48,7 @@ import {
   InstagramIcon,
   TikTokIcon,
   YoutubeIcon,
+  XIcon,
   ShopifyIcon,
   GmailIcon,
   OutlookIcon,
@@ -52,7 +64,7 @@ const navItems = [
     title: "Social Media",
     url: "/social-media",
     icon: Share2,
-    platforms: ["instagram", "tiktok", "youtube"] as AccountPlatform[],
+    platforms: ["instagram", "tiktok", "youtube", "x"] as AccountPlatform[],
   },
   {
     key: "ecommerce",
@@ -98,6 +110,7 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   instagram: InstagramIcon,
   tiktok: TikTokIcon,
   youtube: YoutubeIcon,
+  x: XIcon,
   shopify: ShopifyIcon,
   gmail: GmailIcon,
   outlook: OutlookIcon,
@@ -110,18 +123,31 @@ function getAccountsForCategory(accounts: ConnectedAccount[], platforms: Account
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { accounts, activeProfileId, selectedAccountId, setSelectedAccountId, removeAccount } = useAccounts();
+  const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
+  const [shopDomain, setShopDomain] = useState("");
 
   function handleConnectPlatform(platform: AccountPlatform) {
+    if (platform === "shopify") {
+      setShopDomain("");
+      setShopifyDialogOpen(true);
+      return;
+    }
     const params = new URLSearchParams();
     if (activeProfileId) params.set("profile_id", activeProfileId);
-    if (platform === "shopify") {
-      const shop = window.prompt("Ange din Shopify-butik (t.ex. minbutik.myshopify.com):");
-      if (!shop?.trim()) return;
-      params.set("shop", shop.trim().replace(/^https?:\/\//, "").replace(/\/$/, ""));
-    }
     const query = params.toString() ? `?${params.toString()}` : "";
     window.location.href = `${API_BASE}/auth/${platform}${query}`;
+  }
+
+  function handleShopifyConnect() {
+    const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!shop) return;
+    const params = new URLSearchParams({ shop });
+    if (activeProfileId) params.set("profile_id", activeProfileId);
+    setShopifyDialogOpen(false);
+    setShopDomain("");
+    window.location.href = `${API_BASE}/auth/shopify?${params}`;
   }
 
   return (
@@ -162,8 +188,8 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {!item.hideAccounts && (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
-                      <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
-                        Anslutna konton
+                        <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
+                        Connected accounts
                       </p>
                       {categoryAccounts.map((account) => {
                         const Icon = platformIcons[account.platform];
@@ -192,13 +218,13 @@ export function AppSidebar() {
                                 <span className="text-[10px] text-muted-foreground pl-7">
                                   {account.stats.followersCount != null && (
                                     <>
-                                      {account.stats.followersCount.toLocaleString("sv-SE")}
-                                      {" följare"}
+                                      {account.stats.followersCount.toLocaleString("en-US")}
+                                      {" followers"}
                                     </>
                                   )}
                                   {account.stats.followersCount != null && account.stats.mediaCount != null && " · "}
                                   {account.stats.mediaCount != null && (
-                                    <>{account.stats.mediaCount} inlägg</>
+                                    <>{account.stats.mediaCount} posts</>
                                   )}
                                 </span>
                               )}
@@ -220,7 +246,7 @@ export function AppSidebar() {
                                   onClick={() => removeAccount(account.id)}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  Koppla bort
+                                  Disconnect
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -235,7 +261,7 @@ export function AppSidebar() {
                               className="flex w-full items-center gap-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <Plus className="h-3 w-3 shrink-0" />
-                              Anslut fler
+                              Connect more
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
@@ -248,11 +274,13 @@ export function AppSidebar() {
                                     ? "TikTok"
                                     : platform === "youtube"
                                       ? "YouTube"
-                                      : platform === "shopify"
-                                        ? "Shopify"
-                                        : platform === "gmail"
-                                          ? "Gmail"
-                                          : "Outlook";
+                                      : platform === "x"
+                                        ? "X (Twitter)"
+                                        : platform === "shopify"
+                                          ? "Shopify"
+                                          : platform === "gmail"
+                                            ? "Gmail"
+                                            : "Outlook";
                               return (
                                 <DropdownMenuItem
                                   key={platform}
@@ -268,7 +296,7 @@ export function AppSidebar() {
                       )}
                       {!hasConnect && (
                         <p className="text-[11px] text-muted-foreground/70 py-0.5 italic">
-                          Snart tillgängligt
+                          Coming soon
                         </p>
                       )}
                     </div>
@@ -284,13 +312,46 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
-            Profil
+            Profile
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <ProfileSwitcher />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarFooter>
+
+      <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShopifyIcon className="h-4 w-4" />
+              Connect Shopify
+            </DialogTitle>
+            <DialogDescription>
+              Enter your Shopify store domain to get started.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="shop-domain">Store domain</Label>
+            <Input
+              id="shop-domain"
+              placeholder="mystore.myshopify.com"
+              value={shopDomain}
+              onChange={(e) => setShopDomain(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleShopifyConnect()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleShopifyConnect} disabled={!shopDomain.trim()}>
+              Connect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }

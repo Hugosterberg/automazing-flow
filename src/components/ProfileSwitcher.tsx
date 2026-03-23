@@ -36,7 +36,7 @@ export function ProfileSwitcher() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   function handleAddProfile() {
-    const name = newName.trim() || "Ny profil";
+    const name = newName.trim() || "New profile";
     addProfile(name);
     setNewName("");
   }
@@ -52,7 +52,6 @@ export function ProfileSwitcher() {
     return allAccounts.filter((a) => a.profileId === profileId).length;
   }
 
-  // Nyast tillagda först
   const sortedProfiles = [...profiles].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -67,9 +66,9 @@ export function ProfileSwitcher() {
           >
             <Building2 className="h-4 w-4 shrink-0" />
             <span className="truncate flex items-center gap-1.5">
-              {activeProfile?.name ?? "Välj profil"}
+              {activeProfile?.name ?? "Select profile"}
               {activeProfile && (
-                <span className="text-xs text-muted-foreground shrink-0">(vald)</span>
+                <span className="text-xs text-muted-foreground shrink-0">(active)</span>
               )}
             </span>
           </Button>
@@ -112,7 +111,7 @@ export function ProfileSwitcher() {
                     >
                       <span>{profile.name}</span>
                       {isSelected && (
-                        <span className="text-xs text-muted-foreground shrink-0">(vald)</span>
+                        <span className="text-xs text-muted-foreground shrink-0">(active)</span>
                       )}
                     </button>
                     <span className="text-xs text-muted-foreground shrink-0">
@@ -154,7 +153,7 @@ export function ProfileSwitcher() {
           <div className="px-2 py-1.5">
             <div className="flex gap-1">
               <Input
-                placeholder="Ny profil..."
+                placeholder="New profile..."
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
@@ -171,15 +170,15 @@ export function ProfileSwitcher() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ta bort profil?</AlertDialogTitle>
+            <AlertDialogTitle>Delete profile?</AlertDialogTitle>
             <AlertDialogDescription>
-              Profilen &quot;{deleteTarget?.name}&quot; och alla dess{" "}
-              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} kopplade konton kommer att tas
-              bort. Detta kan inte ångras.
+              The profile &quot;{deleteTarget?.name}&quot; and all its{" "}
+              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} connected accounts will be
+              deleted. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -189,7 +188,7 @@ export function ProfileSwitcher() {
                 }
               }}
             >
-              Ta bort
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

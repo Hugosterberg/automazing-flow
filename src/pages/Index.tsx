@@ -8,42 +8,42 @@ import { ProfileList } from "@/components/ProfileList";
 const areas = [
   {
     title: "Social Media",
-    desc: "Schemalägg, analysera och automatisera dina sociala kanaler",
+    desc: "Schedule, analyze and automate your social channels",
     icon: Share2,
     url: "/social-media",
     ready: true,
   },
   {
     title: "E-commerce",
-    desc: "Ordrar, lager och försäljningsanalys på autopilot",
+    desc: "Orders, inventory and sales analytics on autopilot",
     icon: ShoppingCart,
     url: "/ecommerce",
-    ready: false,
+    ready: true,
   },
   {
     title: "Calendar",
-    desc: "Smart schemaläggning och automatiska påminnelser",
+    desc: "Smart scheduling and automated reminders",
     icon: CalendarDays,
     url: "/calendar",
     ready: true,
   },
   {
     title: "Mail",
-    desc: "Hantera och automatisera dina mejl",
+    desc: "Manage and automate your emails",
     icon: Mail,
     url: "/mail",
-    ready: false,
+    ready: true,
   },
   {
     title: "AI Recommendations",
-    desc: "AI-drivna förslag och rekommendationer",
+    desc: "AI-powered suggestions and recommendations",
     icon: LightbulbGlowIcon,
     url: "/ai-recommendations",
     ready: false,
   },
   {
     title: "Preferences",
-    desc: "Inställningar, tema och säkerhet",
+    desc: "Settings, theme and security",
     icon: Settings,
     url: "/preferences",
     ready: false,
@@ -70,7 +70,7 @@ export default function Index() {
           auto<span className="text-muted-foreground">mazing</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-md mx-auto">
-          Automatisera dina vardagliga arbetsuppgifter. Ett verktyg i taget.
+          Automate your everyday tasks. One tool at a time.
         </p>
       </motion.div>
 
@@ -100,7 +100,7 @@ export default function Index() {
                   <area.icon className="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" />
                   {!area.ready && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                      Snart
+                      Soon
                     </span>
                   )}
                 </div>

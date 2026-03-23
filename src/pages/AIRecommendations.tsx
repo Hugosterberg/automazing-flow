@@ -4,9 +4,9 @@ import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
-  { icon: Sparkles, title: "Smart analys", desc: "AI-analys av dina konton och innehåll" },
-  { icon: Lightbulb, title: "Förslag", desc: "Personlig rekommendation baserat på data" },
-  { icon: Target, title: "Målgrupp", desc: "Insikter om din publik och engagemang" },
+  { icon: Sparkles, title: "Smart Analysis", desc: "AI analysis of your accounts and content" },
+  { icon: Lightbulb, title: "Suggestions", desc: "Personalized recommendations based on data" },
+  { icon: Target, title: "Audience", desc: "Insights about your audience and engagement" },
 ];
 
 export default function AIRecommendationsPage() {
@@ -27,7 +27,7 @@ export default function AIRecommendationsPage() {
           AI Recommendations
         </h1>
         <p className="text-muted-foreground">
-          AI-drivna förslag och rekommendationer baserat på dina anslutna konton och data.
+          AI-powered suggestions and recommendations based on your connected accounts and data.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
           {features.map((f, i) => (

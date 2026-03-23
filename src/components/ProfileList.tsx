@@ -10,7 +10,7 @@ export function ProfileList() {
   const [showInput, setShowInput] = useState(false);
 
   function handleAddProfile() {
-    const name = newName.trim() || "Ny profil";
+    const name = newName.trim() || "New profile";
     addProfile(name);
     setNewName("");
     setShowInput(false);
@@ -21,7 +21,7 @@ export function ProfileList() {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <Building2 className="h-4 w-4" />
-          Dina profiler
+          Your profiles
         </h3>
         <Button
           variant="ghost"
@@ -59,7 +59,7 @@ export function ProfileList() {
       {showInput && (
         <div className="flex gap-2">
           <Input
-            placeholder="Namn på ny profil..."
+            placeholder="New profile name..."
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
@@ -70,7 +70,7 @@ export function ProfileList() {
             autoFocus
           />
           <Button size="sm" onClick={handleAddProfile}>
-            Lägg till
+            Add
           </Button>
         </div>
       )}
