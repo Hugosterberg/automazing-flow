@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
+import { useAccountData } from "@/hooks/useAccountData";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
 
@@ -52,48 +53,31 @@ const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
 export default function MailPage() {
   const { oauthError, clearOauthError } = useOAuthCallback();
   const { accounts, selectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
-
-  const gmailAccounts = accounts.filter((a) => a.platform === "gmail" && a.isOAuth);
-  const activeGmail =
-    gmailAccounts.find((a) => a.id === selectedAccountId) ?? gmailAccounts[0] ?? null;
-
-  const [messages, setMessages] = useState<GmailMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchedFor = useRef<string | null>(null);
-
-  const fetchMessages = useCallback(async (accountId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
+  const [messagesInitial] = useState<GmailMessage[]>([]);
+  const {
+    scopedAccounts: gmailAccounts,
+    activeAccount: activeGmail,
+    data: messages,
+    loading,
+    error,
+    setError,
+    refresh,
+  } = useAccountData<GmailMessage[]>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) => a.platform === "gmail" && Boolean(a.isOAuth),
+    initialData: messagesInitial,
+    fetcher: async (accountId) => {
       const res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "Could not fetch emails.");
-        return;
+        throw new Error(d.error ?? "Could not fetch emails.");
       }
       const data = await res.json();
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-    } catch {
-      setError("Network error – make sure the server is running.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!activeGmail) { setMessages([]); return; }
-    if (fetchedFor.current === activeGmail.id) return;
-    fetchedFor.current = activeGmail.id;
-    fetchMessages(activeGmail.id);
-  }, [activeGmail, fetchMessages]);
-
-  useEffect(() => {
-    if (gmailAccounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId(gmailAccounts[0].id);
-    }
-  }, [gmailAccounts.length]);
+      return Array.isArray(data.messages) ? data.messages : [];
+    },
+  });
 
   function handleConnect() {
     const params = new URLSearchParams();
@@ -102,9 +86,7 @@ export default function MailPage() {
   }
 
   function handleRefresh() {
-    if (!activeGmail) return;
-    fetchedFor.current = null;
-    fetchMessages(activeGmail.id);
+    void refresh();
   }
 
   return (
@@ -154,7 +136,7 @@ export default function MailPage() {
           {gmailAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => { setSelectedAccountId(acc.id); fetchedFor.current = null; }}
+              onClick={() => setSelectedAccountId(acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeGmail?.id === acc.id
                   ? "bg-foreground text-background border-foreground"

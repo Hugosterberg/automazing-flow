@@ -24,7 +24,8 @@ import {
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { ShopifyIcon } from "@/components/platform-icons";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
+import { useAccountData } from "@/hooks/useAccountData";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
 
@@ -87,48 +88,32 @@ const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } }
 export default function Ecommerce() {
   const { oauthError, clearOauthError } = useOAuthCallback();
   const { accounts, selectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
-
-  const shopifyAccounts = accounts.filter((a) => a.platform === "shopify" && a.isOAuth);
-  const activeShopify =
-    shopifyAccounts.find((a) => a.id === selectedAccountId) ?? shopifyAccounts[0] ?? null;
-
-  const [data, setData] = useState<ShopifyData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fetchedFor = useRef<string | null>(null);
-  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
-  const [shopDomain, setShopDomain] = useState("");
-
-  const fetchData = useCallback(async (accountId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
+  const [initialShopifyData] = useState<ShopifyData | null>(null);
+  const {
+    scopedAccounts: shopifyAccounts,
+    activeAccount: activeShopify,
+    data,
+    loading,
+    error,
+    setError,
+    refresh,
+  } = useAccountData<ShopifyData | null>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) => a.platform === "shopify" && Boolean(a.isOAuth),
+    initialData: initialShopifyData,
+    fetcher: async (accountId) => {
       const res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "Could not fetch store data.");
-        return;
+        throw new Error(d.error ?? "Could not fetch store data.");
       }
-      setData(await res.json());
-    } catch {
-      setError("Network error – make sure the server is running.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!activeShopify) { setData(null); return; }
-    if (fetchedFor.current === activeShopify.id) return;
-    fetchedFor.current = activeShopify.id;
-    fetchData(activeShopify.id);
-  }, [activeShopify, fetchData]);
-
-  useEffect(() => {
-    if (shopifyAccounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId(shopifyAccounts[0].id);
-    }
-  }, [shopifyAccounts.length]);
+      return res.json();
+    },
+  });
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [shopDomain, setShopDomain] = useState("");
 
   function handleConnect() {
     setShopDomain("");
@@ -146,9 +131,7 @@ export default function Ecommerce() {
   }
 
   function handleRefresh() {
-    if (!activeShopify) return;
-    fetchedFor.current = null;
-    fetchData(activeShopify.id);
+    void refresh();
   }
 
   const stats = data?.stats;
@@ -211,7 +194,7 @@ export default function Ecommerce() {
           {shopifyAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => { setSelectedAccountId(acc.id); fetchedFor.current = null; }}
+              onClick={() => setSelectedAccountId(acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeShopify?.id === acc.id
                   ? "bg-foreground text-background border-foreground"

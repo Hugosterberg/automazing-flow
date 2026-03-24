@@ -1,0 +1,18 @@
+---
+description: Rules for automation flows and async operations
+globs: ["server/**/*.ts", "src/lib/**/*.ts", "src/pages/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}"]
+---
+
+Automation rules:
+- avoid duplicate triggers, sends, posts, or workflow executions
+- make async flows explicit and traceable
+- think about retries, partial failures, provider instability, and race conditions
+- prefer idempotent behavior when possible
+- do not assume third-party APIs are reliable
+- keep workflow logic understandable and observable
+- do not hide critical automation logic inside UI code unless unavoidable
+
+When modifying automation logic:
+- identify trigger, validation, execution, and failure handling
+- explain risks briefly if the flow is critical
+- prefer small safe fixes before deeper refactors

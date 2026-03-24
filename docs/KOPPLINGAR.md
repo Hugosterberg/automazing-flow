@@ -38,3 +38,10 @@ Backend använder denna redirect-URL (byt till din riktiga host/port):
 
 Efter inloggning skickar servern `zernio_account_id` tillbaka till appen.  
 Samma callback finns även under `.../late/instagram/callback` om du redan registrerat den i Zernio/Meta.
+
+## Struktur efter inkrementell refaktor
+
+- `server/providers/*` innehåller provider-specifik integrationslogik (TikTok, YouTube, Shopify, Gmail).
+- `server/analytics/*` innehåller rena beräkningar (social/X/shopify metrics).
+- `src/hooks/useAccountData.ts` återanvänds för account + fetch + refresh + loading + error i flera pages.
+- `src/components/ZernioLinkDialog.tsx` + `src/hooks/useZernioAccounts.ts` isolerar Zernio-länkning från huvudsidebar.

@@ -1,0 +1,25 @@
+---
+description: Product context and project priorities
+alwaysApply: true
+---
+
+This project is a web app for social media automation, content creation, publishing, analytics, and digital marketing workflows.
+
+The repository already has working code and structure. Preserve existing architecture unless there is a strong reason to change it.
+
+Product priorities:
+- reliability over cleverness
+- minimal safe diffs
+- incremental improvements over large rewrites
+- safe and traceable automations
+- explicit analytics definitions
+- isolation of provider-specific logic
+- maintainable code that supports future scaling
+
+When making changes:
+- first understand the current repo patterns
+- prefer improving the current structure instead of replacing it
+- prefer editing existing files over introducing many new abstractions
+- avoid unnecessary file moves, renames, or full rewrites
+- propose larger refactors before implementing them
+- preserve backward compatibility unless explicitly asked otherwise

@@ -1,0 +1,17 @@
+---
+description: Rules for provider integrations and external APIs
+globs: ["server/**/*.ts", "src/lib/**/*.ts", "src/pages/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"]
+---
+
+Integration rules:
+- isolate provider-specific logic as much as possible
+- do not spread API-specific behavior across pages and components
+- prefer dedicated helpers, services, or adapter modules for external providers
+- normalize external responses into internal shapes when reasonable
+- handle rate limits, retries, and partial failures explicitly
+- never hardcode secrets, tokens, or account identifiers
+- preserve current app behavior while improving integration boundaries incrementally
+
+When working on integrations:
+- first identify what is provider-specific and what is app-specific
+- avoid introducing large abstraction layers unless clearly needed

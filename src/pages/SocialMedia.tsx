@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { useAccountData } from "@/hooks/useAccountData";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -128,8 +129,6 @@ export default function SocialMedia() {
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const [recentPosts, setRecentPosts] = useState<{
     id: string; caption: string; picture: string; permalink: string;
     mediaType: string; likeCount: number; commentCount: number; createdTime: string;
@@ -137,83 +136,80 @@ export default function SocialMedia() {
 
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
-
-  const fetchStats = useCallback((accountId: string) => {
-    const account = accountsRef.current.find((a) => a.id === accountId);
-    if (!account?.isOAuth) return;
-    setStatsLoading(true);
-    fetch(`/api/accounts/${accountId}/data`)
-      .then((res) => {
-        if (!res.ok) {
-          console.warn(`[stats] /api/accounts/${accountId}/data responded ${res.status}`);
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (!data) return;
-        const stats = data.stats ?? data.profile?.stats;
-        const profile = data.profile || {};
-        const mediaCount =
-          stats?.mediaCount ??
-          (profile.media_count != null ? Number(profile.media_count) : undefined);
-        const followersCount = stats?.followersCount ?? (profile.followers_count != null ? Number(profile.followers_count) : undefined);
-        const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
-        const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
-        const hasAny = followersCount != null || followingCount != null || mediaCount != null;
-        if (hasAny || stats?.zernioNote) {
-          updateAccountStats(accountId, {
-            followersCount,
-            followingCount,
-            mediaCount,
-            accountType,
-            totalLikes: stats?.totalLikes,
-            totalComments: stats?.totalComments,
-            avgLikes: stats?.avgLikes,
-            avgComments: stats?.avgComments,
-            engagementRate: stats?.engagementRate,
-            updatedAt: stats?.updatedAt ?? new Date().toISOString(),
-            zernioNote: stats?.zernioNote,
-          });
-        }
-        if (Array.isArray(data.media) && data.media.length > 0) {
-          setRecentPosts(data.media);
-          const account = accountsRef.current.find((a) => a.id === accountId);
-          const alreadyAnalyzed = account?.analysis?.about;
-          if (!alreadyAnalyzed) {
-            setAnalyzing(true);
-            runAIAnalysis(
-              accountId,
-              data.media.map((p: { caption: string }) => ({ caption: p.caption })),
-              {
-                displayName: data.profile?.displayName as string | undefined,
-                username: data.profile?.username as string | undefined,
-                followersCount: data.stats?.followersCount,
-              }
-            )
-              .then((result) => {
-                setAnalysisResult(result);
-                updateAccountAnalysis(accountId, { ...result, analyzedAt: new Date().toISOString() });
-              })
-              .catch(() => {})
-              .finally(() => setAnalyzing(false));
-          } else {
-            setAnalysisResult({
-              about: account.analysis.about ?? "",
-              writes: account.analysis.writes ?? "",
-              perception: account.analysis.perception ?? "",
-            });
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setStatsLoading(false));
-  }, [updateAccountAnalysis, updateAccountStats]);
+  const [initialSocialData] = useState<any>(null);
+  const { data: socialData, loading: statsLoading, refresh: refreshStats } = useAccountData<any>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) => a.id === selectedAccountId && Boolean(a.isOAuth),
+    initialData: initialSocialData,
+    autoSelectFirst: false,
+    fetcher: async (accountId) => {
+      const res = await fetch(`/api/accounts/${accountId}/data`);
+      if (!res.ok) {
+        throw new Error(`stats_${res.status}`);
+      }
+      return res.json();
+    },
+  });
 
   useEffect(() => {
-    if (!selectedAccountId) return;
-    fetchStats(selectedAccountId);
-  }, [selectedAccountId, statsRefreshKey, fetchStats]);
+    if (!selectedAccountId || !socialData) return;
+    const data = socialData;
+    const stats = data.stats ?? data.profile?.stats;
+    const profile = data.profile || {};
+    const mediaCount =
+      stats?.mediaCount ??
+      (profile.media_count != null ? Number(profile.media_count) : undefined);
+    const followersCount = stats?.followersCount ?? (profile.followers_count != null ? Number(profile.followers_count) : undefined);
+    const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
+    const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
+    const hasAny = followersCount != null || followingCount != null || mediaCount != null;
+    if (hasAny || stats?.zernioNote) {
+      updateAccountStats(selectedAccountId, {
+        followersCount,
+        followingCount,
+        mediaCount,
+        accountType,
+        totalLikes: stats?.totalLikes,
+        totalComments: stats?.totalComments,
+        avgLikes: stats?.avgLikes,
+        avgComments: stats?.avgComments,
+        engagementRate: stats?.engagementRate,
+        updatedAt: stats?.updatedAt ?? new Date().toISOString(),
+        zernioNote: stats?.zernioNote,
+      });
+    }
+    if (Array.isArray(data.media) && data.media.length > 0) {
+      setRecentPosts(data.media);
+      const account = accountsRef.current.find((a) => a.id === selectedAccountId);
+      const alreadyAnalyzed = account?.analysis?.about;
+      if (!alreadyAnalyzed) {
+        setAnalyzing(true);
+        runAIAnalysis(
+          selectedAccountId,
+          data.media.map((p: { caption: string }) => ({ caption: p.caption })),
+          {
+            displayName: data.profile?.displayName as string | undefined,
+            username: data.profile?.username as string | undefined,
+            followersCount: data.stats?.followersCount,
+          }
+        )
+          .then((result) => {
+            setAnalysisResult(result);
+            updateAccountAnalysis(selectedAccountId, { ...result, analyzedAt: new Date().toISOString() });
+          })
+          .catch(() => {})
+          .finally(() => setAnalyzing(false));
+      } else {
+        setAnalysisResult({
+          about: account.analysis.about ?? "",
+          writes: account.analysis.writes ?? "",
+          perception: account.analysis.perception ?? "",
+        });
+      }
+    }
+  }, [socialData, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
@@ -408,7 +404,7 @@ export default function SocialMedia() {
             variant="ghost"
             size="sm"
             disabled={statsLoading}
-            onClick={() => setStatsRefreshKey((k) => k + 1)}
+            onClick={() => void refreshStats()}
             className="text-muted-foreground"
           >
             {statsLoading ? (

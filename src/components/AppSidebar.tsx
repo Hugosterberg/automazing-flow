@@ -9,11 +9,10 @@ import {
   MoreHorizontal,
   Trash2,
   Layers,
-  Loader2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +45,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
+import { ZernioLinkDialog } from "@/components/ZernioLinkDialog";
+import { useZernioAccounts, type ZernioAccountRow } from "@/hooks/useZernioAccounts";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -137,16 +138,6 @@ function getAccountsForCategory(accounts: ConnectedAccount[], platforms: Account
   return accounts.filter((a) => platforms.includes(a.platform));
 }
 
-type ZernioAccountRow = {
-  id?: string;
-  accountId?: string;
-  mappedPlatform?: SocialPlatform;
-  rawPlatform?: string;
-  username?: string;
-  name?: string;
-  displayName?: string;
-};
-
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -162,28 +153,17 @@ export function AppSidebar() {
   const [shopDomain, setShopDomain] = useState("");
   const [zernioOpen, setZernioOpen] = useState(false);
   const [zernioFilter, setZernioFilter] = useState<SocialPlatform | null>(null);
-  const [zernioAccounts, setZernioAccounts] = useState<ZernioAccountRow[]>([]);
-  const [zernioLoading, setZernioLoading] = useState(false);
-  const [zernioLinking, setZernioLinking] = useState<string | null>(null);
-  const [zernioError, setZernioError] = useState<string | null>(null);
-
-  const loadZernioAccounts = useCallback(async () => {
-    setZernioLoading(true);
-    setZernioError(null);
-    try {
-      const r = await fetch(`${API_BASE}/zernio/accounts`);
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        throw new Error(typeof j.error === "string" ? j.error : "Could not load Zernio accounts");
-      }
-      setZernioAccounts(Array.isArray(j.accounts) ? j.accounts : []);
-    } catch (e) {
-      setZernioAccounts([]);
-      setZernioError(e instanceof Error ? e.message : "Zernio request failed");
-    } finally {
-      setZernioLoading(false);
-    }
-  }, []);
+  const {
+    zernioAccounts,
+    zernioLoading,
+    zernioLinking,
+    zernioError,
+    loadZernioAccounts,
+    linkZernioAccount,
+  } = useZernioAccounts({
+    activeProfileId,
+    addAccountFromOAuth,
+  });
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -191,44 +171,12 @@ export function AppSidebar() {
     void loadZernioAccounts();
   }
 
-  async function linkZernioAccount(row: ZernioAccountRow) {
-    const zid = String(row.id || row.accountId || "").trim();
-    if (!zid) return;
-    setZernioLinking(zid);
-    setZernioError(null);
-    try {
-      const r = await fetch(`${API_BASE}/zernio/link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          zernioAccountId: zid,
-          profile_id: activeProfileId ?? undefined,
-        }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        throw new Error(typeof j.error === "string" ? j.error : "Link failed");
-      }
-      addAccountFromOAuth(
-        j.account_id,
-        j.platform as AccountPlatform,
-        j.username,
-        activeProfileId ?? undefined,
-        {
-          isZernio: true,
-          zernioAccountId: j.zernioAccountId || zid,
-          profileUrl: j.profileUrl,
-          displayName: j.displayName,
-        }
-      );
-      setZernioOpen(false);
-      setSelectedAccountId(j.account_id);
-      navigate("/social-media");
-    } catch (e) {
-      setZernioError(e instanceof Error ? e.message : "Link failed");
-    } finally {
-      setZernioLinking(null);
-    }
+  async function handleLinkZernioAccount(row: ZernioAccountRow) {
+    const linkedAccountId = await linkZernioAccount(row);
+    if (!linkedAccountId) return;
+    setZernioOpen(false);
+    setSelectedAccountId(linkedAccountId);
+    navigate("/social-media");
   }
 
   function handleConnectPlatform(platform: AccountPlatform) {
@@ -443,102 +391,18 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarFooter>
 
-      <Dialog open={zernioOpen} onOpenChange={setZernioOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Link Zernio account
-            </DialogTitle>
-            <DialogDescription>
-              {zernioFilter
-                ? `Showing only ${zernioFilter.replace(/_/g, " ")}. Connect the channel in the Zernio dashboard first.`
-                : "Choose a channel already connected in Zernio (Facebook, TikTok, Google Business, WhatsApp, etc.)."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {zernioLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                Loading accounts…
-              </div>
-            )}
-            {zernioError && (
-              <p className="text-sm text-destructive border border-destructive/30 rounded-md px-3 py-2">
-                {zernioError}
-              </p>
-            )}
-            {!zernioLoading &&
-              (() => {
-                const filtered = zernioFilter
-                  ? zernioAccounts.filter((a) => a.mappedPlatform === zernioFilter)
-                  : zernioAccounts;
-                if (filtered.length === 0) {
-                  return (
-                    <p className="text-sm text-muted-foreground py-2">
-                      No accounts here yet. Connect the channel in{" "}
-                      <a
-                        href="https://zernio.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline underline-offset-2"
-                      >
-                        Zernio
-                      </a>
-                      , set <code className="text-xs bg-muted px-1 rounded">ZERNIO_API_KEY</code> in the server{" "}
-                      <code className="text-xs bg-muted px-1 rounded">.env</code>, see{" "}
-                      <code className="text-xs bg-muted px-1 rounded">docs/KOPPLINGAR.md</code>.
-                    </p>
-                  );
-                }
-                return (
-                  <ul className="space-y-2">
-                    {filtered.map((row) => {
-                      const zid = String(row.id || row.accountId || "");
-                      const mp = row.mappedPlatform;
-                      const ZIcon = mp ? platformIcons[mp as AccountPlatform] : Layers;
-                      const title =
-                        row.displayName || row.name || row.username || zid || "Account";
-                      const idHint =
-                        zid.length > 14 ? `${zid.slice(0, 12)}…` : zid || "";
-                      return (
-                        <li key={zid || title}>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full justify-start gap-2 h-auto py-2.5"
-                            disabled={!!zernioLinking}
-                            onClick={() => void linkZernioAccount(row)}
-                          >
-                            <ZIcon className="h-4 w-4 shrink-0" />
-                            <span className="flex flex-col items-start min-w-0 text-left">
-                              <span className="truncate font-medium text-sm">{title}</span>
-                              <span className="text-[11px] text-muted-foreground truncate">
-                                {mp?.replace(/_/g, " ") ?? row.rawPlatform ?? "channel"}
-                                {idHint ? ` · ${idHint}` : ""}
-                              </span>
-                            </span>
-                            {zernioLinking === zid && (
-                              <Loader2 className="h-4 w-4 animate-spin shrink-0 ml-auto" />
-                            )}
-                          </Button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                );
-              })()}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setZernioOpen(false)}>
-              Close
-            </Button>
-            <Button variant="secondary" type="button" disabled={zernioLoading} onClick={() => void loadZernioAccounts()}>
-              Refresh list
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ZernioLinkDialog
+        open={zernioOpen}
+        onOpenChange={setZernioOpen}
+        zernioFilter={zernioFilter}
+        zernioAccounts={zernioAccounts}
+        zernioLoading={zernioLoading}
+        zernioLinking={zernioLinking}
+        zernioError={zernioError}
+        onRefresh={loadZernioAccounts}
+        onLink={handleLinkZernioAccount}
+        platformIcons={platformIcons}
+      />
 
       <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
         <DialogContent className="sm:max-w-sm">

@@ -1,0 +1,19 @@
+---
+description: Rules for analytics, reporting, and metrics logic
+globs: ["src/pages/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}", "src/lib/**/*.ts", "server/**/*.ts"]
+---
+
+Analytics rules:
+- define metrics explicitly
+- separate raw provider data from derived metrics where possible
+- make date range and timezone assumptions explicit
+- avoid mixing calculation logic with presentation formatting
+- avoid silent aggregation errors
+- preserve current reporting behavior unless changes are requested
+- improve naming and clarity before introducing a new analytics architecture
+
+When changing analytics code:
+- identify source data
+- identify derived calculations
+- identify display formatting
+- separate responsibilities incrementally when useful

@@ -1,0 +1,13 @@
+{
+  "plugins": {
+    "slack": {
+      "enabled": true
+    },
+    "notion-workspace": {
+      "enabled": true
+    },
+    "stripe": {
+      "enabled": true
+    }
+  }
+}

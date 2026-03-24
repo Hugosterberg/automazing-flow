@@ -1,0 +1,19 @@
+---
+description: Frontend rules for pages, components, hooks, and context
+globs: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}", "src/context/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}"]
+---
+
+Frontend rules:
+- use TypeScript carefully and prefer explicit types
+- keep page components focused on composition and screen logic
+- move reusable or heavy logic into hooks, helpers, or services when clearly beneficial
+- avoid making page files too large or too stateful
+- reuse existing UI patterns and components before creating new ones
+- handle loading, empty, error, and success states explicitly
+- preserve current UX behavior unless asked to change it
+- prefer incremental refactors over introducing a whole new frontend architecture
+
+When refactoring frontend code:
+- identify what should stay in the page
+- extract only the responsibilities that clearly improve readability or reuse
+- keep changes small and easy to review

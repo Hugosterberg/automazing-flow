@@ -5,6 +5,12 @@ import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import { calculateEngagementFromPosts } from "./analytics/socialMetrics.ts";
+import { calculateXMetrics } from "./analytics/xMetrics.ts";
+import { fetchTikTokAccountData } from "./providers/tiktok.ts";
+import { fetchYouTubeAccountData } from "./providers/youtube.ts";
+import { fetchShopifyAccountData } from "./providers/shopify.ts";
+import { fetchGmailAccountData } from "./providers/gmail.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -1154,20 +1160,11 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         }
       }
 
-      // Calculate aggregated stats from posts
-      const postsWithEngagement = posts.filter((p) => p.likeCount != null || p.commentCount != null);
-      const totalLikes = postsWithEngagement.reduce((s, p) => s + (p.likeCount || 0), 0);
-      const totalComments = postsWithEngagement.reduce((s, p) => s + (p.commentCount || 0), 0);
-      const postCount = postsWithEngagement.length;
-      const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
-      const avgComments = postCount > 0 ? Math.round(totalComments / postCount) : undefined;
-      // Engagement rate = (avg likes + avg comments) / followers * 100
-      const engagementRate =
-        followers != null && followers > 0 && postCount > 0
-          ? Math.round(((totalLikes + totalComments) / postCount / Number(followers)) * 10000) / 100
-          : undefined;
+      const engagement = calculateEngagementFromPosts(posts, followers);
 
-      console.log(`[Zernio] Instagram stats: followers=${followers}, media=${mediaCount}, avgLikes=${avgLikes}, avgComments=${avgComments}, engagement=${engagementRate}%`);
+      console.log(
+        `[Zernio] Instagram stats: followers=${followers}, media=${mediaCount}, avgLikes=${engagement.avgLikes}, avgComments=${engagement.avgComments}, engagement=${engagement.engagementRate}%`
+      );
 
       const stats = [followers, following, mediaCount].some((n) => n != null && !Number.isNaN(Number(n)))
         ? {
@@ -1175,11 +1172,11 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
             followingCount: following != null ? Number(following) : undefined,
             mediaCount: mediaCount != null ? Number(mediaCount) : undefined,
             accountType: accountType ?? undefined,
-            totalLikes: postCount > 0 ? totalLikes : undefined,
-            totalComments: postCount > 0 ? totalComments : undefined,
-            avgLikes,
-            avgComments,
-            engagementRate,
+            totalLikes: engagement.totalLikes,
+            totalComments: engagement.totalComments,
+            avgLikes: engagement.avgLikes,
+            avgComments: engagement.avgComments,
+            engagementRate: engagement.engagementRate,
             updatedAt: new Date().toISOString(),
           }
         : undefined;
@@ -1235,89 +1232,12 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       });
     }
     if (platform === "tiktok") {
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      };
-      const userRes = await fetch(
-        "https://open.tiktokapis.com/v2/user/info/?fields=username,display_name,avatar_url",
-        { headers }
-      );
-      const userData = await userRes.json().catch(() => ({}));
-
-      // video.list scope is requested at OAuth; if unavailable, this gracefully falls back to empty list.
-      const videosRes = await fetch(
-        "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,cover_image_url,share_url,like_count,comment_count",
-        { method: "POST", headers, body: JSON.stringify({ max_count: 10 }) }
-      ).catch(() => null);
-      const videosData = videosRes && videosRes.ok ? await videosRes.json().catch(() => ({})) : {};
-      const videos = Array.isArray(videosData.data?.videos) ? videosData.data.videos : [];
-
-      const media = videos.map((v) => ({
-        id: v.id,
-        caption: v.video_description || v.title || "",
-        picture: v.cover_image_url || "",
-        permalink: v.share_url || "",
-        mediaType: "video",
-        likeCount: Number(v.like_count || 0),
-        commentCount: Number(v.comment_count || 0),
-        createdTime: v.create_time ? new Date(Number(v.create_time) * 1000).toISOString() : "",
-      }));
-      const totalLikes = media.reduce((sum, m) => sum + m.likeCount, 0);
-      const avgLikes = media.length > 0 ? Math.round(totalLikes / media.length) : undefined;
-
-      return res.json({
-        profile: userData.data?.user || {},
-        stats: {
-          mediaCount: media.length || undefined,
-          totalLikes: media.length > 0 ? totalLikes : undefined,
-          avgLikes,
-          updatedAt: new Date().toISOString(),
-        },
-        media,
-      });
+      const data = await fetchTikTokAccountData(accessToken);
+      return res.json(data);
     }
     if (platform === "youtube") {
-      const channelRes = await fetch(
-        "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const channelData = await channelRes.json();
-      const channel = channelData.items?.[0];
-      const uploadsId = channel?.contentDetails?.relatedPlaylists?.uploads;
-      let videos = [];
-      if (uploadsId) {
-        const playRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=12`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        const playData = await playRes.json();
-        videos = playData.items || [];
-      }
-      const media = videos.map((item) => ({
-        id: item.snippet?.resourceId?.videoId || item.id,
-        caption: item.snippet?.title || "",
-        picture: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || "",
-        permalink: item.snippet?.resourceId?.videoId
-          ? `https://www.youtube.com/watch?v=${item.snippet.resourceId.videoId}`
-          : "",
-        mediaType: "video",
-        likeCount: 0,
-        commentCount: 0,
-        createdTime: item.snippet?.publishedAt || "",
-      }));
-
-      return res.json({
-        profile: channel?.snippet ? { ...channel.snippet, statistics: channel.statistics } : {},
-        stats: channel?.statistics
-          ? {
-              followersCount: Number(channel.statistics.subscriberCount || 0) || undefined,
-              mediaCount: Number(channel.statistics.videoCount || 0) || media.length || undefined,
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-        media,
-      });
+      const data = await fetchYouTubeAccountData(accessToken);
+      return res.json(data);
     }
     if (platform === "x") {
       const { xUserId, refreshToken } = stored;
@@ -1375,28 +1295,12 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         }
       }
 
-      // Calculate engagement from tweets
-      const tweetsWithMetrics = tweets.filter((t) => t.public_metrics);
-      const totalLikes = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.like_count || 0), 0);
-      const totalReplies = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.reply_count || 0), 0);
-      const totalRetweets = tweetsWithMetrics.reduce((s, t) => s + (t.public_metrics.retweet_count || 0), 0);
-      const postCount = tweetsWithMetrics.length;
-      const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
-      const followers = metrics.followers_count;
-      const engagementRate =
-        followers && followers > 0 && postCount > 0
-          ? Math.round(((totalLikes + totalReplies + totalRetweets) / postCount / followers) * 10000) / 100
-          : undefined;
-
-      const stats = {
-        followersCount: metrics.followers_count,
-        followingCount: metrics.following_count,
-        mediaCount: metrics.tweet_count,
-        totalLikes,
-        avgLikes,
-        engagementRate,
-        updatedAt: new Date().toISOString(),
-      };
+      const stats = calculateXMetrics(
+        tweets,
+        metrics.followers_count,
+        metrics.following_count,
+        metrics.tweet_count
+      );
 
       const media = tweets.map((t) => ({
         id: t.id,
@@ -1422,160 +1326,27 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
     }
 
     if (platform === "gmail") {
-      // Hjälpfunktion: försök förnya access token med refresh token
-      async function refreshGmailToken(rt) {
-        const clientId = process.env.GOOGLE_CLIENT_ID;
-        const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-        if (!clientId || !clientSecret || !rt) return null;
-        const r = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: rt, grant_type: "refresh_token" }).toString(),
-        });
-        const d = await r.json();
-        return d.access_token ?? null;
+      const data = await fetchGmailAccountData({
+        accessToken,
+        refreshToken: stored.refreshToken,
+        accountId,
+        tokenStore,
+        stored,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+      if (data?.error) {
+        return res.status(data.status || 500).json({ error: data.error });
       }
-
-      let token = accessToken;
-      const { refreshToken } = stored;
-
-      // Hämta lista med senaste 10 inkorg-meddelanden
-      async function fetchMessages(t) {
-        const listRes = await fetch(
-          "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX",
-          { headers: { Authorization: `Bearer ${t}` } }
-        );
-        if (listRes.status === 401) return { unauthorized: true };
-        if (!listRes.ok) return { error: listRes.status };
-        return listRes.json();
-      }
-
-      let listData = await fetchMessages(token);
-
-      // Om token löpt ut – försök förnya
-      if (listData.unauthorized && refreshToken) {
-        const newToken = await refreshGmailToken(refreshToken);
-        if (newToken) {
-          token = newToken;
-          tokenStore.set(accountId, { ...stored, accessToken: newToken });
-          listData = await fetchMessages(token);
-        }
-      }
-
-      if (listData.error || listData.unauthorized) {
-        return res.status(401).json({ error: "Gmail token invalid. Reconnect the account." });
-      }
-
-      const messageIds = (listData.messages || []).map((m) => m.id);
-
-      // Hämta metadata för varje meddelande parallellt
-      const messages = await Promise.all(
-        messageIds.map((id) =>
-          fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=Subject,From,Date,To`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          ).then((r) => r.json()).catch(() => null)
-        )
-      );
-
-      const getHeader = (headers, name) =>
-        (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
-
-      // Extrahera visningsnamn ur "Name <email@...>"
-      const parseSender = (from) => {
-        const match = from.match(/^(.+?)\s*<(.+)>$/);
-        if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
-        return { name: from, email: from };
-      };
-
-      const formatted = messages
-        .filter(Boolean)
-        .map((msg) => {
-          const headers = msg.payload?.headers ?? [];
-          const from = getHeader(headers, "Subject") ? parseSender(getHeader(headers, "From")) : { name: "", email: "" };
-          const dateRaw = getHeader(headers, "Date");
-          return {
-            id: msg.id,
-            subject: getHeader(headers, "Subject") || "(No subject)",
-            from: parseSender(getHeader(headers, "From")),
-            date: dateRaw,
-            snippet: msg.snippet || "",
-            isUnread: (msg.labelIds || []).includes("UNREAD"),
-          };
-        });
-
-      return res.json({ messages: formatted });
+      return res.json(data);
     }
 
     if (platform === "shopify") {
-      const { shop } = stored;
-      if (!shop) return res.status(400).json({ error: "No shop domain stored for this account" });
-      const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
-      const apiBase = `https://${shop}/admin/api/2024-01`;
-
-      const [shopRes, ordersRes, productsCountRes, ordersCountRes] = await Promise.all([
-        fetch(`${apiBase}/shop.json`, { headers: shopHeaders }),
-        fetch(`${apiBase}/orders.json?status=any&limit=10&order=created_at+desc`, { headers: shopHeaders }),
-        fetch(`${apiBase}/products/count.json`, { headers: shopHeaders }),
-        fetch(`${apiBase}/orders/count.json?status=any`, { headers: shopHeaders }),
-      ]);
-
-      if (!shopRes.ok) {
-        console.error(`[Shopify] shop.json failed: ${shopRes.status}`);
-        return res.status(502).json({ error: "Could not fetch Shopify store data" });
+      const data = await fetchShopifyAccountData(accessToken, stored.shop);
+      if (data?.error) {
+        return res.status(data.status || 500).json({ error: data.error });
       }
-
-      const [shopData, ordersData, productsCountData, ordersCountData] = await Promise.all([
-        shopRes.json(),
-        ordersRes.ok ? ordersRes.json() : { orders: [] },
-        productsCountRes.ok ? productsCountRes.json() : { count: 0 },
-        ordersCountRes.ok ? ordersCountRes.json() : { count: 0 },
-      ]);
-
-      const shopInfo = shopData.shop || {};
-      const orders = ordersData.orders || [];
-
-      const revenue30d = orders
-        .filter((o) => {
-          const created = new Date(o.created_at);
-          return Date.now() - created.getTime() < 30 * 86400 * 1000;
-        })
-        .reduce((sum, o) => sum + parseFloat(o.total_price || "0"), 0);
-
-      const avgOrderValue =
-        orders.length > 0
-          ? orders.reduce((s, o) => s + parseFloat(o.total_price || "0"), 0) / orders.length
-          : 0;
-
-      const formattedOrders = orders.map((o) => ({
-        id: o.id,
-        name: o.name,
-        email: o.email || "",
-        total: parseFloat(o.total_price || "0"),
-        currency: o.currency || shopInfo.currency || "USD",
-        status: o.financial_status || "pending",
-        fulfillment: o.fulfillment_status || "unfulfilled",
-        createdAt: o.created_at,
-        lineItemCount: (o.line_items || []).length,
-      }));
-
-      return res.json({
-        shop: {
-          name: shopInfo.name,
-          domain: shopInfo.domain || shop,
-          currency: shopInfo.currency,
-          plan: shopInfo.plan_display_name || shopInfo.plan_name,
-          email: shopInfo.email,
-        },
-        stats: {
-          ordersCount: ordersCountData.count || 0,
-          productsCount: productsCountData.count || 0,
-          revenue30d: Math.round(revenue30d * 100) / 100,
-          avgOrderValue: Math.round(avgOrderValue * 100) / 100,
-          currency: shopInfo.currency || "USD",
-        },
-        orders: formattedOrders,
-      });
+      return res.json(data);
     }
 
     res.status(400).json({ error: "Unknown platform" });

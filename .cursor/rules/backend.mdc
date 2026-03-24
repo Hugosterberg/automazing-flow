@@ -1,0 +1,19 @@
+---
+description: Backend, server, and shared logic rules
+globs: ["server/**/*.ts", "src/lib/**/*.ts"]
+---
+
+Backend rules:
+- keep route, handler, and controller logic thin when possible
+- move reusable business logic into dedicated modules
+- isolate external API calls and provider-specific code
+- validate external input
+- avoid hidden side effects
+- prefer explicit data flow and explicit return shapes
+- preserve existing contracts unless explicitly changing them
+- prefer minimal safe diffs over architectural rewrites
+
+When changing server logic:
+- first identify the current execution flow
+- preserve working behavior
+- make failure paths and async behavior easier to understand
