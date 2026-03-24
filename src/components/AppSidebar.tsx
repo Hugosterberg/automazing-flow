@@ -185,7 +185,9 @@ export function AppSidebar() {
       setShopifyDialogOpen(true);
       return;
     }
-    if (platform === "facebook" || platform === "google_business" || platform === "whatsapp") {
+    if (platform === "google_business") {
+      // Current tenant may not support direct Google Business connect via Zernio API.
+      // Keep reliable fallback: link from already-connected Zernio accounts.
       openZernioPicker(platform);
       return;
     }

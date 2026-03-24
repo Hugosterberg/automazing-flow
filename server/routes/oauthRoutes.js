@@ -24,6 +24,174 @@ function generateCodeChallenge(verifier) {
 function profileParam(profileId) {
   return profileId ? `&profile_id=${encodeURIComponent(profileId)}` : "";
 }
+
+async function getZernioConnectUrl({
+  ZERNIO_API_BASE,
+  zernioKey,
+  platformSlugs,
+  profileId,
+  redirectUrl,
+  extraParams,
+}) {
+  let lastErr = null;
+  for (const platformSlug of platformSlugs) {
+    const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/${platformSlug}`);
+    connectUrl.searchParams.set("profileId", profileId);
+    connectUrl.searchParams.set("redirect_url", redirectUrl);
+    if (extraParams && typeof extraParams === "object") {
+      for (const [k, v] of Object.entries(extraParams)) {
+        if (v != null) connectUrl.searchParams.set(k, String(v));
+      }
+    }
+
+    const connectRes = await fetch(connectUrl.toString(), {
+      headers: { Authorization: `Bearer ${zernioKey}` },
+    });
+    if (!connectRes.ok) {
+      const err = await connectRes.text().catch(() => "");
+      lastErr = `zernio_connect_failed:${connectRes.status}:${err.slice(0, 200)}`;
+      continue;
+    }
+    const data = await connectRes.json().catch(() => ({}));
+    if (data.authUrl) {
+      return data.authUrl;
+    }
+    lastErr = "zernio_no_auth_url";
+  }
+  throw new Error(lastErr || "zernio_connect_failed");
+}
+
+function parseLocationsFromBody(body) {
+  const candidateLists = [
+    body?.locations,
+    body?.data?.locations,
+    body?.data,
+    body?.items,
+    body?.businessLocations,
+  ];
+  for (const list of candidateLists) {
+    if (Array.isArray(list) && list.length > 0) {
+      return list;
+    }
+  }
+  return [];
+}
+
+function getLocationId(location) {
+  if (!location || typeof location !== "object") return null;
+  return String(
+    location.locationId ??
+      location.id ??
+      location.name ??
+      location.resourceName ??
+      ""
+  ).trim() || null;
+}
+
+async function resolveAndSelectGoogleBusinessLocation({
+  ZERNIO_API_BASE,
+  apiKey,
+  connectToken,
+}) {
+  const headers = { Authorization: `Bearer ${apiKey}`, "X-Connect-Token": connectToken };
+  const listEndpoints = [
+    `${ZERNIO_API_BASE}/connect/list-google-business-locations`,
+    `${ZERNIO_API_BASE}/connect/google-business/select-location`,
+  ];
+
+  let locations = [];
+  for (const endpoint of listEndpoints) {
+    const r = await fetch(endpoint, { headers });
+    if (!r.ok) continue;
+    const body = await r.json().catch(() => ({}));
+    locations = parseLocationsFromBody(body);
+    if (locations.length > 0) break;
+  }
+  if (locations.length === 0) {
+    throw new Error("zernio_gmb_no_locations");
+  }
+
+  const locationId = getLocationId(locations[0]);
+  if (!locationId) {
+    throw new Error("zernio_gmb_no_location_id");
+  }
+
+  const selectEndpoints = [
+    `${ZERNIO_API_BASE}/connect/select-google-business-location`,
+    `${ZERNIO_API_BASE}/connect/google-business/select-location`,
+  ];
+  const bodies = [
+    { locationId },
+    { id: locationId },
+    { location: locationId },
+  ];
+
+  for (const endpoint of selectEndpoints) {
+    for (const body of bodies) {
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) return;
+    }
+  }
+  throw new Error("zernio_gmb_select_failed");
+}
+
+async function resolveZernioAccountAfterCallback({
+  ZERNIO_API_BASE,
+  apiKey,
+  normalizeZernioAccountsPayload,
+  mapZernioPlatform,
+  desiredPlatform,
+  queryAccountId,
+  queryUsername,
+}) {
+  let accountId = queryAccountId;
+  let username = queryUsername;
+  let rawPlatform = null;
+
+  if (accountId && username) {
+    return { accountId, username, rawPlatform };
+  }
+
+  const accountsRes = await fetch(`${ZERNIO_API_BASE}/accounts`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!accountsRes.ok) {
+    throw new Error("zernio_fetch_accounts_failed");
+  }
+  const accountsData = await accountsRes.json().catch(() => ({}));
+  const list = normalizeZernioAccountsPayload(accountsData);
+
+  const matchedByPlatform = list.find(
+    (a) =>
+      mapZernioPlatform(a.platform || a.type || a.provider || a.channel) === desiredPlatform
+  );
+  const acc = matchedByPlatform || (list.length ? list[list.length - 1] : null);
+  if (!acc) {
+    throw new Error("zernio_no_account");
+  }
+
+  accountId = accountId || acc._id || acc.id || acc.accountId;
+  username =
+    username ||
+    acc.username ||
+    acc.name ||
+    acc.displayName ||
+    acc.handle ||
+    acc.phoneNumber ||
+    acc.phone;
+  rawPlatform = acc.platform || acc.type || acc.provider || acc.channel || null;
+
+  if (!accountId) {
+    throw new Error("zernio_no_account");
+  }
+
+  return { accountId, username, rawPlatform };
+}
+
 async function fetchXToken(body, headers) {
   const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
   if (primary.ok) return primary;
@@ -174,6 +342,153 @@ export function registerOAuthRoutes(
 
   app.get("/api/auth/zernio/instagram/callback", handleZernioInstagramCallback);
   app.get("/api/auth/late/instagram/callback", handleZernioInstagramCallback);
+
+  const zernioConnectPlatformMap = {
+    facebook: { slugs: ["facebook"], appPlatform: "facebook" },
+    google_business: {
+      slugs: ["google-business", "google-business-profile", "google-business-location", "google_business"],
+      appPlatform: "google_business",
+      extraParams: { headless: "true" },
+    },
+    whatsapp: { slugs: ["whatsapp"], appPlatform: "whatsapp" },
+  };
+
+  function registerZernioOAuthPlatformRoute(routePlatform) {
+    const config = zernioConnectPlatformMap[routePlatform];
+    if (!config) return;
+
+    app.get(`/api/auth/${routePlatform}`, async (req, res) => {
+      const zernioKey = getZernioApiKey();
+      if (!zernioKey) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_not_configured`);
+      }
+      try {
+        const zernioProfileId = await getOrCreateZernioProfileId();
+        if (!zernioProfileId) {
+          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_profile_failed`);
+        }
+        const state = generateState();
+        const ourProfileId = req.query.profile_id || null;
+        pendingStates.set(state, {
+          platform: config.appPlatform,
+          profileId: ourProfileId,
+          zernioProfileId,
+          createdAt: Date.now(),
+        });
+        const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+        const authUrl = await getZernioConnectUrl({
+          ZERNIO_API_BASE,
+          zernioKey,
+          platformSlugs: config.slugs,
+          profileId: zernioProfileId,
+          redirectUrl,
+          extraParams: config.extraParams,
+        });
+        return res.redirect(authUrl);
+      } catch (e) {
+        const msg = String(e?.message || "");
+        console.error(`[Zernio ${routePlatform}] connect init failed:`, msg);
+        if (routePlatform === "google_business" && msg.includes("Platform not supported")) {
+          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_gmb_not_supported`);
+        }
+        if (msg.startsWith("zernio_connect_failed")) {
+          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_connect_failed`);
+        }
+        if (msg === "zernio_no_auth_url") {
+          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_auth_url`);
+        }
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_init_failed`);
+      }
+    });
+  }
+
+  registerZernioOAuthPlatformRoute("facebook");
+  registerZernioOAuthPlatformRoute("google_business");
+  registerZernioOAuthPlatformRoute("whatsapp");
+
+  app.get("/api/auth/zernio/platform/callback", async (req, res) => {
+    const {
+      state,
+      error,
+      accountId: queryAccountId,
+      username: queryUsername,
+      connect_token: queryConnectToken,
+      connectToken: queryConnectTokenCamel,
+    } = req.query;
+    if (error) {
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(error)}`);
+    }
+    const pending = pendingStates.get(state);
+    if (!pending) {
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+    }
+    pendingStates.delete(state);
+
+    const apiKey = getZernioApiKey();
+    if (!apiKey) {
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_not_configured`);
+    }
+
+    try {
+      const connectToken =
+        String(queryConnectToken || queryConnectTokenCamel || "").trim() || null;
+      if (pending.platform === "google_business" && connectToken) {
+        await resolveAndSelectGoogleBusinessLocation({
+          ZERNIO_API_BASE,
+          apiKey,
+          connectToken,
+        });
+      }
+
+      const { accountId, username, rawPlatform } = await resolveZernioAccountAfterCallback({
+        ZERNIO_API_BASE,
+        apiKey,
+        normalizeZernioAccountsPayload,
+        mapZernioPlatform,
+        desiredPlatform: pending.platform,
+        queryAccountId,
+        queryUsername,
+      });
+
+      const zernioAccountId = String(accountId);
+      const appAccountId = `zernio_${zernioAccountId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+      const safeUsername = String(username || pending.platform || "account").replace(/^@/, "");
+
+      tokenStore.set(appAccountId, {
+        platform: pending.platform,
+        accessToken: null,
+        isZernio: true,
+        zernioAccountId,
+        zernioPlatform: rawPlatform || pending.platform,
+        username: safeUsername,
+      });
+
+      const profileQuery = profileParam(pending.profileId);
+      return res.redirect(
+        `${BASE_URL}/social-media?oauth_success=1&platform=${encodeURIComponent(
+          pending.platform
+        )}&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(
+          safeUsername
+        )}&zernio_account_id=${encodeURIComponent(zernioAccountId)}${profileQuery}`
+      );
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (msg === "zernio_fetch_accounts_failed") {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_fetch_accounts_failed`);
+      }
+      if (msg === "zernio_no_account") {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_account`);
+      }
+      if (
+        msg === "zernio_gmb_no_locations" ||
+        msg === "zernio_gmb_no_location_id" ||
+        msg === "zernio_gmb_select_failed"
+      ) {
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_gmb_selection_failed`);
+      }
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+    }
+  });
 
   app.get("/api/auth/instagram/callback", async (req, res) => {
     const { code, state, error } = req.query;

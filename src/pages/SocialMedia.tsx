@@ -86,6 +86,10 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   zernio_no_account: "No Instagram account returned—finish connecting the channel in Zernio.",
   zernio_no_auth_url: "Zernio did not return a login URL.",
   zernio_init_failed: "Could not start Instagram via Zernio.",
+  zernio_gmb_not_supported:
+    "Google Business direct connect is not enabled for this Zernio workspace yet. Use 'All Zernio channels…' and link an existing Google Business account.",
+  zernio_gmb_selection_failed:
+    "Google Business requires location selection in Zernio. Open 'All Zernio channels…' and complete Google Business selection there.",
 };
 
 function messageForOAuthError(code: string): string {
