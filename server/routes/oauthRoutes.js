@@ -4,8 +4,9 @@ const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 const TIKTOK_AUTH = "https://www.tiktok.com/v2/auth/authorize/";
 const TIKTOK_TOKEN = "https://open.tiktokapis.com/v2/oauth/token/";
-const X_AUTH = "https://twitter.com/i/oauth2/authorize";
-const X_TOKEN = "https://api.twitter.com/2/oauth2/token";
+const X_AUTH = "https://x.com/i/oauth2/authorize";
+const X_TOKEN = "https://api.x.com/2/oauth2/token";
+const X_TOKEN_LEGACY = "https://api.twitter.com/2/oauth2/token";
 const X_SCOPES = "tweet.read users.read offline.access like.read";
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
@@ -22,6 +23,11 @@ function generateCodeChallenge(verifier) {
 }
 function profileParam(profileId) {
   return profileId ? `&profile_id=${encodeURIComponent(profileId)}` : "";
+}
+async function fetchXToken(body, headers) {
+  const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+  if (primary.ok) return primary;
+  return fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
 }
 
 export function registerOAuthRoutes(
@@ -355,7 +361,7 @@ export function registerOAuthRoutes(
       } else {
         body.set("client_id", clientId);
       }
-      const tokenRes = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+      const tokenRes = await fetchXToken(body, headers);
       const tokenData = await tokenRes.json();
       if (tokenData.error) {
         console.error("[X] token error:", tokenData.error, tokenData.error_description);
@@ -608,7 +614,7 @@ export function registerOAuthRoutes(
     const state = generateState();
     pendingStates.set(state, { platform: "outlook", profileId: req.query.profile_id, createdAt: Date.now() });
     const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
-    const scope = "offline_access openid profile email https://outlook.office.com/Mail.ReadWrite";
+    const scope = "offline_access openid profile email User.Read Mail.Read";
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_mode=query`;
     res.redirect(url);
   });

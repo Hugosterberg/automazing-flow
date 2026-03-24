@@ -1,6 +1,7 @@
 import { calculateXMetrics } from "../analytics/xMetrics.ts";
 
-const X_TOKEN = "https://api.twitter.com/2/oauth2/token";
+const X_TOKEN = "https://api.x.com/2/oauth2/token";
+const X_TOKEN_LEGACY = "https://api.twitter.com/2/oauth2/token";
 
 type XFetchArgs = {
   accessToken: string;
@@ -24,6 +25,18 @@ export async function fetchXAccountData({
   const xUserId = stored.xUserId as string | undefined;
   const refreshToken = stored.refreshToken as string | undefined;
 
+  async function fetchWithXTokenFallback(token: string) {
+    const endpoints = [
+      "https://api.x.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
+      "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
+    ];
+    for (const endpoint of endpoints) {
+      const r = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+      if (r.ok || r.status === 401) return r;
+    }
+    return fetch(endpoints[0], { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function refreshXToken(rt: string) {
     if (!xClientId || !rt) return null;
     const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: rt });
@@ -33,7 +46,10 @@ export async function fetchXAccountData({
     } else {
       body.set("client_id", xClientId);
     }
-    const r = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+    let r = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+    if (!r.ok) {
+      r = await fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
+    }
     const d = await r.json();
     if (d.access_token) {
       tokenStore.set(accountId, { ...stored, accessToken: d.access_token, refreshToken: d.refresh_token || rt });
@@ -45,19 +61,13 @@ export async function fetchXAccountData({
   let token = accessToken;
 
   // Fetch user info
-  let userRes = await fetch(
-    "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  let userRes = await fetchWithXTokenFallback(token);
   if (userRes.status === 401 && refreshToken) {
     token = await refreshXToken(refreshToken);
     if (!token) {
       return { error: "X token invalid. Reconnect the account.", status: 401 };
     }
-    userRes = await fetch(
-      "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    userRes = await fetchWithXTokenFallback(token);
   }
   const userData = await userRes.json();
   const user = userData.data || {};
@@ -67,10 +77,14 @@ export async function fetchXAccountData({
   const userId = xUserId || user.id;
   let tweets: Array<Record<string, unknown>> = [];
   if (userId) {
-    const tweetsRes = await fetch(
+    const tweetsEndpoints = [
+      `https://api.x.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
       `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    ];
+    let tweetsRes = await fetch(tweetsEndpoints[0], { headers: { Authorization: `Bearer ${token}` } });
+    if (!tweetsRes.ok) {
+      tweetsRes = await fetch(tweetsEndpoints[1], { headers: { Authorization: `Bearer ${token}` } });
+    }
     if (tweetsRes.ok) {
       const tweetsData = await tweetsRes.json();
       tweets = tweetsData.data || [];
