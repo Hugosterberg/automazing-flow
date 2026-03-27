@@ -4,6 +4,7 @@ import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
 
 export type ZernioAccountRow = {
+  _id?: string;
   id?: string;
   accountId?: string;
   mappedPlatform?: SocialPlatform;
@@ -39,7 +40,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
     setZernioLoading(true);
     setZernioError(null);
     try {
-      const r = await fetch(`${API_BASE}/zernio/accounts`);
+      const r = await fetch(`${API_BASE}/zernio/accounts`, { credentials: "include" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         throw new Error(typeof j.error === "string" ? j.error : "Could not load Zernio accounts");
@@ -55,13 +56,14 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
 
   const linkZernioAccount = useCallback(
     async (row: ZernioAccountRow) => {
-      const zid = String(row.id || row.accountId || "").trim();
+      const zid = String(row.id || row.accountId || row._id || "").trim();
       if (!zid) return null;
       setZernioLinking(zid);
       setZernioError(null);
       try {
         const r = await fetch(`${API_BASE}/zernio/link`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             zernioAccountId: zid,

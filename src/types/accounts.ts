@@ -9,10 +9,11 @@ export type SocialPlatform =
   | "google_business"
   /** WhatsApp Business via Zernio ([docs](https://docs.zernio.com/platforms/whatsapp)) */
   | "whatsapp";
-export type EcommercePlatform = "shopify";
+export type EcommercePlatform = "shopify" | "notion";
 export type MailPlatform = "gmail" | "outlook";
+export type CalendarPlatform = "google_calendar" | "outlook_calendar";
 
-export type AccountPlatform = SocialPlatform | EcommercePlatform | MailPlatform;
+export type AccountPlatform = SocialPlatform | EcommercePlatform | MailPlatform | CalendarPlatform;
 
 export interface Profile {
   id: string;

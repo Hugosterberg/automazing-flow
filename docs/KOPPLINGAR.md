@@ -25,11 +25,25 @@ Du måste först koppla kanalerna i **Zernio-dashboarden**; appen hämtar sedan 
 
 - **TikTok, YouTube, X** – klassisk OAuth mot respektive plattform (egna nycklar i `.env`).
 - **Instagram utan Zernio** – `INSTAGRAM_CLIENT_ID` / `INSTAGRAM_CLIENT_SECRET` (Meta), om du inte sätter `ZERNIO_API_KEY`.
+- **Shopify (lokal utveckling via tunnel)** – sätt `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` och `SHOPIFY_APP_URL` (publik HTTPS-host, t.ex. tunnel-domän).
+- **Notion** – sätt `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` och `NOTION_APP_URL` (publik HTTPS-host för OAuth callback).
 
-## Var sparas tokens?
+## Shopify i lokal utveckling (tunnel)
 
-- **Server:** `server/tokens.json` (konton som backend känner till).
-- **Webbläsare:** `localStorage` för vilka konton som visas per **profil** i appen.
+För Shopify OAuth måste callback vara publik HTTPS, även om backend kör lokalt.
+
+- Lokal backend: `http://localhost:3001`
+- Publik app-host: `https://<din-tunnel-domän>`
+- Shopify **Application URL**: `https://<din-tunnel-domän>`
+- Shopify **Allowed redirection URL**: `https://<din-tunnel-domän>/api/auth/shopify/callback`
+
+Servern använder `SHOPIFY_APP_URL` för Shopify `redirect_uri` och skickar sedan tillbaka användaren till `BASE_URL` (din lokala frontend).
+
+## Var sparas tokens och profiler?
+
+- **Server:** `server/tokens.json` (OAuth-tokens per anslutet konto).
+- **Supabase:** profiler + kontolistor per inloggad användare (`user_id`) när Google-login är aktiverat.
+- **Webbläsare:** lokal fallback/cache om Supabase inte är konfigurerat.
 
 ## OAuth-callback (Instagram via Zernio)
 

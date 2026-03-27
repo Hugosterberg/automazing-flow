@@ -8,13 +8,15 @@ import {
   Eye,
   ImagePlus,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccounts } from "@/context/AccountsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
 import {
@@ -65,6 +67,43 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+type SocialMediaApiPost = {
+  id: string;
+  caption: string;
+  picture: string;
+  permalink: string;
+  mediaType: string;
+  likeCount: number;
+  commentCount: number;
+  createdTime: string;
+};
+
+type SocialMediaApiResponse = {
+  stats?: {
+    followersCount?: number;
+    followingCount?: number;
+    mediaCount?: number;
+    accountType?: string;
+    totalLikes?: number;
+    totalComments?: number;
+    avgLikes?: number;
+    avgComments?: number;
+    engagementRate?: number;
+    updatedAt?: string;
+    zernioNote?: string;
+  };
+  profile?: {
+    displayName?: string;
+    username?: string;
+    media_count?: number;
+    followers_count?: number;
+    follows_count?: number;
+    account_type?: string;
+    stats?: SocialMediaApiResponse["stats"];
+  };
+  media?: SocialMediaApiPost[];
+};
+
 /** Maps old error codes to current Zernio names */
 const OAUTH_ERROR_ALIASES: Record<string, string> = {
   late_profile_failed: "zernio_profile_failed",
@@ -105,6 +144,7 @@ async function runAIAnalysis(
   const captions = posts.map((p) => p.caption).filter(Boolean);
   const res = await fetch(`/api/accounts/${accountId}/analyze`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       captions,
@@ -128,8 +168,9 @@ async function generateImageVariants(): Promise<string[]> {
 }
 
 export default function SocialMedia() {
+  const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
-  const { accounts, selectedAccountId, setSelectedAccountId, updateAccountAnalysis, updateAccountStats } =
+  const { accounts, selectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
@@ -140,18 +181,46 @@ export default function SocialMedia() {
 
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
-  const [initialSocialData] = useState<any>(null);
-  const { data: socialData, loading: statsLoading, refresh: refreshStats } = useAccountData<any>({
+  const [initialSocialData] = useState<SocialMediaApiResponse | null>(null);
+  const {
+    data: socialData,
+    loading: statsLoading,
+    refresh: refreshStats,
+    error,
+    setError,
+  } = useAccountData<SocialMediaApiResponse | null>({
     accounts,
     selectedAccountId,
     setSelectedAccountId,
-    accountFilter: (a) => a.id === selectedAccountId && Boolean(a.isOAuth),
+    accountFilter: (a) => a.id === selectedAccountId,
     initialData: initialSocialData,
     autoSelectFirst: false,
     fetcher: async (accountId) => {
-      const res = await fetch(`/api/accounts/${accountId}/data`);
+      let res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      if (res.status === 401 && authMode === "local") {
+        await fetch("/api/auth/local-session", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      }
+      if (res.status === 401 && authMode === "cloud" && session?.access_token) {
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: "include",
+        }).catch(() => {});
+        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      }
       if (!res.ok) {
-        throw new Error(`stats_${res.status}`);
+        const d = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof d?.error === "string" && d.error.trim().length > 0
+            ? d.error
+            : `Could not fetch account stats (${res.status})`
+        );
       }
       return res.json();
     },
@@ -219,7 +288,85 @@ export default function SocialMedia() {
   const [generatingVariants, setGeneratingVariants] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const socialPlatforms = ["instagram", "tiktok", "youtube", "x", "facebook", "google_business", "whatsapp"] as const;
+  const socialAccounts = useMemo(
+    () => accounts.filter((a) => (socialPlatforms as readonly string[]).includes(a.platform)),
+    [accounts]
+  );
+  const selectedAccount = socialAccounts.find((a) => a.id === selectedAccountId) ?? null;
+  const selectedZernioNote =
+    (socialData?.stats as { zernioNote?: string } | undefined)?.zernioNote ||
+    selectedAccount?.stats?.zernioNote;
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    const existsInSocialAccounts = socialAccounts.some((a) => a.id === selectedAccountId);
+    if (!existsInSocialAccounts) {
+      setSelectedAccountId(null);
+    }
+  }, [selectedAccountId, socialAccounts, setSelectedAccountId]);
+
+  const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
+
+  const overviewData = useMemo(() => {
+    const summary = socialAccounts.reduce(
+      (acc, a) => {
+        acc.connected += 1;
+        if (typeof a.stats?.followersCount === "number") { acc.followers += a.stats.followersCount; acc.hasFollowers = true; }
+        if (typeof a.stats?.mediaCount === "number") { acc.posts += a.stats.mediaCount; acc.hasPosts = true; }
+        if (typeof a.stats?.engagementRate === "number") { acc.engagementSum += a.stats.engagementRate; acc.engagementCount += 1; }
+        if (typeof a.stats?.totalLikes === "number") { acc.totalLikes += a.stats.totalLikes; acc.hasTotalLikes = true; }
+        if (typeof a.stats?.totalComments === "number") { acc.totalComments += a.stats.totalComments; acc.hasTotalComments = true; }
+        if (typeof a.stats?.avgLikes === "number") { acc.avgLikesSum += a.stats.avgLikes; acc.avgLikesCount += 1; }
+        if (typeof a.stats?.avgComments === "number") { acc.avgCommentsSum += a.stats.avgComments; acc.avgCommentsCount += 1; }
+        if (typeof a.stats?.updatedAt === "string") {
+          const ts = Date.parse(a.stats.updatedAt);
+          if (!Number.isNaN(ts) && ts > acc.lastUpdatedTs) { acc.lastUpdatedTs = ts; acc.lastUpdatedIso = a.stats.updatedAt; }
+        }
+        return acc;
+      },
+      { connected: 0, followers: 0, posts: 0, engagementSum: 0, engagementCount: 0, hasFollowers: false, hasPosts: false, totalLikes: 0, totalComments: 0, avgLikesSum: 0, avgLikesCount: 0, avgCommentsSum: 0, avgCommentsCount: 0, hasTotalLikes: false, hasTotalComments: false, lastUpdatedTs: 0, lastUpdatedIso: null as string | null }
+    );
+
+    const byPlatform = socialAccounts.reduce<Record<string, { accounts: number; followers: number; posts: number }>>(
+      (acc, a) => {
+        const entry = acc[a.platform] ?? { accounts: 0, followers: 0, posts: 0 };
+        entry.accounts += 1;
+        if (typeof a.stats?.followersCount === "number") entry.followers += a.stats.followersCount;
+        if (typeof a.stats?.mediaCount === "number") entry.posts += a.stats.mediaCount;
+        acc[a.platform] = entry;
+        return acc;
+      },
+      {}
+    );
+
+    return {
+      ...summary,
+      avgLikes: summary.avgLikesCount > 0 ? summary.avgLikesSum / summary.avgLikesCount : null,
+      avgComments: summary.avgCommentsCount > 0 ? summary.avgCommentsSum / summary.avgCommentsCount : null,
+      byPlatform: Object.entries(byPlatform).sort((a, b) => a[0].localeCompare(b[0])),
+    };
+  }, [socialAccounts]);
+
+  useEffect(() => {
+    if (!showOverview || selectedAccount) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H4',location:'SocialMedia:overview-render',message:'Inline overview rendered in main panel',data:{showOverview,selectedAccountId,connected:overviewData.connected},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showOverview, selectedAccount, selectedAccountId, overviewData.connected]);
+
+  useEffect(() => {
+    if (!selectedAccount) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H5',location:'SocialMedia:account-render',message:'Account detail rendered in main panel',data:{selectedAccountId,platform:selectedAccount.platform},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [selectedAccount, selectedAccountId]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H7',location:'SocialMedia:mount',message:'SocialMedia mounted - logging self test',data:{showOverview,selectedAccountId},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showOverview, selectedAccountId]);
 
   const { oauthError, clearOauthError } = useOAuthCallback();
 
@@ -252,6 +399,18 @@ export default function SocialMedia() {
         <p className="text-muted-foreground mt-1">Automate and manage your social media</p>
       </motion.div>
 
+      {authMode === "local" && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-muted/30 border-border">
+            <CardContent className="py-3">
+              <p className="text-sm text-muted-foreground">
+                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {oauthError && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
@@ -264,8 +423,99 @@ export default function SocialMedia() {
           </Card>
         </motion.div>
       )}
+      {error && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-destructive/10 border-destructive/30">
+            <CardContent className="py-4 flex items-center justify-between gap-4">
+              <p className="text-sm text-destructive">Could not load social stats: {error}</p>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+                Dismiss
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
-      {!selectedAccount && (
+      {!selectedAccount && showOverview && (
+        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Total overview</span>
+          </div>
+          <Card className="bg-card border-border">
+            <CardContent className="py-5 px-6">
+              <p className="text-xs text-muted-foreground mb-4">
+                Aggregated social media metrics for all connected accounts in this profile.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Connected accounts</p>
+                  <p className="font-semibold">{numberFmt.format(overviewData.connected)}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total followers</p>
+                  <p className="font-semibold">{overviewData.hasFollowers ? numberFmt.format(overviewData.followers) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total posts/templates</p>
+                  <p className="font-semibold">{overviewData.hasPosts ? numberFmt.format(overviewData.posts) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average engagement rate</p>
+                  <p className="font-semibold">
+                    {overviewData.engagementCount > 0 ? `${(overviewData.engagementSum / overviewData.engagementCount).toFixed(1)}%` : "–"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total likes</p>
+                  <p className="font-semibold">{overviewData.hasTotalLikes ? numberFmt.format(overviewData.totalLikes) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total comments</p>
+                  <p className="font-semibold">{overviewData.hasTotalComments ? numberFmt.format(overviewData.totalComments) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average likes/account</p>
+                  <p className="font-semibold">{overviewData.avgLikes != null ? overviewData.avgLikes.toFixed(1) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average comments/account</p>
+                  <p className="font-semibold">{overviewData.avgComments != null ? overviewData.avgComments.toFixed(1) : "–"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border mt-4">
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-xs font-medium text-muted-foreground">Breakdown by platform</p>
+                </div>
+                <div className="px-3 py-2 space-y-2">
+                  {overviewData.byPlatform.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No connected social accounts yet.</p>
+                  ) : (
+                    overviewData.byPlatform.map(([platform, values]) => (
+                      <div key={platform} className="flex items-center justify-between text-xs">
+                        <span className="capitalize">{platform.replace("_", " ")}</span>
+                        <span className="text-muted-foreground">
+                          {values.accounts} acc · {numberFmt.format(values.followers)} followers · {numberFmt.format(values.posts)} posts
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-3">
+                Last update:{" "}
+                {overviewData.lastUpdatedIso
+                  ? new Date(overviewData.lastUpdatedIso).toLocaleString("sv-SE")
+                  : "No stats timestamp available"}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {!selectedAccount && !showOverview && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <Card className="bg-card border-border glow-border border-dashed">
             <CardContent className="py-8 text-center">
@@ -322,6 +572,8 @@ export default function SocialMedia() {
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   <span>Fetching posts…</span>
                 </div>
+              ) : selectedZernioNote ? (
+                <p className="text-sm text-muted-foreground py-2">{selectedZernioNote}</p>
               ) : (
                 <p className="text-sm text-muted-foreground py-2">No data available yet.</p>
               )}

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -56,8 +57,10 @@ import {
   GoogleBusinessIcon,
   WhatsAppIcon,
   ShopifyIcon,
+  NotionIcon,
   GmailIcon,
   OutlookIcon,
+  GoogleCalendarIcon,
   LightbulbGlowIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
@@ -82,18 +85,17 @@ const navItems = [
   },
   {
     key: "ecommerce",
-    title: "E-commerce",
+    title: "Organization & Management",
     url: "/ecommerce",
     icon: ShoppingCart,
-    platforms: ["shopify"] as AccountPlatform[],
+    platforms: ["shopify", "notion"] as AccountPlatform[],
   },
   {
     key: "calendar",
     title: "Calendar",
     url: "/calendar",
     icon: CalendarDays,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
+    platforms: ["google_calendar", "outlook_calendar"] as AccountPlatform[],
   },
   {
     key: "mail",
@@ -129,14 +131,19 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   google_business: GoogleBusinessIcon,
   whatsapp: WhatsAppIcon,
   shopify: ShopifyIcon,
+  notion: NotionIcon,
   gmail: GmailIcon,
   outlook: OutlookIcon,
+  google_calendar: GoogleCalendarIcon,
+  outlook_calendar: OutlookIcon,
 };
 
 function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {
   if (platforms.length === 0) return [];
   return accounts.filter((a) => platforms.includes(a.platform));
 }
+
+const numberFormatter = new Intl.NumberFormat("en-US");
 
 export function AppSidebar() {
   const location = useLocation();
@@ -146,6 +153,8 @@ export function AppSidebar() {
     activeProfileId,
     selectedAccountId,
     setSelectedAccountId,
+    showOverview,
+    setShowOverview,
     removeAccount,
     addAccountFromOAuth,
   } = useAccounts();
@@ -164,6 +173,50 @@ export function AppSidebar() {
     activeProfileId,
     addAccountFromOAuth,
   });
+  const socialNavItem = navItems.find((item) => item.key === "social-media");
+  const socialAccounts = useMemo(
+    () => getAccountsForCategory(accounts, socialNavItem?.platforms ?? []),
+    [accounts, socialNavItem]
+  );
+  const socialOverview = useMemo(() => {
+    return socialAccounts.reduce(
+      (acc, account) => {
+        acc.connected += 1;
+        if (typeof account.stats?.followersCount === "number") {
+          acc.followers += account.stats.followersCount;
+          acc.hasFollowers = true;
+        }
+        if (typeof account.stats?.mediaCount === "number") {
+          acc.posts += account.stats.mediaCount;
+          acc.hasPosts = true;
+        }
+        if (typeof account.stats?.engagementRate === "number") {
+          acc.engagementSum += account.stats.engagementRate;
+          acc.engagementCount += 1;
+        }
+        return acc;
+      },
+      {
+        connected: 0,
+        followers: 0,
+        posts: 0,
+        engagementSum: 0,
+        engagementCount: 0,
+        hasFollowers: false,
+        hasPosts: false,
+      }
+    );
+  }, [socialAccounts]);
+  function handleOpenOverview() {
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H1',location:'AppSidebar:handleOpenOverview',message:'Total overview clicked - using showOverview',data:{pathname:location.pathname,showOverview:true},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    setShowOverview(true);
+    setSelectedAccountId(null);
+    if (location.pathname !== "/social-media") {
+      navigate("/social-media");
+    }
+  }
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -179,7 +232,10 @@ export function AppSidebar() {
     navigate("/social-media");
   }
 
-  function handleConnectPlatform(platform: AccountPlatform) {
+  function handleConnectPlatform(
+    platform: AccountPlatform,
+    options?: { provider?: "auto" | "zernio" | "official" }
+  ) {
     if (platform === "shopify") {
       setShopDomain("");
       setShopifyDialogOpen(true);
@@ -193,6 +249,12 @@ export function AppSidebar() {
     }
     const params = new URLSearchParams();
     if (activeProfileId) params.set("profile_id", activeProfileId);
+    if (platform === "tiktok" && options?.provider && options.provider !== "auto") {
+      params.set("provider", options.provider);
+    }
+    if ((platform === "google_calendar" || platform === "outlook_calendar") && options?.provider && options.provider !== "auto") {
+      params.set("provider", options.provider);
+    }
     const query = params.toString() ? `?${params.toString()}` : "";
     window.location.href = `${API_BASE}/auth/${platform}${query}`;
   }
@@ -207,16 +269,34 @@ export function AppSidebar() {
     window.location.href = `${API_BASE}/auth/shopify?${params}`;
   }
 
+  function handleAccountClick(accountId: string, isSelected: boolean) {
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H3',location:'AppSidebar:handleAccountClick',message:'Account clicked - clears showOverview',data:{accountId,wasSelected:isSelected},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    setShowOverview(false);
+    setSelectedAccountId(isSelected ? null : accountId);
+  }
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H6',location:'AppSidebar:mount',message:'AppSidebar mounted - logging self test',data:{pathname:location.pathname},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [location.pathname]);
+
   return (
     <Sidebar className="border-r border-border bg-sidebar">
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-border">
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="w-full flex items-center gap-2 px-4 py-5 border-b border-border hover:bg-accent/40 transition-colors text-left"
+      >
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="text-lg font-bold tracking-tight text-foreground">
           automazing
         </span>
-      </div>
+      </button>
       <SidebarContent className="pt-4">
         <SidebarGroup>
           <SidebarGroupContent>
@@ -245,6 +325,33 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {!item.hideAccounts && (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
+                      {item.key === "social-media" && (
+                        <button
+                          type="button"
+                          onClick={handleOpenOverview}
+                          className={`w-full text-left rounded-md border px-2 py-1.5 mb-1 transition-colors ${
+                            showOverview
+                              ? "border-primary/40 bg-sidebar-accent font-medium"
+                              : "border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50"
+                          }`}
+                        >
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80">Total overview</p>
+                          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                            <span>Accounts: {numberFormatter.format(socialOverview.connected)}</span>
+                            <span>
+                              Followers:{" "}
+                              {socialOverview.hasFollowers ? numberFormatter.format(socialOverview.followers) : "–"}
+                            </span>
+                            <span>Posts: {socialOverview.hasPosts ? numberFormatter.format(socialOverview.posts) : "–"}</span>
+                            <span>
+                              Avg ER:{" "}
+                              {socialOverview.engagementCount > 0
+                                ? `${(socialOverview.engagementSum / socialOverview.engagementCount).toFixed(1)}%`
+                                : "–"}
+                            </span>
+                          </div>
+                        </button>
+                      )}
                         <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
                         Connected accounts
                       </p>
@@ -258,7 +365,7 @@ export function AppSidebar() {
                           >
                             <button
                               type="button"
-                              onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
+                              onClick={() => handleAccountClick(account.id, isSelected)}
                               className={`flex flex-1 flex-col items-start gap-0 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}
@@ -345,17 +452,70 @@ export function AppSidebar() {
                                               ? "WhatsApp (Zernio)"
                                               : platform === "shopify"
                                                 ? "Shopify"
+                                                : platform === "notion"
+                                                  ? "Notion"
                                                 : platform === "gmail"
                                                   ? "Gmail"
-                                                  : "Outlook";
+                                                  : platform === "outlook"
+                                                    ? "Outlook"
+                                                    : platform === "google_calendar"
+                                                      ? "Google Calendar"
+                                                      : "Outlook Calendar";
                               return (
-                                <DropdownMenuItem
-                                  key={platform}
-                                  onClick={() => handleConnectPlatform(platform)}
-                                >
-                                  <Icon className="h-4 w-4 mr-2" />
-                                  {label}
-                                </DropdownMenuItem>
+                                platform === "tiktok" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "auto" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      TikTok (Auto)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      TikTok via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      TikTok via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : platform === "google_calendar" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "auto" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Google Calendar (Auto)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      Google Calendar via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Google Calendar via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : platform === "outlook_calendar" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "auto" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Outlook Calendar (Auto)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      Outlook Calendar via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Outlook Calendar via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : (
+                                  <DropdownMenuItem
+                                    key={platform}
+                                    onClick={() => handleConnectPlatform(platform)}
+                                  >
+                                    <Icon className="h-4 w-4 mr-2" />
+                                    {label}
+                                  </DropdownMenuItem>
+                                )
                               );
                             })}
                             {item.key === "social-media" && (

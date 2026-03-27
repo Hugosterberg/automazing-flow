@@ -95,6 +95,15 @@ export function ShopifyIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function NotionIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M4.5 3.5h11.2l3.8 3.6v13.4H4.5V3.5zm9.8 1.8v3h3.1l-3.1-3zM6.3 5.3v13.4h11.4V9.9h-5.2V5.3H6.3zm2.2 10.6V8.1h1.6l3.3 5.1V8.1H15v7.8h-1.5l-3.4-5.2v5.2H8.5z" />
+    </svg>
+  );
+}
+
 export function GmailIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, ...rest } = props;
   return (
@@ -109,6 +118,15 @@ export function OutlookIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
       <path d="M7.88 12.04q0 .46-.16.87t-.51.69-.8.44-1.01.14H4.21V8.96h1.18q.56 0 1.01.14t.8.45.51.69.16.88zm-.63-2.35q-.29-.17-.68-.25t-.86-.08h-.29v2.57h.29q.45 0 .83-.08t.71-.25q.28-.18.42-.5t.14-.79q0-.37-.13-.65t-.41-.47zM24 12.78v6.44h-6.44v-2.14l4.31-1.59.03-.08-.04-.02q-.07-.05-.12-.07l-.09-.03-.12-.04-.16-.04h-.07l-.1-.02-.12-.02-.15-.01h-.03l-.12.01-.2.02-.21.03-.15.02-.17.04-.16.05-.13.05-.15.07-.13.07-.11.09-.13.11-.1.12-.09.13-.08.14-.06.15-.05.16-.04.17-.02.17-.02.19v.01l-.01.09v.05l.01.09v3.61H0V0h24v12.78zm-9.19-1.87l.01 1.21 2.63 1.52.05.03.05.01.05.02h.05l.05-.01.05-.02.05-.01 2.88-1.67v-5.4h-6.52v3.18zm-2.89 2.16l-.58-.34-.01-2.33v-2.35l.59-.34 2.95 1.7-.01.01-2.94 1.65zm9.28-.9l-2.88 1.67-.05.02-.05.01-.05.02-.05.01h-.05l-.05-.01-.05-.02-.05-.01-.05-.03-2.63-1.52v5.39h6.52v-3.17zm0-4.36v.95l-3.26 1.88-.01-1.88 3.27-1.95zm-6.53 2.6l.01 1.89-3.26-1.88v-.95l3.25 1.94z" />
+    </svg>
+  );
+}
+
+export function GoogleCalendarIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 16H5V9h14v10Zm0-12H5V5h14v2Zm-7 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm1-4h2v-2h-2V9h-2v2H9v2h2v2h2v-2Z" />
     </svg>
   );
 }

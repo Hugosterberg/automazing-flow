@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Clock,
@@ -6,6 +6,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Layers,
+  CalendarDays,
 } from "lucide-react";
 import {
   format,
@@ -41,6 +43,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
+import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { useAccounts } from "@/context/AccountsContext";
+import { useAccountData } from "@/hooks/useAccountData";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -66,8 +71,16 @@ function sortByTime(events: CalendarEvent[]): CalendarEvent[] {
 }
 
 type ViewMode = "day" | "week" | "month";
+type CalendarProviderData = {
+  source?: string;
+  events?: CalendarEvent[];
+  calendars?: Array<{ id: string; name: string; primary?: boolean }>;
+  note?: string;
+} | null;
 
 export default function CalendarPage() {
+  const { oauthError, clearOauthError } = useOAuthCallback();
+  const { activeProfileId, accounts, selectedAccountId, setSelectedAccountId } = useAccounts();
   const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
@@ -82,8 +95,51 @@ export default function CalendarPage() {
     saveEvents(events);
   }, [events]);
 
+  const {
+    activeAccount: activeCalendarAccount,
+    data: providerData,
+    loading: providerLoading,
+    error: providerError,
+    refresh: refreshProviderEvents,
+  } = useAccountData<CalendarProviderData>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) =>
+      (a.platform === "google_calendar" || a.platform === "outlook_calendar") && Boolean(a.isOAuth),
+    initialData: null,
+    fetcher: async (accountId) => {
+      const res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || "Could not fetch external calendar events.");
+      }
+      return res.json();
+    },
+  });
+
+  const localEvents = useMemo(
+    () =>
+      events.map((e) => ({
+        ...e,
+        source: "local" as const,
+      })),
+    [events]
+  );
+  const externalEvents = useMemo(
+    () =>
+      (providerData?.events || []).map((e) => ({
+        ...e,
+        id: `ext_${e.id}`,
+        source: "external" as const,
+        readOnly: true,
+      })),
+    [providerData]
+  );
+  const allEvents = useMemo(() => [...localEvents, ...externalEvents], [localEvents, externalEvents]);
+
   const eventsOnDate = (date: Date) =>
-    events.filter((e) => isSameDay(parseISO(e.date), date));
+    allEvents.filter((e) => isSameDay(parseISO(e.date), date));
 
   const addEvent = () => {
     if (!formTitle.trim() || !formDate) return;
@@ -146,11 +202,11 @@ export default function CalendarPage() {
         ? `${format(weekStart, "d MMM", { locale: enUS })} – ${format(weekEnd, "d MMM", { locale: enUS })}`
         : format(currentDate, "MMMM yyyy", { locale: enUS });
 
-  const datesWithEvents = [...new Set(events.map((e) => e.date))].map((d) =>
+  const datesWithEvents = [...new Set(allEvents.map((e) => e.date))].map((d) =>
     parseISO(d)
   );
 
-  const upcomingEvents = events
+  const upcomingEvents = allEvents
     .filter((e) => parseISO(e.date) >= startOfDay(new Date()))
     .sort((a, b) => {
       const dc = a.date.localeCompare(b.date);
@@ -158,15 +214,66 @@ export default function CalendarPage() {
     })
     .slice(0, 8);
 
+  function connectCalendar(
+    platform: "google_calendar" | "outlook_calendar",
+    provider: "auto" | "zernio" | "official"
+  ) {
+    const params = new URLSearchParams();
+    if (activeProfileId) params.set("profile_id", activeProfileId);
+    if (provider !== "auto") params.set("provider", provider);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    window.location.href = `/api/auth/${platform}${query}`;
+  }
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Calendar</h1>
-        <Button onClick={openDialog}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => connectCalendar("google_calendar", "auto")}>
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Connect Google Calendar
+          </Button>
+          <Button onClick={openDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add
+          </Button>
+        </div>
       </div>
+
+      {oauthError && (
+        <Card className="bg-destructive/10 border-destructive/30">
+          <CardContent className="py-3 px-4 flex items-center justify-between">
+            <p className="text-sm text-destructive">
+              {oauthError === "google_calendar_not_configured"
+                ? "Google Calendar is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env."
+                : oauthError === "outlook_calendar_not_configured"
+                  ? "Outlook Calendar is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env."
+                  : `Calendar connect failed: ${oauthError.replace(/_/g, " ")}`}
+            </p>
+            <Button variant="ghost" size="sm" onClick={clearOauthError}>
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {providerError && (
+        <Card className="bg-destructive/10 border-destructive/30">
+          <CardContent className="py-3 px-4 flex items-center justify-between">
+            <p className="text-sm text-destructive">{providerError}</p>
+            <Button variant="ghost" size="sm" onClick={() => void refreshProviderEvents()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {providerData?.note && (
+        <Card className="bg-muted/40 border-border">
+          <CardContent className="py-3 px-4">
+            <p className="text-sm text-muted-foreground">{providerData.note}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         <Card className="rounded-xl shrink-0">
@@ -202,6 +309,27 @@ export default function CalendarPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-4 space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Connect calendars</p>
+              <div className="grid grid-cols-1 gap-1">
+                <Button variant="outline" size="sm" onClick={() => connectCalendar("google_calendar", "zernio")} className="justify-start">
+                  <Layers className="h-3.5 w-3.5 mr-2" />
+                  Google Calendar via Zernio
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => connectCalendar("google_calendar", "official")} className="justify-start">
+                  <CalendarDays className="h-3.5 w-3.5 mr-2" />
+                  Google Calendar via Official API
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => connectCalendar("outlook_calendar", "zernio")} className="justify-start">
+                  <Layers className="h-3.5 w-3.5 mr-2" />
+                  Outlook Calendar via Zernio
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => connectCalendar("outlook_calendar", "official")} className="justify-start">
+                  <CalendarDays className="h-3.5 w-3.5 mr-2" />
+                  Outlook Calendar via Official API
+                </Button>
+              </div>
+            </div>
             <div className="flex items-center justify-between mt-3">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={navPrev}>
                 <ChevronLeft className="h-4 w-4" />
@@ -213,6 +341,17 @@ export default function CalendarPage() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
+            {activeCalendarAccount && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2 text-xs"
+                onClick={() => void refreshProviderEvents()}
+                disabled={providerLoading}
+              >
+                {providerLoading ? "Refreshing..." : "Refresh connected calendar"}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -245,14 +384,16 @@ export default function CalendarPage() {
                             <p className="text-xs text-muted-foreground">{ev.time}</p>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                          onClick={() => removeEvent(ev.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!ev.readOnly && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+                            onClick={() => removeEvent(ev.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -291,17 +432,19 @@ export default function CalendarPage() {
                               <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
                             )}
                             <span className="truncate flex-1">{ev.title}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeEvent(ev.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
+                            {!ev.readOnly && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeEvent(ev.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -329,39 +472,24 @@ export default function CalendarPage() {
                     <div
                       key={day.toISOString()}
                       className={cn(
-                        "min-h-[80px] rounded-lg border p-2 flex flex-col",
+                        "min-h-[80px] rounded-lg border p-2 relative flex items-center justify-center",
                         inMonth ? "border-border/50" : "border-transparent opacity-50",
                         today && "ring-1 ring-primary/30 bg-primary/5"
                       )}
                     >
                       <span
                         className={cn(
-                          "text-sm font-medium w-6 h-6 flex items-center justify-center rounded",
+                          "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
                           today && "bg-primary text-primary-foreground"
                         )}
                       >
                         {format(day, "d")}
                       </span>
-                      <div className="flex-1 overflow-hidden mt-1 space-y-0.5">
-                        {sortByTime(dayEvents).slice(0, 2).map((ev) => (
-                          <div
-                            key={ev.id}
-                            className="flex items-center gap-1 rounded px-1.5 py-0.5 bg-muted/60 text-[10px] truncate"
-                          >
-                            {ev.isAutomated ? (
-                              <Zap className="h-2.5 w-2.5 shrink-0 text-primary" />
-                            ) : (
-                              <Clock className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-                            )}
-                            <span className="truncate">{ev.title}</span>
-                          </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                          <p className="text-[9px] text-muted-foreground">
-                            +{dayEvents.length - 2}
-                          </p>
-                        )}
-                      </div>
+                      {dayEvents.length > 0 && (
+                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground">
+                          {dayEvents.length} event{dayEvents.length > 1 ? "s" : ""}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

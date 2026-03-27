@@ -9,6 +9,25 @@ const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayN
   youtube: (username) => `https://youtube.com/@${username}`,
 };
 
+type ZernioAccount = Record<string, unknown> & {
+  id?: string;
+  _id?: string;
+  accountId?: string;
+  platform?: string;
+  type?: string;
+  provider?: string;
+  channel?: string;
+  username?: string;
+  handle?: string;
+  phoneNumber?: string;
+  phone?: string;
+  name?: string;
+  displayName?: string;
+  profileUrl?: string;
+  url?: string;
+  website?: string;
+};
+
 async function fetchZernioAccounts(
   ZERNIO_API_BASE: string,
   zh: Record<string, string> | null,
@@ -16,7 +35,7 @@ async function fetchZernioAccounts(
 ) {
   const r = await fetch(`${ZERNIO_API_BASE}/accounts`, { headers: zh || {} });
   const body = await r.json().catch(() => ({}));
-  const rawList = r.ok ? normalizeZernioAccountsPayload(body) : [];
+  const rawList: ZernioAccount[] = r.ok ? (normalizeZernioAccountsPayload(body) as ZernioAccount[]) : [];
   return { r, body, rawList };
 }
 
@@ -29,9 +48,14 @@ export function registerAccountRoutes(
     normalizeZernioAccountsPayload,
     mapZernioPlatform,
     tokenStore,
+    getSessionUserId,
   }
 ) {
   app.get("/api/zernio/accounts", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     const zh = zernioAuthHeaders();
     if (!zh) {
       return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
@@ -63,6 +87,10 @@ export function registerAccountRoutes(
   });
 
   app.post("/api/zernio/link", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     const zernioAccountId = String(req.body?.zernioAccountId || "").trim();
     if (!zernioAccountId) {
       return res.status(400).json({ error: "zernioAccountId is required" });
@@ -112,6 +140,7 @@ export function registerAccountRoutes(
       tokenStore.set(appAccountId, {
         platform,
         accessToken: null,
+        ownerUserId: userId,
         isZernio: true,
         zernioAccountId: String(acc.id || acc.accountId || zernioAccountId),
         zernioPlatform: rawPlatform,
@@ -134,7 +163,26 @@ export function registerAccountRoutes(
   });
 
   app.delete("/api/accounts/:accountId", (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     const { accountId } = req.params;
+    const stored = tokenStore.get(accountId);
+    if (!stored) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+    if (stored.ownerUserId && stored.ownerUserId !== userId) {
+      const isLocalPair =
+        String(stored.ownerUserId).startsWith("local_") && String(userId).startsWith("local_");
+      if (!isLocalPair) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+    if (!stored.ownerUserId) {
+      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
     if (tokenStore.delete(accountId)) {
       return res.json({ ok: true });
     }

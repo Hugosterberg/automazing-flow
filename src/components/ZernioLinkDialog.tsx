@@ -55,6 +55,9 @@ export function ZernioLinkDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
+          <p className="text-xs text-muted-foreground">
+            Click <span className="font-medium">Link</span> on the account you want to add.
+          </p>
           {zernioLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
               <Loader2 className="h-4 w-4 animate-spin shrink-0" />
@@ -86,7 +89,7 @@ export function ZernioLinkDialog({
               ) : (
                 <ul className="space-y-2">
                   {filtered.map((row) => {
-                    const zid = String(row.id || row.accountId || "");
+                    const zid = String(row.id || row.accountId || (row as Record<string, unknown>)._id || "");
                     const mp = row.mappedPlatform;
                     const ZIcon = mp ? platformIcons[mp as AccountPlatform] : Layers;
                     const title = row.displayName || row.name || row.username || zid || "Account";
@@ -94,25 +97,32 @@ export function ZernioLinkDialog({
 
                     return (
                       <li key={zid || title}>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start gap-2 h-auto py-2.5"
-                          disabled={!!zernioLinking}
-                          onClick={() => void onLink(row)}
-                        >
+                        <div className="w-full rounded-md border border-border bg-card px-3 py-2.5 flex items-center gap-2">
                           <ZIcon className="h-4 w-4 shrink-0" />
-                          <span className="flex flex-col items-start min-w-0 text-left">
+                          <span className="flex flex-col items-start min-w-0 text-left flex-1">
                             <span className="truncate font-medium text-sm">{title}</span>
                             <span className="text-[11px] text-muted-foreground truncate">
                               {mp?.replace(/_/g, " ") ?? row.rawPlatform ?? "channel"}
                               {idHint ? ` · ${idHint}` : ""}
                             </span>
                           </span>
-                          {zernioLinking === zid && (
-                            <Loader2 className="h-4 w-4 animate-spin shrink-0 ml-auto" />
-                          )}
-                        </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={zernioLinking === zid}
+                            onClick={() => void onLink(row)}
+                          >
+                            {zernioLinking === zid ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                                Linking...
+                              </>
+                            ) : (
+                              "Link"
+                            )}
+                          </Button>
+                        </div>
                       </li>
                     );
                   })}
