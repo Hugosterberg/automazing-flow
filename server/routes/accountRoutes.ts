@@ -2,6 +2,9 @@ const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayN
   facebook: (username) => `https://facebook.com/${username}`,
   google_business: (username, displayName) =>
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayName || username)}`,
+  google_reviews: (username, displayName) =>
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayName || username)}`,
+  tripadvisor: (username) => `https://www.tripadvisor.com/Search?q=${encodeURIComponent(username)}`,
   whatsapp: (username) => `https://wa.me/${String(username).replace(/\D/g, "") || username}`,
   tiktok: (username) => `https://www.tiktok.com/@${username}`,
   instagram: (username) => `https://instagram.com/${username}`,

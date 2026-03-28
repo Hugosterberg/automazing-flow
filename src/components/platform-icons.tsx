@@ -131,6 +131,24 @@ export function GoogleCalendarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function GoogleReviewsIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 2a10 10 0 1 0 7.07 17.07l-1.41-1.41A8 8 0 1 1 20 12h-8v2h5.93A6 6 0 0 1 6 12H4a8 8 0 0 0 15.87 1H22V2h-2v2.59A9.98 9.98 0 0 0 12 2Zm-.35 6.2.9 1.82 2.01.29-1.45 1.42.34 2-1.8-.95-1.8.95.34-2-1.45-1.42 2.01-.29.9-1.82Z" />
+    </svg>
+  );
+}
+
+export function TripadvisorIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 4c3.4 0 6.4 1.4 8.5 3.7H24v2.2h-1.7a4.6 4.6 0 0 1 .2 1.3 4.5 4.5 0 0 1-8.5 2.1h-4a4.5 4.5 0 1 1-.1-4.7h4.2A4.5 4.5 0 0 1 22.1 8H20c-1.8-1.8-4.3-2.8-7-2.8S7.8 6.2 6 8H3.9A10.3 10.3 0 0 1 12 4Zm-4 5.8a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Zm8 0a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Zm-8 1.1a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Zm8 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z" />
+    </svg>
+  );
+}
+
 /** Tecknad lysande glödlampa – stroke-baserad, mjuk glow */
 export function LightbulbGlowIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, className, ...rest } = props;

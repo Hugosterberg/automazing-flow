@@ -1,7 +1,10 @@
 import {
   Share2,
   ShoppingCart,
+  LineChart,
+  Users,
   CalendarDays,
+  Star,
   Mail,
   Settings,
   Zap,
@@ -61,6 +64,8 @@ import {
   GmailIcon,
   OutlookIcon,
   GoogleCalendarIcon,
+  GoogleReviewsIcon,
+  TripadvisorIcon,
   LightbulbGlowIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
@@ -91,6 +96,22 @@ const navItems = [
     platforms: ["shopify", "notion"] as AccountPlatform[],
   },
   {
+    key: "sales-marketing",
+    title: "Sales & Marketing",
+    url: "/sales-marketing",
+    icon: LineChart,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "customers",
+    title: "Customers",
+    url: "/customers",
+    icon: Users,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
     key: "calendar",
     title: "Calendar",
     url: "/calendar",
@@ -103,6 +124,13 @@ const navItems = [
     url: "/mail",
     icon: Mail,
     platforms: ["gmail", "outlook"] as AccountPlatform[],
+  },
+  {
+    key: "reviews",
+    title: "Reviews",
+    url: "/reviews",
+    icon: Star,
+    platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
   },
   {
     key: "ai-recommendations",
@@ -136,6 +164,8 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   outlook: OutlookIcon,
   google_calendar: GoogleCalendarIcon,
   outlook_calendar: OutlookIcon,
+  google_reviews: GoogleReviewsIcon,
+  tripadvisor: TripadvisorIcon,
 };
 
 function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {
@@ -160,6 +190,11 @@ export function AppSidebar() {
   } = useAccounts();
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
+  const [tripadvisorDialogOpen, setTripadvisorDialogOpen] = useState(false);
+  const [tripadvisorLocationId, setTripadvisorLocationId] = useState("");
+  const [tripadvisorApiKey, setTripadvisorApiKey] = useState("");
+  const [tripadvisorConnecting, setTripadvisorConnecting] = useState(false);
+  const [tripadvisorConnectError, setTripadvisorConnectError] = useState<string | null>(null);
   const [zernioOpen, setZernioOpen] = useState(false);
   const [zernioFilter, setZernioFilter] = useState<SocialPlatform | null>(null);
   const {
@@ -247,12 +282,22 @@ export function AppSidebar() {
       openZernioPicker(platform);
       return;
     }
+    if (platform === "tripadvisor" && options?.provider === "official") {
+      setTripadvisorLocationId("");
+      setTripadvisorApiKey("");
+      setTripadvisorConnectError(null);
+      setTripadvisorDialogOpen(true);
+      return;
+    }
     const params = new URLSearchParams();
     if (activeProfileId) params.set("profile_id", activeProfileId);
     if (platform === "tiktok" && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
     if ((platform === "google_calendar" || platform === "outlook_calendar") && options?.provider && options.provider !== "auto") {
+      params.set("provider", options.provider);
+    }
+    if ((platform === "google_reviews" || platform === "tripadvisor") && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
     const query = params.toString() ? `?${params.toString()}` : "";
@@ -267,6 +312,46 @@ export function AppSidebar() {
     setShopifyDialogOpen(false);
     setShopDomain("");
     window.location.href = `${API_BASE}/auth/shopify?${params}`;
+  }
+
+  async function handleTripadvisorManualConnect() {
+    const locationId = tripadvisorLocationId.trim();
+    const apiKey = tripadvisorApiKey.trim();
+    if (!locationId) {
+      setTripadvisorConnectError("Location ID is required.");
+      return;
+    }
+    setTripadvisorConnecting(true);
+    setTripadvisorConnectError(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/tripadvisor/manual-connect`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId,
+          apiKey: apiKey || undefined,
+          profileId: activeProfileId || undefined,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || "Could not connect Tripadvisor.");
+      }
+      addAccountFromOAuth(
+        String(payload.account_id || ""),
+        "tripadvisor",
+        String(payload.username || `Tripadvisor ${locationId}`),
+        activeProfileId || undefined
+      );
+      setSelectedAccountId(String(payload.account_id || ""));
+      setTripadvisorDialogOpen(false);
+      navigate("/reviews");
+    } catch (err) {
+      setTripadvisorConnectError(err instanceof Error ? err.message : "Could not connect Tripadvisor.");
+    } finally {
+      setTripadvisorConnecting(false);
+    }
   }
 
   function handleAccountClick(accountId: string, isSelected: boolean) {
@@ -460,7 +545,11 @@ export function AppSidebar() {
                                                     ? "Outlook"
                                                     : platform === "google_calendar"
                                                       ? "Google Calendar"
-                                                      : "Outlook Calendar";
+                                                      : platform === "outlook_calendar"
+                                                        ? "Outlook Calendar"
+                                                        : platform === "google_reviews"
+                                                          ? "Google Reviews"
+                                                          : "Tripadvisor";
                               return (
                                 platform === "tiktok" ? (
                                   <div key={platform}>
@@ -505,6 +594,36 @@ export function AppSidebar() {
                                     <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "official" })}>
                                       <Icon className="h-4 w-4 mr-2" />
                                       Outlook Calendar via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : platform === "google_reviews" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "auto" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Google Reviews (Auto)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      Google Reviews via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Google Reviews via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : platform === "tripadvisor" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "auto" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Tripadvisor (Auto)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      Tripadvisor via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Tripadvisor via Official API (Manual)
                                     </DropdownMenuItem>
                                   </div>
                                 ) : (
@@ -594,6 +713,53 @@ export function AppSidebar() {
             </Button>
             <Button onClick={handleShopifyConnect} disabled={!shopDomain.trim()}>
               Connect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tripadvisorDialogOpen} onOpenChange={setTripadvisorDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TripadvisorIcon className="h-4 w-4" />
+              Connect Tripadvisor
+            </DialogTitle>
+            <DialogDescription>
+              Enter Tripadvisor Location ID and optionally API key (if not set in .env).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="tripadvisor-location-id">Location ID</Label>
+              <Input
+                id="tripadvisor-location-id"
+                placeholder="e.g. 304554"
+                value={tripadvisorLocationId}
+                onChange={(e) => setTripadvisorLocationId(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tripadvisor-api-key">API Key (optional)</Label>
+              <Input
+                id="tripadvisor-api-key"
+                type="password"
+                placeholder="Leave empty to use .env"
+                value={tripadvisorApiKey}
+                onChange={(e) => setTripadvisorApiKey(e.target.value)}
+              />
+            </div>
+            {tripadvisorConnectError && (
+              <p className="text-xs text-destructive">{tripadvisorConnectError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTripadvisorDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleTripadvisorManualConnect()} disabled={tripadvisorConnecting || !tripadvisorLocationId.trim()}>
+              {tripadvisorConnecting ? "Connecting..." : "Connect"}
             </Button>
           </DialogFooter>
         </DialogContent>

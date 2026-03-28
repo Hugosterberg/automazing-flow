@@ -365,6 +365,10 @@ function mapZernioPlatform(raw) {
   ) {
     return "google_business";
   }
+  if ((s.includes("google") && s.includes("review")) || s === "google-reviews" || s === "googlereviews") {
+    return "google_reviews";
+  }
+  if (s.includes("tripadvisor") || s.includes("trip-advisor")) return "tripadvisor";
   if (s.includes("google-calendar") || s.includes("google calendar") || s.includes("gcal")) {
     return "google_calendar";
   }
@@ -955,6 +959,195 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         return res.status(data.status || 500).json({ error: data.error, details: data.details });
       }
       return res.json(data);
+    }
+
+    if (platform === "google_reviews") {
+      if (isZernio && zernioAccountId && getZernioApiKey()) {
+        const zh = zernioAuthHeaders();
+        const zid = String(zernioAccountId);
+        const candidates = [
+          `${ZERNIO_API_BASE}/reviews?accountId=${encodeURIComponent(zid)}`,
+          `${ZERNIO_API_BASE}/accounts/${encodeURIComponent(zid)}/reviews`,
+          `${ZERNIO_API_BASE}/google-business/reviews?accountId=${encodeURIComponent(zid)}`,
+        ];
+        let payload = null;
+        for (const url of candidates) {
+          const rr = await fetch(url, { headers: zh || {} });
+          if (!rr.ok) continue;
+          const body = await rr.json().catch(() => ({}));
+          payload = body;
+          break;
+        }
+        const list =
+          payload?.reviews ??
+          payload?.data?.reviews ??
+          (Array.isArray(payload?.data) ? payload.data : []) ??
+          [];
+        const reviews = Array.isArray(list)
+          ? list.slice(0, 40).map((r, i) => ({
+              id: String(r.id || r.reviewId || i),
+              author: String(r.authorName || r.author || r.reviewer || "Anonymous"),
+              rating: Number(r.rating ?? r.starRating ?? 0) || undefined,
+              text: String(r.comment || r.text || r.content || ""),
+              createdAt: String(r.createTime || r.createdAt || r.date || ""),
+              url: String(r.url || r.reviewUrl || ""),
+              source: "zernio",
+            }))
+          : [];
+        const averageRating =
+          reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length
+            : undefined;
+        return res.json({
+          profile: { name: stored.displayName || stored.username || "Google Reviews" },
+          stats: { averageRating, reviewCount: reviews.length },
+          reviews,
+          source: "zernio",
+          note:
+            reviews.length === 0
+              ? "No review payload returned via Zernio for this account yet."
+              : undefined,
+        });
+      }
+
+      const refreshToken = stored.refreshToken;
+      let token = accessToken;
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const accountIdPath = String(stored.googleBusinessAccountId || "").trim();
+      const locationIdPath = String(stored.googleBusinessLocationId || "").trim();
+      if (!accountIdPath || !locationIdPath) {
+        return res.status(400).json({ error: "Google Reviews location is missing. Reconnect the account." });
+      }
+      const makeUrl = () =>
+        `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountIdPath)}/locations/${encodeURIComponent(locationIdPath)}/reviews`;
+      let reviewsRes = await fetch(makeUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      if (reviewsRes.status === 401 && refreshToken && googleClientId && googleClientSecret) {
+        const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: String(refreshToken),
+            grant_type: "refresh_token",
+          }).toString(),
+        });
+        const refreshData = await refreshRes.json().catch(() => ({}));
+        if (refreshData.access_token) {
+          token = refreshData.access_token;
+          tokenStore.set(accountId, { ...stored, accessToken: token });
+          reviewsRes = await fetch(makeUrl(), { headers: { Authorization: `Bearer ${token}` } });
+        }
+      }
+      if (!reviewsRes.ok) {
+        return res.status(502).json({ error: "Could not fetch Google reviews from official API." });
+      }
+      const body = await reviewsRes.json().catch(() => ({}));
+      const list = Array.isArray(body.reviews) ? body.reviews : [];
+      const reviews = list.slice(0, 50).map((r, i) => ({
+        id: String(r.reviewId || r.name || i),
+        author: String(r.reviewer?.displayName || "Anonymous"),
+        rating: Number(r.starRating || 0) || undefined,
+        text: String(r.comment || ""),
+        createdAt: String(r.createTime || ""),
+        url: "",
+        source: "official",
+      }));
+      const averageRating =
+        reviews.length > 0
+          ? reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length
+          : undefined;
+      return res.json({
+        profile: { name: stored.username || "Google Reviews", location: stored.googleBusinessLocationName || "" },
+        stats: { averageRating, reviewCount: Number(body.totalReviewCount || reviews.length) || reviews.length },
+        reviews,
+        source: "official",
+      });
+    }
+
+    if (platform === "tripadvisor") {
+      if (isZernio && zernioAccountId && getZernioApiKey()) {
+        const zh = zernioAuthHeaders();
+        const zid = String(zernioAccountId);
+        const candidates = [
+          `${ZERNIO_API_BASE}/reviews?accountId=${encodeURIComponent(zid)}`,
+          `${ZERNIO_API_BASE}/accounts/${encodeURIComponent(zid)}/reviews`,
+          `${ZERNIO_API_BASE}/tripadvisor/reviews?accountId=${encodeURIComponent(zid)}`,
+        ];
+        let payload = null;
+        for (const url of candidates) {
+          const rr = await fetch(url, { headers: zh || {} });
+          if (!rr.ok) continue;
+          payload = await rr.json().catch(() => ({}));
+          break;
+        }
+        const list =
+          payload?.reviews ??
+          payload?.data?.reviews ??
+          (Array.isArray(payload?.data) ? payload.data : []) ??
+          [];
+        const reviews = Array.isArray(list)
+          ? list.slice(0, 40).map((r, i) => ({
+              id: String(r.id || r.reviewId || i),
+              author: String(r.authorName || r.author || "Anonymous"),
+              rating: Number(r.rating ?? r.starRating ?? 0) || undefined,
+              text: String(r.comment || r.text || ""),
+              createdAt: String(r.date || r.createdAt || ""),
+              url: String(r.url || r.reviewUrl || ""),
+              source: "zernio",
+            }))
+          : [];
+        const averageRating =
+          reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length
+            : undefined;
+        return res.json({
+          profile: { name: stored.displayName || stored.username || "Tripadvisor" },
+          stats: { averageRating, reviewCount: reviews.length },
+          reviews,
+          source: "zernio",
+          note: reviews.length === 0 ? "No Tripadvisor review payload returned via Zernio yet." : undefined,
+        });
+      }
+
+      const apiKey = String(stored.tripadvisorApiKey || process.env.TRIPADVISOR_API_KEY || "").trim();
+      const locationId = String(stored.tripadvisorLocationId || process.env.TRIPADVISOR_LOCATION_ID || "").trim();
+      if (!apiKey || !locationId) {
+        return res.status(400).json({
+          error:
+            "Tripadvisor official API needs TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID in .env (or reconnect).",
+        });
+      }
+      const lang = "en";
+      const reviewsRes = await fetch(
+        `https://api.content.tripadvisor.com/api/v1/location/${encodeURIComponent(locationId)}/reviews?key=${encodeURIComponent(apiKey)}&language=${lang}`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (!reviewsRes.ok) {
+        return res.status(502).json({ error: "Could not fetch Tripadvisor reviews from official API." });
+      }
+      const body = await reviewsRes.json().catch(() => ({}));
+      const list = Array.isArray(body.data) ? body.data : Array.isArray(body.reviews) ? body.reviews : [];
+      const reviews = list.slice(0, 50).map((r, i) => ({
+        id: String(r.id || i),
+        author: String(r.user?.username || r.user?.name || r.author || "Anonymous"),
+        rating: Number(r.rating || 0) || undefined,
+        text: String(r.text || r.title || ""),
+        createdAt: String(r.published_date || r.date || ""),
+        url: String(r.url || ""),
+        source: "official",
+      }));
+      const averageRating =
+        reviews.length > 0
+          ? reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length
+          : undefined;
+      return res.json({
+        profile: { name: stored.username || `Tripadvisor location ${locationId}` },
+        stats: { averageRating, reviewCount: reviews.length },
+        reviews,
+        source: "official",
+      });
     }
 
     if (platform === "google_calendar") {

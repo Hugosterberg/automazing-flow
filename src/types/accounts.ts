@@ -12,13 +12,25 @@ export type SocialPlatform =
 export type EcommercePlatform = "shopify" | "notion";
 export type MailPlatform = "gmail" | "outlook";
 export type CalendarPlatform = "google_calendar" | "outlook_calendar";
+export type ReviewsPlatform = "google_reviews" | "tripadvisor";
 
-export type AccountPlatform = SocialPlatform | EcommercePlatform | MailPlatform | CalendarPlatform;
+export type AccountPlatform =
+  | SocialPlatform
+  | EcommercePlatform
+  | MailPlatform
+  | CalendarPlatform
+  | ReviewsPlatform;
 
 export interface Profile {
   id: string;
   name: string;
   createdAt: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  location?: string;
+  notes?: string;
 }
 
 /** Stats for social accounts (e.g. Instagram: followers, post count) */

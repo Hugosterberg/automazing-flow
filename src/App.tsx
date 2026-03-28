@@ -16,6 +16,9 @@ import CalendarPage from "./pages/CalendarPage";
 import MailPage from "./pages/Mail";
 import AIRecommendationsPage from "./pages/AIRecommendations";
 import PreferencesPage from "./pages/Preferences";
+import ReviewsPage from "./pages/Reviews";
+import SalesMarketingPage from "./pages/SalesMarketing";
+import CustomersPage from "./pages/Customers";
 
 const queryClient = new QueryClient();
 
@@ -60,8 +63,11 @@ const App = () => {
                 <Route element={<Layout />}>
                   <Route path="/social-media" element={<SocialMedia />} />
                   <Route path="/ecommerce" element={<Ecommerce />} />
+                  <Route path="/sales-marketing" element={<SalesMarketingPage />} />
+                  <Route path="/customers" element={<CustomersPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/mail" element={<MailPage />} />
+                  <Route path="/reviews" element={<ReviewsPage />} />
                   <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
                   <Route path="/preferences" element={<PreferencesPage />} />
                 </Route>

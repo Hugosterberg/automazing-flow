@@ -226,7 +226,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl w-full mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Calendar</h1>
         <div className="flex items-center gap-2">
@@ -275,8 +275,8 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        <Card className="rounded-xl shrink-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] gap-6 items-start">
+        <Card className="rounded-xl shrink-0 w-full lg:mx-0 mx-auto">
           <CardContent className="pt-6">
             <Calendar
               mode="single"
@@ -355,7 +355,7 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl min-h-[400px] flex flex-col">
+        <Card className="rounded-xl min-h-[400px] flex flex-col w-full">
           <CardContent className="flex-1 p-6 overflow-auto">
             {viewMode === "day" && (
               <div className="max-w-md">

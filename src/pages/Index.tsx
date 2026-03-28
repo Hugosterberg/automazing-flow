@@ -1,7 +1,12 @@
 import { motion } from "framer-motion";
-import { Zap, Megaphone, BriefcaseBusiness, CalendarDays, Mail, Settings, Info, Trash2 } from "lucide-react";
+import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, Mail, Settings, Info, Trash2, Star, Menu, Pencil } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +38,20 @@ const areas = [
     ready: true,
   },
   {
+    title: "Sales & Marketing",
+    desc: "Track growth goals, campaigns and sales performance",
+    icon: LineChart,
+    url: "/sales-marketing",
+    ready: true,
+  },
+  {
+    title: "Customers",
+    desc: "Keep customer context, segments and relationship insights",
+    icon: Users,
+    url: "/customers",
+    ready: true,
+  },
+  {
     title: "Calendar",
     desc: "Smart scheduling and automated reminders",
     icon: CalendarDays,
@@ -44,6 +63,13 @@ const areas = [
     desc: "Manage and automate your emails",
     icon: Mail,
     url: "/mail",
+    ready: true,
+  },
+  {
+    title: "Reviews",
+    desc: "Monitor and respond to customer reviews",
+    icon: Star,
+    url: "/reviews",
     ready: true,
   },
   {
@@ -64,8 +90,19 @@ const areas = [
 
 export default function Index() {
   const navigate = useNavigate();
-  const { activeProfile, profiles, accounts, removeProfile } = useAccounts();
+  const { activeProfile, profiles, accounts, removeProfile, updateProfile } = useAccounts();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    website: "",
+    email: "",
+    phone: "",
+    company: "",
+    location: "",
+    notes: "",
+  });
 
   const platformLabel: Record<string, string> = {
     instagram: "Instagram",
@@ -74,6 +111,8 @@ export default function Index() {
     x: "X",
     facebook: "Facebook",
     google_business: "Google Business",
+    google_reviews: "Google Reviews",
+    tripadvisor: "Tripadvisor",
     whatsapp: "WhatsApp",
     shopify: "Shopify",
     gmail: "Gmail",
@@ -107,8 +146,82 @@ export default function Index() {
     // #endregion
   }, []);
 
+  useEffect(() => {
+    if (!activeProfile) return;
+    setProfileForm({
+      name: activeProfile.name || "",
+      website: activeProfile.website || "",
+      email: activeProfile.email || "",
+      phone: activeProfile.phone || "",
+      company: activeProfile.company || "",
+      location: activeProfile.location || "",
+      notes: activeProfile.notes || "",
+    });
+  }, [activeProfile]);
+
+  function saveProfileEdits() {
+    if (!activeProfile) return;
+    updateProfile(activeProfile.id, profileForm);
+    setEditOpen(false);
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
+      <div className="fixed top-4 left-4 z-40">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setMenuOpen(true)}
+          className="h-9 w-9 border-border bg-card/90 backdrop-blur hover:bg-accent"
+          aria-label="Open menu"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          className="w-[280px] sm:w-[320px] bg-sidebar text-sidebar-foreground border-sidebar-border p-0 [&>button]:text-muted-foreground"
+        >
+          <div className="flex h-full flex-col">
+            <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold tracking-tight text-foreground">automazing</span>
+            </div>
+            <div className="flex-1 overflow-auto px-3 py-3 sidebar-scroll">
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/");
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  Home
+                </button>
+                {areas.map((area) => (
+                  <button
+                    key={area.title}
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate(area.url);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                  >
+                    {area.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -155,6 +268,16 @@ export default function Index() {
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             )}
+            {activeProfile && (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="absolute left-5 top-5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 transition-colors"
+                aria-label={`Edit profile ${activeProfile.name}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
             <div className="flex flex-col items-center text-center space-y-2.5">
               <h2 className="text-xl font-semibold tracking-tight w-full">
                 {activeProfile?.name || "Active profile"}
@@ -173,10 +296,101 @@ export default function Index() {
                   {profileSummary.profileText}
                 </p>
               )}
+              {(activeProfile?.website || activeProfile?.email || activeProfile?.phone || activeProfile?.location) && (
+                <p className="text-xs text-muted-foreground/80 border-t border-border pt-2 max-w-2xl">
+                  {activeProfile.website ? `Website: ${activeProfile.website}` : ""}
+                  {activeProfile.website && (activeProfile.email || activeProfile.phone || activeProfile.location) ? " · " : ""}
+                  {activeProfile.email ? `Email: ${activeProfile.email}` : ""}
+                  {activeProfile.email && (activeProfile.phone || activeProfile.location) ? " · " : ""}
+                  {activeProfile.phone ? `Phone: ${activeProfile.phone}` : ""}
+                  {activeProfile.phone && activeProfile.location ? " · " : ""}
+                  {activeProfile.location ? `Location: ${activeProfile.location}` : ""}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+            <DialogDescription>
+              Update profile details used for planning and account context.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="profile-name">Profile name</Label>
+              <Input
+                id="profile-name"
+                value={profileForm.name}
+                onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-company">Company</Label>
+              <Input
+                id="profile-company"
+                value={profileForm.company}
+                onChange={(e) => setProfileForm((p) => ({ ...p, company: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-location">Location</Label>
+              <Input
+                id="profile-location"
+                value={profileForm.location}
+                onChange={(e) => setProfileForm((p) => ({ ...p, location: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-email">Email</Label>
+              <Input
+                id="profile-email"
+                type="email"
+                value={profileForm.email}
+                onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-phone">Phone</Label>
+              <Input
+                id="profile-phone"
+                value={profileForm.phone}
+                onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="profile-website">Website</Label>
+              <Input
+                id="profile-website"
+                placeholder="https://example.com"
+                value={profileForm.website}
+                onChange={(e) => setProfileForm((p) => ({ ...p, website: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="profile-notes">Notes</Label>
+              <Input
+                id="profile-notes"
+                placeholder="Short profile notes"
+                value={profileForm.notes}
+                onChange={(e) => setProfileForm((p) => ({ ...p, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveProfileEdits} disabled={!activeProfile}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <AlertDialogContent className="sm:max-w-sm">

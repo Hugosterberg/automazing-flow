@@ -22,6 +22,10 @@ interface AccountsContextValue {
   setActiveProfileId: (id: string | null) => void;
   addProfile: (name: string) => Profile;
   renameProfile: (id: string, name: string) => void;
+  updateProfile: (
+    id: string,
+    updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
+  ) => void;
   removeProfile: (id: string) => void;
   accounts: ConnectedAccount[];
   addAccount: (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
@@ -222,6 +226,20 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           name: p.name,
           createdAt: p.created_at,
         }));
+        const localProfileMap = new Map(loadProfiles().map((p) => [p.id, p]));
+        mappedProfiles = mappedProfiles.map((p) => {
+          const local = localProfileMap.get(p.id);
+          if (!local) return p;
+          return {
+            ...p,
+            website: local.website,
+            email: local.email,
+            phone: local.phone,
+            company: local.company,
+            location: local.location,
+            notes: local.notes,
+          };
+        });
         let mappedAccounts = (accountRows ?? []).map((a: AccountRow) => ({
           id: a.id,
           profileId: a.profile_id,
@@ -339,6 +357,31 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateProfile = useCallback(
+    (
+      id: string,
+      updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
+    ) => {
+      setProfiles((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const next: Profile = {
+            ...p,
+            ...(updates.name != null ? { name: updates.name.trim() || p.name } : {}),
+            ...(updates.website !== undefined ? { website: updates.website.trim() || undefined } : {}),
+            ...(updates.email !== undefined ? { email: updates.email.trim() || undefined } : {}),
+            ...(updates.phone !== undefined ? { phone: updates.phone.trim() || undefined } : {}),
+            ...(updates.company !== undefined ? { company: updates.company.trim() || undefined } : {}),
+            ...(updates.location !== undefined ? { location: updates.location.trim() || undefined } : {}),
+            ...(updates.notes !== undefined ? { notes: updates.notes.trim() || undefined } : {}),
+          };
+          return next;
+        })
+      );
+    },
+    []
+  );
+
   const removeProfile = useCallback((id: string) => {
     setProfiles((prev) => {
       const next = prev.filter((p) => p.id !== id);
@@ -396,6 +439,8 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         outlook: "outlook.com",
         google_calendar: "calendar.google.com",
         outlook_calendar: "outlook.office.com/calendar",
+        google_reviews: "google.com/maps",
+        tripadvisor: "tripadvisor.com",
         facebook: "facebook.com",
         google_business: "google.com/maps",
         whatsapp: "wa.me",
@@ -463,6 +508,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         setActiveProfileId,
         addProfile,
         renameProfile,
+        updateProfile,
         removeProfile,
         accounts: accountsForActiveProfile,
         addAccount,

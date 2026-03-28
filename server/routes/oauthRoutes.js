@@ -18,6 +18,8 @@ const GMAIL_SCOPES =
   "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
 const GOOGLE_CALENDAR_SCOPES =
   "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+const GOOGLE_REVIEWS_SCOPES =
+  "openid email profile https://www.googleapis.com/auth/business.manage";
 const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
 const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
@@ -268,6 +270,9 @@ export function registerOAuthRoutes(
     if (platform === "gmail" || platform === "outlook") {
       return "mail";
     }
+    if (platform === "google_reviews" || platform === "tripadvisor") {
+      return "reviews";
+    }
     if (platform === "shopify" || platform === "notion") {
       return "ecommerce";
     }
@@ -494,7 +499,9 @@ export function registerOAuthRoutes(
       connectToken: queryConnectTokenCamel,
     } = req.query;
     if (error) {
-      return res.redirect(oauthRedirect("facebook", `oauth_error=${encodeURIComponent(error)}`));
+      const pendingForError = state ? pendingStates.get(String(state)) : null;
+      const platformForError = pendingForError?.platform || "facebook";
+      return res.redirect(oauthRedirect(platformForError, `oauth_error=${encodeURIComponent(error)}`));
     }
     let resolvedState = state ? String(state) : "";
     let pending = pendingStates.get(resolvedState);
@@ -512,7 +519,9 @@ export function registerOAuthRoutes(
           value.platform === "google_business" ||
           value.platform === "whatsapp" ||
           value.platform === "google_calendar" ||
-          value.platform === "outlook_calendar";
+          value.platform === "outlook_calendar" ||
+          value.platform === "google_reviews" ||
+          value.platform === "tripadvisor";
         if (!isZernioPlatform) return false;
         const createdAt = Number(value.createdAt || 0);
         if (!createdAt || now - createdAt > recentWindowMs) return false;
@@ -1409,6 +1418,294 @@ export function registerOAuthRoutes(
       console.error("Outlook Calendar OAuth error:", err);
       res.redirect(`${BASE_URL}/calendar?oauth_error=token_exchange_failed`);
     }
+  });
+
+  // --- Google Reviews OAuth (official + optional Zernio auto path) ---
+  app.get("/api/auth/google_reviews", async (req, res) => {
+    const userId = requireSessionOrRedirect(req, res, "reviews");
+    if (!userId) return;
+    const provider = String(req.query.provider || "auto").trim().toLowerCase();
+    const ourProfileId = req.query.profile_id || null;
+
+    if (provider !== "official") {
+      const zernioKey = getZernioApiKey();
+      if (zernioKey) {
+        try {
+          const zernioProfileId = await getOrCreateZernioProfileId();
+          if (!zernioProfileId) {
+            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_profile_failed`);
+          }
+          const state = generateState();
+          pendingStates.set(state, {
+            platform: "google_reviews",
+            userId,
+            profileId: ourProfileId,
+            zernioProfileId,
+            createdAt: Date.now(),
+          });
+          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const authUrl = await getZernioConnectUrl({
+            ZERNIO_API_BASE,
+            zernioKey,
+            platformSlugs: ["google-reviews", "google_reviews", "google-business-reviews"],
+            profileId: zernioProfileId,
+            redirectUrl,
+          });
+          return res.redirect(authUrl);
+        } catch (e) {
+          const msg = String(e?.message || "");
+          if (provider === "zernio") {
+            if (msg.startsWith("zernio_connect_failed")) {
+              return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_connect_failed`);
+            }
+            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_init_failed`);
+          }
+        }
+      } else if (provider === "zernio") {
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_not_configured`);
+      }
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_not_configured`);
+    }
+    const state = generateState();
+    pendingStates.set(state, { platform: "google_reviews", userId, profileId: ourProfileId, createdAt: Date.now() });
+    const redirectUri = `${API_BASE_URL}/api/auth/google-reviews/callback`;
+    const url = new URL(GOOGLE_AUTH);
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", GOOGLE_REVIEWS_SCOPES);
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+    url.searchParams.set("state", state);
+    res.redirect(url.toString());
+  });
+
+  app.get("/api/auth/google-reviews/callback", async (req, res) => {
+    const { code, state, error } = req.query;
+    if (error) {
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=${encodeURIComponent(String(error))}`);
+    }
+    const pending = pendingStates.get(state);
+    if (!pending) {
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=invalid_state`);
+    }
+    const callbackUserId = getSessionUserId(req);
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
+      pendingStates.delete(state);
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=invalid_state`);
+    }
+    pendingStates.delete(state);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_not_configured`);
+    }
+    try {
+      const redirectUri = `${API_BASE_URL}/api/auth/google-reviews/callback`;
+      const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+      });
+      const tokenRes = await fetch(GOOGLE_TOKEN, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      const tokenData = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`);
+      }
+
+      const headers = { Authorization: `Bearer ${tokenData.access_token}` };
+      // Primary API: account management v1. Fallback: legacy v4 for tenants with partial migration.
+      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers });
+      const accountsBody = await accountsRes.json().catch(() => ({}));
+      let accounts = Array.isArray(accountsBody.accounts) ? accountsBody.accounts : [];
+      if ((!accounts || accounts.length === 0) && accountsRes.ok) {
+        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers });
+        const legacyAccountsBody = await legacyAccountsRes.json().catch(() => ({}));
+        const legacyAccounts = Array.isArray(legacyAccountsBody.accounts) ? legacyAccountsBody.accounts : [];
+        if (legacyAccounts.length > 0) {
+          accounts = legacyAccounts;
+        }
+      }
+      if (!accountsRes.ok && (!accounts || accounts.length === 0)) {
+        const errHint = encodeURIComponent(String(accountsBody?.error?.message || accountsBody?.error || "accounts_api_failed"));
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_accounts_api_failed&oauth_hint=${errHint}`);
+      }
+      const firstAccount = accounts[0] || null;
+      const accountNamePath = String(firstAccount?.name || "");
+      const accountId = accountNamePath.split("/")[1] || "";
+      if (!accountId) {
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_no_account_access`);
+      }
+
+      const locationsRes = await fetch(
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${accountNamePath}/locations?pageSize=20&readMask=name,title`,
+        { headers }
+      );
+      const locationsBody = await locationsRes.json().catch(() => ({}));
+      let locations = Array.isArray(locationsBody.locations) ? locationsBody.locations : [];
+      if ((!locations || locations.length === 0) && locationsRes.ok) {
+        const legacyLocationsRes = await fetch(
+          `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountId)}/locations?pageSize=20`,
+          { headers }
+        );
+        const legacyLocationsBody = await legacyLocationsRes.json().catch(() => ({}));
+        const legacyLocations = Array.isArray(legacyLocationsBody.locations) ? legacyLocationsBody.locations : [];
+        if (legacyLocations.length > 0) {
+          locations = legacyLocations;
+        }
+      }
+      if (!locationsRes.ok && (!locations || locations.length === 0)) {
+        const errHint = encodeURIComponent(String(locationsBody?.error?.message || locationsBody?.error || "locations_api_failed"));
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_locations_api_failed&oauth_hint=${errHint}`);
+      }
+      const firstLocation = locations[0] || null;
+      const locationNamePath = String(firstLocation?.name || "");
+      const locationId = locationNamePath.split("/").pop() || "";
+      const locationTitle = String(firstLocation?.title || firstLocation?.locationName || firstLocation?.storeCode || "Google location");
+      if (!locationId) {
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=google_reviews_no_location_access`);
+      }
+
+      const stableId = crypto
+        .createHash("sha1")
+        .update(`${accountId}:${locationId}`)
+        .digest("hex")
+        .slice(0, 20);
+      const appAccountId = `grev_${stableId}`;
+      tokenStore.set(appAccountId, {
+        platform: "google_reviews",
+        ownerUserId: callbackUserId || pending.userId,
+        username: locationTitle,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        googleBusinessAccountId: accountId,
+        googleBusinessLocationId: locationId,
+        googleBusinessLocationName: locationTitle,
+      });
+      const profileQuery = profileParam(pending.profileId);
+      return res.redirect(
+        `${BASE_URL}/reviews?oauth_success=1&platform=google_reviews&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
+      );
+    } catch (err) {
+      console.error("Google Reviews OAuth error:", err);
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=token_exchange_failed`);
+    }
+  });
+
+  // --- Tripadvisor connect (Zernio + official API key fallback) ---
+  app.get("/api/auth/tripadvisor", async (req, res) => {
+    const userId = requireSessionOrRedirect(req, res, "reviews");
+    if (!userId) return;
+    const provider = String(req.query.provider || "auto").trim().toLowerCase();
+    const ourProfileId = req.query.profile_id || null;
+
+    if (provider !== "official") {
+      const zernioKey = getZernioApiKey();
+      if (zernioKey) {
+        try {
+          const zernioProfileId = await getOrCreateZernioProfileId();
+          if (!zernioProfileId) {
+            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_profile_failed`);
+          }
+          const state = generateState();
+          pendingStates.set(state, {
+            platform: "tripadvisor",
+            userId,
+            profileId: ourProfileId,
+            zernioProfileId,
+            createdAt: Date.now(),
+          });
+          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const authUrl = await getZernioConnectUrl({
+            ZERNIO_API_BASE,
+            zernioKey,
+            platformSlugs: ["tripadvisor", "trip-advisor"],
+            profileId: zernioProfileId,
+            redirectUrl,
+          });
+          return res.redirect(authUrl);
+        } catch (e) {
+          const msg = String(e?.message || "");
+          if (provider === "zernio") {
+            if (msg.startsWith("zernio_connect_failed")) {
+              return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_connect_failed`);
+            }
+            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_init_failed`);
+          }
+        }
+      } else if (provider === "zernio") {
+        return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_not_configured`);
+      }
+    }
+
+    const apiKey = String(process.env.TRIPADVISOR_API_KEY || "").trim();
+    const locationId = String(req.query.location_id || process.env.TRIPADVISOR_LOCATION_ID || "").trim();
+    if (!apiKey || !locationId) {
+      return res.redirect(`${BASE_URL}/reviews?oauth_error=tripadvisor_not_configured`);
+    }
+    const accountId = `tripadvisor_${locationId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    tokenStore.set(accountId, {
+      platform: "tripadvisor",
+      ownerUserId: userId,
+      username: `Tripadvisor ${locationId}`,
+      accessToken: null,
+      tripadvisorApiKey: apiKey,
+      tripadvisorLocationId: locationId,
+    });
+    const profileQuery = profileParam(ourProfileId);
+    return res.redirect(
+      `${BASE_URL}/reviews?oauth_success=1&platform=tripadvisor&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(`Tripadvisor ${locationId}`)}${profileQuery}`
+    );
+  });
+
+  app.post("/api/auth/tripadvisor/manual-connect", (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const locationId = String(req.body?.locationId || "").trim();
+    const providedApiKey = String(req.body?.apiKey || "").trim();
+    const profileId = String(req.body?.profileId || "").trim() || null;
+    const apiKey = providedApiKey || String(process.env.TRIPADVISOR_API_KEY || "").trim();
+    if (!locationId) {
+      return res.status(400).json({ error: "locationId is required" });
+    }
+    if (!apiKey) {
+      return res.status(400).json({ error: "Tripadvisor API key is required" });
+    }
+    const accountId = `tripadvisor_${locationId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    tokenStore.set(accountId, {
+      platform: "tripadvisor",
+      ownerUserId: userId,
+      username: `Tripadvisor ${locationId}`,
+      accessToken: null,
+      tripadvisorApiKey: apiKey,
+      tripadvisorLocationId: locationId,
+    });
+    return res.json({
+      ok: true,
+      account_id: accountId,
+      platform: "tripadvisor",
+      username: `Tripadvisor ${locationId}`,
+      ...(profileId ? { profile_id: profileId } : {}),
+    });
   });
 
   // --- Gmail OAuth (samma Google OAuth, andra scopes) ---
