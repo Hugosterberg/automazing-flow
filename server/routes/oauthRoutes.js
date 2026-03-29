@@ -364,7 +364,18 @@ export function registerOAuthRoutes(
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    const isLocalPairMismatch =
+      pendingUserId.startsWith("local_") &&
+      callbackUserIdStr.startsWith("local_") &&
+      pendingUserId !== callbackUserIdStr;
+
+    if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition && !isLocalPairMismatch) {
       pendingStates.delete(state);
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
@@ -402,7 +413,8 @@ export function registerOAuthRoutes(
       const id = String(accountId);
       tokenStore.set(id, {
         platform: "instagram",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
         zernioAccountId: id,
         username: displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram",
         instagramViaZernio: true,
@@ -591,6 +603,7 @@ export function registerOAuthRoutes(
       tokenStore.set(appAccountId, {
         platform: pending.platform,
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: null,
         isZernio: true,
         zernioAccountId,
@@ -669,6 +682,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "instagram",
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: data.access_token,
         userId: data.user_id,
         username: data.user?.username || `user_${data.user_id}`,
@@ -798,6 +812,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "tiktok",
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         openId: data.open_id,
@@ -881,6 +896,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "x",
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
         xUserId: user.id,
@@ -962,6 +978,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "youtube",
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         username: null,
@@ -1049,7 +1066,13 @@ export function registerOAuthRoutes(
       }
       const accountId = crypto.randomUUID();
       const shopName = String(shopUrl).replace(/\.myshopify\.com$/, "");
-      tokenStore.set(accountId, { platform: "shopify", ownerUserId: pending.userId, accessToken: data.access_token, shop: shopUrl });
+      tokenStore.set(accountId, {
+        platform: "shopify",
+        ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
+        accessToken: data.access_token,
+        shop: shopUrl,
+      });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
         `${BASE_URL}/ecommerce?oauth_success=1&platform=shopify&account_id=${accountId}&username=${encodeURIComponent(shopName)}${profileQuery}`
@@ -1147,6 +1170,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "notion",
         ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
         accessToken: tokenData.access_token,
         workspaceId: tokenData.workspace_id,
         workspaceName: tokenData.workspace_name,
@@ -1286,6 +1310,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "google_calendar",
         ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
         username,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -1406,6 +1431,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "outlook_calendar",
         ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         username,
@@ -1592,6 +1618,7 @@ export function registerOAuthRoutes(
       tokenStore.set(appAccountId, {
         platform: "google_reviews",
         ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
         username: locationTitle,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
@@ -1664,6 +1691,7 @@ export function registerOAuthRoutes(
     tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
+      profileId: ourProfileId,
       username: `Tripadvisor ${locationId}`,
       accessToken: null,
       tripadvisorApiKey: apiKey,
@@ -1694,6 +1722,7 @@ export function registerOAuthRoutes(
     tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
+      profileId,
       username: `Tripadvisor ${locationId}`,
       accessToken: null,
       tripadvisorApiKey: apiKey,
@@ -1829,6 +1858,7 @@ export function registerOAuthRoutes(
       tokenStore.set(accountId, {
         platform: "gmail",
         ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
         username,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -1905,7 +1935,13 @@ export function registerOAuthRoutes(
       const meData = await meRes.json();
       if (meData.mail) username = meData.mail;
       else if (meData.userPrincipalName) username = meData.userPrincipalName;
-      tokenStore.set(accountId, { platform: "outlook", ownerUserId: pending.userId, accessToken: data.access_token, refreshToken: data.refresh_token });
+      tokenStore.set(accountId, {
+        platform: "outlook",
+        ownerUserId: pending.userId,
+        profileId: pending.profileId || null,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
         `${BASE_URL}/mail?oauth_success=1&platform=outlook&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`

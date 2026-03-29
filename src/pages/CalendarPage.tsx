@@ -80,7 +80,8 @@ type CalendarProviderData = {
 
 export default function CalendarPage() {
   const { oauthError, clearOauthError } = useOAuthCallback();
-  const { activeProfileId, accounts, selectedAccountId, setSelectedAccountId } = useAccounts();
+  const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const selectedAccountId = getSelectedAccountId("calendar");
   const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
@@ -104,7 +105,7 @@ export default function CalendarPage() {
   } = useAccountData<CalendarProviderData>({
     accounts,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: (id) => setSelectedAccountId("calendar", id),
     accountFilter: (a) =>
       (a.platform === "google_calendar" || a.platform === "outlook_calendar") && Boolean(a.isOAuth),
     initialData: null,

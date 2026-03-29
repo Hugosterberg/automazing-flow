@@ -29,7 +29,8 @@ const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } }
 export default function ReviewsPage() {
   const { oauthError, clearOauthError } = useOAuthCallback();
   const oauthHint = new URLSearchParams(window.location.search).get("oauth_hint");
-  const { accounts, selectedAccountId, setSelectedAccountId } = useAccounts();
+  const { accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const selectedAccountId = getSelectedAccountId("reviews");
 
   const {
     scopedAccounts: reviewAccounts,
@@ -42,7 +43,7 @@ export default function ReviewsPage() {
   } = useAccountData<ReviewsData>({
     accounts,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: (id) => setSelectedAccountId("reviews", id),
     accountFilter: (a) => (a.platform === "google_reviews" || a.platform === "tripadvisor") && Boolean(a.isOAuth),
     initialData: null,
     fetcher: async (accountId) => {
@@ -137,7 +138,7 @@ export default function ReviewsPage() {
           {reviewAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => setSelectedAccountId(acc.id)}
+              onClick={() => setSelectedAccountId("reviews", acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeAccount?.id === acc.id
                   ? "bg-foreground text-background border-foreground"

@@ -95,6 +95,7 @@ export function registerAccountRoutes(
       return res.status(401).json({ error: "Not authenticated" });
     }
     const zernioAccountId = String(req.body?.zernioAccountId || "").trim();
+    const profileId = String(req.body?.profile_id || req.body?.profileId || "").trim() || null;
     if (!zernioAccountId) {
       return res.status(400).json({ error: "zernioAccountId is required" });
     }
@@ -144,6 +145,7 @@ export function registerAccountRoutes(
         platform,
         accessToken: null,
         ownerUserId: userId,
+        profileId,
         isZernio: true,
         zernioAccountId: String(acc.id || acc.accountId || zernioAccountId),
         zernioPlatform: rawPlatform,

@@ -170,8 +170,9 @@ async function generateImageVariants(): Promise<string[]> {
 export default function SocialMedia() {
   const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
-  const { accounts, selectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
+  const { accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
+  const selectedAccountId = getSelectedAccountId("social-media");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{
@@ -184,6 +185,7 @@ export default function SocialMedia() {
   const [initialSocialData] = useState<SocialMediaApiResponse | null>(null);
   const {
     data: socialData,
+    dataAccountId,
     loading: statsLoading,
     refresh: refreshStats,
     error,
@@ -191,7 +193,7 @@ export default function SocialMedia() {
   } = useAccountData<SocialMediaApiResponse | null>({
     accounts,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: (id) => setSelectedAccountId("social-media", id),
     accountFilter: (a) => a.id === selectedAccountId,
     initialData: initialSocialData,
     autoSelectFirst: false,
@@ -227,7 +229,7 @@ export default function SocialMedia() {
   });
 
   useEffect(() => {
-    if (!selectedAccountId || !socialData) return;
+    if (!selectedAccountId || !socialData || dataAccountId !== selectedAccountId) return;
     const data = socialData;
     const stats = data.stats ?? data.profile?.stats;
     const profile = data.profile || {};
@@ -282,7 +284,7 @@ export default function SocialMedia() {
         });
       }
     }
-  }, [socialData, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
+  }, [socialData, dataAccountId, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
@@ -299,10 +301,16 @@ export default function SocialMedia() {
     selectedAccount?.stats?.zernioNote;
 
   useEffect(() => {
+    setRecentPosts([]);
+    setAnalysisResult(null);
+    setAnalyzing(false);
+  }, [selectedAccountId]);
+
+  useEffect(() => {
     if (!selectedAccountId) return;
     const existsInSocialAccounts = socialAccounts.some((a) => a.id === selectedAccountId);
     if (!existsInSocialAccounts) {
-      setSelectedAccountId(null);
+      setSelectedAccountId("social-media", null);
     }
   }, [selectedAccountId, socialAccounts, setSelectedAccountId]);
 

@@ -56,7 +56,8 @@ const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
 export default function MailPage() {
   const { authMode, session } = useAuth();
   const { oauthError, clearOauthError } = useOAuthCallback();
-  const { accounts, selectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
+  const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
+  const selectedAccountId = getSelectedAccountId("mail");
   const [messagesInitial] = useState<GmailMessage[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<GmailMessage | null>(null);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
@@ -71,7 +72,7 @@ export default function MailPage() {
   } = useAccountData<GmailMessage[]>({
     accounts,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: (id) => setSelectedAccountId("mail", id),
     accountFilter: (a) => a.platform === "gmail" && Boolean(a.isOAuth),
     initialData: messagesInitial,
     fetcher: async (accountId) => {
@@ -196,7 +197,7 @@ export default function MailPage() {
           {gmailAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => setSelectedAccountId(acc.id)}
+              onClick={() => setSelectedAccountId("mail", acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeGmail?.id === acc.id
                   ? "bg-foreground text-background border-foreground"

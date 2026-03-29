@@ -14,9 +14,15 @@ import { supabase } from "@/lib/supabase";
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
 const ACTIVE_PROFILE_KEY = "automazing-active-profile";
+const SELECTED_ACCOUNTS_STORAGE_KEY = "automazing-selected-accounts";
+
+export type AccountSection = "social-media" | "ecommerce" | "mail" | "calendar" | "reviews";
+
+type SelectedAccountsState = Record<string, Partial<Record<AccountSection, string | null>>>;
 
 interface AccountsContextValue {
   profiles: Profile[];
+  profilesReady: boolean;
   activeProfile: Profile | null;
   activeProfileId: string | null;
   setActiveProfileId: (id: string | null) => void;
@@ -44,8 +50,8 @@ interface AccountsContextValue {
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
   updateAccountStats: (id: string, stats: AccountStats | undefined) => void;
-  selectedAccountId: string | null;
-  setSelectedAccountId: (id: string | null) => void;
+  getSelectedAccountId: (section: AccountSection) => string | null;
+  setSelectedAccountId: (section: AccountSection, id: string | null) => void;
   showOverview: boolean;
   setShowOverview: (v: boolean) => void;
   allAccounts: ConnectedAccount[];
@@ -103,7 +109,7 @@ function loadAccounts(): ConnectedAccount[] {
             ...(zid ? { zernioAccountId: zid } : {}),
           };
         });
-        return dedupeAccountsByProfilePlatform(mapped);
+        return mapped;
       }
     }
   } catch {
@@ -112,23 +118,110 @@ function loadAccounts(): ConnectedAccount[] {
   return [];
 }
 
-function dedupeAccountsByProfilePlatform(accounts: ConnectedAccount[]): ConnectedAccount[] {
-  const latestByKey = new Map<string, ConnectedAccount>();
+function loadSelectedAccounts(): SelectedAccountsState {
+  try {
+    const stored = localStorage.getItem(SELECTED_ACCOUNTS_STORAGE_KEY);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function cleanupSelectedAccounts(
+  selections: SelectedAccountsState,
+  profiles: Profile[],
+  accounts: ConnectedAccount[]
+): SelectedAccountsState {
+  const validProfileIds = new Set(profiles.map((profile) => profile.id));
+  const validAccountIdsByProfile = new Map<string, Set<string>>();
 
   for (const account of accounts) {
-    const key = `${account.profileId}::${account.platform}`;
-    const prev = latestByKey.get(key);
-    if (!prev) {
-      latestByKey.set(key, account);
-      continue;
-    }
-    const prevTs = Date.parse(prev.connectedAt || "");
-    const nextTs = Date.parse(account.connectedAt || "");
-    const keepNext = Number.isNaN(prevTs) || (!Number.isNaN(nextTs) && nextTs >= prevTs);
-    latestByKey.set(key, keepNext ? account : prev);
+    const ids = validAccountIdsByProfile.get(account.profileId) ?? new Set<string>();
+    ids.add(account.id);
+    validAccountIdsByProfile.set(account.profileId, ids);
   }
 
-  return [...latestByKey.values()];
+  return Object.fromEntries(
+    Object.entries(selections).flatMap(([profileId, scopedSelections]) => {
+      if (!validProfileIds.has(profileId) || !scopedSelections || typeof scopedSelections !== "object") {
+        return [];
+      }
+
+      const validIds = validAccountIdsByProfile.get(profileId) ?? new Set<string>();
+      const nextSelections = Object.fromEntries(
+        Object.entries(scopedSelections).flatMap(([section, accountId]) => {
+          if (accountId == null) return [[section, null]];
+          return validIds.has(accountId) ? [[section, accountId]] : [];
+        })
+      ) as Partial<Record<AccountSection, string | null>>;
+
+      return [[profileId, nextSelections]];
+    })
+  );
+}
+
+async function syncProfilesAndAccounts({
+  profiles,
+  accounts,
+  userId,
+}: {
+  profiles: Profile[];
+  accounts: ConnectedAccount[];
+  userId: string;
+}) {
+  if (!supabase) return;
+
+  const profileRows: ProfileRow[] = profiles.map((p) => ({
+    id: p.id,
+    user_id: userId,
+    name: p.name,
+    created_at: p.createdAt,
+  }));
+  const accountRows: AccountRow[] = accounts.map((a) => ({
+    id: a.id,
+    user_id: userId,
+    profile_id: a.profileId,
+    platform: a.platform,
+    username: a.username,
+    display_name: a.displayName ?? null,
+    avatar_url: a.avatarUrl ?? null,
+    profile_url: a.profileUrl ?? null,
+    connected_at: a.connectedAt,
+    is_oauth: Boolean(a.isOAuth),
+    is_zernio: Boolean(a.isZernio),
+    zernio_account_id: a.zernioAccountId ?? null,
+    stats: a.stats ?? null,
+    analysis: a.analysis ?? null,
+  }));
+
+  if (profileRows.length > 0) {
+    const { error } = await supabase.from("profiles").upsert(profileRows);
+    if (error) throw error;
+  }
+
+  if (accountRows.length > 0) {
+    const { error } = await supabase.from("connected_accounts").upsert(accountRows);
+    if (error) throw error;
+  }
+
+  const profileIds = profileRows.map((row) => row.id);
+  const accountIds = accountRows.map((row) => row.id);
+
+  let profileDeleteQuery = supabase.from("profiles").delete().eq("user_id", userId);
+  if (profileIds.length > 0) {
+    profileDeleteQuery = profileDeleteQuery.not("id", "in", `(${profileIds.map((id) => `"${id}"`).join(",")})`);
+  }
+  const { error: profileDeleteError } = await profileDeleteQuery;
+  if (profileDeleteError) throw profileDeleteError;
+
+  let accountDeleteQuery = supabase.from("connected_accounts").delete().eq("user_id", userId);
+  if (accountIds.length > 0) {
+    accountDeleteQuery = accountDeleteQuery.not("id", "in", `(${accountIds.map((id) => `"${id}"`).join(",")})`);
+  }
+  const { error: accountDeleteError } = await accountDeleteQuery;
+  if (accountDeleteError) throw accountDeleteError;
 }
 
 function loadActiveProfileId(): string | null {
@@ -159,8 +252,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   );
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(loadActiveProfileId);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(loadAccounts);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<SelectedAccountsState>(loadSelectedAccounts);
   const [showOverview, setShowOverview] = useState(false);
+  const [profilesReady, setProfilesReady] = useState(false);
   const hydratingRef = useRef(false);
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null;
@@ -175,8 +269,16 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   }, [profiles]);
 
   useEffect(() => {
+    localStorage.setItem(SELECTED_ACCOUNTS_STORAGE_KEY, JSON.stringify(selectedAccountIds));
+  }, [selectedAccountIds]);
+
+  useEffect(() => {
     if (profiles.length === 0) {
       if (activeProfileId !== null) setActiveProfileIdState(null);
+      return;
+    }
+    if (!activeProfileId) {
+      setActiveProfileIdState(profiles[0].id);
       return;
     }
     if (activeProfileId && !profiles.some((p) => p.id === activeProfileId)) {
@@ -191,13 +293,21 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   }, [activeProfileId, user?.id]);
 
   useEffect(() => {
-    if (!enabled || authLoading || !supabase) return;
-    if (!user) return;
+    setSelectedAccountIds((current) => cleanupSelectedAccounts(current, profiles, accounts));
+  }, [profiles, accounts]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!enabled || !supabase || !user) {
+      setProfilesReady(true);
+      return;
+    }
 
     let ignore = false;
 
     const hydrate = async () => {
       hydratingRef.current = true;
+      setProfilesReady(false);
       try {
         const [{ data: profileRows, error: profilesError }, { data: accountRows, error: accountsError }] =
           await Promise.all([
@@ -255,8 +365,6 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           stats: a.stats ?? undefined,
           analysis: a.analysis ?? undefined,
         })) as ConnectedAccount[];
-        mappedAccounts = dedupeAccountsByProfilePlatform(mappedAccounts);
-
         if (mappedProfiles.length === 0 && mappedAccounts.length === 0) {
           const localAccounts = loadAccounts();
           const localProfiles = ensureDefaultProfile(loadProfiles(), localAccounts);
@@ -271,12 +379,16 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         const nextProfiles = ensureDefaultProfile(mappedProfiles, mappedAccounts);
         setProfiles(nextProfiles);
         setAccounts(mappedAccounts);
+        setSelectedAccountIds((current) => cleanupSelectedAccounts(current, nextProfiles, mappedAccounts));
 
         const storedActive = localStorage.getItem(activeProfileStorageKey(userId));
         const activeExists = storedActive && nextProfiles.some((p) => p.id === storedActive);
         setActiveProfileIdState(activeExists ? storedActive : nextProfiles[0]?.id ?? null);
       } finally {
         hydratingRef.current = false;
+        if (!ignore) {
+          setProfilesReady(true);
+        }
       }
     };
 
@@ -293,40 +405,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
     const sync = async () => {
       try {
-        const profileRows: ProfileRow[] = profiles.map((p) => ({
-          id: p.id,
-          user_id: userId,
-          name: p.name,
-          created_at: p.createdAt,
-        }));
-        const accountRows: AccountRow[] = accounts.map((a) => ({
-          id: a.id,
-          user_id: userId,
-          profile_id: a.profileId,
-          platform: a.platform,
-          username: a.username,
-          display_name: a.displayName ?? null,
-          avatar_url: a.avatarUrl ?? null,
-          profile_url: a.profileUrl ?? null,
-          connected_at: a.connectedAt,
-          is_oauth: Boolean(a.isOAuth),
-          is_zernio: Boolean(a.isZernio),
-          zernio_account_id: a.zernioAccountId ?? null,
-          stats: a.stats ?? null,
-          analysis: a.analysis ?? null,
-        }));
-
-        await supabase.from("connected_accounts").delete().eq("user_id", userId);
-        await supabase.from("profiles").delete().eq("user_id", userId);
-
-        if (profileRows.length > 0) {
-          const { error } = await supabase.from("profiles").insert(profileRows);
-          if (error) throw error;
-        }
-        if (accountRows.length > 0) {
-          const { error } = await supabase.from("connected_accounts").insert(accountRows);
-          if (error) throw error;
-        }
+        await syncProfilesAndAccounts({ profiles, accounts, userId });
       } catch (e) {
         console.warn("[accounts] Supabase sync failed, kept local cache", e);
       }
@@ -337,7 +416,6 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
   const setActiveProfileId = useCallback((id: string | null) => {
     setActiveProfileIdState(id);
-    setSelectedAccountId(null);
   }, []);
 
   const addProfile = useCallback((name: string): Profile => {
@@ -404,9 +482,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         ...extra,
       };
       setAccounts((prev) => {
-        const next = prev.filter(
-          (a) => !(a.profileId === effectiveProfileId && a.platform === platform)
-        );
+        const next = prev.filter((a) => a.id !== newAccount.id);
         return [...next, newAccount];
       });
     },
@@ -462,9 +538,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       setAccounts((prev) => {
         const next = prev.filter((a) => {
           if (a.id === accountId) return false;
-          const sameProfileAndPlatform =
-            a.profileId === targetProfileId && a.platform === platform;
-          return !sameProfileAndPlatform;
+          const sameZernioAccount =
+            extra?.zernioAccountId &&
+            a.profileId === targetProfileId &&
+            a.platform === platform &&
+            a.zernioAccountId === extra.zernioAccountId;
+          return !sameZernioAccount;
         });
         return [...next, newAccount];
       });
@@ -482,7 +561,6 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       // Backend may not be running or account does not exist
     }
     setAccounts((prev) => prev.filter((a) => a.id !== id));
-    setSelectedAccountId((current) => (current === id ? null : current));
   }, []);
 
   const updateAccountAnalysis = useCallback((id: string, analysis: ConnectedAccount["analysis"]) => {
@@ -498,11 +576,34 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const accountsForActiveProfile = accounts.filter((a) => a.profileId === effectiveProfileId);
+  const getSelectedAccountId = useCallback(
+    (section: AccountSection) => {
+      return selectedAccountIds[effectiveProfileId]?.[section] ?? null;
+    },
+    [effectiveProfileId, selectedAccountIds]
+  );
+  const setSelectedAccountId = useCallback(
+    (section: AccountSection, id: string | null) => {
+      setSelectedAccountIds((current) => {
+        const currentProfileSelections = current[effectiveProfileId] ?? {};
+        if ((currentProfileSelections[section] ?? null) === id) return current;
+        return {
+          ...current,
+          [effectiveProfileId]: {
+            ...currentProfileSelections,
+            [section]: id,
+          },
+        };
+      });
+    },
+    [effectiveProfileId]
+  );
 
   return (
     <AccountsContext.Provider
       value={{
         profiles,
+        profilesReady,
         activeProfile,
         activeProfileId: effectiveProfileId,
         setActiveProfileId,
@@ -516,7 +617,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         removeAccount,
         updateAccountAnalysis,
         updateAccountStats,
-        selectedAccountId,
+        getSelectedAccountId,
         setSelectedAccountId,
         showOverview,
         setShowOverview,

@@ -123,7 +123,8 @@ const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } }
 export default function Ecommerce() {
   const { authMode } = useAuth();
   const { oauthError, clearOauthError } = useOAuthCallback();
-  const { accounts, selectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
+  const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
+  const selectedAccountId = getSelectedAccountId("ecommerce");
   const [initialOrganizationData] = useState<OrganizationData>(null);
   const {
     scopedAccounts: orgAccounts,
@@ -136,7 +137,7 @@ export default function Ecommerce() {
   } = useAccountData<OrganizationData>({
     accounts,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: (id) => setSelectedAccountId("ecommerce", id),
     accountFilter: (a) => (a.platform === "shopify" || a.platform === "notion") && Boolean(a.isOAuth),
     initialData: initialOrganizationData,
     fetcher: async (accountId) => {
@@ -336,7 +337,7 @@ export default function Ecommerce() {
           {orgAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => setSelectedAccountId(acc.id)}
+              onClick={() => setSelectedAccountId("ecommerce", acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeOrgAccount?.id === acc.id
                   ? "bg-foreground text-background border-foreground"

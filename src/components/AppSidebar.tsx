@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
+import type { AccountSection } from "@/context/AccountsContext";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { ZernioLinkDialog } from "@/components/ZernioLinkDialog";
 import { useZernioAccounts, type ZernioAccountRow } from "@/hooks/useZernioAccounts";
@@ -175,13 +176,22 @@ function getAccountsForCategory(accounts: ConnectedAccount[], platforms: Account
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 
+function sectionForNavItemKey(key: string): AccountSection | null {
+  if (key === "social-media") return "social-media";
+  if (key === "ecommerce") return "ecommerce";
+  if (key === "mail") return "mail";
+  if (key === "calendar") return "calendar";
+  if (key === "reviews") return "reviews";
+  return null;
+}
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const {
     accounts,
     activeProfileId,
-    selectedAccountId,
+    getSelectedAccountId,
     setSelectedAccountId,
     showOverview,
     setShowOverview,
@@ -247,7 +257,7 @@ export function AppSidebar() {
     fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H1',location:'AppSidebar:handleOpenOverview',message:'Total overview clicked - using showOverview',data:{pathname:location.pathname,showOverview:true},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     setShowOverview(true);
-    setSelectedAccountId(null);
+    setSelectedAccountId("social-media", null);
     if (location.pathname !== "/social-media") {
       navigate("/social-media");
     }
@@ -263,7 +273,7 @@ export function AppSidebar() {
     const linkedAccountId = await linkZernioAccount(row);
     if (!linkedAccountId) return;
     setZernioOpen(false);
-    setSelectedAccountId(linkedAccountId);
+    setSelectedAccountId("social-media", linkedAccountId);
     navigate("/social-media");
   }
 
@@ -344,7 +354,7 @@ export function AppSidebar() {
         String(payload.username || `Tripadvisor ${locationId}`),
         activeProfileId || undefined
       );
-      setSelectedAccountId(String(payload.account_id || ""));
+      setSelectedAccountId("reviews", String(payload.account_id || ""));
       setTripadvisorDialogOpen(false);
       navigate("/reviews");
     } catch (err) {
@@ -354,12 +364,14 @@ export function AppSidebar() {
     }
   }
 
-  function handleAccountClick(accountId: string, isSelected: boolean) {
+  function handleAccountClick(section: AccountSection, accountId: string, isSelected: boolean) {
     // #region agent log
     fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H3',location:'AppSidebar:handleAccountClick',message:'Account clicked - clears showOverview',data:{accountId,wasSelected:isSelected},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
-    setShowOverview(false);
-    setSelectedAccountId(isSelected ? null : accountId);
+    if (section === "social-media") {
+      setShowOverview(false);
+    }
+    setSelectedAccountId(section, isSelected ? null : accountId);
   }
 
   useEffect(() => {
@@ -390,6 +402,8 @@ export function AppSidebar() {
                 const isActive = location.pathname === item.url;
                 const categoryAccounts = getAccountsForCategory(accounts, item.platforms);
                 const hasConnect = item.platforms.length > 0;
+                const section = sectionForNavItemKey(item.key);
+                const selectedAccountId = section ? getSelectedAccountId(section) : null;
 
                 return (
                   <SidebarMenuItem key={item.key}>
@@ -450,7 +464,7 @@ export function AppSidebar() {
                           >
                             <button
                               type="button"
-                              onClick={() => handleAccountClick(account.id, isSelected)}
+                              onClick={() => section && handleAccountClick(section, account.id, isSelected)}
                               className={`flex flex-1 flex-col items-start gap-0 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}

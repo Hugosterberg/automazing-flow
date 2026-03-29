@@ -26,24 +26,48 @@ export function useAccountData<TData>({
     scopedAccounts.find((a) => a.id === selectedAccountId) ?? scopedAccounts[0] ?? null;
 
   const [data, setData] = useState<TData>(initialData);
+  const [dataAccountId, setDataAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fetchedFor = useRef<string | null>(null);
   const initialDataRef = useRef(initialData);
+  const latestRequestIdRef = useRef(0);
+  const latestRequestedAccountIdRef = useRef<string | null>(null);
 
   const fetchFor = useCallback(
     async (accountId: string, force = false) => {
       if (!force && fetchedFor.current === accountId) return;
       fetchedFor.current = accountId;
+      latestRequestedAccountIdRef.current = accountId;
+      const requestId = latestRequestIdRef.current + 1;
+      latestRequestIdRef.current = requestId;
       setLoading(true);
       setError(null);
       try {
         const next = await fetcher(accountId);
+        if (
+          latestRequestIdRef.current !== requestId ||
+          latestRequestedAccountIdRef.current !== accountId
+        ) {
+          return;
+        }
+        setDataAccountId(accountId);
         setData(next);
       } catch (e) {
+        if (
+          latestRequestIdRef.current !== requestId ||
+          latestRequestedAccountIdRef.current !== accountId
+        ) {
+          return;
+        }
         setError(e instanceof Error ? e.message : "Request failed");
       } finally {
-        setLoading(false);
+        if (
+          latestRequestIdRef.current === requestId &&
+          latestRequestedAccountIdRef.current === accountId
+        ) {
+          setLoading(false);
+        }
       }
     },
     [fetcher]
@@ -63,10 +87,16 @@ export function useAccountData<TData>({
 
   useEffect(() => {
     if (!activeAccount) {
+      latestRequestedAccountIdRef.current = null;
+      setDataAccountId(null);
       setData(initialDataRef.current);
       setError(null);
+      setLoading(false);
       return;
     }
+    setDataAccountId(null);
+    setData(initialDataRef.current);
+    setError(null);
     void fetchFor(activeAccount.id);
   }, [activeAccount, fetchFor]);
 
@@ -74,6 +104,7 @@ export function useAccountData<TData>({
     scopedAccounts,
     activeAccount,
     data,
+    dataAccountId,
     setData,
     loading,
     error,
