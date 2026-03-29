@@ -1,0 +1,86 @@
+# Supabase setup (Google login + user profiles)
+
+## 1) Environment variables
+
+Add these in `.env` (frontend uses Vite variables):
+
+```env
+VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+
+# Optional server-side aliases (backend reads VITE_* as fallback)
+SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+```
+
+## 2) SQL schema
+
+Run in Supabase SQL editor:
+
+```sql
+create table if not exists public.profiles (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.connected_accounts (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  profile_id text not null references public.profiles(id) on delete cascade,
+  platform text not null,
+  username text not null,
+  display_name text,
+  avatar_url text,
+  profile_url text,
+  connected_at timestamptz not null default now(),
+  is_oauth boolean not null default false,
+  is_zernio boolean not null default false,
+  zernio_account_id text,
+  stats jsonb,
+  analysis jsonb
+);
+
+alter table public.profiles enable row level security;
+alter table public.connected_accounts enable row level security;
+
+create policy "profiles_select_own" on public.profiles
+for select using (auth.uid() = user_id);
+
+create policy "profiles_insert_own" on public.profiles
+for insert with check (auth.uid() = user_id);
+
+create policy "profiles_update_own" on public.profiles
+for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "profiles_delete_own" on public.profiles
+for delete using (auth.uid() = user_id);
+
+create policy "accounts_select_own" on public.connected_accounts
+for select using (auth.uid() = user_id);
+
+create policy "accounts_insert_own" on public.connected_accounts
+for insert with check (auth.uid() = user_id);
+
+create policy "accounts_update_own" on public.connected_accounts
+for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "accounts_delete_own" on public.connected_accounts
+for delete using (auth.uid() = user_id);
+```
+
+## 3) Enable Google provider
+
+In Supabase dashboard:
+
+- Authentication -> Providers -> Google -> Enable
+- Add OAuth Client ID/Secret from Google Cloud
+- Add redirect URL from Supabase config to Google OAuth consent settings
+
+## 4) Behavior in app
+
+- Unauthenticated users see a Google sign-in screen.
+- Authenticated users load and persist profiles/accounts per `user_id`.
+- If Supabase is missing config, app shows a setup message.
+

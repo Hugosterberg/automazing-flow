@@ -6,4 +6,6 @@ export interface CalendarEvent {
   isAutomated: boolean;
   description?: string;
   createdAt: string;
+  source?: "local" | "external";
+  readOnly?: boolean;
 }

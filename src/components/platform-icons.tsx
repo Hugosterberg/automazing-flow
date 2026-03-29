@@ -50,6 +50,33 @@ export function YoutubeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function FacebookIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
+
+export function GoogleBusinessIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+    </svg>
+  );
+}
+
+export function WhatsAppIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
 export function XIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, ...rest } = props;
   return (
@@ -68,6 +95,15 @@ export function ShopifyIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function NotionIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M4.5 3.5h11.2l3.8 3.6v13.4H4.5V3.5zm9.8 1.8v3h3.1l-3.1-3zM6.3 5.3v13.4h11.4V9.9h-5.2V5.3H6.3zm2.2 10.6V8.1h1.6l3.3 5.1V8.1H15v7.8h-1.5l-3.4-5.2v5.2H8.5z" />
+    </svg>
+  );
+}
+
 export function GmailIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, ...rest } = props;
   return (
@@ -82,6 +118,33 @@ export function OutlookIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
       <path d="M7.88 12.04q0 .46-.16.87t-.51.69-.8.44-1.01.14H4.21V8.96h1.18q.56 0 1.01.14t.8.45.51.69.16.88zm-.63-2.35q-.29-.17-.68-.25t-.86-.08h-.29v2.57h.29q.45 0 .83-.08t.71-.25q.28-.18.42-.5t.14-.79q0-.37-.13-.65t-.41-.47zM24 12.78v6.44h-6.44v-2.14l4.31-1.59.03-.08-.04-.02q-.07-.05-.12-.07l-.09-.03-.12-.04-.16-.04h-.07l-.1-.02-.12-.02-.15-.01h-.03l-.12.01-.2.02-.21.03-.15.02-.17.04-.16.05-.13.05-.15.07-.13.07-.11.09-.13.11-.1.12-.09.13-.08.14-.06.15-.05.16-.04.17-.02.17-.02.19v.01l-.01.09v.05l.01.09v3.61H0V0h24v12.78zm-9.19-1.87l.01 1.21 2.63 1.52.05.03.05.01.05.02h.05l.05-.01.05-.02.05-.01 2.88-1.67v-5.4h-6.52v3.18zm-2.89 2.16l-.58-.34-.01-2.33v-2.35l.59-.34 2.95 1.7-.01.01-2.94 1.65zm9.28-.9l-2.88 1.67-.05.02-.05.01-.05.02-.05.01h-.05l-.05-.01-.05-.02-.05-.01-.05-.03-2.63-1.52v5.39h6.52v-3.17zm0-4.36v.95l-3.26 1.88-.01-1.88 3.27-1.95zm-6.53 2.6l.01 1.89-3.26-1.88v-.95l3.25 1.94z" />
+    </svg>
+  );
+}
+
+export function GoogleCalendarIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 16H5V9h14v10Zm0-12H5V5h14v2Zm-7 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm1-4h2v-2h-2V9h-2v2H9v2h2v2h2v-2Z" />
+    </svg>
+  );
+}
+
+export function GoogleReviewsIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 2a10 10 0 1 0 7.07 17.07l-1.41-1.41A8 8 0 1 1 20 12h-8v2h5.93A6 6 0 0 1 6 12H4a8 8 0 0 0 15.87 1H22V2h-2v2.59A9.98 9.98 0 0 0 12 2Zm-.35 6.2.9 1.82 2.01.29-1.45 1.42.34 2-1.8-.95-1.8.95.34-2-1.45-1.42 2.01-.29.9-1.82Z" />
+    </svg>
+  );
+}
+
+export function TripadvisorIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 4c3.4 0 6.4 1.4 8.5 3.7H24v2.2h-1.7a4.6 4.6 0 0 1 .2 1.3 4.5 4.5 0 0 1-8.5 2.1h-4a4.5 4.5 0 1 1-.1-4.7h4.2A4.5 4.5 0 0 1 22.1 8H20c-1.8-1.8-4.3-2.8-7-2.8S7.8 6.2 6 8H3.9A10.3 10.3 0 0 1 12 4Zm-4 5.8a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Zm8 0a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Zm-8 1.1a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Zm8 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z" />
     </svg>
   );
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Avslutar process som lyssnar på port 3001 (t.ex. gammal server utan .env).
- * Kör: node scripts/kill-port-3001.js
+ * Kör: node --experimental-strip-types scripts/kill-port-3001.ts
  * Eller: npm run dev:kill-port
  */
 import { execSync } from "child_process";
@@ -14,7 +14,7 @@ try {
   if (isWin) {
     const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
     const lines = out.trim().split("\n").filter((l) => l.includes("LISTENING"));
-    const pids = new Set();
+    const pids = new Set<string>();
     for (const line of lines) {
       const m = line.trim().split(/\s+/);
       const pid = m[m.length - 1];
@@ -29,7 +29,17 @@ try {
     execSync(`lsof -ti:${port} | xargs kill -9`, { stdio: "inherit" });
     console.log("Avslutade process(er) på port", port);
   }
-} catch (e) {
-  if (e.status === 1 || e.code === 1 || (e.message && e.message.includes("findstr"))) console.log("Ingen process på port", port);
-  else throw e;
+} catch (e: unknown) {
+  if (
+    typeof e === "object" &&
+    e !== null &&
+    ("status" in e || "code" in e || "message" in e) &&
+    ((e as { status?: number }).status === 1 ||
+      (e as { code?: number }).code === 1 ||
+      ((e as { message?: string }).message || "").includes("findstr"))
+  ) {
+    console.log("Ingen process på port", port);
+  } else {
+    throw e;
+  }
 }

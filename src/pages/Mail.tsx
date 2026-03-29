@@ -2,9 +2,12 @@ import { motion } from "framer-motion";
 import { Inbox, RefreshCw, Loader2, Mail, Circle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useMemo, useState } from "react";
+import { useAccountData } from "@/hooks/useAccountData";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
 
@@ -14,6 +17,7 @@ interface GmailMessage {
   from: { name: string; email: string };
   date: string;
   snippet: string;
+  body?: string;
   isUnread: boolean;
 }
 
@@ -50,50 +54,44 @@ function avatarColor(str: string): string {
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
 export default function MailPage() {
+  const { authMode, session } = useAuth();
   const { oauthError, clearOauthError } = useOAuthCallback();
   const { accounts, selectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
-
-  const gmailAccounts = accounts.filter((a) => a.platform === "gmail" && a.isOAuth);
-  const activeGmail =
-    gmailAccounts.find((a) => a.id === selectedAccountId) ?? gmailAccounts[0] ?? null;
-
-  const [messages, setMessages] = useState<GmailMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchedFor = useRef<string | null>(null);
-
-  const fetchMessages = useCallback(async (accountId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`);
+  const [messagesInitial] = useState<GmailMessage[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<GmailMessage | null>(null);
+  const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
+  const {
+    scopedAccounts: gmailAccounts,
+    activeAccount: activeGmail,
+    data: messages,
+    loading,
+    error,
+    setError,
+    refresh,
+  } = useAccountData<GmailMessage[]>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) => a.platform === "gmail" && Boolean(a.isOAuth),
+    initialData: messagesInitial,
+    fetcher: async (accountId) => {
+      let res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`, { credentials: "include" });
+      if (res.status === 401 && authMode === "cloud" && session?.access_token) {
+        await fetch(`${API_BASE}/api/auth/session`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: "include",
+        }).catch(() => {});
+        res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`, { credentials: "include" });
+      }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "Could not fetch emails.");
-        return;
+        throw new Error(d.error ?? "Could not fetch emails.");
       }
       const data = await res.json();
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-    } catch {
-      setError("Network error – make sure the server is running.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!activeGmail) { setMessages([]); return; }
-    if (fetchedFor.current === activeGmail.id) return;
-    fetchedFor.current = activeGmail.id;
-    fetchMessages(activeGmail.id);
-  }, [activeGmail, fetchMessages]);
-
-  useEffect(() => {
-    if (gmailAccounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId(gmailAccounts[0].id);
-    }
-  }, [gmailAccounts.length]);
+      return Array.isArray(data.messages) ? data.messages : [];
+    },
+  });
 
   function handleConnect() {
     const params = new URLSearchParams();
@@ -102,10 +100,42 @@ export default function MailPage() {
   }
 
   function handleRefresh() {
-    if (!activeGmail) return;
-    fetchedFor.current = null;
-    fetchMessages(activeGmail.id);
+    void refresh();
   }
+
+  const summaryPayload = useMemo(
+    () =>
+      messages.map((m) => ({
+        id: m.id,
+        subject: m.subject,
+        snippet: m.snippet,
+        from: m.from,
+      })),
+    [messages]
+  );
+
+  useEffect(() => {
+    if (!activeGmail || summaryPayload.length === 0) {
+      setAiSummaries({});
+      return;
+    }
+    const ac = new AbortController();
+    void fetch(`${API_BASE}/api/mail/summaries`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: summaryPayload }),
+      signal: ac.signal,
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("summary_failed"))))
+      .then((d) => {
+        if (d && typeof d.summaries === "object") setAiSummaries(d.summaries);
+      })
+      .catch(() => {
+        // Keep UI functional even if summarization fails.
+      });
+    return () => ac.abort();
+  }, [activeGmail, summaryPayload]);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -134,6 +164,18 @@ export default function MailPage() {
         </div>
       </motion.div>
 
+      {authMode === "local" && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-muted/30 border-border">
+            <CardContent className="py-3">
+              <p className="text-sm text-muted-foreground">
+                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {oauthError && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
@@ -154,7 +196,7 @@ export default function MailPage() {
           {gmailAccounts.map((acc) => (
             <button
               key={acc.id}
-              onClick={() => { setSelectedAccountId(acc.id); fetchedFor.current = null; }}
+              onClick={() => setSelectedAccountId(acc.id)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activeGmail?.id === acc.id
                   ? "bg-foreground text-background border-foreground"
@@ -227,7 +269,10 @@ export default function MailPage() {
           {messages.map((msg, i) => (
             <motion.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.04 }}>
               <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
-                <CardContent className="p-4 flex items-start gap-3">
+                <CardContent
+                  className="p-4 flex items-start gap-3"
+                  onClick={() => setSelectedMessage(msg)}
+                >
                   <div className={`h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-white ${avatarColor(msg.from.name || msg.from.email)}`}>
                     {senderInitial(msg.from.name || msg.from.email)}
                   </div>
@@ -251,6 +296,12 @@ export default function MailPage() {
                       {msg.snippet}
                     </p>
                   </div>
+                  <div className="hidden md:block w-52 shrink-0 text-right">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground/60">AI summary</p>
+                    <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
+                      {aiSummaries[msg.id] || "Analyserar innehall..."}
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -268,6 +319,21 @@ export default function MailPage() {
           </Card>
         </motion.div>
       )}
+      <Dialog open={Boolean(selectedMessage)} onOpenChange={(open) => !open && setSelectedMessage(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="break-words">{selectedMessage?.subject || "(No subject)"}</DialogTitle>
+            <DialogDescription className="text-xs">
+              {selectedMessage
+                ? `${selectedMessage.from.name || selectedMessage.from.email} · ${selectedMessage.date ? new Date(selectedMessage.date).toLocaleString("sv-SE") : ""}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto rounded border border-border p-3 text-sm leading-relaxed whitespace-pre-wrap">
+            {selectedMessage?.body?.trim() || selectedMessage?.snippet || "(No content)"}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

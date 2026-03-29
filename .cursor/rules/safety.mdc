@@ -1,0 +1,14 @@
+---
+description: Safety guardrails for an existing repository
+alwaysApply: true
+---
+
+Safety rules:
+- prefer minimal safe diffs
+- do not rewrite architecture unnecessarily
+- do not rename or move large sets of files without clear justification
+- do not remove code without checking references and usage
+- preserve existing behavior unless explicitly asked to change it
+- explain larger refactors before implementing them
+- prefer incremental improvements over full rewrites
+- do not invent libraries, APIs, database fields, or environment variables

@@ -3,10 +3,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@/types/accounts";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -19,6 +22,10 @@ interface AccountsContextValue {
   setActiveProfileId: (id: string | null) => void;
   addProfile: (name: string) => Profile;
   renameProfile: (id: string, name: string) => void;
+  updateProfile: (
+    id: string,
+    updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
+  ) => void;
   removeProfile: (id: string) => void;
   accounts: ConnectedAccount[];
   addAccount: (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
@@ -27,17 +34,48 @@ interface AccountsContextValue {
     platform: AccountPlatform,
     username: string,
     profileId?: string,
-    extra?: { lateAccountId?: string }
+    extra?: {
+      zernioAccountId?: string;
+      profileUrl?: string;
+      displayName?: string;
+      isZernio?: boolean;
+    }
   ) => void;
   removeAccount: (id: string) => void;
   updateAccountAnalysis: (id: string, analysis: ConnectedAccount["analysis"]) => void;
   updateAccountStats: (id: string, stats: AccountStats | undefined) => void;
   selectedAccountId: string | null;
   setSelectedAccountId: (id: string | null) => void;
+  showOverview: boolean;
+  setShowOverview: (v: boolean) => void;
   allAccounts: ConnectedAccount[];
 }
 
 const AccountsContext = createContext<AccountsContextValue | null>(null);
+
+type ProfileRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+};
+
+type AccountRow = {
+  id: string;
+  user_id: string;
+  profile_id: string;
+  platform: AccountPlatform;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  profile_url: string | null;
+  connected_at: string;
+  is_oauth: boolean;
+  is_zernio: boolean;
+  zernio_account_id: string | null;
+  stats: AccountStats | null;
+  analysis: ConnectedAccount["analysis"] | null;
+};
 
 function loadProfiles(): Profile[] {
   try {
@@ -56,10 +94,16 @@ function loadAccounts(): ConnectedAccount[] {
       const data = JSON.parse(stored);
       // Migration: add profileId to older accounts
       if (Array.isArray(data)) {
-        return data.map((a: ConnectedAccount & { profileId?: string }) => ({
-          ...a,
-          profileId: a.profileId || "default",
-        }));
+        const mapped = data.map((raw: ConnectedAccount & { profileId?: string; lateAccountId?: string }) => {
+          const { lateAccountId, ...a } = raw;
+          const zid = a.zernioAccountId || lateAccountId;
+          return {
+            ...a,
+            profileId: a.profileId || "default",
+            ...(zid ? { zernioAccountId: zid } : {}),
+          };
+        });
+        return dedupeAccountsByProfilePlatform(mapped);
       }
     }
   } catch {
@@ -68,8 +112,31 @@ function loadAccounts(): ConnectedAccount[] {
   return [];
 }
 
+function dedupeAccountsByProfilePlatform(accounts: ConnectedAccount[]): ConnectedAccount[] {
+  const latestByKey = new Map<string, ConnectedAccount>();
+
+  for (const account of accounts) {
+    const key = `${account.profileId}::${account.platform}`;
+    const prev = latestByKey.get(key);
+    if (!prev) {
+      latestByKey.set(key, account);
+      continue;
+    }
+    const prevTs = Date.parse(prev.connectedAt || "");
+    const nextTs = Date.parse(account.connectedAt || "");
+    const keepNext = Number.isNaN(prevTs) || (!Number.isNaN(nextTs) && nextTs >= prevTs);
+    latestByKey.set(key, keepNext ? account : prev);
+  }
+
+  return [...latestByKey.values()];
+}
+
 function loadActiveProfileId(): string | null {
   return localStorage.getItem(ACTIVE_PROFILE_KEY);
+}
+
+function activeProfileStorageKey(userId?: string | null): string {
+  return userId ? `${ACTIVE_PROFILE_KEY}:${userId}` : ACTIVE_PROFILE_KEY;
 }
 
 function ensureDefaultProfile(profiles: Profile[], accounts: ConnectedAccount[]): Profile[] {
@@ -85,12 +152,16 @@ function ensureDefaultProfile(profiles: Profile[], accounts: ConnectedAccount[])
 }
 
 export function AccountsProvider({ children }: { children: ReactNode }) {
+  const { enabled, loading: authLoading, user } = useAuth();
+  const userId = user?.id ?? null;
   const [profiles, setProfiles] = useState<Profile[]>(() =>
     ensureDefaultProfile(loadProfiles(), loadAccounts())
   );
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(loadActiveProfileId);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(loadAccounts);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [showOverview, setShowOverview] = useState(false);
+  const hydratingRef = useRef(false);
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null;
   const effectiveProfileId = activeProfileId ?? activeProfile?.id ?? "default";
@@ -104,10 +175,165 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   }, [profiles]);
 
   useEffect(() => {
-    if (activeProfileId) {
-      localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
+    if (profiles.length === 0) {
+      if (activeProfileId !== null) setActiveProfileIdState(null);
+      return;
     }
-  }, [activeProfileId]);
+    if (activeProfileId && !profiles.some((p) => p.id === activeProfileId)) {
+      setActiveProfileIdState(profiles[0].id);
+    }
+  }, [profiles, activeProfileId]);
+
+  useEffect(() => {
+    if (activeProfileId) {
+      localStorage.setItem(activeProfileStorageKey(user?.id), activeProfileId);
+    }
+  }, [activeProfileId, user?.id]);
+
+  useEffect(() => {
+    if (!enabled || authLoading || !supabase) return;
+    if (!user) return;
+
+    let ignore = false;
+
+    const hydrate = async () => {
+      hydratingRef.current = true;
+      try {
+        const [{ data: profileRows, error: profilesError }, { data: accountRows, error: accountsError }] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("id,user_id,name,created_at")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: true }),
+            supabase
+              .from("connected_accounts")
+              .select(
+                "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis"
+              )
+              .eq("user_id", userId)
+              .order("connected_at", { ascending: true }),
+          ]);
+
+        if (profilesError || accountsError) {
+          console.warn("[accounts] Supabase hydrate failed, using local cache", profilesError || accountsError);
+          return;
+        }
+        if (ignore) return;
+
+        let mappedProfiles = (profileRows ?? []).map((p: ProfileRow) => ({
+          id: p.id,
+          name: p.name,
+          createdAt: p.created_at,
+        }));
+        const localProfileMap = new Map(loadProfiles().map((p) => [p.id, p]));
+        mappedProfiles = mappedProfiles.map((p) => {
+          const local = localProfileMap.get(p.id);
+          if (!local) return p;
+          return {
+            ...p,
+            website: local.website,
+            email: local.email,
+            phone: local.phone,
+            company: local.company,
+            location: local.location,
+            notes: local.notes,
+          };
+        });
+        let mappedAccounts = (accountRows ?? []).map((a: AccountRow) => ({
+          id: a.id,
+          profileId: a.profile_id,
+          platform: a.platform,
+          username: a.username,
+          displayName: a.display_name ?? undefined,
+          avatarUrl: a.avatar_url ?? undefined,
+          profileUrl: a.profile_url ?? undefined,
+          connectedAt: a.connected_at,
+          isOAuth: a.is_oauth,
+          isZernio: a.is_zernio,
+          zernioAccountId: a.zernio_account_id ?? undefined,
+          stats: a.stats ?? undefined,
+          analysis: a.analysis ?? undefined,
+        })) as ConnectedAccount[];
+        mappedAccounts = dedupeAccountsByProfilePlatform(mappedAccounts);
+
+        if (mappedProfiles.length === 0 && mappedAccounts.length === 0) {
+          const localAccounts = loadAccounts();
+          const localProfiles = ensureDefaultProfile(loadProfiles(), localAccounts);
+          const hasMeaningfulLocalData =
+            localAccounts.length > 0 || localProfiles.some((p) => p.id !== "default");
+          if (hasMeaningfulLocalData) {
+            mappedProfiles = localProfiles;
+            mappedAccounts = localAccounts;
+          }
+        }
+
+        const nextProfiles = ensureDefaultProfile(mappedProfiles, mappedAccounts);
+        setProfiles(nextProfiles);
+        setAccounts(mappedAccounts);
+
+        const storedActive = localStorage.getItem(activeProfileStorageKey(userId));
+        const activeExists = storedActive && nextProfiles.some((p) => p.id === storedActive);
+        setActiveProfileIdState(activeExists ? storedActive : nextProfiles[0]?.id ?? null);
+      } finally {
+        hydratingRef.current = false;
+      }
+    };
+
+    void hydrate();
+
+    return () => {
+      ignore = true;
+    };
+  }, [enabled, authLoading, user, userId]);
+
+  useEffect(() => {
+    if (!enabled || authLoading || !user || !supabase) return;
+    if (hydratingRef.current) return;
+
+    const sync = async () => {
+      try {
+        const profileRows: ProfileRow[] = profiles.map((p) => ({
+          id: p.id,
+          user_id: userId,
+          name: p.name,
+          created_at: p.createdAt,
+        }));
+        const accountRows: AccountRow[] = accounts.map((a) => ({
+          id: a.id,
+          user_id: userId,
+          profile_id: a.profileId,
+          platform: a.platform,
+          username: a.username,
+          display_name: a.displayName ?? null,
+          avatar_url: a.avatarUrl ?? null,
+          profile_url: a.profileUrl ?? null,
+          connected_at: a.connectedAt,
+          is_oauth: Boolean(a.isOAuth),
+          is_zernio: Boolean(a.isZernio),
+          zernio_account_id: a.zernioAccountId ?? null,
+          stats: a.stats ?? null,
+          analysis: a.analysis ?? null,
+        }));
+
+        await supabase.from("connected_accounts").delete().eq("user_id", userId);
+        await supabase.from("profiles").delete().eq("user_id", userId);
+
+        if (profileRows.length > 0) {
+          const { error } = await supabase.from("profiles").insert(profileRows);
+          if (error) throw error;
+        }
+        if (accountRows.length > 0) {
+          const { error } = await supabase.from("connected_accounts").insert(accountRows);
+          if (error) throw error;
+        }
+      } catch (e) {
+        console.warn("[accounts] Supabase sync failed, kept local cache", e);
+      }
+    };
+
+    void sync();
+  }, [enabled, authLoading, user, userId, profiles, accounts]);
 
   const setActiveProfileId = useCallback((id: string | null) => {
     setActiveProfileIdState(id);
@@ -123,13 +349,38 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     setProfiles((prev) => [...prev, newProfile]);
     setActiveProfileId(newProfile.id);
     return newProfile;
-  }, []);
+  }, [setActiveProfileId]);
 
   const renameProfile = useCallback((id: string, name: string) => {
     setProfiles((prev) =>
       prev.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p))
     );
   }, []);
+
+  const updateProfile = useCallback(
+    (
+      id: string,
+      updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
+    ) => {
+      setProfiles((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const next: Profile = {
+            ...p,
+            ...(updates.name != null ? { name: updates.name.trim() || p.name } : {}),
+            ...(updates.website !== undefined ? { website: updates.website.trim() || undefined } : {}),
+            ...(updates.email !== undefined ? { email: updates.email.trim() || undefined } : {}),
+            ...(updates.phone !== undefined ? { phone: updates.phone.trim() || undefined } : {}),
+            ...(updates.company !== undefined ? { company: updates.company.trim() || undefined } : {}),
+            ...(updates.location !== undefined ? { location: updates.location.trim() || undefined } : {}),
+            ...(updates.notes !== undefined ? { notes: updates.notes.trim() || undefined } : {}),
+          };
+          return next;
+        })
+      );
+    },
+    []
+  );
 
   const removeProfile = useCallback((id: string) => {
     setProfiles((prev) => {
@@ -152,7 +403,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         connectedAt: new Date().toISOString(),
         ...extra,
       };
-      setAccounts((prev) => [...prev, newAccount]);
+      setAccounts((prev) => {
+        const next = prev.filter(
+          (a) => !(a.profileId === effectiveProfileId && a.platform === platform)
+        );
+        return [...next, newAccount];
+      });
     },
     [effectiveProfileId]
   );
@@ -163,40 +419,65 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       platform: AccountPlatform,
       username: string,
       profileId?: string,
-      extra?: { lateAccountId?: string }
-    ) => {
-      const targetProfileId = profileId ?? effectiveProfileId;
+    extra?: {
+      zernioAccountId?: string;
+      profileUrl?: string;
+      displayName?: string;
+      isZernio?: boolean;
+    }
+  ) => {
+      const hasValidRequestedProfile = Boolean(
+        profileId && profiles.some((p) => p.id === profileId)
+      );
+      const targetProfileId =
+        hasValidRequestedProfile && profileId ? profileId : effectiveProfileId;
       const profileUrls: Record<string, string> = {
         youtube: "youtube.com",
         shopify: "myshopify.com",
+        notion: "notion.so",
         gmail: "mail.google.com",
         outlook: "outlook.com",
+        google_calendar: "calendar.google.com",
+        outlook_calendar: "outlook.office.com/calendar",
+        google_reviews: "google.com/maps",
+        tripadvisor: "tripadvisor.com",
+        facebook: "facebook.com",
+        google_business: "google.com/maps",
+        whatsapp: "wa.me",
       };
       const base = profileUrls[platform] ?? platform + ".com";
+      const defaultProfileUrl = `https://${base}/${username.replace(/^@/, "")}`;
       const newAccount: ConnectedAccount = {
         id: accountId,
         profileId: targetProfileId,
         platform,
         username: username.trim(),
+        displayName: extra?.displayName?.trim() || undefined,
         connectedAt: new Date().toISOString(),
-        profileUrl: `https://${base}/${username.replace(/^@/, "")}`,
+        profileUrl: extra?.profileUrl?.trim() || defaultProfileUrl,
         isOAuth: true,
-        ...(extra?.lateAccountId && { lateAccountId: extra.lateAccountId }),
+        ...(extra?.zernioAccountId && { zernioAccountId: extra.zernioAccountId }),
+        ...(extra?.isZernio && { isZernio: true }),
       };
       setAccounts((prev) => {
-        if (prev.some((a) => a.id === accountId)) return prev;
-        return [...prev, newAccount];
+        const next = prev.filter((a) => {
+          if (a.id === accountId) return false;
+          const sameProfileAndPlatform =
+            a.profileId === targetProfileId && a.platform === platform;
+          return !sameProfileAndPlatform;
+        });
+        return [...next, newAccount];
       });
-      if (profileId && profileId !== activeProfileId) {
+      if (hasValidRequestedProfile && profileId && profileId !== activeProfileId) {
         setActiveProfileId(profileId);
       }
     },
-    [effectiveProfileId, activeProfileId]
+    [effectiveProfileId, activeProfileId, setActiveProfileId, profiles]
   );
 
   const removeAccount = useCallback(async (id: string) => {
     try {
-      await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+      await fetch(`/api/accounts/${id}`, { method: "DELETE", credentials: "include" });
     } catch {
       // Backend may not be running or account does not exist
     }
@@ -227,6 +508,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         setActiveProfileId,
         addProfile,
         renameProfile,
+        updateProfile,
         removeProfile,
         accounts: accountsForActiveProfile,
         addAccount,
@@ -236,6 +518,8 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         updateAccountStats,
         selectedAccountId,
         setSelectedAccountId,
+        showOverview,
+        setShowOverview,
         allAccounts: accounts,
       }}
     >

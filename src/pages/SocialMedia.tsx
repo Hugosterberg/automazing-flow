@@ -8,15 +8,26 @@ import {
   Eye,
   ImagePlus,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccounts } from "@/context/AccountsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { InstagramIcon, TikTokIcon, YoutubeIcon, XIcon } from "@/components/platform-icons";
+import { useAccountData } from "@/hooks/useAccountData";
+import {
+  InstagramIcon,
+  TikTokIcon,
+  YoutubeIcon,
+  XIcon,
+  FacebookIcon,
+  GoogleBusinessIcon,
+  WhatsAppIcon,
+} from "@/components/platform-icons";
 import type { SocialPlatform } from "@/types/accounts";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
@@ -24,6 +35,9 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   tiktok: TikTokIcon,
   youtube: YoutubeIcon,
   x: XIcon,
+  facebook: FacebookIcon,
+  google_business: GoogleBusinessIcon,
+  whatsapp: WhatsAppIcon,
 };
 
 
@@ -53,6 +67,75 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+type SocialMediaApiPost = {
+  id: string;
+  caption: string;
+  picture: string;
+  permalink: string;
+  mediaType: string;
+  likeCount: number;
+  commentCount: number;
+  createdTime: string;
+};
+
+type SocialMediaApiResponse = {
+  stats?: {
+    followersCount?: number;
+    followingCount?: number;
+    mediaCount?: number;
+    accountType?: string;
+    totalLikes?: number;
+    totalComments?: number;
+    avgLikes?: number;
+    avgComments?: number;
+    engagementRate?: number;
+    updatedAt?: string;
+    zernioNote?: string;
+  };
+  profile?: {
+    displayName?: string;
+    username?: string;
+    media_count?: number;
+    followers_count?: number;
+    follows_count?: number;
+    account_type?: string;
+    stats?: SocialMediaApiResponse["stats"];
+  };
+  media?: SocialMediaApiPost[];
+};
+
+/** Maps old error codes to current Zernio names */
+const OAUTH_ERROR_ALIASES: Record<string, string> = {
+  late_profile_failed: "zernio_profile_failed",
+  late_not_configured: "zernio_not_configured",
+  late_connect_failed: "zernio_connect_failed",
+  late_fetch_accounts_failed: "zernio_fetch_accounts_failed",
+  late_no_account: "zernio_no_account",
+  late_no_auth_url: "zernio_no_auth_url",
+};
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  instagram_not_configured:
+    "Add ZERNIO_API_KEY for Instagram via Zernio, or INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET for Meta only.",
+  zernio_profile_failed:
+    "Zernio could not load your workspace. Check ZERNIO_API_KEY and optional ZERNIO_PROFILE_ID in .env.",
+  zernio_not_configured: "ZERNIO_API_KEY is missing in server .env.",
+  zernio_connect_failed: "Zernio could not start Instagram login. Check your API key in the Zernio dashboard.",
+  zernio_fetch_accounts_failed: "Could not list accounts from Zernio (network or key).",
+  zernio_no_account: "No Instagram account returned—finish connecting the channel in Zernio.",
+  zernio_no_auth_url: "Zernio did not return a login URL.",
+  zernio_init_failed: "Could not start Instagram via Zernio.",
+  zernio_gmb_not_supported:
+    "Google Business direct connect is not enabled for this Zernio workspace yet. Use 'All Zernio channels…' and link an existing Google Business account.",
+  zernio_gmb_selection_failed:
+    "Google Business requires location selection in Zernio. Open 'All Zernio channels…' and complete Google Business selection there.",
+};
+
+function messageForOAuthError(code: string): string {
+  const key = OAUTH_ERROR_ALIASES[code] || code;
+  return OAUTH_ERROR_MESSAGES[key] || `Login failed: ${code.replace(/_/g, " ")}`;
+}
+
 async function runAIAnalysis(
   accountId: string,
   posts: { caption: string }[],
@@ -61,6 +144,7 @@ async function runAIAnalysis(
   const captions = posts.map((p) => p.caption).filter(Boolean);
   const res = await fetch(`/api/accounts/${accountId}/analyze`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       captions,
@@ -84,13 +168,12 @@ async function generateImageVariants(): Promise<string[]> {
 }
 
 export default function SocialMedia() {
+  const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
-  const { accounts, selectedAccountId, setSelectedAccountId, updateAccountAnalysis, updateAccountStats } =
+  const { accounts, selectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const [recentPosts, setRecentPosts] = useState<{
     id: string; caption: string; picture: string; permalink: string;
     mediaType: string; likeCount: number; commentCount: number; createdTime: string;
@@ -98,88 +181,192 @@ export default function SocialMedia() {
 
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
-
-  const fetchStats = useCallback((accountId: string) => {
-    const account = accountsRef.current.find((a) => a.id === accountId);
-    if (!account?.isOAuth) return;
-    setStatsLoading(true);
-    fetch(`/api/accounts/${accountId}/data`)
-      .then((res) => {
-        if (!res.ok) {
-          console.warn(`[stats] /api/accounts/${accountId}/data responded ${res.status}`);
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (!data) return;
-        const stats = data.stats ?? data.profile?.stats;
-        const profile = data.profile || {};
-        const mediaCount =
-          stats?.mediaCount ??
-          (profile.media_count != null ? Number(profile.media_count) : undefined);
-        const followersCount = stats?.followersCount ?? (profile.followers_count != null ? Number(profile.followers_count) : undefined);
-        const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
-        const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
-        const hasAny = followersCount != null || followingCount != null || mediaCount != null;
-        if (hasAny) {
-          updateAccountStats(accountId, {
-            followersCount,
-            followingCount,
-            mediaCount,
-            accountType,
-            totalLikes: stats?.totalLikes,
-            totalComments: stats?.totalComments,
-            avgLikes: stats?.avgLikes,
-            avgComments: stats?.avgComments,
-            engagementRate: stats?.engagementRate,
-            updatedAt: stats?.updatedAt ?? new Date().toISOString(),
-          });
-        }
-        if (Array.isArray(data.media) && data.media.length > 0) {
-          setRecentPosts(data.media);
-          const account = accountsRef.current.find((a) => a.id === accountId);
-          const alreadyAnalyzed = account?.analysis?.about;
-          if (!alreadyAnalyzed) {
-            setAnalyzing(true);
-            runAIAnalysis(
-              accountId,
-              data.media.map((p: { caption: string }) => ({ caption: p.caption })),
-              {
-                displayName: data.profile?.displayName as string | undefined,
-                username: data.profile?.username as string | undefined,
-                followersCount: data.stats?.followersCount,
-              }
-            )
-              .then((result) => {
-                setAnalysisResult(result);
-                updateAccountAnalysis(accountId, { ...result, analyzedAt: new Date().toISOString() });
-              })
-              .catch(() => {})
-              .finally(() => setAnalyzing(false));
-          } else {
-            setAnalysisResult({
-              about: account.analysis.about ?? "",
-              writes: account.analysis.writes ?? "",
-              perception: account.analysis.perception ?? "",
-            });
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setStatsLoading(false));
-  }, [updateAccountAnalysis, updateAccountStats]);
+  const [initialSocialData] = useState<SocialMediaApiResponse | null>(null);
+  const {
+    data: socialData,
+    loading: statsLoading,
+    refresh: refreshStats,
+    error,
+    setError,
+  } = useAccountData<SocialMediaApiResponse | null>({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    accountFilter: (a) => a.id === selectedAccountId,
+    initialData: initialSocialData,
+    autoSelectFirst: false,
+    fetcher: async (accountId) => {
+      let res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      if (res.status === 401 && authMode === "local") {
+        await fetch("/api/auth/local-session", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      }
+      if (res.status === 401 && authMode === "cloud" && session?.access_token) {
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          credentials: "include",
+        }).catch(() => {});
+        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof d?.error === "string" && d.error.trim().length > 0
+            ? d.error
+            : `Could not fetch account stats (${res.status})`
+        );
+      }
+      return res.json();
+    },
+  });
 
   useEffect(() => {
-    if (!selectedAccountId) return;
-    fetchStats(selectedAccountId);
-  }, [selectedAccountId, statsRefreshKey, fetchStats]);
+    if (!selectedAccountId || !socialData) return;
+    const data = socialData;
+    const stats = data.stats ?? data.profile?.stats;
+    const profile = data.profile || {};
+    const mediaCount =
+      stats?.mediaCount ??
+      (profile.media_count != null ? Number(profile.media_count) : undefined);
+    const followersCount = stats?.followersCount ?? (profile.followers_count != null ? Number(profile.followers_count) : undefined);
+    const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
+    const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
+    const hasAny = followersCount != null || followingCount != null || mediaCount != null;
+    if (hasAny || stats?.zernioNote) {
+      updateAccountStats(selectedAccountId, {
+        followersCount,
+        followingCount,
+        mediaCount,
+        accountType,
+        totalLikes: stats?.totalLikes,
+        totalComments: stats?.totalComments,
+        avgLikes: stats?.avgLikes,
+        avgComments: stats?.avgComments,
+        engagementRate: stats?.engagementRate,
+        updatedAt: stats?.updatedAt ?? new Date().toISOString(),
+        zernioNote: stats?.zernioNote,
+      });
+    }
+    if (Array.isArray(data.media) && data.media.length > 0) {
+      setRecentPosts(data.media);
+      const account = accountsRef.current.find((a) => a.id === selectedAccountId);
+      const alreadyAnalyzed = account?.analysis?.about;
+      if (!alreadyAnalyzed) {
+        setAnalyzing(true);
+        runAIAnalysis(
+          selectedAccountId,
+          data.media.map((p: { caption: string }) => ({ caption: p.caption })),
+          {
+            displayName: data.profile?.displayName as string | undefined,
+            username: data.profile?.username as string | undefined,
+            followersCount: data.stats?.followersCount,
+          }
+        )
+          .then((result) => {
+            setAnalysisResult(result);
+            updateAccountAnalysis(selectedAccountId, { ...result, analyzedAt: new Date().toISOString() });
+          })
+          .catch(() => {})
+          .finally(() => setAnalyzing(false));
+      } else {
+        setAnalysisResult({
+          about: account.analysis.about ?? "",
+          writes: account.analysis.writes ?? "",
+          perception: account.analysis.perception ?? "",
+        });
+      }
+    }
+  }, [socialData, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const socialPlatforms = ["instagram", "tiktok", "youtube", "x", "facebook", "google_business", "whatsapp"] as const;
+  const socialAccounts = useMemo(
+    () => accounts.filter((a) => (socialPlatforms as readonly string[]).includes(a.platform)),
+    [accounts]
+  );
+  const selectedAccount = socialAccounts.find((a) => a.id === selectedAccountId) ?? null;
+  const selectedZernioNote =
+    (socialData?.stats as { zernioNote?: string } | undefined)?.zernioNote ||
+    selectedAccount?.stats?.zernioNote;
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    const existsInSocialAccounts = socialAccounts.some((a) => a.id === selectedAccountId);
+    if (!existsInSocialAccounts) {
+      setSelectedAccountId(null);
+    }
+  }, [selectedAccountId, socialAccounts, setSelectedAccountId]);
+
+  const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
+
+  const overviewData = useMemo(() => {
+    const summary = socialAccounts.reduce(
+      (acc, a) => {
+        acc.connected += 1;
+        if (typeof a.stats?.followersCount === "number") { acc.followers += a.stats.followersCount; acc.hasFollowers = true; }
+        if (typeof a.stats?.mediaCount === "number") { acc.posts += a.stats.mediaCount; acc.hasPosts = true; }
+        if (typeof a.stats?.engagementRate === "number") { acc.engagementSum += a.stats.engagementRate; acc.engagementCount += 1; }
+        if (typeof a.stats?.totalLikes === "number") { acc.totalLikes += a.stats.totalLikes; acc.hasTotalLikes = true; }
+        if (typeof a.stats?.totalComments === "number") { acc.totalComments += a.stats.totalComments; acc.hasTotalComments = true; }
+        if (typeof a.stats?.avgLikes === "number") { acc.avgLikesSum += a.stats.avgLikes; acc.avgLikesCount += 1; }
+        if (typeof a.stats?.avgComments === "number") { acc.avgCommentsSum += a.stats.avgComments; acc.avgCommentsCount += 1; }
+        if (typeof a.stats?.updatedAt === "string") {
+          const ts = Date.parse(a.stats.updatedAt);
+          if (!Number.isNaN(ts) && ts > acc.lastUpdatedTs) { acc.lastUpdatedTs = ts; acc.lastUpdatedIso = a.stats.updatedAt; }
+        }
+        return acc;
+      },
+      { connected: 0, followers: 0, posts: 0, engagementSum: 0, engagementCount: 0, hasFollowers: false, hasPosts: false, totalLikes: 0, totalComments: 0, avgLikesSum: 0, avgLikesCount: 0, avgCommentsSum: 0, avgCommentsCount: 0, hasTotalLikes: false, hasTotalComments: false, lastUpdatedTs: 0, lastUpdatedIso: null as string | null }
+    );
+
+    const byPlatform = socialAccounts.reduce<Record<string, { accounts: number; followers: number; posts: number }>>(
+      (acc, a) => {
+        const entry = acc[a.platform] ?? { accounts: 0, followers: 0, posts: 0 };
+        entry.accounts += 1;
+        if (typeof a.stats?.followersCount === "number") entry.followers += a.stats.followersCount;
+        if (typeof a.stats?.mediaCount === "number") entry.posts += a.stats.mediaCount;
+        acc[a.platform] = entry;
+        return acc;
+      },
+      {}
+    );
+
+    return {
+      ...summary,
+      avgLikes: summary.avgLikesCount > 0 ? summary.avgLikesSum / summary.avgLikesCount : null,
+      avgComments: summary.avgCommentsCount > 0 ? summary.avgCommentsSum / summary.avgCommentsCount : null,
+      byPlatform: Object.entries(byPlatform).sort((a, b) => a[0].localeCompare(b[0])),
+    };
+  }, [socialAccounts]);
+
+  useEffect(() => {
+    if (!showOverview || selectedAccount) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H4',location:'SocialMedia:overview-render',message:'Inline overview rendered in main panel',data:{showOverview,selectedAccountId,connected:overviewData.connected},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showOverview, selectedAccount, selectedAccountId, overviewData.connected]);
+
+  useEffect(() => {
+    if (!selectedAccount) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H5',location:'SocialMedia:account-render',message:'Account detail rendered in main panel',data:{selectedAccountId,platform:selectedAccount.platform},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [selectedAccount, selectedAccountId]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H7',location:'SocialMedia:mount',message:'SocialMedia mounted - logging self test',data:{showOverview,selectedAccountId},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showOverview, selectedAccountId]);
 
   const { oauthError, clearOauthError } = useOAuthCallback();
 
@@ -212,17 +399,23 @@ export default function SocialMedia() {
         <p className="text-muted-foreground mt-1">Automate and manage your social media</p>
       </motion.div>
 
+      {authMode === "local" && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-muted/30 border-border">
+            <CardContent className="py-3">
+              <p className="text-sm text-muted-foreground">
+                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {oauthError && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">
-                {oauthError === "instagram_not_configured"
-                  ? "Instagram is not configured. Add LATE_API_KEY to .env (API key from getlate.dev) to log in via Late API."
-                  : oauthError === "late_profile_failed"
-                    ? "Late could not create or fetch a profile. Check your API key at getlate.dev. If you already have a profile, set LATE_PROFILE_ID in .env."
-                    : `Login failed: ${oauthError.replace(/_/g, " ")}`}
-              </p>
+              <p className="text-sm text-destructive">{messageForOAuthError(oauthError)}</p>
               <Button variant="ghost" size="sm" onClick={clearOauthError}>
                 Dismiss
               </Button>
@@ -230,8 +423,99 @@ export default function SocialMedia() {
           </Card>
         </motion.div>
       )}
+      {error && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <Card className="bg-destructive/10 border-destructive/30">
+            <CardContent className="py-4 flex items-center justify-between gap-4">
+              <p className="text-sm text-destructive">Could not load social stats: {error}</p>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+                Dismiss
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
-      {!selectedAccount && (
+      {!selectedAccount && showOverview && (
+        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Total overview</span>
+          </div>
+          <Card className="bg-card border-border">
+            <CardContent className="py-5 px-6">
+              <p className="text-xs text-muted-foreground mb-4">
+                Aggregated social media metrics for all connected accounts in this profile.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Connected accounts</p>
+                  <p className="font-semibold">{numberFmt.format(overviewData.connected)}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total followers</p>
+                  <p className="font-semibold">{overviewData.hasFollowers ? numberFmt.format(overviewData.followers) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total posts/templates</p>
+                  <p className="font-semibold">{overviewData.hasPosts ? numberFmt.format(overviewData.posts) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average engagement rate</p>
+                  <p className="font-semibold">
+                    {overviewData.engagementCount > 0 ? `${(overviewData.engagementSum / overviewData.engagementCount).toFixed(1)}%` : "–"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total likes</p>
+                  <p className="font-semibold">{overviewData.hasTotalLikes ? numberFmt.format(overviewData.totalLikes) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Total comments</p>
+                  <p className="font-semibold">{overviewData.hasTotalComments ? numberFmt.format(overviewData.totalComments) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average likes/account</p>
+                  <p className="font-semibold">{overviewData.avgLikes != null ? overviewData.avgLikes.toFixed(1) : "–"}</p>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Average comments/account</p>
+                  <p className="font-semibold">{overviewData.avgComments != null ? overviewData.avgComments.toFixed(1) : "–"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border mt-4">
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-xs font-medium text-muted-foreground">Breakdown by platform</p>
+                </div>
+                <div className="px-3 py-2 space-y-2">
+                  {overviewData.byPlatform.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No connected social accounts yet.</p>
+                  ) : (
+                    overviewData.byPlatform.map(([platform, values]) => (
+                      <div key={platform} className="flex items-center justify-between text-xs">
+                        <span className="capitalize">{platform.replace("_", " ")}</span>
+                        <span className="text-muted-foreground">
+                          {values.accounts} acc · {numberFmt.format(values.followers)} followers · {numberFmt.format(values.posts)} posts
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-3">
+                Last update:{" "}
+                {overviewData.lastUpdatedIso
+                  ? new Date(overviewData.lastUpdatedIso).toLocaleString("sv-SE")
+                  : "No stats timestamp available"}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {!selectedAccount && !showOverview && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <Card className="bg-card border-border glow-border border-dashed">
             <CardContent className="py-8 text-center">
@@ -239,7 +523,8 @@ export default function SocialMedia() {
                 Select an account in the sidebar (Connected accounts) to get started.
               </p>
               <p className="text-sm text-muted-foreground/80">
-                Connect Instagram, TikTok or YouTube via the + button in the sidebar.
+                Use the sidebar: Instagram, TikTok, YouTube, X—or extra channels via Zernio (Facebook, WhatsApp, Google
+                Business, …). See docs/KOPPLINGAR.md.
               </p>
             </CardContent>
           </Card>
@@ -287,6 +572,8 @@ export default function SocialMedia() {
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   <span>Fetching posts…</span>
                 </div>
+              ) : selectedZernioNote ? (
+                <p className="text-sm text-muted-foreground py-2">{selectedZernioNote}</p>
               ) : (
                 <p className="text-sm text-muted-foreground py-2">No data available yet.</p>
               )}
@@ -373,7 +660,7 @@ export default function SocialMedia() {
             variant="ghost"
             size="sm"
             disabled={statsLoading}
-            onClick={() => setStatsRefreshKey((k) => k + 1)}
+            onClick={() => void refreshStats()}
             className="text-muted-foreground"
           >
             {statsLoading ? (
@@ -395,6 +682,7 @@ export default function SocialMedia() {
           ? (() => {
               const s = selectedAccount.stats;
               const isX = selectedAccount.platform === "x";
+              const isWhatsApp = selectedAccount.platform === "whatsapp";
 
               const avgLikesStat =
                 s.avgLikes != null
@@ -416,7 +704,7 @@ export default function SocialMedia() {
                 avgLikesStat,
                 {
                   ...defaultStats[2],
-                  label: isX ? "Tweets" : "Posts",
+                  label: isX ? "Tweets" : isWhatsApp ? "Templates" : "Posts",
                   value: s.mediaCount != null ? s.mediaCount.toLocaleString("en-US") : "–",
                 },
                 engagementStat,
@@ -443,15 +731,27 @@ export default function SocialMedia() {
         ))}
       </div>
 
+      {selectedAccount?.stats?.zernioNote && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.12 }}>
+          <p className="text-xs text-muted-foreground border border-border/60 rounded-lg px-3 py-2.5 bg-muted/30 leading-relaxed">
+            {selectedAccount.stats.zernioNote}
+          </p>
+        </motion.div>
+      )}
+
       {recentPosts.length > 0 && (
         <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-5 w-5" />
-                Recent posts
+                {selectedAccount?.platform === "whatsapp" ? "WhatsApp templates" : "Recent posts"}
               </CardTitle>
-              <CardDescription>Likes and comments per post</CardDescription>
+              <CardDescription>
+                {selectedAccount?.platform === "whatsapp"
+                  ? "Approved templates from your WhatsApp Business account (via Zernio)"
+                  : "Likes and comments per post"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Image grid for visual platforms (Instagram etc.) */}
@@ -491,27 +791,43 @@ export default function SocialMedia() {
               ) : (
                 /* Text list for text-based platforms (X/Twitter) */
                 <div className="space-y-2">
-                  {recentPosts.map((post) => (
-                    <a
-                      key={post.id}
-                      href={post.permalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
+                  {recentPosts.map((post) => {
+                    const inner = (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Heart className="h-3.5 w-3.5" />
+                            {post.likeCount}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3.5 w-3.5" />
+                            {post.commentCount}
+                          </span>
+                        </div>
+                      </>
+                    );
+                    return post.permalink ? (
+                      <a
+                        key={post.id}
+                        href={post.permalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
+                      >
+                        {inner}
+                      </a>
+                    ) : (
+                      <div
+                        key={post.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20"
+                      >
+                        {inner}
                       </div>
-                      <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3.5 w-3.5" />{post.likeCount}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3.5 w-3.5" />{post.commentCount}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

@@ -1,13 +1,36 @@
-export type SocialPlatform = "instagram" | "tiktok" | "youtube" | "x";
-export type EcommercePlatform = "shopify";
+export type SocialPlatform =
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "x"
+  /** Connected via [Zernio](https://zernio.com) (Facebook Page, etc.) */
+  | "facebook"
+  /** Google Business Profile via Zernio */
+  | "google_business"
+  /** WhatsApp Business via Zernio ([docs](https://docs.zernio.com/platforms/whatsapp)) */
+  | "whatsapp";
+export type EcommercePlatform = "shopify" | "notion";
 export type MailPlatform = "gmail" | "outlook";
+export type CalendarPlatform = "google_calendar" | "outlook_calendar";
+export type ReviewsPlatform = "google_reviews" | "tripadvisor";
 
-export type AccountPlatform = SocialPlatform | EcommercePlatform | MailPlatform;
+export type AccountPlatform =
+  | SocialPlatform
+  | EcommercePlatform
+  | MailPlatform
+  | CalendarPlatform
+  | ReviewsPlatform;
 
 export interface Profile {
   id: string;
   name: string;
   createdAt: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  location?: string;
+  notes?: string;
 }
 
 /** Stats for social accounts (e.g. Instagram: followers, post count) */
@@ -29,6 +52,8 @@ export interface AccountStats {
   engagementRate?: number;
   /** Last updated (ISO string) */
   updatedAt?: string;
+  /** Provider hint (e.g. Zernio analytics add-on or API limits) */
+  zernioNote?: string;
 }
 
 export interface ConnectedAccount {
@@ -42,8 +67,10 @@ export interface ConnectedAccount {
   connectedAt: string;
   /** Connected via OAuth (token stored on backend) */
   isOAuth?: boolean;
-  /** Late API account id (e.g. acc_xxx) when connected via Late */
-  lateAccountId?: string;
+  /** Zernio account id when connected via Zernio (e.g. Instagram OAuth through Zernio) */
+  zernioAccountId?: string;
+  /** Linked via Zernio API (same company, multiple channels) */
+  isZernio?: boolean;
   /** Followers, post count etc. (fetched from the platform API) */
   stats?: AccountStats;
   // AI-analysad data
