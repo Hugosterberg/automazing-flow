@@ -16,7 +16,7 @@ const PROFILES_STORAGE_KEY = "automazing-profiles";
 const ACTIVE_PROFILE_KEY = "automazing-active-profile";
 const SELECTED_ACCOUNTS_STORAGE_KEY = "automazing-selected-accounts";
 
-export type AccountSection = "social-media" | "ecommerce" | "mail" | "calendar" | "reviews";
+export type AccountSection = "social-media" | "ecommerce" | "mail" | "calendar" | "reviews" | "content";
 
 type SelectedAccountsState = Record<string, Partial<Record<AccountSection, string | null>>>;
 
@@ -517,6 +517,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         outlook_calendar: "outlook.office.com/calendar",
         google_reviews: "google.com/maps",
         tripadvisor: "tripadvisor.com",
+        google_drive: "drive.google.com",
         facebook: "facebook.com",
         google_business: "google.com/maps",
         whatsapp: "wa.me",

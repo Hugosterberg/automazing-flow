@@ -29,6 +29,9 @@ import { useAuth } from "@/context/AuthContext";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+import { getOAuthProfileId } from "@/lib/oauthProfile";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
 
@@ -122,7 +125,7 @@ const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } }
 
 export default function Ecommerce() {
   const { authMode } = useAuth();
-  const { oauthError, clearOauthError } = useOAuthCallback();
+  const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("ecommerce");
   const [initialOrganizationData] = useState<OrganizationData>(null);
@@ -167,7 +170,8 @@ export default function Ecommerce() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!shop) return;
     const params = new URLSearchParams({ shop });
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     setConnectDialogOpen(false);
     setShopDomain("");
     window.location.href = `${API_BASE}/api/auth/shopify?${params}`;
@@ -175,7 +179,8 @@ export default function Ecommerce() {
 
   function handleConnectNotion() {
     const params = new URLSearchParams();
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     const query = params.toString() ? `?${params.toString()}` : "";
     window.location.href = `${API_BASE}/api/auth/notion${query}`;
   }
@@ -308,26 +313,23 @@ export default function Ecommerce() {
       )}
 
       {/* OAuth error */}
-      {oauthError && (
+      {oauthErrorDetails && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">
-                {oauthError === "shopify_not_configured"
-                  ? "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env."
-                  : oauthError === "shopify_public_url_must_be_https"
-                    ? "Shopify requires a public HTTPS host. Set SHOPIFY_APP_URL in .env to your tunnel URL."
-                  : oauthError === "notion_not_configured"
-                    ? "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env."
-                  : oauthError === "notion_public_url_must_be_https"
-                    ? "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env to your tunnel URL."
-                  : oauthError === "shopify_missing_shop"
-                    ? "No shop domain was provided. Try connecting again."
-                    : `Login failed: ${oauthError.replace(/_/g, " ")}`}
-              </p>
-              <Button variant="ghost" size="sm" onClick={clearOauthError}>Dismiss</Button>
-            </CardContent>
-          </Card>
+          <OAuthErrorAlert
+            details={oauthErrorDetails}
+            message={formatOAuthErrorMessage(
+              oauthErrorDetails,
+              {
+                shopify_not_configured: "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env.",
+                shopify_public_url_must_be_https: "Shopify requires a public HTTPS host. Set SHOPIFY_APP_URL in .env to your tunnel URL.",
+                notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.",
+                notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env to your tunnel URL.",
+                shopify_missing_shop: "No shop domain was provided. Try connecting again.",
+              },
+              "Login failed"
+            )}
+            onDismiss={clearOauthError}
+          />
         </motion.div>
       )}
 

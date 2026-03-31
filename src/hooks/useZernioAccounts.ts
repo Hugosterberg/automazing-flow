@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
+import { getOAuthProfileId } from "@/lib/oauthProfile";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
 
@@ -67,7 +68,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             zernioAccountId: zid,
-            profile_id: activeProfileId ?? undefined,
+            profile_id: getOAuthProfileId(activeProfileId) ?? undefined,
           }),
         });
         const j = await r.json().catch(() => ({}));

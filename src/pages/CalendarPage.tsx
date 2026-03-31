@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAccountData } from "@/hooks/useAccountData";
 
@@ -79,7 +82,7 @@ type CalendarProviderData = {
 } | null;
 
 export default function CalendarPage() {
-  const { oauthError, clearOauthError } = useOAuthCallback();
+  const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("calendar");
   const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
@@ -220,7 +223,8 @@ export default function CalendarPage() {
     provider: "auto" | "zernio" | "official"
   ) {
     const params = new URLSearchParams();
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (provider !== "auto") params.set("provider", provider);
     const query = params.toString() ? `?${params.toString()}` : "";
     window.location.href = `/api/auth/${platform}${query}`;
@@ -242,21 +246,19 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {oauthError && (
-        <Card className="bg-destructive/10 border-destructive/30">
-          <CardContent className="py-3 px-4 flex items-center justify-between">
-            <p className="text-sm text-destructive">
-              {oauthError === "google_calendar_not_configured"
-                ? "Google Calendar is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env."
-                : oauthError === "outlook_calendar_not_configured"
-                  ? "Outlook Calendar is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env."
-                  : `Calendar connect failed: ${oauthError.replace(/_/g, " ")}`}
-            </p>
-            <Button variant="ghost" size="sm" onClick={clearOauthError}>
-              Dismiss
-            </Button>
-          </CardContent>
-        </Card>
+      {oauthErrorDetails && (
+        <OAuthErrorAlert
+          details={oauthErrorDetails}
+          message={formatOAuthErrorMessage(
+            oauthErrorDetails,
+            {
+              google_calendar_not_configured: "Google Calendar is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
+              outlook_calendar_not_configured: "Outlook Calendar is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.",
+            },
+            "Calendar connect failed"
+          )}
+          onDismiss={clearOauthError}
+        />
       )}
       {providerError && (
         <Card className="bg-destructive/10 border-destructive/30">

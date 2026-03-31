@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, Mail, Settings, Info, Trash2, Star, Menu, Pencil } from "lucide-react";
+import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, Mail, Settings, Info, Trash2, Star, Menu, Pencil, FolderOpen } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,13 @@ const areas = [
     ready: true,
   },
   {
+    title: "Content",
+    desc: "Browse Google Drive media and mark it for creation workflows",
+    icon: FolderOpen,
+    url: "/content",
+    ready: true,
+  },
+  {
     title: "AI Recommendations",
     desc: "AI-powered suggestions and recommendations",
     icon: LightbulbGlowIcon,
@@ -117,6 +124,7 @@ export default function Index() {
     shopify: "Shopify",
     gmail: "Gmail",
     outlook: "Outlook",
+    google_drive: "Google Drive",
   };
 
   const profileSummary = useMemo(() => {

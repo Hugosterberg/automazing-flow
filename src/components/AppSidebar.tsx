@@ -12,10 +12,13 @@ import {
   MoreHorizontal,
   Trash2,
   Layers,
+  FolderOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { formatConnectFetchError } from "@/lib/oauthErrors";
+import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +68,7 @@ import {
   GmailIcon,
   OutlookIcon,
   GoogleCalendarIcon,
+  GoogleDriveIcon,
   GoogleReviewsIcon,
   TripadvisorIcon,
   LightbulbGlowIcon,
@@ -74,6 +78,13 @@ import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
 
 const navItems = [
+  {
+    key: "content",
+    title: "Content",
+    url: "/content",
+    icon: FolderOpen,
+    platforms: ["google_drive"] as AccountPlatform[],
+  },
   {
     key: "social-media",
     title: "Social Media",
@@ -165,6 +176,7 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   outlook: OutlookIcon,
   google_calendar: GoogleCalendarIcon,
   outlook_calendar: OutlookIcon,
+  google_drive: GoogleDriveIcon,
   google_reviews: GoogleReviewsIcon,
   tripadvisor: TripadvisorIcon,
 };
@@ -182,6 +194,7 @@ function sectionForNavItemKey(key: string): AccountSection | null {
   if (key === "mail") return "mail";
   if (key === "calendar") return "calendar";
   if (key === "reviews") return "reviews";
+  if (key === "content") return "content";
   return null;
 }
 
@@ -300,7 +313,8 @@ export function AppSidebar() {
       return;
     }
     const params = new URLSearchParams();
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (platform === "tiktok" && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
@@ -318,7 +332,8 @@ export function AppSidebar() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!shop) return;
     const params = new URLSearchParams({ shop });
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     setShopifyDialogOpen(false);
     setShopDomain("");
     window.location.href = `${API_BASE}/auth/shopify?${params}`;
@@ -328,7 +343,7 @@ export function AppSidebar() {
     const locationId = tripadvisorLocationId.trim();
     const apiKey = tripadvisorApiKey.trim();
     if (!locationId) {
-      setTripadvisorConnectError("Location ID is required.");
+      setTripadvisorConnectError("Error: locationId is required | Status: 400 | Exception: not provided");
       return;
     }
     setTripadvisorConnecting(true);
@@ -346,7 +361,13 @@ export function AppSidebar() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.error || "Could not connect Tripadvisor.");
+        throw new Error(
+          formatConnectFetchError({
+            status: res.status,
+            payload,
+            fallbackMessage: "Could not connect Tripadvisor.",
+          })
+        );
       }
       addAccountFromOAuth(
         String(payload.account_id || ""),
@@ -358,7 +379,7 @@ export function AppSidebar() {
       setTripadvisorDialogOpen(false);
       navigate("/reviews");
     } catch (err) {
-      setTripadvisorConnectError(err instanceof Error ? err.message : "Could not connect Tripadvisor.");
+      setTripadvisorConnectError(err instanceof Error ? err.message : "Error: Could not connect Tripadvisor. | Status: unknown | Exception: not provided");
     } finally {
       setTripadvisorConnecting(false);
     }
@@ -555,15 +576,17 @@ export function AppSidebar() {
                                                   ? "Notion"
                                                 : platform === "gmail"
                                                   ? "Gmail"
-                                                  : platform === "outlook"
-                                                    ? "Outlook"
-                                                    : platform === "google_calendar"
-                                                      ? "Google Calendar"
-                                                      : platform === "outlook_calendar"
-                                                        ? "Outlook Calendar"
-                                                        : platform === "google_reviews"
-                                                          ? "Google Reviews"
-                                                          : "Tripadvisor";
+                                                : platform === "outlook"
+                                                  ? "Outlook"
+                                                : platform === "google_calendar"
+                                                  ? "Google Calendar"
+                                                : platform === "outlook_calendar"
+                                                  ? "Outlook Calendar"
+                                                : platform === "google_drive"
+                                                  ? "Google Drive"
+                                                : platform === "google_reviews"
+                                                  ? "Google Reviews"
+                                                  : "Tripadvisor";
                               return (
                                 platform === "tiktok" ? (
                                   <div key={platform}>

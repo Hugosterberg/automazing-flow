@@ -12,6 +12,7 @@ import { fetchShopifyAccountData } from "./providers/shopify.ts";
 import { createNotionPage, fetchNotionAccountData } from "./providers/notion.ts";
 import { fetchGoogleCalendarData, fetchOutlookCalendarData } from "./providers/calendar.ts";
 import { fetchGmailAccountData } from "./providers/gmail.ts";
+import { fetchGoogleDriveAccountData, fetchGoogleDriveFileResponse } from "./providers/googleDrive.ts";
 import { fetchXAccountData } from "./providers/x.ts";
 import { registerOAuthRoutes } from "./routes/oauthRoutes.js";
 import { registerAccountRoutes } from "./routes/accountRoutes.ts";
@@ -87,6 +88,119 @@ function debugLog(runId, hypothesisId, location, message, data = {}) {
 function getZernioProfileIdEnv() {
   return (process.env.ZERNIO_PROFILE_ID || process.env.LATE_PROFILE_ID || "").trim();
 }
+
+function readEnvEntries() {
+  if (!fs.existsSync(envPath)) return {};
+  let raw = fs.readFileSync(envPath, "utf8");
+  if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+  return dotenv.parse(raw);
+}
+
+function serializeEnvValue(value) {
+  const normalized = String(value ?? "");
+  if (normalized.length === 0) return '""';
+  if (/[\s#"'`]/.test(normalized)) {
+    return JSON.stringify(normalized);
+  }
+  return normalized;
+}
+
+function upsertEnvEntries(updates) {
+  const raw = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+  const lines = raw.length > 0 ? raw.replace(/^\uFEFF/, "").split(/\r?\n/) : [];
+  const nextLines = [...lines];
+
+  for (const [key, value] of Object.entries(updates)) {
+    const serialized = `${key}=${serializeEnvValue(value)}`;
+    const idx = nextLines.findIndex((line) => new RegExp(`^\\s*${key}\\s*=`).test(line));
+    if (idx >= 0) {
+      nextLines[idx] = serialized;
+    } else {
+      nextLines.push(serialized);
+    }
+    process.env[key] = String(value ?? "");
+  }
+
+  const content = `${nextLines.filter((line, index, arr) => !(index === arr.length - 1 && line === "")).join("\n")}\n`;
+  fs.writeFileSync(envPath, content, "utf8");
+}
+
+function hasEnvValue(key) {
+  return String(process.env[key] || "").trim().length > 0;
+}
+
+function evaluateRequirementSet(definition) {
+  const missing = (definition.required || []).filter((key) => !hasEnvValue(key));
+  const missingAny = (definition.requiredAny || []).filter(
+    (group) => !group.some((key) => hasEnvValue(key))
+  );
+
+  return {
+    ok: missing.length === 0 && missingAny.length === 0,
+    missing,
+    missingAny,
+  };
+}
+
+const integrationConfigChecks = {
+  openai: {
+    label: "OpenAI",
+    required: ["OPENAI_API_KEY"],
+    message: "Required for AI analysis and AI-assisted generation.",
+  },
+  zernio: {
+    label: "Zernio",
+    requiredAny: [["ZERNIO_API_KEY", "LATE_API_KEY"]],
+    message: "Required for Zernio-backed social and review integrations.",
+  },
+  google_drive: {
+    label: "Google Drive OAuth",
+    required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+    authPath: "/api/auth/google_drive",
+    message: "Required to connect Google Drive and browse Drive media in Content.",
+  },
+  notion: {
+    label: "Notion OAuth",
+    required: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_APP_URL"],
+    authPath: "/api/auth/notion",
+    message: "Required to connect Notion. NOTION_APP_URL must match your callback host.",
+  },
+  shopify: {
+    label: "Shopify OAuth",
+    required: ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL"],
+    authPath: "/api/auth/shopify",
+    message: "Required to connect Shopify. SHOPIFY_APP_URL must match your public app URL.",
+  },
+  instagram_direct: {
+    label: "Instagram Direct Fallback",
+    required: ["INSTAGRAM_CLIENT_ID", "INSTAGRAM_CLIENT_SECRET"],
+    authPath: "/api/auth/instagram",
+    message: "Used only for the direct Instagram fallback without Zernio.",
+  },
+  tiktok: {
+    label: "TikTok OAuth",
+    required: ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"],
+    authPath: "/api/auth/tiktok",
+    message: "Required for official TikTok OAuth.",
+  },
+  x: {
+    label: "X / Twitter OAuth",
+    required: ["X_CLIENT_ID", "X_CLIENT_SECRET"],
+    authPath: "/api/auth/x",
+    message: "Required for X / Twitter OAuth.",
+  },
+  microsoft: {
+    label: "Microsoft OAuth",
+    required: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
+    authPath: "/api/auth/outlook",
+    message: "Required for Outlook and Outlook Calendar.",
+  },
+  tripadvisor: {
+    label: "Tripadvisor API",
+    required: ["TRIPADVISOR_API_KEY", "TRIPADVISOR_LOCATION_ID"],
+    message: "Required for Tripadvisor API requests.",
+  },
+};
 
 // Persistent token storage – saved to disk so restarts don't break connections
 const TOKEN_STORE_PATH = path.join(__dirname, "tokens.json");
@@ -180,6 +294,26 @@ function getSessionUserId(req) {
     return null;
   }
   return session.userId;
+}
+
+function getStoredAccountAccess(stored, userId) {
+  const ownerUserId = stored?.ownerUserId ? String(stored.ownerUserId) : "";
+  if (!ownerUserId) return { allowed: true, migrate: true, reason: "unowned" };
+  if (ownerUserId === userId) return { allowed: true, migrate: false, reason: "owner_match" };
+
+  const sameLocalPair = ownerUserId.startsWith("local_") && String(userId).startsWith("local_");
+  if (sameLocalPair) return { allowed: true, migrate: true, reason: "local_pair" };
+
+  const localToCloudGoogleMigration =
+    ownerUserId.startsWith("local_") &&
+    !String(userId).startsWith("local_") &&
+    ["gmail", "google_drive", "google_calendar", "google_reviews"].includes(String(stored?.platform || ""));
+
+  if (localToCloudGoogleMigration) {
+    return { allowed: true, migrate: true, reason: "local_to_cloud_google" };
+  }
+
+  return { allowed: false, migrate: false, reason: "owner_mismatch" };
 }
 
 async function verifySupabaseAccessToken(token) {
@@ -291,6 +425,66 @@ app.delete("/api/auth/session", (req, res) => {
   destroySession(sid);
   clearAuthCookie(res);
   return res.json({ ok: true });
+});
+
+app.get("/api/settings/api-keys", (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  return res.json({ entries: readEnvEntries() });
+});
+
+app.put("/api/settings/api-keys", (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const rawEntries = Array.isArray(req.body?.entries) ? req.body.entries : null;
+  if (!rawEntries) {
+    return res.status(400).json({ error: "entries must be an array" });
+  }
+
+  const updates = {};
+  for (const entry of rawEntries) {
+    const key = String(entry?.key || "").trim();
+    const value = String(entry?.value ?? "");
+    if (!key) continue;
+    if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+      return res.status(400).json({ error: `Invalid env key: ${key}` });
+    }
+    updates[key] = value;
+  }
+
+  upsertEnvEntries(updates);
+  return res.json({ ok: true, entries: readEnvEntries() });
+});
+
+app.post("/api/settings/api-keys/test", (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const target = String(req.body?.target || "").trim();
+  const definition = integrationConfigChecks[target];
+  if (!definition) {
+    return res.status(400).json({ error: `Unknown test target: ${target}` });
+  }
+
+  const result = evaluateRequirementSet(definition);
+  return res.json({
+    target,
+    label: definition.label,
+    ok: result.ok,
+    missing: result.missing,
+    missingAny: result.missingAny,
+    message: result.ok
+      ? `${definition.label} is configured in .env.`
+      : definition.message,
+    authPath: result.ok ? definition.authPath || null : null,
+  });
 });
 
 const pendingStates = new Map();
@@ -417,6 +611,61 @@ registerOAuthRoutes(app, {
   getSessionUserId,
 });
 
+app.get("/api/accounts/:accountId/drive/files/:fileId/:mode(content|thumbnail)", async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const { accountId, fileId, mode } = req.params;
+  const stored = tokenStore.get(accountId);
+  if (!stored || stored.platform !== "google_drive") {
+    return res.status(404).json({ error: "Drive account not connected" });
+  }
+  const access = getStoredAccountAccess(stored, userId);
+  if (!access.allowed) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  if (access.migrate) {
+    tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+  }
+
+  try {
+    const upstream = await fetchGoogleDriveFileResponse({
+      accessToken: stored.accessToken,
+      refreshToken: stored.refreshToken,
+      accountId,
+      tokenStore,
+      stored,
+      googleClientId: process.env.GOOGLE_CLIENT_ID,
+      googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      fileId,
+      mode,
+      rangeHeader: req.headers.range,
+    });
+
+    if (!upstream.ok || !upstream.body) {
+      return res.status(upstream.status || 502).end();
+    }
+
+    const contentType = upstream.headers.get("content-type");
+    const contentLength = upstream.headers.get("content-length");
+    const contentRange = upstream.headers.get("content-range");
+    const acceptRanges = upstream.headers.get("accept-ranges");
+
+    if (contentType) res.setHeader("Content-Type", contentType);
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+    if (acceptRanges) res.setHeader("Accept-Ranges", acceptRanges);
+    res.status(upstream.status);
+
+    return res.end(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    console.error("Google Drive file proxy error:", err);
+    return res.status(502).json({ error: "Could not fetch Google Drive file" });
+  }
+});
+
 // --- Hämta live-data för konto ---
 app.get("/api/accounts/:accountId/data", async (req, res) => {
   const userId = getSessionUserId(req);
@@ -436,39 +685,20 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
     });
     return res.status(404).json({ error: "Account not connected" });
   }
-  if (!stored.ownerUserId) {
+  const access = getStoredAccountAccess(stored, userId);
+  debugLog("pre-fix", "H4", "server.js:/api/accounts/:accountId/data", "Owner access check", {
+    ownerUserIdPrefix: stored.ownerUserId ? String(stored.ownerUserId).slice(0, 14) : null,
+    userIdPrefix: String(userId).slice(0, 14),
+    allowed: access.allowed,
+    migrate: access.migrate,
+    reason: access.reason,
+    platform: stored.platform,
+  });
+  if (!access.allowed) {
+    return res.status(404).json({ error: "Account not connected" });
+  }
+  if (access.migrate) {
     tokenStore.set(accountId, { ...stored, ownerUserId: userId });
-  } else if (stored.ownerUserId !== userId) {
-    const isLocalPair =
-      String(stored.ownerUserId).startsWith("local_") && String(userId).startsWith("local_");
-    const isLocalToCloudGmailMigration =
-      String(stored.ownerUserId).startsWith("local_") &&
-      !String(userId).startsWith("local_") &&
-      stored.platform === "gmail";
-    debugLog("pre-fix", "H4", "server.js:/api/accounts/:accountId/data", "Owner mismatch check", {
-      ownerUserIdPrefix: String(stored.ownerUserId).slice(0, 14),
-      userIdPrefix: String(userId).slice(0, 14),
-      isLocalPair,
-      isLocalToCloudGmailMigration,
-      platform: stored.platform,
-    });
-    if (isLocalPair) {
-      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
-    } else if (isLocalToCloudGmailMigration) {
-      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
-      debugLog(
-        "pre-fix",
-        "H4",
-        "server.js:/api/accounts/:accountId/data",
-        "Owner migrated from local to cloud for Gmail account",
-        {
-          accountId,
-          newOwnerUserIdPrefix: String(userId).slice(0, 14),
-        }
-      );
-    } else {
-      return res.status(404).json({ error: "Account not connected" });
-    }
   }
   const {
     platform,
@@ -942,6 +1172,20 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       if (data?.error) {
         return res.status(data.status || 500).json({ error: data.error });
       }
+      return res.json(data);
+    }
+
+    if (platform === "google_drive") {
+      const data = await fetchGoogleDriveAccountData({
+        accessToken,
+        refreshToken: stored.refreshToken,
+        accountId,
+        tokenStore,
+        stored,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        folderId: typeof req.query?.folderId === "string" ? req.query.folderId : null,
+      });
       return res.json(data);
     }
 

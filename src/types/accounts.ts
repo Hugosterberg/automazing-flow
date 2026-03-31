@@ -13,13 +13,15 @@ export type EcommercePlatform = "shopify" | "notion";
 export type MailPlatform = "gmail" | "outlook";
 export type CalendarPlatform = "google_calendar" | "outlook_calendar";
 export type ReviewsPlatform = "google_reviews" | "tripadvisor";
+export type ContentPlatform = "google_drive";
 
 export type AccountPlatform =
   | SocialPlatform
   | EcommercePlatform
   | MailPlatform
   | CalendarPlatform
-  | ReviewsPlatform;
+  | ReviewsPlatform
+  | ContentPlatform;
 
 export interface Profile {
   id: string;

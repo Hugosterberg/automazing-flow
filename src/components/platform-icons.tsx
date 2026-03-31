@@ -131,6 +131,15 @@ export function GoogleCalendarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function GoogleDriveIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M8.63 3 3 12.75l2.2 3.81h5.63L16.46 7H10.8L8.63 3Zm7.2 0L10.2 12.75l2.17 3.81H18L23.63 7h-5.66L15.83 3ZM5.2 17.94 8 22.75h11.26l2.17-3.81H5.2Z" />
+    </svg>
+  );
+}
+
 export function GoogleReviewsIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, ...rest } = props;
   return (

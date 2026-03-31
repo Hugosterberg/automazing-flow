@@ -93,6 +93,109 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     }
   });
 
+  app.post("/api/content/video-draft", async (req, res) => {
+    const userId = deps?.getSessionUserId?.(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const body = (req.body ?? {}) as {
+      asset?: {
+        id?: string;
+        name?: string;
+        mimeType?: string;
+        kind?: string;
+        webViewLink?: string;
+      };
+      prompt?: string;
+      platform?: string;
+      objective?: string;
+    };
+
+    const asset = body.asset ?? {};
+    const assetName = String(asset.name || "Source video").trim();
+    const mimeType = String(asset.mimeType || "video/mp4").trim();
+    const platform = String(body.platform || "Instagram Reels").trim();
+    const objective = String(body.objective || "Create a short social media video").trim();
+    const prompt = String(body.prompt || "").trim();
+    const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
+
+    const fallbackDraft = {
+      title: `${platform} concept for ${assetName}`,
+      hook: `Start with the strongest visual moment from ${assetName} in the first two seconds.`,
+      concept: `${objective}. Use the original video as the core asset and build a short edit optimized for ${platform}.`,
+      shots: [
+        `Opening: lead with the clearest moment from ${assetName}.`,
+        "Middle: add one proof point, reaction, or detail shot that supports the message.",
+        "Ending: close with a clear CTA overlay and brand tag.",
+      ],
+      caption: `Turn ${assetName} into a concise ${platform} post with one clear message and one CTA.`,
+      cta: "End with a simple CTA that matches the platform and campaign goal.",
+    };
+
+    if (!openaiKey) {
+      return res.json({ draft: fallbackDraft, source: "fallback" });
+    }
+
+    try {
+      const promptText = [
+        "Create a short social media video brief as JSON.",
+        'Return exactly: {"title":"","hook":"","concept":"","shots":["","",""],"caption":"","cta":""}.',
+        `Platform: ${platform}`,
+        `Objective: ${objective}`,
+        `Source asset name: ${assetName}`,
+        `Source mime type: ${mimeType}`,
+        prompt ? `Extra direction: ${prompt}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: promptText }],
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (!aiRes.ok) {
+        return res.json({ draft: fallbackDraft, source: "fallback" });
+      }
+
+      const aiData = await aiRes.json();
+      const content = aiData?.choices?.[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(content) as {
+        title?: string;
+        hook?: string;
+        concept?: string;
+        shots?: string[];
+        caption?: string;
+        cta?: string;
+      };
+
+      return res.json({
+        draft: {
+          title: String(parsed.title || fallbackDraft.title),
+          hook: String(parsed.hook || fallbackDraft.hook),
+          concept: String(parsed.concept || fallbackDraft.concept),
+          shots: Array.isArray(parsed.shots) && parsed.shots.length > 0 ? parsed.shots.slice(0, 5) : fallbackDraft.shots,
+          caption: String(parsed.caption || fallbackDraft.caption),
+          cta: String(parsed.cta || fallbackDraft.cta),
+        },
+        source: "openai",
+      });
+    } catch {
+      return res.json({ draft: fallbackDraft, source: "fallback" });
+    }
+  });
+
   // --- AI-analys av konto ---
   app.post("/api/accounts/:accountId/analyze", async (req, res) => {
     const userId = deps?.getSessionUserId?.(req);

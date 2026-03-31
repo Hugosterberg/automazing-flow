@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 
 type ReviewItem = {
   id: string;
@@ -27,8 +29,7 @@ type ReviewsData = {
 const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } };
 
 export default function ReviewsPage() {
-  const { oauthError, clearOauthError } = useOAuthCallback();
-  const oauthHint = new URLSearchParams(window.location.search).get("oauth_hint");
+  const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("reviews");
 
@@ -80,28 +81,24 @@ export default function ReviewsPage() {
         </div>
       </motion.div>
 
-      {oauthError && (
+      {oauthErrorDetails && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">
-                {oauthError === "google_reviews_not_configured"
-                  ? "Google Reviews is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env."
-                  : oauthError === "google_reviews_no_account_access"
-                    ? "Google OAuth succeeded, but no Business Profile account is accessible for this Google user."
-                  : oauthError === "google_reviews_no_location_access"
-                    ? "Business account found, but no locations are accessible. Ensure the location is claimed and shared with this Google user."
-                  : oauthError === "google_reviews_accounts_api_failed"
-                    ? "Google Business Accounts API failed. Check that Business Profile APIs are enabled in Google Cloud and OAuth app is approved."
-                  : oauthError === "google_reviews_locations_api_failed"
-                    ? "Google Business Locations API failed. Check API enablement/permissions for Business Profile."
-                  : oauthError === "tripadvisor_not_configured"
-                    ? "Tripadvisor official API is not configured. Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID to .env, or connect via Zernio."
-                    : `Connect failed: ${oauthError.replace(/_/g, " ")}`}
-              </p>
-              <Button variant="ghost" size="sm" onClick={clearOauthError}>Dismiss</Button>
-            </CardContent>
-          </Card>
+          <OAuthErrorAlert
+            details={oauthErrorDetails}
+            message={formatOAuthErrorMessage(
+              oauthErrorDetails,
+              {
+                google_reviews_not_configured: "Google Reviews is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
+                google_reviews_no_account_access: "Google OAuth succeeded, but no Business Profile account is accessible for this Google user.",
+                google_reviews_no_location_access: "Business account found, but no locations are accessible. Ensure the location is claimed and shared with this Google user.",
+                google_reviews_accounts_api_failed: "Google Business Accounts API failed. Check that Business Profile APIs are enabled in Google Cloud and OAuth app is approved.",
+                google_reviews_locations_api_failed: "Google Business Locations API failed. Check API enablement and permissions for Business Profile.",
+                tripadvisor_not_configured: "Tripadvisor official API is not configured. Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID to .env, or connect via Zernio.",
+              },
+              "Connect failed"
+            )}
+            onDismiss={clearOauthError}
+          />
         </motion.div>
       )}
 

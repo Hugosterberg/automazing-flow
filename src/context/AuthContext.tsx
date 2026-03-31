@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
+const CANONICAL_APP_URL = (import.meta.env.VITE_APP_URL || "").trim();
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
@@ -20,6 +21,19 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function getOAuthRedirectUrl() {
+  const path = `${window.location.pathname}${window.location.search}`;
+  if (!CANONICAL_APP_URL) {
+    return `${window.location.origin}${path}`;
+  }
+
+  try {
+    return new URL(path || "/", CANONICAL_APP_URL.replace(/\/$/, "") + "/").toString();
+  } catch {
+    return `${window.location.origin}${path}`;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -150,11 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           enabled,
           hasSupabase: Boolean(supabase),
           locationPath: window.location.pathname,
+          canonicalAppUrl: CANONICAL_APP_URL || null,
         });
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: window.location.origin + window.location.pathname,
+            redirectTo: getOAuthRedirectUrl(),
           },
         });
       },

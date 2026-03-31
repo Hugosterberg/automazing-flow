@@ -16,6 +16,8 @@ const YOUTUBE_SCOPES =
   "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile";
 const GMAIL_SCOPES =
   "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
+const GOOGLE_DRIVE_SCOPES =
+  "openid email profile https://www.googleapis.com/auth/drive.readonly";
 const GOOGLE_CALENDAR_SCOPES =
   "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
 const GOOGLE_REVIEWS_SCOPES =
@@ -32,6 +34,65 @@ function generateCodeChallenge(verifier) {
 }
 function profileParam(profileId) {
   return profileId ? `&profile_id=${encodeURIComponent(profileId)}` : "";
+}
+
+function normalizeRequestedProfileId(profileId) {
+  const normalized = String(profileId || "").trim();
+  if (!normalized || normalized === "default") {
+    return null;
+  }
+  return normalized;
+}
+
+function buildContentUrl(baseUrl, params = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === "") continue;
+    query.set(key, String(value));
+  }
+  const suffix = query.toString();
+  return `${baseUrl}/content${suffix ? `?${suffix}` : ""}`;
+}
+
+function popupTargetOrigin(baseUrl) {
+  try {
+    return new URL(baseUrl).origin;
+  } catch {
+    return "*";
+  }
+}
+
+function sendPopupOAuthResult(res, payload, fallbackUrl, baseUrl) {
+  const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
+  const serializedFallbackUrl = JSON.stringify(fallbackUrl);
+  const serializedTargetOrigin = JSON.stringify(popupTargetOrigin(baseUrl));
+
+  res
+    .status(200)
+    .type("html")
+    .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Drive connection</title>
+  </head>
+  <body style="margin:0;background:#000;color:#f5f5f5;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;">
+    <p style="opacity:.85;">Completing Google Drive connection...</p>
+    <script>
+      const payload = ${serializedPayload};
+      const fallbackUrl = ${serializedFallbackUrl};
+      const targetOrigin = ${serializedTargetOrigin};
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(payload, targetOrigin);
+        window.close();
+      }
+      if (!window.closed) {
+        window.location.replace(fallbackUrl);
+      }
+    </script>
+  </body>
+</html>`);
 }
 
 async function getZernioConnectUrl({
@@ -251,10 +312,54 @@ export function registerOAuthRoutes(
     // #endregion
   }
 
+  function buildPageUrl(page, params = {}) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value == null || value === "") continue;
+      query.set(key, String(value));
+    }
+    const suffix = query.toString();
+    return `${BASE_URL}/${page}${suffix ? `?${suffix}` : ""}`;
+  }
+
+  function buildOauthErrorParams(errorCode, extras = {}) {
+    return {
+      oauth_error: errorCode,
+      oauth_status: extras.status,
+      oauth_exception: extras.exception,
+      oauth_hint: extras.hint,
+    };
+  }
+
+  function buildPageOauthErrorUrl(page, errorCode, extras = {}) {
+    return buildPageUrl(page, buildOauthErrorParams(errorCode, extras));
+  }
+
+  function getExceptionMessage(error) {
+    if (!error) return undefined;
+    if (error instanceof Error) return error.message;
+    return String(error);
+  }
+
+  function buildPopupOauthErrorPayload(errorCode, extras = {}) {
+    return {
+      type: "google_drive_oauth",
+      error: errorCode,
+      statusCode: extras.status ? String(extras.status) : null,
+      exception: extras.exception ? String(extras.exception) : null,
+      hint: extras.hint ? String(extras.hint) : null,
+    };
+  }
+
   function requireSessionOrRedirect(req, res, page) {
     const userId = getSessionUserId(req);
     if (!userId) {
-      res.redirect(`${BASE_URL}/${page}?oauth_error=not_authenticated`);
+      res.redirect(
+        buildPageOauthErrorUrl(page, "not_authenticated", {
+          status: 401,
+          exception: "No active session found on the server.",
+        })
+      );
       return null;
     }
     return userId;
@@ -269,6 +374,9 @@ export function registerOAuthRoutes(
     }
     if (platform === "gmail" || platform === "outlook") {
       return "mail";
+    }
+    if (platform === "google_drive") {
+      return "content";
     }
     if (platform === "google_reviews" || platform === "tripadvisor") {
       return "reviews";
@@ -290,7 +398,7 @@ export function registerOAuthRoutes(
     if (!userId) return;
     res.set("Cache-Control", "no-store, no-cache");
     const zernioKey = getZernioApiKey();
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     console.log(
       "[Instagram] ZERNIO_API_KEY:",
       zernioKey ? "set" : "not set — add ZERNIO_API_KEY to .env"
@@ -462,7 +570,7 @@ export function registerOAuthRoutes(
           return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_profile_failed"));
         }
         const state = generateState();
-        const ourProfileId = req.query.profile_id || null;
+        const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
         pendingStates.set(state, {
           platform: config.appPlatform,
           userId,
@@ -703,7 +811,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "social-media");
     if (!userId) return;
 
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     const provider = String(req.query.provider || "auto").toLowerCase();
     const tryZernio = provider !== "official";
     const zernioKey = getZernioApiKey();
@@ -839,7 +947,13 @@ export function registerOAuthRoutes(
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = generateCodeChallenge(codeVerifier);
-    pendingStates.set(state, { platform: "x", userId, profileId: req.query.profile_id, codeVerifier, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "x",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      codeVerifier,
+      createdAt: Date.now(),
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
     const url = new URL(X_AUTH);
     url.searchParams.set("response_type", "code");
@@ -921,7 +1035,12 @@ export function registerOAuthRoutes(
       return res.redirect(`${BASE_URL}/social-media?oauth_error=youtube_not_configured`);
     }
     const state = generateState();
-    pendingStates.set(state, { platform: "youtube", userId, profileId: req.query.profile_id, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "youtube",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      createdAt: Date.now(),
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/youtube/callback`;
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
@@ -1016,7 +1135,13 @@ export function registerOAuthRoutes(
     }
     const shopName = String(shop).replace(/\.myshopify\.com$/, "");
     const state = generateState();
-    pendingStates.set(state, { platform: "shopify", userId, profileId: req.query.profile_id, shop, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "shopify",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      shop,
+      createdAt: Date.now(),
+    });
     const shopifyPublicBase = getShopifyPublicBaseUrl();
     const redirectUri = `${shopifyPublicBase}/api/auth/shopify/callback`;
     if (!/^https:\/\//i.test(shopifyPublicBase)) {
@@ -1103,7 +1228,7 @@ export function registerOAuthRoutes(
     pendingStates.set(state, {
       platform: "notion",
       userId,
-      profileId: req.query.profile_id,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
       createdAt: Date.now(),
     });
 
@@ -1195,7 +1320,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "calendar");
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -1330,7 +1455,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "calendar");
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -1451,7 +1576,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "reviews");
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -1641,7 +1766,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "reviews");
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
-    const ourProfileId = req.query.profile_id || null;
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -1742,7 +1867,7 @@ export function registerOAuthRoutes(
     const userId = requireSessionOrRedirect(req, res, "mail");
     debugLog("pre-fix", "H1", "oauthRoutes.js:/api/auth/gmail", "Gmail OAuth init hit", {
       hasUserId: Boolean(userId),
-      profileIdPresent: Boolean(req.query.profile_id),
+      profileIdPresent: Boolean(normalizeRequestedProfileId(req.query.profile_id)),
       hasGoogleClientId: Boolean(process.env.GOOGLE_CLIENT_ID),
     });
     if (!userId) return;
@@ -1751,7 +1876,12 @@ export function registerOAuthRoutes(
       return res.redirect(`${BASE_URL}/mail?oauth_error=gmail_not_configured`);
     }
     const state = generateState();
-    pendingStates.set(state, { platform: "gmail", userId, profileId: req.query.profile_id, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "gmail",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      createdAt: Date.now(),
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/gmail/callback`;
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
@@ -1764,6 +1894,241 @@ export function registerOAuthRoutes(
     res.redirect(url.toString());
   });
 
+  app.get("/api/auth/google_drive", (req, res) => {
+    const userId = requireSessionOrRedirect(req, res, "content");
+    if (!userId) return;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.redirect(`${BASE_URL}/content?oauth_error=google_drive_not_configured`);
+    }
+    const state = generateState();
+    pendingStates.set(state, {
+      platform: "google_drive",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      popup: req.query.popup === "1",
+      createdAt: Date.now(),
+    });
+    const redirectUri = `${API_BASE_URL}/api/auth/google_drive/callback`;
+    const url = new URL(GOOGLE_AUTH);
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", GOOGLE_DRIVE_SCOPES);
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+    url.searchParams.set("state", state);
+    res.redirect(url.toString());
+  });
+
+  app.get("/api/auth/google_drive/callback", async (req, res) => {
+    const { code, state, error } = req.query;
+    if (error) {
+      const errorCode = String(error);
+      if (pendingStates.get(state)?.popup) {
+        return sendPopupOAuthResult(
+          res,
+          buildPopupOauthErrorPayload(errorCode),
+          buildContentUrl(BASE_URL, buildOauthErrorParams(errorCode)),
+          BASE_URL
+        );
+      }
+      return res.redirect(buildContentUrl(BASE_URL, buildOauthErrorParams(errorCode)));
+    }
+    const pending = pendingStates.get(state);
+    if (!pending) {
+      return res.redirect(
+        buildContentUrl(
+          BASE_URL,
+          buildOauthErrorParams("invalid_state", {
+            status: 400,
+            exception: "OAuth state was missing or expired.",
+          })
+        )
+      );
+    }
+    const callbackUserId = getSessionUserId(req);
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
+      pendingStates.delete(state);
+      if (pending?.popup) {
+        return sendPopupOAuthResult(
+          res,
+          buildPopupOauthErrorPayload("invalid_state", {
+            status: 400,
+            exception: "OAuth state did not match the active session.",
+          }),
+          buildContentUrl(
+            BASE_URL,
+            buildOauthErrorParams("invalid_state", {
+              status: 400,
+              exception: "OAuth state did not match the active session.",
+            })
+          ),
+          BASE_URL
+        );
+      }
+      return res.redirect(
+        buildContentUrl(
+          BASE_URL,
+          buildOauthErrorParams("invalid_state", {
+            status: 400,
+            exception: "OAuth state did not match the active session.",
+          })
+        )
+      );
+    }
+    pendingStates.delete(state);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      if (pending?.popup) {
+        return sendPopupOAuthResult(
+          res,
+          buildPopupOauthErrorPayload("google_drive_not_configured", {
+            status: 500,
+            exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+          }),
+          buildContentUrl(
+            BASE_URL,
+            buildOauthErrorParams("google_drive_not_configured", {
+              status: 500,
+              exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+            })
+          ),
+          BASE_URL
+        );
+      }
+      return res.redirect(
+        buildContentUrl(
+          BASE_URL,
+          buildOauthErrorParams("google_drive_not_configured", {
+            status: 500,
+            exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+          })
+        )
+      );
+    }
+
+    try {
+      const redirectUri = `${API_BASE_URL}/api/auth/google_drive/callback`;
+      const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+      });
+      const tokenRes = await fetch(GOOGLE_TOKEN, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const errorCode = String(data.error_description || data.error || "token_exchange_failed");
+        if (pending?.popup) {
+          return sendPopupOAuthResult(
+            res,
+            buildPopupOauthErrorPayload(errorCode, {
+              status: tokenRes.status,
+              exception: data.error_description || data.error || "Google token exchange failed.",
+            }),
+            buildContentUrl(
+              BASE_URL,
+              buildOauthErrorParams(errorCode, {
+                status: tokenRes.status,
+                exception: data.error_description || data.error || "Google token exchange failed.",
+              })
+            ),
+            BASE_URL
+          );
+        }
+        return res.redirect(buildContentUrl(BASE_URL, buildOauthErrorParams(errorCode, {
+          status: tokenRes.status,
+          exception: data.error_description || data.error || "Google token exchange failed.",
+        })));
+      }
+
+      let username = "Google Drive";
+      const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+      });
+      const meData = await meRes.json().catch(() => ({}));
+      if (meData.email) username = String(meData.email);
+      const driveIdentityRaw = String(meData.id || meData.email || username || "").toLowerCase();
+      const driveIdentityHash = crypto.createHash("sha1").update(driveIdentityRaw).digest("hex").slice(0, 20);
+      const accountId = `gdrive_${driveIdentityHash}`;
+      tokenStore.set(accountId, {
+        platform: "google_drive",
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
+        username,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      });
+      if (pending?.popup) {
+        return sendPopupOAuthResult(
+          res,
+          {
+            type: "google_drive_oauth",
+            success: true,
+            platform: "google_drive",
+            account_id: accountId,
+            username,
+            ...(pending.profileId ? { profile_id: pending.profileId } : {}),
+          },
+          buildContentUrl(BASE_URL, {
+            oauth_success: 1,
+            platform: "google_drive",
+            account_id: accountId,
+            username,
+            profile_id: pending.profileId,
+          }),
+          BASE_URL
+        );
+      }
+      const profileQuery = profileParam(pending.profileId);
+      return res.redirect(
+        `${BASE_URL}/content?oauth_success=1&platform=google_drive&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+      );
+    } catch (err) {
+      console.error("Google Drive OAuth error:", err);
+      if (pending?.popup) {
+        return sendPopupOAuthResult(
+          res,
+          buildPopupOauthErrorPayload("token_exchange_failed", {
+            status: 500,
+            exception: getExceptionMessage(err),
+          }),
+          buildContentUrl(
+            BASE_URL,
+            buildOauthErrorParams("token_exchange_failed", {
+              status: 500,
+              exception: getExceptionMessage(err),
+            })
+          ),
+          BASE_URL
+        );
+      }
+      return res.redirect(
+        buildContentUrl(
+          BASE_URL,
+          buildOauthErrorParams("token_exchange_failed", {
+            status: 500,
+            exception: getExceptionMessage(err),
+          })
+        )
+      );
+    }
+  });
+
   app.get("/api/auth/gmail/callback", async (req, res) => {
     const { code, state, error } = req.query;
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Gmail callback received", {
@@ -1772,7 +2137,7 @@ export function registerOAuthRoutes(
       error: error ? String(error) : null,
     });
     if (error) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=${error}`);
+      return res.redirect(buildPageOauthErrorUrl("mail", String(error)));
     }
     const pending = pendingStates.get(state);
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Pending state lookup", {
@@ -1814,7 +2179,12 @@ export function registerOAuthRoutes(
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=gmail_not_configured`);
+      return res.redirect(
+        buildPageOauthErrorUrl("mail", "gmail_not_configured", {
+          status: 500,
+          exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+        })
+      );
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/gmail/callback`;
@@ -1839,7 +2209,12 @@ export function registerOAuthRoutes(
         tokenError: data.error ?? null,
       });
       if (data.error) {
-        return res.redirect(`${BASE_URL}/mail?oauth_error=${data.error_description || data.error}`);
+        return res.redirect(
+          buildPageOauthErrorUrl("mail", String(data.error), {
+            status: tokenRes.status,
+            exception: data.error_description || data.error,
+          })
+        );
       }
       let username = "Gmail";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -1869,7 +2244,12 @@ export function registerOAuthRoutes(
       );
     } catch (err) {
       console.error("Gmail OAuth error:", err);
-      res.redirect(`${BASE_URL}/mail?oauth_error=token_exchange_failed`);
+      res.redirect(
+        buildPageOauthErrorUrl("mail", "token_exchange_failed", {
+          status: 500,
+          exception: getExceptionMessage(err),
+        })
+      );
     }
   });
 
@@ -1882,7 +2262,12 @@ export function registerOAuthRoutes(
       return res.redirect(`${BASE_URL}/mail?oauth_error=outlook_not_configured`);
     }
     const state = generateState();
-    pendingStates.set(state, { platform: "outlook", userId, profileId: req.query.profile_id, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "outlook",
+      userId,
+      profileId: normalizeRequestedProfileId(req.query.profile_id),
+      createdAt: Date.now(),
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
     const scope = "offline_access openid profile email User.Read Mail.Read";
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_mode=query`;

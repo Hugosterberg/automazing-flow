@@ -9,16 +9,21 @@ import {
   ImagePlus,
   Loader2,
   BarChart3,
+  Film,
+  FolderOpen,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
+import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -167,10 +172,38 @@ async function generateImageVariants(): Promise<string[]> {
   ];
 }
 
+type VideoDraftResult = {
+  title: string;
+  hook: string;
+  concept: string;
+  shots: string[];
+  caption: string;
+  cta: string;
+};
+
+async function generateVideoDraft(payload: {
+  asset: Pick<SelectedContentAsset, "id" | "name" | "mimeType" | "kind" | "webViewLink">;
+  prompt: string;
+  platform: string;
+  objective: string;
+}): Promise<{ draft: VideoDraftResult; source: string }> {
+  const res = await fetch("/api/content/video-draft", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload?.error || "Could not generate video draft");
+  }
+  return res.json();
+}
+
 export default function SocialMedia() {
   const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
-  const { accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
+  const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const selectedAccountId = getSelectedAccountId("social-media");
   const [analyzing, setAnalyzing] = useState(false);
@@ -288,6 +321,17 @@ export default function SocialMedia() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [videoPlatform, setVideoPlatform] = useState("Instagram Reels");
+  const [videoObjective, setVideoObjective] = useState("Create a short social media video");
+  const [generatingVideoDraft, setGeneratingVideoDraft] = useState(false);
+  const [videoDraftSource, setVideoDraftSource] = useState<string | null>(null);
+  const [videoDraft, setVideoDraft] = useState<VideoDraftResult | null>(null);
+  const [videoDraftError, setVideoDraftError] = useState<string | null>(null);
+  const [selectedContent, setSelectedContent] = useState<SelectedContentAsset[]>(() =>
+    loadSelectedContent(activeProfileId)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const socialPlatforms = ["instagram", "tiktok", "youtube", "x", "facebook", "google_business", "whatsapp"] as const;
@@ -299,6 +343,27 @@ export default function SocialMedia() {
   const selectedZernioNote =
     (socialData?.stats as { zernioNote?: string } | undefined)?.zernioNote ||
     selectedAccount?.stats?.zernioNote;
+  const selectedContentImages = selectedContent.filter((asset) => asset.kind === "image");
+  const selectedContentVideos = selectedContent.filter((asset) => asset.kind === "video");
+
+  useEffect(() => {
+    setSelectedContent(loadSelectedContent(activeProfileId));
+  }, [activeProfileId]);
+
+  useEffect(() => {
+    if (!uploadedImage && selectedContentImages.length > 0) {
+      setUploadedImage(selectedContentImages[0].previewUrl || selectedContentImages[0].thumbnailUrl);
+    }
+  }, [uploadedImage, selectedContentImages]);
+
+  useEffect(() => {
+    if (!selectedVideoId && selectedContentVideos.length > 0) {
+      setSelectedVideoId(selectedContentVideos[0].id);
+    }
+    if (selectedVideoId && !selectedContentVideos.some((asset) => asset.id === selectedVideoId)) {
+      setSelectedVideoId(selectedContentVideos[0]?.id || null);
+    }
+  }, [selectedContentVideos, selectedVideoId]);
 
   useEffect(() => {
     setRecentPosts([]);
@@ -376,7 +441,7 @@ export default function SocialMedia() {
     // #endregion
   }, [showOverview, selectedAccountId]);
 
-  const { oauthError, clearOauthError } = useOAuthCallback();
+  const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -400,6 +465,36 @@ export default function SocialMedia() {
     }
   }
 
+  const selectedVideoAsset =
+    selectedContentVideos.find((asset) => asset.id === selectedVideoId) ?? selectedContentVideos[0] ?? null;
+
+  async function handleGenerateVideoDraft() {
+    if (!selectedVideoAsset) return;
+    setGeneratingVideoDraft(true);
+    setVideoDraft(null);
+    setVideoDraftError(null);
+    try {
+      const result = await generateVideoDraft({
+        asset: {
+          id: selectedVideoAsset.id,
+          name: selectedVideoAsset.name,
+          mimeType: selectedVideoAsset.mimeType,
+          kind: selectedVideoAsset.kind,
+          webViewLink: selectedVideoAsset.webViewLink,
+        },
+        prompt: videoPrompt,
+        platform: videoPlatform,
+        objective: videoObjective,
+      });
+      setVideoDraft(result.draft);
+      setVideoDraftSource(result.source);
+    } catch (error) {
+      setVideoDraftError(error instanceof Error ? error.message : "Could not generate video draft");
+    } finally {
+      setGeneratingVideoDraft(false);
+    }
+  }
+
   return (
     <div className="space-y-8 max-w-6xl">
       <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
@@ -419,16 +514,13 @@ export default function SocialMedia() {
         </motion.div>
       )}
 
-      {oauthError && (
+      {oauthErrorDetails && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">{messageForOAuthError(oauthError)}</p>
-              <Button variant="ghost" size="sm" onClick={clearOauthError}>
-                Dismiss
-              </Button>
-            </CardContent>
-          </Card>
+          <OAuthErrorAlert
+            details={oauthErrorDetails}
+            message={messageForOAuthError(oauthErrorDetails.code)}
+            onDismiss={clearOauthError}
+          />
         </motion.div>
       )}
       {error && (
@@ -594,6 +686,228 @@ export default function SocialMedia() {
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
+              <FolderOpen className="h-5 w-5" />
+              Selected content from Google Drive
+            </CardTitle>
+            <CardDescription>
+              Mark files in the Content tab and use selected images or videos here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedContent.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No Google Drive files marked yet. Open the Content tab and mark the media you want to use.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>{selectedContentImages.length} image{selectedContentImages.length === 1 ? "" : "s"}</span>
+                  <span>{selectedContentVideos.length} video{selectedContentVideos.length === 1 ? "" : "s"}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {selectedContent.map((asset) => (
+                    <div key={asset.id} className="rounded-lg border border-border overflow-hidden bg-secondary/20">
+                      <div className="aspect-square bg-secondary/50 flex items-center justify-center overflow-hidden">
+                        {asset.thumbnailUrl ? (
+                          <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
+                        ) : asset.kind === "video" ? (
+                          <Film className="h-6 w-6 text-muted-foreground" />
+                        ) : (
+                          <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="p-2 space-y-2">
+                        <p className="text-xs font-medium truncate">{asset.name}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {asset.kind === "image" && (asset.previewUrl || asset.thumbnailUrl) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() => {
+                                setUploadedImage(asset.previewUrl || asset.thumbnailUrl);
+                                setVariants([]);
+                              }}
+                            >
+                              Use as source
+                            </Button>
+                          )}
+                          {asset.webViewLink && (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" asChild>
+                              <a href={asset.webViewLink} target="_blank" rel="noopener noreferrer">Open</a>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedContentVideos.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Video files can now be used to generate a video brief and caption draft below.
+                  </p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
+        <Card className="bg-card border-border glow-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Film className="h-5 w-5" />
+              AI Video Draft
+            </CardTitle>
+            <CardDescription>
+              Choose a selected Google Drive video and generate a reusable short-form video concept, shot list, and caption.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedContentVideos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No selected Google Drive videos yet. Mark one in the Content tab to generate a video draft here.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Source video</p>
+                    <div className="space-y-2">
+                      {selectedContentVideos.map((asset) => (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          onClick={() => setSelectedVideoId(asset.id)}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                            selectedVideoAsset?.id === asset.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-secondary/20 hover:bg-secondary/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-md overflow-hidden bg-secondary/60 flex items-center justify-center shrink-0">
+                              {asset.thumbnailUrl ? (
+                                <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <Film className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{asset.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{asset.mimeType || "video/*"}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="video-platform">Platform</Label>
+                        <Input
+                          id="video-platform"
+                          value={videoPlatform}
+                          onChange={(e) => setVideoPlatform(e.target.value)}
+                          placeholder="Instagram Reels"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="video-objective">Objective</Label>
+                        <Input
+                          id="video-objective"
+                          value={videoObjective}
+                          onChange={(e) => setVideoObjective(e.target.value)}
+                          placeholder="Create a short product teaser"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="video-prompt">Extra direction</Label>
+                      <Textarea
+                        id="video-prompt"
+                        value={videoPrompt}
+                        onChange={(e) => setVideoPrompt(e.target.value)}
+                        placeholder="Hook angle, target audience, CTA, brand tone, or key points to highlight."
+                        className="bg-secondary border-border min-h-[96px] resize-none"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button onClick={() => void handleGenerateVideoDraft()} disabled={!selectedVideoAsset || generatingVideoDraft}>
+                        {generatingVideoDraft ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Film className="h-4 w-4 mr-2" />
+                        )}
+                        {generatingVideoDraft ? "Generating..." : "Generate video draft"}
+                      </Button>
+                      {selectedVideoAsset?.webViewLink && (
+                        <Button variant="outline" asChild>
+                          <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">Open source video</a>
+                        </Button>
+                      )}
+                    </div>
+                    {videoDraftError && (
+                      <p className="text-sm text-destructive">{videoDraftError}</p>
+                    )}
+                  </div>
+                </div>
+
+                {videoDraft && (
+                  <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-4">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
+                        {videoDraftSource === "openai" ? "AI-generated" : "Fallback draft"}
+                      </span>
+                      <span>Built from {selectedVideoAsset?.name}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Title</p>
+                      <p className="text-sm">{videoDraft.title}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hook</p>
+                      <p className="text-sm">{videoDraft.hook}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Concept</p>
+                      <p className="text-sm">{videoDraft.concept}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Shot list</p>
+                      <div className="space-y-2">
+                        {videoDraft.shots.map((shot, index) => (
+                          <div key={`${shot}-${index}`} className="rounded-md border border-border/70 bg-background/80 p-3">
+                            <p className="text-sm">{shot}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Caption</p>
+                        <p className="text-sm">{videoDraft.caption}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">CTA</p>
+                        <p className="text-sm">{videoDraft.cta}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.18 }}>
+        <Card className="bg-card border-border glow-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
               <ImagePlus className="h-5 w-5" />
               AI Image Variants
             </CardTitle>
@@ -638,7 +952,7 @@ export default function SocialMedia() {
                   {generatingVariants ? "Generating variants..." : "Generate AI variants"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Click the box to upload, then generate.
+                  Click the box to upload, or use a selected Google Drive image above, then generate.
                 </p>
               </div>
             </div>

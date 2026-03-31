@@ -8,6 +8,9 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+import { getOAuthProfileId } from "@/lib/oauthProfile";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
 
@@ -55,7 +58,7 @@ const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
 
 export default function MailPage() {
   const { authMode, session } = useAuth();
-  const { oauthError, clearOauthError } = useOAuthCallback();
+  const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("mail");
   const [messagesInitial] = useState<GmailMessage[]>([]);
@@ -96,7 +99,8 @@ export default function MailPage() {
 
   function handleConnect() {
     const params = new URLSearchParams();
-    if (activeProfileId) params.set("profile_id", activeProfileId);
+    const oauthProfileId = getOAuthProfileId(activeProfileId);
+    if (oauthProfileId) params.set("profile_id", oauthProfileId);
     window.location.href = `${API_BASE}/api/auth/gmail?${params}`;
   }
 
@@ -177,18 +181,19 @@ export default function MailPage() {
         </motion.div>
       )}
 
-      {oauthError && (
+      {oauthErrorDetails && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4 flex items-center justify-between">
-              <p className="text-sm text-destructive">
-                {oauthError === "gmail_not_configured"
-                  ? "Gmail is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env."
-                  : `Login failed: ${oauthError.replace(/_/g, " ")}`}
-              </p>
-              <Button variant="ghost" size="sm" onClick={clearOauthError}>Dismiss</Button>
-            </CardContent>
-          </Card>
+          <OAuthErrorAlert
+            details={oauthErrorDetails}
+            message={formatOAuthErrorMessage(
+              oauthErrorDetails,
+              {
+                gmail_not_configured: "Gmail is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
+              },
+              "Login failed"
+            )}
+            onDismiss={clearOauthError}
+          />
         </motion.div>
       )}
 

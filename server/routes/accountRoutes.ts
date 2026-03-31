@@ -54,6 +54,59 @@ export function registerAccountRoutes(
     getSessionUserId,
   }
 ) {
+  function isAccessibleOwner(stored: Record<string, unknown>, userId: string) {
+    const ownerUserId = stored.ownerUserId ? String(stored.ownerUserId) : "";
+    if (!ownerUserId) return { allowed: true, migrate: true };
+    if (ownerUserId === userId) return { allowed: true, migrate: false };
+
+    const sameLocalPair = ownerUserId.startsWith("local_") && String(userId).startsWith("local_");
+    if (sameLocalPair) return { allowed: true, migrate: true };
+
+    const localToCloudGoogleMigration =
+      ownerUserId.startsWith("local_") &&
+      !String(userId).startsWith("local_") &&
+      ["gmail", "google_drive", "google_calendar", "google_reviews"].includes(String(stored.platform || ""));
+
+    if (localToCloudGoogleMigration) return { allowed: true, migrate: true };
+
+    return { allowed: false, migrate: false };
+  }
+
+  app.get("/api/accounts/connected", (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const platformFilter = String(req.query?.platform || "").trim();
+    const results = [];
+
+    for (const [accountId, stored] of tokenStore.entries()) {
+      if (!stored || typeof stored !== "object") continue;
+      if (platformFilter && String(stored.platform || "") !== platformFilter) continue;
+
+      const access = isAccessibleOwner(stored, userId);
+      if (!access.allowed) continue;
+      if (access.migrate) {
+        tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+      }
+
+      results.push({
+        account_id: accountId,
+        platform: String(stored.platform || ""),
+        username: String(stored.username || accountId),
+        profile_id: stored.profileId ? String(stored.profileId) : null,
+        displayName: stored.displayName ? String(stored.displayName) : null,
+        profileUrl: stored.profileUrl ? String(stored.profileUrl) : null,
+        zernioAccountId: stored.zernioAccountId ? String(stored.zernioAccountId) : null,
+        isZernio: Boolean(stored.isZernio),
+        isOAuth: true,
+      });
+    }
+
+    return res.json({ accounts: results });
+  });
+
   app.get("/api/zernio/accounts", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {
