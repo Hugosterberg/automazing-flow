@@ -12,11 +12,13 @@ import { fetchShopifyAccountData } from "./providers/shopify.ts";
 import { createNotionPage, fetchNotionAccountData } from "./providers/notion.ts";
 import { fetchGoogleCalendarData, fetchOutlookCalendarData } from "./providers/calendar.ts";
 import { fetchGmailAccountData } from "./providers/gmail.ts";
+import { fetchOutlookMailData } from "./providers/outlookMail.ts";
 import { fetchGoogleDriveAccountData, fetchGoogleDriveFileResponse } from "./providers/googleDrive.ts";
 import { fetchXAccountData } from "./providers/x.ts";
 import { registerOAuthRoutes } from "./routes/oauthRoutes.js";
 import { registerAccountRoutes } from "./routes/accountRoutes.ts";
 import { registerAiRoutes } from "./routes/aiRoutes.ts";
+import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -25,10 +27,15 @@ const envPath = fs.existsSync(path.join(process.cwd(), ".env"))
   ? path.join(process.cwd(), ".env")
   : path.join(rootDir, ".env");
 const envExamplePath = path.join(rootDir, ".env.example");
+const isVercelRuntime = process.env.VERCEL === "1";
 
-if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
-  fs.copyFileSync(envExamplePath, envPath);
-  console.log("Created .env from .env.example – fill in ZERNIO_API_KEY etc. in .env");
+if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath) && !isVercelRuntime) {
+  try {
+    fs.copyFileSync(envExamplePath, envPath);
+    console.log("Created .env from .env.example – fill in ZERNIO_API_KEY etc. in .env");
+  } catch (e) {
+    console.warn("[env] Could not create .env from .env.example:", e?.message || e);
+  }
 }
 // Read .env from project root: strip BOM, trim keys/values, .env should always win over empty system env
 if (fs.existsSync(envPath)) {
@@ -49,7 +56,28 @@ if (fs.existsSync(envPath)) {
 }
 
 const app = express();
-app.use(cors({ origin: process.env.BASE_URL || "http://localhost:8080", credentials: true }));
+
+function parseCorsAllowedOrigins() {
+  const fromList = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (fromList.length > 0) return fromList;
+  const base = (process.env.BASE_URL || "http://localhost:8080").trim();
+  return base ? [base] : ["http://localhost:8080"];
+}
+
+const corsAllowedOrigins = parseCorsAllowedOrigins();
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (corsAllowedOrigins.includes(origin)) return callback(null, true);
+      callback(null, false);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
@@ -307,7 +335,7 @@ function getStoredAccountAccess(stored, userId) {
   const localToCloudGoogleMigration =
     ownerUserId.startsWith("local_") &&
     !String(userId).startsWith("local_") &&
-    ["gmail", "google_drive", "google_calendar", "google_reviews"].includes(String(stored?.platform || ""));
+    ["gmail", "google_drive", "google_calendar", "google_reviews", "outlook"].includes(String(stored?.platform || ""));
 
   if (localToCloudGoogleMigration) {
     return { allowed: true, migrate: true, reason: "local_to_cloud_google" };
@@ -595,6 +623,15 @@ registerAccountRoutes(app, {
   mapZernioPlatform,
   tokenStore,
   getSessionUserId,
+});
+
+registerMessagesRoutes(app, {
+  getSessionUserId,
+  tokenStore,
+  getStoredAccountAccess,
+  ZERNIO_API_BASE,
+  zernioAuthHeaders,
+  zernioProfileIdFilter: (process.env.ZERNIO_PROFILE_ID || process.env.LATE_PROFILE_ID || "").trim(),
 });
 
 registerOAuthRoutes(app, {
@@ -1175,6 +1212,22 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       return res.json(data);
     }
 
+    if (platform === "outlook") {
+      const data = await fetchOutlookMailData({
+        accessToken,
+        refreshToken: stored.refreshToken,
+        accountId,
+        tokenStore,
+        stored,
+        microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+        microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+      });
+      if (data?.error) {
+        return res.status(data.status || 500).json({ error: data.error });
+      }
+      return res.json(data);
+    }
+
     if (platform === "google_drive") {
       const data = await fetchGoogleDriveAccountData({
         accessToken,
@@ -1489,13 +1542,19 @@ app.get("/api/debug-env", (req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Server: http://localhost:${PORT}`);
-  console.log(`Zernio: ${getZernioApiKey() ? "API key loaded" : ERR_NO_ZERNIO_KEY}`);
-});
-server.on("error", (err) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`
+const thisFilePath = fileURLToPath(import.meta.url);
+const entryScriptPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
+const shouldStartHttpListener =
+  Boolean(entryScriptPath) && path.resolve(thisFilePath) === entryScriptPath;
+
+if (shouldStartHttpListener) {
+  const server = app.listen(PORT, () => {
+    console.log(`Server: http://localhost:${PORT}`);
+    console.log(`Zernio: ${getZernioApiKey() ? "API key loaded" : ERR_NO_ZERNIO_KEY}`);
+  });
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`
 Port ${PORT} is already in use by another process (likely an older server without .env).
 The old process responds on /api – that's why you see "Instagram not configured".
 
@@ -1505,6 +1564,10 @@ To fix:
    Take the PID from the last column and run:  taskkill /PID <pid> /F
 3. Then restart:  npm run dev
 `);
-  }
-  throw err;
-});
+    }
+    throw err;
+  });
+}
+
+export { app };
+export default app;

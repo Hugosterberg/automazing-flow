@@ -9,6 +9,15 @@ const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
 const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
 
+function isLocalhostUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
@@ -24,14 +33,19 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function getOAuthRedirectUrl() {
   const path = `${window.location.pathname}${window.location.search}`;
-  if (!CANONICAL_APP_URL) {
-    return `${window.location.origin}${path}`;
+  const origin = window.location.origin;
+  // If the build baked in localhost (common Vercel misconfig), never use it on a real host.
+  const envWouldBreakProd =
+    Boolean(CANONICAL_APP_URL) && isLocalhostUrl(CANONICAL_APP_URL) && !isLocalhostUrl(origin);
+
+  if (!CANONICAL_APP_URL || envWouldBreakProd) {
+    return `${origin}${path}`;
   }
 
   try {
     return new URL(path || "/", CANONICAL_APP_URL.replace(/\/$/, "") + "/").toString();
   } catch {
-    return `${window.location.origin}${path}`;
+    return `${origin}${path}`;
   }
 }
 

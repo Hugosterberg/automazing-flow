@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { AccountsProvider } from "@/context/AccountsContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -13,7 +13,7 @@ import Layout from "./components/Layout";
 import SocialMedia from "./pages/SocialMedia";
 import Ecommerce from "./pages/Ecommerce";
 import CalendarPage from "./pages/CalendarPage";
-import MailPage from "./pages/Mail";
+import MessagesPage from "./pages/Messages";
 import AIRecommendationsPage from "./pages/AIRecommendations";
 import PreferencesPage from "./pages/Preferences";
 import ReviewsPage from "./pages/Reviews";
@@ -67,7 +67,8 @@ const App = () => {
                   <Route path="/sales-marketing" element={<SalesMarketingPage />} />
                   <Route path="/customers" element={<CustomersPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/mail" element={<MailPage />} />
+                  <Route path="/messages" element={<MessagesPage />} />
+                  <Route path="/mail" element={<Navigate to="/messages" replace />} />
                   <Route path="/reviews" element={<ReviewsPage />} />
                   <Route path="/content" element={<ContentPage />} />
                   <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />

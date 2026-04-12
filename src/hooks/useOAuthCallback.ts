@@ -6,7 +6,7 @@ import { parseOAuthErrorDetails, removeOAuthErrorParams, type OAuthErrorDetails 
 
 function sectionForPlatform(platform: AccountPlatform): AccountSection {
   if (platform === "shopify" || platform === "notion") return "ecommerce";
-  if (platform === "gmail" || platform === "outlook") return "mail";
+  if (platform === "gmail" || platform === "outlook") return "messages";
   if (platform === "google_calendar" || platform === "outlook_calendar") return "calendar";
   if (platform === "google_reviews" || platform === "tripadvisor") return "reviews";
   if (platform === "google_drive") return "content";

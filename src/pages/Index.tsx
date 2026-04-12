@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, Mail, Settings, Info, Trash2, Star, Menu, Pencil, FolderOpen } from "lucide-react";
+import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, MessageSquare, Settings, Info, Trash2, Star, Menu, Pencil, FolderOpen } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,10 +59,10 @@ const areas = [
     ready: true,
   },
   {
-    title: "Mail",
-    desc: "Manage and automate your emails",
-    icon: Mail,
-    url: "/mail",
+    title: "Messages",
+    desc: "Email and social DMs from all connected accounts",
+    icon: MessageSquare,
+    url: "/messages",
     ready: true,
   },
   {

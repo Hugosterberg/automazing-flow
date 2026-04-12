@@ -9,7 +9,7 @@ type AiRouteDeps = {
 };
 
 export function registerAiRoutes(app, deps?: AiRouteDeps) {
-  app.post("/api/mail/summaries", async (req, res) => {
+  async function postMessageSummaries(req: import("express").Request, res: import("express").Response) {
     const userId = deps?.getSessionUserId?.(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -51,7 +51,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
         from: m.from?.name || m.from?.email || "",
       }));
 
-      const prompt = `Sammanfatta varje mail kort på svenska i max 10 ord per mail.\nReturnera ENDAST JSON i formatet {"summaries":{"<id>":"<kort sammanfattning>"}}.\n\nMeddelanden:\n${JSON.stringify(compact)}`;
+      const prompt = `Sammanfatta varje meddelande kort pa svenska i max 10 ord per rad.\nReturnera ENDAST JSON i formatet {"summaries":{"<id>":"<kort sammanfattning>"}}.\n\nMeddelanden:\n${JSON.stringify(compact)}`;
       const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -79,7 +79,6 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       const parsed = JSON.parse(content) as { summaries?: Record<string, string> };
       const summaries = parsed?.summaries ?? {};
 
-      // Ensure every message has a summary.
       for (const m of messages) {
         const id = String(m.id || "");
         if (id && !summaries[id]) summaries[id] = heuristicSummary(m);
@@ -91,7 +90,10 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       );
       return res.json({ summaries });
     }
-  });
+  }
+
+  app.post("/api/mail/summaries", postMessageSummaries);
+  app.post("/api/messages/summaries", postMessageSummaries);
 
   app.post("/api/content/video-draft", async (req, res) => {
     const userId = deps?.getSessionUserId?.(req);

@@ -65,7 +65,7 @@ export function registerAccountRoutes(
     const localToCloudGoogleMigration =
       ownerUserId.startsWith("local_") &&
       !String(userId).startsWith("local_") &&
-      ["gmail", "google_drive", "google_calendar", "google_reviews"].includes(String(stored.platform || ""));
+      ["gmail", "google_drive", "google_calendar", "google_reviews", "outlook"].includes(String(stored.platform || ""));
 
     if (localToCloudGoogleMigration) return { allowed: true, migrate: true };
 

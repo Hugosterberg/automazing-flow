@@ -373,7 +373,7 @@ export function registerOAuthRoutes(
       return "calendar";
     }
     if (platform === "gmail" || platform === "outlook") {
-      return "mail";
+      return "messages";
     }
     if (platform === "google_drive") {
       return "content";
@@ -1864,7 +1864,7 @@ export function registerOAuthRoutes(
 
   // --- Gmail OAuth (samma Google OAuth, andra scopes) ---
   app.get("/api/auth/gmail", (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "mail");
+    const userId = requireSessionOrRedirect(req, res, "messages");
     debugLog("pre-fix", "H1", "oauthRoutes.js:/api/auth/gmail", "Gmail OAuth init hit", {
       hasUserId: Boolean(userId),
       profileIdPresent: Boolean(normalizeRequestedProfileId(req.query.profile_id)),
@@ -1873,7 +1873,7 @@ export function registerOAuthRoutes(
     if (!userId) return;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=gmail_not_configured`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=gmail_not_configured`);
     }
     const state = generateState();
     pendingStates.set(state, {
@@ -2137,7 +2137,7 @@ export function registerOAuthRoutes(
       error: error ? String(error) : null,
     });
     if (error) {
-      return res.redirect(buildPageOauthErrorUrl("mail", String(error)));
+      return res.redirect(buildPageOauthErrorUrl("messages", String(error)));
     }
     const pending = pendingStates.get(state);
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Pending state lookup", {
@@ -2145,7 +2145,7 @@ export function registerOAuthRoutes(
       pendingPlatform: pending?.platform ?? null,
     });
     if (!pending) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2162,7 +2162,7 @@ export function registerOAuthRoutes(
     });
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       pendingStates.delete(state);
-      return res.redirect(`${BASE_URL}/mail?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }
     if (isLocalToCloudTransition) {
       debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Allowing local-to-cloud transition", {
@@ -2180,7 +2180,7 @@ export function registerOAuthRoutes(
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       return res.redirect(
-        buildPageOauthErrorUrl("mail", "gmail_not_configured", {
+        buildPageOauthErrorUrl("messages", "gmail_not_configured", {
           status: 500,
           exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
         })
@@ -2210,7 +2210,7 @@ export function registerOAuthRoutes(
       });
       if (data.error) {
         return res.redirect(
-          buildPageOauthErrorUrl("mail", String(data.error), {
+          buildPageOauthErrorUrl("messages", String(data.error), {
             status: tokenRes.status,
             exception: data.error_description || data.error,
           })
@@ -2240,12 +2240,12 @@ export function registerOAuthRoutes(
       });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
-        `${BASE_URL}/mail?oauth_success=1&platform=gmail&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/messages?oauth_success=1&platform=gmail&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Gmail OAuth error:", err);
       res.redirect(
-        buildPageOauthErrorUrl("mail", "token_exchange_failed", {
+        buildPageOauthErrorUrl("messages", "token_exchange_failed", {
           status: 500,
           exception: getExceptionMessage(err),
         })
@@ -2255,11 +2255,11 @@ export function registerOAuthRoutes(
 
   // --- Outlook OAuth (Microsoft) ---
   app.get("/api/auth/outlook", (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "mail");
+    const userId = requireSessionOrRedirect(req, res, "messages");
     if (!userId) return;
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=outlook_not_configured`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=outlook_not_configured`);
     }
     const state = generateState();
     pendingStates.set(state, {
@@ -2277,22 +2277,22 @@ export function registerOAuthRoutes(
   app.get("/api/auth/outlook/callback", async (req, res) => {
     const { code, state, error } = req.query;
     if (error) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=${error}`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=${error}`);
     }
     const pending = pendingStates.get(state);
     if (!pending) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
     if (!callbackUserId || pending.userId !== callbackUserId) {
       pendingStates.delete(state);
-      return res.redirect(`${BASE_URL}/mail?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }
     pendingStates.delete(state);
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/mail?oauth_error=outlook_not_configured`);
+      return res.redirect(`${BASE_URL}/messages?oauth_error=outlook_not_configured`);
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
@@ -2310,7 +2310,7 @@ export function registerOAuthRoutes(
       });
       const data = await tokenRes.json();
       if (data.error) {
-        return res.redirect(`${BASE_URL}/mail?oauth_error=${data.error_description || data.error}`);
+        return res.redirect(`${BASE_URL}/messages?oauth_error=${data.error_description || data.error}`);
       }
       const accountId = crypto.randomUUID();
       let username = "Outlook";
@@ -2329,11 +2329,11 @@ export function registerOAuthRoutes(
       });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
-        `${BASE_URL}/mail?oauth_success=1&platform=outlook&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/messages?oauth_success=1&platform=outlook&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Outlook OAuth error:", err);
-      res.redirect(`${BASE_URL}/mail?oauth_error=token_exchange_failed`);
+      res.redirect(`${BASE_URL}/messages?oauth_error=token_exchange_failed`);
     }
   });
 }

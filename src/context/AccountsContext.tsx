@@ -16,7 +16,7 @@ const PROFILES_STORAGE_KEY = "automazing-profiles";
 const ACTIVE_PROFILE_KEY = "automazing-active-profile";
 const SELECTED_ACCOUNTS_STORAGE_KEY = "automazing-selected-accounts";
 
-export type AccountSection = "social-media" | "ecommerce" | "mail" | "calendar" | "reviews" | "content";
+export type AccountSection = "social-media" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
 
 type SelectedAccountsState = Record<string, Partial<Record<AccountSection, string | null>>>;
 
@@ -123,7 +123,16 @@ function loadSelectedAccounts(): SelectedAccountsState {
     const stored = localStorage.getItem(SELECTED_ACCOUNTS_STORAGE_KEY);
     if (!stored) return {};
     const parsed = JSON.parse(stored);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: SelectedAccountsState = {};
+    for (const [profileId, scoped] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!scoped || typeof scoped !== "object") continue;
+      const s = { ...(scoped as Record<string, string | null>) };
+      if ("mail" in s && !("messages" in s)) s.messages = s.mail;
+      delete s.mail;
+      out[profileId] = s as Partial<Record<AccountSection, string | null>>;
+    }
+    return out;
   } catch {
     return {};
   }

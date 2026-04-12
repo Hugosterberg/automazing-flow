@@ -5,7 +5,7 @@ import {
   Users,
   CalendarDays,
   Star,
-  Mail,
+  MessageSquare,
   Settings,
   Zap,
   Plus,
@@ -131,10 +131,10 @@ const navItems = [
     platforms: ["google_calendar", "outlook_calendar"] as AccountPlatform[],
   },
   {
-    key: "mail",
-    title: "Mail",
-    url: "/mail",
-    icon: Mail,
+    key: "messages",
+    title: "Messages",
+    url: "/messages",
+    icon: MessageSquare,
     platforms: ["gmail", "outlook"] as AccountPlatform[],
   },
   {
@@ -191,7 +191,7 @@ const numberFormatter = new Intl.NumberFormat("en-US");
 function sectionForNavItemKey(key: string): AccountSection | null {
   if (key === "social-media") return "social-media";
   if (key === "ecommerce") return "ecommerce";
-  if (key === "mail") return "mail";
+  if (key === "messages") return "messages";
   if (key === "calendar") return "calendar";
   if (key === "reviews") return "reviews";
   if (key === "content") return "content";

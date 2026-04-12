@@ -84,3 +84,35 @@ In Supabase dashboard:
 - Authenticated users load and persist profiles/accounts per `user_id`.
 - If Supabase is missing config, app shows a setup message.
 
+## 5) Deploy on Vercel (this repo)
+
+1. **Create a Vercel project** from the Git repo. Root directory = repo root. Build uses `vercel.json` (`npm run build` → `dist`) and `api/index.mjs` for `/api/*`.
+
+2. **Environment variables** (Vercel → Project → Settings → Environment Variables), at minimum:
+
+   | Variable | Purpose |
+   |----------|---------|
+   | `VITE_SUPABASE_URL` | Same as Supabase project URL |
+   | `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+   | `VITE_APP_URL` | Production site URL, e.g. `https://your-app.vercel.app` (used for OAuth redirect back to the app) |
+   | `BASE_URL` | Same as `VITE_APP_URL` (server redirects after OAuth) |
+   | `API_BASE_URL` | Same as `VITE_APP_URL` on same-origin deploy (OAuth callbacks hit `/api/auth/...` on this host) |
+   | `CORS_ORIGINS` | Same as `BASE_URL` (comma-separate if you have multiple front-end origins) |
+   | `NODE_OPTIONS` | `--experimental-strip-types` (lets the API bundle load `server/**/*.ts` on Node 22; set on Vercel for Production + Preview) |
+
+   Also copy every secret the backend needs locally: `GOOGLE_CLIENT_*`, `MICROSOFT_*`, `ZERNIO_API_KEY`, `OPENAI_API_KEY`, etc.
+
+3. **Supabase dashboard** → Authentication → URL configuration:
+
+   - **Site URL**: `https://your-app.vercel.app`
+   - **Redirect URLs**: add `https://your-app.vercel.app/**` (or exact paths your app uses after Google via Supabase).
+
+4. **Google Cloud / other OAuth providers**: add authorized redirect URIs that match **this deployment**, e.g. `https://your-app.vercel.app/api/auth/gmail/callback`, `.../api/auth/instagram/callback`, etc. (same patterns as local but with production host).
+
+5. **Limitations (serverless)**:
+
+   - `server/tokens.json` is **not durable** on Vercel (ephemeral filesystem). OAuth tokens for Gmail, Instagram, etc. may **reset** when the function cold-starts or redeploys. For reliable production tokens, plan to move token storage to Supabase/Postgres, KV, or run the API on a VM with a persistent disk (Railway, Fly, etc.).
+   - Prefer **same-origin** deploy: leave `VITE_API_URL` unset so the browser calls `/api` on the same Vercel hostname.
+
+6. **Preview deployments**: add each preview URL to `CORS_ORIGINS` (comma-separated) and to Supabase redirect allow list if you test login on previews.
+
