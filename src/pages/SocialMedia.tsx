@@ -21,6 +21,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
@@ -424,20 +425,44 @@ export default function SocialMedia() {
   useEffect(() => {
     if (!showOverview || selectedAccount) return;
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H4',location:'SocialMedia:overview-render',message:'Inline overview rendered in main panel',data:{showOverview,selectedAccountId,connected:overviewData.connected},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H4",
+      location: "SocialMedia:overview-render",
+      message: "Inline overview rendered in main panel",
+      data: { showOverview, selectedAccountId, connected: overviewData.connected },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, [showOverview, selectedAccount, selectedAccountId, overviewData.connected]);
 
   useEffect(() => {
     if (!selectedAccount) return;
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H5',location:'SocialMedia:account-render',message:'Account detail rendered in main panel',data:{selectedAccountId,platform:selectedAccount.platform},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H5",
+      location: "SocialMedia:account-render",
+      message: "Account detail rendered in main panel",
+      data: { selectedAccountId, platform: selectedAccount.platform },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, [selectedAccount, selectedAccountId]);
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H7',location:'SocialMedia:mount',message:'SocialMedia mounted - logging self test',data:{showOverview,selectedAccountId},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H7",
+      location: "SocialMedia:mount",
+      message: "SocialMedia mounted - logging self test",
+      data: { showOverview, selectedAccountId },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, [showOverview, selectedAccountId]);
 

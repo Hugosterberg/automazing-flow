@@ -20,6 +20,7 @@ import ReviewsPage from "./pages/Reviews";
 import SalesMarketingPage from "./pages/SalesMarketing";
 import CustomersPage from "./pages/Customers";
 import ContentPage from "./pages/Content";
+import { postAgentDebugIngest, sendAgentDebugBeacon } from "@/lib/agentDebugIngest";
 
 const queryClient = new QueryClient();
 
@@ -35,18 +36,8 @@ const App = () => {
       timestamp: Date.now(),
     };
     // #region agent log
-    fetch("http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "3f6df6" },
-      body: JSON.stringify(payload),
-      keepalive: true,
-    }).catch(() => {});
-    try {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      navigator.sendBeacon("http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c", blob);
-    } catch {
-      // ignore beacon errors
-    }
+    postAgentDebugIngest(payload);
+    sendAgentDebugBeacon(payload);
     // #endregion
   }, []);
 

@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
+import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 
 const areas = [
   {
@@ -150,7 +151,19 @@ export default function Index() {
   useEffect(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-area-card]"));
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-change',hypothesisId:'A2',location:'Index:area-cards',message:'Home area card heights after equal-size layout',data:{count:cards.length,heights:cards.map((c)=>c.offsetHeight),titles:cards.map((c)=>c.getAttribute('data-area-title'))},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-change",
+      hypothesisId: "A2",
+      location: "Index:area-cards",
+      message: "Home area card heights after equal-size layout",
+      data: {
+        count: cards.length,
+        heights: cards.map((c) => c.offsetHeight),
+        titles: cards.map((c) => c.getAttribute("data-area-title")),
+      },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, []);
 

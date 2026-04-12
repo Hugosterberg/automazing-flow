@@ -55,6 +55,78 @@ if (fs.existsSync(envPath)) {
   console.log(".env missing, tried:", path.resolve(envPath));
 }
 
+const PORT = process.env.PORT || 3001;
+
+function urlHostIsLoopback(hostname) {
+  const h = String(hostname || "").toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+}
+
+function parseOriginIsLoopback(origin) {
+  try {
+    return urlHostIsLoopback(new URL(origin).hostname);
+  } catch {
+    return true;
+  }
+}
+
+/** https://… origin from Vercel’s VERCEL_URL (no trailing slash). */
+function vercelDeploymentOrigin() {
+  const v = String(process.env.VERCEL_URL || "").trim();
+  if (!v) return "";
+  const withProto = v.includes("://") ? v : `https://${v}`;
+  return withProto.replace(/\/$/, "");
+}
+
+/**
+ * Public URL of this API (OAuth redirect_uri / Zernio redirect_url). On Vercel, never use localhost
+ * from .env if VERCEL_URL is set — otherwise Zernio sends the browser to localhost:3001.
+ */
+function resolveApiBaseUrl() {
+  const fallbackLocal = `http://localhost:${PORT}`;
+  const explicitApi = String(process.env.API_BASE_URL || "").trim();
+  const explicitBase = String(process.env.BASE_URL || "").trim();
+  const onVercel = process.env.VERCEL === "1";
+  const deployed = vercelDeploymentOrigin();
+
+  if (explicitApi && !parseOriginIsLoopback(explicitApi)) {
+    return explicitApi.replace(/\/$/, "");
+  }
+  if (onVercel && deployed) {
+    return deployed;
+  }
+  if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
+    return explicitBase.replace(/\/$/, "");
+  }
+  if (explicitApi) return explicitApi.replace(/\/$/, "");
+  return fallbackLocal;
+}
+
+function resolveBaseUrl(apiBaseResolved) {
+  const explicitBase = String(process.env.BASE_URL || "").trim();
+  const onVercel = process.env.VERCEL === "1";
+  const deployed = vercelDeploymentOrigin();
+
+  if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
+    return explicitBase.replace(/\/$/, "");
+  }
+  if (onVercel && deployed) {
+    return deployed;
+  }
+  if (apiBaseResolved && !parseOriginIsLoopback(apiBaseResolved)) {
+    return apiBaseResolved;
+  }
+  if (explicitBase) return explicitBase.replace(/\/$/, "");
+  return "http://localhost:8080";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+const BASE_URL = resolveBaseUrl(API_BASE_URL);
+
+if (process.env.VERCEL === "1") {
+  console.log("[vercel] BASE_URL=%s API_BASE_URL=%s", BASE_URL, API_BASE_URL);
+}
+
 const app = express();
 
 function parseCorsAllowedOrigins() {
@@ -63,8 +135,7 @@ function parseCorsAllowedOrigins() {
     .map((s) => s.trim())
     .filter(Boolean);
   if (fromList.length > 0) return fromList;
-  const base = (process.env.BASE_URL || "http://localhost:8080").trim();
-  return base ? [base] : ["http://localhost:8080"];
+  return [BASE_URL];
 }
 
 const corsAllowedOrigins = parseCorsAllowedOrigins();
@@ -79,10 +150,6 @@ app.use(
   })
 );
 app.use(express.json());
-
-const PORT = process.env.PORT || 3001;
-const BASE_URL = process.env.BASE_URL || "http://localhost:8080";
-const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${PORT}`;
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const SUPABASE_ANON_KEY = (
   process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -104,6 +171,7 @@ const ERR_NO_ZERNIO_KEY = "Set ZERNIO_API_KEY in server .env";
 
 function debugLog(runId, hypothesisId, location, message, data = {}) {
   // #region agent log
+  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
   fetch(DEBUG_INGEST_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9f37ed" },

@@ -28,6 +28,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
 import { useEffect, useMemo, useState } from "react";
+import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -270,7 +271,19 @@ export default function Ecommerce() {
     const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-ecom-stat-card]"));
     if (cards.length === 0) return;
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-change',hypothesisId:'A3',location:'Ecommerce:stat-cards',message:'Ecommerce stat card heights after equal-size layout',data:{count:cards.length,heights:cards.map((c)=>c.offsetHeight),labels:cards.map((c)=>c.getAttribute('data-stat-label'))},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-change",
+      hypothesisId: "A3",
+      location: "Ecommerce:stat-cards",
+      message: "Ecommerce stat card heights after equal-size layout",
+      data: {
+        count: cards.length,
+        heights: cards.map((c) => c.offsetHeight),
+        labels: cards.map((c) => c.getAttribute("data-stat-label")),
+      },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, [statCards]);
 

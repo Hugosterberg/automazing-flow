@@ -18,6 +18,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
+import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
   Dialog,
@@ -267,7 +268,15 @@ export function AppSidebar() {
   }, [socialAccounts]);
   function handleOpenOverview() {
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H1',location:'AppSidebar:handleOpenOverview',message:'Total overview clicked - using showOverview',data:{pathname:location.pathname,showOverview:true},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H1",
+      location: "AppSidebar:handleOpenOverview",
+      message: "Total overview clicked - using showOverview",
+      data: { pathname: location.pathname, showOverview: true },
+      timestamp: Date.now(),
+    });
     // #endregion
     setShowOverview(true);
     setSelectedAccountId("social-media", null);
@@ -387,7 +396,15 @@ export function AppSidebar() {
 
   function handleAccountClick(section: AccountSection, accountId: string, isSelected: boolean) {
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H3',location:'AppSidebar:handleAccountClick',message:'Account clicked - clears showOverview',data:{accountId,wasSelected:isSelected},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H3",
+      location: "AppSidebar:handleAccountClick",
+      message: "Account clicked - clears showOverview",
+      data: { accountId, wasSelected: isSelected },
+      timestamp: Date.now(),
+    });
     // #endregion
     if (section === "social-media") {
       setShowOverview(false);
@@ -397,7 +414,15 @@ export function AppSidebar() {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f6df6'},body:JSON.stringify({sessionId:'3f6df6',runId:'post-fix',hypothesisId:'H6',location:'AppSidebar:mount',message:'AppSidebar mounted - logging self test',data:{pathname:location.pathname},timestamp:Date.now()})}).catch(()=>{});
+    postAgentDebugIngest({
+      sessionId: "3f6df6",
+      runId: "post-fix",
+      hypothesisId: "H6",
+      location: "AppSidebar:mount",
+      message: "AppSidebar mounted - logging self test",
+      data: { pathname: location.pathname },
+      timestamp: Date.now(),
+    });
     // #endregion
   }, [location.pathname]);
 

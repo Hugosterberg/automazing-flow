@@ -296,6 +296,7 @@ export function registerOAuthRoutes(
 
   function debugLog(runId, hypothesisId, location, message, data = {}) {
     // #region agent log
+    if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
     fetch(DEBUG_INGEST_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9f37ed" },

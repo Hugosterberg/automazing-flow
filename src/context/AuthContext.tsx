@@ -3,12 +3,12 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
 import { getOAuthRedirectUrl } from "@/lib/authRedirect";
+import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
-const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
 
 type AuthContextValue = {
   user: User | null;
@@ -51,19 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const debugLog = (runId: string, hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
     // #region agent log
-    fetch(DEBUG_INGEST_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9f37ed" },
-      body: JSON.stringify({
-        sessionId: "9f37ed",
-        runId,
-        hypothesisId,
-        location,
-        message,
-        data,
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+    postAgentDebugIngest({
+      sessionId: "9f37ed",
+      runId,
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    });
     // #endregion
   };
 
