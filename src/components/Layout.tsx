@@ -2,10 +2,12 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { isLocalDevHost } from "@/lib/deployment";
 import { Outlet } from "react-router-dom";
 
 export default function Layout() {
   const { user, signOut, authMode, setAuthMode } = useAuth();
+  const allowLocal = isLocalDevHost();
 
   return (
     <SidebarProvider>
@@ -18,9 +20,11 @@ export default function Layout() {
               {authMode === "cloud" ? (
                 <>
                   <span className="text-xs text-muted-foreground">{user?.email}</span>
-                  <Button variant="outline" size="sm" onClick={() => setAuthMode("local")}>
-                    Local mode
-                  </Button>
+                  {allowLocal ? (
+                    <Button variant="outline" size="sm" onClick={() => setAuthMode("local")}>
+                      Local mode
+                    </Button>
+                  ) : null}
                   <Button variant="outline" size="sm" onClick={() => void signOut()}>
                     Sign out
                   </Button>

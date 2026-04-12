@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+import { isLocalDevHost } from "@/lib/deployment";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading, enabled, authMode, setAuthMode, signInWithGoogle } = useAuth();
+  const allowLocal = isLocalDevHost();
 
   if (authMode === "local") {
     return <>{children}</>;
@@ -17,13 +19,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <CardHeader>
             <CardTitle>Supabase not configured</CardTitle>
             <CardDescription>
-              Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to enable Google login and cloud-synced profiles.
+              Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`) to enable Google login and cloud-synced profiles.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
-              Continue in local mode
-            </Button>
+            {allowLocal ? (
+              <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
+                Continue in local mode
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Configure environment variables in your host (e.g. Vercel) and redeploy.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -45,16 +53,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <CardHeader>
             <CardTitle>Sign in to automazing</CardTitle>
             <CardDescription>
-              Use your Google account to load and save your profiles, or choose local mode for local-only storage.
+              {allowLocal
+                ? "Use your Google account to load and save your profiles, or local mode for local-only storage."
+                : "Use your Google account to load and save your profiles."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             <Button className="w-full" onClick={() => void signInWithGoogle()}>
               Continue with Google
             </Button>
-            <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
-              Use local mode (no login)
-            </Button>
+            {allowLocal ? (
+              <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
+                Use local mode (no login)
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>

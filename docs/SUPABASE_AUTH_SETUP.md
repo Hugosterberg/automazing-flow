@@ -6,11 +6,16 @@ Add these in `.env` (frontend uses Vite variables):
 
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+# Prefer the publishable key name from Supabase UI; anon key still works.
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+
+# Legacy name (still supported in code):
+# VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 
 # Optional server-side aliases (backend reads VITE_* as fallback)
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+# SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 ```
 
 ## 2) SQL schema
@@ -93,7 +98,7 @@ In Supabase dashboard:
    | Variable | Purpose |
    |----------|---------|
    | `VITE_SUPABASE_URL` | Same as Supabase project URL |
-   | `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` or `VITE_SUPABASE_ANON_KEY` | Public Supabase key (UI often calls it publishable) |
    | `VITE_APP_URL` | Production site URL, e.g. `https://your-app.vercel.app` (used for OAuth redirect back to the app) |
    | `BASE_URL` | Same as `VITE_APP_URL` (server redirects after OAuth) |
    | `API_BASE_URL` | Same as `VITE_APP_URL` on same-origin deploy (OAuth callbacks hit `/api/auth/...` on this host) |

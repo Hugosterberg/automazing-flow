@@ -1,22 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
+import { isLocalDevHost } from "@/lib/deployment";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
-const CANONICAL_APP_URL = (import.meta.env.VITE_APP_URL || "").trim();
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
 const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
-
-function isLocalhostUrl(url: string) {
-  try {
-    const u = new URL(url);
-    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
-  } catch {
-    return false;
-  }
-}
 
 type AuthContextValue = {
   user: User | null;
@@ -31,33 +22,37 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Always match the tab you are actually on — avoids Supabase sending users to localhost after deploy. */
 function getOAuthRedirectUrl() {
   const path = `${window.location.pathname}${window.location.search}`;
-  const origin = window.location.origin;
-  // If the build baked in localhost (common Vercel misconfig), never use it on a real host.
-  const envWouldBreakProd =
-    Boolean(CANONICAL_APP_URL) && isLocalhostUrl(CANONICAL_APP_URL) && !isLocalhostUrl(origin);
-
-  if (!CANONICAL_APP_URL || envWouldBreakProd) {
-    return `${origin}${path}`;
-  }
-
-  try {
-    return new URL(path || "/", CANONICAL_APP_URL.replace(/\/$/, "") + "/").toString();
-  } catch {
-    return `${origin}${path}`;
-  }
+  return `${window.location.origin}${path}`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authMode, setAuthModeState] = useState<AuthMode>(() => {
+    const allowLocal = isLocalDevHost();
     const stored = (localStorage.getItem(AUTH_MODE_STORAGE_KEY) || "").trim();
-    if (stored === "cloud" || stored === "local") return stored;
-    return supabaseEnabled ? "cloud" : "local";
+    if (stored === "cloud" || stored === "local") {
+      if (stored === "local" && !allowLocal) return "cloud";
+      return stored;
+    }
+    if (supabaseEnabled) return "cloud";
+    return allowLocal ? "local" : "cloud";
   });
   const enabled = supabaseEnabled && authMode === "cloud";
+
+  const setAuthMode = useCallback((mode: AuthMode) => {
+    if (mode === "local" && !isLocalDevHost()) return;
+    setAuthModeState(mode);
+  }, []);
+
+  useEffect(() => {
+    if (!isLocalDevHost() && authMode === "local") {
+      setAuthModeState("cloud");
+    }
+  }, [authMode]);
 
   const debugLog = (runId: string, hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
     // #region agent log
@@ -169,16 +164,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session: enabled ? session : null,
       loading,
       authMode,
-      setAuthMode: (mode) => setAuthModeState(mode),
+      setAuthMode,
       enabled,
       signInWithGoogle: async () => {
         if (!supabase) return;
-        setAuthModeState("cloud");
+        setAuthMode("cloud");
         debugLog("pre-fix", "H2", "AuthContext.tsx:140", "Starting Supabase Google sign-in", {
           enabled,
           hasSupabase: Boolean(supabase),
           locationPath: window.location.pathname,
-          canonicalAppUrl: CANONICAL_APP_URL || null,
+          oauthRedirect: getOAuthRedirectUrl(),
         });
         await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -196,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [authMode, enabled, loading, session]
+    [authMode, enabled, loading, session, setAuthMode]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
