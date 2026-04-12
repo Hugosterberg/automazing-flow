@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
@@ -312,6 +312,12 @@ export default function Index() {
                 Loaded profile data from {profileSummary.withLoadedData} of {profileSummary.connectedCount} account
                 {profileSummary.connectedCount === 1 ? "" : "s"}.
               </p>
+              <Link
+                to="/connect-accounts"
+                className="inline-flex items-center justify-center rounded-md border border-white/25 bg-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-white/45 hover:text-foreground"
+              >
+                Connect accounts
+              </Link>
               {profileSummary.profileText && (
                 <p className="text-sm text-muted-foreground border-t border-border pt-2 max-w-2xl">
                   {profileSummary.profileText}

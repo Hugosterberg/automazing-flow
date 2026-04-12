@@ -81,6 +81,7 @@ type AccountRow = {
   zernio_account_id: string | null;
   stats: AccountStats | null;
   analysis: ConnectedAccount["analysis"] | null;
+  disconnected_at: string | null;
 };
 
 function loadProfiles(): Profile[] {
@@ -147,6 +148,7 @@ function cleanupSelectedAccounts(
   const validAccountIdsByProfile = new Map<string, Set<string>>();
 
   for (const account of accounts) {
+    if (account.disconnectedAt) continue;
     const ids = validAccountIdsByProfile.get(account.profileId) ?? new Set<string>();
     ids.add(account.id);
     validAccountIdsByProfile.set(account.profileId, ids);
@@ -188,7 +190,8 @@ async function syncProfilesAndAccounts({
     name: p.name,
     created_at: p.createdAt,
   }));
-  const accountRows: AccountRow[] = accounts.map((a) => ({
+  const activeAccounts = accounts.filter((a) => !a.disconnectedAt);
+  const accountRows: AccountRow[] = activeAccounts.map((a) => ({
     id: a.id,
     user_id: userId,
     profile_id: a.profileId,
@@ -203,6 +206,7 @@ async function syncProfilesAndAccounts({
     zernio_account_id: a.zernioAccountId ?? null,
     stats: a.stats ?? null,
     analysis: a.analysis ?? null,
+    disconnected_at: null,
   }));
 
   if (profileRows.length > 0) {
@@ -225,7 +229,11 @@ async function syncProfilesAndAccounts({
   const { error: profileDeleteError } = await profileDeleteQuery;
   if (profileDeleteError) throw profileDeleteError;
 
-  let accountDeleteQuery = supabase.from("connected_accounts").delete().eq("user_id", userId);
+  let accountDeleteQuery = supabase
+    .from("connected_accounts")
+    .delete()
+    .eq("user_id", userId)
+    .is("disconnected_at", null);
   if (accountIds.length > 0) {
     accountDeleteQuery = accountDeleteQuery.not("id", "in", `(${accountIds.map((id) => `"${id}"`).join(",")})`);
   }
@@ -328,7 +336,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
             supabase
               .from("connected_accounts")
               .select(
-                "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis"
+                "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis,disconnected_at"
               )
               .eq("user_id", userId)
               .order("connected_at", { ascending: true }),
@@ -373,6 +381,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           zernioAccountId: a.zernio_account_id ?? undefined,
           stats: a.stats ?? undefined,
           analysis: a.analysis ?? undefined,
+          disconnectedAt: a.disconnected_at ?? undefined,
         })) as ConnectedAccount[];
         if (mappedProfiles.length === 0 && mappedAccounts.length === 0) {
           const localAccounts = loadAccounts();
@@ -542,6 +551,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         connectedAt: new Date().toISOString(),
         profileUrl: extra?.profileUrl?.trim() || defaultProfileUrl,
         isOAuth: true,
+        disconnectedAt: undefined,
         ...(extra?.zernioAccountId && { zernioAccountId: extra.zernioAccountId }),
         ...(extra?.isZernio && { isZernio: true }),
       };
@@ -564,14 +574,30 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     [effectiveProfileId, activeProfileId, setActiveProfileId, profiles]
   );
 
-  const removeAccount = useCallback(async (id: string) => {
-    try {
-      await fetch(`/api/accounts/${id}`, { method: "DELETE", credentials: "include" });
-    } catch {
-      // Backend may not be running or account does not exist
-    }
-    setAccounts((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  const removeAccount = useCallback(
+    async (id: string) => {
+      try {
+        await fetch(`/api/accounts/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+      } catch {
+        // Backend may not be running or account does not exist
+      }
+      const now = new Date().toISOString();
+      if (enabled && supabase && userId) {
+        const { error } = await supabase
+          .from("connected_accounts")
+          .update({ disconnected_at: now })
+          .eq("id", id)
+          .eq("user_id", userId);
+        if (error) {
+          console.warn("[accounts] Could not persist disconnect (run Supabase migration for disconnected_at?)", error);
+        }
+      }
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, disconnectedAt: now } : a))
+      );
+    },
+    [enabled, supabase, userId]
+  );
 
   const updateAccountAnalysis = useCallback((id: string, analysis: ConnectedAccount["analysis"]) => {
     setAccounts((prev) =>
@@ -585,7 +611,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const accountsForActiveProfile = accounts.filter((a) => a.profileId === effectiveProfileId);
+  const accountsForActiveProfile = accounts.filter(
+    (a) => a.profileId === effectiveProfileId && !a.disconnectedAt
+  );
   const getSelectedAccountId = useCallback(
     (section: AccountSection) => {
       return selectedAccountIds[effectiveProfileId]?.[section] ?? null;

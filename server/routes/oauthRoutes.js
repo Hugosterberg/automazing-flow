@@ -388,14 +388,27 @@ export function registerOAuthRoutes(
     return "social-media";
   }
 
-  function oauthRedirect(platform, query) {
-    const page = oauthPageForPlatform(platform);
+  function oauthRedirect(platform, query, oauthReturnPage) {
+    const page =
+      oauthReturnPage === "connect-accounts" ? "connect-accounts" : oauthPageForPlatform(platform);
     return `${BASE_URL}/${page}?${query}`;
+  }
+
+  /** Optional `?oauth_return=connect-accounts` on /api/auth/* to land on the hub after OAuth. */
+  function parseOauthReturnPage(req) {
+    const v = String(req.query?.oauth_return || "").trim();
+    return v === "connect-accounts" ? "connect-accounts" : null;
+  }
+
+  function postOauthPage(pending, platform) {
+    if (pending?.oauthReturnPage === "connect-accounts") return "connect-accounts";
+    return oauthPageForPlatform(platform);
   }
 
   // Instagram: via Zernio (recommended) eller direkt Meta OAuth
   app.get("/api/auth/instagram", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "social-media");
+    const returnPage = parseOauthReturnPage(req) || "social-media";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     res.set("Cache-Control", "no-store, no-cache");
     const zernioKey = getZernioApiKey();
@@ -409,7 +422,7 @@ export function registerOAuthRoutes(
       try {
         const zernioProfileId = await getOrCreateZernioProfileId();
         if (!zernioProfileId) {
-          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_profile_failed`);
+          return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_profile_failed`);
         }
         const state = generateState();
         pendingStates.set(state, {
@@ -418,6 +431,7 @@ export function registerOAuthRoutes(
           profileId: ourProfileId,
           zernioProfileId,
           createdAt: Date.now(),
+          oauthReturnPage: parseOauthReturnPage(req) || undefined,
         });
         const redirectUrl = `${API_BASE_URL}/api/auth/zernio/instagram/callback?state=${state}`;
         const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/instagram`);
@@ -430,16 +444,16 @@ export function registerOAuthRoutes(
         if (!connectRes.ok) {
           const err = await connectRes.text();
           console.error("[Zernio] Instagram connect URL error:", connectRes.status, err);
-          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_connect_failed`);
+          return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_connect_failed`);
         }
         const { authUrl } = await connectRes.json();
         if (!authUrl) {
-          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_auth_url`);
+          return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_no_auth_url`);
         }
         return res.redirect(authUrl);
       } catch (err) {
         console.error("[Zernio] Instagram init error:", err);
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_init_failed`);
+        return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_init_failed`);
       }
     }
 
@@ -449,10 +463,16 @@ export function registerOAuthRoutes(
         "Instagram: ZERNIO_API_KEY is missing (length: %s). Add ZERNIO_API_KEY from zernio.com, or set INSTAGRAM_* for direct Meta OAuth.",
         (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").length
       );
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
+      return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=instagram_not_configured`);
     }
     const state = generateState();
-    pendingStates.set(state, { platform: "instagram", userId, profileId: ourProfileId, createdAt: Date.now() });
+    pendingStates.set(state, {
+      platform: "instagram",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/instagram/callback`;
     const url = new URL(IG_AUTH);
     url.searchParams.set("client_id", clientId);
@@ -465,12 +485,14 @@ export function registerOAuthRoutes(
 
   async function handleZernioInstagramCallback(req, res) {
     const { state, error, accountId: queryAccountId, username } = req.query;
+    const pendingEarly = state ? pendingStates.get(state) : null;
+    const pageEarly = postOauthPage(pendingEarly, "instagram");
     if (error) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(error)}`);
+      return res.redirect(`${BASE_URL}/${pageEarly}?oauth_error=${encodeURIComponent(error)}`);
     }
     const pending = pendingStates.get(state);
     if (!pending || pending.platform !== "instagram") {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/${pageEarly}?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -486,13 +508,14 @@ export function registerOAuthRoutes(
 
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition && !isLocalPairMismatch) {
       pendingStates.delete(state);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/${postOauthPage(pending, "instagram")}?oauth_error=invalid_state`);
     }
+    const successPage = postOauthPage(pending, "instagram");
     pendingStates.delete(state);
 
     const apiKey = getZernioApiKey();
     if (!apiKey) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_not_configured`);
+      return res.redirect(`${BASE_URL}/${successPage}?oauth_error=zernio_not_configured`);
     }
 
     try {
@@ -503,7 +526,7 @@ export function registerOAuthRoutes(
           headers: { Authorization: `Bearer ${apiKey}` },
         });
         if (!accountsRes.ok) {
-          return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_fetch_accounts_failed`);
+          return res.redirect(`${BASE_URL}/${successPage}?oauth_error=zernio_fetch_accounts_failed`);
         }
         const accountsData = await accountsRes.json().catch(() => ({}));
         const list = normalizeZernioAccountsPayload(accountsData);
@@ -517,7 +540,7 @@ export function registerOAuthRoutes(
         }
       }
       if (!accountId) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=zernio_no_account`);
+        return res.redirect(`${BASE_URL}/${successPage}?oauth_error=zernio_no_account`);
       }
       const id = String(accountId);
       tokenStore.set(id, {
@@ -533,11 +556,11 @@ export function registerOAuthRoutes(
         displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram"
       );
       res.redirect(
-        `${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${id}&username=${usernameParam}&zernio_account_id=${id}${profileQuery}`
+        `${BASE_URL}/${successPage}?oauth_success=1&platform=instagram&account_id=${id}&username=${usernameParam}&zernio_account_id=${id}${profileQuery}`
       );
     } catch (err) {
       console.error("[Zernio] Instagram callback error:", err);
-      res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+      res.redirect(`${BASE_URL}/${successPage}?oauth_error=token_exchange_failed`);
     }
   }
 
@@ -559,16 +582,25 @@ export function registerOAuthRoutes(
     if (!config) return;
 
     app.get(`/api/auth/${routePlatform}`, async (req, res) => {
-      const userId = requireSessionOrRedirect(req, res, oauthPageForPlatform(config.appPlatform));
+      const hubReturn = parseOauthReturnPage(req);
+      const userId = requireSessionOrRedirect(
+        req,
+        res,
+        hubReturn || oauthPageForPlatform(config.appPlatform)
+      );
       if (!userId) return;
       const zernioKey = getZernioApiKey();
       if (!zernioKey) {
-        return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_not_configured"));
+        return res.redirect(
+          oauthRedirect(config.appPlatform, "oauth_error=zernio_not_configured", hubReturn || undefined)
+        );
       }
       try {
         const zernioProfileId = await getOrCreateZernioProfileId();
         if (!zernioProfileId) {
-          return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_profile_failed"));
+          return res.redirect(
+            oauthRedirect(config.appPlatform, "oauth_error=zernio_profile_failed", hubReturn || undefined)
+          );
         }
         const state = generateState();
         const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
@@ -578,6 +610,7 @@ export function registerOAuthRoutes(
           profileId: ourProfileId,
           zernioProfileId,
           createdAt: Date.now(),
+          oauthReturnPage: hubReturn || undefined,
         });
         const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
         const authUrl = await getZernioConnectUrl({
@@ -593,15 +626,23 @@ export function registerOAuthRoutes(
         const msg = String(e?.message || "");
         console.error(`[Zernio ${routePlatform}] connect init failed:`, msg);
         if (routePlatform === "google_business" && msg.includes("Platform not supported")) {
-          return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_gmb_not_supported"));
+          return res.redirect(
+            oauthRedirect(config.appPlatform, "oauth_error=zernio_gmb_not_supported", hubReturn || undefined)
+          );
         }
         if (msg.startsWith("zernio_connect_failed")) {
-          return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_connect_failed"));
+          return res.redirect(
+            oauthRedirect(config.appPlatform, "oauth_error=zernio_connect_failed", hubReturn || undefined)
+          );
         }
         if (msg === "zernio_no_auth_url") {
-          return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_no_auth_url"));
+          return res.redirect(
+            oauthRedirect(config.appPlatform, "oauth_error=zernio_no_auth_url", hubReturn || undefined)
+          );
         }
-        return res.redirect(oauthRedirect(config.appPlatform, "oauth_error=zernio_init_failed"));
+        return res.redirect(
+          oauthRedirect(config.appPlatform, "oauth_error=zernio_init_failed", hubReturn || undefined)
+        );
       }
     });
   }
@@ -622,7 +663,13 @@ export function registerOAuthRoutes(
     if (error) {
       const pendingForError = state ? pendingStates.get(String(state)) : null;
       const platformForError = pendingForError?.platform || "facebook";
-      return res.redirect(oauthRedirect(platformForError, `oauth_error=${encodeURIComponent(error)}`));
+      return res.redirect(
+        oauthRedirect(
+          platformForError,
+          `oauth_error=${encodeURIComponent(error)}`,
+          pendingForError?.oauthReturnPage
+        )
+      );
     }
     let resolvedState = state ? String(state) : "";
     let pending = pendingStates.get(resolvedState);
@@ -675,13 +722,25 @@ export function registerOAuthRoutes(
       !isLocalToLocalTransition
     ) {
       pendingStates.delete(resolvedState);
-      return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=invalid_state"));
+      return res.redirect(
+        oauthRedirect(
+          pending?.platform || "facebook",
+          "oauth_error=invalid_state",
+          pending?.oauthReturnPage
+        )
+      );
     }
     pendingStates.delete(resolvedState);
 
     const apiKey = getZernioApiKey();
     if (!apiKey) {
-      return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=zernio_not_configured"));
+      return res.redirect(
+        oauthRedirect(
+          pending?.platform || "facebook",
+          "oauth_error=zernio_not_configured",
+          pending?.oauthReturnPage
+        )
+      );
     }
 
     try {
@@ -721,8 +780,9 @@ export function registerOAuthRoutes(
       });
 
       const profileQuery = profileParam(pending.profileId);
+      const successPath = postOauthPage(pending, pending.platform);
       return res.redirect(
-        `${BASE_URL}/${oauthPageForPlatform(pending.platform)}?oauth_success=1&platform=${encodeURIComponent(
+        `${BASE_URL}/${successPath}?oauth_success=1&platform=${encodeURIComponent(
           pending.platform
         )}&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(
           safeUsername
@@ -731,42 +791,61 @@ export function registerOAuthRoutes(
     } catch (e) {
       const msg = String(e?.message || "");
       if (msg === "zernio_fetch_accounts_failed") {
-        return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=zernio_fetch_accounts_failed"));
+        return res.redirect(
+          oauthRedirect(
+            pending?.platform || "facebook",
+            "oauth_error=zernio_fetch_accounts_failed",
+            pending?.oauthReturnPage
+          )
+        );
       }
       if (msg === "zernio_no_account") {
-        return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=zernio_no_account"));
+        return res.redirect(
+          oauthRedirect(pending?.platform || "facebook", "oauth_error=zernio_no_account", pending?.oauthReturnPage)
+        );
       }
       if (
         msg === "zernio_gmb_no_locations" ||
         msg === "zernio_gmb_no_location_id" ||
         msg === "zernio_gmb_select_failed"
       ) {
-        return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=zernio_gmb_selection_failed"));
+        return res.redirect(
+          oauthRedirect(
+            pending?.platform || "facebook",
+            "oauth_error=zernio_gmb_selection_failed",
+            pending?.oauthReturnPage
+          )
+        );
       }
-      return res.redirect(oauthRedirect(pending?.platform || "facebook", "oauth_error=token_exchange_failed"));
+      return res.redirect(
+        oauthRedirect(pending?.platform || "facebook", "oauth_error=token_exchange_failed", pending?.oauthReturnPage)
+      );
     }
   });
 
   app.get("/api/auth/instagram/callback", async (req, res) => {
     const { code, state, error } = req.query;
+    const pendingMeta = state ? pendingStates.get(state) : null;
+    const igPage = postOauthPage(pendingMeta, "instagram");
     if (error) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=${error}`);
+      return res.redirect(`${BASE_URL}/${igPage}?oauth_error=${error}`);
     }
-    const pending = pendingStates.get(state);
+    const pending = pendingMeta;
     if (!pending) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/${igPage}?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
     if (!callbackUserId || pending.userId !== callbackUserId) {
       pendingStates.delete(state);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(`${BASE_URL}/${postOauthPage(pending, "instagram")}?oauth_error=invalid_state`);
     }
+    const igSuccessPage = postOauthPage(pending, "instagram");
     pendingStates.delete(state);
 
     const clientId = process.env.INSTAGRAM_CLIENT_ID;
     const clientSecret = process.env.INSTAGRAM_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=instagram_not_configured`);
+      return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=instagram_not_configured`);
     }
 
     try {
@@ -785,7 +864,7 @@ export function registerOAuthRoutes(
       });
       const data = await tokenRes.json();
       if (data.error) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${data.error_message || data.error}`);
+        return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=${data.error_message || data.error}`);
       }
       const accountId = crypto.randomUUID();
       tokenStore.set(accountId, {
@@ -799,11 +878,11 @@ export function registerOAuthRoutes(
       const username = data.user?.username || `user_${data.user_id}`;
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
-        `${BASE_URL}/social-media?oauth_success=1&platform=instagram&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${igSuccessPage}?oauth_success=1&platform=instagram&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Instagram OAuth error:", err);
-      res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+      res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=token_exchange_failed`);
     }
   });
 

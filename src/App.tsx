@@ -20,6 +20,7 @@ import ReviewsPage from "./pages/Reviews";
 import SalesMarketingPage from "./pages/SalesMarketing";
 import CustomersPage from "./pages/Customers";
 import ContentPage from "./pages/Content";
+import ConnectAccountsPage from "./pages/ConnectAccounts";
 import { postAgentDebugIngest, sendAgentDebugBeacon } from "@/lib/agentDebugIngest";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => {
                   <Route path="/content" element={<ContentPage />} />
                   <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
                   <Route path="/preferences" element={<PreferencesPage />} />
+                  <Route path="/connect-accounts" element={<ConnectAccountsPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
                 </Routes>

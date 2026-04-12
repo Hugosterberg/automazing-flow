@@ -73,6 +73,8 @@ export interface ConnectedAccount {
   zernioAccountId?: string;
   /** Linked via Zernio API (same company, multiple channels) */
   isZernio?: boolean;
+  /** ISO time when user disconnected; kept in DB for reconnect hints */
+  disconnectedAt?: string | null;
   /** Followers, post count etc. (fetched from the platform API) */
   stats?: AccountStats;
   // AI-analysad data
