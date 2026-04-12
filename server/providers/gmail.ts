@@ -3,7 +3,7 @@ type GmailFetchArgs = {
   refreshToken?: string;
   accountId: string;
   tokenStore: {
-    set: (accountId: string, value: Record<string, unknown>) => unknown;
+    set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
   };
   stored: Record<string, unknown>;
   googleClientId?: string;
@@ -97,8 +97,19 @@ export async function fetchGmailAccountData({
     return "";
   }
 
-  async function refreshGmailToken(rt: string) {
-    if (!googleClientId || !googleClientSecret || !rt) return null;
+  type RefreshResult = {
+    accessToken: string | null;
+    oauthError?: string;
+    oauthDescription?: string;
+  };
+
+  async function refreshGmailToken(rt: string): Promise<RefreshResult> {
+    if (!googleClientId || !googleClientSecret) {
+      return { accessToken: null, oauthError: "missing_server_oauth_config" };
+    }
+    if (!rt) {
+      return { accessToken: null, oauthError: "missing_refresh_token" };
+    }
     const r = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -109,8 +120,19 @@ export async function fetchGmailAccountData({
         grant_type: "refresh_token",
       }).toString(),
     });
-    const d = (await r.json()) as { access_token?: string };
-    return d.access_token ?? null;
+    const d = (await r.json()) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+    if (d.access_token) {
+      return { accessToken: d.access_token };
+    }
+    return {
+      accessToken: null,
+      oauthError: d.error || "refresh_failed",
+      oauthDescription: d.error_description,
+    };
   }
 
   async function fetchMessagesList(token: string) {
@@ -123,7 +145,16 @@ export async function fetchGmailAccountData({
       accountId,
       hasRefreshToken: Boolean(refreshToken),
     });
-    if (listRes.status === 401) return { unauthorized: true as const };
+    if (listRes.status === 401) {
+      const body = (await listRes.json().catch(() => ({}))) as {
+        error?: { message?: string; status?: string };
+      };
+      return {
+        unauthorized: true as const,
+        providerMessage: body?.error?.message ?? null,
+        providerStatus: body?.error?.status ?? null,
+      };
+    }
     if (!listRes.ok) {
       const body = (await listRes.json().catch(() => ({}))) as {
         error?: { message?: string; status?: string };
@@ -144,12 +175,13 @@ export async function fetchGmailAccountData({
 
   let token = accessToken;
   let listData = await fetchMessagesList(token);
+  let refreshDiagnostic: RefreshResult | null = null;
 
   if ("unauthorized" in listData && listData.unauthorized && refreshToken) {
-    const newToken = await refreshGmailToken(refreshToken);
-    if (newToken) {
-      token = newToken;
-      tokenStore.set(accountId, { ...stored, accessToken: newToken });
+    refreshDiagnostic = await refreshGmailToken(refreshToken);
+    if (refreshDiagnostic.accessToken) {
+      token = refreshDiagnostic.accessToken;
+      await tokenStore.set(accountId, { ...stored, accessToken: refreshDiagnostic.accessToken });
       listData = await fetchMessagesList(token);
     }
   }
@@ -159,7 +191,29 @@ export async function fetchGmailAccountData({
       unauthorized: "unauthorized" in listData ? Boolean(listData.unauthorized) : false,
       providerMessage: "providerMessage" in listData ? listData.providerMessage : null,
       providerStatus: "providerStatus" in listData ? listData.providerStatus : null,
+      refreshOauthError: refreshDiagnostic?.oauthError ?? null,
     });
+    if (!googleClientId || !googleClientSecret) {
+      return {
+        error:
+          "Google OAuth is not configured on the server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET so tokens can be refreshed.",
+        status: 503,
+      };
+    }
+    if (!refreshToken && "unauthorized" in listData && listData.unauthorized) {
+      return {
+        error:
+          "Gmail access expired and no refresh token is stored. Disconnect and reconnect Gmail (use consent that includes offline access).",
+        status: 401,
+      };
+    }
+    if (refreshDiagnostic?.oauthError === "invalid_grant") {
+      const hint = refreshDiagnostic.oauthDescription ? ` (${refreshDiagnostic.oauthDescription})` : "";
+      return {
+        error: `Google revoked or expired this connection${hint}. Reconnect Gmail in Accounts.`,
+        status: 401,
+      };
+    }
     if ("providerMessage" in listData) {
       const providerMessage = String(listData.providerMessage || "").toLowerCase();
       if (providerMessage.includes("mail service not enabled")) {

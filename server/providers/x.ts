@@ -8,7 +8,7 @@ type XFetchArgs = {
   stored: Record<string, unknown>;
   accountId: string;
   tokenStore: {
-    set: (accountId: string, value: Record<string, unknown>) => unknown;
+    set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
   };
   xClientId?: string;
   xClientSecret?: string;
@@ -52,7 +52,7 @@ export async function fetchXAccountData({
     }
     const d = await r.json();
     if (d.access_token) {
-      tokenStore.set(accountId, { ...stored, accessToken: d.access_token, refreshToken: d.refresh_token || rt });
+      await tokenStore.set(accountId, { ...stored, accessToken: d.access_token, refreshToken: d.refresh_token || rt });
       return d.access_token as string;
     }
     return null;

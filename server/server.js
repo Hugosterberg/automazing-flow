@@ -15,6 +15,11 @@ import { fetchGmailAccountData } from "./providers/gmail.ts";
 import { fetchOutlookMailData } from "./providers/outlookMail.ts";
 import { fetchGoogleDriveAccountData, fetchGoogleDriveFileResponse } from "./providers/googleDrive.ts";
 import { fetchXAccountData } from "./providers/x.ts";
+import { fetchZernioAccountEnrichment } from "./providers/zernioEnrichment.ts";
+import { createClient } from "@supabase/supabase-js";
+import { createOAuthPendingStore } from "./lib/oauthPendingStore.js";
+import { createPersistentTokenStore } from "./lib/persistentTokenStore.js";
+import { registerCronRoutes } from "./routes/cronRoutes.js";
 import { registerOAuthRoutes } from "./routes/oauthRoutes.js";
 import { registerAccountRoutes } from "./routes/accountRoutes.ts";
 import { registerAiRoutes } from "./routes/aiRoutes.ts";
@@ -305,34 +310,11 @@ const integrationConfigChecks = {
   },
 };
 
-// Persistent token storage – saved to disk so restarts don't break connections
-const TOKEN_STORE_PATH = path.join(__dirname, "tokens.json");
-
-function loadTokenStore() {
-  try {
-    if (fs.existsSync(TOKEN_STORE_PATH)) {
-      const raw = fs.readFileSync(TOKEN_STORE_PATH, "utf8");
-      const entries = JSON.parse(raw);
-      if (Array.isArray(entries)) {
-        console.log(`[tokenStore] Loaded ${entries.length} saved accounts from tokens.json`);
-        return new Map(entries);
-      }
-    }
-  } catch (e) {
-    console.warn("[tokenStore] Could not read tokens.json:", e.message);
-  }
-  return new Map();
-}
-
-function saveTokenStore(store) {
-  try {
-    fs.writeFileSync(TOKEN_STORE_PATH, JSON.stringify([...store.entries()]), "utf8");
-  } catch (e) {
-    console.warn("[tokenStore] Could not save tokens.json:", e.message);
-  }
-}
-
-const _tokenStoreRaw = loadTokenStore();
+// Persistent token storage: Supabase when service role is set; else local disk (/tmp on Vercel).
+const TOKEN_STORE_PATH =
+  process.env.VERCEL === "1"
+    ? path.join("/tmp", "automazing-tokens.json")
+    : path.join(__dirname, "tokens.json");
 
 /** Older tokens.json entries may still use isLate / lateAccountId */
 function normalizeStoredAccount(stored) {
@@ -343,28 +325,28 @@ function normalizeStoredAccount(stored) {
   return s;
 }
 
-const tokenStore = {
-  get: (k) => {
-    const v = _tokenStoreRaw.get(k);
-    return v ? normalizeStoredAccount(v) : undefined;
-  },
-  set: (k, v) => {
-    _tokenStoreRaw.set(k, v);
-    saveTokenStore(_tokenStoreRaw);
-    return tokenStore;
-  },
-  delete: (k) => {
-    const r = _tokenStoreRaw.delete(k);
-    saveTokenStore(_tokenStoreRaw);
-    return r;
-  },
-  has: (k) => _tokenStoreRaw.has(k),
-  entries: () => _tokenStoreRaw.entries(),
-};
+const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const supabaseServiceClient =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null;
+
+const tokenStore = createPersistentTokenStore({
+  supabaseAdmin: supabaseServiceClient,
+  filePath: TOKEN_STORE_PATH,
+  normalizeStoredAccount,
+});
+
+if (supabaseServiceClient) {
+  console.log("[tokenStore] Using Supabase oauth_token_entries (durable across instances)");
+} else {
+  console.log("[tokenStore] File fallback — set SUPABASE_SERVICE_ROLE_KEY for durable OAuth tokens on Vercel");
+}
 
 const AUTH_SESSION_COOKIE = "automazing_session";
 const AUTH_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
-const authSessions = new Map();
 
 function parseCookies(cookieHeader = "") {
   const out = {};
@@ -376,27 +358,57 @@ function parseCookies(cookieHeader = "") {
   return out;
 }
 
-function createSession(userId) {
-  const sid = crypto.randomBytes(24).toString("hex");
-  authSessions.set(sid, { userId, expiresAt: Date.now() + AUTH_SESSION_TTL_MS });
-  return sid;
+/** HMAC-signed cookie value so sessions work across Vercel serverless instances (no in-memory map). */
+function getAuthSessionSigningSecret() {
+  const s = (
+    process.env.AUTH_SESSION_SECRET ||
+    process.env.ZERNIO_API_KEY ||
+    process.env.LATE_API_KEY ||
+    ""
+  ).trim();
+  if (s) return s;
+  if (process.env.VERCEL === "1") {
+    console.warn(
+      "[auth] Set AUTH_SESSION_SECRET (or rely on ZERNIO_API_KEY) so session cookies can be verified on all instances."
+    );
+  }
+  return "automazing-dev-session-signing-key";
 }
 
-function destroySession(sid) {
-  if (!sid) return;
-  authSessions.delete(sid);
+function signAuthSessionCookie(userId) {
+  const exp = Date.now() + AUTH_SESSION_TTL_MS;
+  const payload = Buffer.from(JSON.stringify({ u: String(userId), exp }), "utf8").toString("base64url");
+  const secret = getAuthSessionSigningSecret();
+  const sig = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+
+function verifyAuthSessionCookie(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const dot = raw.indexOf(".");
+  if (dot <= 0 || dot >= raw.length - 1) return null;
+  const payload = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
+  const secret = getAuthSessionSigningSecret();
+  const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  const sigBuf = Buffer.from(sig, "utf8");
+  const expBuf = Buffer.from(expected, "utf8");
+  if (sigBuf.length !== expBuf.length) return null;
+  if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  try {
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!json || typeof json.u !== "string" || typeof json.exp !== "number") return null;
+    if (json.exp < Date.now()) return null;
+    return json.u;
+  } catch {
+    return null;
+  }
 }
 
 function getSessionUserId(req) {
-  const sid = parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
-  if (!sid) return null;
-  const session = authSessions.get(sid);
-  if (!session) return null;
-  if (session.expiresAt < Date.now()) {
-    authSessions.delete(sid);
-    return null;
-  }
-  return session.userId;
+  const raw = parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
+  if (!raw) return null;
+  return verifyAuthSessionCookie(raw);
 }
 
 function getStoredAccountAccess(stored, userId) {
@@ -407,13 +419,35 @@ function getStoredAccountAccess(stored, userId) {
   const sameLocalPair = ownerUserId.startsWith("local_") && String(userId).startsWith("local_");
   if (sameLocalPair) return { allowed: true, migrate: true, reason: "local_pair" };
 
+  const oauthOwnerBridgePlatforms = [
+    "gmail",
+    "google_drive",
+    "google_calendar",
+    "google_reviews",
+    "outlook",
+    "notion",
+    "shopify",
+    "tripadvisor",
+    "google_business",
+  ];
+
   const localToCloudGoogleMigration =
     ownerUserId.startsWith("local_") &&
     !String(userId).startsWith("local_") &&
-    ["gmail", "google_drive", "google_calendar", "google_reviews", "outlook"].includes(String(stored?.platform || ""));
+    oauthOwnerBridgePlatforms.includes(String(stored?.platform || ""));
 
   if (localToCloudGoogleMigration) {
     return { allowed: true, migrate: true, reason: "local_to_cloud_google" };
+  }
+
+  const cloudToLocalGoogleMigration =
+    ownerUserId &&
+    !ownerUserId.startsWith("local_") &&
+    String(userId).startsWith("local_") &&
+    oauthOwnerBridgePlatforms.includes(String(stored?.platform || ""));
+
+  if (cloudToLocalGoogleMigration) {
+    return { allowed: true, migrate: true, reason: "cloud_to_local_google" };
   }
 
   return { allowed: false, migrate: false, reason: "owner_mismatch" };
@@ -437,10 +471,10 @@ async function verifySupabaseAccessToken(token) {
   }
 }
 
-function setAuthCookie(res, sid) {
+function setAuthCookie(res, cookieValue) {
   const secure = BASE_URL.startsWith("https://");
   const attrs = [
-    `${AUTH_SESSION_COOKIE}=${encodeURIComponent(sid)}`,
+    `${AUTH_SESSION_COOKIE}=${encodeURIComponent(cookieValue)}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
@@ -487,8 +521,8 @@ app.post("/api/auth/session", async (req, res) => {
     debugLog("pre-fix", "H6", "server.js:/api/auth/session", "Supabase token verification failed", {});
     return res.status(401).json({ error: "Invalid session token" });
   }
-  const sid = createSession(String(user.id));
-  setAuthCookie(res, sid);
+  const cookieVal = signAuthSessionCookie(String(user.id));
+  setAuthCookie(res, cookieVal);
   debugLog("pre-fix", "H6", "server.js:/api/auth/session", "Auth session synced successfully", {
     userIdPrefix: String(user.id).slice(0, 14),
     hasEmail: Boolean(user.email),
@@ -501,22 +535,23 @@ app.post("/api/auth/local-session", (req, res) => {
     hasCookie: Boolean(req.headers.cookie),
     hasRequestedLocalId: Boolean(req.headers["x-local-user-id"]),
   });
-  const sidFromCookie = parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
-  const existing = sidFromCookie ? authSessions.get(sidFromCookie) : null;
-  if (existing && existing.expiresAt >= Date.now()) {
-    setAuthCookie(res, sidFromCookie);
+  const rawCookie = parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
+  const existingUser = rawCookie ? verifyAuthSessionCookie(rawCookie) : null;
+  if (existingUser && String(existingUser).startsWith("local_")) {
+    const refreshed = signAuthSessionCookie(existingUser);
+    setAuthCookie(res, refreshed);
     debugLog("pre-fix", "H7", "server.js:/api/auth/local-session", "Reused existing local session", {
-      userIdPrefix: String(existing.userId).slice(0, 14),
+      userIdPrefix: String(existingUser).slice(0, 14),
     });
-    return res.json({ ok: true, user: { id: existing.userId, mode: "local" } });
+    return res.json({ ok: true, user: { id: existingUser, mode: "local" } });
   }
   const requestedLocalUserId = String(req.headers["x-local-user-id"] || "").trim();
   const userId =
     /^local_[a-zA-Z0-9_-]{8,}$/.test(requestedLocalUserId)
       ? requestedLocalUserId
       : `local_${crypto.randomBytes(12).toString("hex")}`;
-  const sid = createSession(userId);
-  setAuthCookie(res, sid);
+  const cookieVal = signAuthSessionCookie(userId);
+  setAuthCookie(res, cookieVal);
   debugLog("pre-fix", "H7", "server.js:/api/auth/local-session", "Created new local session", {
     userIdPrefix: String(userId).slice(0, 14),
   });
@@ -524,8 +559,6 @@ app.post("/api/auth/local-session", (req, res) => {
 });
 
 app.delete("/api/auth/session", (req, res) => {
-  const sid = parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
-  destroySession(sid);
   clearAuthCookie(res);
   return res.json({ ok: true });
 });
@@ -589,8 +622,6 @@ app.post("/api/settings/api-keys/test", (req, res) => {
     authPath: result.ok ? definition.authPath || null : null,
   });
 });
-
-const pendingStates = new Map();
 
 function generateState() {
   const state = crypto.randomBytes(32).toString("hex");
@@ -690,6 +721,25 @@ function normalizeZernioAccountsPayload(body) {
   return Array.isArray(list) ? list : [];
 }
 
+await tokenStore.init();
+
+const oauthPendingStore = createOAuthPendingStore({
+  supabaseAdmin: supabaseServiceClient,
+  fallbackMap: new Map(),
+});
+if (supabaseServiceClient) {
+  console.log("[oauth] Using Supabase oauth_pending_states (shared CSRF/PKCE state)");
+}
+
+{
+  const pruned = await oauthPendingStore.deleteExpired();
+  if (pruned.removed > 0) {
+    console.log(`[oauth] Startup prune: removed ${pruned.removed} expired pending OAuth state(s)`);
+  }
+}
+
+registerCronRoutes(app, { oauthPendingStore });
+
 registerAccountRoutes(app, {
   zernioAuthHeaders,
   ERR_NO_ZERNIO_KEY,
@@ -718,7 +768,7 @@ registerOAuthRoutes(app, {
   normalizeZernioAccountsPayload,
   mapZernioPlatform,
   generateState,
-  pendingStates,
+  oauthPendingStore,
   tokenStore,
   getSessionUserId,
 });
@@ -730,7 +780,7 @@ app.get("/api/accounts/:accountId/drive/files/:fileId/:mode(content|thumbnail)",
   }
 
   const { accountId, fileId, mode } = req.params;
-  const stored = tokenStore.get(accountId);
+  const stored = await tokenStore.get(accountId);
   if (!stored || stored.platform !== "google_drive") {
     return res.status(404).json({ error: "Drive account not connected" });
   }
@@ -739,7 +789,7 @@ app.get("/api/accounts/:accountId/drive/files/:fileId/:mode(content|thumbnail)",
     return res.status(403).json({ error: "Forbidden" });
   }
   if (access.migrate) {
-    tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
   }
 
   try {
@@ -790,7 +840,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
   const { accountId } = req.params;
-  const stored = tokenStore.get(accountId);
+  const stored = await tokenStore.get(accountId);
   if (!stored) {
     debugLog("pre-fix", "H4", "server.js:/api/accounts/:accountId/data", "Stored account missing", {
       accountId,
@@ -810,7 +860,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
     return res.status(404).json({ error: "Account not connected" });
   }
   if (access.migrate) {
-    tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
   }
   const {
     platform,
@@ -1110,7 +1160,22 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         fallbackStats.zernioNote = zernioNote;
       }
 
-      return res.json({
+      let zernioExtra = null;
+      let zernioEnrichmentNotes = null;
+      if (zh) {
+        try {
+          const enr = await fetchZernioAccountEnrichment(ZERNIO_API_BASE, zh, zid, {
+            platform,
+            zernioPlatform,
+          });
+          if (Object.keys(enr.zernioExtra).length > 0) zernioExtra = enr.zernioExtra;
+          if (enr.zernioEnrichmentNotes.length > 0) zernioEnrichmentNotes = enr.zernioEnrichmentNotes;
+        } catch {
+          // enrichment is best-effort
+        }
+      }
+
+      const zernioPayload = {
         profile: {
           username: stored.username,
           displayName: stored.displayName,
@@ -1119,7 +1184,10 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         stats: fallbackStats,
         media: fallbackMedia,
         source: "zernio",
-      });
+        ...(zernioExtra ? { zernioExtra } : {}),
+        ...(zernioEnrichmentNotes ? { zernioEnrichmentNotes } : {}),
+      };
+      return res.json(zernioPayload);
     }
 
     if (platform === "instagram" && instagramViaZernio && getZernioApiKey()) {
@@ -1394,6 +1462,7 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
       const makeUrl = () =>
         `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountIdPath)}/locations/${encodeURIComponent(locationIdPath)}/reviews`;
       let reviewsRes = await fetch(makeUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      let refreshOauthError = null;
       if (reviewsRes.status === 401 && refreshToken && googleClientId && googleClientSecret) {
         const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
@@ -1408,12 +1477,44 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         const refreshData = await refreshRes.json().catch(() => ({}));
         if (refreshData.access_token) {
           token = refreshData.access_token;
-          tokenStore.set(accountId, { ...stored, accessToken: token });
+          await tokenStore.set(accountId, { ...stored, accessToken: token });
           reviewsRes = await fetch(makeUrl(), { headers: { Authorization: `Bearer ${token}` } });
+        } else {
+          refreshOauthError = refreshData?.error || null;
         }
       }
       if (!reviewsRes.ok) {
-        return res.status(502).json({ error: "Could not fetch Google reviews from official API." });
+        if (!googleClientId || !googleClientSecret) {
+          return res.status(503).json({
+            error:
+              "Google OAuth client is not configured on the server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET so review tokens can be refreshed.",
+          });
+        }
+        if (reviewsRes.status === 401) {
+          if (refreshOauthError === "invalid_grant") {
+            return res.status(401).json({
+              error:
+                "Google revoked or expired this Business Profile connection. Reconnect Google Reviews in Accounts.",
+            });
+          }
+          if (!refreshToken) {
+            return res.status(401).json({
+              error:
+                "Google access expired and no refresh token is stored. Reconnect Google Reviews (include offline access).",
+            });
+          }
+          return res.status(401).json({
+            error: "Google access token is not valid for reviews. Reconnect Google Reviews in Accounts.",
+          });
+        }
+        const errBody = await reviewsRes.json().catch(() => ({}));
+        const msg =
+          errBody?.error?.message ||
+          errBody?.error?.details ||
+          (typeof errBody?.error === "string" ? errBody.error : "");
+        return res.status(502).json({
+          error: msg ? `Could not fetch Google reviews: ${msg}` : "Could not fetch Google reviews from official API.",
+        });
       }
       const body = await reviewsRes.json().catch(() => ({}));
       const list = Array.isArray(body.reviews) ? body.reviews : [];
@@ -1497,7 +1598,23 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         { headers: { Accept: "application/json" } }
       );
       if (!reviewsRes.ok) {
-        return res.status(502).json({ error: "Could not fetch Tripadvisor reviews from official API." });
+        const errBody = await reviewsRes.json().catch(() => ({}));
+        const taMsg =
+          (errBody?.error && typeof errBody.error === "object" && errBody.error?.message) ||
+          errBody?.message ||
+          (typeof errBody?.error === "string" ? errBody.error : "");
+        if (reviewsRes.status === 401 || reviewsRes.status === 403) {
+          return res.status(reviewsRes.status).json({
+            error:
+              taMsg ||
+              "Tripadvisor rejected the API key or this location. Check TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID in Content API (Tripadvisor Developer).",
+          });
+        }
+        return res.status(502).json({
+          error: taMsg
+            ? `Tripadvisor Content API: ${taMsg}`
+            : "Could not fetch Tripadvisor reviews from official API.",
+        });
       }
       const body = await reviewsRes.json().catch(() => ({}));
       const list = Array.isArray(body.data) ? body.data : Array.isArray(body.reviews) ? body.reviews : [];
@@ -1567,7 +1684,7 @@ app.post("/api/notion/:accountId/pages", async (req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
   const { accountId } = req.params;
-  const stored = tokenStore.get(accountId);
+  const stored = await tokenStore.get(accountId);
   if (!stored) {
     return res.status(404).json({ error: "Account not connected" });
   }

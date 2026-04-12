@@ -1,5 +1,5 @@
 type TokenStore = {
-  set: (accountId: string, value: Record<string, unknown>) => unknown;
+  set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
 };
 
 type GoogleDriveArgs = {
@@ -57,7 +57,7 @@ async function runWithFreshToken<T>({
     if (!(error instanceof Error) || error.message !== "unauthorized") throw error;
     const nextToken = await refreshGoogleToken({ refreshToken, googleClientId, googleClientSecret });
     if (!nextToken) throw error;
-    tokenStore.set(accountId, { ...stored, accessToken: nextToken });
+    await tokenStore.set(accountId, { ...stored, accessToken: nextToken });
     return request(nextToken);
   }
 }

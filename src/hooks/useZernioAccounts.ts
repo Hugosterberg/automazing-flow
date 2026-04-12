@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
+import { apiUrl } from "@/lib/apiBase";
 
 export type ZernioAccountRow = {
   _id?: string;
@@ -41,7 +41,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
     setZernioLoading(true);
     setZernioError(null);
     try {
-      const r = await fetch(`${API_BASE}/zernio/accounts`, { credentials: "include" });
+      const r = await fetch(apiUrl("/api/zernio/accounts"), { credentials: "include" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         throw new Error(typeof j.error === "string" ? j.error : "Could not load Zernio accounts");
@@ -62,7 +62,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
       setZernioLinking(zid);
       setZernioError(null);
       try {
-        const r = await fetch(`${API_BASE}/zernio/link`, {
+        const r = await fetch(apiUrl("/api/zernio/link"), {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

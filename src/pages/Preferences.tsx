@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/apiBase";
+import { Link } from "react-router-dom";
 
 type ApiEntryRow = {
   key: string;
@@ -137,7 +139,7 @@ export default function PreferencesPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/settings/api-keys", { credentials: "include" });
+        const res = await fetch(apiUrl("/api/settings/api-keys"), { credentials: "include" });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(payload?.error || "Could not load API keys.");
@@ -187,7 +189,7 @@ export default function PreferencesPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/settings/api-keys", {
+      const res = await fetch(apiUrl("/api/settings/api-keys"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -217,7 +219,7 @@ export default function PreferencesPage() {
   async function runConfigTest(target: string) {
     setRunningTests((current) => ({ ...current, [target]: true }));
     try {
-      const res = await fetch("/api/settings/api-keys/test", {
+      const res = await fetch(apiUrl("/api/settings/api-keys/test"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -245,6 +247,16 @@ export default function PreferencesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Preferences</h1>
         <p className="text-muted-foreground mt-1">
           Manage app settings and the integration values used by the server.
+        </p>
+        <p className="text-sm text-muted-foreground mt-3 max-w-3xl leading-relaxed">
+          Keys here are <span className="font-medium text-foreground">server prerequisites</span> (saved to{" "}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code>) so OAuth and APIs can run. They do{" "}
+          <span className="font-medium text-foreground">not</span> replace clicking Connect in the app: open the{" "}
+          <Link to="/connect-accounts" className="underline underline-offset-2 font-medium text-foreground">
+            Connections
+          </Link>{" "}
+          map to see what is already linked to your active profile versus what still needs a Connect flow (and which env
+          vars each one needs).
         </p>
       </motion.div>
 
@@ -283,7 +295,12 @@ export default function PreferencesPage() {
                 API keys and required settings
               </CardTitle>
               <CardDescription>
-                Stored in the project `.env` file and used by backend routes, OAuth flows, and integrations.
+                Stored in the project <code className="text-xs">.env</code> file and used by backend routes, OAuth flows,
+                and integrations. After saving, use each product page or{" "}
+                <Link to="/connect-accounts" className="underline underline-offset-2">
+                  Connections
+                </Link>{" "}
+                to finish linking accounts.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">

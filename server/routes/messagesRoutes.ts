@@ -11,8 +11,8 @@ type StoredAccount = Record<string, unknown> & {
 };
 
 type TokenStore = {
-  entries: () => IterableIterator<[string, StoredAccount]>;
-  set: (accountId: string, value: Record<string, unknown>) => unknown;
+  entries: () => Promise<Array<[string, StoredAccount]>>;
+  set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
 };
 
 type MessagesRouteDeps = {
@@ -73,7 +73,8 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
     const mailTasks: Promise<void>[] = [];
 
-    for (const [accountId, rawStored] of tokenStore.entries()) {
+    const mailEntries = await tokenStore.entries();
+    for (const [accountId, rawStored] of mailEntries) {
       const stored = rawStored as StoredAccount;
       const access = getStoredAccountAccess(stored, userId);
       if (!access.allowed) continue;
@@ -82,7 +83,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       if (platform !== "gmail" && platform !== "outlook") continue;
 
       if (access.migrate) {
-        tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+        await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
 
       mailTasks.push(

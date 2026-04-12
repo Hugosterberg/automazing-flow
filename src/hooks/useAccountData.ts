@@ -9,6 +9,13 @@ type UseAccountDataOptions<TData> = {
   fetcher: (accountId: string) => Promise<TData>;
   initialData: TData;
   autoSelectFirst?: boolean;
+  /** Applied after filter; first entry wins when autoSelectFirst runs (e.g. Instagram before TikTok). */
+  scopeSort?: (a: ConnectedAccount, b: ConnectedAccount) => number;
+  /**
+   * When true (default), if nothing is selected yet, the first scoped account is still treated as active
+   * (fetch runs). Set false together with autoSelectFirst so the first paint waits for an explicit selection.
+   */
+  allowImplicitFirstAccount?: boolean;
 };
 
 export function useAccountData<TData>({
@@ -19,11 +26,23 @@ export function useAccountData<TData>({
   fetcher,
   initialData,
   autoSelectFirst = true,
+  scopeSort,
+  allowImplicitFirstAccount = true,
 }: UseAccountDataOptions<TData>) {
-  const scopedAccounts = useMemo(() => accounts.filter(accountFilter), [accounts, accountFilter]);
+  const scopedAccounts = useMemo(() => {
+    const list = accounts.filter(accountFilter);
+    if (!scopeSort || list.length < 2) return list;
+    return [...list].sort(scopeSort);
+  }, [accounts, accountFilter, scopeSort]);
 
-  const activeAccount =
-    scopedAccounts.find((a) => a.id === selectedAccountId) ?? scopedAccounts[0] ?? null;
+  const activeAccount = useMemo(() => {
+    if (selectedAccountId) {
+      const hit = scopedAccounts.find((a) => a.id === selectedAccountId);
+      if (hit) return hit;
+      return allowImplicitFirstAccount ? scopedAccounts[0] ?? null : null;
+    }
+    return allowImplicitFirstAccount ? scopedAccounts[0] ?? null : null;
+  }, [allowImplicitFirstAccount, scopedAccounts, selectedAccountId]);
 
   const [data, setData] = useState<TData>(initialData);
   const [dataAccountId, setDataAccountId] = useState<string | null>(null);

@@ -1,5 +1,22 @@
 import { motion } from "framer-motion";
-import { Zap, Megaphone, BriefcaseBusiness, LineChart, Users, CalendarDays, MessageSquare, Settings, Info, Trash2, Star, Menu, Pencil, FolderOpen } from "lucide-react";
+import {
+  Zap,
+  Megaphone,
+  BriefcaseBusiness,
+  LineChart,
+  Users,
+  CalendarDays,
+  MessageSquare,
+  Settings,
+  Info,
+  Trash2,
+  Star,
+  Menu,
+  Pencil,
+  FolderOpen,
+  PlugZap,
+  Share2,
+} from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +39,25 @@ import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
+
+const PLATFORM_LABEL: Record<string, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  x: "X",
+  facebook: "Facebook",
+  google_business: "Google Business",
+  google_reviews: "Google Reviews",
+  tripadvisor: "Tripadvisor",
+  whatsapp: "WhatsApp",
+  shopify: "Shopify",
+  notion: "Notion",
+  gmail: "Gmail",
+  outlook: "Outlook",
+  google_calendar: "Google Calendar",
+  outlook_calendar: "Outlook Calendar",
+  google_drive: "Google Drive",
+};
 
 const areas = [
   {
@@ -112,22 +148,6 @@ export default function Index() {
     notes: "",
   });
 
-  const platformLabel: Record<string, string> = {
-    instagram: "Instagram",
-    tiktok: "TikTok",
-    youtube: "YouTube",
-    x: "X",
-    facebook: "Facebook",
-    google_business: "Google Business",
-    google_reviews: "Google Reviews",
-    tripadvisor: "Tripadvisor",
-    whatsapp: "WhatsApp",
-    shopify: "Shopify",
-    gmail: "Gmail",
-    outlook: "Outlook",
-    google_drive: "Google Drive",
-  };
-
   const profileSummary = useMemo(() => {
     const connectedCount = accounts.length;
     const grouped = accounts.reduce<Record<string, number>>((acc, account) => {
@@ -135,7 +155,7 @@ export default function Index() {
       return acc;
     }, {});
     const platformText = Object.entries(grouped)
-      .map(([platform, count]) => `${platformLabel[platform] || platform} (${count})`)
+      .map(([platform, count]) => `${PLATFORM_LABEL[platform] || platform} (${count})`)
       .join(", ");
 
     const withLoadedData = accounts.filter((a) => Boolean(a.stats || a.analysis)).length;
@@ -257,8 +277,9 @@ export default function Index() {
         <h1 className="text-5xl sm:text-6xl font-bold tracking-tight">
           auto<span className="text-muted-foreground">mazing</span>
         </h1>
-        <p className="text-lg text-muted-foreground max-w-md mx-auto">
-          Automate your everyday tasks. One tool at a time.
+        <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
+          Run brands or clients from one login. Each profile keeps its own channels, content picks, and
+          context—switch before you work so nothing bleeds across businesses.
         </p>
       </motion.div>
 
@@ -316,7 +337,7 @@ export default function Index() {
                 to="/connect-accounts"
                 className="inline-flex items-center justify-center rounded-md border border-white/25 bg-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-white/45 hover:text-foreground"
               >
-                Connect accounts
+                Connection map & status
               </Link>
               {profileSummary.profileText && (
                 <p className="text-sm text-muted-foreground border-t border-border pt-2 max-w-2xl">
@@ -337,6 +358,48 @@ export default function Index() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.28 }}
+        className="mt-8 max-w-4xl w-full"
+      >
+        <p className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+          Next steps for {activeProfile?.name ?? "this profile"}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
+            <Link to="/connect-accounts">
+              <span className="flex items-center justify-center gap-2 font-medium">
+                <PlugZap className="h-4 w-4 shrink-0" />
+                Connections overview
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">
+                What is linked, what is missing, server requirements
+              </span>
+            </Link>
+          </Button>
+          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
+            <Link to="/social-media">
+              <span className="flex items-center justify-center gap-2 font-medium">
+                <Share2 className="h-4 w-4 shrink-0" />
+                Social & analytics
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">Posts, metrics, overview</span>
+            </Link>
+          </Button>
+          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
+            <Link to="/content">
+              <span className="flex items-center justify-center gap-2 font-medium">
+                <FolderOpen className="h-4 w-4 shrink-0" />
+                Content library
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">Drive assets & creation flow</span>
+            </Link>
+          </Button>
+        </div>
       </motion.div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

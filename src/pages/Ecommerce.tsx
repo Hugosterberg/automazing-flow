@@ -26,6 +26,7 @@ import {
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
 import { useEffect, useMemo, useState } from "react";
 import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
@@ -34,7 +35,15 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
+import { apiUrl } from "@/lib/apiBase";
+import type { ConnectedAccount } from "@/types/accounts";
+
+function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
+  const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
+  const d = rank(a.platform) - rank(b.platform);
+  if (d !== 0) return d;
+  return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+}
 
 interface ShopifyStats {
   ordersCount: number;
@@ -144,8 +153,9 @@ export default function Ecommerce() {
     setSelectedAccountId: (id) => setSelectedAccountId("ecommerce", id),
     accountFilter: (a) => (a.platform === "shopify" || a.platform === "notion") && Boolean(a.isOAuth),
     initialData: initialOrganizationData,
+    scopeSort: sortOrgAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(`${API_BASE}/api/accounts/${accountId}/data`, { credentials: "include" });
+      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? "Could not fetch store data.");
@@ -175,7 +185,7 @@ export default function Ecommerce() {
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     setConnectDialogOpen(false);
     setShopDomain("");
-    window.location.href = `${API_BASE}/api/auth/shopify?${params}`;
+    window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
   }
 
   function handleConnectNotion() {
@@ -183,7 +193,7 @@ export default function Ecommerce() {
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     const query = params.toString() ? `?${params.toString()}` : "";
-    window.location.href = `${API_BASE}/api/auth/notion${query}`;
+    window.location.href = `${apiUrl("/api/auth/notion")}${query}`;
   }
 
   function handleRefresh() {
@@ -241,7 +251,7 @@ export default function Ecommerce() {
     setNotionSaving(true);
     setNotionWriteMessage(null);
     try {
-      const res = await fetch(`${API_BASE}/api/notion/${activeNotion.id}/pages`, {
+      const res = await fetch(apiUrl(`/api/notion/${activeNotion.id}/pages`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -313,6 +323,10 @@ export default function Ecommerce() {
         </div>
       </motion.div>
 
+      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <SectionConnectionStatus area="ecommerce" />
+      </motion.div>
+
       {authMode === "local" && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
@@ -338,6 +352,8 @@ export default function Ecommerce() {
                 notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.",
                 notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env to your tunnel URL.",
                 shopify_missing_shop: "No shop domain was provided. Try connecting again.",
+                token_exchange_failed: "OAuth token exchange failed. Check client id/secret and redirect URL in the provider console (Notion integration or Shopify app).",
+                invalid_state: "OAuth state did not match (session or tunnel cookie issue). Try connecting again from the same browser tab.",
               },
               "Login failed"
             )}

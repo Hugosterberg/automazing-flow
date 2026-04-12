@@ -8,11 +8,11 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
-
-const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "";
+import { apiUrl } from "@/lib/apiBase";
 
 interface UnifiedMessage {
   id: string;
@@ -103,14 +103,14 @@ export default function MessagesPage() {
     setZernioNote(null);
     setMailErrors([]);
     try {
-      let res = await fetch(`${API_BASE}/api/messages/unified`, { credentials: "include" });
+      let res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
       if (res.status === 401 && authMode === "cloud" && session?.access_token) {
-        await fetch(`${API_BASE}/api/auth/session`, {
+        await fetch(apiUrl("/api/auth/session"), {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}` },
           credentials: "include",
         }).catch(() => {});
-        res = await fetch(`${API_BASE}/api/messages/unified`, { credentials: "include" });
+        res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -136,14 +136,14 @@ export default function MessagesPage() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    window.location.href = `${API_BASE}/api/auth/gmail?${params}`;
+    window.location.href = `${apiUrl("/api/auth/gmail")}?${params}`;
   }
 
   function connectOutlook() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    window.location.href = `${API_BASE}/api/auth/outlook?${params}`;
+    window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
   }
 
   const summaryPayload = useMemo(
@@ -163,7 +163,7 @@ export default function MessagesPage() {
       return;
     }
     const ac = new AbortController();
-    void fetch(`${API_BASE}/api/messages/summaries`, {
+      void fetch(apiUrl("/api/messages/summaries"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -205,6 +205,10 @@ export default function MessagesPage() {
             <span className="ml-1.5 hidden sm:inline">Refresh</span>
           </Button>
         </div>
+      </motion.div>
+
+      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <SectionConnectionStatus area="messages" />
       </motion.div>
 
       {authMode === "local" && (

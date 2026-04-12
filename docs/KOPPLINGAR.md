@@ -42,9 +42,9 @@ Servern använder `SHOPIFY_APP_URL` för Shopify `redirect_uri` och skickar seda
 
 ## Var sparas tokens och profiler?
 
-- **Server:** `server/tokens.json` (OAuth-tokens per anslutet konto).
-- **Supabase:** profiler + kontolistor per inloggad användare (`user_id`) när Google-login är aktiverat.
-- **Webbläsare:** lokal fallback/cache om Supabase inte är konfigurerat.
+- **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.
+- **Supabase:** profiler + kontolistor per inloggad användare (`user_id`) när Google-login är aktiverat (`profiles`, `connected_accounts`).
+- **Webbläsare:** lokal cache för konton/profiler; inte källa för servertokens.
 
 ## OAuth-callback (Instagram via Zernio)
 

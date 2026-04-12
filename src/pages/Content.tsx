@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { clearSelectedContent, loadSelectedContent, saveSelectedContent, type Se
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { apiUrl } from "@/lib/apiBase";
 import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw } from "lucide-react";
 
 type DriveBrowserItem = {
@@ -81,9 +83,9 @@ export default function ContentPage() {
     setSelectedAssets(loadSelectedContent(activeProfileId));
   }, [activeProfileId]);
 
-  async function ensureBackendSession() {
+  const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
-      await fetch("/api/auth/local-session", {
+      await fetch(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -93,13 +95,13 @@ export default function ContentPage() {
     }
 
     if (authMode === "cloud" && session?.access_token) {
-      await fetch("/api/auth/session", {
+      await fetch(apiUrl("/api/auth/session"), {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
         credentials: "include",
       }).catch(() => {});
     }
-  }
+  }, [authMode, session?.access_token]);
 
   const {
     scopedAccounts: driveAccounts,
@@ -116,10 +118,10 @@ export default function ContentPage() {
     initialData: null,
     fetcher: async (accountId) => {
       const query = currentFolderId ? `?folderId=${encodeURIComponent(currentFolderId)}` : "";
-      let res = await fetch(`/api/accounts/${accountId}/data${query}`, { credentials: "include" });
+      let res = await fetch(apiUrl(`/api/accounts/${accountId}/data${query}`), { credentials: "include" });
       if (res.status === 401) {
         await ensureBackendSession();
-        res = await fetch(`/api/accounts/${accountId}/data${query}`, { credentials: "include" });
+        res = await fetch(apiUrl(`/api/accounts/${accountId}/data${query}`), { credentials: "include" });
       }
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -147,10 +149,10 @@ export default function ContentPage() {
 
     async function syncDriveAccountsFromBackend() {
       try {
-        let res = await fetch("/api/accounts/connected?platform=google_drive", { credentials: "include" });
+        let res = await fetch(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
         if (res.status === 401) {
           await ensureBackendSession();
-          res = await fetch("/api/accounts/connected?platform=google_drive", { credentials: "include" });
+          res = await fetch(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
         }
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || ignore) return;
@@ -185,7 +187,7 @@ export default function ContentPage() {
     return () => {
       ignore = true;
     };
-  }, [addAccountFromOAuth, selectedAccountId, setSelectedAccountId, authMode, session?.access_token]);
+  }, [addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
 
   useEffect(() => {
     function handleDriveOauthMessage(event: MessageEvent<DriveOAuthPopupMessage>) {
@@ -220,7 +222,7 @@ export default function ContentPage() {
     setPopupOauthError(null);
     try {
       await ensureBackendSession();
-      const healthRes = await fetch("/api/health", { credentials: "include" });
+      const healthRes = await fetch(apiUrl("/api/health"), { credentials: "include" });
       if (!healthRes.ok) {
         setPopupOauthError({
           code: "backend_unavailable",
@@ -252,7 +254,7 @@ export default function ContentPage() {
     const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
     const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
     const popup = window.open(
-      `/api/auth/google_drive${query}`,
+      `${apiUrl("/api/auth/google_drive")}${query}`,
       "google-drive-oauth",
       `popup=yes,width=${popupWidth},height=${popupHeight},left=${left},top=${top}`
     );
@@ -260,7 +262,7 @@ export default function ContentPage() {
     if (!popup) {
       params.delete("popup");
       const fallbackQuery = params.toString() ? `?${params.toString()}` : "";
-      window.location.href = `/api/auth/google_drive${fallbackQuery}`;
+      window.location.href = `${apiUrl("/api/auth/google_drive")}${fallbackQuery}`;
       return;
     }
 
@@ -315,6 +317,8 @@ export default function ContentPage() {
           )}
         </div>
       </div>
+
+      <SectionConnectionStatus area="content" className="mt-0" />
 
       {combinedOauthError && (
         <OAuthErrorAlert

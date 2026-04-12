@@ -4,12 +4,13 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { ConnectionsMap } from "@/components/ConnectionsMap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
 import { Loader2, PlugZap, Radio } from "lucide-react";
-
-const API_BASE = ((import.meta.env.VITE_API_URL || "").trim() || "/api").replace(/\/$/, "");
+import { Link } from "react-router-dom";
+import { apiUrl } from "@/lib/apiBase";
 
 const ZERNIO_CONNECT_PLATFORMS: {
   platform: SocialPlatform;
@@ -28,7 +29,7 @@ function platformLabel(p: AccountPlatform): string {
 }
 
 export default function ConnectAccountsPage() {
-  const { activeProfileId, allAccounts } = useAccounts();
+  const { activeProfileId, activeProfile, allAccounts } = useAccounts();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const [zernioTest, setZernioTest] = useState<{ loading: boolean; error?: string; count?: number }>({
     loading: false,
@@ -48,7 +49,7 @@ export default function ConnectAccountsPage() {
       params.set("oauth_return", "connect-accounts");
       const pid = getOAuthProfileId(activeProfileId);
       if (pid) params.set("profile_id", pid);
-      window.location.href = `${API_BASE}/auth/${authPath}?${params.toString()}`;
+      window.location.href = `${apiUrl(`/api/auth/${authPath}`)}?${params.toString()}`;
     },
     [activeProfileId]
   );
@@ -56,7 +57,7 @@ export default function ConnectAccountsPage() {
   const runZernioTest = useCallback(async () => {
     setZernioTest({ loading: true });
     try {
-      const r = await fetch(`${API_BASE}/zernio/accounts`, { credentials: "include" });
+      const r = await fetch(apiUrl("/api/zernio/accounts"), { credentials: "include" });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
         setZernioTest({
@@ -75,7 +76,7 @@ export default function ConnectAccountsPage() {
   const runTokenTest = useCallback(async () => {
     setTokenTest({ loading: true });
     try {
-      const r = await fetch(`${API_BASE}/accounts/connected`, { credentials: "include" });
+      const r = await fetch(apiUrl("/api/accounts/connected"), { credentials: "include" });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
         setTokenTest({
@@ -92,14 +93,24 @@ export default function ConnectAccountsPage() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div className="space-y-1">
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <PlugZap className="h-7 w-7 text-muted-foreground" />
-          Connect accounts
+          Connections
         </h1>
         <p className="text-sm text-muted-foreground">
-          Link Zernio-supported channels for this workspace profile, then verify API access.
+          See what is already linked to{" "}
+          <span className="font-medium text-foreground">{activeProfile?.name ?? "the active profile"}</span>, what each
+          integration needs on the server, and where to click to connect the rest. Switch profile on Home first if you
+          are setting up another business.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          <Link to="/preferences" className="underline underline-offset-2 font-medium text-foreground">
+            Preferences → API keys
+          </Link>{" "}
+          stores prerequisites in <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code> — it does not by
+          itself link accounts; you still run each provider&apos;s Connect flow from the pages below or the sidebar.
         </p>
       </div>
 
@@ -113,9 +124,7 @@ export default function ConnectAccountsPage() {
 
       {disconnectedForProfile.length > 0 ? (
         <div className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-orange-200/90">
-            Previously connected
-          </h2>
+          <h2 className="text-xs font-medium uppercase tracking-wider text-orange-200/90">Previously connected</h2>
           <div className="space-y-2">
             {disconnectedForProfile.map((a) => {
               const row = ZERNIO_CONNECT_PLATFORMS.find((z) => z.platform === a.platform);
@@ -148,11 +157,17 @@ export default function ConnectAccountsPage() {
         </div>
       ) : null}
 
+      <ConnectionsMap />
+
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Zernio channels</CardTitle>
+          <CardTitle className="text-base">Zernio quick connect</CardTitle>
           <CardDescription>
-            OAuth opens with the provider; when finished you return here if you started from this page.
+            Shortcut to the same Zernio OAuth entry points as Social Media. Use the{" "}
+            <Link to="/social-media" className="underline underline-offset-2">
+              Social Media
+            </Link>{" "}
+            page for TikTok, YouTube, X, and full options.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
@@ -173,9 +188,12 @@ export default function ConnectAccountsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Radio className="h-4 w-4" />
-            Test connection
+            Test backend access
           </CardTitle>
-          <CardDescription>Checks Zernio workspace listing and server-side OAuth token store.</CardDescription>
+          <CardDescription>
+            Confirms the server can list Zernio workspaces and read the OAuth token store (not the same as “linked in
+            sidebar”, but useful when debugging).
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex flex-wrap gap-2">

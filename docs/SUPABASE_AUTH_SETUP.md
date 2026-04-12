@@ -104,6 +104,8 @@ In Supabase dashboard:
    | `API_BASE_URL` | Same as `VITE_APP_URL` on same-origin deploy (OAuth callbacks hit `/api/auth/...` on this host) |
    | `CORS_ORIGINS` | Same as `BASE_URL` (comma-separate if you have multiple front-end origins) |
    | `NODE_OPTIONS` | `--experimental-strip-types` (lets the API bundle load `server/**/*.ts` on Node 22; set on Vercel for Production + Preview) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Server only: durable OAuth tokens + shared OAuth state (see migration `20260412140000_oauth_server_store.sql`) |
+   | `CRON_SECRET` | Random string; Vercel Cron sends `Authorization: Bearer …` for `/api/cron/cleanup-oauth-pending` |
 
    Also copy every secret the backend needs locally: `GOOGLE_CLIENT_*`, `MICROSOFT_*`, `ZERNIO_API_KEY`, `OPENAI_API_KEY`, etc.
 
@@ -116,9 +118,11 @@ In Supabase dashboard:
 
 5. **Google Cloud / other OAuth providers**: add authorized redirect URIs that match **this deployment**, e.g. `https://your-app.vercel.app/api/auth/gmail/callback`, `.../api/auth/instagram/callback`, etc. (same patterns as local but with production host).
 
-6. **Limitations (serverless)**:
+6. **OAuth persistence (serverless)**:
 
-   - `server/tokens.json` is **not durable** on Vercel (ephemeral filesystem). OAuth tokens for Gmail, Instagram, etc. may **reset** when the function cold-starts or redeploys. For reliable production tokens, plan to move token storage to Supabase/Postgres, KV, or run the API on a VM with a persistent disk (Railway, Fly, etc.).
+   - Set **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`** on the API and run the migration that creates **`oauth_token_entries`** and **`oauth_pending_states`** (see `supabase/migrations/20260412140000_oauth_server_store.sql`). The server stores OAuth tokens and CSRF/PKCE state in Postgres so they survive cold starts and work across Vercel instances. **Never** expose the service role key to the browser.
+   - Without the service role, the API falls back to **`tokens.json`** (local) or **`/tmp`** on Vercel, which is **not durable** across redeploys.
+   - Optional: set **`CRON_SECRET`** in Vercel and use the scheduled job in `vercel.json` that calls **`GET /api/cron/cleanup-oauth-pending`** (Vercel sends `Authorization: Bearer <CRON_SECRET>`). This deletes expired rows from `oauth_pending_states`.
    - Prefer **same-origin** deploy: leave `VITE_API_URL` unset so the browser calls `/api` on the same Vercel hostname.
 
 7. **Preview deployments**: add each preview URL to `CORS_ORIGINS` (comma-separated) and to Supabase redirect allow list if you test login on previews.

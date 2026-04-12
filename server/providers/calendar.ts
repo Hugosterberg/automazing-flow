@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 type TokenStore = {
-  set: (accountId: string, value: Record<string, unknown>) => unknown;
+  set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
 };
 
 type CalendarFetchArgs = {
@@ -103,7 +103,7 @@ export async function fetchGoogleCalendarData(args: CalendarFetchArgs) {
     const refreshed = await refreshGoogleToken({ refreshToken, googleClientId, googleClientSecret });
     if (!refreshed) return { error: "Google Calendar token invalid. Reconnect the account.", status: 401 };
     token = refreshed;
-    tokenStore.set(accountId, { ...stored, accessToken: refreshed });
+    await tokenStore.set(accountId, { ...stored, accessToken: refreshed });
     eventsRes = await fetchPrimaryEvents(token);
   }
   if (!eventsRes.ok) {
@@ -178,7 +178,7 @@ export async function fetchOutlookCalendarData(args: CalendarFetchArgs) {
     });
     if (!refreshed) return { error: "Outlook Calendar token invalid. Reconnect the account.", status: 401 };
     token = refreshed;
-    tokenStore.set(accountId, { ...stored, accessToken: refreshed });
+    await tokenStore.set(accountId, { ...stored, accessToken: refreshed });
     eventsRes = await fetchCalendarView(token);
   }
   if (!eventsRes.ok) {

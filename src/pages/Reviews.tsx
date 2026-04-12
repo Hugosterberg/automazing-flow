@@ -7,7 +7,17 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+import { apiUrl } from "@/lib/apiBase";
+import type { ConnectedAccount } from "@/types/accounts";
+
+function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
+  const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
+  const d = rank(a.platform) - rank(b.platform);
+  if (d !== 0) return d;
+  return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+}
 
 type ReviewItem = {
   id: string;
@@ -47,8 +57,9 @@ export default function ReviewsPage() {
     setSelectedAccountId: (id) => setSelectedAccountId("reviews", id),
     accountFilter: (a) => (a.platform === "google_reviews" || a.platform === "tripadvisor") && Boolean(a.isOAuth),
     initialData: null,
+    scopeSort: sortReviewAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         throw new Error(payload?.error || "Could not fetch reviews");
@@ -79,6 +90,10 @@ export default function ReviewsPage() {
             </Button>
           )}
         </div>
+      </motion.div>
+
+      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <SectionConnectionStatus area="reviews" />
       </motion.div>
 
       {oauthErrorDetails && (

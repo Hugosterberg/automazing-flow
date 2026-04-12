@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { apiUrl } from "@/lib/apiBase";
 import {
   Dialog,
   DialogContent,
@@ -46,11 +47,20 @@ import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAccountData } from "@/hooks/useAccountData";
+import type { ConnectedAccount } from "@/types/accounts";
 
 const STORAGE_KEY = "automazing-calendar-events";
+
+function sortCalendarAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
+  const rank = (p: string) => (p === "google_calendar" ? 0 : p === "outlook_calendar" ? 1 : 9);
+  const d = rank(a.platform) - rank(b.platform);
+  if (d !== 0) return d;
+  return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+}
 
 function loadEvents(): CalendarEvent[] {
   try {
@@ -112,8 +122,9 @@ export default function CalendarPage() {
     accountFilter: (a) =>
       (a.platform === "google_calendar" || a.platform === "outlook_calendar") && Boolean(a.isOAuth),
     initialData: null,
+    scopeSort: sortCalendarAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         throw new Error(payload?.error || "Could not fetch external calendar events.");
@@ -227,7 +238,7 @@ export default function CalendarPage() {
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (provider !== "auto") params.set("provider", provider);
     const query = params.toString() ? `?${params.toString()}` : "";
-    window.location.href = `/api/auth/${platform}${query}`;
+    window.location.href = `${apiUrl(`/api/auth/${platform}`)}${query}`;
   }
 
   return (
@@ -245,6 +256,8 @@ export default function CalendarPage() {
           </Button>
         </div>
       </div>
+
+      <SectionConnectionStatus area="calendar" className="mt-4" />
 
       {oauthErrorDetails && (
         <OAuthErrorAlert

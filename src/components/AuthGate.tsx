@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
@@ -14,22 +15,35 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!enabled) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <CardTitle>Supabase not configured</CardTitle>
-            <CardDescription>
-              Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`) to enable Google login and cloud-synced profiles.
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+        <Card className="w-full max-w-lg border-border/80 shadow-md">
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border mb-1">
+              <Shield className="h-5 w-5 text-muted-foreground" aria-hidden />
+            </div>
+            <CardTitle className="text-xl">Cloud login unavailable</CardTitle>
+            <CardDescription className="text-sm leading-relaxed">
+              This build does not have Supabase environment variables. Add{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code> (or{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code>) to enable Google
+              sign-in and synced profiles.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3 pt-0">
             {allowLocal ? (
-              <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
-                Continue in local mode
-              </Button>
+              <>
+                <Button variant="default" className="w-full" onClick={() => setAuthMode("local")}>
+                  Continue in local mode
+                </Button>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Profiles and connected channels stay in this browser. Use the same browser when running OAuth so the
+                  server session cookie matches.
+                </p>
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Configure environment variables in your host (e.g. Vercel) and redeploy.
+                Configure the variables on your host (e.g. Vercel) and redeploy.
               </p>
             )}
           </CardContent>
@@ -40,32 +54,52 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
-        Loading authentication...
+      <div
+        className="min-h-screen flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+        <span>Checking sign-in…</span>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Sign in to automazing</CardTitle>
-            <CardDescription>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+        <Card className="w-full max-w-md border-border/80 shadow-md">
+          <CardHeader className="space-y-1 pb-2">
+            <CardTitle className="text-xl">Sign in to automazing</CardTitle>
+            <CardDescription className="text-sm leading-relaxed">
               {allowLocal
-                ? "Use your Google account to load and save your profiles, or local mode for local-only storage."
-                : "Use your Google account to load and save your profiles."}
+                ? "Cloud mode syncs profiles with your Google account. Local mode keeps everything on this device only."
+                : "Sign in with Google to load and save your profiles."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3 pt-0">
             <Button className="w-full" onClick={() => void signInWithGoogle()}>
               Continue with Google
             </Button>
             {allowLocal ? (
-              <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
-                Use local mode (no login)
-              </Button>
+              <>
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase tracking-wide">
+                    <span className="bg-card px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+                <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
+                  Use local mode (no Google)
+                </Button>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  After connecting channels, stay in the same mode you started with; switching clears the cloud server
+                  cookie until you sign in again.
+                </p>
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -75,4 +109,3 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
-

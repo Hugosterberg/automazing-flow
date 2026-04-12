@@ -1,6 +1,6 @@
 /**
  * Drop-in shape from Supabase UI / shadcn registry (`supabase-client-react-router`).
- * Returns the same singleton as `@/lib/supabase` — do not create multiple clients.
+ * Returns the same singleton as `@/lib/supabase` — do not create multiple clients (localStorage session).
  */
 import { supabase } from "@/lib/supabase";
 

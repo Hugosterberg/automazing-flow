@@ -3,8 +3,8 @@ import crypto from "crypto";
 type AiRouteDeps = {
   getSessionUserId?: (req: { [key: string]: unknown }) => string | null;
   tokenStore?: {
-    get?: (accountId: string) => { ownerUserId?: string; [key: string]: unknown } | undefined;
-    set?: (accountId: string, value: { [key: string]: unknown }) => unknown;
+    get?: (accountId: string) => Promise<{ ownerUserId?: string; [key: string]: unknown } | undefined>;
+    set?: (accountId: string, value: { [key: string]: unknown }) => Promise<unknown>;
   };
 };
 
@@ -205,7 +205,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     const accountId = String(req.params?.accountId || "");
-    const stored = accountId ? deps?.tokenStore?.get?.(accountId) : null;
+    const stored = accountId && deps?.tokenStore?.get ? await deps.tokenStore.get(accountId) : null;
     if (stored) {
       if (stored.ownerUserId && stored.ownerUserId !== userId) {
         const isLocalPair =
@@ -214,10 +214,10 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
           return res.status(404).json({ error: "Account not connected" });
         }
         if (deps?.tokenStore?.set) {
-          deps.tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+          await deps.tokenStore.set(accountId, { ...stored, ownerUserId: userId });
         }
       } else if (!stored.ownerUserId && deps?.tokenStore?.set) {
-        deps.tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+        await deps.tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
     }
 

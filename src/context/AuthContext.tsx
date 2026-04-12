@@ -1,11 +1,19 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
 import { getOAuthRedirectUrl } from "@/lib/authRedirect";
 import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
-
-const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
+import { apiUrl } from "@/lib/apiBase";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
@@ -26,6 +34,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Avoid DELETE /api/auth/session on first paint when session is still null (before getSession resolves). */
+  const prevSyncedAccessTokenRef = useRef<string | null>(null);
   const [authMode, setAuthModeState] = useState<AuthMode>(() => {
     const allowLocal = isLocalDevHost();
     const stored = (localStorage.getItem(AUTH_MODE_STORAGE_KEY) || "").trim();
@@ -109,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         enabled,
         localUserIdPrefix: localUserId.slice(0, 14),
       });
-      void fetch(`${API_BASE}/auth/local-session`, {
+      void fetch(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -129,25 +139,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       return;
     }
-    if (!session?.access_token) {
-      void fetch(`${API_BASE}/auth/session`, {
-        method: "DELETE",
-        credentials: "include",
-      }).catch(() => {
-        // Ignore session cleanup failures
-      });
+    if (loading) {
       return;
     }
-    void fetch(`${API_BASE}/auth/session`, {
+
+    const token = session?.access_token ?? null;
+    const prev = prevSyncedAccessTokenRef.current;
+
+    if (!token) {
+      if (prev) {
+        void fetch(apiUrl("/api/auth/session"), {
+          method: "DELETE",
+          credentials: "include",
+        }).catch(() => {
+          // Ignore session cleanup failures
+        });
+      }
+      prevSyncedAccessTokenRef.current = null;
+      return;
+    }
+
+    prevSyncedAccessTokenRef.current = token;
+    void fetch(apiUrl("/api/auth/session"), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
       },
       credentials: "include",
     }).catch(() => {
       // Ignore sync failures; UI session remains source-of-truth
     });
-  }, [enabled, session?.access_token]);
+  }, [authMode, enabled, loading, session?.access_token]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -177,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (supabase) {
           await supabase.auth.signOut();
         }
-        await fetch(`${API_BASE}/auth/session`, { method: "DELETE", credentials: "include" }).catch(() => {
+        await fetch(apiUrl("/api/auth/session"), { method: "DELETE", credentials: "include" }).catch(() => {
           // Ignore session cleanup failures
         });
       },

@@ -1,3 +1,6 @@
+/** Official Notion API version — see https://developers.notion.com/reference/versioning */
+const NOTION_API_VERSION = "2025-09-03";
+
 type NotionSearchResult = {
   id?: string;
   url?: string;
@@ -6,6 +9,23 @@ type NotionSearchResult = {
   properties?: Record<string, unknown>;
   title?: Array<{ plain_text?: string }>;
 };
+
+type NotionApiErrorBody = {
+  object?: string;
+  message?: string;
+  code?: string;
+  status?: number;
+};
+
+function parseNotionErrorBody(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const o = data as NotionApiErrorBody;
+  if (o.object === "error" && typeof o.message === "string" && o.message.trim()) {
+    const code = typeof o.code === "string" ? ` (${o.code})` : "";
+    return `${o.message.trim()}${code}`;
+  }
+  return "";
+}
 
 function getPlainTitleFromProperty(value: unknown) {
   if (!value || typeof value !== "object") return "";
@@ -30,7 +50,7 @@ function getNotionTitle(item: NotionSearchResult) {
 export async function fetchNotionAccountData(accessToken: string) {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
-    "Notion-Version": "2022-06-28",
+    "Notion-Version": NOTION_API_VERSION,
     "Content-Type": "application/json",
   };
 
@@ -57,13 +77,50 @@ export async function fetchNotionAccountData(accessToken: string) {
   ]);
 
   if (!meRes.ok) {
-    const err = await meRes.text().catch(() => "");
-    return { error: `Could not read Notion profile (${meRes.status})`, details: err.slice(0, 200), status: 502 };
+    const raw = await meRes.json().catch(() => ({}));
+    const parsed = parseNotionErrorBody(raw) || (await meRes.text().catch(() => "")).slice(0, 200);
+    if (meRes.status === 401) {
+      return {
+        error: "Notion access token is invalid or expired. Disconnect and reconnect the integration in Accounts.",
+        details: parsed,
+        status: 401,
+      };
+    }
+    if (meRes.status === 403) {
+      return {
+        error: "Notion returned forbidden for this token. Reconnect the integration or check workspace sharing for the integration.",
+        details: parsed,
+        status: 403,
+      };
+    }
+    return {
+      error: `Could not read Notion integration profile (${meRes.status})`,
+      details: parsed,
+      status: meRes.status >= 400 && meRes.status < 600 ? meRes.status : 502,
+    };
+  }
+
+  if (!pagesRes.ok || !dbRes.ok) {
+    const bad = !pagesRes.ok ? pagesRes : dbRes;
+    const raw = await bad.json().catch(() => ({}));
+    const parsed = parseNotionErrorBody(raw);
+    if (bad.status === 401) {
+      return {
+        error: "Notion search failed: token invalid or expired. Reconnect Notion.",
+        details: parsed,
+        status: 401,
+      };
+    }
+    return {
+      error: parsed || `Notion search failed (${bad.status})`,
+      details: parsed,
+      status: bad.status >= 400 && bad.status < 600 ? bad.status : 502,
+    };
   }
 
   const meData = await meRes.json().catch(() => ({}));
-  const pagesData = pagesRes.ok ? await pagesRes.json().catch(() => ({})) : {};
-  const dbData = dbRes.ok ? await dbRes.json().catch(() => ({})) : {};
+  const pagesData = await pagesRes.json().catch(() => ({}));
+  const dbData = await dbRes.json().catch(() => ({}));
 
   const pagesRaw = Array.isArray(pagesData.results) ? pagesData.results : [];
   const dbRaw = Array.isArray(dbData.results) ? dbData.results : [];
@@ -110,7 +167,7 @@ export async function createNotionPage(
 ) {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
-    "Notion-Version": "2022-06-28",
+    "Notion-Version": NOTION_API_VERSION,
     "Content-Type": "application/json",
   };
 
@@ -147,8 +204,9 @@ export async function createNotionPage(
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    const msg = parseNotionErrorBody(data) || (typeof (data as { message?: string })?.message === "string" ? (data as { message: string }).message : null);
     return {
-      error: data?.message || "Could not create Notion page",
+      error: msg || "Could not create Notion page",
       status: res.status || 502,
       details: data,
     };

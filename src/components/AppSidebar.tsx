@@ -13,6 +13,7 @@ import {
   Trash2,
   Layers,
   FolderOpen,
+  PlugZap,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -75,8 +76,7 @@ import {
   LightbulbGlowIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
-
-const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
+import { apiUrl } from "@/lib/apiBase";
 
 const navItems = [
   {
@@ -150,6 +150,14 @@ const navItems = [
     title: "AI Recommendations",
     url: "/ai-recommendations",
     icon: LightbulbGlowIcon,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "connect-accounts",
+    title: "Connections",
+    url: "/connect-accounts",
+    icon: PlugZap,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
   },
@@ -334,7 +342,7 @@ export function AppSidebar() {
       params.set("provider", options.provider);
     }
     const query = params.toString() ? `?${params.toString()}` : "";
-    window.location.href = `${API_BASE}/auth/${platform}${query}`;
+    window.location.href = `${apiUrl(`/api/auth/${platform}`)}${query}`;
   }
 
   function handleShopifyConnect() {
@@ -345,7 +353,7 @@ export function AppSidebar() {
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     setShopifyDialogOpen(false);
     setShopDomain("");
-    window.location.href = `${API_BASE}/auth/shopify?${params}`;
+    window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
   }
 
   async function handleTripadvisorManualConnect() {
@@ -358,7 +366,7 @@ export function AppSidebar() {
     setTripadvisorConnecting(true);
     setTripadvisorConnectError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/tripadvisor/manual-connect`, {
+      const res = await fetch(apiUrl("/api/auth/tripadvisor/manual-connect"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -726,7 +734,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
-            Profile
+            Business profiles
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <ProfileSwitcher />

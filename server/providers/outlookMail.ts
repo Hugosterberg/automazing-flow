@@ -5,7 +5,7 @@ type OutlookMailFetchArgs = {
   refreshToken?: string;
   accountId: string;
   tokenStore: {
-    set: (accountId: string, value: Record<string, unknown>) => unknown;
+    set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
   };
   stored: Record<string, unknown>;
   microsoftClientId?: string;
@@ -86,7 +86,7 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
       return { error: "Outlook token invalid. Reconnect the account.", status: 401 };
     }
     token = refreshed;
-    tokenStore.set(accountId, { ...stored, accessToken: refreshed });
+    await tokenStore.set(accountId, { ...stored, accessToken: refreshed });
     listRes = await fetchList(token);
   }
 

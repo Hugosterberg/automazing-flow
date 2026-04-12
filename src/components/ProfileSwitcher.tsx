@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -49,7 +50,7 @@ export function ProfileSwitcher() {
   }
 
   function getAccountCount(profileId: string) {
-    return allAccounts.filter((a) => a.profileId === profileId).length;
+    return allAccounts.filter((a) => a.profileId === profileId && !a.disconnectedAt).length;
   }
 
   const sortedProfiles = [...profiles].sort(
@@ -65,15 +66,21 @@ export function ProfileSwitcher() {
             className="w-full justify-start gap-2 h-9 px-2 font-normal text-sm"
           >
             <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate flex items-center gap-1.5">
+            <span className="truncate flex items-center gap-1.5 text-left">
               {activeProfile?.name ?? "Select profile"}
-              {activeProfile && (
-                <span className="text-xs text-muted-foreground shrink-0">(active)</span>
-              )}
+              {activeProfile ? (
+                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                  ({getAccountCount(activeProfile.id)})
+                </span>
+              ) : null}
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-60">
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            All sidebar tools use this profile
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
           {sortedProfiles.map((profile) => {
             const isSelected = activeProfile?.id === profile.id;
             return (
@@ -106,15 +113,15 @@ export function ProfileSwitcher() {
                     )}
                     <button
                       type="button"
-                      className="flex-1 text-left text-sm truncate min-w-0 flex items-center gap-1.5"
+                      className="flex-1 text-left text-sm truncate min-w-0"
                       onClick={() => setActiveProfileId(profile.id)}
                     >
-                      <span>{profile.name}</span>
-                      {isSelected && (
-                        <span className="text-xs text-muted-foreground shrink-0">(active)</span>
-                      )}
+                      {profile.name}
                     </button>
-                    <span className="text-xs text-muted-foreground shrink-0">
+                    <span
+                      className="text-xs text-muted-foreground shrink-0 tabular-nums"
+                      title="Connected channels"
+                    >
                       {getAccountCount(profile.id)}
                     </span>
                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
@@ -172,9 +179,10 @@ export function ProfileSwitcher() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete profile?</AlertDialogTitle>
             <AlertDialogDescription>
-              The profile &quot;{deleteTarget?.name}&quot; and all its{" "}
-              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} connected accounts will be
-              deleted. This cannot be undone.
+              The profile &quot;{deleteTarget?.name}&quot; and its{" "}
+              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} connected channel
+              {deleteTarget && getAccountCount(deleteTarget.id) === 1 ? "" : "s"} will be removed from
+              this workspace. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

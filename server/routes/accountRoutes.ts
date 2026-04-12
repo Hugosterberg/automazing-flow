@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayName?: string) => string> = {
   facebook: (username) => `https://facebook.com/${username}`,
   google_business: (username, displayName) =>
@@ -62,17 +64,37 @@ export function registerAccountRoutes(
     const sameLocalPair = ownerUserId.startsWith("local_") && String(userId).startsWith("local_");
     if (sameLocalPair) return { allowed: true, migrate: true };
 
+    const oauthOwnerBridgePlatforms = [
+      "gmail",
+      "google_drive",
+      "google_calendar",
+      "google_reviews",
+      "outlook",
+      "notion",
+      "shopify",
+      "tripadvisor",
+      "google_business",
+    ];
+
     const localToCloudGoogleMigration =
       ownerUserId.startsWith("local_") &&
       !String(userId).startsWith("local_") &&
-      ["gmail", "google_drive", "google_calendar", "google_reviews", "outlook"].includes(String(stored.platform || ""));
+      oauthOwnerBridgePlatforms.includes(String(stored.platform || ""));
 
     if (localToCloudGoogleMigration) return { allowed: true, migrate: true };
+
+    const cloudToLocalGoogleMigration =
+      Boolean(ownerUserId) &&
+      !ownerUserId.startsWith("local_") &&
+      String(userId).startsWith("local_") &&
+      oauthOwnerBridgePlatforms.includes(String(stored.platform || ""));
+
+    if (cloudToLocalGoogleMigration) return { allowed: true, migrate: true };
 
     return { allowed: false, migrate: false };
   }
 
-  app.get("/api/accounts/connected", (req, res) => {
+  app.get("/api/accounts/connected", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -81,14 +103,15 @@ export function registerAccountRoutes(
     const platformFilter = String(req.query?.platform || "").trim();
     const results = [];
 
-    for (const [accountId, stored] of tokenStore.entries()) {
+    const allEntries = await tokenStore.entries();
+    for (const [accountId, stored] of allEntries) {
       if (!stored || typeof stored !== "object") continue;
       if (platformFilter && String(stored.platform || "") !== platformFilter) continue;
 
       const access = isAccessibleOwner(stored, userId);
       if (!access.allowed) continue;
       if (access.migrate) {
-        tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+        await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
 
       results.push({
@@ -178,7 +201,8 @@ export function registerAccountRoutes(
       if (!platform) {
         return res.status(400).json({ error: `Unsupported Zernio platform: ${rawPlatform || "unknown"}` });
       }
-      const appAccountId = `zernio_${String(zernioAccountId).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+      // Unique per Automazing connection so the same Zernio channel can be linked to multiple business profiles.
+      const appAccountId = randomUUID();
       const username = String(
         acc.username ||
           acc.handle ||
@@ -194,7 +218,7 @@ export function registerAccountRoutes(
         const fallbackBuilder = PLATFORM_PROFILE_URL_FALLBACKS[platform];
         profileUrl = fallbackBuilder ? fallbackBuilder(username, displayName) : "https://zernio.com";
       }
-      tokenStore.set(appAccountId, {
+      await tokenStore.set(appAccountId, {
         platform,
         accessToken: null,
         ownerUserId: userId,
@@ -220,13 +244,13 @@ export function registerAccountRoutes(
     }
   });
 
-  app.delete("/api/accounts/:accountId", (req, res) => {
+  app.delete("/api/accounts/:accountId", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     const { accountId } = req.params;
-    const stored = tokenStore.get(accountId);
+    const stored = await tokenStore.get(accountId);
     if (!stored) {
       return res.status(404).json({ error: "Account not found" });
     }
@@ -236,12 +260,12 @@ export function registerAccountRoutes(
       if (!isLocalPair) {
         return res.status(404).json({ error: "Account not found" });
       }
-      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+      await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
     }
     if (!stored.ownerUserId) {
-      tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+      await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
     }
-    if (tokenStore.delete(accountId)) {
+    if (await tokenStore.delete(accountId)) {
       return res.json({ ok: true });
     }
     res.status(404).json({ error: "Account not found" });

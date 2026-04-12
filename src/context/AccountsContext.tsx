@@ -10,6 +10,7 @@ import {
 import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@/types/accounts";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { apiUrl } from "@/lib/apiBase";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -577,7 +578,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const removeAccount = useCallback(
     async (id: string) => {
       try {
-        await fetch(`/api/accounts/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+        await fetch(apiUrl(`/api/accounts/${encodeURIComponent(id)}`), { method: "DELETE", credentials: "include" });
       } catch {
         // Backend may not be running or account does not exist
       }
@@ -596,7 +597,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         prev.map((a) => (a.id === id ? { ...a, disconnectedAt: now } : a))
       );
     },
-    [enabled, supabase, userId]
+    [enabled, userId]
   );
 
   const updateAccountAnalysis = useCallback((id: string, analysis: ConnectedAccount["analysis"]) => {

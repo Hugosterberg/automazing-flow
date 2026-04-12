@@ -4,6 +4,14 @@ import { useAccounts, type AccountSection } from "@/context/AccountsContext";
 import type { AccountPlatform } from "@/types/accounts";
 import { parseOAuthErrorDetails, removeOAuthErrorParams, type OAuthErrorDetails } from "@/lib/oauthErrors";
 
+function safeDecodeUsername(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 function sectionForPlatform(platform: AccountPlatform): AccountSection {
   if (platform === "shopify" || platform === "notion") return "ecommerce";
   if (platform === "gmail" || platform === "outlook") return "messages";
@@ -41,7 +49,7 @@ export function useOAuthCallback() {
       addAccountFromOAuth(
         accountId,
         accountPlatform,
-        decodeURIComponent(username),
+        safeDecodeUsername(username),
         hasRequestedProfile && profileId ? profileId : undefined,
         zernioAccountId ? { zernioAccountId } : undefined
       );

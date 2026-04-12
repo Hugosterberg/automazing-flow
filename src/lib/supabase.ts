@@ -1,5 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 /** Matches Supabase dashboard / UI: publishable key (new) or legacy anon key names. */
@@ -12,7 +11,17 @@ const supabaseKey = (
 
 export const supabaseEnabled = Boolean(supabaseUrl && supabaseKey);
 
-/** Shared browser client (aligned with supabase.com/ui React Router block — uses @supabase/ssr). */
+/**
+ * Pure SPA client: session in localStorage (default). Avoids @supabase/ssr cookie storage,
+ * which could lose session after external OAuth redirects (e.g. Instagram → back to /connect-accounts).
+ */
 export const supabase: SupabaseClient | null = supabaseEnabled
-  ? createBrowserClient(supabaseUrl, supabaseKey)
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        flowType: "pkce",
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
   : null;

@@ -22,9 +22,11 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
+import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -34,7 +36,7 @@ import {
   GoogleBusinessIcon,
   WhatsAppIcon,
 } from "@/components/platform-icons";
-import type { SocialPlatform } from "@/types/accounts";
+import type { ConnectedAccount, SocialPlatform } from "@/types/accounts";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   instagram: InstagramIcon,
@@ -46,6 +48,27 @@ const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   whatsapp: WhatsAppIcon,
 };
 
+const SOCIAL_PAGE_PLATFORMS: readonly SocialPlatform[] = [
+  "instagram",
+  "tiktok",
+  "youtube",
+  "x",
+  "facebook",
+  "google_business",
+  "whatsapp",
+];
+
+const SOCIAL_PAGE_PLATFORM_SET = new Set<string>(SOCIAL_PAGE_PLATFORMS);
+
+/** Instagram first, then TikTok, YouTube, etc.—matches user expectation when auto-opening a channel. */
+function sortSocialPageAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
+  const ia = SOCIAL_PAGE_PLATFORMS.indexOf(a.platform as SocialPlatform);
+  const ib = SOCIAL_PAGE_PLATFORMS.indexOf(b.platform as SocialPlatform);
+  const ra = ia === -1 ? 999 : ia;
+  const rb = ib === -1 ? 999 : ib;
+  if (ra !== rb) return ra - rb;
+  return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+}
 
 const defaultStats = [
   { label: "Followers", value: "–", change: "", icon: Users, key: "followers" },
@@ -148,7 +171,7 @@ async function runAIAnalysis(
   profile: { displayName?: string; username?: string; followersCount?: number }
 ): Promise<{ about: string; writes: string; perception: string }> {
   const captions = posts.map((p) => p.caption).filter(Boolean);
-  const res = await fetch(`/api/accounts/${accountId}/analyze`, {
+  const res = await fetch(apiUrl(`/api/accounts/${accountId}/analyze`), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -188,7 +211,7 @@ async function generateVideoDraft(payload: {
   platform: string;
   objective: string;
 }): Promise<{ draft: VideoDraftResult; source: string }> {
-  const res = await fetch("/api/content/video-draft", {
+  const res = await fetch(apiUrl("/api/content/video-draft"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -228,27 +251,29 @@ export default function SocialMedia() {
     accounts,
     selectedAccountId,
     setSelectedAccountId: (id) => setSelectedAccountId("social-media", id),
-    accountFilter: (a) => a.id === selectedAccountId,
+    accountFilter: (a) => SOCIAL_PAGE_PLATFORM_SET.has(a.platform),
     initialData: initialSocialData,
-    autoSelectFirst: false,
+    autoSelectFirst: !showOverview,
+    allowImplicitFirstAccount: false,
+    scopeSort: sortSocialPageAccounts,
     fetcher: async (accountId) => {
-      let res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+      let res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (res.status === 401 && authMode === "local") {
-        await fetch("/api/auth/local-session", {
+        await fetch(apiUrl("/api/auth/local-session"), {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         }).catch(() => {});
-        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+        res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       }
       if (res.status === 401 && authMode === "cloud" && session?.access_token) {
-        await fetch("/api/auth/session", {
+        await fetch(apiUrl("/api/auth/session"), {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}` },
           credentials: "include",
         }).catch(() => {});
-        res = await fetch(`/api/accounts/${accountId}/data`, { credentials: "include" });
+        res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -335,11 +360,11 @@ export default function SocialMedia() {
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const socialPlatforms = ["instagram", "tiktok", "youtube", "x", "facebook", "google_business", "whatsapp"] as const;
-  const socialAccounts = useMemo(
-    () => accounts.filter((a) => (socialPlatforms as readonly string[]).includes(a.platform)),
-    [accounts]
-  );
+  const socialAccounts = useMemo(() => {
+    const list = accounts.filter((a) => SOCIAL_PAGE_PLATFORM_SET.has(a.platform));
+    if (list.length < 2) return list;
+    return [...list].sort(sortSocialPageAccounts);
+  }, [accounts]);
   const selectedAccount = socialAccounts.find((a) => a.id === selectedAccountId) ?? null;
   const selectedZernioNote =
     (socialData?.stats as { zernioNote?: string } | undefined)?.zernioNote ||
@@ -525,6 +550,10 @@ export default function SocialMedia() {
       <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
         <h1 className="text-3xl font-bold tracking-tight">Social Media</h1>
         <p className="text-muted-foreground mt-1">Automate and manage your social media</p>
+      </motion.div>
+
+      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <SectionConnectionStatus area="social" />
       </motion.div>
 
       {authMode === "local" && (
