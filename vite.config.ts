@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => {
   const apiPort = env.PORT || "3001";
   const apiTarget = `http://127.0.0.1:${apiPort}`;
 
+  const vercelUrl = process.env.VERCEL_URL || "";
+  const vercelDeploymentOrigin =
+    vercelUrl.length > 0
+      ? vercelUrl.includes("://")
+        ? vercelUrl
+        : `https://${vercelUrl}`
+      : "";
+
   return {
     server: {
       host: "::",
@@ -24,6 +32,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [react()],
+    define: {
+      // OAuth redirect base on Vercel builds (VERCEL_URL is set by the platform).
+      "import.meta.env.VITE_VERCEL_DEPLOYMENT_ORIGIN": JSON.stringify(vercelDeploymentOrigin),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useState, t
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
+import { getOAuthRedirectUrl } from "@/lib/authRedirect";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").trim() || "/api";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
@@ -21,12 +22,6 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-/** Always match the tab you are actually on — avoids Supabase sending users to localhost after deploy. */
-function getOAuthRedirectUrl() {
-  const path = `${window.location.pathname}${window.location.search}`;
-  return `${window.location.origin}${path}`;
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
