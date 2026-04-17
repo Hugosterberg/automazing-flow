@@ -28,7 +28,7 @@ export function OAuthErrorAlert({ details, message, onDismiss }: OAuthErrorAlert
             <span className="text-muted-foreground">
               Code: <code className="rounded bg-muted px-1 py-0.5 text-foreground">{details.code}</code>
             </span>
-            <Link to="/connect-accounts" className="text-primary underline-offset-2 hover:underline font-medium">
+            <Link to="/integrations" className="text-primary underline-offset-2 hover:underline font-medium">
               Connection map
             </Link>
             <Link to="/preferences" className="text-primary underline-offset-2 hover:underline font-medium">

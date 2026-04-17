@@ -155,8 +155,8 @@ const navItems = [
   },
   {
     key: "connect-accounts",
-    title: "Connections",
-    url: "/connect-accounts",
+    title: "Integrations",
+    url: "/integrations",
     icon: PlugZap,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
@@ -316,9 +316,14 @@ export function AppSidebar() {
       setShopifyDialogOpen(true);
       return;
     }
+    if (platform === "google_business" && options?.provider === "official") {
+      const params = new URLSearchParams({ provider: "official" });
+      const oauthProfileId = getOAuthProfileId(activeProfileId);
+      if (oauthProfileId) params.set("profile_id", oauthProfileId);
+      window.location.href = `${apiUrl("/api/auth/google_business")}?${params}`;
+      return;
+    }
     if (platform === "google_business") {
-      // Current tenant may not support direct Google Business connect via Zernio API.
-      // Keep reliable fallback: link from already-connected Zernio accounts.
       openZernioPicker(platform);
       return;
     }
@@ -338,7 +343,11 @@ export function AppSidebar() {
     if ((platform === "google_calendar" || platform === "outlook_calendar") && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
-    if ((platform === "google_reviews" || platform === "tripadvisor") && options?.provider && options.provider !== "auto") {
+    if (
+      (platform === "google_reviews" || platform === "tripadvisor" || platform === "google_business") &&
+      options?.provider &&
+      options.provider !== "auto"
+    ) {
       params.set("provider", options.provider);
     }
     const query = params.toString() ? `?${params.toString()}` : "";
@@ -600,7 +609,7 @@ export function AppSidebar() {
                                         : platform === "facebook"
                                           ? "Facebook (Zernio)"
                                           : platform === "google_business"
-                                            ? "Google Business (Zernio)"
+                                            ? "Google Business"
                                             : platform === "whatsapp"
                                               ? "WhatsApp (Zernio)"
                                               : platform === "shopify"
@@ -664,6 +673,17 @@ export function AppSidebar() {
                                     <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "official" })}>
                                       <Icon className="h-4 w-4 mr-2" />
                                       Outlook Calendar via Official API
+                                    </DropdownMenuItem>
+                                  </div>
+                                ) : platform === "google_business" ? (
+                                  <div key={platform}>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_business", { provider: "zernio" })}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      Google Business via Zernio
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_business", { provider: "official" })}>
+                                      <Icon className="h-4 w-4 mr-2" />
+                                      Google Business via Official API
                                     </DropdownMenuItem>
                                   </div>
                                 ) : platform === "google_reviews" ? (

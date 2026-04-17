@@ -59,9 +59,9 @@ export function ActiveProfileContextBar() {
       </div>
 
       <Button variant="outline" size="sm" className="hidden sm:inline-flex shrink-0 gap-1.5 h-8" asChild>
-        <Link to="/connect-accounts" title="See what is linked and what is still missing">
+        <Link to="/integrations" title="See what is linked and what is still missing">
           <Link2 className="h-3.5 w-3.5" aria-hidden />
-          Connections
+          Integrations
         </Link>
       </Button>
     </div>

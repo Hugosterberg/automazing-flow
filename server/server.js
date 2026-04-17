@@ -16,6 +16,10 @@ import { fetchOutlookMailData } from "./providers/outlookMail.ts";
 import { fetchGoogleDriveAccountData, fetchGoogleDriveFileResponse } from "./providers/googleDrive.ts";
 import { fetchXAccountData } from "./providers/x.ts";
 import { fetchZernioAccountEnrichment } from "./providers/zernioEnrichment.ts";
+import {
+  buildGoogleBusinessPanelFromZernioExtra,
+  fetchGoogleBusinessOfficialAccountData,
+} from "./providers/googleBusinessProfile.ts";
 import { createClient } from "@supabase/supabase-js";
 import { createOAuthPendingStore } from "./lib/oauthPendingStore.js";
 import { createPersistentTokenStore } from "./lib/persistentTokenStore.js";
@@ -1187,6 +1191,17 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         ...(zernioExtra ? { zernioExtra } : {}),
         ...(zernioEnrichmentNotes ? { zernioEnrichmentNotes } : {}),
       };
+      if (platform === "google_business" && zernioExtra) {
+        const gbp = buildGoogleBusinessPanelFromZernioExtra(zernioExtra);
+        if (gbp) {
+          zernioPayload.googleBusiness = gbp;
+          zernioPayload.stats = {
+            ...zernioPayload.stats,
+            ...(gbp.averageRating != null ? { averageRating: gbp.averageRating } : {}),
+            ...(gbp.reviewCount != null ? { reviewCount: gbp.reviewCount } : {}),
+          };
+        }
+      }
       return res.json(zernioPayload);
     }
 
@@ -1399,6 +1414,20 @@ app.get("/api/accounts/:accountId/data", async (req, res) => {
         return res.status(data.status || 500).json({ error: data.error, details: data.details });
       }
       return res.json(data);
+    }
+
+    if (platform === "google_business") {
+      const result = await fetchGoogleBusinessOfficialAccountData({
+        appAccountId: accountId,
+        stored,
+        tokenStore,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+      if (!result.ok) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      return res.json(result.body);
     }
 
     if (platform === "google_reviews") {

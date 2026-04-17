@@ -3,6 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import { useAccounts, type AccountSection } from "@/context/AccountsContext";
 import type { AccountPlatform } from "@/types/accounts";
 import { parseOAuthErrorDetails, removeOAuthErrorParams, type OAuthErrorDetails } from "@/lib/oauthErrors";
+import {
+  clearPendingOAuthReturn,
+  hasOAuthCallbackParams,
+  readPendingOAuthReturn,
+} from "@/lib/oauthCallbackState";
 
 function safeDecodeUsername(raw: string): string {
   try {
@@ -27,6 +32,16 @@ export function useOAuthCallback() {
   const [errorDetails, setErrorDetails] = useState<OAuthErrorDetails | null>(null);
 
   useEffect(() => {
+    if (!hasOAuthCallbackParams(window.location.search)) {
+      const pendingReturn = readPendingOAuthReturn();
+      const current = `${window.location.pathname}${window.location.search}`;
+      if (pendingReturn && pendingReturn !== current) {
+        clearPendingOAuthReturn();
+        window.location.replace(pendingReturn);
+        return;
+      }
+    }
+
     const oauthSuccess = searchParams.get("oauth_success");
     const oauthErr = searchParams.get("oauth_error");
     const platform = searchParams.get("platform");
@@ -37,6 +52,7 @@ export function useOAuthCallback() {
       Boolean(profileId) && profiles.some((profile) => profile.id === profileId);
 
     if (oauthErr) {
+      clearPendingOAuthReturn();
       setErrorDetails(parseOAuthErrorDetails(searchParams));
       setSearchParams(removeOAuthErrorParams(searchParams));
     } else if (oauthSuccess && platform && accountId && username) {
@@ -62,6 +78,7 @@ export function useOAuthCallback() {
       next.delete("profile_id");
       next.delete("zernio_account_id");
       next.delete("late_account_id");
+      clearPendingOAuthReturn();
       setSearchParams(next);
     }
   }, [searchParams, setSearchParams, addAccountFromOAuth, setSelectedAccountId, profiles, profilesReady]);

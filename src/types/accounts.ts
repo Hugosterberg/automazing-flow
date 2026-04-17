@@ -56,6 +56,9 @@ export interface AccountStats {
   updatedAt?: string;
   /** Provider hint (e.g. Zernio analytics add-on or API limits) */
   zernioNote?: string;
+  /** Google Business Profile (official or Zernio enrichment) */
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 export interface ConnectedAccount {

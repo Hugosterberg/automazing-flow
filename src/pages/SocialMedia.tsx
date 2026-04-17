@@ -11,6 +11,9 @@ import {
   BarChart3,
   Film,
   FolderOpen,
+  Star,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +110,27 @@ type SocialMediaApiPost = {
   createdTime: string;
 };
 
+type GoogleBusinessPanel = {
+  source: "zernio" | "official";
+  title?: string;
+  phone?: string;
+  website?: string;
+  addressLines: string[];
+  primaryCategory?: string;
+  averageRating?: number;
+  reviewCount?: number;
+  reviews: Array<{
+    id: string;
+    author: string;
+    rating?: number;
+    text: string;
+    createdAt: string;
+    url?: string;
+  }>;
+};
+
 type SocialMediaApiResponse = {
+  source?: string;
   stats?: {
     followersCount?: number;
     followingCount?: number;
@@ -120,6 +143,8 @@ type SocialMediaApiResponse = {
     engagementRate?: number;
     updatedAt?: string;
     zernioNote?: string;
+    averageRating?: number;
+    reviewCount?: number;
   };
   profile?: {
     displayName?: string;
@@ -131,6 +156,9 @@ type SocialMediaApiResponse = {
     stats?: SocialMediaApiResponse["stats"];
   };
   media?: SocialMediaApiPost[];
+  googleBusiness?: GoogleBusinessPanel;
+  reviews?: GoogleBusinessPanel["reviews"];
+  zernioExtra?: Record<string, unknown>;
 };
 
 /** Maps old error codes to current Zernio names */
@@ -158,6 +186,14 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Google Business direct connect is not enabled for this Zernio workspace yet. Use 'All Zernio channels…' and link an existing Google Business account.",
   zernio_gmb_selection_failed:
     "Google Business requires location selection in Zernio. Open 'All Zernio channels…' and complete Google Business selection there.",
+  google_business_not_configured:
+    "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server .env to connect Google Business via the official API.",
+  google_business_use_official:
+    "Use “Google Business via Official API” from Connect more, or link a location via Zernio.",
+  google_business_accounts_api_failed: "Google could not list Business Profile accounts. Check OAuth scopes and API access.",
+  google_business_locations_api_failed: "Google could not list locations for this account.",
+  google_business_no_account_access: "No Google Business account access on this login.",
+  google_business_no_location_access: "No Google Business location was returned. Check that a location exists in Business Profile.",
 };
 
 function messageForOAuthError(code: string): string {
@@ -292,6 +328,9 @@ export default function SocialMedia() {
     const data = socialData;
     const stats = data.stats ?? data.profile?.stats;
     const profile = data.profile || {};
+    const account = accountsRef.current.find((a) => a.id === selectedAccountId);
+    const isGbp = account?.platform === "google_business";
+    const gbp = data.googleBusiness;
     const mediaCount =
       stats?.mediaCount ??
       (profile.media_count != null ? Number(profile.media_count) : undefined);
@@ -299,7 +338,20 @@ export default function SocialMedia() {
     const followingCount = stats?.followingCount ?? (profile.follows_count != null ? Number(profile.follows_count) : undefined);
     const accountType = stats?.accountType ?? (profile.account_type as string | undefined);
     const hasAny = followersCount != null || followingCount != null || mediaCount != null;
-    if (hasAny || stats?.zernioNote) {
+    if (
+      isGbp &&
+      (gbp || stats?.averageRating != null || stats?.reviewCount != null || stats?.zernioNote)
+    ) {
+      const avg = stats?.averageRating ?? gbp?.averageRating;
+      const rev = stats?.reviewCount ?? gbp?.reviewCount;
+      updateAccountStats(selectedAccountId, {
+        averageRating: avg,
+        reviewCount: rev,
+        mediaCount: rev ?? mediaCount,
+        updatedAt: stats?.updatedAt ?? new Date().toISOString(),
+        zernioNote: stats?.zernioNote,
+      });
+    } else if (hasAny || stats?.zernioNote) {
       updateAccountStats(selectedAccountId, {
         followersCount,
         followingCount,
@@ -724,7 +776,11 @@ export default function SocialMedia() {
               ) : statsLoading ? (
                 <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                  <span>Fetching posts…</span>
+                  <span>
+                    {selectedAccount.platform === "google_business"
+                      ? "Fetching Business Profile…"
+                      : "Fetching posts…"}
+                  </span>
                 </div>
               ) : selectedZernioNote ? (
                 <p className="text-sm text-muted-foreground py-2">{selectedZernioNote}</p>
@@ -735,6 +791,97 @@ export default function SocialMedia() {
           </Card>
         </motion.div>
       )}
+
+      {selectedAccount?.platform === "google_business" &&
+        socialData &&
+        dataAccountId === selectedAccountId && (
+          <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.12 }}>
+            <Card className="bg-card border-border glow-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <GoogleBusinessIcon className="h-5 w-5" />
+                  Google Business Profile
+                </CardTitle>
+                <CardDescription>
+                  {socialData.googleBusiness?.source === "official"
+                    ? "Data from Google Business Profile APIs."
+                    : "Data from your linked Zernio account (location + reviews when available)."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {statsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    Loading profile…
+                  </div>
+                ) : socialData.googleBusiness ? (
+                  <>
+                    <div className="space-y-2 text-sm">
+                      {socialData.googleBusiness.title ? (
+                        <p className="font-medium text-foreground">{socialData.googleBusiness.title}</p>
+                      ) : null}
+                      {socialData.googleBusiness.primaryCategory ? (
+                        <p className="text-muted-foreground">{socialData.googleBusiness.primaryCategory}</p>
+                      ) : null}
+                      {socialData.googleBusiness.addressLines.length > 0 ? (
+                        <p className="flex gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span>{socialData.googleBusiness.addressLines.join(", ")}</span>
+                        </p>
+                      ) : null}
+                      {socialData.googleBusiness.phone ? (
+                        <p className="text-muted-foreground">{socialData.googleBusiness.phone}</p>
+                      ) : null}
+                      {socialData.googleBusiness.website ? (
+                        <a
+                          href={
+                            socialData.googleBusiness.website.startsWith("http")
+                              ? socialData.googleBusiness.website
+                              : `https://${socialData.googleBusiness.website}`
+                          }
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          {socialData.googleBusiness.website.replace(/^https?:\/\//, "")}
+                        </a>
+                      ) : null}
+                    </div>
+                    {socialData.googleBusiness.reviews.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Recent reviews
+                        </p>
+                        <ul className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                          {socialData.googleBusiness.reviews.map((r) => (
+                            <li key={r.id} className="rounded-md border border-border/80 p-3 text-sm">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="font-medium">{r.author}</span>
+                                {r.rating != null && r.rating > 0 ? (
+                                  <span className="text-xs text-muted-foreground">{r.rating.toFixed(1)} ★</span>
+                                ) : null}
+                              </div>
+                              {r.text ? <p className="text-muted-foreground leading-relaxed">{r.text}</p> : null}
+                              {r.createdAt ? (
+                                <p className="text-[11px] text-muted-foreground/80 mt-1">{r.createdAt}</p>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No location or review details returned yet. For Zernio, confirm GBP add-ons; for the official API,
+                    reconnect under Connect more → Google Business via Official API.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
       <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
         <Card className="bg-card border-border glow-border">
@@ -1029,7 +1176,7 @@ export default function SocialMedia() {
         </Card>
       </motion.div>
 
-      {selectedAccount?.isOAuth && (
+      {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -1057,6 +1204,39 @@ export default function SocialMedia() {
         {(        selectedAccount?.stats
           ? (() => {
               const s = selectedAccount.stats;
+              const isGbp = selectedAccount.platform === "google_business";
+              if (isGbp) {
+                return [
+                  {
+                    ...defaultStats[0],
+                    key: "gbp-rating",
+                    label: "Avg. rating",
+                    value: s.averageRating != null ? s.averageRating.toFixed(1) : "–",
+                    change: "",
+                    icon: Star,
+                  },
+                  {
+                    ...defaultStats[1],
+                    key: "gbp-reviews",
+                    label: "Reviews",
+                    value: s.reviewCount != null ? s.reviewCount.toLocaleString("en-US") : "–",
+                    change: "",
+                    icon: FileText,
+                  },
+                  {
+                    ...defaultStats[2],
+                    key: "gbp-posts",
+                    label: "Posts",
+                    value: "–",
+                  },
+                  {
+                    ...defaultStats[3],
+                    key: "gbp-engagement",
+                    label: "Engagement",
+                    value: "–",
+                  },
+                ];
+              }
               const isX = selectedAccount.platform === "x";
               const isWhatsApp = selectedAccount.platform === "whatsapp";
 

@@ -252,8 +252,8 @@ export default function PreferencesPage() {
           Keys here are <span className="font-medium text-foreground">server prerequisites</span> (saved to{" "}
           <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code>) so OAuth and APIs can run. They do{" "}
           <span className="font-medium text-foreground">not</span> replace clicking Connect in the app: open the{" "}
-          <Link to="/connect-accounts" className="underline underline-offset-2 font-medium text-foreground">
-            Connections
+          <Link to="/integrations" className="underline underline-offset-2 font-medium text-foreground">
+            Integrations
           </Link>{" "}
           map to see what is already linked to your active profile versus what still needs a Connect flow (and which env
           vars each one needs).
@@ -297,8 +297,8 @@ export default function PreferencesPage() {
               <CardDescription>
                 Stored in the project <code className="text-xs">.env</code> file and used by backend routes, OAuth flows,
                 and integrations. After saving, use each product page or{" "}
-                <Link to="/connect-accounts" className="underline underline-offset-2">
-                  Connections
+                <Link to="/integrations" className="underline underline-offset-2">
+                  Integrations
                 </Link>{" "}
                 to finish linking accounts.
               </CardDescription>

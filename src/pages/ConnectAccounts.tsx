@@ -7,20 +7,27 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { ConnectionsMap } from "@/components/ConnectionsMap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
+import type { AccountPlatform } from "@/types/accounts";
 import { Loader2, PlugZap, Radio } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiUrl } from "@/lib/apiBase";
 
 const ZERNIO_CONNECT_PLATFORMS: {
-  platform: SocialPlatform;
+  platform: AccountPlatform;
   label: string;
   authPath: string;
+  provider?: "zernio";
+  hint?: string;
 }[] = [
   { platform: "instagram", label: "Instagram", authPath: "instagram" },
   { platform: "facebook", label: "Facebook", authPath: "facebook" },
-  { platform: "google_business", label: "Google Business", authPath: "google_business" },
   { platform: "whatsapp", label: "WhatsApp", authPath: "whatsapp" },
+  { platform: "google_business", label: "Google Business Profile", authPath: "google_business", provider: "zernio" },
+  { platform: "tiktok", label: "TikTok", authPath: "tiktok", provider: "zernio" },
+  { platform: "google_calendar", label: "Google Calendar", authPath: "google_calendar", provider: "zernio" },
+  { platform: "outlook_calendar", label: "Outlook Calendar", authPath: "outlook_calendar", provider: "zernio" },
+  { platform: "google_reviews", label: "Google Reviews", authPath: "google_reviews", provider: "zernio" },
+  { platform: "tripadvisor", label: "Tripadvisor", authPath: "tripadvisor", provider: "zernio", hint: "Vissa konton kan kräva manuell setup." },
 ];
 
 function platformLabel(p: AccountPlatform): string {
@@ -44,11 +51,12 @@ export default function ConnectAccountsPage() {
   );
 
   const startConnect = useCallback(
-    (authPath: string) => {
+    (authPath: string, options?: { provider?: "zernio" }) => {
       const params = new URLSearchParams();
-      params.set("oauth_return", "connect-accounts");
+      params.set("oauth_return", "integrations");
       const pid = getOAuthProfileId(activeProfileId);
       if (pid) params.set("profile_id", pid);
+      if (options?.provider) params.set("provider", options.provider);
       window.location.href = `${apiUrl(`/api/auth/${authPath}`)}?${params.toString()}`;
     },
     [activeProfileId]
@@ -97,7 +105,7 @@ export default function ConnectAccountsPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <PlugZap className="h-7 w-7 text-muted-foreground" />
-          Connections
+          Integrations
         </h1>
         <p className="text-sm text-muted-foreground">
           See what is already linked to{" "}
@@ -161,24 +169,21 @@ export default function ConnectAccountsPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Zernio quick connect</CardTitle>
+          <CardTitle className="text-base">Connect via Zernio</CardTitle>
           <CardDescription>
-            Shortcut to the same Zernio OAuth entry points as Social Media. Use the{" "}
-            <Link to="/social-media" className="underline underline-offset-2">
-              Social Media
-            </Link>{" "}
-            page for TikTok, YouTube, X, and full options.
+            Samlad integrationsflik för alla kanaler som backend stödjer via Zernio-flöden.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
-          {ZERNIO_CONNECT_PLATFORMS.map(({ label, authPath }) => (
+          {ZERNIO_CONNECT_PLATFORMS.map(({ label, authPath, provider, hint }) => (
             <button
               key={authPath}
               type="button"
-              onClick={() => startConnect(authPath)}
+              onClick={() => startConnect(authPath, provider ? { provider } : undefined)}
               className="flex flex-col items-stretch rounded-md border border-border bg-card/40 px-4 py-3 text-left text-sm transition-colors hover:border-muted-foreground/50 hover:bg-accent/30"
             >
               <span className="font-medium">{label}</span>
+              {hint ? <span className="text-xs text-muted-foreground mt-1">{hint}</span> : null}
             </button>
           ))}
         </CardContent>

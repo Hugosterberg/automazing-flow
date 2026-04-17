@@ -1,13 +1,19 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
+import { storePendingOAuthReturn } from "@/lib/oauthCallbackState";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading, enabled, authMode, setAuthMode, signInWithGoogle } = useAuth();
   const allowLocal = isLocalDevHost();
+
+  useEffect(() => {
+    if (user) return;
+    storePendingOAuthReturn(window.location.pathname, window.location.search);
+  }, [user]);
 
   if (authMode === "local") {
     return <>{children}</>;

@@ -51,7 +51,7 @@ export function SectionConnectionStatus({ area, className }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <Link to="/connect-accounts" className="underline underline-offset-2 hover:text-foreground">
+          <Link to="/integrations" className="underline underline-offset-2 hover:text-foreground">
             Full map
           </Link>
           <Link to="/preferences" className="underline underline-offset-2 hover:text-foreground">

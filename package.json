@@ -17,7 +17,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck:server": "tsc -p server/tsconfig.json",
+    "verify": "npm run typecheck:server && npm test && npm run build",
+    "supabase:link": "npx supabase link --project-ref plkptubozuzeieurxsok",
+    "supabase:migration:new": "npx supabase migration new",
+    "supabase:db:push": "npx supabase db push"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

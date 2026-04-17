@@ -65,7 +65,8 @@ const App = () => {
                   <Route path="/content" element={<ContentPage />} />
                   <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
                   <Route path="/preferences" element={<PreferencesPage />} />
-                  <Route path="/connect-accounts" element={<ConnectAccountsPage />} />
+                  <Route path="/integrations" element={<ConnectAccountsPage />} />
+                  <Route path="/connect-accounts" element={<Navigate to="/integrations" replace />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -389,19 +389,21 @@ export function registerOAuthRoutes(
   }
 
   function oauthRedirect(platform, query, oauthReturnPage) {
-    const page =
-      oauthReturnPage === "connect-accounts" ? "connect-accounts" : oauthPageForPlatform(platform);
+    const forceHub = oauthReturnPage === "connect-accounts" || oauthReturnPage === "integrations";
+    const page = forceHub ? "integrations" : oauthPageForPlatform(platform);
     return `${BASE_URL}/${page}?${query}`;
   }
 
-  /** Optional `?oauth_return=connect-accounts` on /api/auth/* to land on the hub after OAuth. */
+  /** Optional `?oauth_return=integrations` (legacy: connect-accounts) on /api/auth/* to land on the hub after OAuth. */
   function parseOauthReturnPage(req) {
     const v = String(req.query?.oauth_return || "").trim();
-    return v === "connect-accounts" ? "connect-accounts" : null;
+    return v === "connect-accounts" || v === "integrations" ? "integrations" : null;
   }
 
   function postOauthPage(pending, platform) {
-    if (pending?.oauthReturnPage === "connect-accounts") return "connect-accounts";
+    if (pending?.oauthReturnPage === "connect-accounts" || pending?.oauthReturnPage === "integrations") {
+      return "integrations";
+    }
     return oauthPageForPlatform(platform);
   }
 
@@ -1814,6 +1816,177 @@ export function registerOAuthRoutes(
     } catch (err) {
       console.error("Google Reviews OAuth error:", err);
       return res.redirect(`${BASE_URL}/reviews?oauth_error=token_exchange_failed`);
+    }
+  });
+
+  // --- Google Business Profile (Official API) — same GBP scopes as Reviews; stored as platform google_business for Social ---
+  app.get("/api/auth/google_business", async (req, res) => {
+    const returnPage = parseOauthReturnPage(req) || "social-media";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
+    if (!userId) return;
+    res.set("Cache-Control", "no-store, no-cache");
+    const provider = String(req.query.provider || "official").trim().toLowerCase();
+    if (provider !== "official") {
+      return res.redirect(
+        oauthRedirect(
+          "google_business",
+          "oauth_error=google_business_use_official",
+          returnPage === "integrations" ? returnPage : undefined
+        )
+      );
+    }
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.redirect(
+        oauthRedirect(
+          "google_business",
+          "oauth_error=google_business_not_configured",
+          returnPage === "integrations" ? "integrations" : undefined
+        )
+      );
+    }
+    const state = generateState();
+    await oauthPendingStore.set(state, {
+      platform: "google_business",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
+    });
+    const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
+    const url = new URL(GOOGLE_AUTH);
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", GOOGLE_REVIEWS_SCOPES);
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+    url.searchParams.set("state", state);
+    res.redirect(url.toString());
+  });
+
+  app.get("/api/auth/google_business/callback", async (req, res) => {
+    const { code, state, error } = req.query;
+    const landing = "social-media";
+    if (error) {
+      return res.redirect(`${BASE_URL}/${landing}?oauth_error=${encodeURIComponent(String(error))}`);
+    }
+    const pending = await oauthPendingStore.get(state);
+    if (!pending) {
+      return res.redirect(`${BASE_URL}/${landing}?oauth_error=invalid_state`);
+    }
+    const callbackUserId = getSessionUserId(req);
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
+      await oauthPendingStore.delete(state);
+      return res.redirect(`${BASE_URL}/${landing}?oauth_error=invalid_state`);
+    }
+    await oauthPendingStore.delete(state);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_not_configured`);
+    }
+    try {
+      const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
+      const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+      });
+      const tokenRes = await fetch(GOOGLE_TOKEN, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      const tokenData = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
+        return res.redirect(
+          `${BASE_URL}/${landing}?oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`
+        );
+      }
+
+      const headers = { Authorization: `Bearer ${tokenData.access_token}` };
+      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers });
+      const accountsBody = await accountsRes.json().catch(() => ({}));
+      let accounts = Array.isArray(accountsBody.accounts) ? accountsBody.accounts : [];
+      if ((!accounts || accounts.length === 0) && accountsRes.ok) {
+        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers });
+        const legacyAccountsBody = await legacyAccountsRes.json().catch(() => ({}));
+        const legacyAccounts = Array.isArray(legacyAccountsBody.accounts) ? legacyAccountsBody.accounts : [];
+        if (legacyAccounts.length > 0) {
+          accounts = legacyAccounts;
+        }
+      }
+      if (!accountsRes.ok && (!accounts || accounts.length === 0)) {
+        const errHint = encodeURIComponent(String(accountsBody?.error?.message || accountsBody?.error || "accounts_api_failed"));
+        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_accounts_api_failed&oauth_hint=${errHint}`);
+      }
+      const firstAccount = accounts[0] || null;
+      const accountNamePath = String(firstAccount?.name || "");
+      const accountId = accountNamePath.split("/")[1] || "";
+      if (!accountId) {
+        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_no_account_access`);
+      }
+
+      const locationsRes = await fetch(
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${accountNamePath}/locations?pageSize=20&readMask=name,title`,
+        { headers }
+      );
+      const locationsBody = await locationsRes.json().catch(() => ({}));
+      let locations = Array.isArray(locationsBody.locations) ? locationsBody.locations : [];
+      if ((!locations || locations.length === 0) && locationsRes.ok) {
+        const legacyLocationsRes = await fetch(
+          `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountId)}/locations?pageSize=20`,
+          { headers }
+        );
+        const legacyLocationsBody = await legacyLocationsRes.json().catch(() => ({}));
+        const legacyLocations = Array.isArray(legacyLocationsBody.locations) ? legacyLocationsBody.locations : [];
+        if (legacyLocations.length > 0) {
+          locations = legacyLocations;
+        }
+      }
+      if (!locationsRes.ok && (!locations || locations.length === 0)) {
+        const errHint = encodeURIComponent(String(locationsBody?.error?.message || locationsBody?.error || "locations_api_failed"));
+        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_locations_api_failed&oauth_hint=${errHint}`);
+      }
+      const firstLocation = locations[0] || null;
+      const locationNamePath = String(firstLocation?.name || "");
+      const locationId = locationNamePath.split("/").pop() || "";
+      const locationTitle = String(firstLocation?.title || firstLocation?.locationName || firstLocation?.storeCode || "Google location");
+      if (!locationId) {
+        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_no_location_access`);
+      }
+
+      const appAccountId = crypto.randomUUID();
+      await tokenStore.set(appAccountId, {
+        platform: "google_business",
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
+        username: locationTitle,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        googleBusinessAccountId: accountId,
+        googleBusinessLocationId: locationId,
+        googleBusinessLocationName: locationTitle,
+      });
+      const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "google_business");
+      return res.redirect(
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_business&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
+      );
+    } catch (err) {
+      console.error("Google Business OAuth error:", err);
+      return res.redirect(`${BASE_URL}/${landing}?oauth_error=token_exchange_failed`);
     }
   });
 
