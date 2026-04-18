@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/refresh-ai-recommendations",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 5 * * *"
     }
   ],
   "rewrites": [
