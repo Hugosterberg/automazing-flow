@@ -83,8 +83,8 @@ function DefaultFallback({ error, reset }: { error: Error; reset: () => void }) 
           This section hit an unexpected error. You can retry, or pick another
           page from the sidebar.
         </p>
-        {import.meta.env.DEV ? (
-          <pre className="max-h-40 overflow-auto rounded-md bg-muted/40 p-2 text-left text-[11px] text-muted-foreground">
+        {error.message ? (
+          <pre className="max-h-40 overflow-auto rounded-md bg-muted/40 p-2 text-left text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
             {error.message}
           </pre>
         ) : null}
