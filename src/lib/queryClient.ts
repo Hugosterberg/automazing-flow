@@ -26,6 +26,16 @@ import { toast } from "sonner";
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error.trim()) return error;
+  // Supabase-js v2 rejects with plain objects ({ message, code, details, hint })
+  // — not Error instances — so pull the message out manually.
+  if (error && typeof error === "object") {
+    const obj = error as { message?: unknown; code?: unknown };
+    if (typeof obj.message === "string" && obj.message.trim()) {
+      return typeof obj.code === "string" && obj.code
+        ? `${obj.message} (${obj.code})`
+        : obj.message;
+    }
+  }
   return "Something went wrong. Please try again.";
 }
 
