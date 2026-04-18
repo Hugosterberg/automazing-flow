@@ -1,18 +1,17 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 
-// #region agent log
-postAgentDebugIngest({
-  sessionId: "3f6df6",
-  runId: "post-change",
-  hypothesisId: "A5",
-  location: "main.tsx:bootstrap",
-  message: "Frontend bootstrap reached",
-  data: { hasRoot: Boolean(document.getElementById("root")) },
-  timestamp: Date.now(),
-});
-// #endregion
+/**
+ * React error boundaries cannot catch unhandled promise rejections
+ * (uncaught async errors). Without a listener these are silently dropped
+ * in production. Logging them here keeps them visible and gives us one
+ * place to wire up an error tracker later.
+ */
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[unhandledrejection]", event.reason);
+  });
+}
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -49,7 +49,7 @@ export function ProfileList() {
                 <span className="truncate">{profile.name}</span>
                 <Badge
                   variant={isSelected ? "default" : "secondary"}
-                  className="h-5 min-w-5 px-1.5 tabular-nums text-[10px] shrink-0"
+                  className="h-5 min-w-5 px-1.5 tabular-nums text-[11px] shrink-0"
                 >
                   {n}
                 </Badge>

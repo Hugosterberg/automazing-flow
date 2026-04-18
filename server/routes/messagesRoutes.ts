@@ -1,5 +1,6 @@
 import { fetchGmailAccountData } from "../providers/gmail.ts";
 import { fetchOutlookMailData } from "../providers/outlookMail.ts";
+import type { ZernioModule } from "../providers/zernioModule.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -22,8 +23,7 @@ type MessagesRouteDeps = {
     stored: StoredAccount,
     userId: string
   ) => { allowed: boolean; migrate: boolean };
-  ZERNIO_API_BASE: string;
-  zernioAuthHeaders: () => Record<string, string> | null;
+  zernio: ZernioModule;
   zernioProfileIdFilter: string;
 };
 
@@ -58,8 +58,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     getSessionUserId,
     tokenStore,
     getStoredAccountAccess,
-    ZERNIO_API_BASE,
-    zernioAuthHeaders,
+    zernio,
     zernioProfileIdFilter,
   } = deps;
 
@@ -175,30 +174,26 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     }
 
     let zernioNote: string | undefined;
-    const zh = zernioAuthHeaders();
     const zernioPromise = (async () => {
-      if (!zh) {
-        zernioNote = "ZERNIO_API_KEY is not set — social DMs from connected accounts will not appear here.";
-        return;
-      }
       try {
-        const q = new URLSearchParams();
-        q.set("limit", "75");
-        q.set("sortOrder", "desc");
-        q.set("status", "active");
-        if (zernioProfileIdFilter) q.set("profileId", zernioProfileIdFilter);
-
-        const url = `${ZERNIO_API_BASE}/inbox/conversations?${q.toString()}`;
-        const convRes = await fetch(url, { headers: zh });
-        if (!convRes.ok) {
-          if (convRes.status === 401 || convRes.status === 403) {
+        const convResult = await zernio.listInboxConversations({
+          limit: 75,
+          sortOrder: "desc",
+          status: "active",
+          profileId: zernioProfileIdFilter || null,
+        });
+        if (!convResult.ok) {
+          if (convResult.status === 503) {
+            zernioNote =
+              "ZERNIO_API_KEY is not set — social DMs from connected accounts will not appear here.";
+          } else if (convResult.status === 401 || convResult.status === 403) {
             zernioNote = "Zernio inbox returned unauthorized — check API key or Inbox add-on.";
-          } else if (convRes.status === 402) {
+          } else if (convResult.status === 402) {
             zernioNote = "Zernio Inbox may require a plan add-on for DM access.";
           }
           return;
         }
-        const body = (await convRes.json().catch(() => ({}))) as Record<string, unknown>;
+        const body = convResult.data;
         const rows = parseZernioConversationList(body);
         for (const raw of rows) {
           const c = raw as Record<string, unknown>;

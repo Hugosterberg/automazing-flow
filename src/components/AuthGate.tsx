@@ -77,7 +77,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
         <Card className="w-full max-w-md border-border/80 shadow-md">
           <CardHeader className="space-y-1 pb-2">
-            <CardTitle className="text-xl">Sign in to automazing</CardTitle>
+            <CardTitle className="font-display text-xl">
+              Sign in to automazing
+            </CardTitle>
             <CardDescription className="text-sm leading-relaxed">
               {allowLocal
                 ? "Cloud mode syncs profiles with your Google account. Local mode keeps everything on this device only."

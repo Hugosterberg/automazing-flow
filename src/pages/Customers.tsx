@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Users, Upload, Search, Trash2 } from "lucide-react";
-import * as XLSX from "xlsx";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,45 +27,54 @@ function normalizeCellValue(value: unknown): string {
   return String(value).trim();
 }
 
-function parseCustomerFile(file: File): Promise<{ columns: string[]; rows: CustomerRow[] }> {
-  return file.arrayBuffer().then((buffer) => {
-    const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
-      throw new Error("The file has no sheets.");
-    }
+/**
+ * Parse a customer file (CSV/XLSX/XLS) into columns + rows.
+ *
+ * `xlsx` is loaded lazily: it is ~340 kB raw / ~117 kB gzipped and is only
+ * ever needed when the user actually uploads a file. Keeping it out of the
+ * route's main chunk makes the initial render of /customers instant.
+ */
+async function parseCustomerFile(
+  file: File
+): Promise<{ columns: string[]; rows: CustomerRow[] }> {
+  const XLSX = await import("xlsx");
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    throw new Error("The file has no sheets.");
+  }
 
-    const firstSheet = workbook.Sheets[firstSheetName];
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, {
-      defval: "",
-      raw: false,
-    });
-
-    if (rawRows.length === 0) {
-      return { columns: [], rows: [] };
-    }
-
-    const columns: string[] = [];
-    const seen = new Set<string>();
-    for (const row of rawRows) {
-      for (const key of Object.keys(row)) {
-        const header = key.trim();
-        if (!header || seen.has(header)) continue;
-        seen.add(header);
-        columns.push(header);
-      }
-    }
-
-    const rows: CustomerRow[] = rawRows.map((row) => {
-      const mapped: CustomerRow = {};
-      for (const col of columns) {
-        mapped[col] = normalizeCellValue(row[col]);
-      }
-      return mapped;
-    });
-
-    return { columns, rows };
+  const firstSheet = workbook.Sheets[firstSheetName];
+  const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, {
+    defval: "",
+    raw: false,
   });
+
+  if (rawRows.length === 0) {
+    return { columns: [], rows: [] };
+  }
+
+  const columns: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rawRows) {
+    for (const key of Object.keys(row)) {
+      const header = key.trim();
+      if (!header || seen.has(header)) continue;
+      seen.add(header);
+      columns.push(header);
+    }
+  }
+
+  const rows: CustomerRow[] = rawRows.map((row) => {
+    const mapped: CustomerRow = {};
+    for (const col of columns) {
+      mapped[col] = normalizeCellValue(row[col]);
+    }
+    return mapped;
+  });
+
+  return { columns, rows };
 }
 
 export default function CustomersPage() {
@@ -147,21 +157,13 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45 }}
-      >
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Users className="h-8 w-8 text-primary" />
-          Customers
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Upload a CSV or Excel file to view your full customer base in one table.
-        </p>
-      </motion.div>
+      <PageHeader
+        icon={Users}
+        title="Customers"
+        description="Upload a CSV or Excel file to view your full customer base in one table."
+      />
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
@@ -197,9 +199,9 @@ export default function CustomersPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.1 }}
@@ -227,9 +229,12 @@ export default function CustomersPage() {
           </CardHeader>
           <CardContent>
             {columns.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-                Upload a customer file to see names, phone numbers, emails, addresses, age, and other known fields.
-              </div>
+              <EmptyState
+                icon={Upload}
+                size="compact"
+                title="No customers yet"
+                description="Upload a customer file to see names, phone numbers, emails, addresses, age, and other known fields."
+              />
             ) : (
               <Table>
                 <TableHeader>
@@ -262,7 +267,7 @@ export default function CustomersPage() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

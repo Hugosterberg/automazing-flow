@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
@@ -35,8 +38,6 @@ type ReviewsData = {
   reviews?: ReviewItem[];
   note?: string;
 } | null;
-
-const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } };
 
 export default function ReviewsPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
@@ -73,31 +74,40 @@ export default function ReviewsPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
-      <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Reviews</h1>
-            <p className="text-muted-foreground mt-1">
-              {data?.profile?.name
-                ? `${data.profile.name}${data.profile.location ? ` · ${data.profile.location}` : ""}`
-                : "Connect Google Reviews or Tripadvisor to get started"}
-            </p>
-          </div>
-          {activeAccount && (
-            <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={loading} className="text-muted-foreground">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      <PageHeader
+        icon={Star}
+        title="Reviews"
+        description={
+          data?.profile?.name
+            ? `${data.profile.name}${data.profile.location ? ` · ${data.profile.location}` : ""}`
+            : "Connect Google Reviews or Tripadvisor to get started"
+        }
+        actions={
+          activeAccount ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="text-muted-foreground"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               <span className="ml-1.5 hidden sm:inline">Refresh</span>
             </Button>
-          )}
-        </div>
-      </motion.div>
+          ) : null
+        }
+      />
 
-      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="reviews" />
-      </motion.div>
+      </m.div>
 
       {oauthErrorDetails && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
             message={formatOAuthErrorMessage(
@@ -114,39 +124,41 @@ export default function ReviewsPage() {
             )}
             onDismiss={clearOauthError}
           />
-        </motion.div>
+        </m.div>
       )}
 
       {error && activeAccount && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 px-4 flex items-center justify-between">
               <p className="text-sm text-destructive">{error}</p>
               <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {data?.note && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/40 border-border">
             <CardContent className="py-3 px-4">
               <p className="text-sm text-muted-foreground">{data.note}</p>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
-      {oauthHint && (
+      {oauthErrorDetails?.hint && (
         <Card className="bg-muted/40 border-border">
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground">Provider hint: {decodeURIComponent(oauthHint)}</p>
+            <p className="text-xs text-muted-foreground">
+              Provider hint: {decodeURIComponent(oauthErrorDetails.hint)}
+            </p>
           </CardContent>
         </Card>
       )}
 
       {reviewAccounts.length > 1 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }} className="flex gap-2 flex-wrap">
+        <m.div {...fadeUp} transition={{ duration: 0.3 }} className="flex gap-2 flex-wrap">
           {reviewAccounts.map((acc) => (
             <button
               key={acc.id}
@@ -160,24 +172,21 @@ export default function ReviewsPage() {
               {acc.username} · {acc.platform === "google_reviews" ? "Google Reviews" : "Tripadvisor"}
             </button>
           ))}
-        </motion.div>
+        </m.div>
       )}
 
       {!loading && !activeAccount && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-          <Card className="bg-card border-border border-dashed">
-            <CardContent className="py-16 text-center space-y-2">
-              <p className="text-lg font-semibold">No review account connected</p>
-              <p className="text-sm text-muted-foreground">
-                Use "Connect more" in the sidebar under Reviews to connect Google Reviews or Tripadvisor.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <m.div {...fadeUp} transition={{ duration: 0.4 }}>
+          <EmptyState
+            icon={Star}
+            title="No review account connected"
+            description='Use "Connect more" in the sidebar under Reviews to connect Google Reviews or Tripadvisor.'
+          />
+        </m.div>
       )}
 
       {!loading && activeAccount && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="bg-card border-border">
               <CardContent className="p-5">
@@ -198,11 +207,11 @@ export default function ReviewsPage() {
               </CardContent>
             </Card>
           </div>
-        </motion.div>
+        </m.div>
       )}
 
       {!loading && reviews.length > 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="text-lg">Recent reviews</CardTitle>
@@ -229,7 +238,7 @@ export default function ReviewsPage() {
               ))}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
     </div>
   );

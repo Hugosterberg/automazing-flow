@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
+import { pageFadeUp as fadeUp } from "@/lib/motion";
 import {
   Users,
   FileText,
@@ -24,12 +25,13 @@ import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -93,11 +95,6 @@ const contentIdeas = [
   "Before/after transformation",
   "Q&A with your followers",
 ];
-
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
 
 type SocialMediaApiPost = {
   id: string;
@@ -499,50 +496,6 @@ export default function SocialMedia() {
     };
   }, [socialAccounts]);
 
-  useEffect(() => {
-    if (!showOverview || selectedAccount) return;
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H4",
-      location: "SocialMedia:overview-render",
-      message: "Inline overview rendered in main panel",
-      data: { showOverview, selectedAccountId, connected: overviewData.connected },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, [showOverview, selectedAccount, selectedAccountId, overviewData.connected]);
-
-  useEffect(() => {
-    if (!selectedAccount) return;
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H5",
-      location: "SocialMedia:account-render",
-      message: "Account detail rendered in main panel",
-      data: { selectedAccountId, platform: selectedAccount.platform },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, [selectedAccount, selectedAccountId]);
-
-  useEffect(() => {
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H7",
-      location: "SocialMedia:mount",
-      message: "SocialMedia mounted - logging self test",
-      data: { showOverview, selectedAccountId },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, [showOverview, selectedAccountId]);
-
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -599,17 +552,18 @@ export default function SocialMedia() {
 
   return (
     <div className="space-y-8 max-w-6xl">
-      <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-3xl font-bold tracking-tight">Social Media</h1>
-        <p className="text-muted-foreground mt-1">Automate and manage your social media</p>
-      </motion.div>
+      <PageHeader
+        icon={Sparkles}
+        title="Social Media"
+        description="Automate and manage your social media"
+      />
 
-      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="social" />
-      </motion.div>
+      </m.div>
 
       {authMode === "local" && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
@@ -617,20 +571,20 @@ export default function SocialMedia() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {oauthErrorDetails && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
             message={messageForOAuthError(oauthErrorDetails.code)}
             onDismiss={clearOauthError}
           />
-        </motion.div>
+        </m.div>
       )}
       {error && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between gap-4">
               <p className="text-sm text-destructive">Could not load social stats: {error}</p>
@@ -639,11 +593,11 @@ export default function SocialMedia() {
               </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {!selectedAccount && showOverview && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">Total overview</span>
@@ -718,27 +672,21 @@ export default function SocialMedia() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {!selectedAccount && !showOverview && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
-          <Card className="bg-card border-border glow-border border-dashed">
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground mb-2">
-                Select an account in the sidebar (Connected accounts) to get started.
-              </p>
-              <p className="text-sm text-muted-foreground/80">
-                Use the sidebar: Instagram, TikTok, YouTube, X—or extra channels via Zernio (Facebook, WhatsApp, Google
-                Business, …). See docs/KOPPLINGAR.md.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+          <EmptyState
+            icon={Sparkles}
+            title="Select a social account"
+            description="Pick a connected account from the sidebar (Instagram, TikTok, YouTube, X) — or add more via Zernio (Facebook, WhatsApp, Google Business, …)."
+          />
+        </m.div>
       )}
 
       {selectedAccount && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {(() => { const Icon = platformIcons[selectedAccount.platform]; return <Icon className="h-4 w-4 text-muted-foreground" />; })()}
@@ -789,13 +737,13 @@ export default function SocialMedia() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {selectedAccount?.platform === "google_business" &&
         socialData &&
         dataAccountId === selectedAccountId && (
-          <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.12 }}>
+          <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.12 }}>
             <Card className="bg-card border-border glow-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -880,10 +828,10 @@ export default function SocialMedia() {
                 )}
               </CardContent>
             </Card>
-          </motion.div>
+          </m.div>
         )}
 
-      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -952,9 +900,9 @@ export default function SocialMedia() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
 
-      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -1103,9 +1051,9 @@ export default function SocialMedia() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
 
-      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.18 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.18 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -1174,7 +1122,7 @@ export default function SocialMedia() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
 
       {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
         <div className="flex items-center gap-2">
@@ -1268,7 +1216,7 @@ export default function SocialMedia() {
             })()
           : defaultStats
         ).map((stat, i) => (
-          <motion.div key={stat.key} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
+          <m.div key={stat.key} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
             <Card className="bg-card border-border glow-border hover:glow-sm transition-shadow duration-300">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -1283,20 +1231,20 @@ export default function SocialMedia() {
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
               </CardContent>
             </Card>
-          </motion.div>
+          </m.div>
         ))}
       </div>
 
       {selectedAccount?.stats?.zernioNote && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.12 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3, delay: 0.12 }}>
           <p className="text-xs text-muted-foreground border border-border/60 rounded-lg px-3 py-2.5 bg-muted/30 leading-relaxed">
             {selectedAccount.stats.zernioNote}
           </p>
-        </motion.div>
+        </m.div>
       )}
 
       {recentPosts.length > 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1337,7 +1285,7 @@ export default function SocialMedia() {
                         </div>
                       </div>
                       <div className="absolute bottom-1 left-1 flex gap-1">
-                        <span className="bg-black/70 text-white text-[10px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                        <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
                           <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
                         </span>
                       </div>
@@ -1388,11 +1336,11 @@ export default function SocialMedia() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div className="lg:col-span-2" {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
+        <m.div className="lg:col-span-2" {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1416,9 +1364,9 @@ export default function SocialMedia() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
 
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border glow-border h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1441,10 +1389,10 @@ export default function SocialMedia() {
               </ul>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       </div>
 
-      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <CardTitle className="text-lg">Scheduled posts</CardTitle>
@@ -1468,7 +1416,7 @@ export default function SocialMedia() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

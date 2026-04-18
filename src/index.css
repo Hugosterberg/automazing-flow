@@ -30,6 +30,19 @@
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 100%;
 
+    /*
+     * Semantic status tokens. Used by badges, activity feed, toasts and
+     * status dots across the app so "success / warning / info" reads the
+     * same everywhere. Keep the foreground tokens high-contrast — these
+     * colours always sit on dark surfaces.
+     */
+    --success: 142 45% 48%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 10%;
+    --info: 210 85% 62%;
+    --info-foreground: 0 0% 100%;
+
     --border: 0 0% 14%;
     --input: 0 0% 14%;
     --ring: 0 0% 40%;
@@ -56,7 +69,19 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /*
+     * Inter for body text — higher x-height and better readability at
+     * small sizes than Space Grotesk. Space Grotesk is kept in the font
+     * stack (and via `.font-display`) for brand-forward headlines.
+     */
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .font-display {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
+    letter-spacing: -0.015em;
   }
 }
 

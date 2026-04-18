@@ -14,12 +14,14 @@ import {
   Layers,
   FolderOpen,
   PlugZap,
+  ListChecks,
+  Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
   Dialog,
@@ -54,9 +56,22 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
 import type { AccountSection } from "@/context/AccountsContext";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useAiRecommendations } from "@/features/ai-recommendations";
+import { useTasks, isTaskOverdue } from "@/features/tasks";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
-import { ZernioLinkDialog } from "@/components/ZernioLinkDialog";
 import { useZernioAccounts, type ZernioAccountRow } from "@/hooks/useZernioAccounts";
+
+/**
+ * Lazy-loaded Zernio link dialog. The sidebar always renders but the dialog
+ * only appears after the user clicks "Connect". Deferring its chunk keeps
+ * the dialog body + platform icon tree out of the main bundle; the first
+ * open incurs a small chunk fetch that's imperceptible for a click-triggered
+ * flow.
+ */
+const ZernioLinkDialog = lazy(() =>
+  import("@/components/ZernioLinkDialog").then((m) => ({ default: m.ZernioLinkDialog }))
+);
 import {
   InstagramIcon,
   TikTokIcon,
@@ -78,13 +93,37 @@ import {
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
 import { apiUrl } from "@/lib/apiBase";
 
-const navItems = [
+/**
+ * Sidebar groups. Reads top-to-bottom as a user journey:
+ *   Work:         day-to-day channels and content
+ *   Productivity: cross-cutting assistants (tasks, activity, AI)
+ *   System:       config and provider wiring
+ * Keep this list short — flat long sidebars are hard to scan.
+ */
+type NavGroup = "work" | "productivity" | "system";
+
+const NAV_GROUP_LABELS: Record<NavGroup, string> = {
+  work: "Work",
+  productivity: "Productivity",
+  system: "System",
+};
+
+const navItems: Array<{
+  key: string;
+  title: string;
+  url: string;
+  icon: (props: { className?: string }) => JSX.Element;
+  platforms: AccountPlatform[];
+  hideAccounts?: boolean;
+  group: NavGroup;
+}> = [
   {
     key: "content",
     title: "Content",
     url: "/content",
     icon: FolderOpen,
     platforms: ["google_drive"] as AccountPlatform[],
+    group: "work",
   },
   {
     key: "social-media",
@@ -100,6 +139,7 @@ const navItems = [
       "google_business",
       "whatsapp",
     ] as AccountPlatform[],
+    group: "work",
   },
   {
     key: "ecommerce",
@@ -107,6 +147,7 @@ const navItems = [
     url: "/ecommerce",
     icon: ShoppingCart,
     platforms: ["shopify", "notion"] as AccountPlatform[],
+    group: "work",
   },
   {
     key: "sales-marketing",
@@ -115,6 +156,7 @@ const navItems = [
     icon: LineChart,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "work",
   },
   {
     key: "customers",
@@ -123,6 +165,7 @@ const navItems = [
     icon: Users,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "work",
   },
   {
     key: "calendar",
@@ -130,6 +173,7 @@ const navItems = [
     url: "/calendar",
     icon: CalendarDays,
     platforms: ["google_calendar", "outlook_calendar"] as AccountPlatform[],
+    group: "work",
   },
   {
     key: "messages",
@@ -137,6 +181,7 @@ const navItems = [
     url: "/messages",
     icon: MessageSquare,
     platforms: ["gmail", "outlook"] as AccountPlatform[],
+    group: "work",
   },
   {
     key: "reviews",
@@ -144,6 +189,25 @@ const navItems = [
     url: "/reviews",
     icon: Star,
     platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
+    group: "work",
+  },
+  {
+    key: "tasks",
+    title: "Tasks",
+    url: "/tasks",
+    icon: ListChecks,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+    group: "productivity",
+  },
+  {
+    key: "activity",
+    title: "Activity",
+    url: "/activity",
+    icon: Activity,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+    group: "productivity",
   },
   {
     key: "ai-recommendations",
@@ -152,14 +216,16 @@ const navItems = [
     icon: LightbulbGlowIcon,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "productivity",
   },
   {
-    key: "connect-accounts",
-    title: "Integrations",
-    url: "/integrations",
+    key: "connections",
+    title: "Connections",
+    url: "/connections",
     icon: PlugZap,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "system",
   },
   {
     key: "preferences",
@@ -168,8 +234,11 @@ const navItems = [
     icon: Settings,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "system",
   },
 ];
+
+const NAV_GROUP_ORDER: NavGroup[] = ["work", "productivity", "system"];
 
 const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
   instagram: InstagramIcon,
@@ -207,9 +276,80 @@ function sectionForNavItemKey(key: string): AccountSection | null {
   return null;
 }
 
+type NavBadgeTone = "primary" | "warning";
+
+interface NavBadgeInfo {
+  count: number;
+  ariaLabel: string;
+  tone: NavBadgeTone;
+  /**
+   * Optional deep-link override. When present, the whole nav row points
+   * here instead of `item.url` — letting a badge send the user straight
+   * to the filtered view that explains the count (e.g. overdue tasks).
+   */
+  href?: string;
+}
+
+/**
+ * Map a nav item key to its badge payload, if any. Keeps the per-item
+ * logic declarative and makes it trivial to add further counts later
+ * (e.g. unread messages) without touching the render loop.
+ */
+function getNavBadge(
+  key: string,
+  aiActiveCount: number,
+  tasksOverdueCount: number
+): NavBadgeInfo | null {
+  if (key === "ai-recommendations" && aiActiveCount > 0) {
+    return {
+      count: aiActiveCount,
+      ariaLabel: `${aiActiveCount} active AI recommendations`,
+      tone: "primary",
+    };
+  }
+  if (key === "tasks" && tasksOverdueCount > 0) {
+    return {
+      count: tasksOverdueCount,
+      ariaLabel: `${tasksOverdueCount} overdue tasks`,
+      tone: "warning",
+      href: "/tasks?view=overdue",
+    };
+  }
+  return null;
+}
+
+/**
+ * Small pill used in sidebar nav rows to surface attention counts. Caps
+ * visually at "9+" so the pill width stays stable regardless of value.
+ * `tone` maps to semantic color tokens so variants stay themeable.
+ */
+function NavCountBadge({
+  count,
+  ariaLabel,
+  tone,
+}: {
+  count: number;
+  ariaLabel: string;
+  tone: NavBadgeTone;
+}) {
+  const toneClass =
+    tone === "warning"
+      ? "bg-warning text-warning-foreground"
+      : "bg-primary text-primary-foreground";
+  return (
+    <span
+      className={`inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${toneClass}`}
+      aria-label={ariaLabel}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const prefetchFor = useRoutePrefetch();
   const {
     accounts,
     activeProfileId,
@@ -240,6 +380,34 @@ export function AppSidebar() {
     activeProfileId,
     addAccountFromOAuth,
   });
+  // Badge count for the "AI Recommendations" sidebar entry. Reuses the same
+  // cached query the page/widget use — no extra network request. We count
+  // "active" rows (new + seen) so the badge matches the Active tab on the
+  // dedicated page.
+  const aiBpId = useActiveBusinessProfileIdOptional();
+  const aiBusinessProfileId = aiBpId ?? activeProfileId ?? null;
+  const { recommendations: aiRecommendations } = useAiRecommendations(
+    aiBusinessProfileId
+  );
+  const aiActiveCount = useMemo(
+    () =>
+      aiRecommendations.filter(
+        (r) => r.status === "new" || r.status === "seen"
+      ).length,
+    [aiRecommendations]
+  );
+
+  // Tasks nav badge. Counts overdue items only — "overdue" is the signal
+  // a user actually needs to act on, so the badge stays sharp rather than
+  // inflating with every open task. Uses the same cached query as the
+  // Tasks page/widget, no extra fetch. Definition lives in taskFilters.ts
+  // and is shared with the /tasks page tabs and home dashboard.
+  const { tasks } = useTasks(aiBusinessProfileId);
+  const tasksOverdueCount = useMemo(() => {
+    const nowMs = Date.now();
+    return tasks.filter((t) => isTaskOverdue(t, nowMs)).length;
+  }, [tasks]);
+
   const socialNavItem = navItems.find((item) => item.key === "social-media");
   const socialAccounts = useMemo(
     () => getAccountsForCategory(accounts, socialNavItem?.platforms ?? []),
@@ -275,17 +443,6 @@ export function AppSidebar() {
     );
   }, [socialAccounts]);
   function handleOpenOverview() {
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H1",
-      location: "AppSidebar:handleOpenOverview",
-      message: "Total overview clicked - using showOverview",
-      data: { pathname: location.pathname, showOverview: true },
-      timestamp: Date.now(),
-    });
-    // #endregion
     setShowOverview(true);
     setSelectedAccountId("social-media", null);
     if (location.pathname !== "/social-media") {
@@ -343,8 +500,12 @@ export function AppSidebar() {
     if ((platform === "google_calendar" || platform === "outlook_calendar") && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
+    // google_business is already handled above (lines 319-328). tripadvisor
+    // with provider=official also returns early (line 330). Anything reaching
+    // this point that still accepts a provider query param is google_reviews
+    // or tripadvisor with provider=auto|zernio.
     if (
-      (platform === "google_reviews" || platform === "tripadvisor" || platform === "google_business") &&
+      (platform === "google_reviews" || platform === "tripadvisor") &&
       options?.provider &&
       options.provider !== "auto"
     ) {
@@ -412,36 +573,11 @@ export function AppSidebar() {
   }
 
   function handleAccountClick(section: AccountSection, accountId: string, isSelected: boolean) {
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H3",
-      location: "AppSidebar:handleAccountClick",
-      message: "Account clicked - clears showOverview",
-      data: { accountId, wasSelected: isSelected },
-      timestamp: Date.now(),
-    });
-    // #endregion
     if (section === "social-media") {
       setShowOverview(false);
     }
     setSelectedAccountId(section, isSelected ? null : accountId);
   }
-
-  useEffect(() => {
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-fix",
-      hypothesisId: "H6",
-      location: "AppSidebar:mount",
-      message: "AppSidebar mounted - logging self test",
-      data: { pathname: location.pathname },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, [location.pathname]);
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
@@ -453,36 +589,66 @@ export function AppSidebar() {
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-lg font-bold tracking-tight text-foreground">
+        <span className="font-display text-lg font-bold text-foreground">
           automazing
         </span>
       </button>
-      <SidebarContent className="pt-4">
-        <SidebarGroup>
+      <SidebarContent className="pt-4" role="navigation" aria-label="Main">
+        {NAV_GROUP_ORDER.map((groupKey) => {
+          const groupItems = navItems.filter((i) => i.group === groupKey);
+          if (groupItems.length === 0) return null;
+          return (
+        <SidebarGroup key={groupKey}>
+          <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
+            {NAV_GROUP_LABELS[groupKey]}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {groupItems.map((item) => {
                 const isActive = location.pathname === item.url;
                 const categoryAccounts = getAccountsForCategory(accounts, item.platforms);
                 const hasConnect = item.platforms.length > 0;
                 const section = sectionForNavItemKey(item.key);
                 const selectedAccountId = section ? getSelectedAccountId(section) : null;
 
+                const navBadge = getNavBadge(
+                  item.key,
+                  aiActiveCount,
+                  tasksOverdueCount
+                );
+
                 return (
                   <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton asChild>
                       <NavLink
-                        to={item.url}
+                        to={navBadge?.href ?? item.url}
                         end
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                        onPointerEnter={() => prefetchFor(item.url)}
+                        onFocus={() => prefetchFor(item.url)}
+                        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
-                            ? "bg-accent text-foreground glow-sm"
+                            ? "bg-accent text-foreground shadow-[inset_2px_0_0_0_hsl(var(--primary))]"
                             : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                         }`}
                         activeClassName=""
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span className="text-sm font-medium">{item.title}</span>
+                        <item.icon
+                          className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        />
+                        <span
+                          className={`text-sm flex-1 ${
+                            isActive ? "font-semibold" : "font-medium"
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+                        {navBadge ? (
+                          <NavCountBadge
+                            count={navBadge.count}
+                            ariaLabel={navBadge.ariaLabel}
+                            tone={navBadge.tone}
+                          />
+                        ) : null}
                       </NavLink>
                     </SidebarMenuButton>
                     {!item.hideAccounts && (
@@ -497,8 +663,8 @@ export function AppSidebar() {
                               : "border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50"
                           }`}
                         >
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80">Total overview</p>
-                          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Total overview</p>
+                          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                             <span>Accounts: {numberFormatter.format(socialOverview.connected)}</span>
                             <span>
                               Followers:{" "}
@@ -541,7 +707,7 @@ export function AppSidebar() {
                                 <span className="truncate">{account.username}</span>
                               </span>
                               {account.stats && (account.stats.followersCount != null || account.stats.mediaCount != null) && (
-                                <span className="text-[10px] text-muted-foreground pl-7">
+                                <span className="text-[11px] text-muted-foreground pl-7">
                                   {account.stats.followersCount != null && (
                                     <>
                                       {account.stats.followersCount.toLocaleString("en-US")}
@@ -564,10 +730,11 @@ export function AppSidebar() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-5 w-5 shrink-0 opacity-0 group-hover/sub:opacity-100"
+                                  className="h-5 w-5 shrink-0 opacity-0 group-hover/sub:opacity-100 focus-visible:opacity-100"
                                   onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Account actions for ${account.username}`}
                                 >
-                                  <MoreHorizontal className="h-3 w-3" />
+                                  <MoreHorizontal className="h-3 w-3" aria-hidden />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -749,6 +916,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+          );
+        })}
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
@@ -762,18 +931,22 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarFooter>
 
-      <ZernioLinkDialog
-        open={zernioOpen}
-        onOpenChange={setZernioOpen}
-        zernioFilter={zernioFilter}
-        zernioAccounts={zernioAccounts}
-        zernioLoading={zernioLoading}
-        zernioLinking={zernioLinking}
-        zernioError={zernioError}
-        onRefresh={loadZernioAccounts}
-        onLink={handleLinkZernioAccount}
-        platformIcons={platformIcons}
-      />
+      {zernioOpen ? (
+        <Suspense fallback={null}>
+          <ZernioLinkDialog
+            open={zernioOpen}
+            onOpenChange={setZernioOpen}
+            zernioFilter={zernioFilter}
+            zernioAccounts={zernioAccounts}
+            zernioLoading={zernioLoading}
+            zernioLinking={zernioLinking}
+            zernioError={zernioError}
+            onRefresh={loadZernioAccounts}
+            onLink={handleLinkZernioAccount}
+            platformIcons={platformIcons}
+          />
+        </Suspense>
+      ) : null}
 
       <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
         <DialogContent className="sm:max-w-sm">

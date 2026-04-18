@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { ZernioModule } from "../providers/zernioModule.ts";
 
 const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayName?: string) => string> = {
   facebook: (username) => `https://facebook.com/${username}`,
@@ -33,29 +34,19 @@ type ZernioAccount = Record<string, unknown> & {
   website?: string;
 };
 
-async function fetchZernioAccounts(
-  ZERNIO_API_BASE: string,
-  zh: Record<string, string> | null,
-  normalizeZernioAccountsPayload: (body: unknown) => unknown[]
-) {
-  const r = await fetch(`${ZERNIO_API_BASE}/accounts`, { headers: zh || {} });
-  const body = await r.json().catch(() => ({}));
-  const rawList: ZernioAccount[] = r.ok ? (normalizeZernioAccountsPayload(body) as ZernioAccount[]) : [];
-  return { r, body, rawList };
+interface AccountRoutesDeps {
+  zernio: ZernioModule;
+  ERR_NO_ZERNIO_KEY: string;
+  mapZernioPlatform: (raw: string | undefined) => string | null;
+  tokenStore: {
+    set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
+    entries: () => Promise<Array<[string, Record<string, unknown>]>>;
+  };
+  getSessionUserId: (req: unknown) => string | null;
 }
 
-export function registerAccountRoutes(
-  app,
-  {
-    zernioAuthHeaders,
-    ERR_NO_ZERNIO_KEY,
-    ZERNIO_API_BASE,
-    normalizeZernioAccountsPayload,
-    mapZernioPlatform,
-    tokenStore,
-    getSessionUserId,
-  }
-) {
+export function registerAccountRoutes(app, deps: AccountRoutesDeps) {
+  const { zernio, ERR_NO_ZERNIO_KEY, mapZernioPlatform, tokenStore, getSessionUserId } = deps;
   function isAccessibleOwner(stored: Record<string, unknown>, userId: string) {
     const ownerUserId = stored.ownerUserId ? String(stored.ownerUserId) : "";
     if (!ownerUserId) return { allowed: true, migrate: true };
@@ -135,23 +126,18 @@ export function registerAccountRoutes(
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    const zh = zernioAuthHeaders();
-    if (!zh) {
-      return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
-    }
     try {
-      const { r, body, rawList } = await fetchZernioAccounts(
-        ZERNIO_API_BASE,
-        zh,
-        normalizeZernioAccountsPayload
-      );
-      if (!r.ok) {
-        return res.status(r.status).json({
-          error: body.message || body.error || "Failed to fetch Zernio accounts",
-          details: body,
+      const result = await zernio.listAccounts();
+      if (!result.ok) {
+        if (result.status === 503) {
+          return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
+        }
+        return res.status(result.status).json({
+          error: result.error || "Failed to fetch Zernio accounts",
+          details: result.details,
         });
       }
-      const accounts = rawList
+      const accounts = (result.accounts as ZernioAccount[])
         .map((a) => {
           const rawPlatform = a.platform || a.type || a.provider || a.channel;
           const mappedPlatform = mapZernioPlatform(rawPlatform);
@@ -175,19 +161,17 @@ export function registerAccountRoutes(
     if (!zernioAccountId) {
       return res.status(400).json({ error: "zernioAccountId is required" });
     }
-    const zh = zernioAuthHeaders();
-    if (!zh) {
-      return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
-    }
     try {
-      const { r, body, rawList } = await fetchZernioAccounts(
-        ZERNIO_API_BASE,
-        zh,
-        normalizeZernioAccountsPayload
-      );
-      if (!r.ok) {
-        return res.status(r.status).json({ error: body.message || body.error || "Failed to list Zernio accounts" });
+      const result = await zernio.listAccounts();
+      if (!result.ok) {
+        if (result.status === 503) {
+          return res.status(503).json({ error: ERR_NO_ZERNIO_KEY });
+        }
+        return res.status(result.status).json({
+          error: result.error || "Failed to list Zernio accounts",
+        });
       }
+      const rawList = result.accounts as ZernioAccount[];
       const acc = rawList.find(
         (a) =>
           String(a.id || a.accountId || a._id) === zernioAccountId ||

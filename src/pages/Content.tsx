@@ -12,8 +12,10 @@ import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErro
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { apiUrl } from "@/lib/apiBase";
-import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw } from "lucide-react";
+import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive } from "lucide-react";
 
 type DriveBrowserItem = {
   id: string;
@@ -270,8 +272,10 @@ export default function ContentPage() {
   }
 
   function toggleAsset(file: DriveBrowserItem, checked: boolean) {
-    if (file.kind === "folder") return;
-    const next = checked
+    // Only image/video assets are selectable as content — folders and
+    // non-media files (kind === "other") are not part of the selection model.
+    if (file.kind !== "image" && file.kind !== "video") return;
+    const next: SelectedContentAsset[] = checked
       ? [
           ...selectedAssets.filter((asset) => asset.id !== file.id),
           {
@@ -299,24 +303,41 @@ export default function ContentPage() {
 
   return (
     <div className="space-y-6 max-w-6xl w-full mx-auto">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Content</h1>
-          <p className="text-muted-foreground mt-1">Connect Google Drive, browse folders, and mark media for creation.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => void connectDrive()} disabled={isConnecting}>
-            {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FolderOpen className="h-4 w-4 mr-2" />}
-            Connect Google Drive
-          </Button>
-          {activeAccount && (
-            <Button variant="ghost" onClick={() => void refresh()} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Refresh
+      <PageHeader
+        icon={FolderOpen}
+        title="Content"
+        description="Connect Google Drive, browse folders, and mark media for creation."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => void connectDrive()}
+              disabled={isConnecting}
+            >
+              {isConnecting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <FolderOpen className="h-4 w-4 mr-2" />
+              )}
+              Connect Google Drive
             </Button>
-          )}
-        </div>
-      </div>
+            {activeAccount ? (
+              <Button
+                variant="ghost"
+                onClick={() => void refresh()}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       <SectionConnectionStatus area="content" className="mt-0" />
 
@@ -412,12 +433,16 @@ export default function ContentPage() {
       </Card>
 
       {driveAccounts.length === 0 ? (
-        <Card className="bg-card border-border border-dashed">
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground mb-2">No Google Drive account connected yet.</p>
-            <p className="text-sm text-muted-foreground/80">Connect Drive first, then you can browse folders and mark media here.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={HardDrive}
+          title="No Google Drive account connected yet"
+          description="Connect Drive first, then you can browse folders and mark media here."
+          action={
+            <Button onClick={() => void connectDrive()} disabled={isConnecting}>
+              {isConnecting ? "Connecting…" : "Connect Google Drive"}
+            </Button>
+          }
+        />
       ) : loading && items.length === 0 ? (
         <Card className="bg-card border-border">
           <CardContent className="py-10 flex items-center justify-center text-muted-foreground gap-3">

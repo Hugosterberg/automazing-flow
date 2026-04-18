@@ -36,7 +36,7 @@ export function ActiveProfileContextBar() {
           <Building2 className="h-4 w-4 text-muted-foreground" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground leading-none">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground leading-none">
             Working as
           </p>
           <p className="truncate text-sm font-semibold leading-tight mt-1">{activeProfile?.name ?? "—"}</p>
@@ -55,7 +55,7 @@ export function ActiveProfileContextBar() {
         <span className="text-xs text-muted-foreground tabular-nums">
           {channelCount} channel{channelCount === 1 ? "" : "s"}
         </span>
-        <span className="text-[10px] text-muted-foreground/80 max-w-[140px] truncate">this profile only</span>
+        <span className="text-[11px] text-muted-foreground/80 max-w-[140px] truncate">this profile only</span>
       </div>
 
       <Button variant="outline" size="sm" className="hidden sm:inline-flex shrink-0 gap-1.5 h-8" asChild>

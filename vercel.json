@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/cleanup-oauth-pending",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-ai-recommendations",
+      "schedule": "0 */12 * * *"
     }
   ],
   "rewrites": [

@@ -100,8 +100,14 @@ export function ProfileSwitcher() {
                       className="h-7 text-xs flex-1"
                       autoFocus
                     />
-                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleSaveRename}>
-                      <Check className="h-3 w-3" />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0"
+                      onClick={handleSaveRename}
+                      aria-label="Save profile name"
+                    >
+                      <Check className="h-3 w-3" aria-hidden />
                     </Button>
                   </div>
                 ) : (
@@ -124,7 +130,7 @@ export function ProfileSwitcher() {
                     >
                       {getAccountCount(profile.id)}
                     </span>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -134,8 +140,9 @@ export function ProfileSwitcher() {
                           setEditingId(profile.id);
                           setEditName(profile.name);
                         }}
+                        aria-label={`Rename profile ${profile.name}`}
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="h-3 w-3" aria-hidden />
                       </Button>
                       {profiles.length > 1 && (
                         <Button
@@ -146,8 +153,9 @@ export function ProfileSwitcher() {
                             e.stopPropagation();
                             setDeleteTarget({ id: profile.id, name: profile.name });
                           }}
+                          aria-label={`Delete profile ${profile.name}`}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3" aria-hidden />
                         </Button>
                       )}
                     </div>
@@ -166,8 +174,14 @@ export function ProfileSwitcher() {
                 onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
                 className="h-8 text-sm"
               />
-              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleAddProfile}>
-                <Plus className="h-4 w-4" />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0"
+                onClick={handleAddProfile}
+                aria-label="Add business profile"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
               </Button>
             </div>
           </div>

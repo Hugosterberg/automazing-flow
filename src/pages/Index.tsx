@@ -1,27 +1,26 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
-  Zap,
-  Megaphone,
-  BriefcaseBusiness,
-  LineChart,
-  Users,
-  CalendarDays,
-  MessageSquare,
-  Settings,
-  Info,
   Trash2,
-  Star,
-  Menu,
   Pencil,
   FolderOpen,
   PlugZap,
   Share2,
+  ListChecks,
+  Sparkles,
+  AlertTriangle,
+  ArrowRight,
+  Activity as ActivityIcon,
 } from "lucide-react";
-import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,11 +33,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { AiRecommendationsWidget } from "@/features/ai-recommendations";
+import { useAiRecommendations } from "@/features/ai-recommendations";
+import {
+  useTasks,
+  isTaskOpen,
+  isTaskOverdue,
+  isTaskDueToday,
+} from "@/features/tasks";
+import { pageFadeUp } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 const PLATFORM_LABEL: Record<string, string> = {
   instagram: "Instagram",
@@ -59,84 +69,113 @@ const PLATFORM_LABEL: Record<string, string> = {
   google_drive: "Google Drive",
 };
 
-const areas = [
-  {
-    title: "Social Media",
-    desc: "Schedule, analyze and automate your social channels",
-    icon: Megaphone,
-    url: "/social-media",
-    ready: true,
-  },
-  {
-    title: "Organization & Management",
-    desc: "Operations, workflows and business management in one place",
-    icon: BriefcaseBusiness,
-    url: "/ecommerce",
-    ready: true,
-  },
-  {
-    title: "Sales & Marketing",
-    desc: "Track growth goals, campaigns and sales performance",
-    icon: LineChart,
-    url: "/sales-marketing",
-    ready: true,
-  },
-  {
-    title: "Customers",
-    desc: "Keep customer context, segments and relationship insights",
-    icon: Users,
-    url: "/customers",
-    ready: true,
-  },
-  {
-    title: "Calendar",
-    desc: "Smart scheduling and automated reminders",
-    icon: CalendarDays,
-    url: "/calendar",
-    ready: true,
-  },
-  {
-    title: "Messages",
-    desc: "Email and social DMs from all connected accounts",
-    icon: MessageSquare,
-    url: "/messages",
-    ready: true,
-  },
-  {
-    title: "Reviews",
-    desc: "Monitor and respond to customer reviews",
-    icon: Star,
-    url: "/reviews",
-    ready: true,
-  },
-  {
-    title: "Content",
-    desc: "Browse Google Drive media and mark it for creation workflows",
-    icon: FolderOpen,
-    url: "/content",
-    ready: true,
-  },
-  {
-    title: "AI Recommendations",
-    desc: "AI-powered suggestions and recommendations",
-    icon: LightbulbGlowIcon,
-    url: "/ai-recommendations",
-    ready: false,
-  },
-  {
-    title: "Preferences",
-    desc: "Settings, theme and security",
-    icon: Settings,
-    url: "/preferences",
-    ready: false,
-  },
-];
+/**
+ * Today tile — one compact stat with a deep-link. Rendered in the home
+ * dashboard grid. Uses tone to map metric to severity so the page reads
+ * at a glance without requiring legends.
+ */
+function TodayTile({
+  title,
+  value,
+  hint,
+  icon: Icon,
+  to,
+  tone = "default",
+  onPrefetch,
+}: {
+  title: string;
+  value: React.ReactNode;
+  hint?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  to: string;
+  tone?: "default" | "warning" | "info" | "success";
+  onPrefetch?: (to: string) => void;
+}) {
+  const toneAccent =
+    tone === "warning"
+      ? "text-warning"
+      : tone === "info"
+        ? "text-info"
+        : tone === "success"
+          ? "text-success"
+          : "text-primary";
+  return (
+    <Link
+      to={to}
+      onPointerEnter={() => onPrefetch?.(to)}
+      onFocus={() => onPrefetch?.(to)}
+      className={cn(
+        "group block rounded-xl border border-border bg-card px-4 py-4 transition-colors",
+        "hover:border-primary/40 hover:bg-accent/40"
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <Icon className={cn("h-4 w-4", toneAccent)} />
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      <p className="mt-3 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-xs font-medium text-muted-foreground mt-0.5">{title}</p>
+      {hint ? (
+        <p className="text-[11px] text-muted-foreground/80 mt-1">{hint}</p>
+      ) : null}
+    </Link>
+  );
+}
+
+/**
+ * Compact card for the "Jump to" row at the bottom of the home page.
+ * Mirrors the visual language of the AI widget: tinted icon box, left-
+ * aligned title + description, hover arrow cue. Kept intentionally quiet
+ * so the Today dashboard and AI widget remain the primary focus.
+ */
+function JumpCard({
+  to,
+  icon: Icon,
+  title,
+  description,
+  onPrefetch,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  onPrefetch?: (to: string) => void;
+}) {
+  return (
+    <Link
+      to={to}
+      onPointerEnter={() => onPrefetch?.(to)}
+      onFocus={() => onPrefetch?.(to)}
+      className={cn(
+        "group flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors",
+        "hover:border-primary/40 hover:bg-accent/40"
+      )}
+    >
+      <div className="rounded-md bg-muted/60 p-2 shrink-0 group-hover:bg-primary/10 transition-colors">
+        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-semibold text-foreground truncate">
+            {title}
+          </p>
+          <ArrowRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+          {description}
+        </p>
+      </div>
+    </Link>
+  );
+}
 
 export default function Index() {
-  const navigate = useNavigate();
-  const { activeProfile, profiles, accounts, removeProfile, updateProfile } = useAccounts();
+  const { activeProfile, profiles, accounts, removeProfile, updateProfile, activeProfileId } =
+    useAccounts();
+  const activeBpId = useActiveBusinessProfileIdOptional();
+  const homeBusinessProfileId = activeBpId ?? activeProfileId ?? null;
+  const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -148,6 +187,84 @@ export default function Index() {
     notes: "",
   });
 
+  const { tasks } = useTasks(homeBusinessProfileId);
+  const { recommendations } = useAiRecommendations(homeBusinessProfileId);
+
+  // Split open tasks by urgency so the home tile can surface the most
+  // actionable bucket first (overdue → due-today → open). Without this the
+  // user sees a generic "12 open tasks" number with no sense of what
+  // actually needs attention today.
+  const { openTasks, overdueTasks, dueTodayTasks } = useMemo(() => {
+    const nowMs = Date.now();
+    const open = tasks.filter(isTaskOpen);
+    const overdue = open.filter((t) => isTaskOverdue(t, nowMs));
+    const dueToday = open.filter((t) => isTaskDueToday(t, nowMs));
+    return { openTasks: open, overdueTasks: overdue, dueTodayTasks: dueToday };
+  }, [tasks]);
+
+  /**
+   * Derive the headline number shown in the Tasks tile. Prioritised
+   * so the most urgent bucket always wins the value slot: overdue →
+   * due-today → open → all clear. `to` deep-links into the matching
+   * /tasks view so clicking the tile lands on exactly the list that
+   * produced the count.
+   */
+  const tasksTile = useMemo(() => {
+    if (overdueTasks.length > 0) {
+      const dueTodayHint =
+        dueTodayTasks.length > 0
+          ? `+${dueTodayTasks.length} due today`
+          : `${openTasks.length - overdueTasks.length} more open`;
+      return {
+        title: "Overdue tasks",
+        value: overdueTasks.length,
+        hint: dueTodayHint,
+        tone: "warning" as const,
+        to: "/tasks?view=overdue",
+      };
+    }
+    if (dueTodayTasks.length > 0) {
+      return {
+        title: "Due today",
+        value: dueTodayTasks.length,
+        hint: `${openTasks.length - dueTodayTasks.length} more open`,
+        tone: "info" as const,
+        to: "/tasks",
+      };
+    }
+    if (openTasks.length > 0) {
+      return {
+        title: "Open tasks",
+        value: openTasks.length,
+        hint: `${tasks.length - openTasks.length} completed`,
+        tone: "default" as const,
+        to: "/tasks",
+      };
+    }
+    return {
+      title: "Open tasks",
+      value: 0,
+      hint: "All tasks done — nice.",
+      tone: "success" as const,
+      to: "/tasks",
+    };
+  }, [openTasks, overdueTasks, dueTodayTasks, tasks.length]);
+  const activeRecs = useMemo(
+    () =>
+      recommendations.filter(
+        (r) => r.status === "new" || r.status === "seen"
+      ),
+    [recommendations]
+  );
+  const connectionIssues = useMemo(() => {
+    // Surface connections that need user attention. We treat anything
+    // other than "healthy" as an issue so the home dashboard is honest
+    // about what the user still needs to fix.
+    return accounts.filter(
+      (a) => a.health && a.health !== "healthy" && a.health !== "pending"
+    );
+  }, [accounts]);
+
   const profileSummary = useMemo(() => {
     const connectedCount = accounts.length;
     const grouped = accounts.reduce<Record<string, number>>((acc, account) => {
@@ -155,37 +272,25 @@ export default function Index() {
       return acc;
     }, {});
     const platformText = Object.entries(grouped)
-      .map(([platform, count]) => `${PLATFORM_LABEL[platform] || platform} (${count})`)
+      .map(
+        ([platform, count]) => `${PLATFORM_LABEL[platform] || platform} (${count})`
+      )
       .join(", ");
 
-    const withLoadedData = accounts.filter((a) => Boolean(a.stats || a.analysis)).length;
+    const withLoadedData = accounts.filter(
+      (a) => Boolean(a.stats || a.analysis)
+    ).length;
     const firstAnalysis = accounts.find(
       (a) => a.analysis?.about || a.analysis?.writes || a.analysis?.perception
     )?.analysis;
     const profileText =
-      firstAnalysis?.about || firstAnalysis?.writes || firstAnalysis?.perception || "";
+      firstAnalysis?.about ||
+      firstAnalysis?.writes ||
+      firstAnalysis?.perception ||
+      "";
 
     return { connectedCount, platformText, withLoadedData, profileText };
   }, [accounts]);
-
-  useEffect(() => {
-    const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-area-card]"));
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-change",
-      hypothesisId: "A2",
-      location: "Index:area-cards",
-      message: "Home area card heights after equal-size layout",
-      data: {
-        count: cards.length,
-        heights: cards.map((c) => c.offsetHeight),
-        titles: cards.map((c) => c.getAttribute("data-area-title")),
-      },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, []);
 
   useEffect(() => {
     if (!activeProfile) return;
@@ -207,200 +312,180 @@ export default function Index() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="fixed top-4 left-4 z-40">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setMenuOpen(true)}
-          className="h-9 w-9 border-border bg-card/90 backdrop-blur hover:bg-accent"
-          aria-label="Open menu"
-        >
-          <Menu className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent
-          side="left"
-          className="w-[280px] sm:w-[320px] bg-sidebar text-sidebar-foreground border-sidebar-border p-0 [&>button]:text-muted-foreground"
-        >
-          <div className="flex h-full flex-col">
-            <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-foreground">automazing</span>
-            </div>
-            <div className="flex-1 overflow-auto px-3 py-3 sidebar-scroll">
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    navigate("/");
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                >
-                  Home
-                </button>
-                {areas.map((area) => (
-                  <button
-                    key={area.title}
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate(area.url);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                  >
-                    {area.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center max-w-3xl space-y-6"
-      >
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center glow-md">
-            <Zap className="h-6 w-6 text-primary-foreground" />
-          </div>
-        </div>
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight">
-          auto<span className="text-muted-foreground">mazing</span>
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-          Run brands or clients from one login. Each profile keeps its own channels, content picks, and
-          context—switch before you work so nothing bleeds across businesses.
+    <m.div
+      {...pageFadeUp}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col space-y-6 max-w-5xl w-full mx-auto"
+    >
+      <header className="flex flex-col gap-1">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Home
         </p>
-      </motion.div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          {activeProfile?.name || "Active profile"}
+        </h1>
+        {profileSummary.connectedCount > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {profileSummary.connectedCount} connected account
+            {profileSummary.connectedCount === 1 ? "" : "s"}
+            {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No integrations connected yet. Start on the Connections page.
+          </p>
+        )}
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="mt-10"
-      >
-        <ProfileList />
-      </motion.div>
+      <ProfileList />
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
-        className="mt-6 max-w-4xl w-full"
-      >
-        <Card className="bg-card border-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_34px_rgba(255,255,255,0.28)]">
-          <CardContent className="relative p-5">
-            {activeProfile && profiles.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteOpen(true)}
-                className="absolute right-5 top-5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
-                aria-label={`Delete profile ${activeProfile.name}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-            {activeProfile && (
+      <section aria-label="Today" className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Today</h2>
+          <Link
+            to="/activity"
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1"
+          >
+            <ActivityIcon className="h-3 w-3" />
+            Activity feed
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <TodayTile
+            title={tasksTile.title}
+            value={tasksTile.value}
+            hint={tasksTile.hint}
+            icon={ListChecks}
+            to={tasksTile.to}
+            tone={tasksTile.tone}
+            onPrefetch={prefetchFor}
+          />
+          <TodayTile
+            title="Active AI recommendations"
+            value={activeRecs.length}
+            hint={
+              activeRecs.length === 0
+                ? "Run Generate on /ai-recommendations"
+                : "Review and accept or dismiss"
+            }
+            icon={Sparkles}
+            to="/ai-recommendations"
+            tone={activeRecs.length > 0 ? "info" : "default"}
+            onPrefetch={prefetchFor}
+          />
+          <TodayTile
+            title="Connection issues"
+            value={connectionIssues.length}
+            hint={
+              connectionIssues.length === 0
+                ? "All healthy"
+                : "Reconnect or resync needed"
+            }
+            icon={AlertTriangle}
+            to="/connections"
+            tone={connectionIssues.length > 0 ? "warning" : "success"}
+            onPrefetch={prefetchFor}
+          />
+        </div>
+      </section>
+
+      {activeProfile ? (
+        <section aria-label="Active profile" className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-foreground">
+              Profile details
+            </h2>
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
-                className="absolute left-5 top-5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 transition-colors"
+                className="inline-flex h-6 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 transition-colors"
                 aria-label={`Edit profile ${activeProfile.name}`}
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <Pencil className="h-3 w-3" />
+                Edit
               </button>
-            )}
-            <div className="flex flex-col items-center text-center space-y-2.5">
-              <h2 className="text-xl font-semibold tracking-tight w-full">
-                {activeProfile?.name || "Active profile"}
-              </h2>
-              <p className="text-sm text-muted-foreground max-w-2xl">
-                {profileSummary.connectedCount} connected account
-                {profileSummary.connectedCount === 1 ? "" : "s"}
-                {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
-              </p>
-              <p className="text-xs text-muted-foreground/80">
-                Loaded profile data from {profileSummary.withLoadedData} of {profileSummary.connectedCount} account
+              {profiles.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
+                  aria-label={`Delete profile ${activeProfile.name}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 space-y-2 text-sm">
+              <p className="text-muted-foreground">
+                Loaded profile data from {profileSummary.withLoadedData} of{" "}
+                {profileSummary.connectedCount} account
                 {profileSummary.connectedCount === 1 ? "" : "s"}.
               </p>
-              <Link
-                to="/integrations"
-                className="inline-flex items-center justify-center rounded-md border border-white/25 bg-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-white/45 hover:text-foreground"
-              >
-                Connection map & status
-              </Link>
-              {profileSummary.profileText && (
-                <p className="text-sm text-muted-foreground border-t border-border pt-2 max-w-2xl">
+              {profileSummary.profileText ? (
+                <p className="text-foreground border-t border-border/70 pt-2">
                   {profileSummary.profileText}
                 </p>
-              )}
-              {(activeProfile?.website || activeProfile?.email || activeProfile?.phone || activeProfile?.location) && (
-                <p className="text-xs text-muted-foreground/80 border-t border-border pt-2 max-w-2xl">
+              ) : null}
+              {(activeProfile.website ||
+                activeProfile.email ||
+                activeProfile.phone ||
+                activeProfile.location) && (
+                <p className="text-xs text-muted-foreground/80 border-t border-border/70 pt-2">
                   {activeProfile.website ? `Website: ${activeProfile.website}` : ""}
-                  {activeProfile.website && (activeProfile.email || activeProfile.phone || activeProfile.location) ? " · " : ""}
+                  {activeProfile.website &&
+                  (activeProfile.email ||
+                    activeProfile.phone ||
+                    activeProfile.location)
+                    ? " · "
+                    : ""}
                   {activeProfile.email ? `Email: ${activeProfile.email}` : ""}
-                  {activeProfile.email && (activeProfile.phone || activeProfile.location) ? " · " : ""}
+                  {activeProfile.email &&
+                  (activeProfile.phone || activeProfile.location)
+                    ? " · "
+                    : ""}
                   {activeProfile.phone ? `Phone: ${activeProfile.phone}` : ""}
                   {activeProfile.phone && activeProfile.location ? " · " : ""}
                   {activeProfile.location ? `Location: ${activeProfile.location}` : ""}
                 </p>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.28 }}
-        className="mt-8 max-w-4xl w-full"
-      >
-        <p className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-          Next steps for {activeProfile?.name ?? "this profile"}
-        </p>
+      {homeBusinessProfileId ? (
+        <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
+      ) : null}
+
+      <section aria-label="Jump to" className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Jump to</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
-            <Link to="/integrations">
-              <span className="flex items-center justify-center gap-2 font-medium">
-                <PlugZap className="h-4 w-4 shrink-0" />
-                Integrations overview
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">
-                What is linked, what is missing, server requirements
-              </span>
-            </Link>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
-            <Link to="/social-media">
-              <span className="flex items-center justify-center gap-2 font-medium">
-                <Share2 className="h-4 w-4 shrink-0" />
-                Social & analytics
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">Posts, metrics, overview</span>
-            </Link>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex flex-col items-stretch gap-1" asChild>
-            <Link to="/content">
-              <span className="flex items-center justify-center gap-2 font-medium">
-                <FolderOpen className="h-4 w-4 shrink-0" />
-                Content library
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">Drive assets & creation flow</span>
-            </Link>
-          </Button>
+          <JumpCard
+            to="/connections"
+            icon={PlugZap}
+            title="Connections"
+            description="Linked accounts, health and re-auth"
+            onPrefetch={prefetchFor}
+          />
+          <JumpCard
+            to="/social-media"
+            icon={Share2}
+            title="Social & analytics"
+            description="Posts, metrics and overview"
+            onPrefetch={prefetchFor}
+          />
+          <JumpCard
+            to="/content"
+            icon={FolderOpen}
+            title="Content library"
+            description="Drive assets and creation flow"
+            onPrefetch={prefetchFor}
+          />
         </div>
-      </motion.div>
+      </section>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -416,7 +501,9 @@ export default function Index() {
               <Input
                 id="profile-name"
                 value={profileForm.name}
-                onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, name: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -424,7 +511,9 @@ export default function Index() {
               <Input
                 id="profile-company"
                 value={profileForm.company}
-                onChange={(e) => setProfileForm((p) => ({ ...p, company: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, company: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -432,7 +521,9 @@ export default function Index() {
               <Input
                 id="profile-location"
                 value={profileForm.location}
-                onChange={(e) => setProfileForm((p) => ({ ...p, location: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, location: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -441,7 +532,9 @@ export default function Index() {
                 id="profile-email"
                 type="email"
                 value={profileForm.email}
-                onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, email: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -449,7 +542,9 @@ export default function Index() {
               <Input
                 id="profile-phone"
                 value={profileForm.phone}
-                onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, phone: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -458,7 +553,9 @@ export default function Index() {
                 id="profile-website"
                 placeholder="https://example.com"
                 value={profileForm.website}
-                onChange={(e) => setProfileForm((p) => ({ ...p, website: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, website: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -467,7 +564,9 @@ export default function Index() {
                 id="profile-notes"
                 placeholder="Short profile notes"
                 value={profileForm.notes}
-                onChange={(e) => setProfileForm((p) => ({ ...p, notes: e.target.value }))}
+                onChange={(e) =>
+                  setProfileForm((p) => ({ ...p, notes: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -482,11 +581,14 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      <AlertDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+      >
         <AlertDialogContent className="sm:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              You want to delete profile "{activeProfile?.name || ""}"?
+              You want to delete profile &quot;{activeProfile?.name || ""}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
               It means the analysis of all connected accounts will be removed.
@@ -507,48 +609,6 @@ export default function Index() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-14 max-w-4xl w-full">
-        {areas.map((area, i) => (
-          <motion.div
-            key={area.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-            className="h-full"
-          >
-            <Card
-              data-area-card
-              data-area-title={area.title}
-              onClick={() => navigate(area.url)}
-              className="bg-card border-border glow-border hover:bg-white hover:border-white/90 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.75),0_0_44px_rgba(255,255,255,0.45)] transition-all duration-300 cursor-pointer group h-full"
-            >
-              <CardContent className="relative p-6 h-full min-h-[192px] text-center">
-                <div className="absolute left-1.5 bottom-1.5 z-10 group/info">
-                  <button
-                    type="button"
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-border text-muted-foreground/80 hover:text-foreground hover:border-muted-foreground/50 transition-colors"
-                    aria-label={`Info: ${area.title}`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Info className="h-2.5 w-2.5" />
-                  </button>
-                  <div className="pointer-events-none absolute left-5 bottom-0 w-40 rounded border border-border bg-popover/95 px-2 py-1.5 text-[10px] leading-tight text-popover-foreground opacity-0 shadow-sm transition-opacity duration-150 group-hover/info:opacity-100 group-focus-within/info:opacity-100 whitespace-normal break-words">
-                    {area.desc}
-                  </div>
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-24 flex flex-col items-center">
-                    <area.icon className="h-10 w-10 text-muted-foreground group-hover:text-zinc-700 transition-colors" />
-                    <h3 className="mt-2 text-[11px] leading-tight text-muted-foreground group-hover:text-zinc-700 font-medium text-center w-full">
-                      {area.title}
-                    </h3>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-    </div>
+    </m.div>
   );
 }

@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { LineChart, Megaphone, Target } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -11,7 +11,7 @@ const features = [
 export default function SalesMarketingPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-2xl mx-auto">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -26,7 +26,7 @@ export default function SalesMarketingPage() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
           {features.map((f, i) => (
-            <motion.div
+            <m.div
               key={f.title}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -39,10 +39,10 @@ export default function SalesMarketingPage() {
                   <p className="text-xs text-muted-foreground">{f.desc}</p>
                 </CardContent>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

@@ -22,7 +22,9 @@
     "verify": "npm run typecheck:server && npm test && npm run build",
     "supabase:link": "npx supabase link --project-ref plkptubozuzeieurxsok",
     "supabase:migration:new": "npx supabase migration new",
-    "supabase:db:push": "npx supabase db push"
+    "supabase:db:push": "npx supabase db push",
+    "supabase:gen:types": "npx supabase gen types typescript --linked --schema public > src/types/supabase.ts",
+    "verify:supabase": "node --experimental-strip-types scripts/verify-supabase.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

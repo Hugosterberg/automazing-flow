@@ -1,0 +1,287 @@
+import { formatRelativeTime } from "@/lib/relativeTime";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Connection } from "@/types/connection";
+import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
+import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
+import { statusFromConnection } from "./connectionStatus";
+import { useSyncRuns, type SyncRunRow } from "./useSyncRuns";
+import { ActivityFeed, useActivityFeed } from "@/features/activity";
+
+interface Props {
+  connection: Connection | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReconnect?: (connection: Connection) => void;
+  onResync?: (connection: Connection) => void;
+  onDisconnect?: (connection: Connection) => void;
+  onResume?: (connection: Connection) => void;
+  isDisconnecting?: boolean;
+  isResuming?: boolean;
+}
+
+function safeRelative(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return formatRelativeTime(iso) ?? iso.slice(0, 19);
+}
+
+function SyncRunItem({ run }: { run: SyncRunRow }) {
+  const finished = safeRelative(run.finished_at) ?? safeRelative(run.started_at);
+  const icon =
+    run.status === "success" ? (
+      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+    ) : run.status === "failed" ? (
+      <XCircle className="h-3.5 w-3.5 text-destructive" />
+    ) : run.status === "partial" ? (
+      <CheckCircle2 className="h-3.5 w-3.5 text-warning" />
+    ) : run.status === "cancelled" ? (
+      <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+    ) : (
+      <Loader2 className="h-3.5 w-3.5 text-info animate-spin" />
+    );
+
+  return (
+    <li className="rounded-md border border-border/70 bg-muted/20 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="flex items-center gap-1.5 font-medium text-foreground capitalize">
+          {icon}
+          {run.kind} · {run.status}
+        </span>
+        {finished ? (
+          <span className="text-[11px] text-muted-foreground tabular-nums">{finished}</span>
+        ) : null}
+      </div>
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground tabular-nums">
+        <span>{run.items_processed} items</span>
+        {run.error_message ? (
+          <span className="text-destructive break-words">{run.error_message}</span>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * Side-sheet with the full picture for a single connection: identity, timing,
+ * current health/status, recent sync runs, and primary actions. Kept read-
+ * mostly: mutations bubble back up to the parent page so we don't duplicate
+ * React Query wiring here.
+ */
+export function ConnectionDetailsDrawer({
+  connection,
+  open,
+  onOpenChange,
+  onReconnect,
+  onResync,
+  onDisconnect,
+  onResume,
+  isDisconnecting,
+  isResuming,
+}: Props) {
+  const { runs, lastSuccessfulAt: derivedLastOk, isLoading: runsLoading } = useSyncRuns(
+    connection?.id
+  );
+  // Recent activity events *about this connection*. Tenant-scoped by
+  // business_profile_id, narrowed to subject_id = connection.id so the drawer
+  // stays focused (no unrelated events for the wider tenant).
+  const { events: activityEvents, isLoading: activityLoading } = useActivityFeed(
+    connection?.businessProfileId,
+    {
+      subjectType: "connected_account",
+      subjectId: connection?.id ?? null,
+      limit: 15,
+    }
+  );
+  // Prefer the denormalised value on the connection row — it's written by
+  // the server after every successful sync and avoids waiting on sync_runs.
+  // Falls back to the client-side derivation for rows that haven't had a
+  // successful run yet (or for platforms not writing sync_runs).
+  const effectiveLastOk = connection?.lastSuccessfulSyncAt ?? derivedLastOk;
+
+  if (!connection) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="sm:max-w-lg" />
+      </Sheet>
+    );
+  }
+
+  const status = statusFromConnection(connection);
+  const isPaused = status === "paused";
+  const connectedAgo = safeRelative(connection.connectedAt);
+  const lastSyncAgo = safeRelative(connection.lastSyncedAt);
+  const lastOkAgo = safeRelative(effectiveLastOk);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-lg flex flex-col gap-0 p-0">
+        <SheetHeader className="px-5 pt-5 pb-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-base truncate">
+              {connection.displayName || connection.username}
+            </SheetTitle>
+            <ConnectionStatusBadge status={status} />
+          </div>
+          <SheetDescription className="text-xs">
+            {connection.integration?.name ?? connection.platform} · @{connection.username}
+          </SheetDescription>
+        </SheetHeader>
+
+        <Separator />
+
+        <ScrollArea className="flex-1">
+          <div className="px-5 py-4 space-y-5">
+            <section className="space-y-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Identity
+              </h3>
+              <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
+                <dt className="text-muted-foreground">Platform</dt>
+                <dd className="col-span-2 font-mono">{connection.platform}</dd>
+                <dt className="text-muted-foreground">Provider</dt>
+                <dd className="col-span-2">
+                  {connection.isZernio ? "Zernio" : connection.isOAuth ? "Native OAuth" : "Manual"}
+                </dd>
+                {connection.zernioAccountId ? (
+                  <>
+                    <dt className="text-muted-foreground">Zernio ID</dt>
+                    <dd className="col-span-2 font-mono truncate">
+                      {connection.zernioAccountId}
+                    </dd>
+                  </>
+                ) : null}
+                <dt className="text-muted-foreground">Connection ID</dt>
+                <dd className="col-span-2 font-mono truncate">{connection.id}</dd>
+              </dl>
+            </section>
+
+            <section className="space-y-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Health
+              </h3>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <ConnectionHealthBadge health={connection.health} />
+                <ConnectionStatusBadge status={status} />
+              </div>
+              <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
+                <dt className="text-muted-foreground">Connected</dt>
+                <dd className="col-span-2">{connectedAgo ?? "—"}</dd>
+                <dt className="text-muted-foreground">Last sync</dt>
+                <dd className="col-span-2">{lastSyncAgo ?? "—"}</dd>
+                <dt className="text-muted-foreground">Last successful sync</dt>
+                <dd className="col-span-2">{lastOkAgo ?? "—"}</dd>
+                {connection.lastSyncError ? (
+                  <>
+                    <dt className="text-muted-foreground">Last error</dt>
+                    <dd className="col-span-2 text-destructive break-words">
+                      {connection.lastSyncError}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Recent sync runs
+                </h3>
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {runs.length}
+                </span>
+              </div>
+              {runsLoading ? (
+                <p className="text-xs text-muted-foreground">Loading runs…</p>
+              ) : runs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No sync runs recorded for this connection yet.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {runs.map((r) => (
+                    <SyncRunItem key={r.id} run={r} />
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Recent activity
+                </h3>
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {activityEvents.length}
+                </span>
+              </div>
+              <ActivityFeed
+                events={activityEvents}
+                isLoading={activityLoading}
+                emptyMessage="No activity recorded for this connection yet."
+                maxRows={10}
+              />
+            </section>
+          </div>
+        </ScrollArea>
+
+        <Separator />
+
+        <div className="px-5 py-3 flex flex-wrap gap-2">
+          {isPaused && onResume ? (
+            <Button
+              size="sm"
+              variant="default"
+              className="gap-1.5"
+              onClick={() => onResume(connection)}
+              disabled={isResuming}
+            >
+              {isResuming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Resume
+            </Button>
+          ) : null}
+          {!isPaused && onReconnect ? (
+            <Button
+              size="sm"
+              variant={status === "reconnect_required" ? "default" : "outline"}
+              className="gap-1.5"
+              onClick={() => onReconnect(connection)}
+            >
+              Reconnect
+            </Button>
+          ) : null}
+          {!isPaused && onResync ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => onResync(connection)}
+            >
+              Resync
+            </Button>
+          ) : null}
+          {!isPaused && onDisconnect ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 ml-auto text-destructive hover:text-destructive"
+              onClick={() => onDisconnect(connection)}
+              disabled={isDisconnecting}
+            >
+              {isDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Disconnect
+            </Button>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

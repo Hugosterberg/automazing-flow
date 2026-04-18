@@ -1,4 +1,83 @@
+/**
+ * OAuth routes for every connect flow supported by Automazing.
+ *
+ * Each platform has an `/api/auth/<platform>` init endpoint and a matching
+ * `/api/auth/<platform>/callback`. Where possible, flows are tunnelled through
+ * Zernio; otherwise they go against the provider's native OAuth endpoints.
+ *
+ * Cross-cutting state lives in `oauthPendingStore` (CSRF / PKCE state) and
+ * `tokenStore` (the persistent, Supabase-backed OAuth token entries).
+ */
+
 import crypto from "crypto";
+import type { ZernioModule } from "../providers/zernioModule.ts";
+
+interface OAuthPendingRecord {
+  platform: string;
+  userId?: string | null;
+  profileId?: string | null;
+  zernioProfileId?: string | null;
+  codeVerifier?: string;
+  createdAt?: number;
+  oauthReturnPage?: string | undefined;
+  [key: string]: unknown;
+}
+
+interface OAuthPendingStore {
+  get: (state: string | null | undefined) => Promise<OAuthPendingRecord | null>;
+  set: (state: string, value: OAuthPendingRecord) => Promise<unknown>;
+  delete: (state: string | null | undefined) => Promise<unknown>;
+  listZernioRecentForUser: (
+    userId: string
+  ) => Promise<Array<[string, OAuthPendingRecord]>>;
+}
+
+interface TokenStore {
+  set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
+  get: (id: string) => Promise<Record<string, unknown> | null>;
+  entries: () => Promise<Array<[string, Record<string, unknown>]>>;
+}
+
+interface OAuthRoutesDeps {
+  BASE_URL: string;
+  API_BASE_URL: string;
+  ZERNIO_API_BASE: string;
+  zernio: ZernioModule;
+  getZernioApiKey: () => string;
+  getOrCreateZernioProfileId: () => Promise<string | null>;
+  normalizeZernioAccountsPayload: (body: unknown) => unknown[];
+  mapZernioPlatform: (raw: string | undefined) => string | null;
+  generateState: () => string;
+  oauthPendingStore: OAuthPendingStore;
+  tokenStore: TokenStore;
+  getSessionUserId: (req: unknown) => string | null;
+}
+
+interface ZernioConnectUrlArgs {
+  ZERNIO_API_BASE: string;
+  zernioKey: string;
+  platformSlugs: string[];
+  profileId: string;
+  redirectUrl: string;
+  extraParams?: Record<string, string | null | undefined>;
+}
+
+interface ResolveZernioAccountArgs {
+  zernio: ZernioModule;
+  mapZernioPlatform: (raw: string | undefined) => string | null;
+  desiredPlatform: string;
+  queryAccountId?: unknown;
+  queryUsername?: unknown;
+}
+
+interface PopupOAuthResult {
+  type: string;
+  error?: string | null;
+  statusCode?: string | null;
+  exception?: string | null;
+  hint?: string | null;
+  [key: string]: unknown;
+}
 
 const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
@@ -26,17 +105,17 @@ const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
 const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
 
-function generateCodeVerifier() {
+function generateCodeVerifier(): string {
   return crypto.randomBytes(32).toString("base64url");
 }
-function generateCodeChallenge(verifier) {
+function generateCodeChallenge(verifier: string): string {
   return crypto.createHash("sha256").update(verifier).digest("base64url");
 }
-function profileParam(profileId) {
+function profileParam(profileId: string | null | undefined): string {
   return profileId ? `&profile_id=${encodeURIComponent(profileId)}` : "";
 }
 
-function normalizeRequestedProfileId(profileId) {
+function normalizeRequestedProfileId(profileId: unknown): string | null {
   const normalized = String(profileId || "").trim();
   if (!normalized || normalized === "default") {
     return null;
@@ -44,7 +123,7 @@ function normalizeRequestedProfileId(profileId) {
   return normalized;
 }
 
-function buildContentUrl(baseUrl, params = {}) {
+function buildContentUrl(baseUrl: string, params: Record<string, unknown> = {}): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value == null || value === "") continue;
@@ -54,7 +133,7 @@ function buildContentUrl(baseUrl, params = {}) {
   return `${baseUrl}/content${suffix ? `?${suffix}` : ""}`;
 }
 
-function popupTargetOrigin(baseUrl) {
+function popupTargetOrigin(baseUrl: string): string {
   try {
     return new URL(baseUrl).origin;
   } catch {
@@ -62,7 +141,12 @@ function popupTargetOrigin(baseUrl) {
   }
 }
 
-function sendPopupOAuthResult(res, payload, fallbackUrl, baseUrl) {
+function sendPopupOAuthResult(
+  res,
+  payload: PopupOAuthResult,
+  fallbackUrl: string,
+  baseUrl: string
+): void {
   const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
   const serializedFallbackUrl = JSON.stringify(fallbackUrl);
   const serializedTargetOrigin = JSON.stringify(popupTargetOrigin(baseUrl));
@@ -102,7 +186,7 @@ async function getZernioConnectUrl({
   profileId,
   redirectUrl,
   extraParams,
-}) {
+}: ZernioConnectUrlArgs): Promise<string> {
   let lastErr = null;
   for (const platformSlug of platformSlugs) {
     const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/${platformSlug}`);
@@ -131,7 +215,7 @@ async function getZernioConnectUrl({
   throw new Error(lastErr || "zernio_connect_failed");
 }
 
-function parseLocationsFromBody(body) {
+function parseLocationsFromBody(body): unknown[] {
   const candidateLists = [
     body?.locations,
     body?.data?.locations,
@@ -147,7 +231,7 @@ function parseLocationsFromBody(body) {
   return [];
 }
 
-function getLocationId(location) {
+function getLocationId(location): string | null {
   if (!location || typeof location !== "object") return null;
   return String(
     location.locationId ??
@@ -162,7 +246,11 @@ async function resolveAndSelectGoogleBusinessLocation({
   ZERNIO_API_BASE,
   apiKey,
   connectToken,
-}) {
+}: {
+  ZERNIO_API_BASE: string;
+  apiKey: string;
+  connectToken: string;
+}): Promise<void> {
   const headers = { Authorization: `Bearer ${apiKey}`, "X-Connect-Token": connectToken };
   const listEndpoints = [
     `${ZERNIO_API_BASE}/connect/list-google-business-locations`,
@@ -210,14 +298,16 @@ async function resolveAndSelectGoogleBusinessLocation({
 }
 
 async function resolveZernioAccountAfterCallback({
-  ZERNIO_API_BASE,
-  apiKey,
-  normalizeZernioAccountsPayload,
+  zernio,
   mapZernioPlatform,
   desiredPlatform,
   queryAccountId,
   queryUsername,
-}) {
+}: ResolveZernioAccountArgs): Promise<{
+  accountId: string | null | undefined;
+  username: string | null | undefined;
+  rawPlatform: string | null;
+}> {
   let accountId = queryAccountId;
   let username = queryUsername;
   let rawPlatform = null;
@@ -226,14 +316,11 @@ async function resolveZernioAccountAfterCallback({
     return { accountId, username, rawPlatform };
   }
 
-  const accountsRes = await fetch(`${ZERNIO_API_BASE}/accounts`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!accountsRes.ok) {
+  const result = await zernio.listAccounts();
+  if (!result.ok) {
     throw new Error("zernio_fetch_accounts_failed");
   }
-  const accountsData = await accountsRes.json().catch(() => ({}));
-  const list = normalizeZernioAccountsPayload(accountsData);
+  const list = result.accounts;
 
   const matchedByPlatform = list.find(
     (a) =>
@@ -262,18 +349,21 @@ async function resolveZernioAccountAfterCallback({
   return { accountId, username, rawPlatform };
 }
 
-async function fetchXToken(body, headers) {
+async function fetchXToken(
+  body: URLSearchParams,
+  headers: Record<string, string>
+): Promise<Response> {
   const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
   if (primary.ok) return primary;
   return fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
 }
 
-export function registerOAuthRoutes(
-  app,
-  {
+export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
+  const {
     BASE_URL,
     API_BASE_URL,
     ZERNIO_API_BASE,
+    zernio,
     getZernioApiKey,
     getOrCreateZernioProfileId,
     normalizeZernioAccountsPayload,
@@ -282,8 +372,7 @@ export function registerOAuthRoutes(
     oauthPendingStore,
     tokenStore,
     getSessionUserId,
-  }
-) {
+  } = deps;
   function getShopifyPublicBaseUrl() {
     const raw = String(process.env.SHOPIFY_APP_URL || API_BASE_URL || "").trim();
     return raw.replace(/\/$/, "");
@@ -524,14 +613,11 @@ export function registerOAuthRoutes(
       let accountId = queryAccountId;
       let displayUsername = username;
       if (!accountId || !displayUsername) {
-        const accountsRes = await fetch(`${ZERNIO_API_BASE}/accounts`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
-        });
-        if (!accountsRes.ok) {
+        const result = await zernio.listAccounts();
+        if (!result.ok) {
           return res.redirect(`${BASE_URL}/${successPage}?oauth_error=zernio_fetch_accounts_failed`);
         }
-        const accountsData = await accountsRes.json().catch(() => ({}));
-        const list = normalizeZernioAccountsPayload(accountsData);
+        const list = result.accounts;
         const ig = list.find(
           (a) => mapZernioPlatform(a.platform || a.type || a.provider || a.channel) === "instagram"
         );
@@ -739,9 +825,7 @@ export function registerOAuthRoutes(
       }
 
       const { accountId, username, rawPlatform } = await resolveZernioAccountAfterCallback({
-        ZERNIO_API_BASE,
-        apiKey,
-        normalizeZernioAccountsPayload,
+        zernio,
         mapZernioPlatform,
         desiredPlatform: pending.platform,
         queryAccountId,

@@ -48,6 +48,7 @@ import type { CalendarEvent } from "@/types/calendar";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAccountData } from "@/hooks/useAccountData";
@@ -243,19 +244,26 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6 max-w-6xl w-full mx-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Calendar</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => connectCalendar("google_calendar", "auto")}>
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Connect Google Calendar
-          </Button>
-          <Button onClick={openDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={CalendarDays}
+        title="Calendar"
+        description="Plan and schedule events across connected calendars."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => connectCalendar("google_calendar", "auto")}
+            >
+              <CalendarDays className="h-4 w-4 mr-2" />
+              Connect Google Calendar
+            </Button>
+            <Button onClick={openDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </>
+        }
+      />
 
       <SectionConnectionStatus area="calendar" className="mt-4" />
 
@@ -431,7 +439,7 @@ export default function CalendarPage() {
                       )}
                     >
                       <div className="text-center mb-2">
-                        <p className="text-[10px] uppercase text-muted-foreground">
+                        <p className="text-[11px] uppercase text-muted-foreground">
                           {format(day, "EEE", { locale: enUS })}
                         </p>
                         <p className="text-sm font-semibold">{format(day, "d")}</p>

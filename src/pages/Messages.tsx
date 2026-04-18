@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
@@ -58,8 +61,6 @@ function avatarColor(str: string): string {
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
   return COLORS[Math.abs(h) % COLORS.length];
 }
-
-const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
 const DM_CHANNEL_LABELS: Record<string, string> = {
   instagram: "Instagram",
@@ -182,14 +183,11 @@ export default function MessagesPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-            <p className="text-muted-foreground mt-1">
-              Email from Gmail and Outlook, plus DMs from connected social accounts (via Zernio inbox when available).
-            </p>
-          </div>
+      <PageHeader
+        icon={MessageSquare}
+        title="Messages"
+        description="Email from Gmail and Outlook, plus DMs from connected social accounts (via Zernio inbox when available)."
+        actions={
           <Button
             variant="ghost"
             size="sm"
@@ -204,15 +202,15 @@ export default function MessagesPage() {
             )}
             <span className="ml-1.5 hidden sm:inline">Refresh</span>
           </Button>
-        </div>
-      </motion.div>
+        }
+      />
 
-      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="messages" />
-      </motion.div>
+      </m.div>
 
       {authMode === "local" && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
@@ -220,11 +218,11 @@ export default function MessagesPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {oauthErrorDetails && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
             message={formatOAuthErrorMessage(
@@ -237,19 +235,19 @@ export default function MessagesPage() {
             )}
             onDismiss={clearOauthError}
           />
-        </motion.div>
+        </m.div>
       )}
 
       {zernioNote && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/40 border-border">
             <CardContent className="py-3 text-sm text-muted-foreground">{zernioNote}</CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {mailErrors.length > 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 text-sm text-destructive space-y-1">
               {mailErrors.map((me) => (
@@ -259,11 +257,11 @@ export default function MessagesPage() {
               ))}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {!hasAnyMailConnected && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }} className="flex flex-col sm:flex-row gap-3">
+        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="flex flex-col sm:flex-row gap-3">
           <Card className="flex-1 bg-card border-border border-dashed">
             <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
@@ -282,24 +280,24 @@ export default function MessagesPage() {
               </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {error && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 px-4 flex items-center justify-between gap-2">
               <p className="text-sm text-destructive">{error}</p>
               <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {loading && (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <motion.div
+            <m.div
               key={i}
               {...fadeUp}
               transition={{ duration: 0.3, delay: i * 0.03 }}
@@ -314,7 +312,7 @@ export default function MessagesPage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}
@@ -322,7 +320,7 @@ export default function MessagesPage() {
       {!loading && messages.length > 0 && (
         <div className="space-y-2">
           {messages.map((msg, i) => (
-            <motion.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
+            <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
               <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
                 <CardContent
                   className="p-4 flex items-start gap-3"
@@ -335,7 +333,7 @@ export default function MessagesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wide shrink-0">
+                        <Badge variant="secondary" className="text-[11px] uppercase tracking-wide shrink-0">
                           {channelBadge(msg)}
                         </Badge>
                         {msg.accountLabel ? (
@@ -366,22 +364,19 @@ export default function MessagesPage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}
 
       {!loading && !error && messages.length === 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-          <Card className="bg-card border-border border-dashed">
-            <CardContent className="py-12 flex flex-col items-center gap-3 text-center">
-              <Inbox className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground max-w-md">
-                No messages yet. Connect Gmail or Outlook for email, and use Zernio with Inbox for Instagram, Facebook, X, and other DM channels.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <m.div {...fadeUp} transition={{ duration: 0.4 }}>
+          <EmptyState
+            icon={Inbox}
+            title="No messages yet"
+            description="Connect Gmail or Outlook for email, and use Zernio with Inbox for Instagram, Facebook, X, and other DM channels."
+          />
+        </m.div>
       )}
 
       <Dialog open={Boolean(selectedMessage)} onOpenChange={(open) => !open && setSelectedMessage(null)}>

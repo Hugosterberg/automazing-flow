@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local env files (contain secrets — never commit)
+.env
+.env.*
+!.env.example
+
 # Lokalt token-cache (innehåller OAuth-tokens – ska inte committas)
 server/tokens.json
 

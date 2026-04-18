@@ -51,8 +51,8 @@ export function SectionConnectionStatus({ area, className }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <Link to="/integrations" className="underline underline-offset-2 hover:text-foreground">
-            Full map
+          <Link to="/connections" className="underline underline-offset-2 hover:text-foreground font-medium text-foreground">
+            Manage connections
           </Link>
           <Link to="/preferences" className="underline underline-offset-2 hover:text-foreground">
             API keys & tests
@@ -66,7 +66,7 @@ export function SectionConnectionStatus({ area, className }: Props) {
           return (
             <li key={entry.platform} className="flex gap-2.5 text-sm">
               {ok ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" aria-hidden />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden />
               ) : (
                 <Circle className="h-4 w-4 shrink-0 text-muted-foreground/50 mt-0.5" aria-hidden />
               )}
@@ -78,14 +78,17 @@ export function SectionConnectionStatus({ area, className }: Props) {
                       {accs.map((a) => a.displayName || a.username).join(" · ")}
                     </span>
                   ) : (
-                    <span className="text-xs text-amber-700 dark:text-amber-500/90">Not linked for this profile</span>
+                    <span className="text-xs text-warning/90">Not linked for this profile</span>
                   )}
                 </div>
                 {!ok ? (
                   <p className="text-[11px] leading-snug text-muted-foreground">
                     <span className="text-foreground/90">Do:</span> {entry.connectSteps}{" "}
-                    <Link to={entry.pageHref} className="underline underline-offset-2 hover:text-foreground whitespace-nowrap">
-                      Open {entry.pageName}
+                    <Link
+                      to="/connections"
+                      className="underline underline-offset-2 hover:text-foreground whitespace-nowrap font-medium text-foreground"
+                    >
+                      Connect now
                     </Link>
                     <br />
                     <span className="text-foreground/90">Server:</span> {entry.serverNeeds}

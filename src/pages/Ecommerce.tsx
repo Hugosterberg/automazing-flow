@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   ShoppingCart,
   Package,
@@ -27,9 +27,11 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
-import { useEffect, useMemo, useState } from "react";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
+import { useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -130,8 +132,6 @@ const fulfillmentColors: Record<string, string> = {
   partial: "bg-yellow-500/15 text-yellow-600",
   restocked: "bg-muted text-muted-foreground",
 };
-
-const fadeUp = { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 } };
 
 export default function Ecommerce() {
   const { authMode } = useAuth();
@@ -277,58 +277,44 @@ export default function Ecommerce() {
     }
   }
 
-  useEffect(() => {
-    const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-ecom-stat-card]"));
-    if (cards.length === 0) return;
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "3f6df6",
-      runId: "post-change",
-      hypothesisId: "A3",
-      location: "Ecommerce:stat-cards",
-      message: "Ecommerce stat card heights after equal-size layout",
-      data: {
-        count: cards.length,
-        heights: cards.map((c) => c.offsetHeight),
-        labels: cards.map((c) => c.getAttribute("data-stat-label")),
-      },
-      timestamp: Date.now(),
-    });
-    // #endregion
-  }, [statCards]);
-
   return (
     <div className="space-y-8 max-w-5xl">
-      {/* Header */}
-      <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Organization & Management</h1>
-            <p className="text-muted-foreground mt-1">
-              {shopifyData?.shop.name
-                ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
-                : notionData?.workspace?.name
-                  ? `${notionData.workspace.name} · Notion workspace`
-                  : "Connect Shopify or Notion to get started"}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeOrgAccount && (
-              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading} className="text-muted-foreground">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                <span className="ml-1.5 hidden sm:inline">Refresh</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </motion.div>
+      <PageHeader
+        icon={ShoppingCart}
+        title="Organization & Management"
+        description={
+          shopifyData?.shop.name
+            ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
+            : notionData?.workspace?.name
+              ? `${notionData.workspace.name} · Notion workspace`
+              : "Connect Shopify or Notion to get started"
+        }
+        actions={
+          activeOrgAccount ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="text-muted-foreground"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="ml-1.5 hidden sm:inline">Refresh</span>
+            </Button>
+          ) : null
+        }
+      />
 
-      <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="ecommerce" />
-      </motion.div>
+      </m.div>
 
       {authMode === "local" && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
@@ -336,12 +322,12 @@ export default function Ecommerce() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {/* OAuth error */}
       {oauthErrorDetails && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
             message={formatOAuthErrorMessage(
@@ -359,12 +345,12 @@ export default function Ecommerce() {
             )}
             onDismiss={clearOauthError}
           />
-        </motion.div>
+        </m.div>
       )}
 
       {/* Account switcher */}
       {orgAccounts.length > 1 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }} className="flex gap-2 flex-wrap">
+        <m.div {...fadeUp} transition={{ duration: 0.3 }} className="flex gap-2 flex-wrap">
           {orgAccounts.map((acc) => (
             <button
               key={acc.id}
@@ -378,55 +364,68 @@ export default function Ecommerce() {
               {acc.username} · {acc.platform === "shopify" ? "Shopify" : "Notion"}
             </button>
           ))}
-        </motion.div>
+        </m.div>
       )}
 
-      {/* Not connected */}
       {orgAccounts.length === 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
-          <Card className="bg-card border-border border-dashed">
-            <CardContent className="py-16 flex flex-col items-center gap-6 text-center">
-              <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center">
-                <ShoppingBag className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-1.5">
-                <p className="font-semibold text-lg">Connect Shopify or Notion</p>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Manage commerce data in Shopify and workspace content in Notion.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button onClick={handleConnect} className="glow-sm">
-                  <ShopifyIcon className="h-4 w-4 mr-2" />
-                  Connect Shopify
-                </Button>
-                <Button onClick={handleConnectNotion} variant="outline">
-                  <NotionIcon className="h-4 w-4 mr-2" />
-                  Connect Notion
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground/60">
-                Requires <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">SHOPIFY_API_KEY</code> and{" "}
-                <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">SHOPIFY_API_SECRET</code> in .env. For local tunnel OAuth, also set{" "}
-                <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">SHOPIFY_APP_URL</code>. Notion requires{" "}
-                <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">NOTION_CLIENT_ID</code> and{" "}
-                <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">NOTION_CLIENT_SECRET</code>.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <m.div
+          {...fadeUp}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="space-y-3"
+        >
+          <EmptyState
+            icon={ShoppingBag}
+            title="Connect Shopify or Notion"
+            description="Manage commerce data in Shopify and workspace content in Notion."
+            action={
+              <Button onClick={handleConnect} className="glow-sm">
+                <ShopifyIcon className="h-4 w-4 mr-2" />
+                Connect Shopify
+              </Button>
+            }
+            secondaryAction={
+              <Button onClick={handleConnectNotion} variant="outline">
+                <NotionIcon className="h-4 w-4 mr-2" />
+                Connect Notion
+              </Button>
+            }
+          />
+          <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
+            Requires{" "}
+            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
+              SHOPIFY_API_KEY
+            </code>{" "}
+            and{" "}
+            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
+              SHOPIFY_API_SECRET
+            </code>{" "}
+            in .env. For local tunnel OAuth, also set{" "}
+            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
+              SHOPIFY_APP_URL
+            </code>
+            . Notion requires{" "}
+            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
+              NOTION_CLIENT_ID
+            </code>{" "}
+            and{" "}
+            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
+              NOTION_CLIENT_SECRET
+            </code>
+            .
+          </p>
+        </m.div>
       )}
 
       {/* Fetch error */}
       {error && activeOrgAccount && (
-        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 px-4 flex items-center justify-between">
               <p className="text-sm text-destructive">{error}</p>
               <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {/* Loading skeletons */}
@@ -462,7 +461,7 @@ export default function Ecommerce() {
       {!loading && statCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((card, i) => (
-            <motion.div key={card.label} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.07 }} className="h-full">
+            <m.div key={card.label} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.07 }} className="h-full">
               <Card className="bg-card border-border glow-border hover:glow-sm transition-shadow duration-300 h-full">
                 <CardContent className="p-5 h-full min-h-[168px] flex flex-col" data-ecom-stat-card data-stat-label={card.label}>
                   <div className="flex items-center justify-between mb-3">
@@ -473,14 +472,14 @@ export default function Ecommerce() {
                   <p className="text-xs text-muted-foreground/60 mt-auto pt-2">{card.sub}</p>
                 </CardContent>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}
 
       {/* Recent orders */}
       {!loading && shopifyData && shopifyData.orders.length > 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -505,7 +504,7 @@ export default function Ecommerce() {
                   </thead>
                   <tbody>
                     {shopifyData.orders.map((order, i) => (
-                      <motion.tr
+                      <m.tr
                         key={order.id}
                         {...fadeUp}
                         transition={{ duration: 0.3, delay: i * 0.03 }}
@@ -532,19 +531,19 @@ export default function Ecommerce() {
                         <td className="px-5 py-3 text-right text-muted-foreground text-xs">
                           {formatDate(order.createdAt)}
                         </td>
-                      </motion.tr>
+                      </m.tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {/* Store plan info */}
       {!loading && shopifyData?.shop && (
-        <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border">
             <CardContent className="py-4 px-5 flex flex-wrap gap-6 text-sm text-muted-foreground">
               <span><span className="text-foreground font-medium">Store:</span> {shopifyData.shop.name}</span>
@@ -554,12 +553,12 @@ export default function Ecommerce() {
               {shopifyData.shop.email && <span><span className="text-foreground font-medium">Email:</span> {shopifyData.shop.email}</span>}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {/* Notion workspace */}
       {!loading && notionData && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -581,11 +580,11 @@ export default function Ecommerce() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {!loading && notionData && notionData.pages.length > 0 && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -611,11 +610,11 @@ export default function Ecommerce() {
               ))}
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       {!loading && notionData && (
-        <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -719,7 +718,7 @@ export default function Ecommerce() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </m.div>
       )}
 
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>

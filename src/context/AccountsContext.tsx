@@ -11,6 +11,9 @@ import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
+import { useBusinessProfileBridge } from "@/features/business-profiles";
+import { logActivity } from "@/features/activity/activityLog";
+import type { Json, TablesInsert } from "@/types/supabase";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -27,13 +30,17 @@ interface AccountsContextValue {
   activeProfile: Profile | null;
   activeProfileId: string | null;
   setActiveProfileId: (id: string | null) => void;
-  addProfile: (name: string) => Profile;
-  renameProfile: (id: string, name: string) => void;
+  /**
+   * Cloud mode: resolves after the row lands in `business_profiles` (React Query).
+   * Local mode: resolves synchronously with the in-memory profile.
+   */
+  addProfile: (name: string) => Promise<Profile> | Profile;
+  renameProfile: (id: string, name: string) => void | Promise<void>;
   updateProfile: (
     id: string,
     updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
-  ) => void;
-  removeProfile: (id: string) => void;
+  ) => void | Promise<void>;
+  removeProfile: (id: string) => void | Promise<void>;
   accounts: ConnectedAccount[];
   addAccount: (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => void;
   addAccountFromOAuth: (
@@ -60,30 +67,13 @@ interface AccountsContextValue {
 
 const AccountsContext = createContext<AccountsContextValue | null>(null);
 
-type ProfileRow = {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-};
-
-type AccountRow = {
-  id: string;
-  user_id: string;
-  profile_id: string;
-  platform: AccountPlatform;
-  username: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  profile_url: string | null;
-  connected_at: string;
-  is_oauth: boolean;
-  is_zernio: boolean;
-  zernio_account_id: string | null;
-  stats: AccountStats | null;
-  analysis: ConnectedAccount["analysis"] | null;
-  disconnected_at: string | null;
-};
+/**
+ * Shape we WRITE to `connected_accounts`. Derived from the generated Insert
+ * type so that schema changes surface here at compile-time.
+ * stats/analysis remain typed on the domain side; we cast to Json at the
+ * boundary (Postgres jsonb accepts any record).
+ */
+type AccountRow = TablesInsert<"connected_accounts">;
 
 function loadProfiles(): Profile[] {
   try {
@@ -174,23 +164,20 @@ function cleanupSelectedAccounts(
   );
 }
 
-async function syncProfilesAndAccounts({
-  profiles,
+/**
+ * Mirrors the in-memory `accounts` list back to `connected_accounts`. Does NOT
+ * touch `profiles` anymore — business_profiles is owned by its React Query
+ * hook and never synced from here.
+ */
+async function syncAccounts({
   accounts,
   userId,
 }: {
-  profiles: Profile[];
   accounts: ConnectedAccount[];
   userId: string;
 }) {
   if (!supabase) return;
 
-  const profileRows: ProfileRow[] = profiles.map((p) => ({
-    id: p.id,
-    user_id: userId,
-    name: p.name,
-    created_at: p.createdAt,
-  }));
   const activeAccounts = accounts.filter((a) => !a.disconnectedAt);
   const accountRows: AccountRow[] = activeAccounts.map((a) => ({
     id: a.id,
@@ -205,31 +192,20 @@ async function syncProfilesAndAccounts({
     is_oauth: Boolean(a.isOAuth),
     is_zernio: Boolean(a.isZernio),
     zernio_account_id: a.zernioAccountId ?? null,
-    stats: a.stats ?? null,
-    analysis: a.analysis ?? null,
+    // Cast at the DB boundary: jsonb accepts any record; the domain shapes
+    // (AccountStats / AccountAnalysis) aren't structurally assignable to
+    // the generated Json type due to missing string index signatures.
+    stats: (a.stats ?? null) as unknown as Json,
+    analysis: (a.analysis ?? null) as unknown as Json,
     disconnected_at: null,
   }));
-
-  if (profileRows.length > 0) {
-    const { error } = await supabase.from("profiles").upsert(profileRows);
-    if (error) throw error;
-  }
 
   if (accountRows.length > 0) {
     const { error } = await supabase.from("connected_accounts").upsert(accountRows);
     if (error) throw error;
   }
 
-  const profileIds = profileRows.map((row) => row.id);
   const accountIds = accountRows.map((row) => row.id);
-
-  let profileDeleteQuery = supabase.from("profiles").delete().eq("user_id", userId);
-  if (profileIds.length > 0) {
-    profileDeleteQuery = profileDeleteQuery.not("id", "in", `(${profileIds.map((id) => `"${id}"`).join(",")})`);
-  }
-  const { error: profileDeleteError } = await profileDeleteQuery;
-  if (profileDeleteError) throw profileDeleteError;
-
   let accountDeleteQuery = supabase
     .from("connected_accounts")
     .delete()
@@ -265,59 +241,85 @@ function ensureDefaultProfile(profiles: Profile[], accounts: ConnectedAccount[])
 export function AccountsProvider({ children }: { children: ReactNode }) {
   const { enabled, loading: authLoading, user } = useAuth();
   const userId = user?.id ?? null;
-  const [profiles, setProfiles] = useState<Profile[]>(() =>
+  const bridge = useBusinessProfileBridge();
+
+  // Local-mode profile state (offline dev).
+  // In cloud mode these are derived from the bridge; we still keep the state
+  // declared so local-mode init logic is unchanged.
+  const [localProfiles, setLocalProfiles] = useState<Profile[]>(() =>
     ensureDefaultProfile(loadProfiles(), loadAccounts())
   );
-  const [activeProfileId, setActiveProfileIdState] = useState<string | null>(loadActiveProfileId);
+  const [localActiveProfileId, setLocalActiveProfileIdState] = useState<string | null>(
+    loadActiveProfileId
+  );
+
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(loadAccounts);
   const [selectedAccountIds, setSelectedAccountIds] = useState<SelectedAccountsState>(loadSelectedAccounts);
   const [showOverview, setShowOverview] = useState(false);
-  const [profilesReady, setProfilesReady] = useState(false);
+  const [legacyProfilesReady, setLegacyProfilesReady] = useState(false);
   const hydratingRef = useRef(false);
 
+  // Cloud mode: business_profiles (via React Query) is the source of truth.
+  // Local mode: legacy localStorage-backed synthetic profiles.
+  const profiles = enabled ? bridge.profiles : localProfiles;
+  const activeProfileId = enabled ? bridge.activeProfileId : localActiveProfileId;
+  const profilesReady = enabled ? bridge.ready : legacyProfilesReady;
+
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null;
-  const effectiveProfileId = activeProfileId ?? activeProfile?.id ?? "default";
+  // Non-null id only when we actually have a tenant; otherwise null so that
+  // filters don't match the removed "default" fallback.
+  const effectiveProfileId = activeProfileId ?? activeProfile?.id ?? null;
 
   useEffect(() => {
     localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
   }, [accounts]);
 
+  // Local-mode only persistence for profiles. Cloud mode persists via Supabase.
   useEffect(() => {
-    localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
-  }, [profiles]);
+    if (enabled) return;
+    localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(localProfiles));
+  }, [enabled, localProfiles]);
 
   useEffect(() => {
     localStorage.setItem(SELECTED_ACCOUNTS_STORAGE_KEY, JSON.stringify(selectedAccountIds));
   }, [selectedAccountIds]);
 
+  // Auto-select / auto-clear active profile in LOCAL mode.
+  // Cloud mode: handled by <ActiveProfileGuard>.
   useEffect(() => {
-    if (profiles.length === 0) {
-      if (activeProfileId !== null) setActiveProfileIdState(null);
+    if (enabled) return;
+    if (localProfiles.length === 0) {
+      if (localActiveProfileId !== null) setLocalActiveProfileIdState(null);
       return;
     }
-    if (!activeProfileId) {
-      setActiveProfileIdState(profiles[0].id);
+    if (!localActiveProfileId) {
+      setLocalActiveProfileIdState(localProfiles[0].id);
       return;
     }
-    if (activeProfileId && !profiles.some((p) => p.id === activeProfileId)) {
-      setActiveProfileIdState(profiles[0].id);
+    if (localActiveProfileId && !localProfiles.some((p) => p.id === localActiveProfileId)) {
+      setLocalActiveProfileIdState(localProfiles[0].id);
     }
-  }, [profiles, activeProfileId]);
+  }, [enabled, localProfiles, localActiveProfileId]);
 
+  // Local-mode persistence for the active profile id (per user key).
+  // Cloud mode uses ActiveBusinessProfileContext which owns its own storage.
   useEffect(() => {
-    if (activeProfileId) {
-      localStorage.setItem(activeProfileStorageKey(user?.id), activeProfileId);
+    if (enabled) return;
+    if (localActiveProfileId) {
+      localStorage.setItem(activeProfileStorageKey(user?.id), localActiveProfileId);
     }
-  }, [activeProfileId, user?.id]);
+  }, [enabled, localActiveProfileId, user?.id]);
 
   useEffect(() => {
     setSelectedAccountIds((current) => cleanupSelectedAccounts(current, profiles, accounts));
   }, [profiles, accounts]);
 
+  // Hydrate ONLY connected_accounts from Supabase in cloud mode.
+  // Profiles are now owned by `business_profiles` (via useBusinessProfileBridge).
   useEffect(() => {
     if (authLoading) return;
     if (!enabled || !supabase || !user) {
-      setProfilesReady(true);
+      setLegacyProfilesReady(true);
       return;
     }
 
@@ -325,53 +327,27 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
     const hydrate = async () => {
       hydratingRef.current = true;
-      setProfilesReady(false);
       try {
-        const [{ data: profileRows, error: profilesError }, { data: accountRows, error: accountsError }] =
-          await Promise.all([
-            supabase
-              .from("profiles")
-              .select("id,user_id,name,created_at")
-              .eq("user_id", userId)
-              .order("created_at", { ascending: true }),
-            supabase
-              .from("connected_accounts")
-              .select(
-                "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis,disconnected_at"
-              )
-              .eq("user_id", userId)
-              .order("connected_at", { ascending: true }),
-          ]);
+        const { data: accountRows, error: accountsError } = await supabase
+          .from("connected_accounts")
+          .select(
+            "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis,disconnected_at"
+          )
+          .eq("user_id", userId)
+          .order("connected_at", { ascending: true });
 
-        if (profilesError || accountsError) {
-          console.warn("[accounts] Supabase hydrate failed, using local cache", profilesError || accountsError);
+        if (accountsError) {
+          console.warn("[accounts] Supabase accounts hydrate failed, using local cache", accountsError);
           return;
         }
         if (ignore) return;
 
-        let mappedProfiles = (profileRows ?? []).map((p: ProfileRow) => ({
-          id: p.id,
-          name: p.name,
-          createdAt: p.created_at,
-        }));
-        const localProfileMap = new Map(loadProfiles().map((p) => [p.id, p]));
-        mappedProfiles = mappedProfiles.map((p) => {
-          const local = localProfileMap.get(p.id);
-          if (!local) return p;
-          return {
-            ...p,
-            website: local.website,
-            email: local.email,
-            phone: local.phone,
-            company: local.company,
-            location: local.location,
-            notes: local.notes,
-          };
-        });
-        let mappedAccounts = (accountRows ?? []).map((a: AccountRow) => ({
+        // Row shape comes from the generated Database types via the typed
+        // supabase client — no manual row type needed.
+        const mappedAccounts = (accountRows ?? []).map((a) => ({
           id: a.id,
           profileId: a.profile_id,
-          platform: a.platform,
+          platform: a.platform as AccountPlatform,
           username: a.username,
           displayName: a.display_name ?? undefined,
           avatarUrl: a.avatar_url ?? undefined,
@@ -380,34 +356,14 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           isOAuth: a.is_oauth,
           isZernio: a.is_zernio,
           zernioAccountId: a.zernio_account_id ?? undefined,
-          stats: a.stats ?? undefined,
-          analysis: a.analysis ?? undefined,
+          stats: (a.stats ?? undefined) as unknown as AccountStats | undefined,
+          analysis: (a.analysis ?? undefined) as unknown as ConnectedAccount["analysis"],
           disconnectedAt: a.disconnected_at ?? undefined,
         })) as ConnectedAccount[];
-        if (mappedProfiles.length === 0 && mappedAccounts.length === 0) {
-          const localAccounts = loadAccounts();
-          const localProfiles = ensureDefaultProfile(loadProfiles(), localAccounts);
-          const hasMeaningfulLocalData =
-            localAccounts.length > 0 || localProfiles.some((p) => p.id !== "default");
-          if (hasMeaningfulLocalData) {
-            mappedProfiles = localProfiles;
-            mappedAccounts = localAccounts;
-          }
-        }
 
-        const nextProfiles = ensureDefaultProfile(mappedProfiles, mappedAccounts);
-        setProfiles(nextProfiles);
         setAccounts(mappedAccounts);
-        setSelectedAccountIds((current) => cleanupSelectedAccounts(current, nextProfiles, mappedAccounts));
-
-        const storedActive = localStorage.getItem(activeProfileStorageKey(userId));
-        const activeExists = storedActive && nextProfiles.some((p) => p.id === storedActive);
-        setActiveProfileIdState(activeExists ? storedActive : nextProfiles[0]?.id ?? null);
       } finally {
         hydratingRef.current = false;
-        if (!ignore) {
-          setProfilesReady(true);
-        }
       }
     };
 
@@ -424,42 +380,64 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
     const sync = async () => {
       try {
-        await syncProfilesAndAccounts({ profiles, accounts, userId });
+        await syncAccounts({ accounts, userId });
       } catch (e) {
         console.warn("[accounts] Supabase sync failed, kept local cache", e);
       }
     };
 
     void sync();
-  }, [enabled, authLoading, user, userId, profiles, accounts]);
+  }, [enabled, authLoading, user, userId, accounts]);
 
-  const setActiveProfileId = useCallback((id: string | null) => {
-    setActiveProfileIdState(id);
-  }, []);
+  const setActiveProfileId = useCallback(
+    (id: string | null) => {
+      if (enabled) {
+        bridge.setActiveProfileId(id);
+      } else {
+        setLocalActiveProfileIdState(id);
+      }
+    },
+    [enabled, bridge]
+  );
 
-  const addProfile = useCallback((name: string): Profile => {
-    const newProfile: Profile = {
-      id: crypto.randomUUID(),
-      name: name.trim() || "New profile",
-      createdAt: new Date().toISOString(),
-    };
-    setProfiles((prev) => [...prev, newProfile]);
-    setActiveProfileId(newProfile.id);
-    return newProfile;
-  }, [setActiveProfileId]);
+  const addProfile = useCallback(
+    (name: string): Profile | Promise<Profile> => {
+      if (enabled) {
+        return bridge.addProfile(name);
+      }
+      const newProfile: Profile = {
+        id: crypto.randomUUID(),
+        name: name.trim() || "New profile",
+        createdAt: new Date().toISOString(),
+      };
+      setLocalProfiles((prev) => [...prev, newProfile]);
+      setLocalActiveProfileIdState(newProfile.id);
+      return newProfile;
+    },
+    [enabled, bridge]
+  );
 
-  const renameProfile = useCallback((id: string, name: string) => {
-    setProfiles((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p))
-    );
-  }, []);
+  const renameProfile = useCallback(
+    (id: string, name: string): void | Promise<void> => {
+      if (enabled) {
+        return bridge.renameProfile(id, name);
+      }
+      setLocalProfiles((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p))
+      );
+    },
+    [enabled, bridge]
+  );
 
   const updateProfile = useCallback(
     (
       id: string,
       updates: Partial<Pick<Profile, "name" | "website" | "email" | "phone" | "company" | "location" | "notes">>
-    ) => {
-      setProfiles((prev) =>
+    ): void | Promise<void> => {
+      if (enabled) {
+        return bridge.updateProfile(id, updates);
+      }
+      setLocalProfiles((prev) =>
         prev.map((p) => {
           if (p.id !== id) return p;
           const next: Profile = {
@@ -476,22 +454,36 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         })
       );
     },
-    []
+    [enabled, bridge]
   );
 
-  const removeProfile = useCallback((id: string) => {
-    setProfiles((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      if (activeProfileId === id) {
-        setActiveProfileId(next[0]?.id ?? null);
+  const removeProfile = useCallback(
+    (id: string): void | Promise<void> => {
+      // Always drop local account rows bound to this profile (cloud RLS also
+      // cascades via business_profile_id FK, but in-memory accounts still hold
+      // them until next hydrate).
+      setAccounts((prev) => prev.filter((a) => a.profileId !== id));
+
+      if (enabled) {
+        return bridge.removeProfile(id);
       }
-      return next;
-    });
-    setAccounts((prev) => prev.filter((a) => a.profileId !== id));
-  }, [activeProfileId, setActiveProfileId]);
+      setLocalProfiles((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        if (localActiveProfileId === id) {
+          setLocalActiveProfileIdState(next[0]?.id ?? null);
+        }
+        return next;
+      });
+    },
+    [enabled, bridge, localActiveProfileId]
+  );
 
   const addAccount = useCallback(
     (platform: AccountPlatform, username: string, extra?: Partial<ConnectedAccount>) => {
+      if (!effectiveProfileId) {
+        console.warn("[accounts] addAccount called without an active business profile");
+        return;
+      }
       const newAccount: ConnectedAccount = {
         id: crypto.randomUUID(),
         profileId: effectiveProfileId,
@@ -526,6 +518,10 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       );
       const targetProfileId =
         hasValidRequestedProfile && profileId ? profileId : effectiveProfileId;
+      if (!targetProfileId) {
+        console.warn("[accounts] addAccountFromOAuth: no active business profile to attach to");
+        return;
+      }
       const profileUrls: Record<string, string> = {
         youtube: "youtube.com",
         shopify: "myshopify.com",
@@ -571,8 +567,30 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       if (hasValidRequestedProfile && profileId && profileId !== activeProfileId) {
         setActiveProfileId(profileId);
       }
+
+      // Activity log: only emit for UUID tenants (the legacy synthetic
+      // "default" profile is not a valid FK target for activity_events).
+      const UUID_RE =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (enabled && UUID_RE.test(targetProfileId)) {
+        void logActivity(supabase, {
+          businessProfileId: targetProfileId,
+          module: "connections",
+          eventType: "connection.connected",
+          subjectType: "connected_account",
+          subjectId: accountId,
+          severity: "success",
+          summary: `Connected ${platform}${username ? ` (${username})` : ""}`,
+          payload: {
+            platform,
+            username,
+            isZernio: Boolean(extra?.isZernio),
+            zernioAccountId: extra?.zernioAccountId ?? null,
+          },
+        });
+      }
     },
-    [effectiveProfileId, activeProfileId, setActiveProfileId, profiles]
+    [effectiveProfileId, activeProfileId, setActiveProfileId, profiles, enabled]
   );
 
   const removeAccount = useCallback(
@@ -617,12 +635,14 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   );
   const getSelectedAccountId = useCallback(
     (section: AccountSection) => {
+      if (!effectiveProfileId) return null;
       return selectedAccountIds[effectiveProfileId]?.[section] ?? null;
     },
     [effectiveProfileId, selectedAccountIds]
   );
   const setSelectedAccountId = useCallback(
     (section: AccountSection, id: string | null) => {
+      if (!effectiveProfileId) return;
       setSelectedAccountIds((current) => {
         const currentProfileSelections = current[effectiveProfileId] ?? {};
         if ((currentProfileSelections[section] ?? null) === id) return current;

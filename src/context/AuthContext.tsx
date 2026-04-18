@@ -12,7 +12,6 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
 import { getOAuthRedirectUrl } from "@/lib/authRedirect";
-import { postAgentDebugIngest } from "@/lib/agentDebugIngest";
 import { apiUrl } from "@/lib/apiBase";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
@@ -59,20 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [authMode]);
 
-  const debugLog = (runId: string, hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
-    // #region agent log
-    postAgentDebugIngest({
-      sessionId: "9f37ed",
-      runId,
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    });
-    // #endregion
-  };
-
   const getOrCreateLocalUserId = () => {
     const existing = (localStorage.getItem(LOCAL_USER_ID_STORAGE_KEY) || "").trim();
     if (existing.startsWith("local_")) return existing;
@@ -114,29 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!enabled) {
       const localUserId = getOrCreateLocalUserId();
-      debugLog("pre-fix", "H1", "AuthContext.tsx:85", "Requesting local session", {
-        authMode,
-        enabled,
-        localUserIdPrefix: localUserId.slice(0, 14),
-      });
       void fetch(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: {
           "x-local-user-id": localUserId,
         },
-      })
-        .then((r) => {
-          debugLog("pre-fix", "H1", "AuthContext.tsx:97", "Local session response", {
-            status: r.status,
-            ok: r.ok,
-          });
-        })
-        .catch((error: unknown) => {
-          debugLog("pre-fix", "H1", "AuthContext.tsx:103", "Local session request failed", {
-            error: error instanceof Error ? error.message : "unknown_error",
-          });
-        });
+      }).catch(() => {
+        // Local session bootstrap is best-effort; auth flows tolerate a
+        // missing session and surface errors via the UI when needed.
+      });
       return;
     }
     if (loading) {
@@ -182,12 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle: async () => {
         if (!supabase) return;
         setAuthMode("cloud");
-        debugLog("pre-fix", "H2", "AuthContext.tsx:140", "Starting Supabase Google sign-in", {
-          enabled,
-          hasSupabase: Boolean(supabase),
-          locationPath: window.location.pathname,
-          oauthRedirect: getOAuthRedirectUrl(),
-        });
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   Bell,
   CheckCircle2,
@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -243,12 +244,13 @@ export default function PreferencesPage() {
 
   return (
     <div className="space-y-6 max-w-5xl w-full mx-auto">
-      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-3xl font-bold tracking-tight">Preferences</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage app settings and the integration values used by the server.
-        </p>
-        <p className="text-sm text-muted-foreground mt-3 max-w-3xl leading-relaxed">
+      <PageHeader
+        icon={Wrench}
+        title="Preferences"
+        description="Manage app settings and the integration values used by the server."
+      />
+      <m.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
           Keys here are <span className="font-medium text-foreground">server prerequisites</span> (saved to{" "}
           <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code>) so OAuth and APIs can run. They do{" "}
           <span className="font-medium text-foreground">not</span> replace clicking Connect in the app: open the{" "}
@@ -258,7 +260,7 @@ export default function PreferencesPage() {
           map to see what is already linked to your active profile versus what still needs a Connect flow (and which env
           vars each one needs).
         </p>
-      </motion.div>
+      </m.div>
 
       <Tabs defaultValue="api-keys" className="w-full">
         <TabsList>
@@ -269,7 +271,7 @@ export default function PreferencesPage() {
         <TabsContent value="overview">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             {overviewFeatures.map((feature, index) => (
-              <motion.div
+              <m.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -282,7 +284,7 @@ export default function PreferencesPage() {
                     <p className="text-xs text-muted-foreground">{feature.desc}</p>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </TabsContent>
