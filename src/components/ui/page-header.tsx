@@ -1,3 +1,4 @@
+import { createElement, isValidElement } from "react";
 import type { LucideIcon } from "lucide-react";
 import { m } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -40,15 +41,21 @@ export function PageHeader({
   actions,
   className,
 }: PageHeaderProps) {
-  // Accept either a LucideIcon component (most pages) or a pre-rendered
-  // ReactNode (pages with branded icons). This keeps the callsite compact
-  // while still allowing the AI pages their glow treatment.
+  // Accept either a component type (most pages pass a LucideIcon — which is
+  // a React.forwardRef object, not a function — or a plain function component)
+  // or a pre-rendered ReactNode for pages that want a branded/glow icon.
+  //
+  // NOTE: `typeof icon === "function"` does NOT match forwardRef components.
+  // Detecting already-rendered elements first and falling through to
+  // `createElement` for component types covers both cases safely.
   let iconNode: React.ReactNode = null;
-  if (typeof icon === "function") {
-    const Icon = icon as LucideIcon;
-    iconNode = <Icon className="h-6 w-6 text-muted-foreground" aria-hidden />;
-  } else if (icon) {
+  if (isValidElement(icon)) {
     iconNode = icon;
+  } else if (icon) {
+    iconNode = createElement(icon as LucideIcon, {
+      className: "h-6 w-6 text-muted-foreground",
+      "aria-hidden": true,
+    });
   }
 
   return (
