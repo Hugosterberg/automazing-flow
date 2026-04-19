@@ -478,21 +478,36 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   function oauthRedirect(platform, query, oauthReturnPage) {
-    const forceHub = oauthReturnPage === "connect-accounts" || oauthReturnPage === "integrations";
-    const page = forceHub ? "integrations" : oauthPageForPlatform(platform);
+    let page;
+    if (oauthReturnPage === "connections") {
+      page = "connections";
+    } else if (oauthReturnPage === "connect-accounts" || oauthReturnPage === "integrations") {
+      page = "integrations";
+    } else {
+      page = oauthPageForPlatform(platform);
+    }
     return `${BASE_URL}/${page}?${query}`;
   }
 
-  /** Optional `?oauth_return=integrations` (legacy: connect-accounts) on /api/auth/* to land on the hub after OAuth. */
+  /**
+   * Optional `?oauth_return=...` on /api/auth/* to land on a specific page after OAuth.
+   * Accepted values:
+   *   - "connections"                        -> Connections Center
+   *   - "integrations" / "connect-accounts"  -> Integrations hub (legacy alias)
+   * Anything else returns null and the callback falls back to the per-platform
+   * landing page (e.g. social-media, calendar, messages, ...).
+   */
   function parseOauthReturnPage(req) {
     const v = String(req.query?.oauth_return || "").trim();
-    return v === "connect-accounts" || v === "integrations" ? "integrations" : null;
+    if (v === "connections") return "connections";
+    if (v === "connect-accounts" || v === "integrations") return "integrations";
+    return null;
   }
 
   function postOauthPage(pending, platform) {
-    if (pending?.oauthReturnPage === "connect-accounts" || pending?.oauthReturnPage === "integrations") {
-      return "integrations";
-    }
+    const ret = pending?.oauthReturnPage;
+    if (ret === "connections") return "connections";
+    if (ret === "connect-accounts" || ret === "integrations") return "integrations";
     return oauthPageForPlatform(platform);
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAccounts, type AccountSection } from "@/context/AccountsContext";
 import type { AccountPlatform } from "@/types/accounts";
 import { parseOAuthErrorDetails, removeOAuthErrorParams, type OAuthErrorDetails } from "@/lib/oauthErrors";
@@ -8,6 +9,8 @@ import {
   hasOAuthCallbackParams,
   readPendingOAuthReturn,
 } from "@/lib/oauthCallbackState";
+import { CONNECTIONS_KEY } from "@/features/connections/useConnections";
+import { ACTIVITY_FEED_KEY } from "@/features/activity";
 
 function safeDecodeUsername(raw: string): string {
   try {
@@ -29,6 +32,7 @@ function sectionForPlatform(platform: AccountPlatform): AccountSection {
 export function useOAuthCallback() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addAccountFromOAuth, setSelectedAccountId, profiles, profilesReady } = useAccounts();
+  const queryClient = useQueryClient();
   const [errorDetails, setErrorDetails] = useState<OAuthErrorDetails | null>(null);
 
   useEffect(() => {
@@ -70,6 +74,15 @@ export function useOAuthCallback() {
         zernioAccountId ? { zernioAccountId } : undefined
       );
       setSelectedAccountId(sectionForPlatform(accountPlatform), accountId);
+      // The Connections Center reads from React Query (v_connection_health).
+      // AccountsContext writes the new row to Supabase asynchronously via its
+      // sync effect, so we refetch after a short delay to pick it up once the
+      // upsert has landed. Also invalidate the activity feed for the same
+      // reason (addAccountFromOAuth emits a `connection.connected` event).
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: CONNECTIONS_KEY });
+        void queryClient.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+      }, 500);
       const next = new URLSearchParams(searchParams);
       next.delete("oauth_success");
       next.delete("platform");
@@ -81,7 +94,15 @@ export function useOAuthCallback() {
       clearPendingOAuthReturn();
       setSearchParams(next);
     }
-  }, [searchParams, setSearchParams, addAccountFromOAuth, setSelectedAccountId, profiles, profilesReady]);
+  }, [
+    searchParams,
+    setSearchParams,
+    addAccountFromOAuth,
+    setSelectedAccountId,
+    profiles,
+    profilesReady,
+    queryClient,
+  ]);
 
   return {
     oauthError: errorDetails?.code ?? null,
