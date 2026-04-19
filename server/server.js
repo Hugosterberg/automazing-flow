@@ -90,11 +90,26 @@ function parseOriginIsLoopback(origin) {
   }
 }
 
-/** https://… origin from Vercel’s VERCEL_URL (no trailing slash). */
+/**
+ * https://… origin of this deployment (no trailing slash).
+ *
+ * Production deployments return the stable project alias
+ * (VERCEL_PROJECT_PRODUCTION_URL, e.g. automazing.vercel.app) so OAuth
+ * redirects and cookies always land on the same canonical origin —
+ * otherwise the browser would bounce to a deployment-specific hostname
+ * (VERCEL_URL) where localStorage / session cookies aren't present and
+ * the user appears signed out after every callback.
+ *
+ * Preview and development deployments keep using VERCEL_URL so each
+ * preview is self-contained.
+ */
 function vercelDeploymentOrigin() {
-  const v = String(process.env.VERCEL_URL || "").trim();
-  if (!v) return "";
-  const withProto = v.includes("://") ? v : `https://${v}`;
+  const env = String(process.env.VERCEL_ENV || "").trim();
+  const prodAlias = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim();
+  const current = String(process.env.VERCEL_URL || "").trim();
+  const raw = env === "production" && prodAlias ? prodAlias : current;
+  if (!raw) return "";
+  const withProto = raw.includes("://") ? raw : `https://${raw}`;
   return withProto.replace(/\/$/, "");
 }
 
