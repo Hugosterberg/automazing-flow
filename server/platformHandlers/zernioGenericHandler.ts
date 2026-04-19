@@ -64,6 +64,94 @@ function pickFollowersFromFollowerStatsPayload(body: unknown): number | undefine
   return candidates.length > 0 ? Math.max(...candidates) : undefined;
 }
 
+function pickAccountRowId(a: unknown): string | null {
+  if (!a || typeof a !== "object") return null;
+  const row = a as Record<string, unknown>;
+  const id = row._id ?? row.id ?? row.accountId;
+  return id != null && String(id).trim() !== "" ? String(id) : null;
+}
+
+/** Best-effort: positive fan / follower count from a Zernio account row or GET /accounts/:id body. */
+function extractPositiveFollowersFromAccountRow(acc: unknown): number | undefined {
+  if (!acc || typeof acc !== "object") return undefined;
+  const a = acc as Record<string, any>;
+  const meta = a.metadata && typeof a.metadata === "object" ? (a.metadata as Record<string, any>) : {};
+  const nestedPd =
+    meta.profileData && typeof meta.profileData === "object" ? (meta.profileData as Record<string, any>) : null;
+  const candidates: unknown[] = [
+    nestedPd?.fan_count,
+    nestedPd?.fanCount,
+    nestedPd?.followersCount,
+    nestedPd?.follower_count,
+    nestedPd?.fans,
+    meta.fan_count,
+    meta.fanCount,
+    meta.followersCount,
+    meta.follower_count,
+    meta.fans,
+    a.fan_count,
+    a.fanCount,
+    a.followers_count,
+    a.followersCount,
+    a.fans,
+    a.globalBrandPageLikeCount,
+    nestedPd?.likes,
+    a.likes,
+  ];
+  for (const raw of candidates) {
+    if (raw == null || raw === "") continue;
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0 && n < 1_000_000_000) return n;
+  }
+  return undefined;
+}
+
+/**
+ * Strict id match first; for Facebook, fall back to the only (or username-matched)
+ * Facebook row when Zernio's callback id does not match list payload shape.
+ */
+function resolveZernioAccountForFollowers(
+  accountsList: unknown[],
+  zid: string,
+  isFacebook: boolean,
+  storedUsername?: string
+): unknown | null {
+  const strict =
+    accountsList.find((raw) => {
+      if (!raw || typeof raw !== "object") return false;
+      const a = raw as Record<string, unknown>;
+      const idHit =
+        String(a._id ?? a.id ?? a.accountId ?? "") === String(zid) ||
+        String((a.profileId as Record<string, unknown> | undefined)?._id ?? a.profileId ?? "") === String(zid);
+      return idHit;
+    }) ?? null;
+  if (strict && pickAccountRowId(strict)) return strict;
+  if (!isFacebook) return null;
+  const fbRows = accountsList.filter((raw) => {
+    if (!raw || typeof raw !== "object") return false;
+    const a = raw as Record<string, unknown>;
+    const p = String(a.platform ?? a.type ?? a.provider ?? a.channel ?? "").toLowerCase();
+    return p.includes("facebook") || p.includes("pages") || p === "fb";
+  });
+  if (fbRows.length === 1) return fbRows[0];
+  const u = String(storedUsername || "")
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase();
+  if (u) {
+    const byName = fbRows.find((raw) => {
+      const a = raw as Record<string, unknown>;
+      const name = String(a.username ?? a.name ?? a.displayName ?? a.handle ?? "")
+        .trim()
+        .replace(/^@/, "")
+        .toLowerCase();
+      return name.length > 0 && name === u;
+    });
+    if (byName) return byName;
+  }
+  return fbRows[0] ?? null;
+}
+
 interface ZernioGenericHandlerArgs {
   zernio: ZernioModule;
   stored: Record<string, any>;
@@ -238,18 +326,36 @@ export async function handleZernioGenericAccountData({
   // but posts exist (analytics payload is unreliable for Page fan counts).
   if (!hasStats || facebookNeedsProfileFollowers) {
     try {
+      // Many Zernio tenants expose full Page stats on GET /accounts/:id even when
+      // /analytics omits fan_count — try before listAccounts + id heuristics.
+      if (facebookNeedsProfileFollowers) {
+        const detailRes = await zernio.get(`/accounts/${encodeURIComponent(zid)}`);
+        if (detailRes.ok && detailRes.data && typeof detailRes.data === "object") {
+          const body = detailRes.data as Record<string, any>;
+          const node = body.data ?? body.account ?? body;
+          const fromDetail = extractPositiveFollowersFromAccountRow(node);
+          if (fromDetail != null) {
+            fallbackStats = {
+              ...fallbackStats,
+              followersCount: fromDetail,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        }
+      }
+
       const accountsResult = await zernio.listAccounts();
       if (accountsResult.ok) {
-        const accountsList = accountsResult.accounts;
-        const acc =
-          accountsList.find(
-            (a) =>
-              String(a?._id || a?.id || a?.accountId || "") === String(zid) ||
-              String(a?.profileId?._id || a?.profileId || "") === String(zid)
-          ) ?? null;
-        if (acc?._id || acc?.id) {
+        const accountsList = accountsResult.accounts as unknown[];
+        const acc = resolveZernioAccountForFollowers(
+          accountsList,
+          zid,
+          isFacebookLike,
+          stored?.username
+        ) as Record<string, any> | null;
+        const postsAccountId = acc ? pickAccountRowId(acc) : null;
+        if (postsAccountId) {
           let posts: any[] = [];
-          const postsAccountId = String(acc._id || acc.id);
           const postsResult = await zernio.listAccountPosts(postsAccountId, {
             limit: 50,
           });
@@ -295,7 +401,12 @@ export async function handleZernioGenericAccountData({
             acc?.mediaCount ??
             acc?.externalPostCount ??
             (Array.isArray(posts) ? posts.length : undefined);
-          const engagement = calculateEngagementFromPosts(posts, followersRaw);
+          const fromAccRow = extractPositiveFollowersFromAccountRow(acc);
+          const rawFollowerNum = followersRaw != null && followersRaw !== "" ? Number(followersRaw) : NaN;
+          const mergedPositiveFollowers =
+            fromAccRow ??
+            (Number.isFinite(rawFollowerNum) && rawFollowerNum > 0 ? rawFollowerNum : undefined);
+          const engagement = calculateEngagementFromPosts(posts, mergedPositiveFollowers ?? followersRaw);
           const fallbackTotalLikes = Array.isArray(posts)
             ? posts.reduce(
                 (sum, p) =>
@@ -355,7 +466,9 @@ export async function handleZernioGenericAccountData({
           fallbackStats = {
             ...fallbackStats,
             followersCount:
-              followersRaw != null ? Number(followersRaw) : fallbackStats.followersCount,
+              mergedPositiveFollowers ??
+              (Number.isFinite(rawFollowerNum) && rawFollowerNum >= 0 ? rawFollowerNum : undefined) ??
+              fallbackStats.followersCount,
             followingCount:
               followingRaw != null ? Number(followingRaw) : fallbackStats.followingCount,
             mediaCount:
