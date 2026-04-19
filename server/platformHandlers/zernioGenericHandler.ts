@@ -27,6 +27,43 @@ import { buildGoogleBusinessPanelFromZernioExtra } from "../providers/googleBusi
 import type { ZernioModule } from "../providers/zernioModule.ts";
 import type { PlatformHandlerResult } from "./types.ts";
 
+/**
+ * Zernio's `/accounts/follower-stats` response shape varies by tenant/version.
+ * Walk the JSON looking for objects that carry follower-like fields and return
+ * the largest plausible positive integer (avoids picking tiny IDs from nested
+ * structures when multiple numbers exist).
+ */
+function pickFollowersFromFollowerStatsPayload(body: unknown): number | undefined {
+  const candidates: number[] = [];
+  const visit = (node: unknown, depth: number): void => {
+    if (depth > 10 || node == null) return;
+    if (Array.isArray(node)) {
+      for (const el of node) visit(el, depth + 1);
+      return;
+    }
+    if (typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    const keys = Object.keys(o).map((k) => k.toLowerCase());
+    const followerLikeKey = keys.some((kl) =>
+      ["followers_count", "followerscount", "fan_count", "fancount", "total_followers"].includes(kl)
+    );
+    if (followerLikeKey) {
+      const raw =
+        o.followers_count ??
+        o.followersCount ??
+        o.fan_count ??
+        o.fanCount ??
+        o.total_followers ??
+        (typeof o.followers === "number" ? o.followers : undefined);
+      const n = raw != null ? Number(raw) : NaN;
+      if (Number.isFinite(n) && n > 0 && n < 1_000_000_000) candidates.push(n);
+    }
+    for (const v of Object.values(o)) visit(v, depth + 1);
+  };
+  visit(body, 0);
+  return candidates.length > 0 ? Math.max(...candidates) : undefined;
+}
+
 interface ZernioGenericHandlerArgs {
   zernio: ZernioModule;
   stored: Record<string, any>;
@@ -128,7 +165,13 @@ export async function handleZernioGenericAccountData({
   const root = an.data ?? an;
   const data = root.analytics ?? root.metrics ?? root;
   const followersCount =
-    data.followersCount ?? data.followers ?? data.followerCount ?? data.follower_count;
+    data.followersCount ??
+    data.followers ??
+    data.followerCount ??
+    data.follower_count ??
+    data.fan_count ??
+    data.fanCount ??
+    data.fans;
   const followingCount =
     data.followingCount ?? data.following ?? data.following_count;
   const mediaCount =
@@ -176,8 +219,24 @@ export async function handleZernioGenericAccountData({
   const hasStats =
     stats.followersCount != null || stats.mediaCount != null || media.length > 0;
 
-  // Fallback for providers (e.g. Facebook) where /analytics can return sparse payloads.
-  if (!hasStats) {
+  const platformBlob = String(platform || zernioPlatform || "").toLowerCase();
+  const isFacebookLike = platform === "facebook" || platformBlob.includes("facebook");
+  const hasPostSignal =
+    (stats.mediaCount != null && Number(stats.mediaCount) > 0) || media.length > 0;
+  const analyticsFollowersNum =
+    stats.followersCount != null ? Number(stats.followersCount) : NaN;
+  // Zernio's /analytics often returns `followersCount: 0` (or omits it) for
+  // Facebook Pages while still returning post counts — that made `hasStats`
+  // truthy so we skipped the listAccounts() fallback entirely, and the UI
+  // showed "0 followers" even though the account object carries `fan_count`.
+  const facebookNeedsProfileFollowers =
+    isFacebookLike &&
+    hasPostSignal &&
+    (!Number.isFinite(analyticsFollowersNum) || analyticsFollowersNum === 0);
+
+  // Fallback for sparse analytics, or Facebook when follower count is missing/zero
+  // but posts exist (analytics payload is unreliable for Page fan counts).
+  if (!hasStats || facebookNeedsProfileFollowers) {
     try {
       const accountsResult = await zernio.listAccounts();
       if (accountsResult.ok) {
@@ -205,17 +264,33 @@ export async function handleZernioGenericAccountData({
                   : [];
           }
 
-          const profileData = acc?.metadata?.profileData ?? {};
+          const meta =
+            acc?.metadata && typeof acc.metadata === "object" ? (acc.metadata as Record<string, any>) : {};
+          const nestedPd =
+            meta.profileData && typeof meta.profileData === "object" ? meta.profileData : null;
+          // Prefer nested Graph-style profileData, then metadata root, then account row.
           const followersRaw =
-            profileData.followersCount ??
+            nestedPd?.followersCount ??
+            nestedPd?.follower_count ??
+            nestedPd?.fan_count ??
+            nestedPd?.fanCount ??
+            nestedPd?.fans ??
+            nestedPd?.likes ??
+            meta.followersCount ??
+            meta.follower_count ??
+            meta.fan_count ??
+            meta.fanCount ??
+            meta.fans ??
             acc?.followers_count ??
             acc?.followersCount ??
+            acc?.fan_count ??
             acc?.fanCount ??
             acc?.fans;
           const followingRaw =
-            profileData.followingCount ?? acc?.follows_count ?? acc?.followingCount;
+            nestedPd?.followingCount ?? meta.followingCount ?? acc?.follows_count ?? acc?.followingCount;
           const mediaCountRaw =
-            profileData.mediaCount ??
+            nestedPd?.mediaCount ??
+            meta.mediaCount ??
             acc?.media_count ??
             acc?.mediaCount ??
             acc?.externalPostCount ??
@@ -327,6 +402,22 @@ export async function handleZernioGenericAccountData({
       if (enr.zernioEnrichmentNotes.length > 0) zernioEnrichmentNotes = enr.zernioEnrichmentNotes;
     } catch {
       // enrichment is best-effort
+    }
+  }
+
+  const fcAfterFallback = Number(fallbackStats.followersCount);
+  if (
+    isFacebookLike &&
+    zernioExtra &&
+    (!Number.isFinite(fcAfterFallback) || fcAfterFallback === 0)
+  ) {
+    const fromFollowerStats = pickFollowersFromFollowerStatsPayload(zernioExtra.followerStats);
+    if (fromFollowerStats != null) {
+      fallbackStats = {
+        ...fallbackStats,
+        followersCount: fromFollowerStats,
+        updatedAt: new Date().toISOString(),
+      };
     }
   }
 
