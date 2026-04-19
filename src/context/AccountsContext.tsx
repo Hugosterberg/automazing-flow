@@ -258,6 +258,15 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const [showOverview, setShowOverview] = useState(false);
   const [legacyProfilesReady, setLegacyProfilesReady] = useState(false);
   const hydratingRef = useRef(false);
+  // Mirror of the latest `accounts` state so the async hydrate effect can
+  // detect rows that were added locally (e.g. by a just-completed OAuth
+  // callback) while its Supabase fetch was in flight. Without this, the
+  // hydrate's `setAccounts(mapped)` would clobber the freshly added row
+  // before the sync effect had a chance to persist it.
+  const accountsRef = useRef(accounts);
+  useEffect(() => {
+    accountsRef.current = accounts;
+  }, [accounts]);
 
   // Cloud mode: business_profiles (via React Query) is the source of truth.
   // Local mode: legacy localStorage-backed synthetic profiles.
@@ -327,6 +336,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
     const hydrate = async () => {
       hydratingRef.current = true;
+      // Capture ids that exist locally at the start of hydrate. Anything
+      // appearing in `accountsRef.current` AFTER this snapshot was added by
+      // another code path (typically `addAccountFromOAuth` firing mid-hydrate)
+      // and must be preserved; otherwise the Supabase snapshot below would
+      // overwrite it before the sync effect has had a chance to upsert.
+      const idsAtHydrateStart = new Set(accountsRef.current.map((a) => a.id));
       try {
         const { data: accountRows, error: accountsError } = await supabase
           .from("connected_accounts")
@@ -361,7 +376,13 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           disconnectedAt: a.disconnected_at ?? undefined,
         })) as ConnectedAccount[];
 
-        setAccounts(mappedAccounts);
+        const mappedIds = new Set(mappedAccounts.map((a) => a.id));
+        // Pending additions = rows added locally AFTER hydrate started that
+        // Supabase doesn't yet know about (sync effect will push them next).
+        const pendingAdditions = accountsRef.current.filter(
+          (a) => !idsAtHydrateStart.has(a.id) && !mappedIds.has(a.id)
+        );
+        setAccounts(pendingAdditions.length > 0 ? [...mappedAccounts, ...pendingAdditions] : mappedAccounts);
       } finally {
         hydratingRef.current = false;
       }
