@@ -10,6 +10,9 @@ import {
   AlertTriangle,
   ArrowRight,
   Activity as ActivityIcon,
+  CalendarDays,
+  Star,
+  MessageSquare,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -459,6 +462,99 @@ export default function Index() {
       {homeBusinessProfileId ? (
         <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
       ) : null}
+
+      {/* Quick overview widgets */}
+      {accounts.length > 0 && (
+        <section aria-label="Snabböversikt" className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">Snabböversikt</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Reviews widget */}
+            {(() => {
+              const reviewAccounts = accounts.filter(
+                (a) => a.platform === "google_reviews" || a.platform === "tripadvisor"
+              );
+              if (reviewAccounts.length === 0) return null;
+              const avgRating = reviewAccounts
+                .map((a) => a.stats?.averageRating)
+                .filter((r): r is number => typeof r === "number")
+                .reduce((sum, r, _, arr) => sum + r / arr.length, 0);
+              const totalReviews = reviewAccounts
+                .map((a) => a.stats?.reviewCount ?? 0)
+                .reduce((s, n) => s + n, 0);
+              return (
+                <Link
+                  to="/reviews"
+                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold tabular-nums">
+                    {avgRating > 0 ? avgRating.toFixed(1) : "–"}
+                  </p>
+                  <p className="text-xs font-medium text-muted-foreground mt-0.5">Snittbetyg</p>
+                  <p className="text-[11px] text-muted-foreground/80 mt-1">
+                    {totalReviews > 0 ? `${totalReviews} recensioner` : "Inga recensioner än"}
+                  </p>
+                </Link>
+              );
+            })()}
+
+            {/* Calendar widget */}
+            {(() => {
+              const calAccounts = accounts.filter(
+                (a) => a.platform === "google_calendar" || a.platform === "outlook_calendar"
+              );
+              if (calAccounts.length === 0) return null;
+              return (
+                <Link
+                  to="/calendar"
+                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <CalendarDays className="h-4 w-4 text-blue-500" />
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold tabular-nums">{calAccounts.length}</p>
+                  <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                    {calAccounts.length === 1 ? "Kalender" : "Kalendrar"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/80 mt-1">
+                    {calAccounts.map((a) => a.username).join(", ")}
+                  </p>
+                </Link>
+              );
+            })()}
+
+            {/* Messages widget */}
+            {(() => {
+              const mailAccounts = accounts.filter(
+                (a) => a.platform === "gmail" || a.platform === "outlook"
+              );
+              if (mailAccounts.length === 0) return null;
+              return (
+                <Link
+                  to="/messages"
+                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold tabular-nums">{mailAccounts.length}</p>
+                  <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                    {mailAccounts.length === 1 ? "E-postkonto" : "E-postkonton"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/80 mt-1">
+                    {mailAccounts.map((a) => a.platform === "gmail" ? "Gmail" : "Outlook").join(", ")}
+                  </p>
+                </Link>
+              );
+            })()}
+          </div>
+        </section>
+      )}
 
       <section aria-label="Jump to" className="space-y-2">
         <h2 className="text-sm font-semibold text-foreground">Jump to</h2>

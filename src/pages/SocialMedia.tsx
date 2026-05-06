@@ -22,9 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { useAiRecommendations } from "@/features/ai-recommendations";
+import { useTasks } from "@/features/tasks";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -82,19 +86,6 @@ const defaultStats = [
   { label: "Engagement", value: "–", change: "", icon: Heart, key: "engagement" },
 ];
 
-const scheduledPosts = [
-  { title: "Product launch – Instagram", time: "Today 14:00", platform: "Instagram" },
-  { title: "Tips & tricks video", time: "Tomorrow 09:00", platform: "TikTok" },
-  { title: "Weekly recap", time: "Fri 18:00", platform: "LinkedIn" },
-];
-
-const contentIdeas = [
-  "Behind the scenes – show your work process",
-  "Customer review in carousel format",
-  "5 tips in your industry (Reels)",
-  "Before/after transformation",
-  "Q&A with your followers",
-];
 
 type SocialMediaApiPost = {
   id: string;
@@ -262,6 +253,18 @@ export default function SocialMedia() {
   const [postContent, setPostContent] = useState("");
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
+  const activeBp = useActiveBusinessProfileIdOptional();
+  const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const { recommendations: aiRecs } = useAiRecommendations(businessProfileId);
+  const { tasks: contentTasks } = useTasks(businessProfileId);
+  const contentIdeas = useMemo(
+    () => aiRecs.filter((r) => r.kind === "content" && (r.status === "new" || r.status === "seen")).slice(0, 5),
+    [aiRecs]
+  );
+  const scheduledContentTasks = useMemo(
+    () => contentTasks.filter((t) => t.module === "campaign" && t.status !== "done" && t.status !== "archived").slice(0, 5),
+    [contentTasks]
+  );
   const selectedAccountId = getSelectedAccountId("social-media");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
@@ -1369,24 +1372,43 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border glow-border h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkles className="h-5 w-5" />
-                Content ideas
-              </CardTitle>
-              <CardDescription>AI-generated suggestions</CardDescription>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="h-5 w-5" />
+                    Innehållsidéer
+                  </CardTitle>
+                  <CardDescription>AI-genererade förslag</CardDescription>
+                </div>
+                <Link to="/ai-recommendations" className="text-xs text-primary hover:underline">
+                  Alla →
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
-                {contentIdeas.map((idea, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    <span className="text-muted-foreground/50 mt-0.5">→</span>
-                    {idea}
-                  </li>
-                ))}
-              </ul>
+              {contentIdeas.length === 0 ? (
+                <div className="text-center py-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">Inga AI-förslag ännu.</p>
+                  <Link to="/ai-recommendations">
+                    <Button size="sm" variant="outline" className="text-xs">
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      Generera förslag
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {contentIdeas.map((rec) => (
+                    <li
+                      key={rec.id}
+                      className="flex items-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span className="text-muted-foreground/50 mt-0.5">→</span>
+                      <span>{rec.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </m.div>
@@ -1395,25 +1417,47 @@ export default function SocialMedia() {
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
-            <CardTitle className="text-lg">Scheduled posts</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-lg">Aktiva kampanjer</CardTitle>
+              <Link to="/sales-marketing" className="text-xs text-primary hover:underline">
+                Hantera →
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {scheduledPosts.map((post, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{post.title}</p>
-                    <p className="text-xs text-muted-foreground">{post.time}</p>
+            {scheduledContentTasks.length === 0 ? (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-sm text-muted-foreground">Inga aktiva kampanjer.</p>
+                <Link to="/sales-marketing">
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Skapa kampanj
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {scheduledContentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{task.title}</p>
+                      {task.due_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Deadline: {new Date(task.due_at).toLocaleDateString("sv-SE")}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full bg-accent text-muted-foreground shrink-0 ${
+                      task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : ""
+                    }`}>
+                      {task.status === "open" ? "Planerad" : task.status === "in_progress" ? "Aktiv" : "Pausad"}
+                    </span>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-accent text-muted-foreground">
-                    {post.platform}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </m.div>

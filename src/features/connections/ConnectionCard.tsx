@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { Info, Link2, Loader2, Play, RefreshCw, Unplug } from "lucide-react";
+import { CheckSquare2, Info, Link2, Loader2, Play, RefreshCw, Square, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
@@ -19,7 +19,12 @@ interface Props {
   isDisconnecting: boolean;
   onResume?: (connectionId: string) => void;
   isResuming?: boolean;
+  onResync?: (connectionId: string) => void;
+  isResyncing?: boolean;
+  resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 /**
@@ -38,7 +43,12 @@ export function ConnectionCard({
   isDisconnecting,
   onResume,
   isResuming,
+  onResync,
+  isResyncing,
+  resyncingId,
   onViewDetails,
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   // Include paused rows here — the card needs to render them so the user
   // can resume. The aggregate status derivation handles them correctly.
@@ -99,7 +109,21 @@ export function ConnectionCard({
                   key={c.id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-xs"
                 >
-                  <div className="min-w-0">
+                  {onToggleSelect && !paused && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleSelect(c.id)}
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label={selectedIds?.has(c.id) ? "Avmarkera" : "Markera"}
+                    >
+                      {selectedIds?.has(c.id) ? (
+                        <CheckSquare2 className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <Square className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground truncate">
                       {c.displayName || c.username}
                       <span className="text-muted-foreground font-normal"> · @{c.username}</span>
@@ -127,6 +151,24 @@ export function ConnectionCard({
                         <Info className="h-3 w-3" />
                       </Button>
                     ) : null}
+                    {!paused && onResync ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => onResync(c.id)}
+                        disabled={isResyncing}
+                        aria-label={`Resync ${c.displayName || c.username}`}
+                        title="Kontrollera anslutningsstatus"
+                      >
+                        {isResyncing && resyncingId === c.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3" />
+                        )}
+                      </Button>
+                    ) : null}
                     {paused && onResume ? (
                       <Button
                         type="button"
@@ -149,7 +191,7 @@ export function ConnectionCard({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2 text-xs"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
                         onClick={() => onDisconnect(c.id)}
                         disabled={isDisconnecting}
                         aria-label={`Disconnect ${c.displayName || c.username}`}

@@ -10,9 +10,15 @@ interface Props {
   isDisconnecting: boolean;
   onResume?: (connectionId: string) => void;
   isResuming?: boolean;
+  onResync?: (connectionId: string) => void;
+  isResyncing?: boolean;
+  resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
   /** When set, only catalog entries whose aggregate status matches are rendered. */
   statusFilter?: ConnectionStatus | null;
+  searchQuery?: string;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 /**
@@ -27,10 +33,17 @@ export function ConnectionsGrid({
   isDisconnecting,
   onResume,
   isResuming,
+  onResync,
+  isResyncing,
+  resyncingId,
   onViewDetails,
   statusFilter,
+  searchQuery = "",
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   const byArea = getCatalogByArea();
+  const query = searchQuery.trim().toLowerCase();
 
   return (
     <div className="space-y-8">
@@ -38,12 +51,26 @@ export function ConnectionsGrid({
         const entries = byArea[area];
         if (!entries.length) return null;
 
-        const visible = statusFilter
+        let visible = statusFilter
           ? entries.filter((e) => {
               const rows = connections.filter((c) => c.platform === e.platform);
               return aggregateStatus(rows) === statusFilter;
             })
           : entries;
+
+        // Search: match on platform label or connected account usernames
+        if (query) {
+          visible = visible.filter((e) => {
+            if (e.label.toLowerCase().includes(query)) return true;
+            if (e.platform.toLowerCase().includes(query)) return true;
+            const rows = connections.filter((c) => c.platform === e.platform);
+            return rows.some(
+              (c) =>
+                c.username.toLowerCase().includes(query) ||
+                (c.displayName ?? "").toLowerCase().includes(query)
+            );
+          });
+        }
 
         if (!visible.length) return null;
 
@@ -78,7 +105,12 @@ export function ConnectionsGrid({
                   isDisconnecting={isDisconnecting}
                   onResume={onResume}
                   isResuming={isResuming}
+                  onResync={onResync}
+                  isResyncing={isResyncing}
+                  resyncingId={resyncingId}
                   onViewDetails={onViewDetails}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
                 />
               ))}
             </div>

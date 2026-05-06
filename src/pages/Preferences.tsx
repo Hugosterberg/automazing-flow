@@ -12,9 +12,12 @@ import {
   Save,
   Shield,
   Trash2,
+  Users,
   Wrench,
   XCircle,
 } from "lucide-react";
+import { TeamManager } from "@/components/TeamManager";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +109,7 @@ function mergeRows(serverEntries: Record<string, string>): ApiEntryRow[] {
 
 export default function PreferencesPage() {
   const { toast } = useToast();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const [rows, setRows] = useState<ApiEntryRow[]>(presetEntries);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -265,6 +269,10 @@ export default function PreferencesPage() {
       <Tabs defaultValue="api-keys" className="w-full">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="h-3.5 w-3.5 mr-1.5" />
+            Team
+          </TabsTrigger>
           <TabsTrigger value="api-keys">API keys</TabsTrigger>
         </TabsList>
 
@@ -287,6 +295,30 @@ export default function PreferencesPage() {
               </m.div>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="team">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Teamhantering
+              </CardTitle>
+              <CardDescription>
+                Bjud in kollegor och hantera åtkomst till detta företagsprofil. Varje person loggar
+                in med sitt eget konto och ser samma data.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activeBusinessProfileId ? (
+                <TeamManager businessProfileId={activeBusinessProfileId} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Välj ett företagsprofil för att hantera teammedlemmar.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="api-keys">

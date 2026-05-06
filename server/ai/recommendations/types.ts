@@ -71,7 +71,7 @@ export interface ProducerResult {
   llm?: {
     created: number;
     expired: number;
-    skipped?: "no_api_key" | "no_signal" | "provider_error";
+    skipped?: "no_api_key" | "no_signal" | "provider_error" | "cached";
     error?: string;
   };
 }

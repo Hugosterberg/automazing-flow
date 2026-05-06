@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { CalendarDays, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,15 +23,11 @@ interface Props {
   disabled?: boolean;
 }
 
-/**
- * Minimal inline task creator. Title is required; description and priority
- * are optional. On successful submit we reset the form so the user can keep
- * adding without extra clicks.
- */
 export function TaskForm({ onSubmit, disabled }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [dueAt, setDueAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +35,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Title is required.");
+      setError("Titel krävs.");
       return;
     }
     setError(null);
@@ -49,12 +45,14 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         title: trimmed,
         description: description.trim() || null,
         priority,
+        dueAt: dueAt || null,
       });
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setDueAt("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create task.");
+      setError(err instanceof Error ? err.message : "Kunde inte skapa uppgiften.");
     } finally {
       setSubmitting(false);
     }
@@ -69,13 +67,13 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     >
       <div className="space-y-1.5">
         <Label htmlFor="task-title" className="text-xs">
-          Title
+          Titel
         </Label>
         <Input
           id="task-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="What needs to be done?"
+          placeholder="Vad behöver göras?"
           disabled={busy}
           autoComplete="off"
         />
@@ -83,14 +81,14 @@ export function TaskForm({ onSubmit, disabled }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="task-description" className="text-xs">
-          Description{" "}
-          <span className="text-muted-foreground">(optional)</span>
+          Beskrivning{" "}
+          <span className="text-muted-foreground">(valfritt)</span>
         </Label>
         <Textarea
           id="task-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add context or acceptance criteria…"
+          placeholder="Lägg till kontext eller acceptanskriterier…"
           rows={2}
           disabled={busy}
         />
@@ -99,14 +97,14 @@ export function TaskForm({ onSubmit, disabled }: Props) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="task-priority" className="text-xs">
-            Priority
+            Prioritet
           </Label>
           <Select
             value={priority}
             onValueChange={(v) => setPriority(v as TaskPriority)}
             disabled={busy}
           >
-            <SelectTrigger id="task-priority" className="h-9 w-[140px] text-xs">
+            <SelectTrigger id="task-priority" className="h-9 w-[130px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -119,17 +117,33 @@ export function TaskForm({ onSubmit, disabled }: Props) {
           </Select>
         </div>
 
-        <Button type="submit" size="sm" className="gap-1.5" disabled={busy}>
+        <div className="space-y-1.5">
+          <Label htmlFor="task-due" className="text-xs flex items-center gap-1">
+            <CalendarDays className="h-3 w-3" />
+            Deadline{" "}
+            <span className="text-muted-foreground">(valfritt)</span>
+          </Label>
+          <Input
+            id="task-due"
+            type="date"
+            value={dueAt}
+            onChange={(e) => setDueAt(e.target.value)}
+            disabled={busy}
+            className="h-9 text-xs w-[150px]"
+          />
+        </div>
+
+        <Button type="submit" size="sm" className="gap-1.5 h-9" disabled={busy}>
           {submitting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Plus className="h-3.5 w-3.5" />
           )}
-          Add task
+          Lägg till
         </Button>
 
         {error ? (
-          <p className="text-xs text-destructive">{error}</p>
+          <p className="text-xs text-destructive w-full">{error}</p>
         ) : null}
       </div>
     </form>

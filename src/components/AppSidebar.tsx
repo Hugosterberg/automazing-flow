@@ -608,6 +608,10 @@ export function AppSidebar() {
                 const isActive = location.pathname === item.url;
                 const categoryAccounts = getAccountsForCategory(accounts, item.platforms);
                 const hasConnect = item.platforms.length > 0;
+                // Hide platform-specific routes that have no connected accounts and are not active
+                // (show them as dimmed but still present so user knows what's possible)
+                const hasAccounts = categoryAccounts.length > 0;
+                const isDataRoute = item.platforms.length > 0 && !item.hideAccounts;
                 const section = sectionForNavItemKey(item.key);
                 const selectedAccountId = section ? getSelectedAccountId(section) : null;
 
@@ -638,7 +642,7 @@ export function AppSidebar() {
                         <span
                           className={`text-sm flex-1 ${
                             isActive ? "font-semibold" : "font-medium"
-                          }`}
+                          } ${isDataRoute && !hasAccounts && !isActive ? "opacity-60" : ""}`}
                         >
                           {item.title}
                         </span>
@@ -648,6 +652,10 @@ export function AppSidebar() {
                             ariaLabel={navBadge.ariaLabel}
                             tone={navBadge.tone}
                           />
+                        ) : isDataRoute && !hasAccounts ? (
+                          <span className="text-[10px] text-muted-foreground/70 bg-muted rounded px-1.5 py-0.5 shrink-0">
+                            Koppla
+                          </span>
                         ) : null}
                       </NavLink>
                     </SidebarMenuButton>

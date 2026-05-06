@@ -27,7 +27,7 @@ export const LLM_CONTENT_MODULE = "ai_content_llm";
 const MAX_IDEAS = 5;
 
 /** Default when caller doesn't specify. Balance between cost and value. */
-const DEFAULT_IDEAS = 3;
+const DEFAULT_IDEAS = 5;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
 type SupabaseLike = { from: (table: string) => any };
@@ -137,43 +137,66 @@ async function loadContext(
   return { profile, platforms };
 }
 
+const PLATFORM_TIPS: Record<string, string> = {
+  instagram: "Prioritera Reels (korta videor), karusellposter och Stories med engagerande frågor.",
+  tiktok: "Fokusera på trender, humoristiskt innehåll och bakom-kulisserna-klipp.",
+  youtube: "Längre tutorials, listicles och svar på vanliga kundfrÅgor fungerar bäst.",
+  facebook: "Lokala evenemang, kundberättelser och delade branschnyheter driver engagemang.",
+  google_business: "Svara på recensioner, lägg upp foton och uppdatera öppettider regelbundet.",
+  x: "Korta, spetsiga åsikter, branschinsikter och dialog med community.",
+  linkedin: "Tankeledarskapsinlägg, fallstudier och rekryteringsinnehåll.",
+  google_reviews: "Uppmuntra nöjda kunder att recensera och svara på alla recensioner inom 24 timmar.",
+};
+
 function buildPrompt(
   profile: BusinessProfileRow,
   platforms: string[],
   ideaCount: number
 ): { system: string; user: string } {
   const system = [
-    "Du är en senior social media-strateg.",
-    "Ditt jobb är att föreslå konkreta innehållsidéer för ett företag baserat på dess profil och anslutna plattformar.",
+    "Du är en erfaren digital marknadsföringsstrateg med fokus på SME-företag.",
+    "Du ger konkreta, plattformsspecifika innehållsidéer som ett litet team kan genomföra direkt.",
     "Svara ALLTID på svenska.",
-    "Varje förslag ska vara omedelbart genomförbart och knyta an till företagets bransch och plattformar.",
-    "Undvik generiska floskler. Var specifik och konkret.",
+    "Varje förslag ska vara unikt, specificerat till företagets bransch/plats, och koppla till de angivna plattformarna.",
+    "Undvik generiska råd som 'posta oftare' eller 'engagera med följare'.",
+    "Var specifik: nämn format, ämne och varför det passar just detta företag.",
   ].join(" ");
 
   const platformLabel =
     platforms.length > 0
       ? platforms.join(", ")
-      : "(inga plattformar anslutna än — föreslå generella idéer för sociala medier)";
+      : "(inga plattformar anslutna än)";
+
+  const platformHints = platforms
+    .filter((p) => PLATFORM_TIPS[p])
+    .map((p) => `- ${p}: ${PLATFORM_TIPS[p]}`)
+    .join("\n");
 
   const profileLines: string[] = [];
-  if (profile.name) profileLines.push(`Namn: ${profile.name}`);
-  if (profile.company) profileLines.push(`Företag: ${profile.company}`);
+  if (profile.name) profileLines.push(`Profilnamn: ${profile.name}`);
+  if (profile.company) profileLines.push(`Företagsnamn: ${profile.company}`);
   if (profile.website) profileLines.push(`Webbplats: ${profile.website}`);
   if (profile.location) profileLines.push(`Plats: ${profile.location}`);
   if (profile.notes) {
-    profileLines.push(`Anteckningar: ${profile.notes.slice(0, 400)}`);
+    profileLines.push(`Noteringar om verksamheten: ${profile.notes.slice(0, 600)}`);
   }
 
   const user = [
-    "Företagsprofil:",
+    "## Företagsinformation",
     profileLines.join("\n") || "(ingen extra metadata)",
     "",
-    `Anslutna plattformar: ${platformLabel}`,
+    `## Anslutna plattformar`,
+    platformLabel,
     "",
-    `Ge exakt ${ideaCount} innehållsidéer.`,
-    "Returnera ENDAST JSON i exakt detta format (inga kommentarer):",
-    `{"ideas":[{"title":"kort titel max 80 tecken","summary":"2-3 meningar som beskriver idén","rationale":"1 mening som förklarar varför det passar detta företag"}]}`,
-  ].join("\n");
+    platformHints ? `## Plattformstips att ta hänsyn till\n${platformHints}` : "",
+    "",
+    `## Uppgift`,
+    `Ge exakt ${ideaCount} konkreta innehållsidéer anpassade till detta specifika företag.`,
+    "Variera idéerna: inkludera minst ett engagerande inlägg, ett utbildande inlägg och ett kampanjinlägg.",
+    "",
+    "Returnera ENDAST JSON utan kommentarer eller markdown:",
+    `{"ideas":[{"title":"Kort, lockande rubrik (max 80 tecken)","summary":"2-3 meningar som beskriver exakt vad som ska göras och hur","rationale":"1 mening om varför detta passar just detta företag och denna plattform"}]}`,
+  ].filter(Boolean).join("\n");
 
   return { system, user };
 }

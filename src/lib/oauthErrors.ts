@@ -5,15 +5,26 @@ export type OAuthErrorDetails = {
   hint: string | null;
 };
 
-/** Shown when pages do not pass a custom `messages` map; extend per-page maps to override. */
+/** Visas när sidor inte definierar egna meddelanden — utöka med per-sida-mappar för override. */
 export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   not_authenticated:
-    "The app had no active server session when OAuth completed. Open the app again, stay signed in (or use local mode on localhost), go back to the same section, and start Connect once more.",
-  access_denied: "The provider declined access. Try Connect again and approve the requested permissions.",
+    "Inloggningssessionen saknades när OAuth slutfördes. Öppna appen igen, håll dig inloggad och starta Koppla-flödet på nytt från samma sida.",
+  access_denied:
+    "Leverantören nekade åtkomst. Försök koppla igen och godkänn de begärda behörigheterna.",
   invalid_state:
-    "OAuth state did not match (expired step, another tab, or tunnel/cookie issues). Start Connect again from a single browser tab.",
-  user_cancelled: "Sign-in was cancelled at the provider. Try again when you are ready to approve access.",
-  interaction_required: "The provider needs another sign-in step. Try Connect again and complete any prompts.",
+    "OAuth-tillståndet matchar inte — länken kan ha gått ut, en annan flik interfererade, eller cookie-inställningarna blockerade svaret. Starta Koppla-flödet igen från en enda flik.",
+  user_cancelled:
+    "Inloggningen avbröts hos leverantören. Försök igen när du är redo att godkänna åtkomst.",
+  interaction_required:
+    "Leverantören kräver ett extra inloggningssteg. Försök koppla igen och slutför alla dialogrutor.",
+  token_exchange_failed:
+    "Kunde inte byta ut auktoriseringskoden mot en token. Kontrollera att OAuth-nycklar och callback-URL:er är korrekt konfigurerade.",
+  missing_code:
+    "Leverantören skickade inget auktoriseringskod. Försök igen — om problemet kvarstår, kontrollera konfigurationen.",
+  scope_not_granted:
+    "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och markera alla efterfrågade rättigheter.",
+  account_already_connected:
+    "Det här kontot är redan kopplat till en annan profil.",
 };
 
 export function parseOAuthErrorDetails(searchParams: URLSearchParams): OAuthErrorDetails | null {
@@ -39,11 +50,13 @@ export function removeOAuthErrorParams(searchParams: URLSearchParams) {
 export function formatOAuthErrorMessage(
   details: OAuthErrorDetails,
   messages?: Record<string, string>,
-  fallbackPrefix = "Connection failed"
+  fallbackPrefix = "Koppling misslyckades"
 ) {
   const merged = { ...DEFAULT_OAUTH_ERROR_MESSAGES, ...(messages || {}) };
   if (merged[details.code]) return merged[details.code];
-  return `${fallbackPrefix}: ${details.code.replace(/_/g, " ")}`;
+  // Humanize the error code for the fallback
+  const humanCode = details.code.replace(/_/g, " ");
+  return `${fallbackPrefix}: ${humanCode}`;
 }
 
 export function formatConnectFetchError(params: {
@@ -56,7 +69,7 @@ export function formatConnectFetchError(params: {
       ? String(params.payload.status)
       : typeof params.status === "number"
         ? String(params.status)
-        : "unknown";
+        : "okänd";
   const errorCode =
     typeof params.payload?.error === "string" && params.payload.error.trim().length > 0
       ? params.payload.error
@@ -64,7 +77,7 @@ export function formatConnectFetchError(params: {
   const exception =
     typeof params.payload?.exception === "string" && params.payload.exception.trim().length > 0
       ? params.payload.exception
-      : "not provided";
+      : "ej angiven";
 
-  return `Error: ${errorCode} | Status: ${statusCode} | Exception: ${exception}`;
+  return `Fel: ${errorCode} | Status: ${statusCode} | Undantag: ${exception}`;
 }

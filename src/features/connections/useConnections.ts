@@ -8,6 +8,7 @@ import {
   softDisconnect,
 } from "./connectionsService";
 import { logActivity, ACTIVITY_FEED_KEY } from "@/features/activity";
+import { apiUrl } from "@/lib/apiBase";
 
 export const CONNECTIONS_KEY = ["connections"] as const;
 
@@ -76,6 +77,24 @@ export function useConnections(businessProfileId: string | null | undefined) {
     },
   });
 
+  const resyncMut = useMutation({
+    mutationFn: async (connectionId: string) => {
+      if (!enabled) throw new Error("Not signed in.");
+      const res = await fetch(
+        apiUrl(`/api/connections/${encodeURIComponent(connectionId)}/resync?business_profile_id=${encodeURIComponent(businessProfileId ?? "")}`),
+        { method: "POST", credentials: "include" }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Resync failed");
+      }
+      return res.json() as Promise<{ health: string }>;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CONNECTIONS_KEY });
+    },
+  });
+
   return {
     connections: query.data ?? [],
     active: (query.data ?? []).filter((c) => !c.disconnectedAt),
@@ -88,5 +107,8 @@ export function useConnections(businessProfileId: string | null | undefined) {
     isDisconnecting: disconnectMut.isPending,
     resume: resumeMut.mutateAsync,
     isResuming: resumeMut.isPending,
+    resync: resyncMut.mutateAsync,
+    isResyncing: resyncMut.isPending,
+    resyncingId: resyncMut.isPending ? (resyncMut.variables as string | undefined) : undefined,
   };
 }

@@ -233,6 +233,100 @@ export function registerConnectionsRoutes(
     return res.json({ ok: true, updated, scanned: rows.length });
   });
 
+  // POST /api/connections/:id/resync — re-check health for a single connection
+  app.post(
+    "/api/connections/:id/resync",
+    requireMembership,
+    async (req, res) => {
+      if (!supabaseAdmin) {
+        return res.status(503).json({ error: "supabase_service_role_not_configured" });
+      }
+      const businessProfileId = String(req.businessProfileId || "");
+      const connectionId = String(req.params?.id || "").trim();
+      if (!connectionId) return res.status(400).json({ error: "missing_connection_id" });
+      const userId = getSessionUserId(req);
+
+      const sb = supabaseAdmin as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: unknown) => {
+              eq: (col: string, val: unknown) => {
+                maybeSingle: () => Promise<{ data: ConnectionRow | null; error: { message?: string } | null }>;
+              };
+            };
+          };
+          update: (p: Record<string, unknown>) => {
+            eq: (col: string, val: unknown) => Promise<{ error: { message?: string } | null }>;
+          };
+        };
+      };
+
+      const { data: row, error: selErr } = await sb
+        .from("connected_accounts")
+        .select("id,platform,zernio_account_id,disconnected_at,business_profile_id,health")
+        .eq("id", connectionId)
+        .eq("business_profile_id", businessProfileId)
+        .maybeSingle();
+
+      if (selErr) return res.status(500).json({ error: selErr.message });
+      if (!row) return res.status(404).json({ error: "connection_not_found" });
+
+      const listing = await zernio.listAccounts();
+      const runStart = new Date().toISOString();
+      let nextHealth = "healthy";
+      let nextError: string | null = null;
+
+      if (listing.ok) {
+        const zid = String(row.zernio_account_id || "").trim();
+        if (zid) {
+          const known = listing.accounts.some((a) => {
+            const id = String(a.id || a.accountId || a._id || "").trim();
+            return id === zid;
+          });
+          if (!known) {
+            nextHealth = "expired";
+            nextError = "Zernio no longer reports this account. Re-connect required.";
+          }
+        }
+      }
+
+      const runFinish = new Date().toISOString();
+      const { error: updErr } = await sb
+        .from("connected_accounts")
+        .update({ health: nextHealth, last_synced_at: runFinish, last_sync_error: nextError })
+        .eq("id", connectionId);
+
+      if (updErr) return res.status(500).json({ error: updErr.message });
+
+      await recordSyncRun(supabaseAdmin as unknown as Parameters<typeof recordSyncRun>[0], {
+        businessProfileId,
+        connectedAccountId: connectionId,
+        kind: "reconcile",
+        status: "success",
+        startedAt: runStart,
+        finishedAt: runFinish,
+        itemsProcessed: 1,
+        errorMessage: nextError,
+        metadata: { resultingHealth: nextHealth, platform: row.platform },
+        updateLastSuccessful: nextHealth === "healthy",
+      });
+
+      await logActivity(supabaseAdmin as unknown as Parameters<typeof logActivity>[0], {
+        businessProfileId,
+        actorUserId: userId,
+        module: "connections",
+        eventType: "connection.sync.completed",
+        subjectType: "connected_account",
+        subjectId: connectionId,
+        severity: nextHealth === "healthy" ? "success" : "warning",
+        summary: `Resynced ${row.platform ?? "connection"}: ${nextHealth}`,
+        payload: { health: nextHealth, platform: row.platform },
+      });
+
+      return res.json({ ok: true, health: nextHealth });
+    }
+  );
+
   app.post(
     "/api/connections/:id/disconnect",
     requireMembership,

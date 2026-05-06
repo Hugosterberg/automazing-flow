@@ -227,14 +227,19 @@ function activeProfileStorageKey(userId?: string | null): string {
 }
 
 function ensureDefaultProfile(profiles: Profile[], accounts: ConnectedAccount[]): Profile[] {
+  // Legacy: if any accounts reference the "default" synthetic ID we keep a
+  // placeholder profile so the sidebar still shows them. Cloud mode will
+  // migrate them to a real business_profile_id on first reconcile.
   const hasDefault = profiles.some((p) => p.id === "default");
   const needsDefault = accounts.some((a) => !a.profileId || a.profileId === "default");
-  if (!hasDefault && (profiles.length === 0 || needsDefault)) {
+  if (!hasDefault && needsDefault) {
     return [
-      { id: "default", name: "Default", createdAt: new Date().toISOString() },
+      { id: "default", name: "Mitt företag", createdAt: new Date().toISOString() },
       ...profiles.filter((p) => p.id !== "default"),
     ];
   }
+  // Don't inject "default" when there are real profiles — cloud users always
+  // have at least one business_profile with a UUID.
   return profiles;
 }
 

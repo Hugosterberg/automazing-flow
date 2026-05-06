@@ -11,10 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User as UserIcon, Terminal } from "lucide-react";
+import { LogOut, Settings, Terminal, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
-import { Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
@@ -69,8 +69,8 @@ export default function Layout() {
                           {emailInitial(email)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="hidden sm:inline text-xs text-muted-foreground max-w-[180px] truncate">
-                        {email ?? "Signed in"}
+                      <span className="hidden sm:inline text-xs text-muted-foreground max-w-[160px] truncate">
+                        {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
@@ -79,29 +79,36 @@ export default function Layout() {
                       <UserIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-foreground truncate">
-                          {email ?? "Signed in"}
+                          {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Cloud account
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {email ?? "Cloud-konto"}
                         </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="text-xs">
+                      <Link to="/preferences">
+                        <Settings className="h-3.5 w-3.5 mr-2" />
+                        Inställningar
+                      </Link>
+                    </DropdownMenuItem>
                     {allowLocal ? (
                       <DropdownMenuItem
                         onSelect={() => setAuthMode("local")}
                         className="text-xs"
                       >
                         <Terminal className="h-3.5 w-3.5 mr-2" />
-                        Switch to local mode
+                        Lokalt läge
                       </DropdownMenuItem>
                     ) : null}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onSelect={() => void signOut()}
                       className="text-xs text-destructive focus:text-destructive"
                     >
                       <LogOut className="h-3.5 w-3.5 mr-2" />
-                      Sign out
+                      Logga ut
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -123,7 +130,7 @@ export default function Layout() {
           <div
             id="main-content"
             tabIndex={-1}
-            className="flex-1 p-6 overflow-auto focus:outline-none"
+            className="flex-1 p-4 sm:p-6 overflow-auto focus:outline-none"
           >
             <ErrorBoundary resetKey={location.pathname} label="route">
               <Outlet />

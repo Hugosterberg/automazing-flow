@@ -25,6 +25,10 @@ type AuthContextValue = {
   setAuthMode: (mode: AuthMode) => void;
   enabled: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<{ checkEmail: boolean }>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -160,6 +164,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             redirectTo: getOAuthRedirectUrl(),
           },
         });
+      },
+      signInWithEmail: async (email: string, password: string) => {
+        if (!supabase) return;
+        setAuthMode("cloud");
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      signUpWithEmail: async (email: string, password: string) => {
+        if (!supabase) return;
+        setAuthMode("cloud");
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+      },
+      signInWithMagicLink: async (email: string) => {
+        if (!supabase) return { checkEmail: false };
+        setAuthMode("cloud");
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: getOAuthRedirectUrl() },
+        });
+        if (error) throw error;
+        return { checkEmail: true };
+      },
+      resetPassword: async (email: string) => {
+        if (!supabase) return;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: getOAuthRedirectUrl(),
+        });
+        if (error) throw error;
       },
       signOut: async () => {
         if (supabase) {

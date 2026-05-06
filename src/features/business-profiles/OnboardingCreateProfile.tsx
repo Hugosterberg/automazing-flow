@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Loader2, PlugZap, Share2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -14,13 +13,37 @@ import { Label } from "@/components/ui/label";
 import { useBusinessProfiles } from "./useBusinessProfiles";
 import { useSetActiveBusinessProfileId } from "./ActiveBusinessProfileContext";
 
+const FEATURE_STEPS = [
+  {
+    icon: Share2,
+    title: "Koppla sociala konton",
+    desc: "Instagram, TikTok, YouTube, Facebook och mer — allt på ett ställe.",
+  },
+  {
+    icon: Star,
+    title: "Hantera recensioner",
+    desc: "Se och svara på Google Reviews och Tripadvisor direkt i appen.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Kalender och e-post",
+    desc: "Synka Google Calendar, Outlook och Gmail för en fullständig överblick.",
+  },
+  {
+    icon: PlugZap,
+    title: "Allt sparas automatiskt",
+    desc: "Dina kopplingar och inställningar sparas och finns kvar nästa gång du loggar in.",
+  },
+];
+
 /**
- * Shown when a user has zero business profiles. The new tenant model has no
- * synthetic "default" profile — they must create their first one here.
+ * Shown when a user has zero business profiles. Creates the first one
+ * and redirects to /connections so the user can immediately connect accounts.
  */
 export function OnboardingCreateProfile() {
   const { createProfile, isCreating } = useBusinessProfiles();
   const setActive = useSetActiveBusinessProfileId();
+  const [step, setStep] = useState<"welcome" | "create">("welcome");
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [website, setWebsite] = useState("");
@@ -39,9 +62,56 @@ export function OnboardingCreateProfile() {
         website: website.trim() || undefined,
       });
       setActive(created.id);
+      // Redirect to /connections via window.location so the full app re-renders
+      // with the new active profile set.
+      window.location.href = "/connections";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create business profile");
+      setError(err instanceof Error ? err.message : "Kunde inte skapa företagsprofilen");
     }
+  }
+
+  if (step === "welcome") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+        <div className="w-full max-w-xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary mx-auto">
+              <Building2 className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Välkommen till automazing!</h1>
+            <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
+              Börja med att skapa ditt första företagsprofil. Sedan kopplar du alla dina konton — Instagram,
+              Google, Shopify och mer — på ett och samma ställe.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {FEATURE_STEPS.map((f) => (
+              <div key={f.title} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3.5">
+                <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <f.icon className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{f.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-4 py-3">
+            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              Dina kopplingar sparas automatiskt och finns kvar varje gång du loggar in med ditt Google-konto.
+            </span>
+          </div>
+
+          <Button className="w-full" size="lg" onClick={() => setStep("create")}>
+            Kom igång — skapa ditt företagsprofil
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -52,28 +122,29 @@ export function OnboardingCreateProfile() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border mb-1">
               <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden />
             </div>
-            <CardTitle className="text-xl">Create your first business profile</CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
-              Each business profile keeps its connected channels, content and context
-              separate. You can add more later.
-            </CardDescription>
+            <CardTitle className="text-xl">Berätta om ditt företag</CardTitle>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Den här informationen visas i sidofältet och hjälper AI:n att ge dig mer relevanta förslag.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="bp-name">Profile name</Label>
+              <Label htmlFor="bp-name">
+                Profilnamn <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="bp-name"
-                placeholder="Acme"
+                placeholder="t.ex. Huvudkontoret eller Restaurang Söder"
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Shown in the sidebar switcher and headers.
+                Visas i sidofältet när du väljer aktiv profil.
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bp-company">Company (optional)</Label>
+              <Label htmlFor="bp-company">Företagsnamn (valfritt)</Label>
               <Input
                 id="bp-company"
                 placeholder="Acme AB"
@@ -82,10 +153,11 @@ export function OnboardingCreateProfile() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bp-website">Website (optional)</Label>
+              <Label htmlFor="bp-website">Webbplats (valfritt)</Label>
               <Input
                 id="bp-website"
-                placeholder="https://acme.com"
+                placeholder="https://acme.se"
+                type="url"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
               />
@@ -96,10 +168,13 @@ export function OnboardingCreateProfile() {
               </p>
             ) : null}
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={!canSubmit}>
+          <CardFooter className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={() => setStep("welcome")}>
+              Tillbaka
+            </Button>
+            <Button type="submit" className="flex-1" disabled={!canSubmit}>
               {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Create business profile
+              Skapa och koppla konton
             </Button>
           </CardFooter>
         </Card>

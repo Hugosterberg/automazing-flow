@@ -37,6 +37,7 @@ import { registerAiRoutes } from "./routes/aiRoutes.ts";
 import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoutes.ts";
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
+import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -352,6 +353,11 @@ registerConnectionsRoutes(app, {
   supabaseAdmin: supabaseServiceClient,
   zernio: zernioModule,
   tokenStore,
+  getSessionUserId,
+});
+registerTeamRoutes(app, {
+  requireMembership,
+  supabaseAdmin: supabaseServiceClient,
   getSessionUserId,
 });
 

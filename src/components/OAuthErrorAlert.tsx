@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { OAuthErrorDetails } from "@/lib/oauthErrors";
 import { cn } from "@/lib/utils";
@@ -20,64 +19,86 @@ export function OAuthErrorAlert({ details, message, onDismiss }: OAuthErrorAlert
   const hasTechnical = hasStatus || hasException;
 
   return (
-    <Card className="border-destructive/35 bg-destructive/5 shadow-sm" role="alert">
-      <CardContent className="py-3.5 px-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2 min-w-0 flex-1">
-          <p className="text-sm font-medium text-destructive leading-snug">{message}</p>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-            <span className="text-muted-foreground">
-              Code: <code className="rounded bg-muted px-1 py-0.5 text-foreground">{details.code}</code>
-            </span>
-            <Link to="/integrations" className="text-primary underline-offset-2 hover:underline font-medium">
-              Connection map
-            </Link>
-            <Link to="/preferences" className="text-primary underline-offset-2 hover:underline font-medium">
-              API keys
-            </Link>
-          </div>
-          {details.hint ? (
-            <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-destructive/30 pl-2">
-              <span className="font-medium text-foreground/90">Hint:</span> {details.hint}
-            </p>
-          ) : null}
-          {hasTechnical ? (
-            <Collapsible open={techOpen} onOpenChange={setTechOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground",
-                    "rounded-md py-1 -ml-1 px-1 -my-1"
-                  )}
-                >
-                  <ChevronDown
-                    className={cn("h-3.5 w-3.5 transition-transform", techOpen && "rotate-180")}
-                    aria-hidden
-                  />
-                  Technical details
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1.5 pt-2 text-xs text-muted-foreground">
-                {hasStatus ? (
-                  <p>
-                    <span className="font-medium text-foreground/85">Status:</span>{" "}
-                    <code className="rounded bg-muted px-1 py-0.5">{details.statusCode}</code>
-                  </p>
-                ) : null}
-                {hasException ? (
-                  <p className="break-words">
-                    <span className="font-medium text-foreground/85">Exception:</span>{" "}
-                    <code className="rounded bg-muted px-1 py-0.5">{details.exception}</code>
-                  </p>
-                ) : null}
-              </CollapsibleContent>
-            </Collapsible>
-          ) : null}
+    <div
+      role="alert"
+      className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 space-y-2"
+    >
+      <div className="flex items-start gap-3">
+        <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+          <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
         </div>
-        <Button variant="ghost" size="sm" onClick={onDismiss} className="shrink-0 self-start">
-          Dismiss
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="text-sm font-medium text-destructive leading-snug">
+            Kopplingen kunde inte slutföras
+          </p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{message}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onDismiss}
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label="Stäng felmeddelande"
+        >
+          <X className="h-4 w-4" />
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-11 text-xs text-muted-foreground">
+        <span>
+          Kod: <code className="rounded bg-muted px-1 py-0.5 text-foreground font-mono text-[11px]">{details.code}</code>
+        </span>
+        <Link to="/connections" className="text-primary underline-offset-2 hover:underline font-medium">
+          Öppna anslutningar
+        </Link>
+        <Link to="/preferences" className="text-primary underline-offset-2 hover:underline font-medium">
+          API-inställningar
+        </Link>
+      </div>
+
+      {details.hint ? (
+        <div className="pl-11">
+          <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-destructive/30 pl-2.5">
+            <span className="font-medium text-foreground/90">Tips:</span> {details.hint}
+          </p>
+        </div>
+      ) : null}
+
+      {hasTechnical ? (
+        <div className="pl-11">
+          <Collapsible open={techOpen} onOpenChange={setTechOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground",
+                  "rounded-md py-1 px-1 -ml-1"
+                )}
+              >
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform", techOpen && "rotate-180")}
+                  aria-hidden
+                />
+                Tekniska detaljer
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1.5 pt-2 text-xs text-muted-foreground">
+              {hasStatus ? (
+                <p>
+                  <span className="font-medium text-foreground/85">HTTP-status:</span>{" "}
+                  <code className="rounded bg-muted px-1 py-0.5">{details.statusCode}</code>
+                </p>
+              ) : null}
+              {hasException ? (
+                <p className="break-words">
+                  <span className="font-medium text-foreground/85">Undantag:</span>{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{details.exception}</code>
+                </p>
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      ) : null}
+    </div>
   );
 }

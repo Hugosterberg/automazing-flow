@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus, Pencil, Trash2, Check, CheckCircle2 } from "lucide-react";
+import { Building2, Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +21,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAccounts } from "@/context/AccountsContext";
 
+function ProfileInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 export function ProfileSwitcher() {
   const {
     profiles,
@@ -35,9 +44,10 @@ export function ProfileSwitcher() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [open, setOpen] = useState(false);
 
   function handleAddProfile() {
-    const name = newName.trim() || "New profile";
+    const name = newName.trim() || "Nytt profil";
     addProfile(name);
     setNewName("");
   }
@@ -57,118 +67,128 @@ export function ProfileSwitcher() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  const activeCount = activeProfile ? getAccountCount(activeProfile.id) : 0;
+
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 h-9 px-2 font-normal text-sm"
+            variant="outline"
+            className="w-full justify-between gap-2 h-11 px-3 font-normal text-sm bg-card hover:bg-accent/50 border-border/70"
           >
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate flex items-center gap-1.5 text-left">
-              {activeProfile?.name ?? "Select profile"}
-              {activeProfile ? (
-                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                  ({getAccountCount(activeProfile.id)})
-                </span>
-              ) : null}
-            </span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 shrink-0 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                {activeProfile ? ProfileInitials(activeProfile.name) : "?"}
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-sm font-medium truncate text-foreground">
+                  {activeProfile?.name ?? "Välj profil"}
+                </p>
+                {activeProfile && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {activeCount} kopplade konton
+                  </p>
+                )}
+              </div>
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuContent align="start" className="w-72">
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            All sidebar tools use this profile
+            Företagsprofiler — alla verktyg använder den aktiva
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {sortedProfiles.map((profile) => {
-            const isSelected = activeProfile?.id === profile.id;
-            return (
-              <div
-                key={profile.id}
-                className="flex items-center gap-1.5 rounded-sm px-2 py-1.5 hover:bg-accent group"
-              >
-                {editingId === profile.id ? (
-                  <div className="flex gap-1 flex-1 min-w-0">
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveRename();
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      className="h-7 text-xs flex-1"
-                      autoFocus
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 shrink-0"
-                      onClick={handleSaveRename}
-                      aria-label="Save profile name"
-                    >
-                      <Check className="h-3 w-3" aria-hidden />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    {isSelected ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    ) : (
-                      <span className="w-4 shrink-0" aria-hidden />
-                    )}
-                    <button
-                      type="button"
-                      className="flex-1 text-left text-sm truncate min-w-0"
-                      onClick={() => setActiveProfileId(profile.id)}
-                    >
-                      {profile.name}
-                    </button>
-                    <span
-                      className="text-xs text-muted-foreground shrink-0 tabular-nums"
-                      title="Connected channels"
-                    >
-                      {getAccountCount(profile.id)}
-                    </span>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+          <div className="max-h-[260px] overflow-y-auto py-1">
+            {sortedProfiles.map((profile) => {
+              const isSelected = activeProfile?.id === profile.id;
+              const count = getAccountCount(profile.id);
+              return (
+                <div
+                  key={profile.id}
+                  className={`flex items-center gap-2 rounded-md mx-1 px-2 py-2 hover:bg-accent group cursor-pointer ${
+                    isSelected ? "bg-accent/60" : ""
+                  }`}
+                  onClick={() => {
+                    if (editingId !== profile.id) {
+                      setActiveProfileId(profile.id);
+                      setOpen(false);
+                    }
+                  }}
+                >
+                  {editingId === profile.id ? (
+                    <div className="flex gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveRename();
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="h-7 text-xs flex-1"
+                        autoFocus
+                      />
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-6 w-6 shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingId(profile.id);
-                          setEditName(profile.name);
-                        }}
-                        aria-label={`Rename profile ${profile.name}`}
+                        className="h-7 w-7 shrink-0"
+                        onClick={handleSaveRename}
+                        aria-label="Spara namn"
                       >
-                        <Pencil className="h-3 w-3" aria-hidden />
+                        <Check className="h-3 w-3" aria-hidden />
                       </Button>
-                      {profiles.length > 1 && (
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-7 w-7 shrink-0 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {ProfileInitials(profile.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{profile.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{count} konton</p>
+                      </div>
+                      {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                      <div
+                        className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 ml-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget({ id: profile.id, name: profile.name });
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => {
+                            setEditingId(profile.id);
+                            setEditName(profile.name);
                           }}
-                          aria-label={`Delete profile ${profile.name}`}
+                          aria-label={`Byt namn på ${profile.name}`}
                         >
-                          <Trash2 className="h-3 w-3" aria-hidden />
+                          <Pencil className="h-3 w-3" aria-hidden />
                         </Button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+                        {profiles.length > 1 && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteTarget({ id: profile.id, name: profile.name })}
+                            aria-label={`Ta bort ${profile.name}`}
+                          >
+                            <Trash2 className="h-3 w-3" aria-hidden />
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
           <DropdownMenuSeparator />
-          <div className="px-2 py-1.5">
+          <div className="px-2 py-2">
+            <p className="text-[11px] text-muted-foreground mb-1.5">Nytt företagsprofil</p>
             <div className="flex gap-1">
               <Input
-                placeholder="New profile..."
+                placeholder="Namn på profilen…"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
@@ -179,7 +199,7 @@ export function ProfileSwitcher() {
                 variant="ghost"
                 className="h-8 w-8 shrink-0"
                 onClick={handleAddProfile}
-                aria-label="Add business profile"
+                aria-label="Lägg till företagsprofil"
               >
                 <Plus className="h-4 w-4" aria-hidden />
               </Button>
@@ -191,16 +211,15 @@ export function ProfileSwitcher() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete profile?</AlertDialogTitle>
+            <AlertDialogTitle>Ta bort profil?</AlertDialogTitle>
             <AlertDialogDescription>
-              The profile &quot;{deleteTarget?.name}&quot; and its{" "}
-              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} connected channel
-              {deleteTarget && getAccountCount(deleteTarget.id) === 1 ? "" : "s"} will be removed from
-              this workspace. This cannot be undone.
+              Profilen &quot;{deleteTarget?.name}&quot; och dess{" "}
+              {deleteTarget ? getAccountCount(deleteTarget.id) : 0} kopplade konton tas bort permanent.
+              Det går inte att ångra.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -210,7 +229,7 @@ export function ProfileSwitcher() {
                 }
               }}
             >
-              Delete
+              Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
