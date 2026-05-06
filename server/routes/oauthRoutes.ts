@@ -1924,8 +1924,53 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     res.set("Cache-Control", "no-store, no-cache");
-    // Google Business Profile uses the official Google OAuth flow. Older clients
-    // may still send provider=zernio; ignore it so they do not hit a dead path.
+    const provider = String(req.query.provider || "official").trim().toLowerCase();
+    if (provider === "zernio") {
+      const zernioKey = getZernioApiKey();
+      if (!zernioKey) {
+        return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_not_configured", returnPage));
+      }
+      try {
+        const zernioProfileId = await getOrCreateZernioProfileId();
+        if (!zernioProfileId) {
+          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_profile_failed", returnPage));
+        }
+        const state = generateState();
+        const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+        await oauthPendingStore.set(state, {
+          platform: "google_business",
+          userId,
+          profileId: ourProfileId,
+          zernioProfileId,
+          createdAt: Date.now(),
+          oauthReturnPage: returnPage,
+        });
+        const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+        const authUrl = await getZernioConnectUrl({
+          ZERNIO_API_BASE,
+          zernioKey,
+          platformSlugs: ["google-business", "google-business-profile", "google-business-location", "google_business"],
+          profileId: zernioProfileId,
+          redirectUrl,
+          extraParams: { headless: "true" },
+        });
+        return res.redirect(authUrl);
+      } catch (e) {
+        const msg = String(e?.message || "");
+        console.error("[Zernio google_business] connect init failed:", msg);
+        if (msg.includes("Platform not supported")) {
+          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_gmb_not_supported", returnPage));
+        }
+        if (msg.startsWith("zernio_connect_failed")) {
+          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_connect_failed", returnPage));
+        }
+        if (msg === "zernio_no_auth_url") {
+          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_no_auth_url", returnPage));
+        }
+        return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_init_failed", returnPage));
+      }
+    }
+    // Default Google Business Profile path: official Google OAuth.
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {

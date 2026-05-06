@@ -49,7 +49,7 @@ export async function reconcileConnections(businessProfileId: string): Promise<{
 export function buildConnectUrl(
   authPath: string,
   businessProfileId: string,
-  options?: { provider?: "zernio"; returnTo?: string }
+  options?: { provider?: "zernio" | "official"; returnTo?: string }
 ): string {
   const params = new URLSearchParams();
   params.set("oauth_return", options?.returnTo ?? "connections");

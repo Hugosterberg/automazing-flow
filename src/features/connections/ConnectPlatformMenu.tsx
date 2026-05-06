@@ -19,7 +19,7 @@ interface Props {
    */
   onSelect: (
     platform: AccountPlatform,
-    config: { authPath: string; provider?: "zernio" }
+    config: { authPath: string; provider?: "zernio" | "official" }
   ) => void;
   /** Grid layout hint. Defaults to 2 columns on `sm` and up. */
   columnsClassName?: string;

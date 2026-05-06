@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, Info, Link2, Loader2, Play, RefreshCw, Square, Unplug } from "lucide-react";
+import { CheckSquare2, Info, Layers, Link2, Loader2, Play, RefreshCw, Square, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
@@ -62,10 +62,10 @@ export function ConnectionCard({
   const status = useMemo(() => aggregateStatus(rows), [rows]);
   const reconnectNeeded = status === "reconnect_required";
 
-  function startConnect() {
+  function startConnect(provider?: "zernio" | "official") {
     if (!connectConfig) return;
     window.location.href = buildConnectUrl(connectConfig.authPath, businessProfileId, {
-      provider: connectConfig.provider,
+      provider: provider ?? connectConfig.provider,
     });
   }
 
@@ -222,16 +222,41 @@ export function ConnectionCard({
 
         <div className="flex flex-wrap gap-2 pt-1">
           {connectConfig ? (
-            <Button
-              type="button"
-              size="sm"
-              variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
-              className="gap-1.5"
-              onClick={startConnect}
-            >
-              <PrimaryIcon className="h-3.5 w-3.5" />
-              {primaryLabel}
-            </Button>
+            entry.platform === "google_business" ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
+                  className="gap-1.5"
+                  onClick={() => startConnect("official")}
+                >
+                  <PrimaryIcon className="h-3.5 w-3.5" />
+                  Official API
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => startConnect("zernio")}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Zernio
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
+                className="gap-1.5"
+                onClick={() => startConnect()}
+              >
+                <PrimaryIcon className="h-3.5 w-3.5" />
+                {primaryLabel}
+              </Button>
+            )
           ) : (
             <span className="text-[11px] text-muted-foreground italic">
               Manual setup — see {entry.pageName}

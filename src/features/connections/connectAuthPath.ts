@@ -9,7 +9,7 @@ import type { AccountPlatform } from "@/types/accounts";
  */
 export interface ConnectStartConfig {
   authPath: string;
-  provider?: "zernio";
+  provider?: "zernio" | "official";
   manual?: boolean;
 }
 
