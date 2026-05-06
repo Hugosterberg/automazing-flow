@@ -681,11 +681,6 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   const zernioConnectPlatformMap = {
     facebook: { slugs: ["facebook"], appPlatform: "facebook" },
-    google_business: {
-      slugs: ["google-business", "google-business-profile", "google-business-location", "google_business"],
-      appPlatform: "google_business",
-      extraParams: { headless: "true" },
-    },
     whatsapp: { slugs: ["whatsapp"], appPlatform: "whatsapp" },
   };
 
@@ -760,7 +755,6 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   registerZernioOAuthPlatformRoute("facebook");
-  registerZernioOAuthPlatformRoute("google_business");
   registerZernioOAuthPlatformRoute("whatsapp");
 
   app.get("/api/auth/zernio/platform/callback", async (req, res) => {
@@ -1930,16 +1924,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     res.set("Cache-Control", "no-store, no-cache");
-    const provider = String(req.query.provider || "official").trim().toLowerCase();
-    if (provider !== "official") {
-      return res.redirect(
-        oauthRedirect(
-          "google_business",
-          "oauth_error=google_business_use_official",
-          returnPage === "integrations" ? returnPage : undefined
-        )
-      );
-    }
+    // Google Business Profile uses the official Google OAuth flow. Older clients
+    // may still send provider=zernio; ignore it so they do not hit a dead path.
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {

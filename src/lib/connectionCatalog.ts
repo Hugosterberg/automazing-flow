@@ -57,8 +57,8 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     area: "social",
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Connect via Zernio (location selection happens in the Zernio flow).",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps: "Connect via the official Google Business Profile OAuth flow.",
+    serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET with Business Profile APIs enabled in Google Cloud.",
   },
   {
     platform: "whatsapp",

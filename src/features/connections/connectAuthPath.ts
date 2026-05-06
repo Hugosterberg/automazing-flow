@@ -18,7 +18,7 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   instagram: { authPath: "instagram", provider: "zernio" },
   facebook: { authPath: "facebook", provider: "zernio" },
   whatsapp: { authPath: "whatsapp", provider: "zernio" },
-  google_business: { authPath: "google_business", provider: "zernio" },
+  google_business: { authPath: "google_business" },
   tiktok: { authPath: "tiktok", provider: "zernio" },
   youtube: { authPath: "youtube" },
   x: { authPath: "x" },
