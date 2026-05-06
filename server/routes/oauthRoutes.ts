@@ -79,6 +79,12 @@ interface PopupOAuthResult {
   [key: string]: unknown;
 }
 
+interface OAuthErrorExtras {
+  status?: string | number | null;
+  exception?: unknown;
+  hint?: unknown;
+}
+
 const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 const TIKTOK_AUTH = "https://www.tiktok.com/v2/auth/authorize/";
@@ -308,9 +314,9 @@ async function resolveZernioAccountAfterCallback({
   username: string | null | undefined;
   rawPlatform: string | null;
 }> {
-  let accountId = queryAccountId;
-  let username = queryUsername;
-  let rawPlatform = null;
+  let accountId = typeof queryAccountId === "string" && queryAccountId.trim() ? queryAccountId.trim() : null;
+  let username = typeof queryUsername === "string" && queryUsername.trim() ? queryUsername.trim() : null;
+  let rawPlatform: string | null = null;
 
   if (accountId && username) {
     return { accountId, username, rawPlatform };
@@ -412,7 +418,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return `${BASE_URL}/${page}${suffix ? `?${suffix}` : ""}`;
   }
 
-  function buildOauthErrorParams(errorCode, extras = {}) {
+  function buildOauthErrorParams(errorCode: string, extras: OAuthErrorExtras = {}) {
     return {
       oauth_error: errorCode,
       oauth_status: extras.status,
@@ -421,17 +427,17 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     };
   }
 
-  function buildPageOauthErrorUrl(page, errorCode, extras = {}) {
+  function buildPageOauthErrorUrl(page: string, errorCode: string, extras: OAuthErrorExtras = {}) {
     return buildPageUrl(page, buildOauthErrorParams(errorCode, extras));
   }
 
-  function getExceptionMessage(error) {
+  function getExceptionMessage(error: unknown) {
     if (!error) return undefined;
     if (error instanceof Error) return error.message;
     return String(error);
   }
 
-  function buildPopupOauthErrorPayload(errorCode, extras = {}) {
+  function buildPopupOauthErrorPayload(errorCode: string, extras: OAuthErrorExtras = {}) {
     return {
       type: "google_drive_oauth",
       error: errorCode,
@@ -477,7 +483,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return "social-media";
   }
 
-  function oauthRedirect(platform, query, oauthReturnPage) {
+  function oauthRedirect(platform: string, query: string, oauthReturnPage?: string | null) {
     let page;
     if (oauthReturnPage === "connections") {
       page = "connections";

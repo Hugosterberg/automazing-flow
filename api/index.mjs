@@ -1,6 +1,6 @@
 /**
  * Vercel serverless entry for the Express API.
- * Requires Node with TypeScript-strip-types (set NODE_OPTIONS=--experimental-strip-types on Vercel) or Node 22+ with TS support.
+ * Do not set NODE_OPTIONS=--experimental-strip-types on Vercel; its build runtime rejects that flag.
  */
 import app from "../server/server.js";
 

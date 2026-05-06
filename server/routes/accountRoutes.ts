@@ -39,7 +39,9 @@ interface AccountRoutesDeps {
   ERR_NO_ZERNIO_KEY: string;
   mapZernioPlatform: (raw: string | undefined) => string | null;
   tokenStore: {
+    get: (id: string) => Promise<Record<string, unknown> | undefined | null>;
     set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
+    delete: (id: string) => Promise<boolean>;
     entries: () => Promise<Array<[string, Record<string, unknown>]>>;
   };
   getSessionUserId: (req: unknown) => string | null;

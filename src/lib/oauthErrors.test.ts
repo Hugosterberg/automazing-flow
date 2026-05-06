@@ -8,7 +8,7 @@ function details(code: string): OAuthErrorDetails {
 describe("formatOAuthErrorMessage", () => {
   it("uses built-in copy for not_authenticated", () => {
     const msg = formatOAuthErrorMessage(details("not_authenticated"));
-    expect(msg).toContain("server session");
+    expect(msg).toContain("Inloggningssessionen");
     expect(DEFAULT_OAUTH_ERROR_MESSAGES.not_authenticated).toBe(msg);
   });
 

@@ -103,11 +103,12 @@ In Supabase dashboard:
    | `BASE_URL` | Same as `VITE_APP_URL` (server redirects after OAuth) |
    | `API_BASE_URL` | Same as `VITE_APP_URL` on same-origin deploy (OAuth callbacks hit `/api/auth/...` on this host) |
    | `CORS_ORIGINS` | Same as `BASE_URL` (comma-separate if you have multiple front-end origins) |
-   | `NODE_OPTIONS` | `--experimental-strip-types` (lets the API bundle load `server/**/*.ts` on Node 22; set on Vercel for Production + Preview) |
    | `SUPABASE_SERVICE_ROLE_KEY` | Server only: durable OAuth tokens + shared OAuth state (see migration `20260412140000_oauth_server_store.sql`) |
    | `CRON_SECRET` | Random string; Vercel Cron sends `Authorization: Bearer …` for `/api/cron/cleanup-oauth-pending` |
 
    Also copy every secret the backend needs locally: `GOOGLE_CLIENT_*`, `MICROSOFT_*`, `ZERNIO_API_KEY`, `OPENAI_API_KEY`, etc.
+
+   Do **not** set `NODE_OPTIONS=--experimental-strip-types` on Vercel. Vercel's build runtime rejects that flag in `NODE_OPTIONS`; the local dev scripts use it directly where needed.
 
 3. **Supabase dashboard** → Authentication → URL configuration:
 

@@ -19,7 +19,6 @@ function record(label: string, ok: boolean, detail?: string) {
   results.push({ label, ok, detail });
   const mark = ok ? "OK " : "FAIL";
   const suffix = detail ? ` — ${detail}` : "";
-  // eslint-disable-next-line no-console
   console.log(`[${mark}] ${label}${suffix}`);
 }
 
