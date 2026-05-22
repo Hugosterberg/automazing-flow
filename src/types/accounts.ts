@@ -46,10 +46,14 @@ export interface AccountStats {
   totalLikes?: number;
   /** Total comments on recent posts */
   totalComments?: number;
+  /** Total views on recent posts */
+  totalViews?: number;
   /** Average likes per post */
   avgLikes?: number;
   /** Average comments per post */
   avgComments?: number;
+  /** Average views per post */
+  avgViews?: number;
   /** Engagement rate in percent: (likes + comments) / posts / followers * 100 */
   engagementRate?: number;
   /** Last updated (ISO string) */

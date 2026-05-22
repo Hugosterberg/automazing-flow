@@ -1377,7 +1377,7 @@ export default function SocialMedia() {
                         {selectedAccount?.platform === "instagram" && (
                           <div className="flex items-center gap-1 text-white text-xs">
                             <Eye className="h-3.5 w-3.5" />
-                            {numberFmt.format(post.viewCount ?? 0)}
+                            {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
                           </div>
                         )}
                         <div className="flex items-center gap-1 text-white text-xs">
@@ -1391,7 +1391,7 @@ export default function SocialMedia() {
                         </span>
                         {selectedAccount?.platform === "instagram" && (
                           <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                            <Eye className="h-2.5 w-2.5" />{numberFmt.format(post.viewCount ?? 0)}
+                            <Eye className="h-2.5 w-2.5" />{post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
                           </span>
                         )}
                       </div>
@@ -1415,7 +1415,7 @@ export default function SocialMedia() {
                           {selectedAccount?.platform === "instagram" && (
                             <span className="flex items-center gap-1">
                               <Eye className="h-3.5 w-3.5" />
-                              {numberFmt.format(post.viewCount ?? 0)}
+                              {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
                             </span>
                           )}
                           <span className="flex items-center gap-1">

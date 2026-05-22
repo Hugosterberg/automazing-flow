@@ -742,11 +742,12 @@ export function AppSidebar() {
                               }`}
                             >
                               <span className="text-[10px] text-muted-foreground/80 break-all leading-tight">{account.username}</span>
-                              {account.stats && (account.stats.followersCount != null || account.stats.mediaCount != null) && (
-                                <span className="text-[10px] text-muted-foreground/60 ml-1 shrink-0">
-                                  {account.stats.followersCount != null && `${account.stats.followersCount.toLocaleString("en-US")} followers`}
-                                  {account.stats.followersCount != null && account.stats.mediaCount != null && " · "}
-                                  {account.stats.mediaCount != null && (account.platform === "whatsapp" ? `${account.stats.mediaCount} templates` : `${account.stats.mediaCount} posts`)}
+                              {account.stats?.followersCount != null && (
+                                <span
+                                  className="text-[10px] text-muted-foreground/60 ml-1 shrink-0"
+                                  aria-label={`${account.stats.followersCount.toLocaleString("en-US")} followers`}
+                                >
+                                  👥 {account.stats.followersCount.toLocaleString("en-US")}
                                 </span>
                               )}
                             </button>
