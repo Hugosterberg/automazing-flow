@@ -19,7 +19,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
@@ -304,6 +304,7 @@ function getNavBadge(
   key: string,
   aiActiveCount: number,
   tasksOverdueCount: number,
+  messagesUnreadCount: number,
   connectedAccountsCount: number
 ): NavBadgeInfo | null {
   if (key === "connections" && connectedAccountsCount > 0) {
@@ -326,6 +327,13 @@ function getNavBadge(
       ariaLabel: `${tasksOverdueCount} overdue tasks`,
       tone: "warning",
       href: "/tasks?view=overdue",
+    };
+  }
+  if (key === "messages" && messagesUnreadCount > 0) {
+    return {
+      count: messagesUnreadCount,
+      ariaLabel: `${messagesUnreadCount} unread messages`,
+      tone: "primary",
     };
   }
   return null;
@@ -419,6 +427,45 @@ export function AppSidebar() {
     const nowMs = Date.now();
     return tasks.filter((t) => isTaskOverdue(t, nowMs)).length;
   }, [tasks]);
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  const messagesAccountKey = useMemo(
+    () =>
+      accounts
+        .filter((a) => ["gmail", "outlook", "instagram", "facebook", "whatsapp"].includes(a.platform))
+        .map((a) => a.id)
+        .sort()
+        .join("|"),
+    [accounts]
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadUnreadCount() {
+      if (!messagesAccountKey) {
+        setMessagesUnreadCount(0);
+        return;
+      }
+
+      try {
+        const res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        const rows = Array.isArray(data.messages) ? data.messages : [];
+        const unread = rows.filter((m: { isUnread?: unknown }) => Boolean(m.isUnread)).length;
+        if (!ignore) setMessagesUnreadCount(unread);
+      } catch {
+        if (!ignore) setMessagesUnreadCount(0);
+      }
+    }
+
+    void loadUnreadCount();
+    window.addEventListener("automazing:oauth-success", loadUnreadCount);
+    return () => {
+      ignore = true;
+      window.removeEventListener("automazing:oauth-success", loadUnreadCount);
+    };
+  }, [messagesAccountKey]);
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -634,6 +681,7 @@ export function AppSidebar() {
                   item.key,
                   aiActiveCount,
                   tasksOverdueCount,
+                  messagesUnreadCount,
                   accounts.length
                 );
 

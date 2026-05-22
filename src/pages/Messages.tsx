@@ -15,6 +15,7 @@ import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 
 interface UnifiedMessage {
@@ -31,6 +32,15 @@ interface UnifiedMessage {
   isUnread: boolean;
   externalUrl?: string;
 }
+
+type MessageChannelTab = "mail" | "instagram" | "messenger" | "whatsapp";
+
+const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string }> = [
+  { value: "mail", label: "Mail" },
+  { value: "instagram", label: "Instagram" },
+  { value: "messenger", label: "Messenger" },
+  { value: "whatsapp", label: "WhatsApp" },
+];
 
 function formatDate(raw: string): string {
   if (!raw) return "";
@@ -65,6 +75,8 @@ function avatarColor(str: string): string {
 const DM_CHANNEL_LABELS: Record<string, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
+  facebook_messenger: "Messenger",
+  messenger: "Messenger",
   twitter: "X",
   x: "X",
   bluesky: "Bluesky",
@@ -81,6 +93,39 @@ function channelBadge(msg: UnifiedMessage): string {
   return DM_CHANNEL_LABELS[key] || msg.channel || "DM";
 }
 
+function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): boolean {
+  const channel = msg.channel.toLowerCase();
+  if (tab === "mail") return msg.kind === "email";
+  if (tab === "instagram") return channel === "instagram" || channel === "ig";
+  if (tab === "messenger") return channel === "facebook" || channel === "messenger" || channel === "facebook_messenger";
+  return channel === "whatsapp" || channel === "wa";
+}
+
+function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: string } {
+  if (tab === "mail") {
+    return {
+      title: "No mail yet",
+      description: "Connect Gmail or Outlook to see email here.",
+    };
+  }
+  if (tab === "instagram") {
+    return {
+      title: "No Instagram messages yet",
+      description: "Instagram DMs appear here when Zernio Inbox returns conversations.",
+    };
+  }
+  if (tab === "messenger") {
+    return {
+      title: "No Messenger messages yet",
+      description: "Facebook Messenger conversations appear here when Zernio Inbox is available.",
+    };
+  }
+  return {
+    title: "No WhatsApp messages yet",
+    description: "WhatsApp conversations appear here when Zernio Inbox is available.",
+  };
+}
+
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
@@ -92,6 +137,7 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [zernioNote, setZernioNote] = useState<string | null>(null);
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
+  const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
@@ -247,6 +293,26 @@ export default function MessagesPage() {
   }, [summaryPayload]);
 
   const hasAnyMailConnected = mailAccounts.length > 0;
+  const filteredMessages = useMemo(
+    () => messages.filter((msg) => messageMatchesTab(msg, activeTab)),
+    [activeTab, messages]
+  );
+  const tabCounts = useMemo(
+    () =>
+      MESSAGE_TABS.reduce(
+        (acc, tab) => {
+          const rows = messages.filter((msg) => messageMatchesTab(msg, tab.value));
+          acc[tab.value] = {
+            total: rows.length,
+            unread: rows.filter((msg) => msg.isUnread).length,
+          };
+          return acc;
+        },
+        {} as Record<MessageChannelTab, { total: number; unread: number }>
+      ),
+    [messages]
+  );
+  const activeEmptyCopy = emptyCopyForTab(activeTab);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -371,90 +437,118 @@ export default function MessagesPage() {
         </m.div>
       )}
 
-      {loading && (
-        <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <m.div
-              key={i}
-              {...fadeUp}
-              transition={{ duration: 0.3, delay: i * 0.03 }}
-            >
-              <Card className="bg-card border-border">
-                <CardContent className="p-4 flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-full bg-secondary animate-pulse shrink-0" />
-                  <div className="flex-1 space-y-2 py-0.5">
-                    <div className="h-3.5 w-2/5 rounded bg-secondary animate-pulse" />
-                    <div className="h-3 w-3/5 rounded bg-secondary animate-pulse" />
-                    <div className="h-3 w-4/5 rounded bg-secondary/60 animate-pulse" />
-                  </div>
-                </CardContent>
-              </Card>
-            </m.div>
-          ))}
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MessageChannelTab)}>
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card/70 p-1">
+          {MESSAGE_TABS.map((tab) => {
+            const counts = tabCounts[tab.value] || { total: 0, unread: 0 };
+            return (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="min-w-fit gap-2 rounded-md px-3 py-2 text-xs data-[state=active]:bg-accent data-[state=active]:shadow-none"
+              >
+                <span>{tab.label}</span>
+                {counts.unread > 0 ? (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground tabular-nums">
+                    {counts.unread > 9 ? "9+" : counts.unread}
+                  </span>
+                ) : counts.total > 0 ? (
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{counts.total}</span>
+                ) : null}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-      {!loading && messages.length > 0 && (
-        <div className="space-y-2">
-          {messages.map((msg, i) => (
-            <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
-              <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
-                <CardContent
-                  className="p-4 flex items-start gap-3"
-                  onClick={() => setSelectedMessage(msg)}
-                >
-                  <div className={`h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-white ${avatarColor(msg.from.name || msg.from.email || msg.id)}`}>
-                    {senderInitial(msg.from.name || msg.from.email)}
-                  </div>
+        {MESSAGE_TABS.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value} className="mt-4">
+            {loading && (
+              <div className="space-y-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <m.div
+                    key={i}
+                    {...fadeUp}
+                    transition={{ duration: 0.3, delay: i * 0.03 }}
+                  >
+                    <Card className="bg-card border-border">
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <div className="h-9 w-9 rounded-full bg-secondary animate-pulse shrink-0" />
+                        <div className="flex-1 space-y-2 py-0.5">
+                          <div className="h-3.5 w-2/5 rounded bg-secondary animate-pulse" />
+                          <div className="h-3 w-3/5 rounded bg-secondary animate-pulse" />
+                          <div className="h-3 w-4/5 rounded bg-secondary/60 animate-pulse" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </m.div>
+                ))}
+              </div>
+            )}
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-0.5 flex-wrap">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="secondary" className="text-[11px] uppercase tracking-wide shrink-0">
-                          {channelBadge(msg)}
-                        </Badge>
-                        {msg.accountLabel ? (
-                          <span className="text-[11px] text-muted-foreground truncate">{msg.accountLabel}</span>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {msg.isUnread && <Circle className="h-2 w-2 fill-primary text-primary" />}
-                        <span className="text-xs text-muted-foreground">{formatDate(msg.date)}</span>
-                      </div>
-                    </div>
+            {!loading && filteredMessages.length > 0 && (
+              <div className="space-y-2">
+                {filteredMessages.map((msg, i) => (
+                  <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
+                    <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
+                      <CardContent
+                        className="p-4 flex items-start gap-3"
+                        onClick={() => setSelectedMessage(msg)}
+                      >
+                        <div className={`h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-white ${avatarColor(msg.from.name || msg.from.email || msg.id)}`}>
+                          {senderInitial(msg.from.name || msg.from.email)}
+                        </div>
 
-                    <span className={`text-sm block truncate ${msg.isUnread ? "font-semibold" : "font-medium text-muted-foreground"}`}>
-                      {msg.subject}
-                    </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge variant="secondary" className="text-[11px] uppercase tracking-wide shrink-0">
+                                {channelBadge(msg)}
+                              </Badge>
+                              {msg.accountLabel ? (
+                                <span className="text-[11px] text-muted-foreground truncate">{msg.accountLabel}</span>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {msg.isUnread && <Circle className="h-2 w-2 fill-primary text-primary" />}
+                              <span className="text-xs text-muted-foreground">{formatDate(msg.date)}</span>
+                            </div>
+                          </div>
 
-                    <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                      {msg.kind === "email" && msg.from.name
-                        ? `${msg.from.name} — ${msg.snippet}`
-                        : msg.snippet}
-                    </p>
-                  </div>
-                  <div className="hidden lg:block w-52 shrink-0 text-right">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground/60">AI summary</p>
-                    <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
-                      {aiSummaries[msg.id] || "…"}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </m.div>
-          ))}
-        </div>
-      )}
+                          <span className={`text-sm block truncate ${msg.isUnread ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+                            {msg.subject}
+                          </span>
 
-      {!loading && !error && messages.length === 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.4 }}>
-          <EmptyState
-            icon={Inbox}
-            title="No messages yet"
-            description="Connect Gmail or Outlook for email, and use Zernio with Inbox for Instagram, Facebook, X, and other DM channels."
-          />
-        </m.div>
-      )}
+                          <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
+                            {msg.kind === "email" && msg.from.name
+                              ? `${msg.from.name} - ${msg.snippet}`
+                              : msg.snippet}
+                          </p>
+                        </div>
+                        <div className="hidden lg:block w-52 shrink-0 text-right">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/60">AI summary</p>
+                          <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
+                            {aiSummaries[msg.id] || "..."}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </m.div>
+                ))}
+              </div>
+            )}
+
+            {!loading && !error && filteredMessages.length === 0 && (
+              <m.div {...fadeUp} transition={{ duration: 0.4 }}>
+                <EmptyState
+                  icon={Inbox}
+                  title={activeEmptyCopy.title}
+                  description={activeEmptyCopy.description}
+                />
+              </m.div>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
 
       <Dialog open={Boolean(selectedMessage)} onOpenChange={(open) => !open && setSelectedMessage(null)}>
         <DialogContent className="sm:max-w-2xl">
@@ -498,3 +592,4 @@ export default function MessagesPage() {
     </div>
   );
 }
+
