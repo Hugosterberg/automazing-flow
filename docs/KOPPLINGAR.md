@@ -11,19 +11,19 @@ Det här projektet pratar med **din backend** (`server/server.js`, port 3001). F
 | **Instagram-inloggning** | Sidomeny → Connect more → **Instagram**. Öppnar Zernios OAuth-flöde. |
 | **Facebook, WhatsApp, Google Business m.fl.** | Sidomeny → Connect more → välj kanal eller **All Zernio channels…**. Listar konton från Zernio; du väljer vilket som ska länkas. |
 
-**Miljövariabler** (i `.env`):
+**Miljövariabler** (i `.env.local` lokalt):
 
 - `ZERNIO_API_KEY` – krävs för båda ovan.  
 - `ZERNIO_PROFILE_ID` – valfritt (workspace/profil i Zernio).  
 - `ZERNIO_API_BASE` – valfritt, standard är `https://zernio.com/api/v1`.
 
-Om du fortfarande har `LATE_API_KEY` i en gammal `.env` använder servern den automatiskt tills du byter namn till `ZERNIO_API_KEY`.
+Om du fortfarande har `LATE_API_KEY` i en gammal env-fil använder servern den automatiskt tills du byter namn till `ZERNIO_API_KEY`.
 
 Du måste först koppla kanalerna i **Zernio-dashboarden**; appen hämtar sedan listan via API.
 
 ## Övriga plattformar
 
-- **TikTok, YouTube, X** – klassisk OAuth mot respektive plattform (egna nycklar i `.env`).
+- **TikTok, YouTube, X** – klassisk OAuth mot respektive plattform (egna nycklar i `.env.local` lokalt).
 - **Instagram utan Zernio** – `INSTAGRAM_CLIENT_ID` / `INSTAGRAM_CLIENT_SECRET` (Meta), om du inte sätter `ZERNIO_API_KEY`.
 - **Shopify (lokal utveckling via tunnel)** – sätt `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` och `SHOPIFY_APP_URL` (publik HTTPS-host, t.ex. tunnel-domän).
 - **Notion** – sätt `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` och `NOTION_APP_URL` (publik HTTPS-host för OAuth callback).

@@ -527,7 +527,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     console.log(
       "[Instagram] ZERNIO_API_KEY:",
-      zernioKey ? "set" : "not set — add ZERNIO_API_KEY to .env"
+      zernioKey ? "set" : "not set — add ZERNIO_API_KEY to .env.local"
     );
 
     if (zernioKey) {
@@ -2263,8 +2263,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const userId = requireSessionOrRedirect(req, res, "content");
     if (!userId) return;
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      return res.redirect(`${BASE_URL}/content?oauth_error=google_drive_not_configured`);
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      const params = buildOauthErrorParams("google_drive_not_configured", {
+        status: 500,
+        exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+      });
+      if (req.query.popup === "1") {
+        return sendPopupOAuthResult(
+          res,
+          buildPopupOauthErrorPayload("google_drive_not_configured", {
+            status: 500,
+            exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+          }),
+          buildContentUrl(BASE_URL, params),
+          BASE_URL
+        );
+      }
+      return res.redirect(buildContentUrl(BASE_URL, params));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {

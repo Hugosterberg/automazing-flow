@@ -42,23 +42,18 @@ import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 
-// Load .env from cwd (npm run dev = project root) or from the project root
-// relative to the server folder.
-const envPath = fs.existsSync(path.join(process.cwd(), ".env"))
-  ? path.join(process.cwd(), ".env")
-  : path.join(rootDir, ".env");
-const envExamplePath = path.join(rootDir, ".env.example");
-const isVercelRuntime = process.env.VERCEL === "1";
+// Load local development secrets from .env.local. Fall back to .env for
+// older local checkouts that have not migrated yet.
+const envCandidates = [
+  path.join(process.cwd(), ".env.local"),
+  path.join(rootDir, ".env.local"),
+  path.join(process.cwd(), ".env"),
+  path.join(rootDir, ".env"),
+];
+const envPath = envCandidates.find((candidate) => fs.existsSync(candidate)) || envCandidates[0];
 
-if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath) && !isVercelRuntime) {
-  try {
-    fs.copyFileSync(envExamplePath, envPath);
-    console.log("Created .env from .env.example – fill in ZERNIO_API_KEY etc. in .env");
-  } catch (e) {
-    console.warn("[env] Could not create .env from .env.example:", e?.message || e);
-  }
-}
-// Read .env from project root: strip BOM, trim keys/values, .env should always win over empty system env
+// Read local env file: strip BOM, trim keys/values, local env should always
+// win over empty system env.
 if (fs.existsSync(envPath)) {
   let raw = fs.readFileSync(envPath, "utf8");
   if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
@@ -70,10 +65,10 @@ if (fs.existsSync(envPath)) {
     process.env[key] = val;
   }
   const zk = (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").trim();
-  console.log(".env:", path.resolve(envPath), "| Zernio API key:", zk ? `${zk.slice(0, 6)}… (${zk.length} chars)` : "not set");
+  console.log("env:", path.resolve(envPath), "| Zernio API key:", zk ? `${zk.slice(0, 6)}… (${zk.length} chars)` : "not set");
 } else {
   dotenv.config({ path: envPath });
-  console.log(".env missing, tried:", path.resolve(envPath));
+  console.log(".env.local missing, tried:", path.resolve(envPath));
 }
 
 const PORT = process.env.PORT || 3001;

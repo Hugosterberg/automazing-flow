@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Avslutar process som lyssnar på port 3001 (t.ex. gammal server utan .env).
+ * Avslutar process som lyssnar på port 3001 (t.ex. gammal server utan .env.local).
  * Kör: node --experimental-strip-types scripts/kill-port-3001.ts
  * Eller: npm run dev:kill-port
  */

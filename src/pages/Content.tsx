@@ -55,7 +55,7 @@ type DriveOAuthPopupMessage = {
 };
 
 const OAUTH_MESSAGES: Record<string, string> = {
-  google_drive_not_configured: "Google Drive is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
+  google_drive_not_configured: "Google Drive is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local.",
   backend_unavailable:
     "Backend server is not reachable. Start the API server on port 3001 before connecting Google Drive.",
 };
@@ -117,6 +117,7 @@ export default function ContentPage() {
     selectedAccountId,
     setSelectedAccountId: (id) => setSelectedAccountId("content", id),
     accountFilter: (a) => a.platform === "google_drive" && Boolean(a.isOAuth),
+    requestKey: currentFolderId ?? "root",
     initialData: null,
     fetcher: async (accountId) => {
       const query = currentFolderId ? `?folderId=${encodeURIComponent(currentFolderId)}` : "";

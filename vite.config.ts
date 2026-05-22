@@ -57,23 +57,30 @@ export default defineConfig(({ mode }) => {
       // how the shared dependency graph is partitioned.
       rollupOptions: {
         output: {
-          manualChunks: {
-            "react-vendor": ["react", "react-dom", "react-router-dom"],
-            "query-vendor": ["@tanstack/react-query"],
-            "framer-vendor": ["framer-motion"],
-            "radix-vendor": [
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-dropdown-menu",
-              "@radix-ui/react-select",
-              "@radix-ui/react-tooltip",
-              "@radix-ui/react-popover",
-              "@radix-ui/react-tabs",
-              "@radix-ui/react-alert-dialog",
-              "@radix-ui/react-avatar",
-              "@radix-ui/react-label",
-              "@radix-ui/react-slot",
-              "@radix-ui/react-switch",
-            ],
+          manualChunks(id) {
+            if (!id.includes("node_modules")) {
+              return;
+            }
+
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/react-router-dom/")
+            ) {
+              return "react-vendor";
+            }
+
+            if (id.includes("/@tanstack/react-query/")) {
+              return "query-vendor";
+            }
+
+            if (id.includes("/framer-motion/")) {
+              return "framer-vendor";
+            }
+
+            if (id.includes("/@radix-ui/")) {
+              return "radix-vendor";
+            }
           },
         },
       },

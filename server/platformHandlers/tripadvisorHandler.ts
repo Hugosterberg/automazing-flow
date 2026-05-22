@@ -81,7 +81,7 @@ export async function handleTripadvisorAccountData({
       status: 400,
       body: {
         error:
-          "Tripadvisor official API needs TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID in .env (or reconnect).",
+          "Tripadvisor official API needs TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID in .env.local (or reconnect).",
       },
     };
   }

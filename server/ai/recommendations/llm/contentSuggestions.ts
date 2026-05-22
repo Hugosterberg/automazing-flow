@@ -347,7 +347,7 @@ async function runLlmContentSuggestions(
     Math.min(MAX_IDEAS, opts.ideaCount ?? DEFAULT_IDEAS)
   );
 
-  let expired = 0;
+  let expired: number;
   try {
     expired = await expireExistingLlmRecs(supabase, opts.businessProfileId);
   } catch (err) {
@@ -356,17 +356,16 @@ async function runLlmContentSuggestions(
     return { created: 0, expired: 0, skipped: "provider_error", error: message };
   }
 
-  let profile: BusinessProfileRow | null = null;
-  let platforms: string[] = [];
+  let context: Awaited<ReturnType<typeof loadContext>>;
   try {
-    const ctx = await loadContext(supabase, opts.businessProfileId);
-    profile = ctx.profile;
-    platforms = ctx.platforms;
+    context = await loadContext(supabase, opts.businessProfileId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[llm] loadContext failed:", message);
     return { created: 0, expired, skipped: "provider_error", error: message };
   }
+
+  const { profile, platforms } = context;
 
   if (!profile) {
     return { created: 0, expired, skipped: "no_signal" };
@@ -415,7 +414,7 @@ async function runLlmContentSuggestions(
     if (row) rows.push(row);
   }
 
-  let created = 0;
+  let created: number;
   try {
     created = await insertRows(supabase, rows);
   } catch (err) {

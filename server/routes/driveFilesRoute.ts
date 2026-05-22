@@ -20,13 +20,17 @@ interface DriveFilesRouteDeps {
 export function registerDriveFilesRoute(app, deps: DriveFilesRouteDeps) {
   const { auth, tokenStore } = deps;
 
-  app.get("/api/accounts/:accountId/drive/files/:fileId/:mode(content|thumbnail)", async (req, res) => {
+  app.get("/api/accounts/:accountId/drive/files/:fileId/:mode", async (req, res) => {
     const userId = auth.getSessionUserId(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const { accountId, fileId, mode } = req.params;
+    if (mode !== "content" && mode !== "thumbnail") {
+      return res.status(404).json({ error: "Unknown Drive file mode" });
+    }
+
     const stored = await tokenStore.get(accountId);
     if (!stored || stored.platform !== "google_drive") {
       return res.status(404).json({ error: "Drive account not connected" });

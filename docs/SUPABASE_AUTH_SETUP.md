@@ -2,7 +2,7 @@
 
 ## 1) Environment variables
 
-Add these in `.env` (frontend uses Vite variables):
+Add these in `.env.local` for local development (frontend uses Vite variables):
 
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co

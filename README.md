@@ -11,7 +11,7 @@ npm run dev
 
 Frontend: [http://localhost:8080](http://localhost:8080) · API-proxy: `/api` → backend (standardport `3001`).
 
-Kopiera `.env.example` till `.env` och fyll i nycklar du behöver. Kort översikt: **[docs/KOPPLINGAR.md](docs/KOPPLINGAR.md)**.
+Lägg lokala nycklar i `.env.local`. Filen ignoreras av Git och används av backend vid lokal körning. Kort översikt: **[docs/KOPPLINGAR.md](docs/KOPPLINGAR.md)**.
 
 ## Skript
 

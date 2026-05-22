@@ -408,7 +408,7 @@ export default function PreferencesPage() {
                     <CardHeader>
                       <CardTitle className="text-base">Missing values by feature</CardTitle>
                       <CardDescription>
-                        These functions still cannot work fully with the current `.env`.
+                        These functions still cannot work fully with the current `.env.local`.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -439,7 +439,7 @@ export default function PreferencesPage() {
                         Integration tests
                       </CardTitle>
                       <CardDescription>
-                        These tests validate whether each integration has the required `.env` values and callback settings.
+                        These tests validate whether each integration has the required `.env.local` values and callback settings.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">

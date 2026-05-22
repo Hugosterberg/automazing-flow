@@ -69,4 +69,34 @@ describe("useAccountData", () => {
     expect(setSelected).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
   });
+
+  it("refetches the same account when requestKey changes", async () => {
+    const accounts = [acc({ id: "drive", platform: "google_drive", username: "Drive", isOAuth: true })];
+    const setSelected = vi.fn();
+    const fetcher = vi.fn().mockResolvedValue({});
+    let folderId: string | null = null;
+
+    const { rerender } = renderHook(() =>
+      useAccountData({
+        accounts,
+        selectedAccountId: "drive",
+        setSelectedAccountId: setSelected,
+        accountFilter: (a) => a.platform === "google_drive",
+        fetcher,
+        initialData: null,
+        requestKey: folderId ?? "root",
+      })
+    );
+
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    folderId = "folder-1";
+    rerender();
+
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+  });
 });

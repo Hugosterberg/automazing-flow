@@ -163,8 +163,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   instagram_not_configured:
     "Add ZERNIO_API_KEY for Instagram via Zernio, or INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET for Meta only.",
   zernio_profile_failed:
-    "Zernio could not load your workspace. Check ZERNIO_API_KEY and optional ZERNIO_PROFILE_ID in .env.",
-  zernio_not_configured: "ZERNIO_API_KEY is missing in server .env.",
+    "Zernio could not load your workspace. Check ZERNIO_API_KEY and optional ZERNIO_PROFILE_ID in .env.local.",
+  zernio_not_configured: "ZERNIO_API_KEY is missing in .env.local.",
   zernio_connect_failed: "Zernio could not start Instagram login. Check your API key in the Zernio dashboard.",
   zernio_fetch_accounts_failed: "Could not list accounts from Zernio (network or key).",
   zernio_no_account: "No Instagram account returned—finish connecting the channel in Zernio.",
@@ -175,7 +175,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   zernio_gmb_selection_failed:
     "Google Business requires location selection in Zernio. Open 'All Zernio channels…' and complete Google Business selection there.",
   google_business_not_configured:
-    "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server .env to connect Google Business via the official API.",
+    "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local to connect Google Business via the official API.",
   google_business_use_official:
     "Use “Google Business via Official API” from Connect more, or link a location via Zernio.",
   google_business_accounts_api_failed: "Google could not list Business Profile accounts. Check OAuth scopes and API access.",

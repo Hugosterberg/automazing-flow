@@ -333,10 +333,10 @@ export default function Ecommerce() {
             message={formatOAuthErrorMessage(
               oauthErrorDetails,
               {
-                shopify_not_configured: "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env.",
-                shopify_public_url_must_be_https: "Shopify requires a public HTTPS host. Set SHOPIFY_APP_URL in .env to your tunnel URL.",
-                notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.",
-                notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env to your tunnel URL.",
+                shopify_not_configured: "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env.local.",
+                shopify_public_url_must_be_https: "Shopify requires a public HTTPS host. Set SHOPIFY_APP_URL in .env.local to your tunnel URL.",
+                notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.local.",
+                notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env.local to your tunnel URL.",
                 shopify_missing_shop: "No shop domain was provided. Try connecting again.",
                 token_exchange_failed: "OAuth token exchange failed. Check client id/secret and redirect URL in the provider console (Notion integration or Shopify app).",
                 invalid_state: "OAuth state did not match (session or tunnel cookie issue). Try connecting again from the same browser tab.",
@@ -399,7 +399,7 @@ export default function Ecommerce() {
             <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
               SHOPIFY_API_SECRET
             </code>{" "}
-            in .env. For local tunnel OAuth, also set{" "}
+            in .env.local. For local tunnel OAuth, also set{" "}
             <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
               SHOPIFY_APP_URL
             </code>

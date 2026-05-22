@@ -997,7 +997,7 @@ export function AppSidebar() {
               Connect Tripadvisor
             </DialogTitle>
             <DialogDescription>
-              Enter Tripadvisor Location ID and optionally API key (if not set in .env).
+              Enter Tripadvisor Location ID and optionally API key (if not set in .env.local).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">

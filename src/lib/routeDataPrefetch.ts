@@ -1,5 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { TypedSupabaseClient } from "@/lib/supabase";
+import { AI_RECS_KEY } from "@/features/ai-recommendations";
+import { listAiRecommendations } from "@/features/ai-recommendations/aiRecommendationsService";
+import { CONNECTIONS_KEY } from "@/features/connections";
+import { listConnectionsForBusinessProfile } from "@/features/connections/connectionsService";
+import { TASKS_KEY } from "@/features/tasks";
+import { listTasks } from "@/features/tasks/tasksService";
 
 /**
  * Route data prefetchers.
@@ -14,8 +20,8 @@ import type { TypedSupabaseClient } from "@/lib/supabase";
  * needs a selected account that the sidebar doesn't always have here —
  * those would prefetch the wrong cache key and are skipped on purpose.
  *
- * Everything is wrapped in dynamic imports so no feature-module code is
- * pulled into the main bundle just to register a prefetcher.
+ * These imports are intentionally static. The same feature modules are already
+ * used by the route tree, so dynamic imports here do not create smaller chunks.
  */
 
 export interface RouteDataPrefetchContext {
@@ -30,11 +36,6 @@ type Prefetcher = (ctx: RouteDataPrefetchContext) => Promise<unknown>;
 const prefetchers: Record<string, Prefetcher> = {
   "/connections": async (ctx) => {
     if (!ctx.supabase || !ctx.businessProfileId) return;
-    const [{ CONNECTIONS_KEY }, { listConnectionsForBusinessProfile }] =
-      await Promise.all([
-        import("@/features/connections"),
-        import("@/features/connections/connectionsService"),
-      ]);
     return ctx.queryClient.prefetchQuery({
       queryKey: [...CONNECTIONS_KEY, ctx.userId, ctx.businessProfileId],
       queryFn: () =>
@@ -47,10 +48,6 @@ const prefetchers: Record<string, Prefetcher> = {
 
   "/tasks": async (ctx) => {
     if (!ctx.supabase || !ctx.businessProfileId) return;
-    const [{ TASKS_KEY }, { listTasks }] = await Promise.all([
-      import("@/features/tasks"),
-      import("@/features/tasks/tasksService"),
-    ]);
     return ctx.queryClient.prefetchQuery({
       queryKey: [...TASKS_KEY, ctx.userId, ctx.businessProfileId],
       queryFn: () => listTasks(ctx.supabase!, ctx.businessProfileId!),
@@ -60,10 +57,6 @@ const prefetchers: Record<string, Prefetcher> = {
 
   "/ai-recommendations": async (ctx) => {
     if (!ctx.supabase || !ctx.businessProfileId) return;
-    const [{ AI_RECS_KEY }, { listAiRecommendations }] = await Promise.all([
-      import("@/features/ai-recommendations"),
-      import("@/features/ai-recommendations/aiRecommendationsService"),
-    ]);
     return ctx.queryClient.prefetchQuery({
       queryKey: [...AI_RECS_KEY, ctx.userId, ctx.businessProfileId],
       queryFn: () =>

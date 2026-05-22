@@ -1,5 +1,5 @@
 /**
- * /api/settings/api-keys — read, upsert, and probe the local .env file.
+ * /api/settings/api-keys — read, upsert, and probe the local .env.local file.
  *
  * All routes require a valid session; the read/write surface is intentionally
  * narrow and validated against a conservative env-key regex so the endpoint
@@ -72,7 +72,7 @@ export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
       missing: result.missing,
       missingAny: result.missingAny,
       message: result.ok
-        ? `${definition.label} is configured in .env.`
+        ? `${definition.label} is configured in .env.local.`
         : definition.message,
       authPath: result.ok ? definition.authPath || null : null,
     });

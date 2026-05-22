@@ -9,6 +9,7 @@ type UseAccountDataOptions<TData> = {
   fetcher: (accountId: string) => Promise<TData>;
   initialData: TData;
   autoSelectFirst?: boolean;
+  requestKey?: string | number | null;
   /** Applied after filter; first entry wins when autoSelectFirst runs (e.g. Instagram before TikTok). */
   scopeSort?: (a: ConnectedAccount, b: ConnectedAccount) => number;
   /**
@@ -26,6 +27,7 @@ export function useAccountData<TData>({
   fetcher,
   initialData,
   autoSelectFirst = true,
+  requestKey = null,
   scopeSort,
   allowImplicitFirstAccount = true,
 }: UseAccountDataOptions<TData>) {
@@ -53,10 +55,13 @@ export function useAccountData<TData>({
   const latestRequestIdRef = useRef(0);
   const latestRequestedAccountIdRef = useRef<string | null>(null);
 
+  const effectiveRequestKey = requestKey == null ? "" : String(requestKey);
+
   const fetchFor = useCallback(
     async (accountId: string, force = false) => {
-      if (!force && fetchedFor.current === accountId) return;
-      fetchedFor.current = accountId;
+      const fetchKey = `${accountId}:${effectiveRequestKey}`;
+      if (!force && fetchedFor.current === fetchKey) return;
+      fetchedFor.current = fetchKey;
       latestRequestedAccountIdRef.current = accountId;
       const requestId = latestRequestIdRef.current + 1;
       latestRequestIdRef.current = requestId;
@@ -89,7 +94,7 @@ export function useAccountData<TData>({
         }
       }
     },
-    [fetcher]
+    [effectiveRequestKey, fetcher]
   );
 
   const refresh = useCallback(async () => {

@@ -1,5 +1,5 @@
 /**
- * .env file read/write helpers plus the config-requirement evaluator used by
+ * .env.local file read/write helpers plus the config-requirement evaluator used by
  * /api/settings/api-keys/test.
  *
  * Factory-based so the envPath is captured once and the handler callers don't

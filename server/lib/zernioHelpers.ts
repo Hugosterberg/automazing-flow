@@ -10,9 +10,9 @@
 import crypto from "crypto";
 import type { ZernioModule } from "../providers/zernioModule.ts";
 
-export const ERR_NO_ZERNIO_KEY = "Set ZERNIO_API_KEY in server .env";
+export const ERR_NO_ZERNIO_KEY = "Set ZERNIO_API_KEY in .env.local";
 
-/** Also reads LATE_API_KEY if ZERNIO_API_KEY is unset (old .env files). */
+/** Also reads LATE_API_KEY if ZERNIO_API_KEY is unset (old env files). */
 export function getZernioApiKey(): string {
   return (process.env.ZERNIO_API_KEY || process.env.LATE_API_KEY || "").trim();
 }
