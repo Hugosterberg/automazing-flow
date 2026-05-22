@@ -38,8 +38,16 @@ export async function handleInstagramZernioAccountData({
       body: { error: "Could not fetch data from Zernio" },
     };
   }
-  const list = accountsResult.accounts;
+  const list = Array.isArray(accountsResult.accounts) ? accountsResult.accounts : [];
   console.log(`[Zernio] GET /accounts: ${list.length} accounts found`);
+
+  if (list.length === 0) {
+    return {
+      kind: "error",
+      status: 502,
+      body: { error: "No Instagram accounts found in Zernio" },
+    };
+  }
 
   // Match account: profileId._id matches lookupId (Zernio workspace profile)
   // Fallback: search by account _id, then first instagram account, then single account
