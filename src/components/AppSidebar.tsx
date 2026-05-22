@@ -741,13 +741,14 @@ export function AppSidebar() {
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}
                             >
-                              <span className="text-[10px] text-muted-foreground/80 break-all leading-tight">{account.username}</span>
+                              <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground/80 leading-tight">{account.username}</span>
                               {account.stats?.followersCount != null && (
                                 <span
-                                  className="text-[10px] text-muted-foreground/60 ml-1 shrink-0"
+                                  className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 shrink-0 tabular-nums"
                                   aria-label={`${account.stats.followersCount.toLocaleString("en-US")} followers`}
                                 >
-                                  👥 {account.stats.followersCount.toLocaleString("en-US")}
+                                  <Users className="h-2.5 w-2.5" aria-hidden />
+                                  {account.stats.followersCount.toLocaleString("en-US")}
                                 </span>
                               )}
                             </button>
