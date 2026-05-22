@@ -91,7 +91,23 @@ export async function handleInstagramZernioAccountData({
     }
   }
 
-  const engagement = calculateEngagementFromPosts(posts, followers);
+  const normalizedPosts = posts.map((p: any) => ({
+    ...p,
+    viewCount:
+      Number(
+        p.viewCount ??
+          p.views ??
+          p.view_count ??
+          p.playCount ??
+          p.plays ??
+          p.videoViews ??
+          p.video_views ??
+          p.impressions ??
+          p.reach ??
+          0
+      ) || 0,
+  }));
+  const engagement = calculateEngagementFromPosts(normalizedPosts, followers);
 
   console.log(
     `[Zernio] Instagram stats: followers=${followers}, media=${mediaCount}, avgLikes=${engagement.avgLikes}, avgComments=${engagement.avgComments}, engagement=${engagement.engagementRate}%`
@@ -105,15 +121,17 @@ export async function handleInstagramZernioAccountData({
         accountType: accountType ?? undefined,
         totalLikes: engagement.totalLikes,
         totalComments: engagement.totalComments,
+        totalViews: engagement.totalViews,
         avgLikes: engagement.avgLikes,
         avgComments: engagement.avgComments,
+        avgViews: engagement.avgViews,
         engagementRate: engagement.engagementRate,
         updatedAt: new Date().toISOString(),
       }
     : undefined;
 
   // Return the 12 most recent posts with image, likes and comments
-  const recentPosts = posts.slice(0, 12).map((p: any) => ({
+  const recentPosts = normalizedPosts.slice(0, 12).map((p: any) => ({
     id: p.id,
     caption: p.message || "",
     picture: p.picture || "",
@@ -121,6 +139,7 @@ export async function handleInstagramZernioAccountData({
     mediaType: p.mediaType || "image",
     likeCount: p.likeCount || 0,
     commentCount: p.commentCount || 0,
+    viewCount: p.viewCount || 0,
     createdTime: p.createdTime,
   }));
 

@@ -99,6 +99,7 @@ type SocialMediaApiPost = {
   mediaType: string;
   likeCount: number;
   commentCount: number;
+  viewCount?: number;
   createdTime: string;
 };
 
@@ -130,8 +131,10 @@ type SocialMediaApiResponse = {
     accountType?: string;
     totalLikes?: number;
     totalComments?: number;
+    totalViews?: number;
     avgLikes?: number;
     avgComments?: number;
+    avgViews?: number;
     engagementRate?: number;
     updatedAt?: string;
     zernioNote?: string;
@@ -275,7 +278,7 @@ export default function SocialMedia() {
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{
     id: string; caption: string; picture: string; permalink: string;
-    mediaType: string; likeCount: number; commentCount: number; createdTime: string;
+    mediaType: string; likeCount: number; commentCount: number; viewCount?: number; createdTime: string;
   }[]>([]);
 
   const accountsRef = useRef(accounts);
@@ -364,8 +367,10 @@ export default function SocialMedia() {
         accountType,
         totalLikes: stats?.totalLikes,
         totalComments: stats?.totalComments,
+        totalViews: stats?.totalViews,
         avgLikes: stats?.avgLikes,
         avgComments: stats?.avgComments,
+        avgViews: stats?.avgViews,
         engagementRate: stats?.engagementRate,
         updatedAt: stats?.updatedAt ?? new Date().toISOString(),
         zernioNote: stats?.zernioNote,
@@ -1272,9 +1277,12 @@ export default function SocialMedia() {
               }
               const isX = selectedAccount.platform === "x";
               const isWhatsApp = selectedAccount.platform === "whatsapp";
+              const isInstagram = selectedAccount.platform === "instagram";
 
               const avgLikesStat =
-                s.avgLikes != null
+                isInstagram && s.avgViews != null
+                  ? { key: "avg-views", label: "Avg. views", value: s.avgViews.toLocaleString("en-US"), change: "", icon: Eye }
+                  : s.avgLikes != null
                   ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
                   : s.followingCount != null
                     ? { ...defaultStats[1], value: s.followingCount.toLocaleString("en-US") }
@@ -1339,7 +1347,9 @@ export default function SocialMedia() {
               <CardDescription>
                 {selectedAccount?.platform === "whatsapp"
                   ? "Approved templates from your WhatsApp Business account (via Zernio)"
-                  : "Likes and comments per post"}
+                  : selectedAccount?.platform === "instagram"
+                    ? "Views, likes and comments per post"
+                    : "Likes and comments per post"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1364,6 +1374,12 @@ export default function SocialMedia() {
                           <Heart className="h-3.5 w-3.5 fill-white" />
                           {post.likeCount}
                         </div>
+                        {selectedAccount?.platform === "instagram" && (
+                          <div className="flex items-center gap-1 text-white text-xs">
+                            <Eye className="h-3.5 w-3.5" />
+                            {numberFmt.format(post.viewCount ?? 0)}
+                          </div>
+                        )}
                         <div className="flex items-center gap-1 text-white text-xs">
                           <FileText className="h-3.5 w-3.5" />
                           {post.commentCount}
@@ -1373,6 +1389,11 @@ export default function SocialMedia() {
                         <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
                           <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
                         </span>
+                        {selectedAccount?.platform === "instagram" && (
+                          <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                            <Eye className="h-2.5 w-2.5" />{numberFmt.format(post.viewCount ?? 0)}
+                          </span>
+                        )}
                       </div>
                     </a>
                   ))}
@@ -1391,6 +1412,12 @@ export default function SocialMedia() {
                             <Heart className="h-3.5 w-3.5" />
                             {post.likeCount}
                           </span>
+                          {selectedAccount?.platform === "instagram" && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3.5 w-3.5" />
+                              {numberFmt.format(post.viewCount ?? 0)}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <FileText className="h-3.5 w-3.5" />
                             {post.commentCount}
