@@ -30,7 +30,7 @@ export function ProfileList() {
         </p>
       </div>
       <div className="rounded-lg border border-border bg-secondary/30 overflow-hidden">
-        <div className="flex items-stretch overflow-x-auto">
+        <div className="flex items-stretch">
           {profiles.map((profile) => {
             const isSelected = activeProfileId === profile.id;
             const n = connectedCount(profile.id);
@@ -39,7 +39,7 @@ export function ProfileList() {
                 key={profile.id}
                 type="button"
                 onClick={() => setActiveProfileId(profile.id)}
-                className={`flex items-center justify-center gap-2 w-44 min-w-44 px-3 py-2.5 text-sm transition-colors border-r border-border ${
+                className={`flex items-center justify-center gap-2 flex-1 min-w-0 px-3 py-2.5 text-sm transition-colors border-r border-border ${
                   isSelected
                     ? "bg-accent text-foreground font-medium"
                     : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/70"
@@ -59,7 +59,7 @@ export function ProfileList() {
           <button
             type="button"
             onClick={() => setShowInput((s) => !s)}
-            className="flex items-center justify-center gap-1 w-40 min-w-40 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/70 border-l border-border"
+            className="flex items-center justify-center gap-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/70 border-l border-border shrink-0"
             aria-label="Add profile"
           >
             <Plus className="h-4 w-4" />

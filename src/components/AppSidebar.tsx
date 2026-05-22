@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Settings,
   Zap,
-  Plus,
   MoreHorizontal,
   Trash2,
   Layers,
@@ -107,6 +106,32 @@ const NAV_GROUP_LABELS: Record<NavGroup, string> = {
   productivity: "Productivity",
   system: "System",
 };
+
+const topNavItems: Array<{
+  key: string;
+  title: string;
+  url: string;
+  icon: (props: { className?: string }) => JSX.Element;
+  platforms: AccountPlatform[];
+  hideAccounts?: boolean;
+}> = [
+  {
+    key: "connections",
+    title: "Connections",
+    url: "/connections",
+    icon: PlugZap,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "preferences",
+    title: "Preferences",
+    url: "/preferences",
+    icon: Settings,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+];
 
 const navItems: Array<{
   key: string;
@@ -218,24 +243,6 @@ const navItems: Array<{
     hideAccounts: true,
     group: "productivity",
   },
-  {
-    key: "connections",
-    title: "Connections",
-    url: "/connections",
-    icon: PlugZap,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
-    group: "system",
-  },
-  {
-    key: "preferences",
-    title: "Preferences",
-    url: "/preferences",
-    icon: Settings,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
-    group: "system",
-  },
 ];
 
 const NAV_GROUP_ORDER: NavGroup[] = ["work", "productivity", "system"];
@@ -298,8 +305,16 @@ interface NavBadgeInfo {
 function getNavBadge(
   key: string,
   aiActiveCount: number,
-  tasksOverdueCount: number
+  tasksOverdueCount: number,
+  connectedAccountsCount: number
 ): NavBadgeInfo | null {
+  if (key === "connections" && connectedAccountsCount > 0) {
+    return {
+      count: connectedAccountsCount,
+      ariaLabel: `${connectedAccountsCount} connected accounts`,
+      tone: "primary",
+    };
+  }
   if (key === "ai-recommendations" && aiActiveCount > 0) {
     return {
       count: aiActiveCount,
@@ -594,14 +609,59 @@ export function AppSidebar() {
         </span>
       </button>
       <SidebarContent className="pt-4" role="navigation" aria-label="Main">
+        <SidebarMenu>
+          {topNavItems.map((item) => {
+            const isActive = location.pathname === item.url;
+            return (
+              <SidebarMenuItem key={item.key}>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to={item.url}
+                    end
+                    onPointerEnter={() => prefetchFor(item.url)}
+                    onFocus={() => prefetchFor(item.url)}
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? "bg-accent text-foreground shadow-[inset_2px_0_0_0_hsl(var(--primary))]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    }`}
+                    activeClassName=""
+                  >
+                    <item.icon
+                      className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                    />
+                    <span
+                      className={`text-sm flex-1 ${
+                        isActive ? "font-semibold" : "font-medium"
+                      }`}
+                    >
+                      {item.title}
+                    </span>
+                    {item.key === "connections" && accounts.length > 0 ? (
+                      <NavCountBadge
+                        count={accounts.length}
+                        ariaLabel={`${accounts.length} connected accounts`}
+                        tone="primary"
+                      />
+                    ) : null}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+        <SidebarSeparator className="my-2" />
         {NAV_GROUP_ORDER.map((groupKey) => {
           const groupItems = navItems.filter((i) => i.group === groupKey);
           if (groupItems.length === 0) return null;
+          const showLabel = groupKey !== "work";
           return (
         <SidebarGroup key={groupKey}>
-          <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
-            {NAV_GROUP_LABELS[groupKey]}
-          </SidebarGroupLabel>
+          {showLabel && (
+            <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
+              {NAV_GROUP_LABELS[groupKey]}
+            </SidebarGroupLabel>
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {groupItems.map((item) => {
@@ -618,7 +678,8 @@ export function AppSidebar() {
                 const navBadge = getNavBadge(
                   item.key,
                   aiActiveCount,
-                  tasksOverdueCount
+                  tasksOverdueCount,
+                  accounts.length
                 );
 
                 return (
@@ -688,51 +749,36 @@ export function AppSidebar() {
                           </div>
                         </button>
                       )}
-                        <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
-                        Connected accounts
-                      </p>
                       {categoryAccounts.map((account) => {
-                        const Icon = platformIcons[account.platform];
                         const isSelected = selectedAccountId === account.id;
+                        const isClickable = !!section;
                         return (
                           <div
                             key={account.id}
-                            className="group/sub flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-sidebar-accent/50"
+                            className="group/sub flex items-center gap-1 rounded-md pr-1 hover:bg-sidebar-accent/50"
                           >
+                            {isClickable ? (
                             <button
                               type="button"
                               onClick={() => section && handleAccountClick(section, account.id, isSelected)}
-                              className={`flex flex-1 flex-col items-start gap-0 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
+                              className={`flex flex-1 items-center min-w-0 text-left py-0.5 px-1.5 rounded ${
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}
                             >
-                              <span className="flex items-center gap-2 w-full min-w-0">
-                                <Avatar className="h-5 w-5 shrink-0">
-                                  <AvatarFallback className="text-[9px] bg-secondary">
-                                    <Icon className="h-2.5 w-2.5" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="truncate">{account.username}</span>
-                              </span>
+                              <span className="text-[10px] text-muted-foreground/80 break-all leading-tight">{account.username}</span>
                               {account.stats && (account.stats.followersCount != null || account.stats.mediaCount != null) && (
-                                <span className="text-[11px] text-muted-foreground pl-7">
-                                  {account.stats.followersCount != null && (
-                                    <>
-                                      {account.stats.followersCount.toLocaleString("en-US")}
-                                      {" followers"}
-                                    </>
-                                  )}
+                                <span className="text-[10px] text-muted-foreground/60 ml-1 shrink-0">
+                                  {account.stats.followersCount != null && `${account.stats.followersCount.toLocaleString("en-US")} followers`}
                                   {account.stats.followersCount != null && account.stats.mediaCount != null && " · "}
-                                  {account.stats.mediaCount != null && (
-                                    <>
-                                      {account.platform === "whatsapp"
-                                        ? `${account.stats.mediaCount} templates`
-                                        : `${account.stats.mediaCount} posts`}
-                                    </>
-                                  )}
+                                  {account.stats.mediaCount != null && (account.platform === "whatsapp" ? `${account.stats.mediaCount} templates` : `${account.stats.mediaCount} posts`)}
                                 </span>
                               )}
                             </button>
+                            ) : (
+                            <div className="flex flex-1 min-w-0 py-0.5 px-1.5">
+                              <span className="text-[10px] text-muted-foreground/70 break-all leading-tight">{account.username}</span>
+                            </div>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -758,52 +804,14 @@ export function AppSidebar() {
                           </div>
                         );
                       })}
-                      {hasConnect && (
+                      {false && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Plus className="h-3 w-3 shrink-0" />
-                              Connect more
-                            </button>
+                            <button type="button" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
                             {item.platforms.map((platform) => {
                               const Icon = platformIcons[platform];
-                              const label =
-                                platform === "instagram"
-                                  ? "Instagram"
-                                  : platform === "tiktok"
-                                    ? "TikTok"
-                                    : platform === "youtube"
-                                      ? "YouTube"
-                                      : platform === "x"
-                                        ? "X (Twitter)"
-                                        : platform === "facebook"
-                                          ? "Facebook (Zernio)"
-                                          : platform === "google_business"
-                                            ? "Google Business"
-                                            : platform === "whatsapp"
-                                              ? "WhatsApp (Zernio)"
-                                              : platform === "shopify"
-                                                ? "Shopify"
-                                                : platform === "notion"
-                                                  ? "Notion"
-                                                : platform === "gmail"
-                                                  ? "Gmail"
-                                                : platform === "outlook"
-                                                  ? "Outlook"
-                                                : platform === "google_calendar"
-                                                  ? "Google Calendar"
-                                                : platform === "outlook_calendar"
-                                                  ? "Outlook Calendar"
-                                                : platform === "google_drive"
-                                                  ? "Google Drive"
-                                                : platform === "google_reviews"
-                                                  ? "Google Reviews"
-                                                  : "Tripadvisor";
                               return (
                                 platform === "tiktok" ? (
                                   <div key={platform}>
@@ -910,11 +918,6 @@ export function AppSidebar() {
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
-                      {!hasConnect && (
-                        <p className="text-[11px] text-muted-foreground/70 py-0.5 italic">
-                          Coming soon
-                        </p>
                       )}
                     </div>
                     )}

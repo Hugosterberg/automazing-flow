@@ -230,9 +230,18 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       return tb - ta;
     });
 
+    // Deduplicate: one error per platform (same token error repeated across duplicate accounts)
+    const seenErrors = new Set<string>();
+    const dedupedErrors = mailErrors.filter((e) => {
+      const key = `${e.platform}:${e.error}`;
+      if (seenErrors.has(key)) return false;
+      seenErrors.add(key);
+      return true;
+    });
+
     return res.json({
       messages: unified,
-      ...(mailErrors.length ? { mailErrors } : {}),
+      ...(dedupedErrors.length ? { mailErrors: dedupedErrors } : {}),
       ...(zernioNote ? { zernioNote } : {}),
     });
   });

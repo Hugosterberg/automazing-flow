@@ -54,13 +54,20 @@ export function useAccountData<TData>({
   const initialDataRef = useRef(initialData);
   const latestRequestIdRef = useRef(0);
   const latestRequestedAccountIdRef = useRef<string | null>(null);
+  const activeAccountIdRef = useRef<string | null>(null);
+  // Keep fetcher in a ref so fetchFor doesn't need to list it as a dep
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
 
   const effectiveRequestKey = requestKey == null ? "" : String(requestKey);
+  const prevEffectiveRequestKeyRef = useRef(effectiveRequestKey);
 
   const fetchFor = useCallback(
     async (accountId: string, force = false) => {
       const fetchKey = `${accountId}:${effectiveRequestKey}`;
-      if (!force && fetchedFor.current === fetchKey) return;
+      const requestKeyChanged = prevEffectiveRequestKeyRef.current !== effectiveRequestKey;
+      prevEffectiveRequestKeyRef.current = effectiveRequestKey;
+      if (!force && !requestKeyChanged && fetchedFor.current === fetchKey) return;
       fetchedFor.current = fetchKey;
       latestRequestedAccountIdRef.current = accountId;
       const requestId = latestRequestIdRef.current + 1;
@@ -68,7 +75,7 @@ export function useAccountData<TData>({
       setLoading(true);
       setError(null);
       try {
-        const next = await fetcher(accountId);
+        const next = await fetcherRef.current(accountId);
         if (
           latestRequestIdRef.current !== requestId ||
           latestRequestedAccountIdRef.current !== accountId
@@ -94,7 +101,7 @@ export function useAccountData<TData>({
         }
       }
     },
-    [effectiveRequestKey, fetcher]
+    [effectiveRequestKey]
   );
 
   const refresh = useCallback(async () => {
@@ -112,16 +119,22 @@ export function useAccountData<TData>({
   useEffect(() => {
     if (!activeAccount) {
       latestRequestedAccountIdRef.current = null;
+      activeAccountIdRef.current = null;
       setDataAccountId(null);
       setData(initialDataRef.current);
       setError(null);
       setLoading(false);
       return;
     }
-    setDataAccountId(null);
-    setData(initialDataRef.current);
-    setError(null);
-    void fetchFor(activeAccount.id);
+    const accountChanged = activeAccountIdRef.current !== activeAccount.id;
+    activeAccountIdRef.current = activeAccount.id;
+    if (accountChanged) {
+      setDataAccountId(null);
+      setData(initialDataRef.current);
+      setError(null);
+      fetchedFor.current = null;
+    }
+    void fetchFor(activeAccount.id, accountChanged);
   }, [activeAccount, fetchFor]);
 
   return {

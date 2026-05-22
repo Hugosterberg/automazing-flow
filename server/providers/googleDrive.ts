@@ -11,6 +11,7 @@ type GoogleDriveArgs = {
   googleClientId?: string;
   googleClientSecret?: string;
   folderId?: string | null;
+  view?: "my-drive" | "shared-with-me";
 };
 
 type GoogleDriveItemKind = "folder" | "image" | "video" | "other";
@@ -62,135 +63,142 @@ async function runWithFreshToken<T>({
   }
 }
 
+const DRIVE_FIELDS =
+  "files(id,name,mimeType,iconLink,thumbnailLink,webViewLink,modifiedTime,size,parents,owners(displayName),shortcutDetails(targetId,targetMimeType))";
+
+function mapDriveFile(file: Record<string, unknown>, accountId: string): Record<string, unknown> {
+  const id = String(file.id || "");
+  const mimeType = String(file.mimeType || "");
+  const shortcutDetails =
+    file.shortcutDetails && typeof file.shortcutDetails === "object"
+      ? (file.shortcutDetails as Record<string, unknown>)
+      : null;
+  const shortcutTargetMimeType = String(shortcutDetails?.targetMimeType || "");
+  const effectiveMimeType =
+    mimeType === "application/vnd.google-apps.shortcut" && shortcutTargetMimeType
+      ? shortcutTargetMimeType
+      : mimeType;
+  const kind: GoogleDriveItemKind =
+    effectiveMimeType === "application/vnd.google-apps.folder"
+      ? "folder"
+      : effectiveMimeType.startsWith("video/")
+        ? "video"
+        : effectiveMimeType.startsWith("image/")
+          ? "image"
+          : "other";
+  const effectiveId =
+    mimeType === "application/vnd.google-apps.shortcut" && shortcutDetails?.targetId
+      ? String(shortcutDetails.targetId)
+      : id;
+  const thumbnailUrl =
+    kind === "folder" || kind === "other"
+      ? ""
+      : kind === "image"
+      ? `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
+      : `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/thumbnail`;
+
+  return {
+    id: effectiveId,
+    name: String(file.name || "Untitled"),
+    mimeType: effectiveMimeType,
+    kind,
+    thumbnailUrl,
+    iconLink: String(file.iconLink || ""),
+    isShortcut: mimeType === "application/vnd.google-apps.shortcut",
+    previewUrl:
+      kind === "image"
+        ? `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
+        : undefined,
+    webViewLink: String(file.webViewLink || ""),
+    modifiedTime: String(file.modifiedTime || ""),
+    ownerName: String((Array.isArray(file.owners) ? file.owners[0]?.displayName : "") || ""),
+    size: typeof file.size === "string" ? Number(file.size) : undefined,
+  };
+}
+
+async function driveList(token: string, params: Record<string, string>): Promise<Record<string, unknown>[]> {
+  const url = new URL("https://www.googleapis.com/drive/v3/files");
+  url.searchParams.set("pageSize", "200");
+  url.searchParams.set("supportsAllDrives", "true");
+  url.searchParams.set("includeItemsFromAllDrives", "true");
+  url.searchParams.set("fields", DRIVE_FIELDS);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) throw new Error("unauthorized");
+  if (!res.ok) return [];
+  const body = await res.json().catch(() => ({}));
+  return Array.isArray(body.files) ? body.files : [];
+}
+
 export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
   const folderId = args.folderId && args.folderId !== "root" ? args.folderId : "root";
+  const view = args.view ?? "my-drive";
 
-  const [items, currentFolder, usedFallback] = await runWithFreshToken({
+  const [items, sharedItems, currentFolder] = await runWithFreshToken({
     ...args,
     request: async (token) => {
-      const url = new URL("https://www.googleapis.com/drive/v3/files");
-      url.searchParams.set("pageSize", "200");
-      url.searchParams.set("orderBy", "folder,name_natural");
-      url.searchParams.set("supportsAllDrives", "true");
-      url.searchParams.set("includeItemsFromAllDrives", "true");
-      url.searchParams.set(
-        "fields",
-        "files(id,name,mimeType,iconLink,thumbnailLink,webViewLink,modifiedTime,size,parents,owners(displayName),shortcutDetails(targetId,targetMimeType))"
-      );
-      url.searchParams.set("q", `'${folderId}' in parents and trashed = false`);
+      let files: Record<string, unknown>[] = [];
+      let shared: Record<string, unknown>[] = [];
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) throw new Error("unauthorized");
-      if (!res.ok) throw new Error("google_drive_fetch_failed");
-      const body = await res.json().catch(() => ({}));
-      let files = Array.isArray(body.files) ? body.files : [];
-
-      let usedFallback = false;
-      if (folderId === "root" && files.length === 0) {
-        const fallbackUrl = new URL("https://www.googleapis.com/drive/v3/files");
-        fallbackUrl.searchParams.set("pageSize", "200");
-        fallbackUrl.searchParams.set("orderBy", "modifiedTime desc,name_natural");
-        fallbackUrl.searchParams.set("supportsAllDrives", "true");
-        fallbackUrl.searchParams.set("includeItemsFromAllDrives", "true");
-        fallbackUrl.searchParams.set(
-          "fields",
-          "files(id,name,mimeType,iconLink,thumbnailLink,webViewLink,modifiedTime,size,parents,owners(displayName),shortcutDetails(targetId,targetMimeType))"
-        );
-        fallbackUrl.searchParams.set(
-          "q",
-          "trashed = false and (mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'image/' or mimeType contains 'video/' or mimeType = 'application/vnd.google-apps.shortcut')"
-        );
-        const fallbackRes = await fetch(fallbackUrl.toString(), {
-          headers: { Authorization: `Bearer ${token}` },
+      // Shared with me root — flat list of shared items
+      if (view === "shared-with-me" && folderId === "root") {
+        files = await driveList(token, {
+          orderBy: "folder,name_natural",
+          q: "sharedWithMe = true and trashed = false",
         });
-        if (fallbackRes.status === 401) throw new Error("unauthorized");
-        if (fallbackRes.ok) {
-          const fallbackBody = await fallbackRes.json().catch(() => ({}));
-          files = Array.isArray(fallbackBody.files) ? fallbackBody.files : [];
-          usedFallback = true;
-        }
+        return [files, [], null] as const;
+      }
+
+      // Folder navigation (works for both My Drive and Shared with me subfolders)
+      files = await driveList(token, {
+        orderBy: "folder,name_natural",
+        q: `'${folderId}' in parents and trashed = false`,
+      });
+
+      // Fallback 1: all owned files
+      if (folderId === "root" && files.length === 0) {
+        files = await driveList(token, {
+          orderBy: "modifiedTime desc",
+          q: "trashed = false and 'me' in owners",
+        });
+      }
+
+      // Fallback 2: absolutely everything accessible
+      if (folderId === "root" && files.length === 0) {
+        files = await driveList(token, {
+          orderBy: "modifiedTime desc",
+          q: "trashed = false",
+        });
       }
 
       let currentFolderMeta: { id: string; name: string; parentId: string | null } | null = null;
       if (folderId !== "root") {
-        const folderMetaRes = await fetch(
+        const r = await fetch(
           `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,parents`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (folderMetaRes.status === 401) throw new Error("unauthorized");
-        if (folderMetaRes.ok) {
-          const folderMeta = await folderMetaRes.json().catch(() => ({}));
+        if (r.status === 401) throw new Error("unauthorized");
+        if (r.ok) {
+          const meta = await r.json().catch(() => ({}));
           currentFolderMeta = {
-            id: String(folderMeta.id || folderId),
-            name: String(folderMeta.name || "Folder"),
-            parentId: Array.isArray(folderMeta.parents) ? String(folderMeta.parents[0] || "") || null : null,
+            id: String(meta.id || folderId),
+            name: String(meta.name || "Folder"),
+            parentId: Array.isArray(meta.parents) ? String(meta.parents[0] || "") || null : null,
           };
         }
       }
 
-      const mappedItems = files.map((file: Record<string, unknown>) => {
-        const id = String(file.id || "");
-        const mimeType = String(file.mimeType || "");
-        const shortcutDetails =
-          file.shortcutDetails && typeof file.shortcutDetails === "object"
-            ? (file.shortcutDetails as Record<string, unknown>)
-            : null;
-        const shortcutTargetMimeType = String(shortcutDetails?.targetMimeType || "");
-        const effectiveMimeType =
-          mimeType === "application/vnd.google-apps.shortcut" && shortcutTargetMimeType
-            ? shortcutTargetMimeType
-            : mimeType;
-        const kind: GoogleDriveItemKind =
-          effectiveMimeType === "application/vnd.google-apps.folder"
-            ? "folder"
-            : effectiveMimeType.startsWith("video/")
-              ? "video"
-              : effectiveMimeType.startsWith("image/")
-                ? "image"
-                : "other";
-        const effectiveId =
-          mimeType === "application/vnd.google-apps.shortcut" && shortcutDetails?.targetId
-            ? String(shortcutDetails.targetId)
-            : id;
-        const thumbnailUrl =
-          kind === "folder" || kind === "other"
-            ? ""
-            : kind === "image"
-            ? `/api/accounts/${encodeURIComponent(args.accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
-            : `/api/accounts/${encodeURIComponent(args.accountId)}/drive/files/${encodeURIComponent(effectiveId)}/thumbnail`;
-
-        return {
-          id: effectiveId,
-          name: String(file.name || "Untitled"),
-          mimeType: effectiveMimeType,
-          kind,
-          thumbnailUrl,
-          iconLink: String(file.iconLink || ""),
-          isShortcut: mimeType === "application/vnd.google-apps.shortcut",
-          previewUrl:
-            kind === "image"
-              ? `/api/accounts/${encodeURIComponent(args.accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
-              : undefined,
-          webViewLink: String(file.webViewLink || ""),
-          modifiedTime: String(file.modifiedTime || ""),
-          ownerName: String((Array.isArray(file.owners) ? file.owners[0]?.displayName : "") || ""),
-          size: typeof file.size === "string" ? Number(file.size) : undefined,
-        };
-      });
-
-      return [mappedItems, currentFolderMeta, usedFallback] as const;
+      return [files, [], currentFolderMeta] as const;
     },
   });
 
   return {
     source: "google_drive",
-    items,
+    items: items.map((f) => mapDriveFile(f, args.accountId)),
+    sharedItems: sharedItems.map((f) => mapDriveFile(f, args.accountId)),
     currentFolderId: folderId === "root" ? null : folderId,
     currentFolderName: currentFolder?.name || null,
     parentFolderId: currentFolder?.parentId || null,
-    usedFallback,
   };
 }
 

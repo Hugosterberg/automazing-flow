@@ -304,11 +304,21 @@ export default function MessagesPage() {
       {mailErrors.length > 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 text-sm text-destructive space-y-1">
+            <CardContent className="py-3 px-4">
               {mailErrors.map((me) => (
-                <p key={`${me.accountId}-${me.platform}`}>
-                  {me.platform}: {me.error}
-                </p>
+                <div key={`${me.accountId}-${me.platform}`} className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-destructive">
+                    {me.platform === "gmail" ? "Gmail" : "Outlook"} token expired — reconnect to load messages.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => void (me.platform === "gmail" ? connectGmail() : connectOutlook())}
+                  >
+                    Reconnect
+                  </Button>
+                </div>
               ))}
             </CardContent>
           </Card>
