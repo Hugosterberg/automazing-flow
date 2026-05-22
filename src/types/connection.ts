@@ -5,7 +5,7 @@ import type { AccountPlatform } from "./accounts";
  * - healthy: last sync OK, tokens valid.
  * - expired: provider requires re-auth (e.g. refresh token invalid).
  * - failed:  last sync produced an error (see lastSyncError).
- * - disconnected: user soft-disconnected; row kept for reconnect UX.
+ * - disconnected: legacy/manual disconnect state; hidden from active connection UI.
  * - pending: OAuth in flight, not yet completed.
  * - missing: expected by catalog but no row exists (computed client-side, never stored).
  */

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, Info, Layers, Link2, Loader2, Play, RefreshCw, Square, Trash2, Unplug } from "lucide-react";
+import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,10 +27,6 @@ interface Props {
   businessProfileId: string;
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
-  onResume?: (connectionId: string) => void;
-  isResuming?: boolean;
-  onRemove?: (connectionId: string) => void;
-  isRemoving?: boolean;
   onResync?: (connectionId: string) => void;
   isResyncing?: boolean;
   resyncingId?: string;
@@ -41,7 +37,7 @@ interface Props {
 
 /**
  * Single integration card: shows catalog info, linked accounts, health,
- * last sync, and Connect / Reconnect / Disconnect / Resume / Details actions.
+ * last sync, and Connect / Reconnect / Disconnect / Details actions.
  *
  * All auth-bearing actions go through `buildConnectUrl` → server `/api/auth/*`
  * → Zernio (or native OAuth fallback). The card never talks to a provider
@@ -53,10 +49,6 @@ export function ConnectionCard({
   businessProfileId,
   onDisconnect,
   isDisconnecting,
-  onResume,
-  isResuming,
-  onRemove,
-  isRemoving,
   onResync,
   isResyncing,
   resyncingId,
@@ -65,13 +57,11 @@ export function ConnectionCard({
   onToggleSelect,
 }: Props) {
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
-  // Include paused rows here — the card needs to render them so the user
-  // can resume. The aggregate status derivation handles them correctly.
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
   );
-  const active = useMemo(() => rows.filter((c) => !c.disconnectedAt), [rows]);
+  const active = rows;
 
   const connectConfig = getConnectConfig(entry.platform);
   const status = useMemo(() => aggregateStatus(rows), [rows]);
@@ -117,130 +107,88 @@ export function ConnectionCard({
       <CardContent className="space-y-3 pt-0">
         {rows.length > 0 ? (
           <ul className="space-y-1.5">
-            {rows.map((c) => {
-              const paused = Boolean(c.disconnectedAt);
-              return (
-                <li
-                  key={c.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-xs"
-                >
-                  {onToggleSelect && !paused && (
-                    <button
+            {rows.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-xs"
+              >
+                {onToggleSelect && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleSelect(c.id)}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={selectedIds?.has(c.id) ? "Avmarkera" : "Markera"}
+                  >
+                    {selectedIds?.has(c.id) ? (
+                      <CheckSquare2 className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                      <Square className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">
+                    {c.displayName || c.username}
+                    <span className="text-muted-foreground font-normal"> · @{c.username}</span>
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Connected{" "}
+                    {c.connectedAt
+                      ? formatRelativeTime(c.connectedAt) ?? c.connectedAt.slice(0, 10)
+                      : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <ConnectionHealthBadge health={c.health} />
+                  {onViewDetails ? (
+                    <Button
                       type="button"
-                      onClick={() => onToggleSelect(c.id)}
-                      className="shrink-0 text-muted-foreground hover:text-foreground"
-                      aria-label={selectedIds?.has(c.id) ? "Avmarkera" : "Markera"}
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => onViewDetails(c)}
+                      aria-label={`View details for ${c.displayName || c.username}`}
                     >
-                      {selectedIds?.has(c.id) ? (
-                        <CheckSquare2 className="h-3.5 w-3.5 text-primary" />
+                      <Info className="h-3 w-3" />
+                    </Button>
+                  ) : null}
+                  {onResync ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => onResync(c.id)}
+                      disabled={isResyncing}
+                      aria-label={`Resync ${c.displayName || c.username}`}
+                      title="Check connection status"
+                    >
+                      {isResyncing && resyncingId === c.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Square className="h-3.5 w-3.5" />
+                        <RefreshCw className="h-3 w-3" />
                       )}
-                    </button>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">
-                      {c.displayName || c.username}
-                      <span className="text-muted-foreground font-normal"> · @{c.username}</span>
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {paused ? "Paused" : "Connected"}{" "}
-                      {(() => {
-                        const ref = paused ? c.disconnectedAt : c.connectedAt;
-                        if (!ref) return "";
-                        return formatRelativeTime(ref) ?? ref.slice(0, 10);
-                      })()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <ConnectionHealthBadge health={c.health} />
-                    {onViewDetails ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => onViewDetails(c)}
-                        aria-label={`View details for ${c.displayName || c.username}`}
-                      >
-                        <Info className="h-3 w-3" />
-                      </Button>
-                    ) : null}
-                    {!paused && onResync ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => onResync(c.id)}
-                        disabled={isResyncing}
-                        aria-label={`Resync ${c.displayName || c.username}`}
-                        title="Kontrollera anslutningsstatus"
-                      >
-                        {isResyncing && resyncingId === c.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3" />
-                        )}
-                      </Button>
-                    ) : null}
-                    {paused && onResume ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => onResume(c.id)}
-                        disabled={isResuming}
-                        aria-label={`Resume ${c.displayName || c.username}`}
-                        title="Resume this connection"
-                      >
-                        {isResuming ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Play className="h-3 w-3" />
-                        )}
-                      </Button>
-                    ) : null}
-                    {paused && onRemove ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => setRemoveTarget(c)}
-                        disabled={isRemoving}
-                        aria-label={`Remove ${c.displayName || c.username}`}
-                        title="Remove permanently so you can connect a different account"
-                      >
-                        {isRemoving ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </Button>
-                    ) : null}
-                    {!paused ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => onDisconnect(c.id)}
-                        disabled={isDisconnecting}
-                        aria-label={`Disconnect ${c.displayName || c.username}`}
-                      >
-                        {isDisconnecting ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Unplug className="h-3 w-3" />
-                        )}
-                      </Button>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => setRemoveTarget(c)}
+                    disabled={isDisconnecting}
+                    aria-label={`Disconnect ${c.displayName || c.username}`}
+                    title="Disconnect — removes the account permanently"
+                  >
+                    {isDisconnecting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </li>
+            ))}
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">Not connected for this business profile yet.</p>
@@ -302,10 +250,10 @@ export function ConnectionCard({
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove connection?</AlertDialogTitle>
+            <AlertDialogTitle>Disconnect {removeTarget?.displayName || removeTarget?.username}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes {removeTarget?.displayName || removeTarget?.username} and clears its
-              stored tokens. You can then connect a different account in its place. This cannot be undone.
+              The account will be removed and its stored tokens cleared. You can connect a different
+              account in its place. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -313,11 +261,11 @@ export function ConnectionCard({
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (removeTarget && onRemove) onRemove(removeTarget.id);
+                if (removeTarget) onDisconnect(removeTarget.id);
                 setRemoveTarget(null);
               }}
             >
-              Remove
+              Disconnect
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

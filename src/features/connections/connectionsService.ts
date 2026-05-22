@@ -49,7 +49,7 @@ function rowToDomain(row: Row): Connection {
     isOAuth: Boolean(row.is_oauth),
     isZernio: Boolean(row.is_zernio),
     zernioAccountId: row.zernio_account_id ?? undefined,
-    health: row.disconnected_at ? "disconnected" : normalizeHealth(row.health),
+    health: normalizeHealth(row.health),
     lastSyncedAt: row.last_synced_at ?? undefined,
     lastSuccessfulSyncAt: row.last_successful_sync_at ?? undefined,
     lastSyncError: row.last_sync_error ?? undefined,
@@ -90,47 +90,17 @@ export async function listConnectionsForBusinessProfile(
 
   if (response.error) throw response.error;
   const rows: Row[] = response.data ?? [];
-  return rows.map(rowToDomain);
-}
-
-export async function softDisconnect(
-  supabase: TypedSupabaseClient,
-  connectionId: string
-): Promise<void> {
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("connected_accounts")
-    .update({ disconnected_at: now, health: "disconnected" })
-    .eq("id", connectionId);
-  if (error) throw error;
+  return rows
+    .filter((row) => !row.disconnected_at && normalizeHealth(row.health) !== "disconnected")
+    .map(rowToDomain);
 }
 
 /**
- * Un-pause a soft-disconnected connection. Clears `disconnected_at` and puts
- * the row back into a "pending" health state so the next reconcile/sync will
- * refresh its real status. We intentionally do NOT set health back to healthy
- * — the provider token may have expired while the connection was paused.
- *
- * Does not refresh tokens. If a paused connection needs new tokens, the user
- * should reconnect through the normal OAuth flow instead.
+ * Permanently remove a connection — deletes the Supabase row. Pair this with
+ * clearing backend tokens (DELETE /api/accounts/:id) so a fresh OAuth flow
+ * can claim the account.
  */
-export async function resumeConnection(
-  supabase: TypedSupabaseClient,
-  connectionId: string
-): Promise<void> {
-  const { error } = await supabase
-    .from("connected_accounts")
-    .update({ disconnected_at: null, health: "pending", last_sync_error: null })
-    .eq("id", connectionId);
-  if (error) throw error;
-}
-
-/**
- * Permanently remove a connection — deletes the Supabase row AND clears the
- * provider tokens on the backend so a fresh OAuth flow can claim the account
- * (e.g. user picked the wrong Google account and wants to re-link a different one).
- */
-export async function hardDeleteConnection(
+export async function deleteConnection(
   supabase: TypedSupabaseClient,
   connectionId: string
 ): Promise<void> {

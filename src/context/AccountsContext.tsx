@@ -626,20 +626,17 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       } catch {
         // Backend may not be running or account does not exist
       }
-      const now = new Date().toISOString();
       if (enabled && supabase && userId) {
         const { error } = await supabase
           .from("connected_accounts")
-          .update({ disconnected_at: now })
+          .delete()
           .eq("id", id)
           .eq("user_id", userId);
         if (error) {
-          console.warn("[accounts] Could not persist disconnect (run Supabase migration for disconnected_at?)", error);
+          console.warn("[accounts] Could not delete connected account", error);
         }
       }
-      setAccounts((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, disconnectedAt: now } : a))
-      );
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
     },
     [enabled, userId]
   );

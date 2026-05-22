@@ -56,10 +56,6 @@ export default function ConnectionsPage() {
     refetch,
     disconnect,
     isDisconnecting,
-    resume,
-    isResuming,
-    remove,
-    isRemoving,
     resync,
     isResyncing,
     resyncingId,
@@ -160,14 +156,6 @@ export default function ConnectionsPage() {
     }
   }
 
-  async function handleDrawerResume(connection: Connection) {
-    try {
-      await resume(connection.id);
-    } catch {
-      // See above.
-    }
-  }
-
   async function handleDrawerResync(connection: Connection) {
     try {
       await resync(connection.id);
@@ -189,13 +177,12 @@ export default function ConnectionsPage() {
     );
   }
 
-  const activeCount = connections.filter((c) => !c.disconnectedAt).length;
-  const pausedCount = connections.filter((c) => Boolean(c.disconnectedAt)).length;
+  const activeCount = connections.length;
   const effectiveFilter = statusFilter === "all" ? null : statusFilter;
 
   const summary = isLoading
     ? "Loading connections…"
-    : `${activeCount} active, ${pausedCount} paused`;
+    : `${activeCount} connected`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -347,10 +334,6 @@ export default function ConnectionsPage() {
           connections={connections}
           onDisconnect={(id) => void disconnect(id)}
           isDisconnecting={isDisconnecting}
-          onResume={(id) => void resume(id)}
-          isResuming={isResuming}
-          onRemove={(id) => void remove(id)}
-          isRemoving={isRemoving}
           onResync={(id) => void resync(id)}
           isResyncing={isResyncing}
           resyncingId={resyncingId}
@@ -371,11 +354,7 @@ export default function ConnectionsPage() {
         onReconnect={startReconnect}
         onResync={(c) => void handleDrawerResync(c)}
         onDisconnect={(c) => void handleDrawerDisconnect(c)}
-        onResume={(c) => void handleDrawerResume(c)}
-        onRemove={(c) => void remove(c.id)}
         isDisconnecting={isDisconnecting}
-        isResuming={isResuming}
-        isRemoving={isRemoving}
       />
     </div>
   );

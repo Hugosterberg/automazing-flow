@@ -2,7 +2,6 @@ import {
   CheckCircle2,
   CircleAlert,
   CircleDashed,
-  CirclePause,
   Loader2,
   XCircle,
 } from "lucide-react";
@@ -15,7 +14,6 @@ const STYLES: Record<ConnectionStatus, string> = {
   reconnect_required: "border-warning/40 bg-warning/10 text-warning",
   error: "border-destructive/40 bg-destructive/10 text-destructive",
   syncing: "border-info/40 bg-info/10 text-info",
-  paused: "border-warning/40 bg-warning/5 text-warning/90",
 };
 
 function Icon({
@@ -34,8 +32,6 @@ function Icon({
       return <XCircle className={className} aria-hidden />;
     case "syncing":
       return <Loader2 className={cn(className, "animate-spin")} aria-hidden />;
-    case "paused":
-      return <CirclePause className={className} aria-hidden />;
     case "not_connected":
     default:
       return <CircleDashed className={className} aria-hidden />;

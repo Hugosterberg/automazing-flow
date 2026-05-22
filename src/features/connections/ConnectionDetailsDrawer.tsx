@@ -35,11 +35,7 @@ interface Props {
   onReconnect?: (connection: Connection) => void;
   onResync?: (connection: Connection) => void;
   onDisconnect?: (connection: Connection) => void;
-  onResume?: (connection: Connection) => void;
-  onRemove?: (connection: Connection) => void;
   isDisconnecting?: boolean;
-  isResuming?: boolean;
-  isRemoving?: boolean;
 }
 
 function safeRelative(iso: string | null | undefined): string | null {
@@ -96,11 +92,7 @@ export function ConnectionDetailsDrawer({
   onReconnect,
   onResync,
   onDisconnect,
-  onResume,
-  onRemove,
   isDisconnecting,
-  isResuming,
-  isRemoving,
 }: Props) {
   const [removeOpen, setRemoveOpen] = useState(false);
   const { runs, lastSuccessfulAt: derivedLastOk, isLoading: runsLoading } = useSyncRuns(
@@ -132,7 +124,6 @@ export function ConnectionDetailsDrawer({
   }
 
   const status = statusFromConnection(connection);
-  const isPaused = status === "paused";
   const connectedAgo = safeRelative(connection.connectedAt);
   const lastSyncAgo = safeRelative(connection.lastSyncedAt);
   const lastOkAgo = safeRelative(effectiveLastOk);
@@ -252,31 +243,7 @@ export function ConnectionDetailsDrawer({
         <Separator />
 
         <div className="px-5 py-3 flex flex-wrap gap-2">
-          {isPaused && onResume ? (
-            <Button
-              size="sm"
-              variant="default"
-              className="gap-1.5"
-              onClick={() => onResume(connection)}
-              disabled={isResuming}
-            >
-              {isResuming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Resume
-            </Button>
-          ) : null}
-          {isPaused && onRemove ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="gap-1.5 ml-auto text-destructive hover:text-destructive"
-              onClick={() => setRemoveOpen(true)}
-              disabled={isRemoving}
-            >
-              {isRemoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              Remove
-            </Button>
-          ) : null}
-          {!isPaused && onReconnect ? (
+          {onReconnect ? (
             <Button
               size="sm"
               variant={status === "reconnect_required" ? "default" : "outline"}
@@ -286,7 +253,7 @@ export function ConnectionDetailsDrawer({
               Reconnect
             </Button>
           ) : null}
-          {!isPaused && onResync ? (
+          {onResync ? (
             <Button
               size="sm"
               variant="outline"
@@ -296,15 +263,15 @@ export function ConnectionDetailsDrawer({
               Resync
             </Button>
           ) : null}
-          {!isPaused && onDisconnect ? (
+          {onDisconnect ? (
             <Button
               size="sm"
               variant="ghost"
               className="gap-1.5 ml-auto text-destructive hover:text-destructive"
-              onClick={() => onDisconnect(connection)}
+              onClick={() => setRemoveOpen(true)}
               disabled={isDisconnecting}
             >
-              {isDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {isDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               Disconnect
             </Button>
           ) : null}
@@ -314,10 +281,10 @@ export function ConnectionDetailsDrawer({
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove connection?</AlertDialogTitle>
+            <AlertDialogTitle>Disconnect {connection?.displayName || connection?.username}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes {connection?.displayName || connection?.username} and clears its
-              stored tokens. You can then connect a different account in its place. This cannot be undone.
+              The account will be removed and its stored tokens cleared. You can connect a different
+              account in its place. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -325,11 +292,11 @@ export function ConnectionDetailsDrawer({
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (connection && onRemove) onRemove(connection);
+                if (connection && onDisconnect) onDisconnect(connection);
                 setRemoveOpen(false);
               }}
             >
-              Remove
+              Disconnect
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
