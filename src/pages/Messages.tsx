@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -92,10 +92,15 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [zernioNote, setZernioNote] = useState<string | null>(null);
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
+  const hasLoadedForInitialMailAccounts = useRef(false);
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
     [accounts]
+  );
+  const mailAccountKey = useMemo(
+    () => mailAccounts.map((a) => `${a.id}:${a.connectedAt}`).sort().join("|"),
+    [mailAccounts]
   );
 
   const ensureBackendSession = useCallback(async () => {
@@ -148,6 +153,14 @@ export default function MessagesPage() {
   useEffect(() => {
     void loadUnified();
   }, [loadUnified]);
+
+  useEffect(() => {
+    if (!hasLoadedForInitialMailAccounts.current) {
+      hasLoadedForInitialMailAccounts.current = true;
+      return;
+    }
+    void loadUnified();
+  }, [mailAccountKey, loadUnified]);
 
   useEffect(() => {
     let ignore = false;
