@@ -108,7 +108,18 @@ export interface ZernioModule {
     sortOrder?: "asc" | "desc";
     status?: string;
     profileId?: string | null;
+    platform?: string;
+    cursor?: string;
   }): Promise<ZernioResult<Record<string, unknown>>>;
+  listInboxConversationMessages(
+    conversationId: string,
+    options: {
+      accountId: string;
+      limit?: number;
+      sortOrder?: "asc" | "desc";
+      cursor?: string;
+    }
+  ): Promise<ZernioResult<Record<string, unknown>>>;
 }
 
 export type ReviewCandidate =
@@ -286,13 +297,36 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     sortOrder?: "asc" | "desc";
     status?: string;
     profileId?: string | null;
+    platform?: string;
+    cursor?: string;
   }) {
     const q = new URLSearchParams();
     q.set("limit", String(options?.limit ?? 75));
     q.set("sortOrder", options?.sortOrder ?? "desc");
     q.set("status", options?.status ?? "active");
     if (options?.profileId) q.set("profileId", options.profileId);
+    if (options?.platform) q.set("platform", options.platform);
+    if (options?.cursor) q.set("cursor", options.cursor);
     return request<Record<string, unknown>>(`/inbox/conversations?${q.toString()}`);
+  }
+
+  function listInboxConversationMessages(
+    conversationId: string,
+    options: {
+      accountId: string;
+      limit?: number;
+      sortOrder?: "asc" | "desc";
+      cursor?: string;
+    }
+  ) {
+    const q = new URLSearchParams();
+    q.set("accountId", options.accountId);
+    q.set("limit", String(options.limit ?? 1));
+    q.set("sortOrder", options.sortOrder ?? "desc");
+    if (options.cursor) q.set("cursor", options.cursor);
+    return request<Record<string, unknown>>(
+      `/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${q.toString()}`
+    );
   }
 
   return {
@@ -308,5 +342,6 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     getWhatsappBusinessProfile,
     listReviews,
     listInboxConversations,
+    listInboxConversationMessages,
   };
 }

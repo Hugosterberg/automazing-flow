@@ -7,8 +7,11 @@ type StoredAccount = Record<string, unknown> & {
   accessToken?: string;
   refreshToken?: string;
   ownerUserId?: string;
+  profileId?: string | null;
   username?: string;
   displayName?: string;
+  zernioAccountId?: string;
+  lateAccountId?: string;
 };
 
 type TokenStore = {
@@ -53,6 +56,25 @@ function parseZernioConversationList(body: Record<string, unknown>): unknown[] {
   return [];
 }
 
+function parseZernioConversationMessages(body: Record<string, unknown>): Array<Record<string, unknown>> {
+  const data = body.data;
+  if (Array.isArray(data)) return data as Array<Record<string, unknown>>;
+  if (data && typeof data === "object" && Array.isArray((data as { messages?: unknown[] }).messages)) {
+    return (data as { messages: Array<Record<string, unknown>> }).messages;
+  }
+  if (Array.isArray(body.messages)) return body.messages as Array<Record<string, unknown>>;
+  if (Array.isArray((body as { items?: unknown[] }).items)) return (body as { items: Array<Record<string, unknown>> }).items;
+  return [];
+}
+
+function textFromZernioMessage(row: Record<string, unknown>): string {
+  return String(row.message || row.text || row.body || row.content || row.preview || "").trim();
+}
+
+function dateFromZernioMessage(row: Record<string, unknown>): string {
+  return String(row.createdTime || row.createdAt || row.timestamp || row.sentAt || row.date || "").trim();
+}
+
 export function registerMessagesRoutes(app: import("express").Express, deps: MessagesRouteDeps) {
   const {
     getSessionUserId,
@@ -71,6 +93,12 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const unified: UnifiedMessage[] = [];
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
     const mailTasks: Promise<void>[] = [];
+    const zernioMessageAccounts: Array<{
+      localAccountId: string;
+      zernioAccountId: string;
+      platform: string;
+      label: string;
+    }> = [];
 
     const mailEntries = await tokenStore.entries();
     for (const [accountId, rawStored] of mailEntries) {
@@ -78,12 +106,23 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       const access = getStoredAccountAccess(stored, userId);
       if (!access.allowed) continue;
 
-      const platform = String(stored.platform || "");
-      if (platform !== "gmail" && platform !== "outlook") continue;
-
       if (access.migrate) {
         await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
+
+      const platform = String(stored.platform || "");
+      const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
+
+      if (["instagram", "facebook", "whatsapp"].includes(platform) && zernioAccountId) {
+        zernioMessageAccounts.push({
+          localAccountId: accountId,
+          zernioAccountId,
+          platform,
+          label: String(stored.username || stored.displayName || platform),
+        });
+      }
+
+      if (platform !== "gmail" && platform !== "outlook") continue;
 
       mailTasks.push(
         (async () => {
@@ -175,47 +214,80 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
     let zernioNote: string | undefined;
     const zernioPromise = (async () => {
+      if (zernioMessageAccounts.length === 0) return;
+
       try {
-        const convResult = await zernio.listInboxConversations({
-          limit: 75,
-          sortOrder: "desc",
-          status: "active",
-          profileId: zernioProfileIdFilter || null,
-        });
-        if (!convResult.ok) {
-          if (convResult.status === 503) {
-            zernioNote =
-              "ZERNIO_API_KEY is not set — social DMs from connected accounts will not appear here.";
-          } else if (convResult.status === 401 || convResult.status === 403) {
-            zernioNote = "Zernio inbox returned unauthorized — check API key or Inbox add-on.";
-          } else if (convResult.status === 402) {
-            zernioNote = "Zernio Inbox may require a plan add-on for DM access.";
-          }
-          return;
+        const accountsByPlatform = new Map<string, typeof zernioMessageAccounts>();
+        for (const account of zernioMessageAccounts) {
+          accountsByPlatform.set(account.platform, [
+            ...(accountsByPlatform.get(account.platform) || []),
+            account,
+          ]);
         }
-        const body = convResult.data;
-        const rows = parseZernioConversationList(body);
-        for (const raw of rows) {
-          const c = raw as Record<string, unknown>;
-          const cid = String(c.id || c.conversationId || "").trim();
-          if (!cid) continue;
-          const participantName = String(c.participantName || c.participantUsername || "Direct message");
-          const last = String(c.lastMessage || c.preview || "");
-          const plat = String(c.platform || "social").toLowerCase();
-          unified.push({
-            id: `dm:zernio:${cid}`,
-            kind: "dm",
-            channel: plat,
-            accountId: String(c.accountId || ""),
-            accountLabel: String(c.accountUsername || c.accountName || ""),
-            subject: participantName,
-            from: { name: participantName, email: String(c.participantId || "") },
-            date: String(c.updatedTime || c.updatedAt || c.lastMessageAt || ""),
-            snippet: last,
-            body: last,
-            isUnread: Number(c.unreadCount || 0) > 0,
-            externalUrl: c.url ? String(c.url) : undefined,
+
+        for (const [platform, platformAccounts] of accountsByPlatform) {
+          const convResult = await zernio.listInboxConversations({
+            limit: 100,
+            sortOrder: "desc",
+            status: "active",
+            profileId: zernioProfileIdFilter || null,
+            platform,
           });
+          if (!convResult.ok) {
+            if (convResult.status === 503) {
+              zernioNote =
+                "ZERNIO_API_KEY is not set - social DMs from connected accounts will not appear here.";
+            } else if (convResult.status === 401 || convResult.status === 403) {
+              zernioNote = "Zernio inbox returned unauthorized - check API key or reconnect with inbox permissions.";
+            } else if (convResult.status === 402) {
+              zernioNote = "Zernio Inbox may require inbox access for DM conversations.";
+            }
+            continue;
+          }
+
+          const connectedByZernioId = new Map(platformAccounts.map((account) => [account.zernioAccountId, account]));
+          const rows = parseZernioConversationList(convResult.data);
+          for (const raw of rows) {
+            const c = raw as Record<string, unknown>;
+            const cid = String(c.id || c.conversationId || "").trim();
+            if (!cid) continue;
+
+            const rowAccountId = String(c.accountId || c.account_id || c.socialAccountId || "").trim();
+            const linkedAccount = connectedByZernioId.get(rowAccountId);
+            if (!linkedAccount) continue;
+
+            const participantName = String(c.participantName || c.participantUsername || "Direct message");
+            const messageResult = await zernio.listInboxConversationMessages(cid, {
+              accountId: linkedAccount.zernioAccountId,
+              limit: 1,
+              sortOrder: "desc",
+            });
+            const latestMessage = messageResult.ok
+              ? parseZernioConversationMessages(messageResult.data)[0]
+              : undefined;
+            const latestText = latestMessage ? textFromZernioMessage(latestMessage) : "";
+            const fallbackText = String(c.lastMessage || c.preview || "").trim();
+            const last = latestText || fallbackText;
+            const plat = String(c.platform || linkedAccount.platform).toLowerCase();
+            const date = latestMessage
+              ? dateFromZernioMessage(latestMessage) || String(c.updatedTime || c.updatedAt || c.lastMessageAt || "")
+              : String(c.updatedTime || c.updatedAt || c.lastMessageAt || "");
+
+            unified.push({
+              id: `dm:zernio:${linkedAccount.localAccountId}:${cid}`,
+              kind: "dm",
+              channel: plat,
+              accountId: linkedAccount.localAccountId,
+              accountLabel: String(c.accountUsername || c.accountName || linkedAccount.label),
+              subject: participantName,
+              from: { name: participantName, email: String(c.participantId || "") },
+              date,
+              snippet: last,
+              body: last,
+              isUnread: Number(c.unreadCount || 0) > 0,
+              externalUrl: c.url ? String(c.url) : undefined,
+            });
+          }
         }
       } catch {
         zernioNote = "Could not load Zernio inbox conversations.";
