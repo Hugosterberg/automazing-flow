@@ -84,7 +84,7 @@ function channelBadge(msg: UnifiedMessage): string {
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
-  const { accounts, activeProfileId } = useAccounts();
+  const { accounts, activeProfileId, addAccountFromOAuth, setSelectedAccountId } = useAccounts();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<UnifiedMessage | null>(null);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
@@ -98,6 +98,26 @@ export default function MessagesPage() {
     [accounts]
   );
 
+  const ensureBackendSession = useCallback(async () => {
+    if (authMode === "local") {
+      await fetch(apiUrl("/api/auth/local-session"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch(() => {});
+      return;
+    }
+
+    if (authMode === "cloud" && session?.access_token) {
+      await fetch(apiUrl("/api/auth/session"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        credentials: "include",
+      }).catch(() => {});
+    }
+  }, [authMode, session?.access_token]);
+
   const loadUnified = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -105,12 +125,8 @@ export default function MessagesPage() {
     setMailErrors([]);
     try {
       let res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
-      if (res.status === 401 && authMode === "cloud" && session?.access_token) {
-        await fetch(apiUrl("/api/auth/session"), {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          credentials: "include",
-        }).catch(() => {});
+      if (res.status === 401) {
+        await ensureBackendSession();
         res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
       }
       if (!res.ok) {
@@ -127,20 +143,59 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [authMode, session?.access_token]);
+  }, [ensureBackendSession]);
 
   useEffect(() => {
     void loadUnified();
   }, [loadUnified]);
 
-  function connectGmail() {
+  useEffect(() => {
+    let ignore = false;
+
+    async function syncMailAccountsFromBackend() {
+      try {
+        await ensureBackendSession();
+        const platforms = ["gmail", "outlook"] as const;
+        for (const platform of platforms) {
+          let res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+          if (res.status === 401) {
+            await ensureBackendSession();
+            res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+          }
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || ignore) continue;
+
+          const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
+          for (const account of backendAccounts) {
+            addAccountFromOAuth(
+              String(account.account_id || ""),
+              platform,
+              String(account.username || (platform === "gmail" ? "Gmail" : "Outlook")),
+              account.profile_id ? String(account.profile_id) : undefined
+            );
+          }
+        }
+      } catch {
+        // Best-effort hydration only.
+      }
+    }
+
+    void syncMailAccountsFromBackend();
+    return () => {
+      ignore = true;
+    };
+  }, [addAccountFromOAuth, ensureBackendSession]);
+
+  async function connectGmail() {
+    await ensureBackendSession();
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     window.location.href = `${apiUrl("/api/auth/gmail")}?${params}`;
   }
 
-  function connectOutlook() {
+  async function connectOutlook() {
+    await ensureBackendSession();
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
@@ -228,8 +283,8 @@ export default function MessagesPage() {
             message={formatOAuthErrorMessage(
               oauthErrorDetails,
               {
-                gmail_not_configured: "Gmail is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
-                outlook_not_configured: "Outlook is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.",
+                gmail_not_configured: "Gmail is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local.",
+                outlook_not_configured: "Outlook is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.local.",
               },
               "Login failed"
             )}
@@ -266,7 +321,7 @@ export default function MessagesPage() {
             <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
               <p className="font-medium text-sm">Connect Gmail</p>
-              <Button size="sm" onClick={connectGmail} className="glow-sm">
+              <Button size="sm" onClick={() => void connectGmail()} className="glow-sm">
                 Connect Gmail
               </Button>
             </CardContent>
@@ -275,7 +330,7 @@ export default function MessagesPage() {
             <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
               <p className="font-medium text-sm">Connect Outlook</p>
-              <Button size="sm" variant="outline" onClick={connectOutlook}>
+              <Button size="sm" variant="outline" onClick={() => void connectOutlook()}>
                 Connect Outlook
               </Button>
             </CardContent>
