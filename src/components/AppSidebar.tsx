@@ -15,6 +15,7 @@ import {
   PlugZap,
   ListChecks,
   Activity,
+  Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -176,11 +177,19 @@ const navItems: Array<{
   },
   {
     key: "sales-marketing",
-    title: "Sales & Marketing",
-    url: "/sales-marketing",
+    title: "Sales",
+    url: "/sales",
     icon: LineChart,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "work",
+  },
+  {
+    key: "marketing",
+    title: "Marketing",
+    url: "/marketing",
+    icon: Megaphone,
+    platforms: ["google_ads", "meta_business"] as AccountPlatform[],
     group: "work",
   },
   {
@@ -264,6 +273,8 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   google_drive: GoogleDriveIcon,
   google_reviews: GoogleReviewsIcon,
   tripadvisor: TripadvisorIcon,
+  google_ads: GoogleBusinessIcon,
+  meta_business: FacebookIcon,
 };
 
 function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {

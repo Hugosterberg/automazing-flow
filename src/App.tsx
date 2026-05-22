@@ -35,6 +35,7 @@ const AIRecommendationsPage = lazy(() => import("./pages/AIRecommendations"));
 const PreferencesPage = lazy(() => import("./pages/Preferences"));
 const ReviewsPage = lazy(() => import("./pages/Reviews"));
 const SalesMarketingPage = lazy(() => import("./pages/SalesMarketing"));
+const MarketingPage = lazy(() => import("./pages/Marketing"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const ContentPage = lazy(() => import("./pages/Content"));
 const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage"));
@@ -111,7 +112,9 @@ const App = () => {
                       <Route path="/" element={<Index />} />
                       <Route path="/social-media" element={<SocialMedia />} />
                       <Route path="/ecommerce" element={<Ecommerce />} />
-                      <Route path="/sales-marketing" element={<SalesMarketingPage />} />
+                      <Route path="/sales" element={<SalesMarketingPage />} />
+                      <Route path="/marketing" element={<MarketingPage />} />
+                      <Route path="/sales-marketing" element={<Navigate to="/sales" replace />} />
                       <Route path="/customers" element={<CustomersPage />} />
                       <Route path="/calendar" element={<CalendarPage />} />
                       <Route path="/messages" element={<MessagesPage />} />

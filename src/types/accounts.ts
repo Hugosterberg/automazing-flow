@@ -14,6 +14,7 @@ export type MailPlatform = "gmail" | "outlook";
 export type CalendarPlatform = "google_calendar" | "outlook_calendar";
 export type ReviewsPlatform = "google_reviews" | "tripadvisor";
 export type ContentPlatform = "google_drive";
+export type MarketingPlatform = "google_ads" | "meta_business";
 
 export type AccountPlatform =
   | SocialPlatform
@@ -21,7 +22,8 @@ export type AccountPlatform =
   | MailPlatform
   | CalendarPlatform
   | ReviewsPlatform
-  | ContentPlatform;
+  | ContentPlatform
+  | MarketingPlatform;
 
 export interface Profile {
   id: string;

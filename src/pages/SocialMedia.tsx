@@ -1528,7 +1528,7 @@ export default function SocialMedia() {
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-lg">Aktiva kampanjer</CardTitle>
-              <Link to="/sales-marketing" className="text-xs text-primary hover:underline">
+              <Link to="/marketing" className="text-xs text-primary hover:underline">
                 Hantera →
               </Link>
             </div>
@@ -1537,7 +1537,7 @@ export default function SocialMedia() {
             {scheduledContentTasks.length === 0 ? (
               <div className="text-center py-4 space-y-2">
                 <p className="text-sm text-muted-foreground">Inga aktiva kampanjer.</p>
-                <Link to="/sales-marketing">
+                  <Link to="/marketing">
                   <Button size="sm" variant="outline" className="text-xs">
                     Skapa kampanj
                   </Button>

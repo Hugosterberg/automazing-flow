@@ -13,6 +13,8 @@ const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayN
   instagram: (username) => `https://instagram.com/${username}`,
   x: (username) => `https://twitter.com/${username}`,
   youtube: (username) => `https://youtube.com/@${username}`,
+  google_ads: () => "https://ads.google.com",
+  meta_business: () => "https://business.facebook.com",
 };
 
 type ZernioAccount = Record<string, unknown> & {
@@ -67,6 +69,8 @@ export function registerAccountRoutes(app, deps: AccountRoutesDeps) {
       "shopify",
       "tripadvisor",
       "google_business",
+      "google_ads",
+      "meta_business",
     ];
 
     const localToCloudGoogleMigration =

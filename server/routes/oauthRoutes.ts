@@ -484,6 +484,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (platform === "shopify" || platform === "notion") {
       return "ecommerce";
     }
+    if (platform === "google_ads" || platform === "meta_business") {
+      return "marketing";
+    }
     return "social-media";
   }
 
@@ -686,6 +689,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   const zernioConnectPlatformMap = {
     facebook: { slugs: ["facebook"], appPlatform: "facebook" },
     whatsapp: { slugs: ["whatsapp"], appPlatform: "whatsapp" },
+    google_ads: { slugs: ["google-ads", "google_ads"], appPlatform: "google_ads" },
+    meta_business: { slugs: ["meta-business", "meta_business"], appPlatform: "meta_business" },
   };
 
   function registerZernioOAuthPlatformRoute(routePlatform) {
@@ -760,6 +765,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   registerZernioOAuthPlatformRoute("facebook");
   registerZernioOAuthPlatformRoute("whatsapp");
+  registerZernioOAuthPlatformRoute("google_ads");
+  registerZernioOAuthPlatformRoute("meta_business");
 
   app.get("/api/auth/zernio/platform/callback", async (req, res) => {
     const {

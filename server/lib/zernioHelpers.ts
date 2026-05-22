@@ -49,6 +49,10 @@ export function mapZernioPlatform(raw: string | undefined): string | null {
   if (s.includes("outlook-calendar") || s.includes("outlook calendar") || s.includes("microsoft-calendar")) {
     return "outlook_calendar";
   }
+  if (s.includes("google") && s.includes("ads")) return "google_ads";
+  if (s.includes("meta") && s.includes("business")) return "meta_business";
+  if (s.includes("meta") && (s.includes("ads") || s.includes("ad-account"))) return "meta_business";
+  if (s.includes("facebook") && s.includes("business")) return "meta_business";
   if (s.includes("facebook") || s === "fb" || s.includes("pages")) return "facebook";
   if (s.includes("tiktok")) return "tiktok";
   if (s.includes("instagram")) return "instagram";

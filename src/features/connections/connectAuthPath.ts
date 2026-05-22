@@ -23,6 +23,10 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   youtube: { authPath: "youtube" },
   x: { authPath: "x" },
 
+  // Marketing
+  google_ads: { authPath: "google_ads", provider: "zernio" },
+  meta_business: { authPath: "meta_business", provider: "zernio" },
+
   // Ecommerce / org
   shopify: { authPath: "shopify" },
   notion: { authPath: "notion" },

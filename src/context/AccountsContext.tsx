@@ -561,6 +561,8 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         google_drive: "drive.google.com",
         facebook: "facebook.com",
         google_business: "google.com/maps",
+        google_ads: "ads.google.com",
+        meta_business: "business.facebook.com",
         whatsapp: "wa.me",
       };
       const base = profileUrls[platform] ?? platform + ".com";
