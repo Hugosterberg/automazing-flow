@@ -22,13 +22,22 @@ export async function handleInstagramOfficialAccountData({
     `https://graph.instagram.com/me?fields=${fields}&access_token=${accessToken}`
   );
   const media: any = await mediaRes.json();
+
+  if (media?.error) {
+    return {
+      kind: "error",
+      status: 400,
+      body: { error: media.error.message || "Failed to fetch Instagram profile" },
+    };
+  }
   const mediaListRes = await fetch(
     `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=${accessToken}&limit=12`
   );
   const mediaList: any = await mediaListRes.json();
   let mediaCount = media.media_count != null && !media.error ? Number(media.media_count) : undefined;
-  if (mediaCount == null && Array.isArray(mediaList.data)) {
-    mediaCount = mediaList.data.length;
+  const mediaListData = Array.isArray(mediaList?.data) ? mediaList.data : [];
+  if (mediaCount == null && mediaListData.length > 0) {
+    mediaCount = mediaListData.length;
   }
   const followersCount =
     media.followers_count != null && !media.error ? Number(media.followers_count) : undefined;
@@ -47,7 +56,7 @@ export async function handleInstagramOfficialAccountData({
     kind: "json",
     body: {
       profile: { ...media, ...(stats && { stats }) },
-      media: mediaList.data || [],
+      media: mediaListData,
       stats,
     },
   };
