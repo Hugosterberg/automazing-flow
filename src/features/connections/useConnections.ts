@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { Connection } from "@/types/connection";
 import {
+  hardDeleteConnection,
   listConnectionsForBusinessProfile,
   resumeConnection,
   softDisconnect,
@@ -77,6 +78,34 @@ export function useConnections(businessProfileId: string | null | undefined) {
     },
   });
 
+  const removeMut = useMutation({
+    mutationFn: async (connectionId: string) => {
+      if (!supabase || !enabled) throw new Error("Not signed in.");
+      // Best-effort: clear backend tokens first so a fresh OAuth can re-link.
+      // Ignore errors — the Supabase row removal is what the user sees.
+      await fetch(apiUrl(`/api/accounts/${encodeURIComponent(connectionId)}`), {
+        method: "DELETE",
+        credentials: "include",
+      }).catch(() => {});
+      await hardDeleteConnection(supabase, connectionId);
+      if (businessProfileId) {
+        void logActivity(supabase, {
+          businessProfileId,
+          module: "connections",
+          eventType: "connection.disconnected",
+          subjectType: "connected_account",
+          subjectId: connectionId,
+          severity: "info",
+          summary: "Removed a connected account",
+        });
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CONNECTIONS_KEY });
+      void qc.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+    },
+  });
+
   const resyncMut = useMutation({
     mutationFn: async (connectionId: string) => {
       if (!enabled) throw new Error("Not signed in.");
@@ -107,6 +136,8 @@ export function useConnections(businessProfileId: string | null | undefined) {
     isDisconnecting: disconnectMut.isPending,
     resume: resumeMut.mutateAsync,
     isResuming: resumeMut.isPending,
+    remove: removeMut.mutateAsync,
+    isRemoving: removeMut.isPending,
     resync: resyncMut.mutateAsync,
     isResyncing: resyncMut.isPending,
     resyncingId: resyncMut.isPending ? (resyncMut.variables as string | undefined) : undefined,

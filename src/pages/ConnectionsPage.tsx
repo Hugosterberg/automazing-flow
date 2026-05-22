@@ -58,6 +58,8 @@ export default function ConnectionsPage() {
     isDisconnecting,
     resume,
     isResuming,
+    remove,
+    isRemoving,
     resync,
     isResyncing,
     resyncingId,
@@ -347,6 +349,8 @@ export default function ConnectionsPage() {
           isDisconnecting={isDisconnecting}
           onResume={(id) => void resume(id)}
           isResuming={isResuming}
+          onRemove={(id) => void remove(id)}
+          isRemoving={isRemoving}
           onResync={(id) => void resync(id)}
           isResyncing={isResyncing}
           resyncingId={resyncingId}
@@ -368,8 +372,10 @@ export default function ConnectionsPage() {
         onResync={(c) => void handleDrawerResync(c)}
         onDisconnect={(c) => void handleDrawerDisconnect(c)}
         onResume={(c) => void handleDrawerResume(c)}
+        onRemove={(c) => void remove(c.id)}
         isDisconnecting={isDisconnecting}
         isResuming={isResuming}
+        isRemoving={isRemoving}
       />
     </div>
   );

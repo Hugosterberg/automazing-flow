@@ -1,6 +1,17 @@
+import { useState } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
@@ -25,8 +36,10 @@ interface Props {
   onResync?: (connection: Connection) => void;
   onDisconnect?: (connection: Connection) => void;
   onResume?: (connection: Connection) => void;
+  onRemove?: (connection: Connection) => void;
   isDisconnecting?: boolean;
   isResuming?: boolean;
+  isRemoving?: boolean;
 }
 
 function safeRelative(iso: string | null | undefined): string | null {
@@ -84,9 +97,12 @@ export function ConnectionDetailsDrawer({
   onResync,
   onDisconnect,
   onResume,
+  onRemove,
   isDisconnecting,
   isResuming,
+  isRemoving,
 }: Props) {
+  const [removeOpen, setRemoveOpen] = useState(false);
   const { runs, lastSuccessfulAt: derivedLastOk, isLoading: runsLoading } = useSyncRuns(
     connection?.id
   );
@@ -248,6 +264,18 @@ export function ConnectionDetailsDrawer({
               Resume
             </Button>
           ) : null}
+          {isPaused && onRemove ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 ml-auto text-destructive hover:text-destructive"
+              onClick={() => setRemoveOpen(true)}
+              disabled={isRemoving}
+            >
+              {isRemoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Remove
+            </Button>
+          ) : null}
           {!isPaused && onReconnect ? (
             <Button
               size="sm"
@@ -282,6 +310,30 @@ export function ConnectionDetailsDrawer({
           ) : null}
         </div>
       </SheetContent>
+
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove connection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {connection?.displayName || connection?.username} and clears its
+              stored tokens. You can then connect a different account in its place. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (connection && onRemove) onRemove(connection);
+                setRemoveOpen(false);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

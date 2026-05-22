@@ -1,8 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, Info, Layers, Link2, Loader2, Play, RefreshCw, Square, Unplug } from "lucide-react";
+import { CheckSquare2, Info, Layers, Link2, Loader2, Play, RefreshCw, Square, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
 import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
@@ -19,6 +29,8 @@ interface Props {
   isDisconnecting: boolean;
   onResume?: (connectionId: string) => void;
   isResuming?: boolean;
+  onRemove?: (connectionId: string) => void;
+  isRemoving?: boolean;
   onResync?: (connectionId: string) => void;
   isResyncing?: boolean;
   resyncingId?: string;
@@ -43,6 +55,8 @@ export function ConnectionCard({
   isDisconnecting,
   onResume,
   isResuming,
+  onRemove,
+  isRemoving,
   onResync,
   isResyncing,
   resyncingId,
@@ -50,6 +64,7 @@ export function ConnectionCard({
   selectedIds,
   onToggleSelect,
 }: Props) {
+  const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
   // Include paused rows here — the card needs to render them so the user
   // can resume. The aggregate status derivation handles them correctly.
   const rows = useMemo(
@@ -178,11 +193,30 @@ export function ConnectionCard({
                         onClick={() => onResume(c.id)}
                         disabled={isResuming}
                         aria-label={`Resume ${c.displayName || c.username}`}
+                        title="Resume this connection"
                       >
                         {isResuming ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <Play className="h-3 w-3" />
+                        )}
+                      </Button>
+                    ) : null}
+                    {paused && onRemove ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => setRemoveTarget(c)}
+                        disabled={isRemoving}
+                        aria-label={`Remove ${c.displayName || c.username}`}
+                        title="Remove permanently so you can connect a different account"
+                      >
+                        {isRemoving ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
                         )}
                       </Button>
                     ) : null}
@@ -264,6 +298,30 @@ export function ConnectionCard({
           )}
         </div>
       </CardContent>
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove connection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {removeTarget?.displayName || removeTarget?.username} and clears its
+              stored tokens. You can then connect a different account in its place. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (removeTarget && onRemove) onRemove(removeTarget.id);
+                setRemoveTarget(null);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

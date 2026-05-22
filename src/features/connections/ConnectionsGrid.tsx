@@ -10,6 +10,8 @@ interface Props {
   isDisconnecting: boolean;
   onResume?: (connectionId: string) => void;
   isResuming?: boolean;
+  onRemove?: (connectionId: string) => void;
+  isRemoving?: boolean;
   onResync?: (connectionId: string) => void;
   isResyncing?: boolean;
   resyncingId?: string;
@@ -33,6 +35,8 @@ export function ConnectionsGrid({
   isDisconnecting,
   onResume,
   isResuming,
+  onRemove,
+  isRemoving,
   onResync,
   isResyncing,
   resyncingId,
@@ -105,6 +109,8 @@ export function ConnectionsGrid({
                   isDisconnecting={isDisconnecting}
                   onResume={onResume}
                   isResuming={isResuming}
+                  onRemove={onRemove}
+                  isRemoving={isRemoving}
                   onResync={onResync}
                   isResyncing={isResyncing}
                   resyncingId={resyncingId}

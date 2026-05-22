@@ -124,3 +124,19 @@ export async function resumeConnection(
     .eq("id", connectionId);
   if (error) throw error;
 }
+
+/**
+ * Permanently remove a connection — deletes the Supabase row AND clears the
+ * provider tokens on the backend so a fresh OAuth flow can claim the account
+ * (e.g. user picked the wrong Google account and wants to re-link a different one).
+ */
+export async function hardDeleteConnection(
+  supabase: TypedSupabaseClient,
+  connectionId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("connected_accounts")
+    .delete()
+    .eq("id", connectionId);
+  if (error) throw error;
+}
