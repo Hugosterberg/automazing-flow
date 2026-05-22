@@ -74,6 +74,13 @@ export function useOAuthCallback() {
         zernioAccountId ? { zernioAccountId } : undefined
       );
       setSelectedAccountId(sectionForPlatform(accountPlatform), accountId);
+      window.setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("automazing:oauth-success", {
+            detail: { platform: accountPlatform, accountId },
+          })
+        );
+      }, 0);
       // The Connections Center reads from React Query (v_connection_health).
       // AccountsContext writes the new row to Supabase asynchronously via its
       // sync effect, so we refetch after a short delay to pick it up once the
