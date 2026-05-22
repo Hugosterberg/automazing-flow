@@ -100,7 +100,7 @@ const NOTION_TOKEN = "https://api.notion.com/v1/oauth/token";
 const YOUTUBE_SCOPES =
   "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile";
 const GMAIL_SCOPES =
-  "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
+  "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email";
 const GOOGLE_DRIVE_SCOPES =
   "openid email profile https://www.googleapis.com/auth/drive.readonly";
 const GOOGLE_CALENDAR_SCOPES =
@@ -2237,8 +2237,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     });
     if (!userId) return;
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=gmail_not_configured`);
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return res.redirect(
+        buildPageOauthErrorUrl("messages", "gmail_not_configured", {
+          status: 500,
+          exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
+        })
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
