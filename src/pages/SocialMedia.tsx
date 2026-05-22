@@ -33,9 +33,10 @@ import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
-import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -68,6 +69,9 @@ const SOCIAL_PAGE_PLATFORMS: readonly SocialPlatform[] = [
 ];
 
 const SOCIAL_PAGE_PLATFORM_SET = new Set<string>(SOCIAL_PAGE_PLATFORMS);
+const SOCIAL_CONNECTION_ENTRIES = getConnectionEntriesForArea("social").filter((entry) =>
+  SOCIAL_PAGE_PLATFORM_SET.has(entry.platform)
+);
 
 /** Instagram first, then TikTok, YouTube, etc.—matches user expectation when auto-opening a channel. */
 function sortSocialPageAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
@@ -266,6 +270,7 @@ export default function SocialMedia() {
     [contentTasks]
   );
   const selectedAccountId = getSelectedAccountId("social-media");
+  const [activeSocialTab, setActiveSocialTab] = useState<SocialPlatform>("instagram");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{
@@ -450,6 +455,19 @@ export default function SocialMedia() {
   }, [selectedAccountId]);
 
   useEffect(() => {
+    if (selectedAccount && selectedAccount.platform !== activeSocialTab) {
+      setActiveSocialTab(selectedAccount.platform as SocialPlatform);
+    }
+  }, [activeSocialTab, selectedAccount]);
+
+  function handleSocialTabChange(value: string) {
+    const platform = value as SocialPlatform;
+    setActiveSocialTab(platform);
+    const nextAccount = socialAccounts.find((account) => account.platform === platform);
+    setSelectedAccountId("social-media", nextAccount?.id ?? null);
+  }
+
+  useEffect(() => {
     if (!selectedAccountId) return;
     const existsInSocialAccounts = socialAccounts.some((a) => a.id === selectedAccountId);
     if (!existsInSocialAccounts) {
@@ -562,7 +580,71 @@ export default function SocialMedia() {
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <SectionConnectionStatus area="social" />
+        <Tabs value={activeSocialTab} onValueChange={handleSocialTabChange}>
+          <div className="rounded-lg border border-border bg-card/70 p-1">
+            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0">
+              {SOCIAL_CONNECTION_ENTRIES.map((entry) => {
+                const platform = entry.platform as SocialPlatform;
+                const Icon = platformIcons[platform];
+                const linkedAccounts = socialAccounts.filter((account) => account.platform === platform);
+                return (
+                  <TabsTrigger
+                    key={entry.platform}
+                    value={entry.platform}
+                    className="min-w-fit gap-2 rounded-md px-3 py-2 text-xs data-[state=active]:bg-accent data-[state=active]:shadow-none"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{entry.label.replace(" Profile", "")}</span>
+                    {linkedAccounts.length > 0 ? (
+                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-success px-1 text-[10px] font-semibold text-success-foreground tabular-nums">
+                        {linkedAccounts.length}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+
+          {SOCIAL_CONNECTION_ENTRIES.map((entry) => {
+            const platform = entry.platform as SocialPlatform;
+            const linkedAccounts = socialAccounts.filter((account) => account.platform === platform);
+            return (
+              <TabsContent key={entry.platform} value={entry.platform} className="mt-3">
+                <div className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {entry.label}
+                      </p>
+                      {linkedAccounts.length > 0 ? (
+                        <p className="mt-1 text-sm text-muted-foreground truncate">
+                          {linkedAccounts.map((account) => account.displayName || account.username).join(" · ")}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Not linked for this profile. {entry.connectSteps}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 text-xs">
+                      {linkedAccounts.length > 0 ? (
+                        <span className="font-medium text-success">Connected</span>
+                      ) : (
+                        <Link to="/connections" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+                          Connect now
+                        </Link>
+                      )}
+                      <Link to="/preferences" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                        API keys
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </m.div>
 
       {authMode === "local" && (
