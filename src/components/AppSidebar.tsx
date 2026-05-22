@@ -271,8 +271,6 @@ function getAccountsForCategory(accounts: ConnectedAccount[], platforms: Account
   return accounts.filter((a) => platforms.includes(a.platform));
 }
 
-const numberFormatter = new Intl.NumberFormat("en-US");
-
 function sectionForNavItemKey(key: string): AccountSection | null {
   if (key === "social-media") return "social-media";
   if (key === "ecommerce") return "ecommerce";
@@ -370,7 +368,6 @@ export function AppSidebar() {
     activeProfileId,
     getSelectedAccountId,
     setSelectedAccountId,
-    showOverview,
     setShowOverview,
     removeAccount,
     addAccountFromOAuth,
@@ -422,48 +419,6 @@ export function AppSidebar() {
     const nowMs = Date.now();
     return tasks.filter((t) => isTaskOverdue(t, nowMs)).length;
   }, [tasks]);
-
-  const socialNavItem = navItems.find((item) => item.key === "social-media");
-  const socialAccounts = useMemo(
-    () => getAccountsForCategory(accounts, socialNavItem?.platforms ?? []),
-    [accounts, socialNavItem]
-  );
-  const socialOverview = useMemo(() => {
-    return socialAccounts.reduce(
-      (acc, account) => {
-        acc.connected += 1;
-        if (typeof account.stats?.followersCount === "number") {
-          acc.followers += account.stats.followersCount;
-          acc.hasFollowers = true;
-        }
-        if (typeof account.stats?.mediaCount === "number") {
-          acc.posts += account.stats.mediaCount;
-          acc.hasPosts = true;
-        }
-        if (typeof account.stats?.engagementRate === "number") {
-          acc.engagementSum += account.stats.engagementRate;
-          acc.engagementCount += 1;
-        }
-        return acc;
-      },
-      {
-        connected: 0,
-        followers: 0,
-        posts: 0,
-        engagementSum: 0,
-        engagementCount: 0,
-        hasFollowers: false,
-        hasPosts: false,
-      }
-    );
-  }, [socialAccounts]);
-  function handleOpenOverview() {
-    setShowOverview(true);
-    setSelectedAccountId("social-media", null);
-    if (location.pathname !== "/social-media") {
-      navigate("/social-media");
-    }
-  }
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -722,33 +677,6 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {!item.hideAccounts && (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
-                      {item.key === "social-media" && (
-                        <button
-                          type="button"
-                          onClick={handleOpenOverview}
-                          className={`w-full text-left rounded-md border px-2 py-1.5 mb-1 transition-colors ${
-                            showOverview
-                              ? "border-primary/40 bg-sidebar-accent font-medium"
-                              : "border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50"
-                          }`}
-                        >
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Total overview</p>
-                          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                            <span>Accounts: {numberFormatter.format(socialOverview.connected)}</span>
-                            <span>
-                              Followers:{" "}
-                              {socialOverview.hasFollowers ? numberFormatter.format(socialOverview.followers) : "–"}
-                            </span>
-                            <span>Posts: {socialOverview.hasPosts ? numberFormatter.format(socialOverview.posts) : "–"}</span>
-                            <span>
-                              Avg ER:{" "}
-                              {socialOverview.engagementCount > 0
-                                ? `${(socialOverview.engagementSum / socialOverview.engagementCount).toFixed(1)}%`
-                                : "–"}
-                            </span>
-                          </div>
-                        </button>
-                      )}
                       {categoryAccounts.map((account) => {
                         const isSelected = selectedAccountId === account.id;
                         const isClickable = !!section;
