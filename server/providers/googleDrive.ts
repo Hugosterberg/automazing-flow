@@ -137,7 +137,7 @@ export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
   const [items, sharedItems, currentFolder] = await runWithFreshToken({
     ...args,
     request: async (token) => {
-      const shared: Record<string, unknown>[] = [];
+      let files: Record<string, unknown>[] = [];
 
       // Shared with me root — flat list of shared items
       if (view === "shared-with-me" && folderId === "root") {

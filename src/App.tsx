@@ -36,6 +36,7 @@ const PreferencesPage = lazy(() => import("./pages/Preferences"));
 const ReviewsPage = lazy(() => import("./pages/Reviews"));
 const SalesMarketingPage = lazy(() => import("./pages/SalesMarketing"));
 const MarketingPage = lazy(() => import("./pages/Marketing"));
+const DigitalBrandPage = lazy(() => import("./pages/DigitalBrand"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const ContentPage = lazy(() => import("./pages/Content"));
 const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage"));
@@ -114,6 +115,7 @@ const App = () => {
                       <Route path="/ecommerce" element={<Ecommerce />} />
                       <Route path="/sales" element={<SalesMarketingPage />} />
                       <Route path="/marketing" element={<MarketingPage />} />
+                      <Route path="/digital-brand" element={<DigitalBrandPage />} />
                       <Route path="/sales-marketing" element={<Navigate to="/sales" replace />} />
                       <Route path="/customers" element={<CustomersPage />} />
                       <Route path="/calendar" element={<CalendarPage />} />

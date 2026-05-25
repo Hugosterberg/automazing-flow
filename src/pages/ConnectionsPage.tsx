@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Loader2, PlugZap, RefreshCw, Search, Unplug, X } from "lucide-react";
+import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import { connectionsToCsv, downloadCsv } from "@/lib/exportCsv";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PageHeader, PageToolbar } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -33,7 +36,26 @@ import {
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import type { Connection } from "@/types/connection";
+
+function normalizeWebsiteUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const parsed = new URL(withProtocol);
+  if (!parsed.hostname) throw new Error("missing_hostname");
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+function safeWebsiteUrl(value: string | null | undefined): string | null {
+  try {
+    return value ? normalizeWebsiteUrl(value) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * /connections — Connections Center. Single surface to see every integration,
@@ -45,9 +67,12 @@ import type { Connection } from "@/types/connection";
  *   cloud auth is not enabled, so local-mode users still see something.
  */
 export default function ConnectionsPage() {
+  const { toast } = useToast();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
+  const [websiteInput, setWebsiteInput] = useState(legacy.activeProfile?.website ?? "");
+  const [websiteSaving, setWebsiteSaving] = useState(false);
 
   const {
     connections,
@@ -90,6 +115,10 @@ export default function ConnectionsPage() {
     setSearchQuery("");
     setSelectedIds(new Set());
   }, [businessProfileId]);
+
+  useEffect(() => {
+    setWebsiteInput(legacy.activeProfile?.website ?? "");
+  }, [legacy.activeProfile?.website, businessProfileId]);
 
   useAutoReconcile({
     businessProfileId,
@@ -162,6 +191,45 @@ export default function ConnectionsPage() {
       void refetch();
     } catch {
       // Surface via React Query error state
+    }
+  }
+
+  async function saveWebsite() {
+    if (!legacy.activeProfile) return;
+    let normalized = "";
+    try {
+      normalized = normalizeWebsiteUrl(websiteInput);
+    } catch {
+      toast({
+        title: "Invalid website URL",
+        description: "Enter a valid domain or URL, for example https://example.com.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWebsiteSaving(true);
+    try {
+      await Promise.resolve(
+        legacy.updateProfile(legacy.activeProfile.id, {
+          website: normalized || undefined,
+        })
+      );
+      setWebsiteInput(normalized);
+      toast({
+        title: normalized ? "Website saved" : "Website removed",
+        description: normalized
+          ? "Digital Brand recommendations will use this URL."
+          : "Add a website URL later to enable Digital Brand recommendations.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not save website URL",
+        description: error instanceof Error ? error.message : "The profile update failed.",
+        variant: "destructive",
+      });
+    } finally {
+      setWebsiteSaving(false);
     }
   }
 
@@ -241,6 +309,55 @@ export default function ConnectionsPage() {
           onDismiss={clearOauthError}
         />
       ) : null}
+
+      <Card className="border-border/80">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Label htmlFor="business-website" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Globe2 className="h-3.5 w-3.5" />
+              Website URL
+            </Label>
+            <Input
+              id="business-website"
+              type="url"
+              inputMode="url"
+              value={websiteInput}
+              onChange={(event) => setWebsiteInput(event.target.value)}
+              placeholder="https://example.com"
+              disabled={!legacy.activeProfile}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Used by Digital Brand for SEO, trust, content, and optimization recommendations.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {safeWebsiteUrl(legacy.activeProfile?.website) ? (
+              <Button type="button" size="sm" variant="outline" asChild>
+                <a href={safeWebsiteUrl(legacy.activeProfile?.website) ?? "#"} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                  Open site
+                </a>
+              </Button>
+            ) : null}
+            <Button type="button" size="sm" variant="outline" asChild>
+              <Link to="/digital-brand">Digital Brand</Link>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void saveWebsite()}
+              disabled={!legacy.activeProfile || websiteSaving}
+            >
+              {websiteSaving ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Save URL
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">

@@ -104,8 +104,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     area: "marketing",
     pageHref: "/marketing",
     pageName: "Marketing",
-    connectSteps: "Open Marketing → Connect Google Ads via Zernio.",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps: "Open Marketing → choose Google official or Zernio.",
+    serverNeeds:
+      "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET with Google Ads API enabled. Live campaign API operations also need GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and optionally GOOGLE_ADS_LOGIN_CUSTOMER_ID. Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
     platform: "meta_business",
@@ -113,8 +114,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     area: "marketing",
     pageHref: "/marketing",
     pageName: "Marketing",
-    connectSteps: "Open Marketing → Connect Meta Business via Zernio.",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps: "Open Marketing → connect with Meta official.",
+    serverNeeds:
+      "META_APP_ID + META_APP_SECRET (or FACEBOOK_CLIENT_ID + FACEBOOK_CLIENT_SECRET) with the Meta callback URL allowed. Zernio currently returns Platform not supported for Meta Business in this workspace.",
   },
   {
     platform: "shopify",

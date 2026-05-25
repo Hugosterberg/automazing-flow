@@ -109,8 +109,11 @@ export async function fetchZernioAccountEnrichment(
   if (
     blob.includes("google_business") ||
     blob.includes("google-business") ||
+    blob.includes("google_reviews") ||
+    blob.includes("google-reviews") ||
     blob.includes("googlebusiness") ||
     (blob.includes("google") && blob.includes("business")) ||
+    blob.includes("gmb") ||
     blob.includes("gbp")
   ) {
     jobs.push({

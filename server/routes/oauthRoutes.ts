@@ -11,6 +11,7 @@
 
 import crypto from "crypto";
 import type { ZernioModule } from "../providers/zernioModule.ts";
+import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
 
 interface OAuthPendingRecord {
   platform: string;
@@ -57,7 +58,7 @@ interface ZernioConnectUrlArgs {
   ZERNIO_API_BASE: string;
   zernioKey: string;
   platformSlugs: string[];
-  profileId: string;
+  profileId?: string | null;
   redirectUrl: string;
   extraParams?: Record<string, string | null | undefined>;
 }
@@ -87,6 +88,8 @@ interface OAuthErrorExtras {
 
 const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
+const META_BUSINESS_DEFAULT_SCOPES =
+  "public_profile email business_management ads_read ads_management pages_show_list";
 const TIKTOK_AUTH = "https://www.tiktok.com/v2/auth/authorize/";
 const TIKTOK_TOKEN = "https://open.tiktokapis.com/v2/oauth/token/";
 const X_AUTH = "https://x.com/i/oauth2/authorize";
@@ -107,6 +110,8 @@ const GOOGLE_CALENDAR_SCOPES =
   "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
 const GOOGLE_REVIEWS_SCOPES =
   "openid email profile https://www.googleapis.com/auth/business.manage";
+const GOOGLE_ADS_SCOPES =
+  "openid email profile https://www.googleapis.com/auth/adwords";
 const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
 const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
@@ -196,7 +201,7 @@ async function getZernioConnectUrl({
   let lastErr = null;
   for (const platformSlug of platformSlugs) {
     const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/${platformSlug}`);
-    connectUrl.searchParams.set("profileId", profileId);
+    if (profileId) connectUrl.searchParams.set("profileId", profileId);
     connectUrl.searchParams.set("redirect_url", redirectUrl);
     if (extraParams && typeof extraParams === "object") {
       for (const [k, v] of Object.entries(extraParams)) {
@@ -204,11 +209,20 @@ async function getZernioConnectUrl({
       }
     }
 
-    const connectRes = await fetch(connectUrl.toString(), {
-      headers: { Authorization: `Bearer ${zernioKey}` },
-    });
+    let connectRes: Response;
+    try {
+      connectRes = await fetchZernio(connectUrl.toString(), {
+        headers: { Authorization: `Bearer ${zernioKey}` },
+      });
+    } catch (error) {
+      const message = zernioFetchErrorMessage(error);
+      console.warn(`[Zernio] connect/${platformSlug} request failed:`, message);
+      lastErr = `zernio_fetch_failed:${platformSlug}:${message}`;
+      continue;
+    }
     if (!connectRes.ok) {
       const err = await connectRes.text().catch(() => "");
+      console.warn(`[Zernio] connect/${platformSlug} failed:`, connectRes.status, err.slice(0, 200));
       lastErr = `zernio_connect_failed:${connectRes.status}:${err.slice(0, 200)}`;
       continue;
     }
@@ -393,6 +407,32 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return `${API_BASE_URL}/api/auth/google/callback`;
   }
 
+  function getMetaGraphVersion() {
+    return String(process.env.META_GRAPH_VERSION || "v20.0").trim().replace(/^\/+|\/+$/g, "");
+  }
+
+  function getMetaAppId() {
+    return String(
+      process.env.META_APP_ID ||
+        process.env.FACEBOOK_CLIENT_ID ||
+        process.env.FACEBOOK_APP_ID ||
+        ""
+    ).trim();
+  }
+
+  function getMetaAppSecret() {
+    return String(
+      process.env.META_APP_SECRET ||
+        process.env.FACEBOOK_CLIENT_SECRET ||
+        process.env.FACEBOOK_APP_SECRET ||
+        ""
+    ).trim();
+  }
+
+  function getMetaBusinessScopes() {
+    return String(process.env.META_BUSINESS_SCOPES || META_BUSINESS_DEFAULT_SCOPES).trim();
+  }
+
   function debugLog(runId, hypothesisId, location, message, data = {}) {
     // #region agent log
     if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
@@ -462,7 +502,68 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
       return null;
     }
+
     return userId;
+  }
+
+  async function startOfficialGoogleAdsOAuth(req, res, userId, hubReturn) {
+    const clientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+    if (!clientId) {
+      return res.redirect(
+        oauthRedirect("google_ads", "oauth_error=google_ads_not_configured", hubReturn || undefined)
+      );
+    }
+
+    const state = generateState();
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    await oauthPendingStore.set(state, {
+      platform: "google_ads",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: hubReturn || undefined,
+    });
+
+    const redirectUri = `${API_BASE_URL}/api/auth/google_ads/callback`;
+    const url = new URL(GOOGLE_AUTH);
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", GOOGLE_ADS_SCOPES);
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+    url.searchParams.set("state", state);
+    return res.redirect(url.toString());
+  }
+
+  async function startOfficialMetaBusinessOAuth(req, res, userId, hubReturn) {
+    const appId = getMetaAppId();
+    if (!appId) {
+      return res.redirect(
+        oauthRedirect("meta_business", "oauth_error=meta_business_not_configured", hubReturn || undefined)
+      );
+    }
+
+    const state = generateState();
+    const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    await oauthPendingStore.set(state, {
+      platform: "meta_business",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: hubReturn || undefined,
+    });
+
+    const redirectUri = `${API_BASE_URL}/api/auth/meta_business/callback`;
+    const url = new URL(`https://www.facebook.com/${getMetaGraphVersion()}/dialog/oauth`);
+    url.searchParams.set("client_id", appId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", getMetaBusinessScopes());
+    url.searchParams.set("state", state);
+    const loginConfigId = String(process.env.META_LOGIN_CONFIG_ID || "").trim();
+    if (loginConfigId) url.searchParams.set("config_id", loginConfigId);
+    return res.redirect(url.toString());
   }
 
   function oauthPageForPlatform(platform) {
@@ -522,6 +623,25 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (ret === "connections") return "connections";
     if (ret === "connect-accounts" || ret === "integrations") return "integrations";
     return oauthPageForPlatform(platform);
+  }
+
+  function isAllowedOAuthCallbackUser(pending, callbackUserId: string | null): boolean {
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    if (!pendingUserId || !callbackUserIdStr) return false;
+    if (pendingUserId === callbackUserIdStr) return true;
+    return pendingUserId.startsWith("local_");
+  }
+
+  async function getOptionalZernioProfileId(label: string): Promise<string | null> {
+    const zernioProfileId = await getOrCreateZernioProfileId();
+    if (!zernioProfileId) {
+      console.warn(
+        `[Zernio ${label}] Could not resolve a Zernio profile; continuing without profileId. ` +
+          "Set ZERNIO_PROFILE_ID if this Zernio workspace requires one."
+      );
+    }
+    return zernioProfileId;
   }
 
   // Instagram: via Zernio (recommended) eller direkt Meta OAuth
@@ -689,22 +809,25 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   const zernioConnectPlatformMap = {
     facebook: { slugs: ["facebook"], appPlatform: "facebook" },
     whatsapp: { slugs: ["whatsapp"], appPlatform: "whatsapp" },
-    google_ads: { slugs: ["google-ads", "google_ads"], appPlatform: "google_ads" },
-    meta_business: { slugs: ["meta-business", "meta_business"], appPlatform: "meta_business" },
+    meta_business: {
+      slugs: [
+        "meta-business",
+        "meta_business",
+        "meta",
+        "meta-ads",
+        "facebook-business",
+        "facebook-ads",
+        "facebook",
+      ],
+      appPlatform: "meta_business",
+    },
+  };
+  const googleAdsZernioConfig = {
+    slugs: ["google-ads", "google_ads", "googleads"],
+    appPlatform: "google_ads",
   };
 
-  function registerZernioOAuthPlatformRoute(routePlatform) {
-    const config = zernioConnectPlatformMap[routePlatform];
-    if (!config) return;
-
-    app.get(`/api/auth/${routePlatform}`, async (req, res) => {
-      const hubReturn = parseOauthReturnPage(req);
-      const userId = requireSessionOrRedirect(
-        req,
-        res,
-        hubReturn || oauthPageForPlatform(config.appPlatform)
-      );
-      if (!userId) return;
+  async function startZernioOAuthPlatform(req, res, routePlatform, config, hubReturn, userId) {
       const zernioKey = getZernioApiKey();
       if (!zernioKey) {
         return res.redirect(
@@ -712,12 +835,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       try {
-        const zernioProfileId = await getOrCreateZernioProfileId();
-        if (!zernioProfileId) {
-          return res.redirect(
-            oauthRedirect(config.appPlatform, "oauth_error=zernio_profile_failed", hubReturn || undefined)
-          );
-        }
+        const zernioProfileId = await getOptionalZernioProfileId(config.appPlatform);
         const state = generateState();
         const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
         await oauthPendingStore.set(state, {
@@ -746,9 +864,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             oauthRedirect(config.appPlatform, "oauth_error=zernio_gmb_not_supported", hubReturn || undefined)
           );
         }
+        if (msg.includes("Platform not supported")) {
+          return res.redirect(
+            oauthRedirect(config.appPlatform, "oauth_error=zernio_platform_not_supported", hubReturn || undefined)
+          );
+        }
         if (msg.startsWith("zernio_connect_failed")) {
           return res.redirect(
             oauthRedirect(config.appPlatform, "oauth_error=zernio_connect_failed", hubReturn || undefined)
+          );
+        }
+        if (msg.startsWith("zernio_fetch_failed")) {
+          return res.redirect(
+            oauthRedirect(
+              config.appPlatform,
+              `oauth_error=zernio_fetch_failed&oauth_hint=${encodeURIComponent(msg.slice(0, 240))}`,
+              hubReturn || undefined
+            )
           );
         }
         if (msg === "zernio_no_auth_url") {
@@ -760,13 +892,340 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           oauthRedirect(config.appPlatform, "oauth_error=zernio_init_failed", hubReturn || undefined)
         );
       }
+  }
+
+  function registerZernioOAuthPlatformRoute(routePlatform) {
+    const config = zernioConnectPlatformMap[routePlatform];
+    if (!config) return;
+
+    app.get(`/api/auth/${routePlatform}`, async (req, res) => {
+      const hubReturn = parseOauthReturnPage(req);
+      const userId = requireSessionOrRedirect(
+        req,
+        res,
+        hubReturn || oauthPageForPlatform(config.appPlatform)
+      );
+      if (!userId) return;
+      return startZernioOAuthPlatform(req, res, routePlatform, config, hubReturn, userId);
     });
   }
 
+  app.get("/api/auth/google_ads", async (req, res) => {
+    const hubReturn = parseOauthReturnPage(req);
+    const userId = requireSessionOrRedirect(req, res, hubReturn || "marketing");
+    if (!userId) return;
+    const requestedProvider = String(req.query.provider || "official").trim().toLowerCase();
+    if (requestedProvider === "zernio") {
+      return startZernioOAuthPlatform(
+        req,
+        res,
+        "google_ads",
+        googleAdsZernioConfig,
+        hubReturn,
+        userId
+      );
+    }
+    return startOfficialGoogleAdsOAuth(req, res, userId, hubReturn);
+  });
+
+  app.get("/api/auth/google_ads/official", async (req, res) => {
+    const hubReturn = parseOauthReturnPage(req);
+    const userId = requireSessionOrRedirect(req, res, hubReturn || "marketing");
+    if (!userId) return;
+    return startOfficialGoogleAdsOAuth(req, res, userId, hubReturn);
+  });
+
+  app.get("/api/auth/meta_business", async (req, res) => {
+    const hubReturn = parseOauthReturnPage(req);
+    const userId = requireSessionOrRedirect(req, res, hubReturn || "marketing");
+    if (!userId) return;
+    const requestedProvider = String(req.query.provider || "official").trim().toLowerCase();
+    if (requestedProvider === "zernio") {
+      return startZernioOAuthPlatform(
+        req,
+        res,
+        "meta_business",
+        zernioConnectPlatformMap.meta_business,
+        hubReturn,
+        userId
+      );
+    }
+    return startOfficialMetaBusinessOAuth(req, res, userId, hubReturn);
+  });
+
+  app.get("/api/auth/meta_business/official", async (req, res) => {
+    const hubReturn = parseOauthReturnPage(req);
+    const userId = requireSessionOrRedirect(req, res, hubReturn || "marketing");
+    if (!userId) return;
+    return startOfficialMetaBusinessOAuth(req, res, userId, hubReturn);
+  });
+
   registerZernioOAuthPlatformRoute("facebook");
   registerZernioOAuthPlatformRoute("whatsapp");
-  registerZernioOAuthPlatformRoute("google_ads");
-  registerZernioOAuthPlatformRoute("meta_business");
+
+  app.get("/api/auth/google_ads/callback", async (req, res) => {
+    const { code, state, error } = req.query;
+    if (error) {
+      return res.redirect(
+        oauthRedirect("google_ads", `oauth_error=${encodeURIComponent(String(error))}`)
+      );
+    }
+
+    const pending = await oauthPendingStore.get(state);
+    if (!pending || pending.platform !== "google_ads") {
+      return res.redirect(oauthRedirect("google_ads", "oauth_error=invalid_state"));
+    }
+
+    const callbackUserId = getSessionUserId(req);
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    const isLocalToLocalTransition =
+      pendingUserId.startsWith("local_") && callbackUserIdStr.startsWith("local_");
+
+    if (
+      callbackUserIdStr &&
+      pendingUserId !== callbackUserIdStr &&
+      !isLocalToCloudTransition &&
+      !isLocalToLocalTransition
+    ) {
+      await oauthPendingStore.delete(state);
+      return res.redirect(
+        oauthRedirect("google_ads", "oauth_error=invalid_state", pending?.oauthReturnPage)
+      );
+    }
+    await oauthPendingStore.delete(state);
+
+    const clientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+    const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+    if (!clientId || !clientSecret) {
+      return res.redirect(
+        oauthRedirect("google_ads", "oauth_error=google_ads_not_configured", pending?.oauthReturnPage)
+      );
+    }
+
+    try {
+      const redirectUri = `${API_BASE_URL}/api/auth/google_ads/callback`;
+      const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: String(code || ""),
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+      });
+      const tokenRes = await fetch(GOOGLE_TOKEN, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(
+          oauthRedirect(
+            "google_ads",
+            `oauth_error=${encodeURIComponent(String(rawErr))}`,
+            pending?.oauthReturnPage
+          )
+        );
+      }
+
+      let username = "Google Ads";
+      const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+      });
+      const meData = await meRes.json().catch(() => ({}));
+      if (meData.email) username = String(meData.email);
+
+      const identityRaw = String(meData.id || meData.email || username || "").toLowerCase();
+      const accountId = `gads_${crypto.createHash("sha1").update(identityRaw).digest("hex").slice(0, 20)}`;
+      await tokenStore.set(accountId, {
+        platform: "google_ads",
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
+        username,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        scopes: GOOGLE_ADS_SCOPES,
+        isOfficial: true,
+      });
+
+      const profileQuery = profileParam(pending.profileId);
+      const successPath = postOauthPage(pending, "google_ads");
+      return res.redirect(
+        `${BASE_URL}/${successPath}?oauth_success=1&platform=google_ads&account_id=${encodeURIComponent(
+          accountId
+        )}&username=${encodeURIComponent(username)}${profileQuery}`
+      );
+    } catch (err) {
+      console.error("Google Ads OAuth error:", err);
+      return res.redirect(
+        oauthRedirect("google_ads", "oauth_error=token_exchange_failed", pending?.oauthReturnPage)
+      );
+    }
+  });
+
+  app.get("/api/auth/meta_business/callback", async (req, res) => {
+    const { code, state, error, error_description: errorDescription } = req.query;
+    const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(
+        oauthRedirect(
+          "meta_business",
+          `oauth_error=${encodeURIComponent(String(errorDescription || error))}`,
+          pending?.oauthReturnPage
+        )
+      );
+    }
+    if (!pending || pending.platform !== "meta_business") {
+      return res.redirect(oauthRedirect("meta_business", "oauth_error=invalid_state"));
+    }
+
+    const callbackUserId = getSessionUserId(req);
+    const pendingUserId = pending?.userId ? String(pending.userId) : "";
+    const callbackUserIdStr = callbackUserId ? String(callbackUserId) : "";
+    const isLocalToCloudTransition =
+      pendingUserId.startsWith("local_") &&
+      Boolean(callbackUserIdStr) &&
+      !callbackUserIdStr.startsWith("local_");
+    const isLocalToLocalTransition =
+      pendingUserId.startsWith("local_") && callbackUserIdStr.startsWith("local_");
+
+    if (
+      callbackUserIdStr &&
+      pendingUserId !== callbackUserIdStr &&
+      !isLocalToCloudTransition &&
+      !isLocalToLocalTransition
+    ) {
+      await oauthPendingStore.delete(state);
+      return res.redirect(
+        oauthRedirect("meta_business", "oauth_error=invalid_state", pending?.oauthReturnPage)
+      );
+    }
+    await oauthPendingStore.delete(state);
+
+    const appId = getMetaAppId();
+    const appSecret = getMetaAppSecret();
+    if (!appId || !appSecret) {
+      return res.redirect(
+        oauthRedirect("meta_business", "oauth_error=meta_business_not_configured", pending?.oauthReturnPage)
+      );
+    }
+
+    try {
+      const graphVersion = getMetaGraphVersion();
+      const redirectUri = `${API_BASE_URL}/api/auth/meta_business/callback`;
+      const tokenUrl = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
+      tokenUrl.searchParams.set("client_id", appId);
+      tokenUrl.searchParams.set("client_secret", appSecret);
+      tokenUrl.searchParams.set("redirect_uri", redirectUri);
+      tokenUrl.searchParams.set("code", String(code || ""));
+
+      const tokenRes = await fetch(tokenUrl.toString(), {
+        headers: { Accept: "application/json" },
+      });
+      const tokenData = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
+        const rawErr =
+          tokenData?.error?.message ||
+          tokenData?.error_description ||
+          tokenData?.error ||
+          "token_exchange_failed";
+        return res.redirect(
+          oauthRedirect(
+            "meta_business",
+            `oauth_error=${encodeURIComponent(String(rawErr))}`,
+            pending?.oauthReturnPage
+          )
+        );
+      }
+
+      const accessToken = String(tokenData.access_token);
+      const graphBase = `https://graph.facebook.com/${graphVersion}`;
+      const meRes = await fetch(
+        `${graphBase}/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      const meData = await meRes.json().catch(() => ({}));
+      if (!meRes.ok || meData.error) {
+        const rawErr = meData?.error?.message || "meta_profile_failed";
+        return res.redirect(
+          oauthRedirect(
+            "meta_business",
+            `oauth_error=${encodeURIComponent(String(rawErr))}`,
+            pending?.oauthReturnPage
+          )
+        );
+      }
+
+      const [businessesRes, adAccountsRes] = await Promise.allSettled([
+        fetch(
+          `${graphBase}/me/businesses?fields=id,name,verification_status&limit=25&access_token=${encodeURIComponent(
+            accessToken
+          )}`,
+          { headers: { Accept: "application/json" } }
+        ),
+        fetch(
+          `${graphBase}/me/adaccounts?fields=id,account_id,name,account_status,currency,timezone_name&limit=25&access_token=${encodeURIComponent(
+            accessToken
+          )}`,
+          { headers: { Accept: "application/json" } }
+        ),
+      ]);
+      const businesses =
+        businessesRes.status === "fulfilled"
+          ? await businessesRes.value.json().catch(() => ({}))
+          : {};
+      const adAccounts =
+        adAccountsRes.status === "fulfilled"
+          ? await adAccountsRes.value.json().catch(() => ({}))
+          : {};
+      const firstBusiness = Array.isArray(businesses?.data) ? businesses.data[0] : null;
+      const firstAdAccount = Array.isArray(adAccounts?.data) ? adAccounts.data[0] : null;
+      const displayName = String(
+        firstBusiness?.name ||
+        firstAdAccount?.name ||
+        meData.name ||
+        meData.email ||
+        "Meta Business"
+      );
+      const identityRaw = String(meData.id || meData.email || displayName || "").toLowerCase();
+      const accountId = `meta_${crypto.createHash("sha1").update(identityRaw).digest("hex").slice(0, 20)}`;
+
+      await tokenStore.set(accountId, {
+        platform: "meta_business",
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
+        username: displayName,
+        accessToken,
+        tokenType: tokenData.token_type || "bearer",
+        expiresIn: tokenData.expires_in || null,
+        scopes: getMetaBusinessScopes(),
+        isOfficial: true,
+        metaUserId: meData.id || null,
+        metaBusinessId: firstBusiness?.id || null,
+        metaAdAccountId: firstAdAccount?.id || null,
+        metaBusinesses: Array.isArray(businesses?.data) ? businesses.data : [],
+        metaAdAccounts: Array.isArray(adAccounts?.data) ? adAccounts.data : [],
+      });
+
+      const profileQuery = profileParam(pending.profileId);
+      const successPath = postOauthPage(pending, "meta_business");
+      return res.redirect(
+        `${BASE_URL}/${successPath}?oauth_success=1&platform=meta_business&account_id=${encodeURIComponent(
+          accountId
+        )}&username=${encodeURIComponent(displayName)}${profileQuery}`
+      );
+    } catch (err) {
+      console.error("Meta Business OAuth error:", err);
+      return res.redirect(
+        oauthRedirect("meta_business", "oauth_error=token_exchange_failed", pending?.oauthReturnPage)
+      );
+    }
+  });
 
   app.get("/api/auth/zernio/platform/callback", async (req, res) => {
     const {
@@ -929,7 +1388,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/${igPage}?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/${postOauthPage(pending, "instagram")}?oauth_error=invalid_state`);
     }
@@ -1043,7 +1502,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
@@ -1146,7 +1605,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const pending = await oauthPendingStore.get(state);
     if (!pending) return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
@@ -1237,7 +1696,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
     }
@@ -1338,7 +1797,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const callbackUserId = getSessionUserId(req);
     // Tunnel callbacks run on a different host than localhost, so callback cookies may be missing.
     // If callback user is present we still enforce strict owner match.
-    if (callbackUserId && pending.userId !== callbackUserId) {
+    if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/ecommerce?oauth_error=invalid_state`);
     }
@@ -1426,7 +1885,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     const callbackUserId = getSessionUserId(req);
-    if (callbackUserId && pending.userId !== callbackUserId) {
+    if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/ecommerce?oauth_error=invalid_state`);
     }
@@ -1690,7 +2149,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (callbackUserId && pending.userId !== callbackUserId) {
+    if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
     }
@@ -1755,10 +2214,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOrCreateZernioProfileId();
-          if (!zernioProfileId) {
-            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_profile_failed`);
-          }
+          const zernioProfileId = await getOptionalZernioProfileId("google_reviews");
           const state = generateState();
           await oauthPendingStore.set(state, {
             platform: "google_reviews",
@@ -1942,10 +2398,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_not_configured", returnPage));
       }
       try {
-        const zernioProfileId = await getOrCreateZernioProfileId();
-        if (!zernioProfileId) {
-          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_profile_failed", returnPage));
-        }
+        const zernioProfileId = await getOptionalZernioProfileId("google_business");
         const state = generateState();
         const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
         await oauthPendingStore.set(state, {
@@ -2148,10 +2601,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOrCreateZernioProfileId();
-          if (!zernioProfileId) {
-            return res.redirect(`${BASE_URL}/reviews?oauth_error=zernio_profile_failed`);
-          }
+          const zernioProfileId = await getOptionalZernioProfileId("tripadvisor");
           const state = generateState();
           await oauthPendingStore.set(state, {
             platform: "tripadvisor",
@@ -2186,7 +2636,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const apiKey = String(process.env.TRIPADVISOR_API_KEY || "").trim();
     const locationId = String(req.query.location_id || process.env.TRIPADVISOR_LOCATION_ID || "").trim();
     if (!apiKey || !locationId) {
-      return res.redirect(`${BASE_URL}/reviews?oauth_error=tripadvisor_not_configured`);
+      const missing = [
+        !apiKey ? "TRIPADVISOR_API_KEY" : "",
+        !locationId ? "TRIPADVISOR_LOCATION_ID" : "",
+      ].filter(Boolean);
+      return res.redirect(
+        `${BASE_URL}/reviews?oauth_error=tripadvisor_not_configured&oauth_hint=${encodeURIComponent(
+          `Missing ${missing.join(" and ")}. Add them in .env.local or Preferences -> API keys, or use the sidebar manual connect form.`
+        )}`
+      );
     }
     const accountId = crypto.randomUUID();
     await tokenStore.set(accountId, {
@@ -2686,7 +3144,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }
     const callbackUserId = getSessionUserId(req);
-    if (!callbackUserId || pending.userId !== callbackUserId) {
+    if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
       return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
     }

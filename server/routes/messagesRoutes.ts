@@ -45,6 +45,14 @@ type UnifiedMessage = {
   externalUrl?: string;
 };
 
+const SOCIAL_MESSAGE_PLATFORMS = ["instagram", "facebook", "whatsapp"] as const;
+
+const ZERNIO_INBOX_PLATFORM_ALIASES: Record<string, string[]> = {
+  instagram: ["instagram", "ig"],
+  facebook: ["facebook", "messenger", "facebook_messenger", "facebook-messenger"],
+  whatsapp: ["whatsapp", "wa"],
+};
+
 function parseZernioConversationList(body: Record<string, unknown>): unknown[] {
   const data = body.data;
   if (Array.isArray(data)) return data;
@@ -67,8 +75,94 @@ function parseZernioConversationMessages(body: Record<string, unknown>): Array<R
   return [];
 }
 
+function firstString(row: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return "";
+}
+
+function collectObjectIds(value: unknown, out: Set<string>) {
+  if (!value || typeof value !== "object") return;
+  const row = value as Record<string, unknown>;
+  for (const key of [
+    "id",
+    "_id",
+    "accountId",
+    "account_id",
+    "socialAccountId",
+    "social_account_id",
+    "externalId",
+  ]) {
+    const id = row[key];
+    if (typeof id === "string" && id.trim()) out.add(id.trim());
+    if (typeof id === "number") out.add(String(id));
+  }
+}
+
+function zernioConversationAccountIds(row: Record<string, unknown>): string[] {
+  const out = new Set<string>();
+  const direct = firstString(row, [
+    "accountId",
+    "account_id",
+    "socialAccountId",
+    "social_account_id",
+    "connectedAccountId",
+    "channelAccountId",
+    "providerAccountId",
+    "pageId",
+    "page_id",
+  ]);
+  if (direct) out.add(direct);
+  for (const key of ["account", "socialAccount", "channelAccount", "providerAccount", "page"]) {
+    collectObjectIds(row[key], out);
+  }
+  return [...out];
+}
+
+function normalizeDmPlatform(raw: unknown): string | null {
+  const s = String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-");
+  if (!s) return null;
+  if (s === "ig" || s.includes("instagram")) return "instagram";
+  if (s === "wa" || s.includes("whatsapp")) return "whatsapp";
+  if (s.includes("messenger") || s.includes("facebook") || s === "fb") return "facebook";
+  return null;
+}
+
+function zernioConversationPlatform(row: Record<string, unknown>): string | null {
+  const direct = firstString(row, ["platform", "channel", "provider", "type", "source", "__queryPlatform"]);
+  const normalizedDirect = normalizeDmPlatform(direct);
+  if (normalizedDirect) return normalizedDirect;
+  for (const key of ["account", "socialAccount", "channelAccount", "providerAccount", "page"]) {
+    const value = row[key];
+    if (!value || typeof value !== "object") continue;
+    const nested = firstString(value as Record<string, unknown>, ["platform", "channel", "provider", "type"]);
+    const normalizedNested = normalizeDmPlatform(nested);
+    if (normalizedNested) return normalizedNested;
+  }
+  return null;
+}
+
+function zernioConversationKey(row: Record<string, unknown>, index: number): string {
+  const id = firstString(row, ["id", "_id", "conversationId", "conversation_id", "threadId"]);
+  if (id) return id;
+  const accountIds = zernioConversationAccountIds(row).join("|");
+  const participant = firstString(row, ["participantId", "participantUsername", "participantName"]);
+  const updated = firstString(row, ["updatedTime", "updatedAt", "lastMessageAt", "timestamp"]);
+  return `${accountIds}:${participant}:${updated}:${index}`;
+}
+
 function textFromZernioMessage(row: Record<string, unknown>): string {
-  return String(row.message || row.text || row.body || row.content || row.preview || "").trim();
+  const nested =
+    row.latestMessage && typeof row.latestMessage === "object"
+      ? textFromZernioMessage(row.latestMessage as Record<string, unknown>)
+      : "";
+  return String(row.message || row.text || row.body || row.content || row.preview || nested || "").trim();
 }
 
 function dateFromZernioMessage(row: Record<string, unknown>): string {
@@ -113,7 +207,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       const platform = String(stored.platform || "");
       const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
 
-      if (["instagram", "facebook", "whatsapp"].includes(platform) && zernioAccountId) {
+      if ((SOCIAL_MESSAGE_PLATFORMS as readonly string[]).includes(platform) && zernioAccountId) {
         zernioMessageAccounts.push({
           localAccountId: accountId,
           zernioAccountId,
@@ -218,14 +312,25 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
       try {
         const accountsByPlatform = new Map<string, typeof zernioMessageAccounts>();
+        const accountByZernioId = new Map<string, (typeof zernioMessageAccounts)[number]>();
         for (const account of zernioMessageAccounts) {
           accountsByPlatform.set(account.platform, [
             ...(accountsByPlatform.get(account.platform) || []),
             account,
           ]);
+          accountByZernioId.set(account.zernioAccountId, account);
+          accountByZernioId.set(account.zernioAccountId.toLowerCase(), account);
         }
 
-        for (const [platform, platformAccounts] of accountsByPlatform) {
+        const queryPlatforms = new Set<string>();
+        for (const platform of accountsByPlatform.keys()) {
+          for (const alias of ZERNIO_INBOX_PLATFORM_ALIASES[platform] || [platform]) {
+            queryPlatforms.add(alias);
+          }
+        }
+        const conversationRows = new Map<string, Record<string, unknown>>();
+
+        async function addConversationRows(platform?: string) {
           const convResult = await zernio.listInboxConversations({
             limit: 100,
             sortOrder: "desc",
@@ -242,52 +347,78 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             } else if (convResult.status === 402) {
               zernioNote = "Zernio Inbox may require inbox access for DM conversations.";
             }
-            continue;
+            return;
           }
 
-          const connectedByZernioId = new Map(platformAccounts.map((account) => [account.zernioAccountId, account]));
           const rows = parseZernioConversationList(convResult.data);
-          for (const raw of rows) {
+          rows.forEach((raw, index) => {
+            if (!raw || typeof raw !== "object") return;
             const c = raw as Record<string, unknown>;
-            const cid = String(c.id || c.conversationId || "").trim();
-            if (!cid) continue;
+            const normalizedQueryPlatform = normalizeDmPlatform(platform);
+            const row =
+              normalizedQueryPlatform && !zernioConversationPlatform(c)
+                ? { ...c, __queryPlatform: normalizedQueryPlatform }
+                : c;
+            conversationRows.set(zernioConversationKey(row, index), row);
+          });
+        }
 
-            const rowAccountId = String(c.accountId || c.account_id || c.socialAccountId || "").trim();
-            const linkedAccount = connectedByZernioId.get(rowAccountId);
-            if (!linkedAccount) continue;
+        await addConversationRows();
+        for (const platform of queryPlatforms) {
+          await addConversationRows(platform);
+        }
 
-            const participantName = String(c.participantName || c.participantUsername || "Direct message");
-            const messageResult = await zernio.listInboxConversationMessages(cid, {
-              accountId: linkedAccount.zernioAccountId,
-              limit: 1,
-              sortOrder: "desc",
-            });
-            const latestMessage = messageResult.ok
+        let rowIndex = 0;
+        for (const c of conversationRows.values()) {
+          const cid = firstString(c, ["id", "_id", "conversationId", "conversation_id", "threadId"]);
+
+          const rowAccountIds = zernioConversationAccountIds(c);
+          const rowPlatform = zernioConversationPlatform(c);
+          let linkedAccount = rowAccountIds
+            .map((id) => accountByZernioId.get(id) ?? accountByZernioId.get(id.toLowerCase()))
+            .find((account): account is (typeof zernioMessageAccounts)[number] => Boolean(account));
+          if (!linkedAccount && rowPlatform) {
+            const samePlatformAccounts = accountsByPlatform.get(rowPlatform) || [];
+            if (samePlatformAccounts.length === 1) {
+              linkedAccount = samePlatformAccounts[0];
+            }
+          }
+          if (!linkedAccount) continue;
+
+          const participantName = String(c.participantName || c.participantUsername || "Direct message");
+          const messageResult = cid
+            ? await zernio.listInboxConversationMessages(cid, {
+                accountId: linkedAccount.zernioAccountId,
+                limit: 1,
+                sortOrder: "desc",
+              })
+            : null;
+          const latestMessage =
+            messageResult?.ok
               ? parseZernioConversationMessages(messageResult.data)[0]
               : undefined;
-            const latestText = latestMessage ? textFromZernioMessage(latestMessage) : "";
-            const fallbackText = String(c.lastMessage || c.preview || "").trim();
-            const last = latestText || fallbackText;
-            const plat = String(c.platform || linkedAccount.platform).toLowerCase();
-            const date = latestMessage
-              ? dateFromZernioMessage(latestMessage) || String(c.updatedTime || c.updatedAt || c.lastMessageAt || "")
-              : String(c.updatedTime || c.updatedAt || c.lastMessageAt || "");
+          const latestText = latestMessage ? textFromZernioMessage(latestMessage) : "";
+          const fallbackText = String(c.lastMessage || c.preview || "").trim();
+          const last = latestText || fallbackText;
+          const plat = rowPlatform || linkedAccount.platform;
+          const date = latestMessage
+            ? dateFromZernioMessage(latestMessage) || String(c.updatedTime || c.updatedAt || c.lastMessageAt || "")
+            : String(c.updatedTime || c.updatedAt || c.lastMessageAt || "");
 
-            unified.push({
-              id: `dm:zernio:${linkedAccount.localAccountId}:${cid}`,
-              kind: "dm",
-              channel: plat,
-              accountId: linkedAccount.localAccountId,
-              accountLabel: String(c.accountUsername || c.accountName || linkedAccount.label),
-              subject: participantName,
-              from: { name: participantName, email: String(c.participantId || "") },
-              date,
-              snippet: last,
-              body: last,
-              isUnread: Number(c.unreadCount || 0) > 0,
-              externalUrl: c.url ? String(c.url) : undefined,
-            });
-          }
+          unified.push({
+            id: `dm:zernio:${linkedAccount.localAccountId}:${cid || zernioConversationKey(c, rowIndex++)}`,
+            kind: "dm",
+            channel: plat,
+            accountId: linkedAccount.localAccountId,
+            accountLabel: String(c.accountUsername || c.accountName || linkedAccount.label),
+            subject: participantName,
+            from: { name: participantName, email: String(c.participantId || "") },
+            date,
+            snippet: last,
+            body: last,
+            isUnread: Number(c.unreadCount || 0) > 0,
+            externalUrl: c.url ? String(c.url) : undefined,
+          });
         }
       } catch {
         zernioNote = "Could not load Zernio inbox conversations.";

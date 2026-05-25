@@ -13,6 +13,12 @@ export interface ConnectStartConfig {
   manual?: boolean;
 }
 
+export interface ConnectionPathOption {
+  id: "zernio" | "official" | "manual";
+  label: string;
+  isDefault?: boolean;
+}
+
 const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   // Social — all via Zernio.
   instagram: { authPath: "instagram", provider: "zernio" },
@@ -24,8 +30,8 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   x: { authPath: "x" },
 
   // Marketing
-  google_ads: { authPath: "google_ads", provider: "zernio" },
-  meta_business: { authPath: "meta_business", provider: "zernio" },
+  google_ads: { authPath: "google_ads", provider: "official" },
+  meta_business: { authPath: "meta_business", provider: "official" },
 
   // Ecommerce / org
   shopify: { authPath: "shopify" },
@@ -40,13 +46,62 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   outlook_calendar: { authPath: "outlook_calendar", provider: "zernio" },
 
   // Reviews
-  google_reviews: { authPath: "google_reviews", provider: "zernio" },
-  tripadvisor: { authPath: "tripadvisor", provider: "zernio" },
+  google_reviews: { authPath: "google_reviews" },
+  tripadvisor: { authPath: "tripadvisor" },
 
   // Content
   google_drive: { authPath: "google_drive" },
 };
 
+const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
+  instagram: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "Instagram official" },
+  ],
+  facebook: [{ id: "zernio", label: "Zernio", isDefault: true }],
+  whatsapp: [{ id: "zernio", label: "Zernio", isDefault: true }],
+  google_business: [
+    { id: "official", label: "Google official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
+  ],
+  tiktok: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "TikTok official" },
+  ],
+  youtube: [{ id: "official", label: "Google official", isDefault: true }],
+  x: [{ id: "official", label: "X official", isDefault: true }],
+  google_ads: [
+    { id: "official", label: "Google official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
+  ],
+  meta_business: [{ id: "official", label: "Meta official", isDefault: true }],
+  shopify: [{ id: "official", label: "Shopify official", isDefault: true }],
+  notion: [{ id: "official", label: "Notion official", isDefault: true }],
+  gmail: [{ id: "official", label: "Google official", isDefault: true }],
+  outlook: [{ id: "official", label: "Microsoft official", isDefault: true }],
+  google_calendar: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "Google official" },
+  ],
+  outlook_calendar: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "Microsoft official" },
+  ],
+  google_reviews: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "Google official" },
+  ],
+  tripadvisor: [
+    { id: "zernio", label: "Zernio", isDefault: true },
+    { id: "official", label: "Tripadvisor official" },
+  ],
+  google_drive: [{ id: "official", label: "Google official", isDefault: true }],
+};
+
 export function getConnectConfig(platform: AccountPlatform): ConnectStartConfig | null {
   return CONFIG[platform] ?? null;
+}
+
+export function getConnectionPathOptions(platform: AccountPlatform): ConnectionPathOption[] {
+  return PATH_OPTIONS[platform] ?? [];
 }

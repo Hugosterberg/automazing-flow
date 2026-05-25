@@ -39,12 +39,12 @@ import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-// Pipeline stages â€” mapped to task statuses
+// Pipeline stages - mapped to task statuses
 const PIPELINE_STAGES: { status: TaskStatus; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
   { status: "open", label: "Prospect", icon: CircleDot, color: "text-muted-foreground" },
-  { status: "in_progress", label: "In diskussion", icon: ChevronRight, color: "text-blue-500" },
-  { status: "blocked", label: "VÃ¤ntar", icon: Clock, color: "text-yellow-500" },
-  { status: "done", label: "Klar / Vunnen", icon: Trophy, color: "text-green-500" },
+  { status: "in_progress", label: "In discussion", icon: ChevronRight, color: "text-blue-500" },
+  { status: "blocked", label: "Waiting", icon: Clock, color: "text-yellow-500" },
+  { status: "done", label: "Closed / Won", icon: Trophy, color: "text-green-500" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -55,16 +55,22 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  low: "LÃ¥g", medium: "Medium", high: "HÃ¶g", urgent: "BrÃ¥dskande",
+  low: "Low", medium: "Medium", high: "High", urgent: "Urgent",
 };
 
 type GoalItem = { id: string; title: string; current: number; target: number; unit: string };
 
 const DEFAULT_GOALS: GoalItem[] = [
-  { id: "g1", title: "Nya kunder i mÃ¥naden", current: 0, target: 10, unit: "kunder" },
-  { id: "g2", title: "OmsÃ¤ttningsmÃ¥l (kr)", current: 0, target: 100000, unit: "kr" },
-  { id: "g3", title: "KundnÃ¶jdhet (NPS)", current: 0, target: 80, unit: "poÃ¤ng" },
+  { id: "g1", title: "New customers this month", current: 0, target: 10, unit: "customers" },
+  { id: "g2", title: "Revenue target (SEK)", current: 0, target: 100000, unit: "SEK" },
+  { id: "g3", title: "Customer satisfaction (NPS)", current: 0, target: 80, unit: "points" },
 ];
+
+function normalizeGoal(goal: GoalItem): GoalItem {
+  const defaultGoal = DEFAULT_GOALS.find((item) => item.id === goal.id);
+  if (!defaultGoal) return goal;
+  return { ...goal, title: defaultGoal.title, unit: defaultGoal.unit };
+}
 
 function PipelineCard({ task, onMove, onDelete, isDeleting }: {
   task: TaskRow;
@@ -88,7 +94,7 @@ function PipelineCard({ task, onMove, onDelete, isDeleting }: {
           onClick={() => onDelete(task.id)}
           disabled={isDeleting}
           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0"
-          aria-label="Ta bort"
+          aria-label="Delete"
         >
           {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
         </button>
@@ -107,13 +113,13 @@ function PipelineCard({ task, onMove, onDelete, isDeleting }: {
             className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
             onClick={() => onMove(task.id, next)}
           >
-            Flytta fram â†’
+            Move forward
           </Button>
         )}
       </div>
       {task.due_at && (
         <p className="text-[11px] text-muted-foreground">
-          Deadline: {new Date(task.due_at).toLocaleDateString("sv-SE")}
+          Deadline: {new Date(task.due_at).toLocaleDateString("en-US")}
         </p>
       )}
     </div>
@@ -147,30 +153,30 @@ function GoalCard({ goal, onUpdate }: {
           onClick={() => { setCurrent(String(goal.current)); setTarget(String(goal.target)); setEditing(true); }}
           className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          Redigera
+          Edit
         </button>
       </div>
       <Progress value={pct} className="h-2" />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{goal.current.toLocaleString("sv-SE")} {goal.unit}</span>
+        <span>{goal.current.toLocaleString("en-US")} {goal.unit}</span>
         <span className={cn("font-medium", pct >= 100 ? "text-green-600" : "text-foreground")}>
-          {pct}% av {goal.target.toLocaleString("sv-SE")}
+          {pct}% of {goal.target.toLocaleString("en-US")}
         </span>
       </div>
 
       {editing && (
         <div className="flex gap-2 pt-1">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">NulÃ¤ge</Label>
+            <Label className="text-xs">Current</Label>
             <Input value={current} onChange={(e) => setCurrent(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">MÃ¥l</Label>
+            <Label className="text-xs">Target</Label>
             <Input value={target} onChange={(e) => setTarget(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex items-end gap-1">
-            <Button size="sm" className="h-7 text-xs" onClick={save}>Spara</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Avbryt</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={save}>Save</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
           </div>
         </div>
       )}
@@ -196,7 +202,9 @@ export default function SalesMarketingPage() {
   const [goals, setGoals] = useState<GoalItem[]>(() => {
     try {
       const stored = localStorage.getItem(GOALS_KEY);
-      return stored ? (JSON.parse(stored) as GoalItem[]) : DEFAULT_GOALS.map((g) => ({ ...g }));
+      return stored
+        ? (JSON.parse(stored) as GoalItem[]).map(normalizeGoal)
+        : DEFAULT_GOALS.map((g) => ({ ...g }));
     } catch {
       return DEFAULT_GOALS.map((g) => ({ ...g }));
     }
@@ -250,15 +258,15 @@ export default function SalesMarketingPage() {
       <PageHeader
         icon={Target}
         title="Sales"
-        description="Pipeline, leads och mål för ditt företag."
+        description="Pipeline, leads, and goals for your business."
       />
 
       {/* KPI tiles */}
       <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
-          { label: "Aktiva leads", value: pipelineTasks.filter((t) => t.status !== "done").length, icon: CircleDot, color: "text-blue-500" },
-          { label: "Vunna affÃ¤rer", value: wonLeads, icon: Trophy, color: "text-green-500" },
-          { label: "Konverteringsgrad", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
+          { label: "Active leads", value: pipelineTasks.filter((t) => t.status !== "done").length, icon: CircleDot, color: "text-blue-500" },
+          { label: "Won deals", value: wonLeads, icon: Trophy, color: "text-green-500" },
+          { label: "Conversion rate", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-border">
             <CardContent className="p-4">
@@ -275,11 +283,11 @@ export default function SalesMarketingPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-sm font-semibold">Pipeline</h2>
-            <p className="text-xs text-muted-foreground">Flytta leads genom stegen mot avslut.</p>
+            <p className="text-xs text-muted-foreground">Move leads through each stage toward close.</p>
           </div>
           <Button size="sm" className="gap-1.5" onClick={() => setPipelineOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            Nytt lead
+            New lead
           </Button>
         </div>
 
@@ -311,7 +319,7 @@ export default function SalesMarketingPage() {
                       />
                     ))}
                     {stageTasks.length === 0 && (
-                      <p className="text-[11px] text-muted-foreground/60 text-center pt-4">Tom</p>
+                      <p className="text-[11px] text-muted-foreground/60 text-center pt-4">Empty</p>
                     )}
                   </div>
                 </div>
@@ -325,8 +333,8 @@ export default function SalesMarketingPage() {
       {/* Goals */}
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
         <div className="mb-3">
-          <h2 className="text-sm font-semibold">MÃ¥l & KPI:er</h2>
-          <p className="text-xs text-muted-foreground">Klicka "Redigera" pÃ¥ ett mÃ¥l fÃ¶r att uppdatera nulÃ¤get.</p>
+          <h2 className="text-sm font-semibold">Goals & KPIs</h2>
+          <p className="text-xs text-muted-foreground">Click "Edit" on a goal to update the current value.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {goals.map((goal) => (
@@ -339,41 +347,41 @@ export default function SalesMarketingPage() {
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>LÃ¤gg till nytt lead</DialogTitle>
+            <DialogTitle>Add new lead</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="lead-title">FÃ¶retag / kontaktnamn</Label>
-              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme AB" autoFocus />
+              <Label htmlFor="lead-title">Company / contact name</Label>
+              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme Inc." autoFocus />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lead-desc">Anteckning (valfritt)</Label>
-              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Kontaktinfo, kÃ¤lla, etc." rows={2} />
+              <Label htmlFor="lead-desc">Note (optional)</Label>
+              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Contact info, source, etc." rows={2} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Prioritet</Label>
+                <Label>Priority</Label>
                 <Select value={pipelinePriority} onValueChange={(v) => setPipelinePriority(v as typeof pipelinePriority)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">LÃ¥g</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">HÃ¶g</SelectItem>
-                    <SelectItem value="urgent">BrÃ¥dskande</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-due">Deadline (valfritt)</Label>
+                <Label htmlFor="lead-due">Deadline (optional)</Label>
                 <Input id="lead-due" type="date" value={pipelineDue} onChange={(e) => setPipelineDue(e.target.value)} className="h-9 text-sm" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPipelineOpen(false)}>Avbryt</Button>
+            <Button variant="outline" onClick={() => setPipelineOpen(false)}>Cancel</Button>
             <Button onClick={() => void addLead()} disabled={pipelineAdding || !pipelineTitle.trim()}>
               {pipelineAdding && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              LÃ¤gg till
+              Add
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -382,6 +390,3 @@ export default function SalesMarketingPage() {
     </div>
   );
 }
-
-
-

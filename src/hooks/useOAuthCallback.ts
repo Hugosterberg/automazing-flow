@@ -26,6 +26,7 @@ function sectionForPlatform(platform: AccountPlatform): AccountSection {
   if (platform === "google_calendar" || platform === "outlook_calendar") return "calendar";
   if (platform === "google_reviews" || platform === "tripadvisor") return "reviews";
   if (platform === "google_drive") return "content";
+  if (platform === "google_ads" || platform === "meta_business") return "marketing";
   return "social-media";
 }
 
@@ -40,6 +41,11 @@ export function useOAuthCallback() {
       const pendingReturn = readPendingOAuthReturn();
       const current = `${window.location.pathname}${window.location.search}`;
       if (pendingReturn && pendingReturn !== current) {
+        const pendingSearch = new URL(pendingReturn, window.location.origin).search;
+        if (new URLSearchParams(pendingSearch).get("oauth_error")) {
+          clearPendingOAuthReturn();
+          return;
+        }
         clearPendingOAuthReturn();
         window.location.replace(pendingReturn);
         return;

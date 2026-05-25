@@ -14,6 +14,8 @@
  * singletons.
  */
 
+import { fetchZernio } from "../lib/zernioFetch.ts";
+
 export type ZernioAuthHeaders = Record<string, string>;
 
 export interface ZernioRawAccount {
@@ -166,7 +168,7 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
       init.body = JSON.stringify(options.body);
     }
     try {
-      const response = await fetch(`${deps.apiBase}${path}`, init);
+      const response = await fetchZernio(`${deps.apiBase}${path}`, init);
       const raw: unknown = await response.json().catch(() => ({}));
       if (!response.ok) {
         const bodyObj = (raw || {}) as Record<string, unknown>;
