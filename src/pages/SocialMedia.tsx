@@ -33,9 +33,10 @@ import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
-import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -68,6 +69,9 @@ const SOCIAL_PAGE_PLATFORMS: readonly SocialPlatform[] = [
 ];
 
 const SOCIAL_PAGE_PLATFORM_SET = new Set<string>(SOCIAL_PAGE_PLATFORMS);
+const SOCIAL_CONNECTION_ENTRIES = getConnectionEntriesForArea("social").filter((entry) =>
+  SOCIAL_PAGE_PLATFORM_SET.has(entry.platform)
+);
 
 /** Instagram first, then TikTok, YouTube, etc.—matches user expectation when auto-opening a channel. */
 function sortSocialPageAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
@@ -95,6 +99,7 @@ type SocialMediaApiPost = {
   mediaType: string;
   likeCount: number;
   commentCount: number;
+  viewCount?: number;
   createdTime: string;
 };
 
@@ -126,8 +131,10 @@ type SocialMediaApiResponse = {
     accountType?: string;
     totalLikes?: number;
     totalComments?: number;
+    totalViews?: number;
     avgLikes?: number;
     avgComments?: number;
+    avgViews?: number;
     engagementRate?: number;
     updatedAt?: string;
     zernioNote?: string;
@@ -266,11 +273,12 @@ export default function SocialMedia() {
     [contentTasks]
   );
   const selectedAccountId = getSelectedAccountId("social-media");
+  const [activeSocialTab, setActiveSocialTab] = useState<SocialPlatform>("instagram");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
   const [recentPosts, setRecentPosts] = useState<{
     id: string; caption: string; picture: string; permalink: string;
-    mediaType: string; likeCount: number; commentCount: number; createdTime: string;
+    mediaType: string; likeCount: number; commentCount: number; viewCount?: number; createdTime: string;
   }[]>([]);
 
   const accountsRef = useRef(accounts);
@@ -359,8 +367,10 @@ export default function SocialMedia() {
         accountType,
         totalLikes: stats?.totalLikes,
         totalComments: stats?.totalComments,
+        totalViews: stats?.totalViews,
         avgLikes: stats?.avgLikes,
         avgComments: stats?.avgComments,
+        avgViews: stats?.avgViews,
         engagementRate: stats?.engagementRate,
         updatedAt: stats?.updatedAt ?? new Date().toISOString(),
         zernioNote: stats?.zernioNote,
@@ -448,6 +458,19 @@ export default function SocialMedia() {
     setAnalysisResult(null);
     setAnalyzing(false);
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    if (selectedAccount && selectedAccount.platform !== activeSocialTab) {
+      setActiveSocialTab(selectedAccount.platform as SocialPlatform);
+    }
+  }, [activeSocialTab, selectedAccount]);
+
+  function handleSocialTabChange(value: string) {
+    const platform = value as SocialPlatform;
+    setActiveSocialTab(platform);
+    const nextAccount = socialAccounts.find((account) => account.platform === platform);
+    setSelectedAccountId("social-media", nextAccount?.id ?? null);
+  }
 
   useEffect(() => {
     if (!selectedAccountId) return;
@@ -562,7 +585,71 @@ export default function SocialMedia() {
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <SectionConnectionStatus area="social" />
+        <Tabs value={activeSocialTab} onValueChange={handleSocialTabChange}>
+          <div className="rounded-lg border border-border bg-card/70 p-1">
+            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0">
+              {SOCIAL_CONNECTION_ENTRIES.map((entry) => {
+                const platform = entry.platform as SocialPlatform;
+                const Icon = platformIcons[platform];
+                const linkedAccounts = socialAccounts.filter((account) => account.platform === platform);
+                return (
+                  <TabsTrigger
+                    key={entry.platform}
+                    value={entry.platform}
+                    className="min-w-fit gap-2 rounded-md px-3 py-2 text-xs data-[state=active]:bg-accent data-[state=active]:shadow-none"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{entry.label.replace(" Profile", "")}</span>
+                    {linkedAccounts.length > 0 ? (
+                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-success px-1 text-[10px] font-semibold text-success-foreground tabular-nums">
+                        {linkedAccounts.length}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+
+          {SOCIAL_CONNECTION_ENTRIES.map((entry) => {
+            const platform = entry.platform as SocialPlatform;
+            const linkedAccounts = socialAccounts.filter((account) => account.platform === platform);
+            return (
+              <TabsContent key={entry.platform} value={entry.platform} className="mt-3">
+                <div className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {entry.label}
+                      </p>
+                      {linkedAccounts.length > 0 ? (
+                        <p className="mt-1 text-sm text-muted-foreground truncate">
+                          {linkedAccounts.map((account) => account.displayName || account.username).join(" · ")}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Not linked for this profile. {entry.connectSteps}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 text-xs">
+                      {linkedAccounts.length > 0 ? (
+                        <span className="font-medium text-success">Connected</span>
+                      ) : (
+                        <Link to="/connections" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+                          Connect now
+                        </Link>
+                      )}
+                      <Link to="/preferences" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                        API keys
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </m.div>
 
       {authMode === "local" && (
@@ -1190,9 +1277,12 @@ export default function SocialMedia() {
               }
               const isX = selectedAccount.platform === "x";
               const isWhatsApp = selectedAccount.platform === "whatsapp";
+              const isInstagram = selectedAccount.platform === "instagram";
 
               const avgLikesStat =
-                s.avgLikes != null
+                isInstagram && s.avgViews != null
+                  ? { key: "avg-views", label: "Avg. views", value: s.avgViews.toLocaleString("en-US"), change: "", icon: Eye }
+                  : s.avgLikes != null
                   ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
                   : s.followingCount != null
                     ? { ...defaultStats[1], value: s.followingCount.toLocaleString("en-US") }
@@ -1257,7 +1347,9 @@ export default function SocialMedia() {
               <CardDescription>
                 {selectedAccount?.platform === "whatsapp"
                   ? "Approved templates from your WhatsApp Business account (via Zernio)"
-                  : "Likes and comments per post"}
+                  : selectedAccount?.platform === "instagram"
+                    ? "Views, likes and comments per post"
+                    : "Likes and comments per post"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1282,6 +1374,12 @@ export default function SocialMedia() {
                           <Heart className="h-3.5 w-3.5 fill-white" />
                           {post.likeCount}
                         </div>
+                        {selectedAccount?.platform === "instagram" && (
+                          <div className="flex items-center gap-1 text-white text-xs">
+                            <Eye className="h-3.5 w-3.5" />
+                            {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                          </div>
+                        )}
                         <div className="flex items-center gap-1 text-white text-xs">
                           <FileText className="h-3.5 w-3.5" />
                           {post.commentCount}
@@ -1291,6 +1389,11 @@ export default function SocialMedia() {
                         <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
                           <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
                         </span>
+                        {selectedAccount?.platform === "instagram" && (
+                          <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                            <Eye className="h-2.5 w-2.5" />{post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                          </span>
+                        )}
                       </div>
                     </a>
                   ))}
@@ -1309,6 +1412,12 @@ export default function SocialMedia() {
                             <Heart className="h-3.5 w-3.5" />
                             {post.likeCount}
                           </span>
+                          {selectedAccount?.platform === "instagram" && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3.5 w-3.5" />
+                              {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <FileText className="h-3.5 w-3.5" />
                             {post.commentCount}
@@ -1419,7 +1528,7 @@ export default function SocialMedia() {
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-lg">Aktiva kampanjer</CardTitle>
-              <Link to="/sales-marketing" className="text-xs text-primary hover:underline">
+              <Link to="/marketing" className="text-xs text-primary hover:underline">
                 Hantera →
               </Link>
             </div>
@@ -1428,7 +1537,7 @@ export default function SocialMedia() {
             {scheduledContentTasks.length === 0 ? (
               <div className="text-center py-4 space-y-2">
                 <p className="text-sm text-muted-foreground">Inga aktiva kampanjer.</p>
-                <Link to="/sales-marketing">
+                  <Link to="/marketing">
                   <Button size="sm" variant="outline" className="text-xs">
                     Skapa kampanj
                   </Button>

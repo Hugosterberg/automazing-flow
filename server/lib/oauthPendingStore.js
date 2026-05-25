@@ -15,6 +15,8 @@ function isZernioRecoverablePlatform(platform) {
     platform === "outlook_calendar" ||
     platform === "google_reviews" ||
     platform === "tripadvisor"
+    || platform === "google_ads"
+    || platform === "meta_business"
   );
 }
 

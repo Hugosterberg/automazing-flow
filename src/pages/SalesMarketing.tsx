@@ -1,21 +1,17 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { m } from "framer-motion";
 import {
-  CheckCircle2,
   ChevronRight,
   CircleDot,
   Clock,
-  Flag,
   Loader2,
-  Megaphone,
   Plus,
   Target,
   Trash2,
   Trophy,
-  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -43,11 +39,11 @@ import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-// Pipeline stages — mapped to task statuses
+// Pipeline stages â€” mapped to task statuses
 const PIPELINE_STAGES: { status: TaskStatus; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
   { status: "open", label: "Prospect", icon: CircleDot, color: "text-muted-foreground" },
   { status: "in_progress", label: "In diskussion", icon: ChevronRight, color: "text-blue-500" },
-  { status: "blocked", label: "Väntar", icon: Clock, color: "text-yellow-500" },
+  { status: "blocked", label: "VÃ¤ntar", icon: Clock, color: "text-yellow-500" },
   { status: "done", label: "Klar / Vunnen", icon: Trophy, color: "text-green-500" },
 ];
 
@@ -59,15 +55,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  low: "Låg", medium: "Medium", high: "Hög", urgent: "Brådskande",
+  low: "LÃ¥g", medium: "Medium", high: "HÃ¶g", urgent: "BrÃ¥dskande",
 };
 
 type GoalItem = { id: string; title: string; current: number; target: number; unit: string };
 
 const DEFAULT_GOALS: GoalItem[] = [
-  { id: "g1", title: "Nya kunder i månaden", current: 0, target: 10, unit: "kunder" },
-  { id: "g2", title: "Omsättningsmål (kr)", current: 0, target: 100000, unit: "kr" },
-  { id: "g3", title: "Kundnöjdhet (NPS)", current: 0, target: 80, unit: "poäng" },
+  { id: "g1", title: "Nya kunder i mÃ¥naden", current: 0, target: 10, unit: "kunder" },
+  { id: "g2", title: "OmsÃ¤ttningsmÃ¥l (kr)", current: 0, target: 100000, unit: "kr" },
+  { id: "g3", title: "KundnÃ¶jdhet (NPS)", current: 0, target: 80, unit: "poÃ¤ng" },
 ];
 
 function PipelineCard({ task, onMove, onDelete, isDeleting }: {
@@ -111,7 +107,7 @@ function PipelineCard({ task, onMove, onDelete, isDeleting }: {
             className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
             onClick={() => onMove(task.id, next)}
           >
-            Flytta fram →
+            Flytta fram â†’
           </Button>
         )}
       </div>
@@ -165,11 +161,11 @@ function GoalCard({ goal, onUpdate }: {
       {editing && (
         <div className="flex gap-2 pt-1">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Nuläge</Label>
+            <Label className="text-xs">NulÃ¤ge</Label>
             <Input value={current} onChange={(e) => setCurrent(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Mål</Label>
+            <Label className="text-xs">MÃ¥l</Label>
             <Input value={target} onChange={(e) => setTarget(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex items-end gap-1">
@@ -192,12 +188,6 @@ export default function SalesMarketingPage() {
   // Pipeline tasks = module starts with "pipeline"
   const pipelineTasks = useMemo(
     () => tasks.filter((t) => t.module === "pipeline" && t.status !== "archived"),
-    [tasks]
-  );
-
-  // Campaign tasks = module starts with "campaign"
-  const campaignTasks = useMemo(
-    () => tasks.filter((t) => t.module === "campaign" && t.status !== "archived"),
     [tasks]
   );
 
@@ -247,31 +237,6 @@ export default function SalesMarketingPage() {
     }
   }
 
-  // Add campaign dialog
-  const [campaignOpen, setCampaignOpen] = useState(false);
-  const [campaignTitle, setCampaignTitle] = useState("");
-  const [campaignDesc, setCampaignDesc] = useState("");
-  const [campaignAdding, setCampaignAdding] = useState(false);
-
-  async function addCampaign() {
-    if (!campaignTitle.trim()) return;
-    setCampaignAdding(true);
-    try {
-      await createTask({
-        title: campaignTitle.trim(),
-        description: campaignDesc.trim() || null,
-        priority: "medium",
-        status: "open",
-        module: "campaign",
-      });
-      setCampaignOpen(false);
-      setCampaignTitle("");
-      setCampaignDesc("");
-    } finally {
-      setCampaignAdding(false);
-    }
-  }
-
   async function moveTask(id: string, status: TaskStatus) {
     await updateTask({ id, patch: { status } });
   }
@@ -284,17 +249,16 @@ export default function SalesMarketingPage() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={Target}
-        title="Sales & Marketing"
-        description="Pipeline, kampanjer och mål för ditt företag."
+        title="Sales"
+        description="Pipeline, leads och mål för ditt företag."
       />
 
       {/* KPI tiles */}
-      <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           { label: "Aktiva leads", value: pipelineTasks.filter((t) => t.status !== "done").length, icon: CircleDot, color: "text-blue-500" },
-          { label: "Vunna affärer", value: wonLeads, icon: Trophy, color: "text-green-500" },
+          { label: "Vunna affÃ¤rer", value: wonLeads, icon: Trophy, color: "text-green-500" },
           { label: "Konverteringsgrad", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
-          { label: "Aktiva kampanjer", value: campaignTasks.filter((t) => t.status === "in_progress").length, icon: Megaphone, color: "text-orange-500" },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-border">
             <CardContent className="p-4">
@@ -357,89 +321,12 @@ export default function SalesMarketingPage() {
         )}
       </m.section>
 
-      {/* Campaigns */}
-      <m.section {...pageFadeUp} transition={{ delay: 0.1 }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-sm font-semibold">Kampanjer</h2>
-            <p className="text-xs text-muted-foreground">Koordinera marknadsföringskampanjer och idéer.</p>
-          </div>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCampaignOpen(true)}>
-            <Plus className="h-3.5 w-3.5" />
-            Ny kampanj
-          </Button>
-        </div>
-
-        {campaignTasks.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-10 text-center">
-              <Megaphone className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Inga kampanjer ännu</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Skapa din första kampanj för att börja planera.</p>
-              <Button size="sm" variant="outline" className="mt-4 gap-1.5" onClick={() => setCampaignOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Ny kampanj
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {campaignTasks.map((task) => (
-              <Card key={task.id} className="border-border hover:border-primary/30 transition-colors">
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {task.status === "done" ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : task.status === "blocked" ? (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      ) : (
-                        <Flag className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 px-4 pb-4 space-y-2">
-                  {task.description && (
-                    <CardDescription className="text-xs line-clamp-2">{task.description}</CardDescription>
-                  )}
-                  <div className="flex items-center justify-between gap-2">
-                    <Select
-                      value={task.status}
-                      onValueChange={(v) => void moveTask(task.id, v as TaskStatus)}
-                    >
-                      <SelectTrigger className="h-7 text-xs w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">Planerad</SelectItem>
-                        <SelectItem value="in_progress">Aktiv</SelectItem>
-                        <SelectItem value="blocked">Pausad</SelectItem>
-                        <SelectItem value="done">Avslutad</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <button
-                      type="button"
-                      onClick={() => void deleteTask(task.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
-                      aria-label="Ta bort kampanj"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </m.section>
 
       {/* Goals */}
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
         <div className="mb-3">
-          <h2 className="text-sm font-semibold">Mål & KPI:er</h2>
-          <p className="text-xs text-muted-foreground">Klicka "Redigera" på ett mål för att uppdatera nuläget.</p>
+          <h2 className="text-sm font-semibold">MÃ¥l & KPI:er</h2>
+          <p className="text-xs text-muted-foreground">Klicka "Redigera" pÃ¥ ett mÃ¥l fÃ¶r att uppdatera nulÃ¤get.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {goals.map((goal) => (
@@ -452,16 +339,16 @@ export default function SalesMarketingPage() {
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Lägg till nytt lead</DialogTitle>
+            <DialogTitle>LÃ¤gg till nytt lead</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="lead-title">Företag / kontaktnamn</Label>
+              <Label htmlFor="lead-title">FÃ¶retag / kontaktnamn</Label>
               <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme AB" autoFocus />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lead-desc">Anteckning (valfritt)</Label>
-              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Kontaktinfo, källa, etc." rows={2} />
+              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Kontaktinfo, kÃ¤lla, etc." rows={2} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -469,10 +356,10 @@ export default function SalesMarketingPage() {
                 <Select value={pipelinePriority} onValueChange={(v) => setPipelinePriority(v as typeof pipelinePriority)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Låg</SelectItem>
+                    <SelectItem value="low">LÃ¥g</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">Hög</SelectItem>
-                    <SelectItem value="urgent">Brådskande</SelectItem>
+                    <SelectItem value="high">HÃ¶g</SelectItem>
+                    <SelectItem value="urgent">BrÃ¥dskande</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -486,37 +373,15 @@ export default function SalesMarketingPage() {
             <Button variant="outline" onClick={() => setPipelineOpen(false)}>Avbryt</Button>
             <Button onClick={() => void addLead()} disabled={pipelineAdding || !pipelineTitle.trim()}>
               {pipelineAdding && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Lägg till
+              LÃ¤gg till
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Add campaign dialog */}
-      <Dialog open={campaignOpen} onOpenChange={setCampaignOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ny kampanj</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="campaign-title">Kampanjnamn</Label>
-              <Input id="campaign-title" value={campaignTitle} onChange={(e) => setCampaignTitle(e.target.value)} placeholder="t.ex. Sommarkampanj 2026" autoFocus />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="campaign-desc">Beskrivning (valfritt)</Label>
-              <Textarea id="campaign-desc" value={campaignDesc} onChange={(e) => setCampaignDesc(e.target.value)} placeholder="Mål, kanaler, budget..." rows={3} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCampaignOpen(false)}>Avbryt</Button>
-            <Button onClick={() => void addCampaign()} disabled={campaignAdding || !campaignTitle.trim()}>
-              {campaignAdding && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Skapa kampanj
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
+
+

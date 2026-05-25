@@ -2,11 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { Connection } from "@/types/connection";
-import {
-  listConnectionsForBusinessProfile,
-  resumeConnection,
-  softDisconnect,
-} from "./connectionsService";
+import { deleteConnection, listConnectionsForBusinessProfile } from "./connectionsService";
 import { logActivity, ACTIVITY_FEED_KEY } from "@/features/activity";
 import { apiUrl } from "@/lib/apiBase";
 
@@ -33,10 +29,13 @@ export function useConnections(businessProfileId: string | null | undefined) {
   const disconnectMut = useMutation({
     mutationFn: async (connectionId: string) => {
       if (!supabase || !enabled) throw new Error("Not signed in.");
-      await softDisconnect(supabase, connectionId);
-      // Client-side path: the server disconnect endpoint also logs, but the
-      // UI currently goes through Supabase RLS directly, so we log here to
-      // keep the audit trail complete without rerouting the mutation.
+      // Clear backend tokens first so a fresh OAuth can re-link.
+      // Best-effort — the Supabase row removal is what the user sees.
+      await fetch(apiUrl(`/api/accounts/${encodeURIComponent(connectionId)}`), {
+        method: "DELETE",
+        credentials: "include",
+      }).catch(() => {});
+      await deleteConnection(supabase, connectionId);
       if (businessProfileId) {
         void logActivity(supabase, {
           businessProfileId,
@@ -46,28 +45,6 @@ export function useConnections(businessProfileId: string | null | undefined) {
           subjectId: connectionId,
           severity: "info",
           summary: "Disconnected a connected account",
-        });
-      }
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: CONNECTIONS_KEY });
-      void qc.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
-    },
-  });
-
-  const resumeMut = useMutation({
-    mutationFn: async (connectionId: string) => {
-      if (!supabase || !enabled) throw new Error("Not signed in.");
-      await resumeConnection(supabase, connectionId);
-      if (businessProfileId) {
-        void logActivity(supabase, {
-          businessProfileId,
-          module: "connections",
-          eventType: "connection.resumed",
-          subjectType: "connected_account",
-          subjectId: connectionId,
-          severity: "info",
-          summary: "Resumed a paused connection",
         });
       }
     },
@@ -97,16 +74,12 @@ export function useConnections(businessProfileId: string | null | undefined) {
 
   return {
     connections: query.data ?? [],
-    active: (query.data ?? []).filter((c) => !c.disconnectedAt),
-    disconnected: (query.data ?? []).filter((c) => Boolean(c.disconnectedAt)),
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
     refetch: query.refetch,
     disconnect: disconnectMut.mutateAsync,
     isDisconnecting: disconnectMut.isPending,
-    resume: resumeMut.mutateAsync,
-    isResuming: resumeMut.isPending,
     resync: resyncMut.mutateAsync,
     isResyncing: resyncMut.isPending,
     resyncingId: resyncMut.isPending ? (resyncMut.variables as string | undefined) : undefined,

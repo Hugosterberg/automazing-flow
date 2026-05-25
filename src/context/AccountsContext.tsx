@@ -561,24 +561,45 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         google_drive: "drive.google.com",
         facebook: "facebook.com",
         google_business: "google.com/maps",
+        google_ads: "ads.google.com",
+        meta_business: "business.facebook.com",
         whatsapp: "wa.me",
       };
       const base = profileUrls[platform] ?? platform + ".com";
       const defaultProfileUrl = `https://${base}/${username.replace(/^@/, "")}`;
+      const normalizedUsername = username.trim();
+      const displayName = extra?.displayName?.trim() || undefined;
+      const profileUrl = extra?.profileUrl?.trim() || defaultProfileUrl;
       const newAccount: ConnectedAccount = {
         id: accountId,
         profileId: targetProfileId,
         platform,
-        username: username.trim(),
-        displayName: extra?.displayName?.trim() || undefined,
+        username: normalizedUsername,
+        displayName,
         connectedAt: new Date().toISOString(),
-        profileUrl: extra?.profileUrl?.trim() || defaultProfileUrl,
+        profileUrl,
         isOAuth: true,
         disconnectedAt: undefined,
         ...(extra?.zernioAccountId && { zernioAccountId: extra.zernioAccountId }),
         ...(extra?.isZernio && { isZernio: true }),
       };
       setAccounts((prev) => {
+        const existing = prev.find((a) => a.id === accountId);
+        if (
+          existing &&
+          existing.profileId === targetProfileId &&
+          existing.platform === platform &&
+          existing.username === normalizedUsername &&
+          (existing.displayName ?? undefined) === displayName &&
+          existing.profileUrl === profileUrl &&
+          Boolean(existing.isOAuth) &&
+          !existing.disconnectedAt &&
+          (existing.zernioAccountId ?? undefined) === (extra?.zernioAccountId ?? undefined) &&
+          Boolean(existing.isZernio) === Boolean(extra?.isZernio)
+        ) {
+          return prev;
+        }
+
         const next = prev.filter((a) => {
           if (a.id === accountId) return false;
           const sameZernioAccount =
@@ -626,20 +647,17 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       } catch {
         // Backend may not be running or account does not exist
       }
-      const now = new Date().toISOString();
       if (enabled && supabase && userId) {
         const { error } = await supabase
           .from("connected_accounts")
-          .update({ disconnected_at: now })
+          .delete()
           .eq("id", id)
           .eq("user_id", userId);
         if (error) {
-          console.warn("[accounts] Could not persist disconnect (run Supabase migration for disconnected_at?)", error);
+          console.warn("[accounts] Could not delete connected account", error);
         }
       }
-      setAccounts((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, disconnectedAt: now } : a))
-      );
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
     },
     [enabled, userId]
   );

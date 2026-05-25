@@ -1,12 +1,13 @@
 import type { AccountPlatform } from "@/types/accounts";
 
 /** Logical product areas (matches main nav groupings). */
-export type AppArea = "social" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
+export type AppArea = "social" | "marketing" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
 
-export const AREA_ORDER: AppArea[] = ["social", "ecommerce", "messages", "calendar", "reviews", "content"];
+export const AREA_ORDER: AppArea[] = ["social", "marketing", "ecommerce", "messages", "calendar", "reviews", "content"];
 
 export const AREA_LABELS: Record<AppArea, string> = {
   social: "Social media",
+  marketing: "Marketing",
   ecommerce: "Organization & commerce",
   messages: "Mail",
   calendar: "Calendar",
@@ -98,6 +99,24 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     serverNeeds: "X_CLIENT_ID + X_CLIENT_SECRET.",
   },
   {
+    platform: "google_ads",
+    label: "Google Ads",
+    area: "marketing",
+    pageHref: "/marketing",
+    pageName: "Marketing",
+    connectSteps: "Open Marketing → Connect Google Ads via Zernio.",
+    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+  },
+  {
+    platform: "meta_business",
+    label: "Meta Business",
+    area: "marketing",
+    pageHref: "/marketing",
+    pageName: "Marketing",
+    connectSteps: "Open Marketing → Connect Meta Business via Zernio.",
+    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+  },
+  {
     platform: "shopify",
     label: "Shopify",
     area: "ecommerce",
@@ -185,6 +204,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
 
 const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {
   social: [],
+  marketing: [],
   ecommerce: [],
   messages: [],
   calendar: [],

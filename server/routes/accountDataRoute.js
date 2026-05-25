@@ -179,6 +179,7 @@ export function registerAccountDataRoute(app, deps) {
           googleClientId: process.env.GOOGLE_CLIENT_ID,
           googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
           folderId: typeof req.query?.folderId === "string" ? req.query.folderId : null,
+          view: req.query?.view === "shared-with-me" ? "shared-with-me" : "my-drive",
         });
         return res.json(data);
       }

@@ -8,8 +8,6 @@ interface Props {
   connections: Connection[];
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
-  onResume?: (connectionId: string) => void;
-  isResuming?: boolean;
   onResync?: (connectionId: string) => void;
   isResyncing?: boolean;
   resyncingId?: string;
@@ -31,8 +29,6 @@ export function ConnectionsGrid({
   connections,
   onDisconnect,
   isDisconnecting,
-  onResume,
-  isResuming,
   onResync,
   isResyncing,
   resyncingId,
@@ -86,9 +82,7 @@ export function ConnectionsGrid({
               <span className="text-[11px] text-muted-foreground tabular-nums">
                 {
                   entries.filter((e) =>
-                    connections.some(
-                      (c) => c.platform === e.platform && !c.disconnectedAt
-                    )
+                    connections.some((c) => c.platform === e.platform)
                   ).length
                 }{" "}
                 / {entries.length} linked
@@ -103,8 +97,6 @@ export function ConnectionsGrid({
                   businessProfileId={businessProfileId}
                   onDisconnect={onDisconnect}
                   isDisconnecting={isDisconnecting}
-                  onResume={onResume}
-                  isResuming={isResuming}
                   onResync={onResync}
                   isResyncing={isResyncing}
                   resyncingId={resyncingId}

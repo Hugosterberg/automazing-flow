@@ -389,6 +389,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return raw.replace(/\/$/, "");
   }
 
+  function getGmailRedirectUri() {
+    return `${API_BASE_URL}/api/auth/google/callback`;
+  }
+
   function debugLog(runId, hypothesisId, location, message, data = {}) {
     // #region agent log
     if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
@@ -479,6 +483,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
     if (platform === "shopify" || platform === "notion") {
       return "ecommerce";
+    }
+    if (platform === "google_ads" || platform === "meta_business") {
+      return "marketing";
     }
     return "social-media";
   }
@@ -682,6 +689,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   const zernioConnectPlatformMap = {
     facebook: { slugs: ["facebook"], appPlatform: "facebook" },
     whatsapp: { slugs: ["whatsapp"], appPlatform: "whatsapp" },
+    google_ads: { slugs: ["google-ads", "google_ads"], appPlatform: "google_ads" },
+    meta_business: { slugs: ["meta-business", "meta_business"], appPlatform: "meta_business" },
   };
 
   function registerZernioOAuthPlatformRoute(routePlatform) {
@@ -756,6 +765,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   registerZernioOAuthPlatformRoute("facebook");
   registerZernioOAuthPlatformRoute("whatsapp");
+  registerZernioOAuthPlatformRoute("google_ads");
+  registerZernioOAuthPlatformRoute("meta_business");
 
   app.get("/api/auth/zernio/platform/callback", async (req, res) => {
     const {
@@ -2247,13 +2258,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     const state = generateState();
+    const redirectUri = getGmailRedirectUri();
     await oauthPendingStore.set(state, {
       platform: "gmail",
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
+      redirectUri,
       createdAt: Date.now(),
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/gmail/callback`;
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -2516,7 +2528,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
   });
 
-  app.get("/api/auth/gmail/callback", async (req, res) => {
+  async function handleGmailCallback(req, res) {
     const { code, state, error } = req.query;
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Gmail callback received", {
       hasCode: Boolean(code),
@@ -2574,7 +2586,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/gmail/callback`;
+      const redirectUri = typeof pending.redirectUri === "string" ? pending.redirectUri : getGmailRedirectUri();
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -2638,7 +2650,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         })
       );
     }
-  });
+  }
+
+  app.get("/api/auth/gmail/callback", handleGmailCallback);
+  app.get("/api/auth/google/callback", handleGmailCallback);
 
   // --- Outlook OAuth (Microsoft) ---
   app.get("/api/auth/outlook", async (req, res) => {

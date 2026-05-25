@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Settings,
   Zap,
-  Plus,
   MoreHorizontal,
   Trash2,
   Layers,
@@ -16,11 +15,12 @@ import {
   PlugZap,
   ListChecks,
   Activity,
+  Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {
@@ -108,6 +108,32 @@ const NAV_GROUP_LABELS: Record<NavGroup, string> = {
   system: "System",
 };
 
+const topNavItems: Array<{
+  key: string;
+  title: string;
+  url: string;
+  icon: (props: { className?: string }) => JSX.Element;
+  platforms: AccountPlatform[];
+  hideAccounts?: boolean;
+}> = [
+  {
+    key: "connections",
+    title: "Connections",
+    url: "/connections",
+    icon: PlugZap,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "preferences",
+    title: "Preferences",
+    url: "/preferences",
+    icon: Settings,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+];
+
 const navItems: Array<{
   key: string;
   title: string;
@@ -151,11 +177,19 @@ const navItems: Array<{
   },
   {
     key: "sales-marketing",
-    title: "Sales & Marketing",
-    url: "/sales-marketing",
+    title: "Sales",
+    url: "/sales",
     icon: LineChart,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    group: "work",
+  },
+  {
+    key: "marketing",
+    title: "Marketing",
+    url: "/marketing",
+    icon: Megaphone,
+    platforms: ["google_ads", "meta_business"] as AccountPlatform[],
     group: "work",
   },
   {
@@ -218,24 +252,6 @@ const navItems: Array<{
     hideAccounts: true,
     group: "productivity",
   },
-  {
-    key: "connections",
-    title: "Connections",
-    url: "/connections",
-    icon: PlugZap,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
-    group: "system",
-  },
-  {
-    key: "preferences",
-    title: "Preferences",
-    url: "/preferences",
-    icon: Settings,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
-    group: "system",
-  },
 ];
 
 const NAV_GROUP_ORDER: NavGroup[] = ["work", "productivity", "system"];
@@ -257,14 +273,14 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   google_drive: GoogleDriveIcon,
   google_reviews: GoogleReviewsIcon,
   tripadvisor: TripadvisorIcon,
+  google_ads: GoogleBusinessIcon,
+  meta_business: FacebookIcon,
 };
 
 function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {
   if (platforms.length === 0) return [];
   return accounts.filter((a) => platforms.includes(a.platform));
 }
-
-const numberFormatter = new Intl.NumberFormat("en-US");
 
 function sectionForNavItemKey(key: string): AccountSection | null {
   if (key === "social-media") return "social-media";
@@ -298,8 +314,17 @@ interface NavBadgeInfo {
 function getNavBadge(
   key: string,
   aiActiveCount: number,
-  tasksOverdueCount: number
+  tasksOverdueCount: number,
+  messagesUnreadCount: number,
+  connectedAccountsCount: number
 ): NavBadgeInfo | null {
+  if (key === "connections" && connectedAccountsCount > 0) {
+    return {
+      count: connectedAccountsCount,
+      ariaLabel: `${connectedAccountsCount} connected accounts`,
+      tone: "primary",
+    };
+  }
   if (key === "ai-recommendations" && aiActiveCount > 0) {
     return {
       count: aiActiveCount,
@@ -313,6 +338,13 @@ function getNavBadge(
       ariaLabel: `${tasksOverdueCount} overdue tasks`,
       tone: "warning",
       href: "/tasks?view=overdue",
+    };
+  }
+  if (key === "messages" && messagesUnreadCount > 0) {
+    return {
+      count: messagesUnreadCount,
+      ariaLabel: `${messagesUnreadCount} unread messages`,
+      tone: "primary",
     };
   }
   return null;
@@ -355,7 +387,6 @@ export function AppSidebar() {
     activeProfileId,
     getSelectedAccountId,
     setSelectedAccountId,
-    showOverview,
     setShowOverview,
     removeAccount,
     addAccountFromOAuth,
@@ -407,48 +438,45 @@ export function AppSidebar() {
     const nowMs = Date.now();
     return tasks.filter((t) => isTaskOverdue(t, nowMs)).length;
   }, [tasks]);
-
-  const socialNavItem = navItems.find((item) => item.key === "social-media");
-  const socialAccounts = useMemo(
-    () => getAccountsForCategory(accounts, socialNavItem?.platforms ?? []),
-    [accounts, socialNavItem]
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  const messagesAccountKey = useMemo(
+    () =>
+      accounts
+        .filter((a) => ["gmail", "outlook", "instagram", "facebook", "whatsapp"].includes(a.platform))
+        .map((a) => a.id)
+        .sort()
+        .join("|"),
+    [accounts]
   );
-  const socialOverview = useMemo(() => {
-    return socialAccounts.reduce(
-      (acc, account) => {
-        acc.connected += 1;
-        if (typeof account.stats?.followersCount === "number") {
-          acc.followers += account.stats.followersCount;
-          acc.hasFollowers = true;
-        }
-        if (typeof account.stats?.mediaCount === "number") {
-          acc.posts += account.stats.mediaCount;
-          acc.hasPosts = true;
-        }
-        if (typeof account.stats?.engagementRate === "number") {
-          acc.engagementSum += account.stats.engagementRate;
-          acc.engagementCount += 1;
-        }
-        return acc;
-      },
-      {
-        connected: 0,
-        followers: 0,
-        posts: 0,
-        engagementSum: 0,
-        engagementCount: 0,
-        hasFollowers: false,
-        hasPosts: false,
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadUnreadCount() {
+      if (!messagesAccountKey) {
+        setMessagesUnreadCount(0);
+        return;
       }
-    );
-  }, [socialAccounts]);
-  function handleOpenOverview() {
-    setShowOverview(true);
-    setSelectedAccountId("social-media", null);
-    if (location.pathname !== "/social-media") {
-      navigate("/social-media");
+
+      try {
+        const res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        const rows = Array.isArray(data.messages) ? data.messages : [];
+        const unread = rows.filter((m: { isUnread?: unknown }) => Boolean(m.isUnread)).length;
+        if (!ignore) setMessagesUnreadCount(unread);
+      } catch {
+        if (!ignore) setMessagesUnreadCount(0);
+      }
     }
-  }
+
+    void loadUnreadCount();
+    window.addEventListener("automazing:oauth-success", loadUnreadCount);
+    return () => {
+      ignore = true;
+      window.removeEventListener("automazing:oauth-success", loadUnreadCount);
+    };
+  }, [messagesAccountKey]);
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -594,14 +622,59 @@ export function AppSidebar() {
         </span>
       </button>
       <SidebarContent className="pt-4" role="navigation" aria-label="Main">
+        <SidebarMenu>
+          {topNavItems.map((item) => {
+            const isActive = location.pathname === item.url;
+            return (
+              <SidebarMenuItem key={item.key}>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to={item.url}
+                    end
+                    onPointerEnter={() => prefetchFor(item.url)}
+                    onFocus={() => prefetchFor(item.url)}
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? "bg-accent text-foreground shadow-[inset_2px_0_0_0_hsl(var(--primary))]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    }`}
+                    activeClassName=""
+                  >
+                    <item.icon
+                      className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                    />
+                    <span
+                      className={`text-sm flex-1 ${
+                        isActive ? "font-semibold" : "font-medium"
+                      }`}
+                    >
+                      {item.title}
+                    </span>
+                    {item.key === "connections" && accounts.length > 0 ? (
+                      <NavCountBadge
+                        count={accounts.length}
+                        ariaLabel={`${accounts.length} connected accounts`}
+                        tone="primary"
+                      />
+                    ) : null}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+        <SidebarSeparator className="my-2" />
         {NAV_GROUP_ORDER.map((groupKey) => {
           const groupItems = navItems.filter((i) => i.group === groupKey);
           if (groupItems.length === 0) return null;
+          const showLabel = groupKey !== "work";
           return (
         <SidebarGroup key={groupKey}>
-          <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
-            {NAV_GROUP_LABELS[groupKey]}
-          </SidebarGroupLabel>
+          {showLabel && (
+            <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
+              {NAV_GROUP_LABELS[groupKey]}
+            </SidebarGroupLabel>
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {groupItems.map((item) => {
@@ -618,7 +691,9 @@ export function AppSidebar() {
                 const navBadge = getNavBadge(
                   item.key,
                   aiActiveCount,
-                  tasksOverdueCount
+                  tasksOverdueCount,
+                  messagesUnreadCount,
+                  accounts.length
                 );
 
                 return (
@@ -661,78 +736,38 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {!item.hideAccounts && (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
-                      {item.key === "social-media" && (
-                        <button
-                          type="button"
-                          onClick={handleOpenOverview}
-                          className={`w-full text-left rounded-md border px-2 py-1.5 mb-1 transition-colors ${
-                            showOverview
-                              ? "border-primary/40 bg-sidebar-accent font-medium"
-                              : "border-sidebar-border bg-sidebar-accent/30 hover:bg-sidebar-accent/50"
-                          }`}
-                        >
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Total overview</p>
-                          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                            <span>Accounts: {numberFormatter.format(socialOverview.connected)}</span>
-                            <span>
-                              Followers:{" "}
-                              {socialOverview.hasFollowers ? numberFormatter.format(socialOverview.followers) : "–"}
-                            </span>
-                            <span>Posts: {socialOverview.hasPosts ? numberFormatter.format(socialOverview.posts) : "–"}</span>
-                            <span>
-                              Avg ER:{" "}
-                              {socialOverview.engagementCount > 0
-                                ? `${(socialOverview.engagementSum / socialOverview.engagementCount).toFixed(1)}%`
-                                : "–"}
-                            </span>
-                          </div>
-                        </button>
-                      )}
-                        <p className="text-[11px] font-medium text-muted-foreground/80 py-0.5">
-                        Connected accounts
-                      </p>
                       {categoryAccounts.map((account) => {
-                        const Icon = platformIcons[account.platform];
                         const isSelected = selectedAccountId === account.id;
+                        const isClickable = !!section;
                         return (
                           <div
                             key={account.id}
-                            className="group/sub flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-sidebar-accent/50"
+                            className="group/sub flex items-center gap-1 rounded-md pr-1 hover:bg-sidebar-accent/50"
                           >
+                            {isClickable ? (
                             <button
                               type="button"
                               onClick={() => section && handleAccountClick(section, account.id, isSelected)}
-                              className={`flex flex-1 flex-col items-start gap-0 min-w-0 text-left py-1 px-1.5 rounded text-xs ${
+                              className={`flex flex-1 items-center min-w-0 text-left py-0.5 px-1.5 rounded ${
                                 isSelected ? "bg-sidebar-accent font-medium" : ""
                               }`}
                             >
-                              <span className="flex items-center gap-2 w-full min-w-0">
-                                <Avatar className="h-5 w-5 shrink-0">
-                                  <AvatarFallback className="text-[9px] bg-secondary">
-                                    <Icon className="h-2.5 w-2.5" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="truncate">{account.username}</span>
-                              </span>
-                              {account.stats && (account.stats.followersCount != null || account.stats.mediaCount != null) && (
-                                <span className="text-[11px] text-muted-foreground pl-7">
-                                  {account.stats.followersCount != null && (
-                                    <>
-                                      {account.stats.followersCount.toLocaleString("en-US")}
-                                      {" followers"}
-                                    </>
-                                  )}
-                                  {account.stats.followersCount != null && account.stats.mediaCount != null && " · "}
-                                  {account.stats.mediaCount != null && (
-                                    <>
-                                      {account.platform === "whatsapp"
-                                        ? `${account.stats.mediaCount} templates`
-                                        : `${account.stats.mediaCount} posts`}
-                                    </>
-                                  )}
+                              <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground/80 leading-tight">{account.username}</span>
+                              {account.stats?.followersCount != null && (
+                                <span
+                                  className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 shrink-0 tabular-nums"
+                                  aria-label={`${account.stats.followersCount.toLocaleString("en-US")} followers`}
+                                >
+                                  <Users className="h-2.5 w-2.5" aria-hidden />
+                                  {account.stats.followersCount.toLocaleString("en-US")}
                                 </span>
                               )}
                             </button>
+                            ) : (
+                            <div className="flex flex-1 min-w-0 py-0.5 px-1.5">
+                              <span className="text-[10px] text-muted-foreground/70 break-all leading-tight">{account.username}</span>
+                            </div>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -758,164 +793,6 @@ export function AppSidebar() {
                           </div>
                         );
                       })}
-                      {hasConnect && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Plus className="h-3 w-3 shrink-0" />
-                              Connect more
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            {item.platforms.map((platform) => {
-                              const Icon = platformIcons[platform];
-                              const label =
-                                platform === "instagram"
-                                  ? "Instagram"
-                                  : platform === "tiktok"
-                                    ? "TikTok"
-                                    : platform === "youtube"
-                                      ? "YouTube"
-                                      : platform === "x"
-                                        ? "X (Twitter)"
-                                        : platform === "facebook"
-                                          ? "Facebook (Zernio)"
-                                          : platform === "google_business"
-                                            ? "Google Business"
-                                            : platform === "whatsapp"
-                                              ? "WhatsApp (Zernio)"
-                                              : platform === "shopify"
-                                                ? "Shopify"
-                                                : platform === "notion"
-                                                  ? "Notion"
-                                                : platform === "gmail"
-                                                  ? "Gmail"
-                                                : platform === "outlook"
-                                                  ? "Outlook"
-                                                : platform === "google_calendar"
-                                                  ? "Google Calendar"
-                                                : platform === "outlook_calendar"
-                                                  ? "Outlook Calendar"
-                                                : platform === "google_drive"
-                                                  ? "Google Drive"
-                                                : platform === "google_reviews"
-                                                  ? "Google Reviews"
-                                                  : "Tripadvisor";
-                              return (
-                                platform === "tiktok" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "auto" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      TikTok (Auto)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      TikTok via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tiktok", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      TikTok via Official API
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : platform === "google_calendar" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "auto" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Google Calendar (Auto)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      Google Calendar via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_calendar", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Google Calendar via Official API
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : platform === "outlook_calendar" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "auto" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Outlook Calendar (Auto)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      Outlook Calendar via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("outlook_calendar", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Outlook Calendar via Official API
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : platform === "google_business" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_business", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      Google Business via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_business", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Google Business via Official API
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : platform === "google_reviews" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "auto" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Google Reviews (Auto)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      Google Reviews via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("google_reviews", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Google Reviews via Official API
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : platform === "tripadvisor" ? (
-                                  <div key={platform}>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "auto" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Tripadvisor (Auto)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "zernio" })}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      Tripadvisor via Zernio
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConnectPlatform("tripadvisor", { provider: "official" })}>
-                                      <Icon className="h-4 w-4 mr-2" />
-                                      Tripadvisor via Official API (Manual)
-                                    </DropdownMenuItem>
-                                  </div>
-                                ) : (
-                                  <DropdownMenuItem
-                                    key={platform}
-                                    onClick={() => handleConnectPlatform(platform)}
-                                  >
-                                    <Icon className="h-4 w-4 mr-2" />
-                                    {label}
-                                  </DropdownMenuItem>
-                                )
-                              );
-                            })}
-                            {item.key === "social-media" && (
-                              <DropdownMenuItem onClick={() => openZernioPicker(null)}>
-                                <Layers className="h-4 w-4 mr-2" />
-                                All Zernio channels…
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                      {!hasConnect && (
-                        <p className="text-[11px] text-muted-foreground/70 py-0.5 italic">
-                          Coming soon
-                        </p>
-                      )}
                     </div>
                     )}
                   </SidebarMenuItem>

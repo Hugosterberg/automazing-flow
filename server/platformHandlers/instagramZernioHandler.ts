@@ -22,6 +22,60 @@ interface InstagramZernioHandlerArgs {
   accountId: string;
 }
 
+const VIEW_METRIC_KEYS = new Set([
+  "views",
+  "viewcount",
+  "view_count",
+  "playcount",
+  "play_count",
+  "plays",
+  "videoviews",
+  "video_views",
+  "impressions",
+  "reach",
+]);
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function pickInstagramViewCount(raw: unknown, depth = 0): number | undefined {
+  if (!raw || depth > 4) return undefined;
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const metric = item as Record<string, unknown>;
+      const metricName = String(metric?.name ?? metric?.metric ?? metric?.title ?? "").toLowerCase();
+      if (VIEW_METRIC_KEYS.has(metricName.replace(/[^a-z0-9_]/g, ""))) {
+        const value =
+          toFiniteNumber(metric.value) ??
+          toFiniteNumber(metric.count) ??
+          (Array.isArray(metric.values) ? toFiniteNumber((metric.values[0] as Record<string, unknown>)?.value) : undefined);
+        if (value != null) return value;
+      }
+      const nested = pickInstagramViewCount(item, depth + 1);
+      if (nested != null) return nested;
+    }
+    return undefined;
+  }
+
+  if (typeof raw !== "object") return undefined;
+  const obj = raw as Record<string, unknown>;
+  for (const [key, value] of Object.entries(obj)) {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (VIEW_METRIC_KEYS.has(normalized)) {
+      const n = toFiniteNumber(value);
+      if (n != null) return n;
+    }
+  }
+  for (const key of ["insights", "metrics", "analytics", "statistics", "stats", "data"]) {
+    const nested = pickInstagramViewCount(obj[key], depth + 1);
+    if (nested != null) return nested;
+  }
+  return undefined;
+}
+
 export async function handleInstagramZernioAccountData({
   zernio,
   zernioInstagramAccountId,
@@ -38,8 +92,16 @@ export async function handleInstagramZernioAccountData({
       body: { error: "Could not fetch data from Zernio" },
     };
   }
-  const list = accountsResult.accounts;
+  const list = Array.isArray(accountsResult.accounts) ? accountsResult.accounts : [];
   console.log(`[Zernio] GET /accounts: ${list.length} accounts found`);
+
+  if (list.length === 0) {
+    return {
+      kind: "error",
+      status: 502,
+      body: { error: "No Instagram accounts found in Zernio" },
+    };
+  }
 
   // Match account: profileId._id matches lookupId (Zernio workspace profile)
   // Fallback: search by account _id, then first instagram account, then single account
@@ -83,7 +145,11 @@ export async function handleInstagramZernioAccountData({
     }
   }
 
-  const engagement = calculateEngagementFromPosts(posts, followers);
+  const normalizedPosts = posts.map((p: any) => ({
+    ...p,
+    viewCount: pickInstagramViewCount(p),
+  }));
+  const engagement = calculateEngagementFromPosts(normalizedPosts, followers);
 
   console.log(
     `[Zernio] Instagram stats: followers=${followers}, media=${mediaCount}, avgLikes=${engagement.avgLikes}, avgComments=${engagement.avgComments}, engagement=${engagement.engagementRate}%`
@@ -97,15 +163,17 @@ export async function handleInstagramZernioAccountData({
         accountType: accountType ?? undefined,
         totalLikes: engagement.totalLikes,
         totalComments: engagement.totalComments,
+        totalViews: engagement.totalViews,
         avgLikes: engagement.avgLikes,
         avgComments: engagement.avgComments,
+        avgViews: engagement.avgViews,
         engagementRate: engagement.engagementRate,
         updatedAt: new Date().toISOString(),
       }
     : undefined;
 
   // Return the 12 most recent posts with image, likes and comments
-  const recentPosts = posts.slice(0, 12).map((p: any) => ({
+  const recentPosts = normalizedPosts.slice(0, 12).map((p: any) => ({
     id: p.id,
     caption: p.message || "",
     picture: p.picture || "",
@@ -113,6 +181,7 @@ export async function handleInstagramZernioAccountData({
     mediaType: p.mediaType || "image",
     likeCount: p.likeCount || 0,
     commentCount: p.commentCount || 0,
+    viewCount: p.viewCount,
     createdTime: p.createdTime,
   }));
 

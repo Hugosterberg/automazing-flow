@@ -60,6 +60,8 @@ const PLATFORM_LABEL: Record<string, string> = {
   x: "X",
   facebook: "Facebook",
   google_business: "Google Business",
+  google_ads: "Google Ads",
+  meta_business: "Meta Business",
   google_reviews: "Google Reviews",
   tripadvisor: "Tripadvisor",
   whatsapp: "WhatsApp",

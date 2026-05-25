@@ -26,6 +26,8 @@ const ALLOWED_INTERNAL_ROUTES = new Set<string>([
   "/",
   "/social-media",
   "/ecommerce",
+  "/sales",
+  "/marketing",
   "/sales-marketing",
   "/customers",
   "/calendar",

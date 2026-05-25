@@ -15,6 +15,8 @@ type Prefetcher = () => Promise<unknown>;
 const prefetchers: Record<string, Prefetcher> = {
   "/social-media": () => import("@/pages/SocialMedia"),
   "/ecommerce": () => import("@/pages/Ecommerce"),
+  "/sales": () => import("@/pages/SalesMarketing"),
+  "/marketing": () => import("@/pages/Marketing"),
   "/sales-marketing": () => import("@/pages/SalesMarketing"),
   "/customers": () => import("@/pages/Customers"),
   "/calendar": () => import("@/pages/CalendarPage"),

@@ -11,7 +11,7 @@ import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
  *
  * Routes:
  *   POST /api/connections/reconcile        Re-sync health from Zernio.
- *   POST /api/connections/:id/disconnect   Soft-disconnect a connection row.
+ *   POST /api/connections/:id/disconnect   Delete a connection row.
  */
 
 type SupabaseLike = {
@@ -44,6 +44,7 @@ interface RegisterConnectionsRoutesDeps {
   tokenStore: {
     get: (id: string) => Promise<Record<string, unknown> | null>;
     set: (id: string, value: Record<string, unknown>) => Promise<void>;
+    delete: (id: string) => Promise<boolean>;
   };
   getSessionUserId: (req: unknown) => string | null;
 }
@@ -342,7 +343,7 @@ export function registerConnectionsRoutes(
 
       const sb = supabaseAdmin as unknown as {
         from: (t: string) => {
-          update: (p: Record<string, unknown>) => {
+          delete: () => {
             eq: (col: string, val: unknown) => {
               eq: (col: string, val: unknown) => Promise<{
                 error: { message?: string } | null;
@@ -352,27 +353,20 @@ export function registerConnectionsRoutes(
         };
       };
 
-      const now = new Date().toISOString();
       const { error } = await sb
         .from("connected_accounts")
-        .update({ disconnected_at: now, health: "disconnected" })
+        .delete()
         .eq("id", connectionId)
         .eq("business_profile_id", businessProfileId);
 
       if (error) {
-        console.warn("[connections/disconnect] update failed:", error.message);
+        console.warn("[connections/disconnect] delete failed:", error.message);
         return res.status(500).json({ error: "disconnect_failed" });
       }
 
       // Also drop any server-side OAuth token entry so provider API calls stop.
       try {
-        const stored = await tokenStore.get(connectionId);
-        if (stored) {
-          await tokenStore.set(connectionId, {
-            ...stored,
-            disconnectedAt: now,
-          });
-        }
+        await tokenStore.delete(connectionId);
       } catch {
         // Token store is a best-effort cleanup.
       }
