@@ -16,6 +16,7 @@ import {
   ListChecks,
   Activity,
   Megaphone,
+  Globe2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -193,6 +194,15 @@ const navItems: Array<{
     group: "work",
   },
   {
+    key: "digital-brand",
+    title: "Digital Brand",
+    url: "/digital-brand",
+    icon: Globe2,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+    group: "work",
+  },
+  {
     key: "customers",
     title: "Customers",
     url: "/customers",
@@ -214,7 +224,7 @@ const navItems: Array<{
     title: "Messages",
     url: "/messages",
     icon: MessageSquare,
-    platforms: ["gmail", "outlook"] as AccountPlatform[],
+    platforms: ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as AccountPlatform[],
     group: "work",
   },
   {
@@ -287,6 +297,7 @@ function sectionForNavItemKey(key: string): AccountSection | null {
   if (key === "ecommerce") return "ecommerce";
   if (key === "messages") return "messages";
   if (key === "calendar") return "calendar";
+  if (key === "marketing") return "marketing";
   if (key === "reviews") return "reviews";
   if (key === "content") return "content";
   return null;
@@ -530,10 +541,10 @@ export function AppSidebar() {
     }
     // google_business is already handled above (lines 319-328). tripadvisor
     // with provider=official also returns early (line 330). Anything reaching
-    // this point that still accepts a provider query param is google_reviews
-    // or tripadvisor with provider=auto|zernio.
+    // this point that still accepts a provider query param is google_reviews,
+    // google_ads, or tripadvisor with provider=auto|zernio.
     if (
-      (platform === "google_reviews" || platform === "tripadvisor") &&
+      (platform === "google_reviews" || platform === "google_ads" || platform === "tripadvisor") &&
       options?.provider &&
       options.provider !== "auto"
     ) {

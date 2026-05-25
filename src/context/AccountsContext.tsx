@@ -20,7 +20,14 @@ const PROFILES_STORAGE_KEY = "automazing-profiles";
 const ACTIVE_PROFILE_KEY = "automazing-active-profile";
 const SELECTED_ACCOUNTS_STORAGE_KEY = "automazing-selected-accounts";
 
-export type AccountSection = "social-media" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
+export type AccountSection =
+  | "social-media"
+  | "ecommerce"
+  | "messages"
+  | "calendar"
+  | "marketing"
+  | "reviews"
+  | "content";
 
 type SelectedAccountsState = Record<string, Partial<Record<AccountSection, string | null>>>;
 

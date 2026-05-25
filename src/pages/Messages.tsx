@@ -33,6 +33,8 @@ interface UnifiedMessage {
   externalUrl?: string;
 }
 
+const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
+
 type MessageChannelTab = "mail" | "instagram" | "messenger" | "whatsapp";
 
 const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string }> = [
@@ -198,7 +200,7 @@ export default function MessagesPage() {
   useEffect(() => {
     function handleOauthSuccess(event: Event) {
       const detail = (event as CustomEvent<{ platform?: string }>).detail;
-      if (detail?.platform === "gmail" || detail?.platform === "outlook") {
+      if (detail?.platform && (MESSAGE_ACCOUNT_PLATFORMS as readonly string[]).includes(detail.platform)) {
         void loadUnified();
       }
     }
@@ -213,7 +215,7 @@ export default function MessagesPage() {
     async function syncMailAccountsFromBackend() {
       try {
         await ensureBackendSession();
-        const platforms = ["gmail", "outlook"] as const;
+        const platforms = MESSAGE_ACCOUNT_PLATFORMS;
         for (const platform of platforms) {
           let res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
           if (res.status === 401) {
@@ -228,8 +230,13 @@ export default function MessagesPage() {
             addAccountFromOAuth(
               String(account.account_id || ""),
               platform,
-              String(account.username || (platform === "gmail" ? "Gmail" : "Outlook")),
-              account.profile_id ? String(account.profile_id) : undefined
+              String(account.username || (platform === "gmail" ? "Gmail" : platform === "outlook" ? "Outlook" : platform)),
+              account.profile_id ? String(account.profile_id) : undefined,
+              {
+                displayName: account.displayName ? String(account.displayName) : undefined,
+                isZernio: Boolean(account.isZernio),
+                zernioAccountId: account.zernioAccountId ? String(account.zernioAccountId) : undefined,
+              }
             );
           }
         }
@@ -592,4 +599,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-

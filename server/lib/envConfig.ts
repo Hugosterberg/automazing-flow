@@ -119,6 +119,28 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     authPath: "/api/auth/google_drive",
     message: "Required to connect Google Drive and browse Drive media in Content.",
   },
+  google_ads: {
+    label: "Google Ads OAuth/API",
+    required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+    authPath: "/api/auth/google_ads?provider=official",
+    message:
+      "Required to connect Google Ads. Add GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and optionally GOOGLE_ADS_LOGIN_CUSTOMER_ID before using live campaign API operations.",
+  },
+  meta_business: {
+    label: "Meta Business OAuth/API",
+    requiredAny: [
+      ["META_APP_ID", "FACEBOOK_CLIENT_ID", "FACEBOOK_APP_ID"],
+      ["META_APP_SECRET", "FACEBOOK_CLIENT_SECRET", "FACEBOOK_APP_SECRET"],
+    ],
+    authPath: "/api/auth/meta_business?provider=official",
+    message:
+      "Required to connect Meta Business through the official Meta Graph API. Add a Meta app ID and secret, then allow the /api/auth/meta_business/callback redirect URI in the Meta app.",
+  },
+  pagespeed: {
+    label: "PageSpeed Insights",
+    requiredAny: [["PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]],
+    message: "Required for Digital Brand audits to fetch Google PageSpeed Insights and Lighthouse metrics reliably.",
+  },
   notion: {
     label: "Notion OAuth",
     required: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_APP_URL"],

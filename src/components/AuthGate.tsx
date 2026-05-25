@@ -211,9 +211,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [authTab, setAuthTab] = useState<"email" | "google">("email");
 
   useEffect(() => {
+    if (authMode === "local") return;
     if (user) return;
     storePendingOAuthReturn(window.location.pathname, window.location.search);
-  }, [user]);
+  }, [authMode, user]);
 
   if (authMode === "local") {
     return <>{children}</>;

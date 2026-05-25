@@ -149,6 +149,11 @@ export function createAuthHelpers(deps: AuthHelperDeps): AuthHelpers {
       "shopify",
       "tripadvisor",
       "google_business",
+      "instagram",
+      "facebook",
+      "whatsapp",
+      "google_ads",
+      "meta_business",
     ];
 
     const localToCloudGoogleMigration =

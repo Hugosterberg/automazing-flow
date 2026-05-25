@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { m } from "framer-motion";
-import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink } from "lucide-react";
+import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAccounts } from "@/context/AccountsContext";
@@ -36,8 +36,63 @@ type ReviewsData = {
   profile?: { name?: string; location?: string };
   stats?: { averageRating?: number; reviewCount?: number };
   reviews?: ReviewItem[];
+  googleBusiness?: {
+    source: "zernio" | "official";
+    title?: string;
+    phone?: string;
+    website?: string;
+    addressLines?: string[];
+    primaryCategory?: string;
+    averageRating?: number;
+    reviewCount?: number;
+  };
+  tripadvisorInfo?: {
+    source: "zernio" | "official";
+    locationId?: string;
+    name?: string;
+    location?: string;
+    address?: string;
+    phone?: string;
+    website?: string;
+    ranking?: string;
+    rating?: number;
+    reviewCount?: number;
+    url?: string;
+  };
+  source?: "zernio" | "official";
   note?: string;
 } | null;
+
+type PlaceInfo = {
+  title: string;
+  subtitle?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  externalUrl?: string;
+  source: "zernio" | "official";
+};
+
+function normalizeExternalUrl(url?: string) {
+  if (!url) return "";
+  return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+}
+
+function displayString(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return String(value);
+  return "";
+}
+
+function displayNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
 
 export default function ReviewsPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
@@ -63,14 +118,57 @@ export default function ReviewsPage() {
       const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(payload?.error || "Could not fetch reviews");
+        throw new Error(displayString(payload?.error) || displayString(payload?.message) || "Could not fetch reviews");
       }
       return res.json();
     },
   });
 
   const stats = data?.stats;
-  const reviews = useMemo(() => data?.reviews || [], [data]);
+  const averageRating = displayNumber(stats?.averageRating);
+  const reviewCount = displayNumber(stats?.reviewCount);
+  const reviews = useMemo(
+    () =>
+      (Array.isArray(data?.reviews) ? data.reviews : []).map((review, index) => ({
+        id: displayString(review.id) || String(index),
+        author: displayString(review.author) || "Anonymous",
+        rating: displayNumber(review.rating),
+        text: displayString(review.text),
+        createdAt: displayString(review.createdAt),
+        url: displayString(review.url),
+        source: displayString(review.source),
+      })),
+    [data]
+  );
+  const placeInfo = useMemo<PlaceInfo | null>(() => {
+    if (data?.googleBusiness) {
+      const gbp = data.googleBusiness;
+      return {
+        title: displayString(gbp.title) || displayString(data.profile?.name) || "Google Business Profile",
+        subtitle: displayString(gbp.primaryCategory),
+        address:
+          (Array.isArray(gbp.addressLines) ? gbp.addressLines.map(displayString).filter(Boolean).join(", ") : "") ||
+          displayString(data.profile?.location),
+        phone: displayString(gbp.phone),
+        website: displayString(gbp.website),
+        externalUrl: normalizeExternalUrl(displayString(gbp.website)),
+        source: gbp.source,
+      };
+    }
+    if (data?.tripadvisorInfo) {
+      const ta = data.tripadvisorInfo;
+      return {
+        title: displayString(ta.name) || displayString(data.profile?.name) || "Tripadvisor location",
+        subtitle: displayString(ta.ranking),
+        address: displayString(ta.address) || displayString(ta.location) || displayString(data.profile?.location),
+        phone: displayString(ta.phone),
+        website: displayString(ta.website),
+        externalUrl: normalizeExternalUrl(displayString(ta.url) || displayString(ta.website)),
+        source: ta.source,
+      };
+    }
+    return null;
+  }, [data]);
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -78,8 +176,8 @@ export default function ReviewsPage() {
         icon={Star}
         title="Reviews"
         description={
-          data?.profile?.name
-            ? `${data.profile.name}${data.profile.location ? ` · ${data.profile.location}` : ""}`
+          displayString(data?.profile?.name)
+            ? `${displayString(data?.profile?.name)}${displayString(data?.profile?.location) ? ` · ${displayString(data?.profile?.location)}` : ""}`
             : "Connect Google Reviews or Tripadvisor to get started"
         }
         actions={
@@ -119,6 +217,8 @@ export default function ReviewsPage() {
                 google_reviews_accounts_api_failed: "Google Business Accounts API failed. Check that Business Profile APIs are enabled in Google Cloud and OAuth app is approved.",
                 google_reviews_locations_api_failed: "Google Business Locations API failed. Check API enablement and permissions for Business Profile.",
                 tripadvisor_not_configured: "Tripadvisor official API is not configured. Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID to .env, or connect via Zernio.",
+                zernio_connect_failed: "Zernio could not start the Tripadvisor/Reviews connect flow. Use Official API, or check that Zernio supports this platform for your workspace.",
+                zernio_init_failed: "Zernio could not initialize the Reviews connect flow. Use Official API, or check ZERNIO_API_KEY/ZERNIO_PROFILE_ID.",
               },
               "Connect failed"
             )}
@@ -193,7 +293,7 @@ export default function ReviewsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <Star className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="text-2xl font-bold">{typeof stats?.averageRating === "number" ? stats.averageRating.toFixed(1) : "—"}</p>
+                <p className="text-2xl font-bold">{averageRating != null ? averageRating.toFixed(1) : "—"}</p>
                 <p className="text-sm text-muted-foreground">Average rating</p>
               </CardContent>
             </Card>
@@ -202,11 +302,57 @@ export default function ReviewsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <MessageSquare className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="text-2xl font-bold">{stats?.reviewCount ?? reviews.length}</p>
+                <p className="text-2xl font-bold">{reviewCount ?? reviews.length}</p>
                 <p className="text-sm text-muted-foreground">Reviews</p>
               </CardContent>
             </Card>
           </div>
+        </m.div>
+      )}
+
+      {!loading && activeAccount && placeInfo && (
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                Business information
+              </CardTitle>
+              <CardDescription>
+                Loaded from {placeInfo.source === "zernio" ? "Zernio" : "the official provider API"}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium">{placeInfo.title}</p>
+                {placeInfo.subtitle ? <p className="text-muted-foreground">{placeInfo.subtitle}</p> : null}
+              </div>
+              {placeInfo.address ? (
+                <p className="flex gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{placeInfo.address}</span>
+                </p>
+              ) : null}
+              {placeInfo.phone ? (
+                <p className="flex gap-2 text-muted-foreground">
+                  <Phone className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{placeInfo.phone}</span>
+                </p>
+              ) : null}
+              {placeInfo.externalUrl ? (
+                <a
+                  href={placeInfo.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Globe2 className="h-4 w-4" />
+                  <span>{(placeInfo.website || placeInfo.externalUrl).replace(/^https?:\/\//, "")}</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              ) : null}
+            </CardContent>
+          </Card>
         </m.div>
       )}
 

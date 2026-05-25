@@ -19,7 +19,7 @@ import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { aggregateStatus } from "./connectionStatus";
 import { buildConnectUrl } from "./zernioClient";
-import { getConnectConfig } from "./connectAuthPath";
+import { getConnectConfig, getConnectionPathOptions } from "./connectAuthPath";
 
 interface Props {
   entry: ConnectionCatalogEntry;
@@ -64,6 +64,7 @@ export function ConnectionCard({
   const active = rows;
 
   const connectConfig = getConnectConfig(entry.platform);
+  const pathOptions = getConnectionPathOptions(entry.platform);
   const status = useMemo(() => aggregateStatus(rows), [rows]);
   const reconnectNeeded = status === "reconnect_required";
 
@@ -90,11 +91,15 @@ export function ConnectionCard({
 
   const primaryLabel = active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add / reconnect";
   const PrimaryIcon = active.length === 0 ? Link2 : RefreshCw;
+  const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
+  const extraPathLabels = pathOptions
+    .filter((option) => option.label !== defaultPathOption?.label)
+    .map((option) => option.label);
 
   return (
     <Card className="border-border/80">
       <CardHeader className="pb-2">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-3">
           <div className="space-y-0.5 min-w-0">
             <CardTitle className="text-base flex items-center gap-2">
               {entry.label}
@@ -103,6 +108,19 @@ export function ConnectionCard({
           </div>
           <ConnectionStatusBadge status={status} />
         </div>
+        {defaultPathOption ? (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] leading-none">
+            <span className="text-muted-foreground/70">Paths</span>
+            <span className="rounded-full border border-border bg-muted/30 px-2 py-1 text-muted-foreground">
+              Default: {defaultPathOption.label}
+            </span>
+            {extraPathLabels.length > 0 ? (
+              <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-muted-foreground">
+                Extra: {extraPathLabels.join(" / ")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         {rows.length > 0 ? (
@@ -204,7 +222,9 @@ export function ConnectionCard({
 
         <div className="flex flex-wrap gap-2 pt-1">
           {connectConfig ? (
-            entry.platform === "google_business" ? (
+            entry.platform === "google_ads" ||
+            entry.platform === "google_business" ||
+            entry.platform === "tripadvisor" ? (
               <>
                 <Button
                   type="button"
@@ -214,7 +234,7 @@ export function ConnectionCard({
                   onClick={() => startConnect("official")}
                 >
                   <PrimaryIcon className="h-3.5 w-3.5" />
-                  Official API
+                  {entry.platform === "meta_business" ? "Meta official" : "Official API"}
                 </Button>
                 <Button
                   type="button"

@@ -25,6 +25,14 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och markera alla efterfrågade rättigheter.",
   account_already_connected:
     "Det här kontot är redan kopplat till en annan profil.",
+  meta_business_not_configured:
+    "Meta Business official saknar app-ID eller app-secret. Lägg till META_APP_ID och META_APP_SECRET i API-inställningar och kontrollera callback-URL:en i Meta-appen.",
+  zernio_init_failed:
+    "Zernio kunde inte starta kopplingen. Testa Official API om det finns som alternativ, eller kontrollera ZERNIO_API_KEY och ZERNIO_PROFILE_ID.",
+  zernio_fetch_failed:
+    "Servern kunde inte nå Zernios connect-endpoint. Det kan bero på Zernio-driftstörning, fel ZERNIO_API_BASE eller att plattformen inte stöds i ditt Zernio-konto. Testa Official API för Meta Business om Zernio fortsätter misslyckas.",
+  zernio_platform_not_supported:
+    "Zernio stödjer inte den här plattformen i ditt workspace. Använd official API-kopplingen istället.",
 };
 
 export function parseOAuthErrorDetails(searchParams: URLSearchParams): OAuthErrorDetails | null {

@@ -38,6 +38,7 @@ import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoute
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
+import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -373,6 +374,10 @@ registerAiRoutes(app, { getSessionUserId, tokenStore });
 registerAiRecommendationsRoutes(app, {
   requireMembership,
   supabaseAdmin: supabaseServiceClient,
+});
+
+registerDigitalBrandRoutes(app, {
+  getSessionUserId,
 });
 
 registerMiscRoutes(app, {
