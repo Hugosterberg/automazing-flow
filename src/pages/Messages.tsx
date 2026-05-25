@@ -196,8 +196,6 @@ export default function MessagesPage() {
   }, [loadUnified]);
 
   useEffect(() => {
-<<<<<<< HEAD
-=======
     function handleOauthSuccess(event: Event) {
       const detail = (event as CustomEvent<{ platform?: string }>).detail;
       if (detail?.platform === "gmail" || detail?.platform === "outlook") {
@@ -210,7 +208,6 @@ export default function MessagesPage() {
   }, [loadUnified]);
 
   useEffect(() => {
->>>>>>> 50f7ec0b7673e680fa76d7e73763a40dbd5dcbd4
     let ignore = false;
 
     async function syncMailAccountsFromBackend() {
