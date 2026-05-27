@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return allowLocal ? "local" : "cloud";
   });
   const enabled = supabaseEnabled && authMode === "cloud";
+  const accessToken = session?.access_token ?? null;
 
   const setAuthMode = useCallback((mode: AuthMode) => {
     if (mode === "local" && !isLocalDevHost()) return;
@@ -119,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const token = session?.access_token ?? null;
+    const token = accessToken;
     const prev = prevSyncedAccessTokenRef.current;
 
     if (!token) {
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch(() => {
       // Ignore sync failures; UI session remains source-of-truth
     });
-  }, [authMode, enabled, loading, session?.access_token]);
+  }, [accessToken, authMode, enabled, loading]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -214,4 +215,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-

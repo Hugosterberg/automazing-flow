@@ -27,6 +27,12 @@ function parseNotionErrorBody(data: unknown): string {
   return "";
 }
 
+async function formatNotionFailure(label: string, response: Response): Promise<string> {
+  const raw = await response.json().catch(() => ({}));
+  const parsed = parseNotionErrorBody(raw);
+  return parsed || `${label} failed (${response.status})`;
+}
+
 function getPlainTitleFromProperty(value: unknown) {
   if (!value || typeof value !== "object") return "";
   const maybeTitle = (value as { title?: Array<{ plain_text?: string }> }).title;
@@ -101,20 +107,22 @@ export async function fetchNotionAccountData(accessToken: string) {
   }
 
   if (!pagesRes.ok || !dbRes.ok) {
-    const bad = !pagesRes.ok ? pagesRes : dbRes;
-    const raw = await bad.json().catch(() => ({}));
-    const parsed = parseNotionErrorBody(raw);
-    if (bad.status === 401) {
+    const failures = await Promise.all([
+      ...(!pagesRes.ok ? [formatNotionFailure("Page search", pagesRes)] : []),
+      ...(!dbRes.ok ? [formatNotionFailure("Database search", dbRes)] : []),
+    ]);
+    const status = !pagesRes.ok ? pagesRes.status : dbRes.status;
+    if (status === 401) {
       return {
         error: "Notion search failed: token invalid or expired. Reconnect Notion.",
-        details: parsed,
+        details: failures.join(" | "),
         status: 401,
       };
     }
     return {
-      error: parsed || `Notion search failed (${bad.status})`,
-      details: parsed,
-      status: bad.status >= 400 && bad.status < 600 ? bad.status : 502,
+      error: failures.join(" | ") || `Notion search failed (${status})`,
+      details: failures.join(" | "),
+      status: status >= 400 && status < 600 ? status : 502,
     };
   }
 

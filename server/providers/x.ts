@@ -50,7 +50,7 @@ export async function fetchXAccountData({
     if (!r.ok) {
       r = await fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
     }
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
     if (d.access_token) {
       await tokenStore.set(accountId, { ...stored, accessToken: d.access_token, refreshToken: d.refresh_token || rt });
       return d.access_token as string;
@@ -69,7 +69,10 @@ export async function fetchXAccountData({
     }
     userRes = await fetchWithXTokenFallback(token);
   }
-  const userData = await userRes.json();
+  if (!userRes.ok) {
+    return { error: `Could not fetch X profile (${userRes.status})`, status: 502 };
+  }
+  const userData = await userRes.json().catch(() => ({}));
   const user = userData.data || {};
   const metrics = user.public_metrics || {};
 
@@ -86,7 +89,7 @@ export async function fetchXAccountData({
       tweetsRes = await fetch(tweetsEndpoints[1], { headers: { Authorization: `Bearer ${token}` } });
     }
     if (tweetsRes.ok) {
-      const tweetsData = await tweetsRes.json();
+      const tweetsData = await tweetsRes.json().catch(() => ({}));
       tweets = tweetsData.data || [];
     }
   }

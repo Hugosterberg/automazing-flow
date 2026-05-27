@@ -130,6 +130,7 @@ function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: 
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
+  const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, activeProfileId, addAccountFromOAuth, setSelectedAccountId } = useAccounts();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
@@ -157,14 +158,14 @@ export default function MessagesPage() {
       return;
     }
 
-    if (authMode === "cloud" && session?.access_token) {
+    if (authMode === "cloud" && accessToken) {
       await fetch(apiUrl("/api/auth/session"), {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         credentials: "include",
       }).catch(() => {});
     }
-  }, [authMode, session?.access_token]);
+  }, [authMode, accessToken]);
 
   const loadUnified = useCallback(async () => {
     setLoading(true);

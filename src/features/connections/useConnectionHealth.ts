@@ -18,6 +18,11 @@ export function useAutoReconcile({
   onDone?: (result: { updated?: number; error?: string }) => void;
 }) {
   const lastRunRef = useRef<Record<string, number>>({});
+  const onDoneRef = useRef(onDone);
+
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     if (!businessProfileId) return;
@@ -31,10 +36,10 @@ export function useAutoReconcile({
     (async () => {
       try {
         const res = await reconcileConnections(businessProfileId);
-        if (!cancelled) onDone?.({ updated: res.updated });
+        if (!cancelled) onDoneRef.current?.({ updated: res.updated });
       } catch (e) {
         if (!cancelled) {
-          onDone?.({
+          onDoneRef.current?.({
             error: e instanceof Error ? e.message : "Reconcile failed",
           });
         }
@@ -44,5 +49,5 @@ export function useAutoReconcile({
     return () => {
       cancelled = true;
     };
-  }, [businessProfileId, throttleMs, onDone]);
+  }, [businessProfileId, throttleMs]);
 }

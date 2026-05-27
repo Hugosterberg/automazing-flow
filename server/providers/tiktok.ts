@@ -24,7 +24,7 @@ export async function fetchTikTokAccountData(accessToken: string) {
     "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,cover_image_url,share_url,like_count,comment_count",
     { method: "POST", headers, body: JSON.stringify({ max_count: 10 }) }
   ).catch(() => null);
-  const videosData = videosRes && videosRes.ok ? await videosRes.json().catch(() => ({})) : {};
+  const videosData = videosRes?.ok ? await videosRes.json().catch(() => ({})) : {};
   const videos = Array.isArray((videosData as { data?: { videos?: unknown[] } }).data?.videos)
     ? ((videosData as { data?: { videos?: TikTokVideo[] } }).data?.videos ?? [])
     : [];

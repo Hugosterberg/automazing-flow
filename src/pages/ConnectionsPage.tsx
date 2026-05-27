@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { connectionsToCsv, downloadCsv } from "@/lib/exportCsv";
@@ -120,9 +120,8 @@ export default function ConnectionsPage() {
     setWebsiteInput(legacy.activeProfile?.website ?? "");
   }, [legacy.activeProfile?.website, businessProfileId]);
 
-  useAutoReconcile({
-    businessProfileId,
-    onDone: (result) => {
+  const handleReconcileDone = useCallback(
+    (result: { updated?: number; error?: string }) => {
       if (result.error) {
         setReconcileState({ loading: false, error: result.error });
       } else {
@@ -130,6 +129,12 @@ export default function ConnectionsPage() {
         void refetch();
       }
     },
+    [refetch]
+  );
+
+  useAutoReconcile({
+    businessProfileId,
+    onDone: handleReconcileDone,
   });
 
   async function runReconcile() {
@@ -196,7 +201,7 @@ export default function ConnectionsPage() {
 
   async function saveWebsite() {
     if (!legacy.activeProfile) return;
-    let normalized = "";
+    let normalized: string;
     try {
       normalized = normalizeWebsiteUrl(websiteInput);
     } catch {

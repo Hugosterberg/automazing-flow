@@ -157,6 +157,7 @@ function MediaSection({
 export default function ContentPage() {
   const navigate = useNavigate();
   const { authMode, session } = useAuth();
+  const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, addAccountFromOAuth, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("content");
@@ -184,14 +185,14 @@ export default function ContentPage() {
       return;
     }
 
-    if (authMode === "cloud" && session?.access_token) {
+    if (authMode === "cloud" && accessToken) {
       await fetch(apiUrl("/api/auth/session"), {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         credentials: "include",
       }).catch(() => {});
     }
-  }, [authMode, session?.access_token]);
+  }, [authMode, accessToken]);
 
   // Stable list of Drive accounts (memoized so refs don't churn on every render)
   const driveAccounts = useMemo(
@@ -220,7 +221,9 @@ export default function ContentPage() {
   }, [driveAccounts, selectedAccountId, setSelectedAccountId]);
 
   const ensureBackendSessionRef = useRef(ensureBackendSession);
-  ensureBackendSessionRef.current = ensureBackendSession;
+  useEffect(() => {
+    ensureBackendSessionRef.current = ensureBackendSession;
+  }, [ensureBackendSession]);
 
   const activeAccountId = activeAccount?.id ?? null;
 

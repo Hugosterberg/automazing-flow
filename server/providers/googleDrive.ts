@@ -57,9 +57,20 @@ async function runWithFreshToken<T>({
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "unauthorized") throw error;
     const nextToken = await refreshGoogleToken({ refreshToken, googleClientId, googleClientSecret });
-    if (!nextToken) throw error;
+    if (!nextToken) {
+      throw new Error("Google Drive token invalid. Reconnect the account.", { cause: error });
+    }
     await tokenStore.set(accountId, { ...stored, accessToken: nextToken });
-    return request(nextToken);
+    try {
+      return await request(nextToken);
+    } catch (refreshError) {
+      if (refreshError instanceof Error && refreshError.message === "unauthorized") {
+        throw new Error("Google Drive token refresh succeeded but the request is still unauthorized.", {
+          cause: refreshError,
+        });
+      }
+      throw refreshError;
+    }
   }
 }
 
@@ -137,11 +148,9 @@ export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
   const [items, sharedItems, currentFolder] = await runWithFreshToken({
     ...args,
     request: async (token) => {
-      let files: Record<string, unknown>[] = [];
-
       // Shared with me root — flat list of shared items
       if (view === "shared-with-me" && folderId === "root") {
-        files = await driveList(token, {
+        const files = await driveList(token, {
           orderBy: "folder,name_natural",
           q: "sharedWithMe = true and trashed = false",
         });
@@ -149,7 +158,7 @@ export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
       }
 
       // Folder navigation (works for both My Drive and Shared with me subfolders)
-      files = await driveList(token, {
+      let files = await driveList(token, {
         orderBy: "folder,name_natural",
         q: `'${folderId}' in parents and trashed = false`,
       });

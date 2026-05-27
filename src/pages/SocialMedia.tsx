@@ -282,7 +282,9 @@ export default function SocialMedia() {
   }[]>([]);
 
   const accountsRef = useRef(accounts);
-  accountsRef.current = accounts;
+  useEffect(() => {
+    accountsRef.current = accounts;
+  }, [accounts]);
   const [initialSocialData] = useState<SocialMediaApiResponse | null>(null);
   const {
     data: socialData,

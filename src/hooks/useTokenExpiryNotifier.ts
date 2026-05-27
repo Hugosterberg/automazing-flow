@@ -34,13 +34,9 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const warnedRef = useRef<Set<string>>(loadWarned());
-  const hasRunRef = useRef(false);
 
   useEffect(() => {
     if (connections.length === 0) return;
-    // Only run once per session per set of connections
-    if (hasRunRef.current) return;
-    hasRunRef.current = true;
 
     const warned = warnedRef.current;
     const now = Date.now();

@@ -114,7 +114,6 @@ const GOOGLE_ADS_SCOPES =
   "openid email profile https://www.googleapis.com/auth/adwords";
 const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
-const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
 
 function generateCodeVerifier(): string {
   return crypto.randomBytes(32).toString("base64url");
@@ -434,22 +433,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   function debugLog(runId, hypothesisId, location, message, data = {}) {
-    // #region agent log
-    if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
-    fetch(DEBUG_INGEST_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9f37ed" },
-      body: JSON.stringify({
-        sessionId: "9f37ed",
-        runId,
-        hypothesisId,
-        location,
-        message,
-        data,
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[oauth]", { runId, hypothesisId, location, message, data });
+    }
   }
 
   function buildPageUrl(page, params = {}) {

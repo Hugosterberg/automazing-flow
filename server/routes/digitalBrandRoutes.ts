@@ -4,6 +4,12 @@ interface DigitalBrandRoutesDeps {
   getSessionUserId: (req: unknown) => string | null;
 }
 
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+}
+
 function normalizeAuditUrl(raw: unknown): URL {
   const value = String(raw || "").trim();
   if (!value) throw new Error("missing_url");
@@ -128,8 +134,8 @@ function scoreToPercent(score: unknown): number | null {
   return typeof score === "number" ? Math.round(score * 100) : null;
 }
 
-function auditMetric(audits: Record<string, any>, id: string) {
-  const audit = audits?.[id] || {};
+function auditMetric(audits: JsonRecord, id: string) {
+  const audit = asRecord(audits[id]);
   const numericValue =
     typeof audit.numericValue === "number"
       ? audit.numericValue
@@ -144,32 +150,37 @@ function auditMetric(audits: Record<string, any>, id: string) {
   };
 }
 
-function cruxMetric(metrics: Record<string, any> | undefined, id: string) {
-  const metric = metrics?.[id] || null;
-  if (!metric) return null;
+function cruxMetric(metrics: unknown, id: string) {
+  const metric = asRecord(asRecord(metrics)[id]);
+  if (Object.keys(metric).length === 0) return null;
   return {
     percentile: typeof metric.percentile === "number" ? metric.percentile : null,
     category: typeof metric.category === "string" ? metric.category : null,
   };
 }
 
-function normalizePageSpeedResult(body: any, strategy: "mobile" | "desktop") {
-  const lighthouse = body?.lighthouseResult || {};
-  const categories = lighthouse.categories || {};
-  const audits = lighthouse.audits || {};
-  const loadingExperience = body?.loadingExperience || {};
-  const originLoadingExperience = body?.originLoadingExperience || {};
+function normalizePageSpeedResult(body: unknown, strategy: "mobile" | "desktop") {
+  const pageSpeed = asRecord(body);
+  const lighthouse = asRecord(pageSpeed.lighthouseResult);
+  const categories = asRecord(lighthouse.categories);
+  const audits = asRecord(lighthouse.audits);
+  const loadingExperience = asRecord(pageSpeed.loadingExperience);
+  const originLoadingExperience = asRecord(pageSpeed.originLoadingExperience);
+  const performance = asRecord(categories.performance);
+  const accessibility = asRecord(categories.accessibility);
+  const bestPractices = asRecord(categories["best-practices"]);
+  const seo = asRecord(categories.seo);
 
   return {
     strategy,
-    requestedUrl: String(lighthouse.requestedUrl || body?.id || ""),
+    requestedUrl: String(lighthouse.requestedUrl || pageSpeed.id || ""),
     finalUrl: String(lighthouse.finalUrl || ""),
     fetchTime: String(lighthouse.fetchTime || ""),
     scores: {
-      performance: scoreToPercent(categories.performance?.score),
-      accessibility: scoreToPercent(categories.accessibility?.score),
-      bestPractices: scoreToPercent(categories["best-practices"]?.score),
-      seo: scoreToPercent(categories.seo?.score),
+      performance: scoreToPercent(performance.score),
+      accessibility: scoreToPercent(accessibility.score),
+      bestPractices: scoreToPercent(bestPractices.score),
+      seo: scoreToPercent(seo.score),
     },
     metrics: {
       firstContentfulPaint: auditMetric(audits, "first-contentful-paint"),
@@ -204,10 +215,10 @@ function normalizePageSpeedResult(body: any, strategy: "mobile" | "desktop") {
       url: loadingExperience?.id || null,
       overallCategory: loadingExperience?.overall_category || null,
       metrics: {
-        lcp: cruxMetric(loadingExperience?.metrics, "LARGEST_CONTENTFUL_PAINT_MS"),
-        inp: cruxMetric(loadingExperience?.metrics, "INTERACTION_TO_NEXT_PAINT"),
-        cls: cruxMetric(loadingExperience?.metrics, "CUMULATIVE_LAYOUT_SHIFT_SCORE"),
-        fcp: cruxMetric(loadingExperience?.metrics, "FIRST_CONTENTFUL_PAINT_MS"),
+        lcp: cruxMetric(loadingExperience.metrics, "LARGEST_CONTENTFUL_PAINT_MS"),
+        inp: cruxMetric(loadingExperience.metrics, "INTERACTION_TO_NEXT_PAINT"),
+        cls: cruxMetric(loadingExperience.metrics, "CUMULATIVE_LAYOUT_SHIFT_SCORE"),
+        fcp: cruxMetric(loadingExperience.metrics, "FIRST_CONTENTFUL_PAINT_MS"),
       },
       originOverallCategory: originLoadingExperience?.overall_category || null,
     },
@@ -236,9 +247,10 @@ async function runPageSpeed(url: URL, strategy: "mobile" | "desktop") {
   );
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const error = asRecord(asRecord(body).error);
     const message =
-      body?.error?.message ||
-      body?.error ||
+      error.message ||
+      asRecord(body).error ||
       `PageSpeed Insights failed with HTTP ${response.status}`;
     throw new Error(String(message));
   }

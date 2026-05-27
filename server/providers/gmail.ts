@@ -9,25 +9,10 @@ type GmailFetchArgs = {
   googleClientId?: string;
   googleClientSecret?: string;
 };
-const DEBUG_INGEST_URL = "http://127.0.0.1:7917/ingest/7239d227-c463-4b17-b647-b3b429e5fe5c";
-
 function debugLog(runId: string, hypothesisId: string, location: string, message: string, data: Record<string, unknown>) {
-  // #region agent log
-  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
-  fetch(DEBUG_INGEST_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9f37ed" },
-    body: JSON.stringify({
-      sessionId: "9f37ed",
-      runId,
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
+  if (process.env.NODE_ENV !== "production") {
+    console.debug("[gmail]", { runId, hypothesisId, location, message, data });
+  }
 }
 
 type GmailHeader = {
@@ -242,8 +227,13 @@ export async function fetchGmailAccountData({
       fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then((r) => r.json())
-        .catch(() => null)
+        .then(async (r) => (r.ok ? r.json() : null))
+        .catch((error) => {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[gmail] Failed to fetch message", { accountId, messageId: id, error });
+          }
+          return null;
+        })
     )
   );
 
