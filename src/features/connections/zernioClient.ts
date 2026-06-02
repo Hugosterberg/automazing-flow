@@ -49,7 +49,11 @@ export async function reconcileConnections(businessProfileId: string): Promise<{
 export function buildConnectUrl(
   authPath: string,
   businessProfileId: string,
-  options?: { provider?: "zernio" | "official"; returnTo?: string }
+  options?: {
+    provider?: "zernio" | "official";
+    returnTo?: string;
+    params?: Record<string, string | null | undefined>;
+  }
 ): string {
   const params = new URLSearchParams();
   params.set("oauth_return", options?.returnTo ?? "connections");
@@ -57,5 +61,8 @@ export function buildConnectUrl(
   // Legacy compat: some callbacks still read profile_id.
   params.set("profile_id", businessProfileId);
   if (options?.provider) params.set("provider", options.provider);
+  for (const [key, value] of Object.entries(options?.params ?? {})) {
+    if (value) params.set(key, value);
+  }
   return `${apiUrl(`/api/auth/${authPath}`)}?${params.toString()}`;
 }

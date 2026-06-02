@@ -3,6 +3,8 @@ import { formatRelativeTime } from "@/lib/relativeTime";
 import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
 import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
@@ -57,6 +67,8 @@ export function ConnectionCard({
   onToggleSelect,
 }: Props) {
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
+  const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
+  const [shopifyShop, setShopifyShop] = useState("");
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
@@ -68,11 +80,28 @@ export function ConnectionCard({
   const status = useMemo(() => aggregateStatus(rows), [rows]);
   const reconnectNeeded = status === "reconnect_required";
 
-  function startConnect(provider?: "zernio" | "official") {
+  function startConnect(
+    provider?: "zernio" | "official",
+    params?: Record<string, string | null | undefined>
+  ) {
     if (!connectConfig) return;
     window.location.href = buildConnectUrl(connectConfig.authPath, businessProfileId, {
       provider: provider ?? connectConfig.provider,
+      params,
     });
+  }
+
+  function startShopifyConnect() {
+    setShopifyShop("");
+    setShopifyDialogOpen(true);
+  }
+
+  function submitShopifyConnect() {
+    const shop = shopifyShop.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
+    if (!shop) return;
+    setShopifyDialogOpen(false);
+    setShopifyShop("");
+    startConnect(undefined, { shop });
   }
 
   const lastSync = useMemo(() => {
@@ -97,6 +126,7 @@ export function ConnectionCard({
     .map((option) => option.label);
 
   return (
+    <>
     <Card className="border-border/80">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
@@ -253,7 +283,13 @@ export function ConnectionCard({
                 size="sm"
                 variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
                 className="gap-1.5"
-                onClick={() => startConnect()}
+                onClick={() => {
+                  if (entry.platform === "shopify") {
+                    startShopifyConnect();
+                    return;
+                  }
+                  startConnect();
+                }}
               >
                 <PrimaryIcon className="h-3.5 w-3.5" />
                 {primaryLabel}
@@ -291,5 +327,34 @@ export function ConnectionCard({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+    <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Connect Shopify</DialogTitle>
+          <DialogDescription>
+            Enter your Shopify store domain. Use the format mystore.myshopify.com.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor={`shopify-shop-${entry.platform}`}>Shop domain</Label>
+          <Input
+            id={`shopify-shop-${entry.platform}`}
+            value={shopifyShop}
+            onChange={(event) => setShopifyShop(event.target.value)}
+            placeholder="mystore.myshopify.com"
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
+            Continue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

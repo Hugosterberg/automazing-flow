@@ -38,6 +38,20 @@ function sendHandlerResult(res, result) {
   return res.json(result.body);
 }
 
+function safeAccountDataError(err) {
+  const message = err instanceof Error ? err.message : "";
+  if (!message) return null;
+
+  if (message.startsWith("Google Drive token invalid")) {
+    return { status: 401, error: message };
+  }
+  if (message.startsWith("Google Drive token refresh")) {
+    return { status: 401, error: "Google Drive token invalid. Reconnect the account." };
+  }
+
+  return null;
+}
+
 export function registerAccountDataRoute(app, deps) {
   const { auth, tokenStore, zernio, getZernioApiKey, debugLog } = deps;
 
@@ -274,6 +288,10 @@ export function registerAccountDataRoute(app, deps) {
       res.status(400).json({ error: "Unknown platform" });
     } catch (err) {
       console.error("Fetch data error:", err);
+      const safeError = safeAccountDataError(err);
+      if (safeError) {
+        return res.status(safeError.status).json({ error: safeError.error });
+      }
       res.status(500).json({ error: "Could not fetch data" });
     }
   });

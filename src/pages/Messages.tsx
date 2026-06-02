@@ -225,6 +225,7 @@ export default function MessagesPage() {
       try {
         await ensureBackendSession();
         const platforms = MESSAGE_ACCOUNT_PLATFORMS;
+        const existingAccountIds = new Set(accounts.map((account) => account.id));
         for (const platform of platforms) {
           let res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
           if (res.status === 401) {
@@ -236,8 +237,11 @@ export default function MessagesPage() {
 
           const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
           for (const account of backendAccounts) {
+            const accountId = String(account.account_id || "");
+            if (!accountId || existingAccountIds.has(accountId)) continue;
+            existingAccountIds.add(accountId);
             addAccountFromOAuth(
-              String(account.account_id || ""),
+              accountId,
               platform,
               String(account.username || (platform === "gmail" ? "Gmail" : platform === "outlook" ? "Outlook" : platform)),
               account.profile_id ? String(account.profile_id) : undefined,
@@ -258,7 +262,7 @@ export default function MessagesPage() {
     return () => {
       ignore = true;
     };
-  }, [addAccountFromOAuth, ensureBackendSession]);
+  }, [accounts, addAccountFromOAuth, ensureBackendSession]);
 
   async function connectGmail() {
     await ensureBackendSession();

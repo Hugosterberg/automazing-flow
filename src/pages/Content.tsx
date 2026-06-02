@@ -308,10 +308,14 @@ export default function ContentPage() {
 
         const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
         if (backendAccounts.length === 0) return;
+        const existingAccountIds = new Set(accounts.map((account) => account.id));
 
         for (const account of backendAccounts) {
+          const accountId = String(account.account_id || "");
+          if (!accountId || existingAccountIds.has(accountId)) continue;
+          existingAccountIds.add(accountId);
           addAccountFromOAuth(
-            String(account.account_id || ""),
+            accountId,
             "google_drive",
             String(account.username || "Google Drive"),
             account.profile_id ? String(account.profile_id) : undefined,
@@ -336,7 +340,7 @@ export default function ContentPage() {
     return () => {
       ignore = true;
     };
-  }, [addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
+  }, [accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
 
   useEffect(() => {
     function handleDriveOauthMessage(event: MessageEvent<DriveOAuthPopupMessage>) {
