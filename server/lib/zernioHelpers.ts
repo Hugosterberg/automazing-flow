@@ -130,3 +130,86 @@ export function createGetOrCreateZernioProfileId(zernio: ZernioModule) {
     return null;
   };
 }
+
+/**
+ * Minimal Supabase surface this helper needs. Kept structural so tests can pass
+ * a plain stub.
+ */
+export interface ZernioProfileSupabase {
+  from(table: string): {
+    select: (cols: string) => {
+      eq: (col: string, val: string) => {
+        maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+    };
+    update: (row: Record<string, unknown>) => {
+      eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
+    };
+  };
+}
+
+/**
+ * Per-tenant Zernio profile resolver.
+ *
+ * One global ZERNIO_API_KEY (the platform owner's) covers all tenants; each
+ * business_profile gets its own Zernio "profile" (workspace) so connected
+ * channels and inbox stay isolated. Resolution for a given businessProfileId:
+ *   1. `business_profiles.zernio_profile_id` if already set
+ *   2. otherwise create a Zernio profile named after the business and persist it
+ *
+ * When `businessProfileId` is falsy, or Supabase isn't configured, this falls
+ * back to the shared (global) resolver so existing behaviour is preserved.
+ */
+export function createGetOrCreateZernioProfileIdForTenant(deps: {
+  zernio: ZernioModule;
+  supabaseAdmin: ZernioProfileSupabase | null;
+  fallbackResolver: () => Promise<string | null>;
+}) {
+  const { zernio, supabaseAdmin, fallbackResolver } = deps;
+
+  return async function getOrCreateZernioProfileIdForTenant(
+    businessProfileId?: string | null
+  ): Promise<string | null> {
+    const bp = String(businessProfileId || "").trim();
+    if (!bp || !supabaseAdmin || bp.startsWith("local_")) {
+      return fallbackResolver();
+    }
+    if (!getZernioApiKey()) return null;
+
+    const { data, error } = await supabaseAdmin
+      .from("business_profiles")
+      .select("name, zernio_profile_id")
+      .eq("id", bp)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[Zernio] business_profiles lookup failed:", error.message);
+      return fallbackResolver();
+    }
+
+    const row = (data || {}) as { name?: string; zernio_profile_id?: string | null };
+    const existing = String(row.zernio_profile_id || "").trim();
+    if (existing) return existing;
+
+    const name = String(row.name || "").trim() || `Automazing ${bp.slice(0, 8)}`;
+    const createResult = await zernio.createProfile({ name });
+    const created = createResult.ok ? extractProfileId(createResult.data) : null;
+    if (!created) {
+      console.warn(
+        "[Zernio] POST /profiles (tenant) failed:",
+        createResult.status,
+        JSON.stringify(createResult.details || {}).slice(0, 300)
+      );
+      return fallbackResolver();
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from("business_profiles")
+      .update({ zernio_profile_id: created })
+      .eq("id", bp);
+    if (updateError) {
+      console.warn("[Zernio] persist zernio_profile_id failed:", updateError.message);
+    }
+    return created;
+  };
+}

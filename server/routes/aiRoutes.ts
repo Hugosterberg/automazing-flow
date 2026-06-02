@@ -6,7 +6,16 @@ type AiRouteDeps = {
     get?: (accountId: string) => Promise<{ ownerUserId?: string; [key: string]: unknown } | undefined>;
     set?: (accountId: string, value: { [key: string]: unknown }) => Promise<unknown>;
   };
+  secretResolver?: {
+    resolve: (businessProfileId: string | null | undefined, key: string) => Promise<string | null>;
+  };
 };
+
+/** business_profile_id from the request body, used for per-tenant key resolution. */
+function bodyBusinessProfileId(req: { body?: unknown }): string | null {
+  const v = String((req.body as { business_profile_id?: string })?.business_profile_id || "").trim();
+  return v.length > 0 ? v : null;
+}
 
 export function registerAiRoutes(app, deps?: AiRouteDeps) {
   async function postMessageSummaries(req: import("express").Request, res: import("express").Response) {
@@ -35,7 +44,11 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       return `${who}: ${text.slice(0, 95)}${text.length > 95 ? "..." : ""}`;
     };
 
-    const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
     if (!openaiKey) {
       const summaries = Object.fromEntries(
         messages.map((m) => [String(m.id || crypto.randomUUID()), heuristicSummary(m)])
@@ -120,7 +133,11 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     const platform = String(body.platform || "Instagram Reels").trim();
     const objective = String(body.objective || "Create a short social media video").trim();
     const prompt = String(body.prompt || "").trim();
-    const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
 
     const fallbackDraft = {
       title: `${platform} concept for ${assetName}`,
@@ -228,7 +245,11 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       followersCount?: number;
     };
     const { captions = [], displayName = "", username = "", followersCount } = body;
-    const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
 
     // Helper: smart keyword analysis as fallback
     function keywordAnalysis() {
@@ -320,6 +341,93 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
     } catch (err) {
       console.error("[AI] Analysfel:", (err as Error).message);
       return res.json(keywordAnalysis());
+    }
+  });
+
+  // --- AI reply draft for a review or a DM ---
+  app.post("/api/ai/reply-draft", async (req, res) => {
+    const userId = deps?.getSessionUserId?.(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const body = (req.body ?? {}) as {
+      kind?: "review" | "dm";
+      authorName?: string;
+      rating?: number;
+      text?: string;
+      businessName?: string;
+      tone?: string;
+      language?: string;
+    };
+    const kind = body.kind === "dm" ? "dm" : "review";
+    const authorName = String(body.authorName || "").trim();
+    const text = String(body.text || "").trim();
+    const businessName = String(body.businessName || "").trim();
+    const rating = typeof body.rating === "number" ? body.rating : undefined;
+    const tone = String(body.tone || "warm, professional and concise").trim();
+    const language = String(body.language || "the same language as the message").trim();
+
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
+
+    const who = authorName || (kind === "review" ? "the reviewer" : "the customer");
+    const fallbackDraft =
+      kind === "review"
+        ? `Thank you, ${who}, for taking the time to share your feedback${
+            rating != null && rating >= 4 ? " — we're glad you had a good experience!" : "."
+          } We appreciate it and would love to make things even better. Please reach out to us directly so we can help.`
+        : `Hi ${who}, thanks for reaching out! ${
+            text.length > 0 ? "We'd be happy to help with that. " : ""
+          }Could you share a few more details so we can assist you best?`;
+
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
+
+    if (!openaiKey) {
+      return res.json({ draft: fallbackDraft, source: "fallback" });
+    }
+
+    try {
+      const promptLines = [
+        kind === "review"
+          ? "Write a short public reply to this customer review on behalf of the business."
+          : "Write a short, helpful reply to this customer direct message on behalf of the business.",
+        `Tone: ${tone}. Language: ${language}.`,
+        businessName ? `Business: ${businessName}.` : "",
+        authorName ? `From: ${authorName}.` : "",
+        rating != null ? `Star rating: ${rating}/5.` : "",
+        kind === "review"
+          ? "Acknowledge specifics, stay genuine, avoid generic filler, and keep it under 60 words."
+          : "Be friendly and actionable, keep it under 50 words, and end with a clear next step.",
+        "Return ONLY the reply text, no preamble or quotes.",
+        "",
+        `Message:\n${text}`,
+      ].filter(Boolean);
+
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: promptLines.join("\n") }],
+          temperature: 0.6,
+          max_tokens: 220,
+        }),
+      });
+
+      if (!aiRes.ok) {
+        return res.json({ draft: fallbackDraft, source: "fallback" });
+      }
+      const aiData = await aiRes.json();
+      const draft = String(aiData?.choices?.[0]?.message?.content || "").trim();
+      return res.json({ draft: draft || fallbackDraft, source: draft ? "openai" : "fallback" });
+    } catch {
+      return res.json({ draft: fallbackDraft, source: "fallback" });
     }
   });
 }

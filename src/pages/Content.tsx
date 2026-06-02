@@ -13,6 +13,7 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PublishComposer } from "@/features/content/PublishComposer";
 import { apiUrl } from "@/lib/apiBase";
 import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft } from "lucide-react";
 
@@ -497,6 +498,8 @@ export default function ContentPage() {
       />
 
       <SectionConnectionStatus area="content" className="mt-0" />
+
+      <PublishComposer />
 
       {combinedOauthError && (
         <OAuthErrorAlert

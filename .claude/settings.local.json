@@ -4,7 +4,15 @@
       "Bash(Get-ChildItem -Force)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Code\\\\automazing-flow\\\\supabase\\\\migrations\" -Filter \"*.sql\")",
+      "Bash(Select-Object -First 5)",
+      "Bash(findstr /I \"SHOPIFY\" \"c:\\\\Code\\\\automazing-flow\\\\.env.local\")",
+      "Bash(findstr /V \"_SECRET _KEY _SECRET=\")",
+      "Bash(findstr /R \"=$\")",
+      "Bash(npx tsc *)",
+      "Bash(npm ls *)",
+      "Bash(node -e \"const c=require\\('./tsconfig.app.json'\\);delete c.compilerOptions.ignoreDeprecations;c.compilerOptions.moduleResolution='bundler';require\\('fs'\\).writeFileSync\\('tsconfig.check.json',JSON.stringify\\(c,null,2\\)\\);\")"
     ]
   }
 }

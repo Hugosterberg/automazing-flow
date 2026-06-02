@@ -11,6 +11,8 @@ import { createOAuthPendingStore } from "./lib/oauthPendingStore.js";
 import { createPersistentTokenStore } from "./lib/persistentTokenStore.js";
 import { createEnvConfig, INTEGRATION_CONFIG_CHECKS } from "./lib/envConfig.ts";
 import { createAuthHelpers } from "./lib/authHelpers.ts";
+import { createSecretCrypto, hasSecretsEncryptionKey } from "./lib/secretCrypto.ts";
+import { createSecretResolver } from "./lib/secretResolver.ts";
 import {
   ERR_NO_ZERNIO_KEY,
   getZernioApiKey,
@@ -19,6 +21,7 @@ import {
   normalizeZernioAccountsPayload,
   generateState,
   createGetOrCreateZernioProfileId,
+  createGetOrCreateZernioProfileIdForTenant,
 } from "./lib/zernioHelpers.ts";
 import { createZernioModule } from "./providers/zernioModule.ts";
 import { createRequireMembership } from "./middleware/requireMembership.js";
@@ -36,6 +39,8 @@ import { registerAccountRoutes } from "./routes/accountRoutes.ts";
 import { registerAiRoutes } from "./routes/aiRoutes.ts";
 import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoutes.ts";
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
+import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
+import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
@@ -214,6 +219,24 @@ const supabaseServiceClient =
       })
     : null;
 
+// Per-tenant secret store: AES-256-GCM encryption (needs SECRETS_ENCRYPTION_KEY)
+// + Supabase service role. Reads degrade to env-only when either is missing;
+// writes are refused with a clear error in that case.
+const secretCrypto = hasSecretsEncryptionKey()
+  ? createSecretCrypto(process.env.SECRETS_ENCRYPTION_KEY)
+  : null;
+const secretResolver = createSecretResolver({
+  supabaseAdmin: supabaseServiceClient,
+  crypto: secretCrypto,
+});
+if (secretResolver.enabled) {
+  console.log("[secrets] Per-tenant integration_secrets enabled (encrypted at rest)");
+} else if (!secretCrypto) {
+  console.log("[secrets] SECRETS_ENCRYPTION_KEY not set — per-tenant secrets disabled, using env only");
+} else {
+  console.log("[secrets] SUPABASE_SERVICE_ROLE_KEY not set — per-tenant secrets disabled, using env only");
+}
+
 // Env file + integration probes (used by /api/settings/api-keys and tests)
 const envConfig = createEnvConfig({ envPath });
 
@@ -270,7 +293,15 @@ const zernioModule = createZernioModule({
   mapPlatform: mapZernioPlatform,
 });
 
-const getOrCreateZernioProfileId = createGetOrCreateZernioProfileId(zernioModule);
+const getOrCreateZernioProfileIdShared = createGetOrCreateZernioProfileId(zernioModule);
+// Per-tenant resolver: called with a business_profile_id it returns that
+// tenant's own Zernio profile (created + persisted on demand); called with no
+// id it falls back to the shared resolver, preserving existing behaviour.
+const getOrCreateZernioProfileId = createGetOrCreateZernioProfileIdForTenant({
+  zernio: zernioModule,
+  supabaseAdmin: supabaseServiceClient,
+  fallbackResolver: getOrCreateZernioProfileIdShared,
+});
 
 // ---------------------------------------------------------------------------
 // Route registration
@@ -288,10 +319,17 @@ registerAuthRoutes(app, {
   debugLog,
 });
 
+const requireMembership = createRequireMembership({
+  supabaseServiceClient,
+  getSessionUserId,
+});
+
 registerSettingsRoutes(app, {
   auth,
   envConfig,
   integrationConfigChecks: INTEGRATION_CONFIG_CHECKS,
+  secretResolver,
+  requireMembership,
 });
 
 registerAccountRoutes(app, {
@@ -323,12 +361,9 @@ registerOAuthRoutes(app, {
   oauthPendingStore,
   tokenStore,
   getSessionUserId,
+  secretResolver,
 });
 
-const requireMembership = createRequireMembership({
-  supabaseServiceClient,
-  getSessionUserId,
-});
 registerConnectionsRoutes(app, {
   requireMembership,
   supabaseAdmin: supabaseServiceClient,
@@ -354,7 +389,21 @@ registerAccountDataRoute(app, {
 
 registerNotionPagesRoute(app, { auth, tokenStore });
 
-registerAiRoutes(app, { getSessionUserId, tokenStore });
+registerAiRoutes(app, { getSessionUserId, tokenStore, secretResolver });
+
+registerReviewsRoutes(app, {
+  getSessionUserId,
+  tokenStore,
+  getStoredAccountAccess,
+  zernio: zernioModule,
+});
+
+registerContentRoutes(app, {
+  getSessionUserId,
+  tokenStore,
+  getStoredAccountAccess,
+  zernio: zernioModule,
+});
 
 registerAiRecommendationsRoutes(app, {
   requireMembership,

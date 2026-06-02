@@ -16,6 +16,7 @@ type StoredAccount = Record<string, unknown> & {
 
 type TokenStore = {
   entries: () => Promise<Array<[string, StoredAccount]>>;
+  get: (accountId: string) => Promise<StoredAccount | null | undefined>;
   set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
 };
 
@@ -43,6 +44,7 @@ type UnifiedMessage = {
   body: string;
   isUnread: boolean;
   externalUrl?: string;
+  conversationId?: string;
 };
 
 const SOCIAL_MESSAGE_PLATFORMS = ["instagram", "facebook", "whatsapp"] as const;
@@ -418,6 +420,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             body: last,
             isUnread: Number(c.unreadCount || 0) > 0,
             externalUrl: c.url ? String(c.url) : undefined,
+            conversationId: cid || undefined,
           });
         }
       } catch {
@@ -447,5 +450,54 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       ...(dedupedErrors.length ? { mailErrors: dedupedErrors } : {}),
       ...(zernioNote ? { zernioNote } : {}),
     });
+  });
+
+  // Reply to a social DM conversation via the Zernio inbox. Email replies are
+  // not supported here (current Gmail/Outlook scopes are read-only).
+  app.post("/api/messages/reply", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const body = (req.body ?? {}) as { accountId?: string; conversationId?: string; message?: string };
+    const accountId = String(body.accountId || "").trim();
+    const conversationId = String(body.conversationId || "").trim();
+    const message = String(body.message || "").trim();
+    if (!accountId || !conversationId || !message) {
+      return res.status(400).json({ error: "accountId, conversationId and message are required" });
+    }
+
+    const stored = await tokenStore.get(accountId);
+    if (!stored) {
+      return res.status(404).json({ error: "Account not connected" });
+    }
+    const access = getStoredAccountAccess(stored, userId);
+    if (!access.allowed) {
+      return res.status(404).json({ error: "Account not connected" });
+    }
+    if (access.migrate) {
+      await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+
+    const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
+    if (!zernioAccountId) {
+      return res.status(400).json({ error: "dm_reply_requires_zernio" });
+    }
+
+    const result = await zernio.sendInboxMessage({ conversationId, accountId: zernioAccountId, message });
+    if (!result.ok) {
+      if (result.status === 402 || result.status === 403) {
+        return res.status(result.status).json({
+          error: "zernio_dm_reply_unavailable",
+          message: "Zernio could not send the message (inbox add-on or permission may be required).",
+        });
+      }
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+        error: result.error || "zernio_dm_reply_failed",
+      });
+    }
+
+    return res.json({ ok: true, data: result.data });
   });
 }

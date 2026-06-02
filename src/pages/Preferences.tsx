@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
 import {
   Bell,
@@ -7,11 +7,10 @@ import {
   Globe,
   KeyRound,
   Loader2,
+  Lock,
   Palette,
-  Plus,
   Save,
   Shield,
-  Trash2,
   Users,
   Wrench,
   XCircle,
@@ -26,22 +25,21 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
-import { Link } from "react-router-dom";
 
-type ApiEntryRow = {
+type GlobalEntry = { key: string; configured: boolean; scope: "global" };
+
+type TenantEntry = {
   key: string;
-  value: string;
-  description?: string;
-  custom?: boolean;
-  aliases?: string[];
-  inputType?: "password" | "text";
+  label: string;
+  description: string;
+  inputType: "password" | "text";
+  configured: boolean;
+  tenantOverride: boolean;
 };
 
 type FeatureRequirement = {
   name: string;
-  required?: string[];
-  requiredAny?: string[][];
-  testTarget?: string;
+  testTarget: string;
 };
 
 type ConfigTestResult = {
@@ -53,39 +51,6 @@ type ConfigTestResult = {
   label?: string;
 };
 
-const presetEntries: ApiEntryRow[] = [
-  { key: "OPENAI_API_KEY", value: "", description: "Used by AI routes and content generation." },
-  { key: "ZERNIO_API_KEY", value: "", description: "Used for Zernio-connected channels and integrations." },
-  { key: "LATE_API_KEY", value: "", description: "Legacy alias for the Zernio key that the backend still accepts.", aliases: ["ZERNIO_API_KEY"] },
-  { key: "ZERNIO_ALLOW_SELF_SIGNED_CERTS", value: "", inputType: "text", description: "Local development only: set true to allow Zernio requests through a self-signed certificate chain. Do not use in production." },
-  { key: "NODE_EXTRA_CA_CERTS", value: "", inputType: "text", description: "Preferred TLS fix: path to a trusted CA bundle. Requires restarting the Node server." },
-  { key: "GOOGLE_CLIENT_ID", value: "", description: "Used by Google OAuth flows like Gmail, Drive, Calendar, Reviews, and Ads." },
-  { key: "GOOGLE_CLIENT_SECRET", value: "", description: "Secret for Google OAuth flows." },
-  { key: "GOOGLE_ADS_DEVELOPER_TOKEN", value: "", description: "Required by Google Ads API for live campaign reads and mutations." },
-  { key: "GOOGLE_ADS_CUSTOMER_ID", value: "", inputType: "text", description: "Default Google Ads customer ID for campaign API operations, without dashes." },
-  { key: "GOOGLE_ADS_LOGIN_CUSTOMER_ID", value: "", inputType: "text", description: "Optional manager/MCC customer ID for Google Ads API operations, without dashes." },
-  { key: "META_APP_ID", value: "", inputType: "text", description: "Used by Meta Business official OAuth.", aliases: ["FACEBOOK_CLIENT_ID", "FACEBOOK_APP_ID"] },
-  { key: "META_APP_SECRET", value: "", description: "Secret for Meta Business official OAuth.", aliases: ["FACEBOOK_CLIENT_SECRET", "FACEBOOK_APP_SECRET"] },
-  { key: "PAGESPEED_API_KEY", value: "", description: "Used by Digital Brand audits for Google PageSpeed Insights and Lighthouse values.", aliases: ["GOOGLE_PAGESPEED_API_KEY"] },
-  { key: "GOOGLE_PAGESPEED_API_KEY", value: "", description: "Alternative PageSpeed Insights API key name.", aliases: ["PAGESPEED_API_KEY"] },
-  { key: "MICROSOFT_CLIENT_ID", value: "", description: "Used by Outlook and Outlook Calendar OAuth." },
-  { key: "MICROSOFT_CLIENT_SECRET", value: "", description: "Secret for Microsoft OAuth." },
-  { key: "NOTION_CLIENT_ID", value: "", description: "Used by Notion OAuth." },
-  { key: "NOTION_CLIENT_SECRET", value: "", description: "Secret for Notion OAuth." },
-  { key: "SHOPIFY_API_KEY", value: "", description: "Used by Shopify OAuth." },
-  { key: "SHOPIFY_API_SECRET", value: "", description: "Secret for Shopify OAuth." },
-  { key: "INSTAGRAM_CLIENT_ID", value: "", description: "Used by the direct Instagram OAuth fallback." },
-  { key: "INSTAGRAM_CLIENT_SECRET", value: "", description: "Secret for direct Instagram OAuth fallback." },
-  { key: "TIKTOK_CLIENT_KEY", value: "", description: "Used by TikTok official OAuth." },
-  { key: "TIKTOK_CLIENT_SECRET", value: "", description: "Secret for TikTok official OAuth." },
-  { key: "X_CLIENT_ID", value: "", description: "Used by X/Twitter OAuth." },
-  { key: "X_CLIENT_SECRET", value: "", description: "Secret for X/Twitter OAuth." },
-  { key: "TRIPADVISOR_API_KEY", value: "", description: "Used by Tripadvisor official API." },
-  { key: "TRIPADVISOR_LOCATION_ID", value: "", description: "Default location for Tripadvisor official API." },
-  { key: "SHOPIFY_APP_URL", value: "", inputType: "text", description: "Public app URL used by Shopify callbacks and redirects." },
-  { key: "NOTION_APP_URL", value: "", inputType: "text", description: "Public app URL used by Notion OAuth callbacks." },
-];
-
 const overviewFeatures = [
   { icon: Bell, title: "Notifications", desc: "Manage reminders and alerts" },
   { icon: Palette, title: "Appearance", desc: "Theme and visual settings" },
@@ -94,137 +59,120 @@ const overviewFeatures = [
 ];
 
 const featureRequirements: FeatureRequirement[] = [
-  { name: "AI analysis", required: ["OPENAI_API_KEY"], testTarget: "openai" },
-  { name: "Zernio social / reviews integrations", requiredAny: [["ZERNIO_API_KEY", "LATE_API_KEY"]], testTarget: "zernio" },
-  { name: "Google Drive / Gmail / Calendar / Reviews OAuth", required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], testTarget: "google_drive" },
-  { name: "Google Ads OAuth / API", required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], testTarget: "google_ads" },
-  { name: "Meta Business OAuth / API", requiredAny: [["META_APP_ID", "FACEBOOK_CLIENT_ID", "FACEBOOK_APP_ID"], ["META_APP_SECRET", "FACEBOOK_CLIENT_SECRET", "FACEBOOK_APP_SECRET"]], testTarget: "meta_business" },
-  { name: "Digital Brand PageSpeed audits", requiredAny: [["PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]], testTarget: "pagespeed" },
-  { name: "Outlook / Outlook Calendar OAuth", required: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"], testTarget: "microsoft" },
-  { name: "Notion OAuth", required: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_APP_URL"], testTarget: "notion" },
-  { name: "Shopify OAuth", required: ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL"], testTarget: "shopify" },
-  { name: "Instagram direct fallback", required: ["INSTAGRAM_CLIENT_ID", "INSTAGRAM_CLIENT_SECRET"], testTarget: "instagram_direct" },
-  { name: "TikTok official OAuth", required: ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"], testTarget: "tiktok" },
-  { name: "X / Twitter OAuth", required: ["X_CLIENT_ID", "X_CLIENT_SECRET"], testTarget: "x" },
-  { name: "Tripadvisor official API", required: ["TRIPADVISOR_API_KEY", "TRIPADVISOR_LOCATION_ID"], testTarget: "tripadvisor" },
+  { name: "AI analysis", testTarget: "openai" },
+  { name: "Zernio social / reviews integrations", testTarget: "zernio" },
+  { name: "Google Drive / Gmail / Calendar / Reviews OAuth", testTarget: "google_drive" },
+  { name: "Google Ads OAuth / API", testTarget: "google_ads" },
+  { name: "Meta Business OAuth / API", testTarget: "meta_business" },
+  { name: "Digital Brand PageSpeed audits", testTarget: "pagespeed" },
+  { name: "Outlook / Outlook Calendar OAuth", testTarget: "microsoft" },
+  { name: "Notion OAuth", testTarget: "notion" },
+  { name: "Shopify OAuth", testTarget: "shopify" },
+  { name: "Instagram direct fallback", testTarget: "instagram_direct" },
+  { name: "TikTok official OAuth", testTarget: "tiktok" },
+  { name: "X / Twitter OAuth", testTarget: "x" },
+  { name: "Tripadvisor official API", testTarget: "tripadvisor" },
 ];
 
-function mergeRows(serverEntries: Record<string, string>): ApiEntryRow[] {
-  const presetMap = new Map(
-    presetEntries.map((row) => [row.key, { ...row, value: serverEntries[row.key] || "" }])
+function StatusBadge({ configured }: { configured: boolean }) {
+  return configured ? (
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700">
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      Configured
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
+      <XCircle className="h-3.5 w-3.5" />
+      Missing
+    </span>
   );
-  const customRows = Object.entries(serverEntries)
-    .filter(([key]) => !presetMap.has(key))
-    .map(([key, value]) => ({ key, value, custom: true as const }));
-  return [...presetMap.values(), ...customRows];
 }
 
 export default function PreferencesPage() {
   const { toast } = useToast();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
-  const [rows, setRows] = useState<ApiEntryRow[]>(presetEntries);
+
+  const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
+  const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([]);
+  const [storeEnabled, setStoreEnabled] = useState(true);
+  const [edited, setEdited] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [runningTests, setRunningTests] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, ConfigTestResult>>({});
 
-  const envMap = useMemo(
-    () => Object.fromEntries(rows.map((row) => [row.key.trim().toUpperCase(), row.value])),
-    [rows]
-  );
+  const loadGlobal = useCallback(async () => {
+    const res = await fetch(apiUrl("/api/settings/api-keys"), { credentials: "include" });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || "Could not load platform keys.");
+    setGlobalEntries(Array.isArray(payload.entries) ? payload.entries : []);
+  }, []);
 
-  const missingFeatures = useMemo(() => {
-    return featureRequirements
-      .map((feature) => {
-        const missing = (feature.required || []).filter((key) => !String(envMap[key] || "").trim());
-        const missingAny = (feature.requiredAny || []).filter(
-          (group) => !group.some((key) => String(envMap[key] || "").trim())
-        );
-        return {
-          ...feature,
-          missing,
-          missingAny,
-          ok: missing.length === 0 && missingAny.length === 0,
-        };
-      })
-      .filter((feature) => !feature.ok);
-  }, [envMap]);
+  const loadTenant = useCallback(async (businessProfileId: string) => {
+    const res = await fetch(
+      apiUrl(`/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`),
+      { credentials: "include" }
+    );
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || "Could not load profile secrets.");
+    setStoreEnabled(Boolean(payload.storeEnabled));
+    setTenantEntries(Array.isArray(payload.entries) ? payload.entries : []);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
-
     const load = async () => {
       setLoading(true);
+      setEdited({});
       try {
-        const res = await fetch(apiUrl("/api/settings/api-keys"), { credentials: "include" });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(payload?.error || "Could not load API keys.");
-        }
-        if (!ignore) {
-          setRows(mergeRows(payload.entries || {}));
+        await loadGlobal();
+        if (activeBusinessProfileId) {
+          await loadTenant(activeBusinessProfileId);
+        } else {
+          setTenantEntries([]);
         }
       } catch (error) {
         if (!ignore) {
           toast({
-            title: "Could not load API keys",
+            title: "Could not load settings",
             description: error instanceof Error ? error.message : "Unknown error",
             variant: "destructive",
           });
         }
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (!ignore) setLoading(false);
       }
     };
-
     void load();
     return () => {
       ignore = true;
     };
-  }, [toast]);
+  }, [activeBusinessProfileId, loadGlobal, loadTenant, toast]);
 
-  const visibleRows = useMemo(() => rows.filter((row) => row.key.trim().length > 0 || row.custom), [rows]);
+  const dirtyKeys = useMemo(() => Object.keys(edited), [edited]);
 
-  function updateRow(index: number, patch: Partial<ApiEntryRow>) {
-    setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
-  }
-
-  function addCustomRow() {
-    setRows((current) => [...current, { key: "", value: "", custom: true, inputType: "password" }]);
-  }
-
-  function removeCustomRow(index: number) {
-    setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
-  }
-
-  async function handleSave() {
-    const entries = rows
-      .map((row) => ({ key: row.key.trim().toUpperCase(), value: row.value }))
-      .filter((row) => row.key.length > 0);
-
+  async function handleSaveTenant() {
+    if (!activeBusinessProfileId || dirtyKeys.length === 0) return;
+    const entries = dirtyKeys.map((key) => ({ key, value: edited[key] }));
     setSaving(true);
     try {
-      const res = await fetch(apiUrl("/api/settings/api-keys"), {
+      const res = await fetch(apiUrl("/api/settings/secrets"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries }),
+        body: JSON.stringify({ business_profile_id: activeBusinessProfileId, entries }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload?.error || "Could not save API keys.");
-      }
-      setRows(mergeRows(payload.entries || {}));
-      setTestResults({});
+      if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not save secrets.");
+      setEdited({});
+      await loadTenant(activeBusinessProfileId);
       toast({
-        title: "API keys saved",
-        description: "The .env file was updated and the values are now available to the running server.",
+        title: "Profile secrets saved",
+        description: "Encrypted and stored for this business profile.",
       });
     } catch (error) {
       toast({
-        title: "Could not save API keys",
+        title: "Could not save secrets",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
@@ -243,9 +191,7 @@ export default function PreferencesPage() {
         body: JSON.stringify({ target }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload?.error || `Could not test ${target}.`);
-      }
+      if (!res.ok) throw new Error(payload?.error || `Could not test ${target}.`);
       setTestResults((current) => ({ ...current, [target]: payload }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -263,20 +209,8 @@ export default function PreferencesPage() {
       <PageHeader
         icon={Wrench}
         title="Preferences"
-        description="Manage app settings and the integration values used by the server."
+        description="Platform key status and your per-profile integration secrets."
       />
-      <m.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
-          Keys here are <span className="font-medium text-foreground">server prerequisites</span> (saved to{" "}
-          <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code>) so OAuth and APIs can run. They do{" "}
-          <span className="font-medium text-foreground">not</span> replace clicking Connect in the app: open the{" "}
-          <Link to="/integrations" className="underline underline-offset-2 font-medium text-foreground">
-            Integrations
-          </Link>{" "}
-          map to see what is already linked to your active profile versus what still needs a Connect flow (and which env
-          vars each one needs).
-        </p>
-      </m.div>
 
       <Tabs defaultValue="api-keys" className="w-full">
         <TabsList>
@@ -285,7 +219,7 @@ export default function PreferencesPage() {
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Team
           </TabsTrigger>
-          <TabsTrigger value="api-keys">API keys</TabsTrigger>
+          <TabsTrigger value="api-keys">Integrations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -333,209 +267,196 @@ export default function PreferencesPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="api-keys">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <KeyRound className="h-5 w-5" />
-                API keys and required settings
-              </CardTitle>
-              <CardDescription>
-                Stored in the project <code className="text-xs">.env</code> file and used by backend routes, OAuth flows,
-                and integrations. After saving, use each product page or{" "}
-                <Link to="/integrations" className="underline underline-offset-2">
-                  Integrations
-                </Link>{" "}
-                to finish linking accounts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {loading ? (
-                <p className="text-sm text-muted-foreground">Loading keys...</p>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    {visibleRows.map((row, index) => {
-                      const normalizedKey = row.key.trim().toUpperCase();
-                      const hasValue = String(envMap[normalizedKey] || "").trim().length > 0;
-                      const isSecret = (row.inputType || "password") !== "text";
-
-                      return (
-                        <div key={`${row.key || "custom"}-${index}`} className="rounded-lg border border-border p-4 space-y-3">
-                          <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_auto] gap-3 items-start">
-                            <div className="space-y-1.5">
-                              <Label htmlFor={`api-key-name-${index}`}>Key</Label>
-                              <Input
-                                id={`api-key-name-${index}`}
-                                value={row.key}
-                                onChange={(e) => updateRow(index, { key: e.target.value.toUpperCase() })}
-                                placeholder="EXAMPLE_API_KEY"
-                                disabled={!row.custom}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label htmlFor={`api-key-value-${index}`}>{isSecret ? "Value" : "Setting"}</Label>
-                              <Input
-                                id={`api-key-value-${index}`}
-                                type={isSecret ? "password" : "text"}
-                                value={row.value}
-                                onChange={(e) => updateRow(index, { value: e.target.value })}
-                                placeholder={isSecret ? "Paste the secret value" : "https://example.com"}
-                              />
-                            </div>
-                            <div className="pt-7">
-                              {row.custom && (
-                                <Button variant="ghost" size="icon" onClick={() => removeCustomRow(index)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            {hasValue ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Connected
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
-                                <XCircle className="h-3.5 w-3.5" />
-                                Missing
-                              </span>
-                            )}
-                            {row.aliases && row.aliases.length > 0 && (
-                              <span className="text-muted-foreground">Alias for: {row.aliases.join(", ")}</span>
-                            )}
-                            {!isSecret && (
-                              <span className="text-muted-foreground">Callback / app URL setting</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <Card className="bg-muted/30 border-border">
-                    <CardHeader>
-                      <CardTitle className="text-base">Missing values by feature</CardTitle>
-                      <CardDescription>
-                        These functions still cannot work fully with the current `.env.local`.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {missingFeatures.length === 0 ? (
-                        <p className="text-sm text-emerald-700">All tracked integrations have the required values.</p>
-                      ) : (
-                        missingFeatures.map((feature) => (
-                          <div key={feature.name} className="rounded-lg border border-border bg-background p-3 space-y-2">
-                            <p className="text-sm font-medium">{feature.name}</p>
-                            {feature.missing.length > 0 && (
-                              <p className="text-xs text-muted-foreground">Missing: {feature.missing.join(", ")}</p>
-                            )}
-                            {feature.missingAny.length > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                Missing one of: {feature.missingAny.map((group) => group.join(" or ")).join(" · ")}
-                              </p>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-muted/30 border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Wrench className="h-4 w-4" />
-                        Integration tests
-                      </CardTitle>
-                      <CardDescription>
-                        These tests validate whether each integration has the required `.env.local` values and callback settings.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {featureRequirements.map((feature) => {
-                        const target = feature.testTarget;
-                        const result = target ? testResults[target] : null;
-                        const testing = target ? runningTests[target] : false;
-
+        <TabsContent value="api-keys" className="space-y-5">
+          {loading ? (
+            <p className="text-sm text-muted-foreground pt-2">Loading settings...</p>
+          ) : (
+            <>
+              {/* Per-profile secrets (editable) */}
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <KeyRound className="h-5 w-5" />
+                    Your integration keys (this profile)
+                  </CardTitle>
+                  <CardDescription>
+                    Bring-your-own keys for the active business profile. Stored encrypted and used
+                    before the platform defaults. Leave empty to use the platform default.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!activeBusinessProfileId ? (
+                    <p className="text-sm text-muted-foreground">
+                      Select a business profile to manage its integration keys.
+                    </p>
+                  ) : !storeEnabled ? (
+                    <p className="text-sm text-muted-foreground">
+                      The secret store is not configured on the server (needs
+                      <code className="text-xs mx-1">SECRETS_ENCRYPTION_KEY</code> and
+                      <code className="text-xs mx-1">SUPABASE_SERVICE_ROLE_KEY</code>). Platform
+                      defaults from environment variables are used.
+                    </p>
+                  ) : (
+                    <>
+                      {tenantEntries.map((entry) => {
+                        const isDirty = entry.key in edited;
+                        const value = isDirty ? edited[entry.key] : "";
                         return (
-                          <div key={feature.name} className="rounded-lg border border-border bg-background p-3 space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-medium">{feature.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Run a config check before trying the live OAuth or API flow.
-                                </p>
+                          <div key={entry.key} className="rounded-lg border border-border p-4 space-y-3">
+                            <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,300px)_minmax(0,1fr)] gap-3 items-start">
+                              <div className="space-y-1">
+                                <Label htmlFor={`secret-${entry.key}`}>{entry.label}</Label>
+                                <p className="text-[11px] text-muted-foreground font-mono">{entry.key}</p>
                               </div>
-                              {target && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => void runConfigTest(target)}
-                                  disabled={testing}
-                                >
-                                  {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wrench className="h-4 w-4 mr-2" />}
-                                  Test
-                                </Button>
-                              )}
+                              <div className="space-y-1.5">
+                                <Input
+                                  id={`secret-${entry.key}`}
+                                  type={entry.inputType === "text" ? "text" : "password"}
+                                  value={value}
+                                  onChange={(e) =>
+                                    setEdited((cur) => ({ ...cur, [entry.key]: e.target.value }))
+                                  }
+                                  placeholder={
+                                    entry.tenantOverride
+                                      ? "•••••• (override set — type to replace)"
+                                      : entry.inputType === "text"
+                                        ? "Enter value"
+                                        : "Paste the secret value"
+                                  }
+                                />
+                              </div>
                             </div>
-
-                            {result && (
-                              <div className="rounded-md border border-border/80 bg-muted/20 p-3 space-y-2">
-                                <div className="flex flex-wrap items-center gap-2 text-xs">
-                                  {result.ok ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700">
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                      Ready
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
-                                      <XCircle className="h-3.5 w-3.5" />
-                                      Missing config
-                                    </span>
-                                  )}
-                                  {result.authPath && (
-                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" asChild>
-                                      <a href={result.authPath} target="_blank" rel="noopener noreferrer">
-                                        Open auth
-                                        <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                                      </a>
-                                    </Button>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{result.message}</p>
-                                {result.missing.length > 0 && (
-                                  <p className="text-xs text-muted-foreground">Missing: {result.missing.join(", ")}</p>
-                                )}
-                                {result.missingAny.length > 0 && (
-                                  <p className="text-xs text-muted-foreground">
-                                    Missing one of: {result.missingAny.map((group) => group.join(" or ")).join(" · ")}
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                            <p className="text-xs text-muted-foreground">{entry.description}</p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <StatusBadge configured={entry.configured} />
+                              {entry.tenantOverride ? (
+                                <>
+                                  <span className="text-muted-foreground">Profile override active</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                    onClick={() => setEdited((cur) => ({ ...cur, [entry.key]: "" }))}
+                                  >
+                                    Clear override
+                                  </Button>
+                                </>
+                              ) : entry.configured ? (
+                                <span className="text-muted-foreground">Using platform default</span>
+                              ) : null}
+                            </div>
                           </div>
                         );
                       })}
-                    </CardContent>
-                  </Card>
+                      <div className="flex justify-end">
+                        <Button onClick={() => void handleSaveTenant()} disabled={saving || dirtyKeys.length === 0}>
+                          <Save className="h-4 w-4 mr-2" />
+                          {saving ? "Saving..." : "Save profile secrets"}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" onClick={addCustomRow}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add custom key
-                    </Button>
-                    <Button onClick={() => void handleSave()} disabled={saving}>
-                      <Save className="h-4 w-4 mr-2" />
-                      {saving ? "Saving..." : "Save API keys"}
-                    </Button>
+              {/* Global platform keys (read-only status) */}
+              <Card className="bg-muted/30 border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Lock className="h-4 w-4" />
+                    Platform keys (managed by the operator)
+                  </CardTitle>
+                  <CardDescription>
+                    OAuth app credentials and shared keys set as environment variables (locally and
+                    on Vercel). Read-only here — values are never exposed.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {globalEntries.map((entry) => (
+                      <div
+                        key={entry.key}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+                      >
+                        <span className="text-xs font-mono truncate">{entry.key}</span>
+                        <StatusBadge configured={entry.configured} />
+                      </div>
+                    ))}
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+
+              {/* Config probes */}
+              <Card className="bg-muted/30 border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Wrench className="h-4 w-4" />
+                    Integration tests
+                  </CardTitle>
+                  <CardDescription>
+                    Validate whether each integration has the required platform configuration.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {featureRequirements.map((feature) => {
+                    const target = feature.testTarget;
+                    const result = testResults[target];
+                    const testing = runningTests[target];
+                    return (
+                      <div key={feature.name} className="rounded-lg border border-border bg-background p-3 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-sm font-medium">{feature.name}</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void runConfigTest(target)}
+                            disabled={testing}
+                          >
+                            {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wrench className="h-4 w-4 mr-2" />}
+                            Test
+                          </Button>
+                        </div>
+                        {result && (
+                          <div className="rounded-md border border-border/80 bg-muted/20 p-3 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              {result.ok ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Ready
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Missing config
+                                </span>
+                              )}
+                              {result.authPath && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" asChild>
+                                  <a href={result.authPath} target="_blank" rel="noopener noreferrer">
+                                    Open auth
+                                    <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{result.message}</p>
+                            {result.missing.length > 0 && (
+                              <p className="text-xs text-muted-foreground">Missing: {result.missing.join(", ")}</p>
+                            )}
+                            {result.missingAny.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Missing one of: {result.missingAny.map((group) => group.join(" or ")).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -10,6 +10,12 @@ import {
   FileText,
   Database,
   ExternalLink,
+  Users,
+  AlertTriangle,
+  Tag,
+  Receipt,
+  Box,
+  ArrowUpRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +29,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -49,17 +62,29 @@ function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
 
 interface ShopifyStats {
   ordersCount: number;
+  ordersWindow: number;
   productsCount: number;
+  customersCount: number;
+  newCustomers30d: number;
   revenue30d: number;
   avgOrderValue: number;
+  abandonedCheckouts30d: number;
+  abandonedValue30d: number;
+  fulfillmentRate30d: number | null;
+  conversionEstimate30d: number | null;
+  lowStockCount: number;
+  activePromotions: number;
   currency: string;
 }
 
 interface ShopifyOrder {
-  id: number;
+  id: number | string;
   name: string;
   email: string;
+  customer: string | null;
   total: number;
+  subtotal: number;
+  discount: number;
   currency: string;
   status: string;
   fulfillment: string;
@@ -67,10 +92,86 @@ interface ShopifyOrder {
   lineItemCount: number;
 }
 
+interface TopProduct {
+  productId: number | string | null;
+  title: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface TopCustomer {
+  id: number | string;
+  name: string;
+  email: string;
+  ordersCount: number;
+  totalSpent: number;
+  currency: string;
+}
+
+interface AbandonedCheckout {
+  id: number | string;
+  email: string;
+  total: number;
+  currency: string;
+  createdAt: string | undefined;
+  recoveryUrl: string | null;
+}
+
+interface LowStockItem {
+  productId: number | string;
+  productTitle: string;
+  variantTitle: string | null;
+  sku: string | null;
+  quantity: number;
+}
+
+interface Promotion {
+  id: number | string;
+  title: string;
+  value: string | null;
+  valueType: string | null;
+  targetType: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  usageCount: number;
+}
+
+interface RevenuePoint {
+  date: string;
+  revenue: number;
+  orders: number;
+}
+
 interface ShopifyData {
-  shop: { name: string; domain: string; currency: string; plan: string; email: string };
+  shop: {
+    name: string;
+    domain: string;
+    myshopifyDomain: string;
+    currency: string;
+    plan: string | null;
+    email: string | null;
+    country: string | null;
+    timezone: string | null;
+    primaryLocale: string | null;
+    adminUrl: string;
+    storefrontUrl: string;
+  };
   stats: ShopifyStats;
   orders: ShopifyOrder[];
+  topProducts: TopProduct[];
+  topCustomers: TopCustomer[];
+  abandonedCheckouts: AbandonedCheckout[];
+  lowStock: LowStockItem[];
+  promotions: Promotion[];
+  revenueTrend: RevenuePoint[];
+  adminLinks: {
+    orders: string;
+    products: string;
+    customers: string;
+    analytics: string;
+    discounts: string;
+    checkouts: string;
+  };
 }
 
 interface NotionEntry {
@@ -109,13 +210,33 @@ function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount);
 }
 
-function formatDate(iso: string) {
+function formatCurrencyDetailed(amount: number, currency: string) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD" }).format(amount);
+}
+
+function formatDate(iso: string | undefined) {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
   const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
   if (diff === 0) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   if (diff === 1) return "Yesterday";
   if (diff < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
   return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+}
+
+function formatChartDate(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+}
+
+function formatPromoValue(value: string | null, valueType: string | null) {
+  if (!value) return "—";
+  const numeric = parseFloat(value);
+  if (!Number.isFinite(numeric)) return value;
+  if (valueType === "percentage") return `${Math.abs(numeric)}%`;
+  return formatCurrency(Math.abs(numeric), "USD");
 }
 
 const statusColors: Record<string, string> = {
@@ -131,6 +252,13 @@ const fulfillmentColors: Record<string, string> = {
   unfulfilled: "bg-orange-500/15 text-orange-500",
   partial: "bg-yellow-500/15 text-yellow-600",
   restocked: "bg-muted text-muted-foreground",
+};
+
+const revenueChartConfig: ChartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--primary, 142 76% 36%))",
+  },
 };
 
 export default function Ecommerce() {
@@ -200,21 +328,44 @@ export default function Ecommerce() {
     void refresh();
   }
 
-  const activeShopify = activeOrgAccount?.platform === "shopify" ? activeOrgAccount : null;
   const activeNotion = activeOrgAccount?.platform === "notion" ? activeOrgAccount : null;
   const shopifyData = isShopifyData(data) ? data : null;
   const notionData = isNotionData(data) ? data : null;
 
   const stats = shopifyData?.stats;
   const currency = stats?.currency || "USD";
+
   const statCards = useMemo(
     () =>
       stats && shopifyData
         ? [
-            { label: "Revenue (30 days)", value: formatCurrency(stats.revenue30d, currency), icon: DollarSign, sub: `${stats.ordersCount} total orders` },
-            { label: "Orders fetched", value: String(shopifyData.orders.length ?? 0), icon: ShoppingCart, sub: `${stats.ordersCount} total in store` },
-            { label: "Products", value: stats.productsCount.toLocaleString("en-US"), icon: Package, sub: "active listings" },
-            { label: "Avg. order value", value: formatCurrency(stats.avgOrderValue, currency), icon: TrendingUp, sub: "from recent orders" },
+            {
+              label: "Revenue (30 days)",
+              value: formatCurrency(stats.revenue30d, currency),
+              icon: DollarSign,
+              sub: `${stats.ordersWindow.toLocaleString("en-US")} orders in window`,
+            },
+            {
+              label: "Avg. order value",
+              value: formatCurrency(stats.avgOrderValue, currency),
+              icon: TrendingUp,
+              sub: stats.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}% fulfilled` : "—",
+            },
+            {
+              label: "Customers",
+              value: stats.customersCount.toLocaleString("en-US"),
+              icon: Users,
+              sub: `+${stats.newCustomers30d.toLocaleString("en-US")} new in 30 days`,
+            },
+            {
+              label: "Products",
+              value: stats.productsCount.toLocaleString("en-US"),
+              icon: Package,
+              sub:
+                stats.lowStockCount > 0
+                  ? `${stats.lowStockCount} low-stock variant${stats.lowStockCount === 1 ? "" : "s"}`
+                  : "Inventory healthy",
+            },
           ]
         : null,
     [stats, shopifyData, currency]
@@ -278,7 +429,7 @@ export default function Ecommerce() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={ShoppingCart}
         title="Organization & Management"
@@ -291,20 +442,35 @@ export default function Ecommerce() {
         }
         actions={
           activeOrgAccount ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="text-muted-foreground"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              {shopifyData?.shop.adminUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="text-muted-foreground"
+                >
+                  <a href={shopifyData.shop.adminUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="ml-1.5 hidden sm:inline">Open admin</span>
+                  </a>
+                </Button>
               )}
-              <span className="ml-1.5 hidden sm:inline">Refresh</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={loading}
+                className="text-muted-foreground"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span className="ml-1.5 hidden sm:inline">Refresh</span>
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -334,7 +500,9 @@ export default function Ecommerce() {
               oauthErrorDetails,
               {
                 shopify_not_configured: "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env.local.",
-                shopify_public_url_must_be_https: "Shopify requires a public HTTPS host. Set SHOPIFY_APP_URL in .env.local to your tunnel URL.",
+                shopify_public_url_missing: "Shopify requires a public HTTPS host (e.g. a tunnel). Set SHOPIFY_APP_URL in .env.local before connecting.",
+                shopify_public_url_must_be_https: "SHOPIFY_APP_URL must start with https://. Use your tunnel's HTTPS URL.",
+                shopify_invalid_shop: "That store URL isn't a valid Shopify shop. Use the format mystore.myshopify.com (3–60 chars, letters/digits/hyphens).",
                 notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.local.",
                 notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env.local to your tunnel URL.",
                 shopify_missing_shop: "No shop domain was provided. Try connecting again.",
@@ -477,16 +645,303 @@ export default function Ecommerce() {
         </div>
       )}
 
-      {/* Recent orders */}
-      {!loading && shopifyData && shopifyData.orders.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
+      {/* Revenue trend */}
+      {!loading && shopifyData && shopifyData.revenueTrend.length > 0 && (
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <ShoppingCart className="h-5 w-5" />
-                Recent orders
+                <TrendingUp className="h-5 w-5" />
+                Revenue trend
               </CardTitle>
-              <CardDescription>Latest {shopifyData.orders.length} orders from your store</CardDescription>
+              <CardDescription>
+                Last 30 days · Total {formatCurrencyDetailed(shopifyData.stats.revenue30d, currency)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={revenueChartConfig} className="aspect-[16/5] w-full">
+                <AreaChart data={shopifyData.revenueTrend} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="shopifyRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value: string) => formatChartDate(value)}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    tickFormatter={(value: number) => formatCurrency(value, currency)}
+                    tickLine={false}
+                    axisLine={false}
+                    width={64}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(value) => formatChartDate(String(value))}
+                        formatter={(value) => formatCurrencyDetailed(Number(value), currency)}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    fill="url(#shopifyRevenueFill)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </m.div>
+      )}
+
+      {/* Insight row: top products + top customers */}
+      {!loading && shopifyData && (shopifyData.topProducts.length > 0 || shopifyData.topCustomers.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {shopifyData.topProducts.length > 0 && (
+            <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
+              <Card className="bg-card border-border glow-border h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Box className="h-5 w-5" />
+                    Top products
+                  </CardTitle>
+                  <CardDescription>By revenue, last 30 days</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {shopifyData.topProducts.map((product, i) => (
+                    <div
+                      key={`${product.productId ?? product.title}-${i}`}
+                      className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{product.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.quantity.toLocaleString("en-US")} sold
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold tabular-nums">
+                        {formatCurrency(product.revenue, currency)}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </m.div>
+          )}
+
+          {shopifyData.topCustomers.length > 0 && (
+            <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
+              <Card className="bg-card border-border glow-border h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5" />
+                    Top customers
+                  </CardTitle>
+                  <CardDescription>By lifetime spend</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {shopifyData.topCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{customer.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {customer.email || `${customer.ordersCount} orders`}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold tabular-nums">
+                        {formatCurrency(customer.totalSpent, customer.currency || currency)}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </m.div>
+          )}
+        </div>
+      )}
+
+      {/* Operational alerts: abandoned + low stock */}
+      {!loading && shopifyData && (shopifyData.abandonedCheckouts.length > 0 || shopifyData.lowStock.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {shopifyData.abandonedCheckouts.length > 0 && (
+            <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
+              <Card className="bg-card border-border glow-border h-full">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Receipt className="h-5 w-5 text-orange-500" />
+                        Abandoned checkouts
+                      </CardTitle>
+                      <CardDescription>
+                        {shopifyData.stats.abandonedCheckouts30d} carts · {formatCurrencyDetailed(shopifyData.stats.abandonedValue30d, currency)} at risk
+                      </CardDescription>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={shopifyData.adminLinks.checkouts} target="_blank" rel="noreferrer" className="text-muted-foreground">
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {shopifyData.abandonedCheckouts.map((checkout) => (
+                    <div
+                      key={checkout.id}
+                      className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{checkout.email || "Anonymous"}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(checkout.createdAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatCurrency(checkout.total, checkout.currency)}
+                        </p>
+                        {checkout.recoveryUrl && (
+                          <a
+                            href={checkout.recoveryUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-muted-foreground hover:text-foreground"
+                            title="Open recovery link"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </m.div>
+          )}
+
+          {shopifyData.lowStock.length > 0 && (
+            <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.35 }}>
+              <Card className="bg-card border-border glow-border h-full">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                        Low stock
+                      </CardTitle>
+                      <CardDescription>Variants at or below 5 units in stock</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={shopifyData.adminLinks.products} target="_blank" rel="noreferrer" className="text-muted-foreground">
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {shopifyData.lowStock.map((item) => (
+                    <div
+                      key={`${item.productId}-${item.sku ?? item.variantTitle ?? "default"}`}
+                      className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.productTitle}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[item.variantTitle, item.sku].filter(Boolean).join(" · ") || "Default variant"}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          item.quantity <= 0
+                            ? "bg-red-500/15 text-red-500"
+                            : item.quantity <= 2
+                              ? "bg-orange-500/15 text-orange-500"
+                              : "bg-yellow-500/15 text-yellow-600"
+                        }`}
+                      >
+                        {item.quantity} left
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </m.div>
+          )}
+        </div>
+      )}
+
+      {/* Active promotions */}
+      {!loading && shopifyData && shopifyData.promotions.length > 0 && (
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Tag className="h-5 w-5" />
+                    Active promotions
+                  </CardTitle>
+                  <CardDescription>{shopifyData.stats.activePromotions} price rules currently live</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={shopifyData.adminLinks.discounts} target="_blank" rel="noreferrer" className="text-muted-foreground">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {shopifyData.promotions.map((promo) => (
+                <div
+                  key={promo.id}
+                  className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{promo.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {promo.targetType || "order"} · used {promo.usageCount.toLocaleString("en-US")} time{promo.usageCount === 1 ? "" : "s"}
+                      {promo.endsAt ? ` · ends ${formatDate(promo.endsAt)}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-green-600">
+                    {formatPromoValue(promo.value, promo.valueType)}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </m.div>
+      )}
+
+      {/* Recent orders */}
+      {!loading && shopifyData && shopifyData.orders.length > 0 && (
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.45 }}>
+          <Card className="bg-card border-border glow-border">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <ShoppingCart className="h-5 w-5" />
+                    Recent orders
+                  </CardTitle>
+                  <CardDescription>Latest {shopifyData.orders.length} of {shopifyData.stats.ordersCount.toLocaleString("en-US")} total orders</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={shopifyData.adminLinks.orders} target="_blank" rel="noreferrer" className="text-muted-foreground">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -512,7 +967,7 @@ export default function Ecommerce() {
                       >
                         <td className="px-5 py-3 font-medium">{order.name}</td>
                         <td className="px-3 py-3 text-muted-foreground truncate max-w-[140px]">
-                          {order.email || "—"}
+                          {order.customer || order.email || "—"}
                         </td>
                         <td className="px-3 py-3 text-muted-foreground">{order.lineItemCount}</td>
                         <td className="px-3 py-3">
@@ -543,13 +998,20 @@ export default function Ecommerce() {
 
       {/* Store plan info */}
       {!loading && shopifyData?.shop && (
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
           <Card className="bg-card border-border">
-            <CardContent className="py-4 px-5 flex flex-wrap gap-6 text-sm text-muted-foreground">
+            <CardContent className="py-4 px-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <span><span className="text-foreground font-medium">Store:</span> {shopifyData.shop.name}</span>
-              <span><span className="text-foreground font-medium">Domain:</span> {shopifyData.shop.domain}</span>
+              <span>
+                <span className="text-foreground font-medium">Domain:</span>{" "}
+                <a href={shopifyData.shop.storefrontUrl} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                  {shopifyData.shop.domain}
+                </a>
+              </span>
               {shopifyData.shop.plan && <span><span className="text-foreground font-medium">Plan:</span> {shopifyData.shop.plan}</span>}
               {shopifyData.shop.currency && <span><span className="text-foreground font-medium">Currency:</span> {shopifyData.shop.currency}</span>}
+              {shopifyData.shop.country && <span><span className="text-foreground font-medium">Country:</span> {shopifyData.shop.country}</span>}
+              {shopifyData.shop.timezone && <span><span className="text-foreground font-medium">Timezone:</span> {shopifyData.shop.timezone}</span>}
               {shopifyData.shop.email && <span><span className="text-foreground font-medium">Email:</span> {shopifyData.shop.email}</span>}
             </CardContent>
           </Card>

@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { m } from "framer-motion";
-import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info } from "lucide-react";
+import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Sparkles, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccountData } from "@/hooks/useAccountData";
@@ -96,8 +98,14 @@ function displayNumber(value: unknown): number | undefined {
 
 export default function ReviewsPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
+  const { toast } = useToast();
   const { accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const selectedAccountId = getSelectedAccountId("reviews");
+
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [draftBusy, setDraftBusy] = useState<Record<string, boolean>>({});
+  const [sendBusy, setSendBusy] = useState<Record<string, boolean>>({});
+  const [repliedIds, setRepliedIds] = useState<Record<string, boolean>>({});
 
   const {
     scopedAccounts: reviewAccounts,
@@ -169,6 +177,63 @@ export default function ReviewsPage() {
     }
     return null;
   }, [data]);
+
+  async function draftReply(r: { id: string; author: string; rating?: number; text: string }) {
+    setDraftBusy((cur) => ({ ...cur, [r.id]: true }));
+    try {
+      const res = await fetch(apiUrl("/api/ai/reply-draft"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "review",
+          authorName: r.author,
+          rating: r.rating,
+          text: r.text,
+          businessName: displayString(data?.profile?.name),
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(displayString(payload?.error) || "Could not draft a reply");
+      setReplyText((cur) => ({ ...cur, [r.id]: displayString(payload?.draft) }));
+    } catch (e) {
+      toast({
+        title: "AI draft failed",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setDraftBusy((cur) => ({ ...cur, [r.id]: false }));
+    }
+  }
+
+  async function sendReply(reviewId: string) {
+    const message = (replyText[reviewId] || "").trim();
+    if (!activeAccount || !message) return;
+    setSendBusy((cur) => ({ ...cur, [reviewId]: true }));
+    try {
+      const res = await fetch(apiUrl("/api/reviews/reply"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: activeAccount.id, reviewId, message }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(displayString(payload?.message) || displayString(payload?.error) || "Could not send reply");
+      }
+      setRepliedIds((cur) => ({ ...cur, [reviewId]: true }));
+      toast({ title: "Reply posted", description: "Your reply was sent via Zernio." });
+    } catch (e) {
+      toast({
+        title: "Could not send reply",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSendBusy((cur) => ({ ...cur, [reviewId]: false }));
+    }
+  }
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -380,6 +445,48 @@ export default function ReviewsPage() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{r.text || "No text"}</p>
+
+                  {repliedIds[r.id] ? (
+                    <p className="mt-3 text-xs text-emerald-600 inline-flex items-center gap-1">
+                      <Send className="h-3.5 w-3.5" /> Reply posted
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      <Textarea
+                        value={replyText[r.id] || ""}
+                        onChange={(e) => setReplyText((cur) => ({ ...cur, [r.id]: e.target.value }))}
+                        placeholder="Write a reply, or generate one with AI…"
+                        className="min-h-[72px] text-sm"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void draftReply(r)}
+                          disabled={draftBusy[r.id]}
+                        >
+                          {draftBusy[r.id] ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
+                          )}
+                          AI draft
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => void sendReply(r.id)}
+                          disabled={sendBusy[r.id] || !(replyText[r.id] || "").trim()}
+                        >
+                          {sendBusy[r.id] ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2" />
+                          )}
+                          Send reply
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>

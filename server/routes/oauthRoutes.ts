@@ -11,12 +11,14 @@
 
 import crypto from "crypto";
 import type { ZernioModule } from "../providers/zernioModule.ts";
+import type { SecretResolver } from "../lib/secretResolver.ts";
 import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
 
 interface OAuthPendingRecord {
   platform: string;
   userId?: string | null;
   profileId?: string | null;
+  businessProfileId?: string | null;
   zernioProfileId?: string | null;
   codeVerifier?: string;
   createdAt?: number;
@@ -45,7 +47,8 @@ interface OAuthRoutesDeps {
   ZERNIO_API_BASE: string;
   zernio: ZernioModule;
   getZernioApiKey: () => string;
-  getOrCreateZernioProfileId: () => Promise<string | null>;
+  getOrCreateZernioProfileId: (businessProfileId?: string | null) => Promise<string | null>;
+  secretResolver: SecretResolver;
   normalizeZernioAccountsPayload: (body: unknown) => unknown[];
   mapZernioPlatform: (raw: string | undefined) => string | null;
   generateState: () => string;
@@ -131,6 +134,17 @@ function normalizeRequestedProfileId(profileId: unknown): string | null {
     return null;
   }
   return normalized;
+}
+
+/**
+ * Tenant (business profile) id from the connect request. Used to resolve the
+ * tenant's own Zernio profile and per-tenant secrets. Falsy → shared/global.
+ */
+function requestBusinessProfileId(req): string | null {
+  const normalized = String(
+    req?.query?.business_profile_id || req?.body?.business_profile_id || ""
+  ).trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function buildContentUrl(baseUrl: string, params: Record<string, unknown> = {}): string {
@@ -391,6 +405,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     oauthPendingStore,
     tokenStore,
     getSessionUserId,
+    secretResolver,
   } = deps;
   function getShopifyPublicBaseUrl() {
     const raw = String(process.env.SHOPIFY_APP_URL || API_BASE_URL || "").trim();
@@ -619,8 +634,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return pendingUserId.startsWith("local_");
   }
 
-  async function getOptionalZernioProfileId(label: string): Promise<string | null> {
-    const zernioProfileId = await getOrCreateZernioProfileId();
+  async function getOptionalZernioProfileId(
+    label: string,
+    businessProfileId?: string | null
+  ): Promise<string | null> {
+    const zernioProfileId = await getOrCreateZernioProfileId(businessProfileId);
     if (!zernioProfileId) {
       console.warn(
         `[Zernio ${label}] Could not resolve a Zernio profile; continuing without profileId. ` +
@@ -645,7 +663,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     if (zernioKey) {
       try {
-        const zernioProfileId = await getOrCreateZernioProfileId();
+        const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
         if (!zernioProfileId) {
           return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_profile_failed`);
         }
@@ -821,7 +839,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       try {
-        const zernioProfileId = await getOptionalZernioProfileId(config.appPlatform);
+        const zernioProfileId = await getOptionalZernioProfileId(
+          config.appPlatform,
+          requestBusinessProfileId(req)
+        );
         const state = generateState();
         const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
         await oauthPendingStore.set(state, {
@@ -1436,7 +1457,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const zernioKey = getZernioApiKey();
     if (tryZernio && zernioKey) {
       try {
-        const zernioProfileId = await getOrCreateZernioProfileId();
+        const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
         if (zernioProfileId) {
           const state = generateState();
           await oauthPendingStore.set(state, {
@@ -1741,18 +1762,48 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   // --- Shopify OAuth (kräver shop-parameter: mittbutik.myshopify.com) ---
+  // Shop handles: 3-60 chars, lowercase letters/digits/hyphens, cannot start or end with hyphen.
+  function normalizeShopifyShop(raw: unknown): string | null {
+    if (!raw) return null;
+    const trimmed = String(raw).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!trimmed) return null;
+    const handle = trimmed.replace(/\.myshopify\.com$/, "");
+    if (!/^[a-z0-9](?:[a-z0-9-]{1,58}[a-z0-9])?$/.test(handle)) return null;
+    return `${handle}.myshopify.com`;
+  }
+  // Scopes — must match the Shopify app configuration in the Partner dashboard.
+  // Inventory + locations enable low-stock detection; price_rules + discounts cover promos;
+  // checkouts powers abandoned-cart insights; fulfillments enables shipment SLA tracking.
+  const SHOPIFY_SCOPES = [
+    "read_products",
+    "read_orders",
+    "read_customers",
+    "read_inventory",
+    "read_locations",
+    "read_price_rules",
+    "read_discounts",
+    "read_checkouts",
+    "read_fulfillments",
+    "read_shipping",
+  ].join(",");
   app.get("/api/auth/shopify", async (req, res) => {
     const userId = requireSessionOrRedirect(req, res, "ecommerce");
     if (!userId) return;
     const clientId = process.env.SHOPIFY_API_KEY;
-    const shop = req.query.shop;
     if (!clientId) {
       return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_not_configured`);
     }
+    const shop = normalizeShopifyShop(req.query.shop);
     if (!shop) {
-      return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_missing_shop`);
+      return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_invalid_shop`);
     }
-    const shopName = String(shop).replace(/\.myshopify\.com$/, "");
+    const shopifyPublicBase = getShopifyPublicBaseUrl();
+    if (!shopifyPublicBase) {
+      return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_public_url_missing`);
+    }
+    if (!/^https:\/\//i.test(shopifyPublicBase)) {
+      return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_public_url_must_be_https`);
+    }
     const state = generateState();
     await oauthPendingStore.set(state, {
       platform: "shopify",
@@ -1761,13 +1812,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       shop,
       createdAt: Date.now(),
     });
-    const shopifyPublicBase = getShopifyPublicBaseUrl();
     const redirectUri = `${shopifyPublicBase}/api/auth/shopify/callback`;
-    if (!/^https:\/\//i.test(shopifyPublicBase)) {
-      return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_public_url_must_be_https`);
-    }
-    const scope = "read_products,read_orders,read_customers";
-    const url = `https://${shopName}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    const shopHandle = shop.replace(/\.myshopify\.com$/, "");
+    const url = `https://${shopHandle}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${encodeURIComponent(SHOPIFY_SCOPES)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     res.redirect(url);
   });
 
@@ -1794,7 +1841,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_not_configured`);
     }
     try {
-      const shopUrl = pending.shop || shop;
+      const shopUrl = normalizeShopifyShop(pending.shop || shop);
+      if (!shopUrl) {
+        return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_invalid_shop`);
+      }
       const tokenRes = await fetch(`https://${shopUrl}/admin/oauth/access_token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1804,18 +1854,22 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           code,
         }),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/ecommerce?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const errorCode = String(data.error_description || data.error || "token_exchange_failed");
+        return res.redirect(`${BASE_URL}/ecommerce?oauth_error=${encodeURIComponent(errorCode)}`);
       }
-      const accountId = crypto.randomUUID();
-      const shopName = String(shopUrl).replace(/\.myshopify\.com$/, "");
+      const shopName = shopUrl.replace(/\.myshopify\.com$/, "");
+      // Reuse a stable account id per shop so reconnects update the same record (matches Drive/Gmail pattern).
+      const accountId = `shopify_${crypto.createHash("sha1").update(shopUrl).digest("hex").slice(0, 20)}`;
       await tokenStore.set(accountId, {
         platform: "shopify",
         ownerUserId: pending.userId,
         profileId: pending.profileId || null,
+        username: shopName,
         accessToken: data.access_token,
         shop: shopUrl,
+        scope: data.scope || SHOPIFY_SCOPES,
       });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
@@ -1944,7 +1998,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOrCreateZernioProfileId();
+          const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
             return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_profile_failed`);
           }
@@ -2079,7 +2133,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOrCreateZernioProfileId();
+          const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
             return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_profile_failed`);
           }
@@ -2200,7 +2254,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOptionalZernioProfileId("google_reviews");
+          const zernioProfileId = await getOptionalZernioProfileId(
+            "google_reviews",
+            requestBusinessProfileId(req)
+          );
           const state = generateState();
           await oauthPendingStore.set(state, {
             platform: "google_reviews",
@@ -2384,7 +2441,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_not_configured", returnPage));
       }
       try {
-        const zernioProfileId = await getOptionalZernioProfileId("google_business");
+        const zernioProfileId = await getOptionalZernioProfileId(
+          "google_business",
+          requestBusinessProfileId(req)
+        );
         const state = generateState();
         const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
         await oauthPendingStore.set(state, {
@@ -2587,7 +2647,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const zernioKey = getZernioApiKey();
       if (zernioKey) {
         try {
-          const zernioProfileId = await getOptionalZernioProfileId("tripadvisor");
+          const zernioProfileId = await getOptionalZernioProfileId(
+            "tripadvisor",
+            requestBusinessProfileId(req)
+          );
           const state = generateState();
           await oauthPendingStore.set(state, {
             platform: "tripadvisor",
@@ -2619,8 +2682,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
     }
 
-    const apiKey = String(process.env.TRIPADVISOR_API_KEY || "").trim();
-    const locationId = String(req.query.location_id || process.env.TRIPADVISOR_LOCATION_ID || "").trim();
+    const tripadvisorBp = requestBusinessProfileId(req);
+    const apiKey = String((await secretResolver.resolve(tripadvisorBp, "TRIPADVISOR_API_KEY")) || "").trim();
+    const locationId = String(
+      req.query.location_id || (await secretResolver.resolve(tripadvisorBp, "TRIPADVISOR_LOCATION_ID")) || ""
+    ).trim();
     if (!apiKey || !locationId) {
       const missing = [
         !apiKey ? "TRIPADVISOR_API_KEY" : "",
@@ -2656,7 +2722,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const locationId = String(req.body?.locationId || "").trim();
     const providedApiKey = String(req.body?.apiKey || "").trim();
     const profileId = String(req.body?.profileId || "").trim() || null;
-    const apiKey = providedApiKey || String(process.env.TRIPADVISOR_API_KEY || "").trim();
+    const apiKey =
+      providedApiKey ||
+      String((await secretResolver.resolve(requestBusinessProfileId(req), "TRIPADVISOR_API_KEY")) || "").trim();
     if (!locationId) {
       return res.status(400).json({ error: "locationId is required" });
     }

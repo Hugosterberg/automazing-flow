@@ -122,6 +122,37 @@ export interface ZernioModule {
       cursor?: string;
     }
   ): Promise<ZernioResult<Record<string, unknown>>>;
+
+  // Write actions (automation). All go through the same auth/error envelope.
+  // Send a direct message reply in an inbox conversation.
+  sendInboxMessage(options: {
+    conversationId: string;
+    accountId: string;
+    message: string;
+  }): Promise<ZernioResult<Record<string, unknown>>>;
+  // Reply to a post comment.
+  replyComment(options: {
+    postId: string;
+    commentId: string;
+    accountId: string;
+    message: string;
+  }): Promise<ZernioResult<Record<string, unknown>>>;
+  // Reply to a review (Google Business / Tripadvisor / etc.).
+  replyReview(options: {
+    reviewId: string;
+    message: string;
+    accountId?: string;
+  }): Promise<ZernioResult<Record<string, unknown>>>;
+  // Create / schedule a post. `platforms` carries {platform, accountId}; set
+  // `publishNow` or `scheduledFor` (ISO). `mediaItems` carries {type, url}.
+  createPost(payload: {
+    content: string;
+    platforms: Array<{ platform: string; accountId: string }>;
+    scheduledFor?: string;
+    publishNow?: boolean;
+    timezone?: string;
+    mediaItems?: Array<{ type: string; url: string }>;
+  }): Promise<ZernioResult<Record<string, unknown>>>;
 }
 
 export type ReviewCandidate =
@@ -331,6 +362,69 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     );
   }
 
+  function sendInboxMessage(options: {
+    conversationId: string;
+    accountId: string;
+    message: string;
+  }) {
+    return request<Record<string, unknown>>("/inbox/send", {
+      method: "POST",
+      body: {
+        conversationId: options.conversationId,
+        accountId: options.accountId,
+        message: options.message,
+      },
+    });
+  }
+
+  function replyComment(options: {
+    postId: string;
+    commentId: string;
+    accountId: string;
+    message: string;
+  }) {
+    return request<Record<string, unknown>>("/inbox/reply", {
+      method: "POST",
+      body: {
+        postId: options.postId,
+        commentId: options.commentId,
+        accountId: options.accountId,
+        message: options.message,
+      },
+    });
+  }
+
+  function replyReview(options: { reviewId: string; message: string; accountId?: string }) {
+    const body: Record<string, unknown> = {
+      reviewId: options.reviewId,
+      message: options.message,
+    };
+    if (options.accountId) body.accountId = options.accountId;
+    return request<Record<string, unknown>>("/inbox/review-reply", {
+      method: "POST",
+      body,
+    });
+  }
+
+  function createPost(payload: {
+    content: string;
+    platforms: Array<{ platform: string; accountId: string }>;
+    scheduledFor?: string;
+    publishNow?: boolean;
+    timezone?: string;
+    mediaItems?: Array<{ type: string; url: string }>;
+  }) {
+    const body: Record<string, unknown> = {
+      content: payload.content,
+      platforms: payload.platforms,
+    };
+    if (payload.publishNow) body.publishNow = true;
+    if (payload.scheduledFor) body.scheduledFor = payload.scheduledFor;
+    if (payload.timezone) body.timezone = payload.timezone;
+    if (payload.mediaItems && payload.mediaItems.length > 0) body.mediaItems = payload.mediaItems;
+    return request<Record<string, unknown>>("/posts", { method: "POST", body });
+  }
+
   return {
     get: <T = Record<string, unknown>>(path: string) => request<T>(path),
     listAccounts,
@@ -345,5 +439,9 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     listReviews,
     listInboxConversations,
     listInboxConversationMessages,
+    sendInboxMessage,
+    replyComment,
+    replyReview,
+    createPost,
   };
 }

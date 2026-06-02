@@ -15,3 +15,15 @@ if (typeof window !== "undefined") {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+/**
+ * Register the PWA service worker in production builds only. In dev, Vite's
+ * module server + HMR don't play well with a caching SW, so we skip it.
+ */
+if (import.meta.env.PROD && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("[pwa] service worker registration failed:", err);
+    });
+  });
+}

@@ -52,7 +52,7 @@ export default function Layout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-          <header className="flex h-14 items-center border-b border-border px-3 sm:px-4 gap-2 min-w-0">
+          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-14 items-center border-b border-border px-3 sm:px-4 gap-2 min-w-0">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0" />
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-2 shrink-0">
@@ -130,11 +130,13 @@ export default function Layout() {
           <div
             id="main-content"
             tabIndex={-1}
-            className="flex-1 p-4 sm:p-6 overflow-auto focus:outline-none"
+            className="flex-1 overflow-auto app-scroll focus:outline-none safe-bottom safe-x"
           >
-            <ErrorBoundary resetKey={location.pathname} label="route">
-              <Outlet />
-            </ErrorBoundary>
+            <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-6">
+              <ErrorBoundary resetKey={location.pathname} label="route">
+                <Outlet />
+              </ErrorBoundary>
+            </div>
           </div>
         </main>
       </div>

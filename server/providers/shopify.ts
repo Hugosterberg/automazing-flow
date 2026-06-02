@@ -1,15 +1,67 @@
-import { calculateShopifyRevenueStats } from "../analytics/shopifyMetrics.ts";
+import {
+  calculateShopifyRevenueStats,
+  buildShopifyDailyRevenue,
+  topShopifyProducts,
+  type ShopifyOrderInput,
+} from "../analytics/shopifyMetrics.ts";
 
-type ShopifyOrder = {
+type ShopifyOrder = ShopifyOrderInput & {
   id: string | number;
   name?: string;
   email?: string;
-  total_price?: string;
   currency?: string;
   financial_status?: string;
   fulfillment_status?: string;
+  customer?: { id?: number | string; first_name?: string; last_name?: string; email?: string };
+};
+
+type ShopifyCustomer = {
+  id: number | string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  orders_count?: number | string;
+  total_spent?: string;
+  currency?: string;
   created_at?: string;
-  line_items?: unknown[];
+};
+
+type ShopifyCheckout = {
+  id: number | string;
+  token?: string;
+  email?: string;
+  total_price?: string;
+  currency?: string;
+  abandoned_checkout_url?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type ShopifyProductVariant = {
+  id: number | string;
+  title?: string;
+  sku?: string;
+  inventory_quantity?: number;
+  inventory_management?: string | null;
+  price?: string;
+};
+
+type ShopifyProduct = {
+  id: number | string;
+  title?: string;
+  status?: string;
+  variants?: ShopifyProductVariant[];
+};
+
+type ShopifyPriceRule = {
+  id: number | string;
+  title?: string;
+  value_type?: string;
+  value?: string;
+  target_type?: string;
+  starts_at?: string;
+  ends_at?: string | null;
+  usage_count?: number;
 };
 
 function formatShopifyErrors(data: unknown): string {
@@ -34,7 +86,21 @@ function formatShopifyErrors(data: unknown): string {
 }
 
 /** Shopify Admin REST API version — see https://shopify.dev/docs/api/admin-rest */
-const SHOPIFY_ADMIN_API_VERSION = "2024-01";
+const SHOPIFY_ADMIN_API_VERSION = "2025-01";
+const LOW_STOCK_THRESHOLD = 5;
+
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function isoNDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString();
+}
 
 export async function fetchShopifyAccountData(accessToken: string, shop: string | undefined) {
   if (!shop) {
@@ -43,12 +109,50 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
 
   const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
   const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since30d = isoNDaysAgo(30);
+  const since90d = isoNDaysAgo(90);
 
-  const [shopRes, ordersRes, productsCountRes, ordersCountRes] = await Promise.all([
+  async function safeJson<T>(res: Response, fallback: T): Promise<T> {
+    if (!res.ok) return fallback;
+    try {
+      return (await res.json()) as T;
+    } catch {
+      return fallback;
+    }
+  }
+
+  const [
+    shopRes,
+    ordersRes,
+    productsCountRes,
+    ordersCountRes,
+    customersCountRes,
+    topCustomersRes,
+    checkoutsRes,
+    productsRes,
+    priceRulesRes,
+    new30dCustomersRes,
+  ] = await Promise.all([
     fetch(`${apiBase}/shop.json`, { headers: shopHeaders }),
-    fetch(`${apiBase}/orders.json?status=any&limit=10&order=created_at+desc`, { headers: shopHeaders }),
+    fetch(
+      `${apiBase}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(since30d)}&order=created_at+desc&fields=id,name,email,total_price,subtotal_price,total_discounts,currency,financial_status,fulfillment_status,created_at,processed_at,line_items,customer`,
+      { headers: shopHeaders }
+    ),
     fetch(`${apiBase}/products/count.json`, { headers: shopHeaders }),
     fetch(`${apiBase}/orders/count.json?status=any`, { headers: shopHeaders }),
+    fetch(`${apiBase}/customers/count.json`, { headers: shopHeaders }),
+    fetch(`${apiBase}/customers.json?limit=10&order=total_spent+desc&fields=id,first_name,last_name,email,orders_count,total_spent,currency`, {
+      headers: shopHeaders,
+    }),
+    fetch(
+      `${apiBase}/checkouts.json?limit=50&created_at_min=${encodeURIComponent(since30d)}&status=open`,
+      { headers: shopHeaders }
+    ),
+    fetch(`${apiBase}/products.json?limit=50&fields=id,title,status,variants`, { headers: shopHeaders }),
+    fetch(`${apiBase}/price_rules.json?limit=10`, { headers: shopHeaders }),
+    fetch(`${apiBase}/customers/count.json?created_at_min=${encodeURIComponent(since30d)}`, {
+      headers: shopHeaders,
+    }),
   ]);
 
   if (!shopRes.ok) {
@@ -76,13 +180,6 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
     };
   }
 
-  const [shopData, ordersData, productsCountData, ordersCountData] = await Promise.all([
-    shopRes.json(),
-    ordersRes.ok ? ordersRes.json() : { orders: [] },
-    productsCountRes.ok ? productsCountRes.json() : { count: 0 },
-    ordersCountRes.ok ? ordersCountRes.json() : { count: 0 },
-  ]);
-
   if (!ordersRes.ok && ordersRes.status === 401) {
     const raw = await ordersRes.json().catch(() => ({}));
     return {
@@ -91,37 +188,179 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
     };
   }
 
-  const shopInfo = (shopData as { shop?: Record<string, string> }).shop || {};
-  const orders = ((ordersData as { orders?: ShopifyOrder[] }).orders || []) as ShopifyOrder[];
-  const revenueStats = calculateShopifyRevenueStats(orders);
+  const shopData = await safeJson<{ shop?: Record<string, unknown> }>(shopRes, {});
+  const ordersData = await safeJson<{ orders?: ShopifyOrder[] }>(ordersRes, { orders: [] });
+  const productsCountData = await safeJson<{ count?: number }>(productsCountRes, { count: 0 });
+  const ordersCountData = await safeJson<{ count?: number }>(ordersCountRes, { count: 0 });
+  const customersCountData = await safeJson<{ count?: number }>(customersCountRes, { count: 0 });
+  const topCustomersData = await safeJson<{ customers?: ShopifyCustomer[] }>(topCustomersRes, {
+    customers: [],
+  });
+  const checkoutsData = await safeJson<{ checkouts?: ShopifyCheckout[] }>(checkoutsRes, {
+    checkouts: [],
+  });
+  const productsData = await safeJson<{ products?: ShopifyProduct[] }>(productsRes, { products: [] });
+  const priceRulesData = await safeJson<{ price_rules?: ShopifyPriceRule[] }>(priceRulesRes, {
+    price_rules: [],
+  });
+  const new30dCustomersData = await safeJson<{ count?: number }>(new30dCustomersRes, { count: 0 });
 
-  const formattedOrders = orders.map((o) => ({
+  const shopInfo = (shopData.shop || {}) as Record<string, unknown>;
+  const orders = ordersData.orders || [];
+  const checkouts = checkoutsData.checkouts || [];
+  const products = productsData.products || [];
+  const priceRules = priceRulesData.price_rules || [];
+  const topCustomers = topCustomersData.customers || [];
+
+  const currency =
+    (typeof shopInfo.currency === "string" && shopInfo.currency) ||
+    (orders[0]?.currency as string | undefined) ||
+    "USD";
+
+  const revenueStats = calculateShopifyRevenueStats(orders);
+  const dailyRevenue = buildShopifyDailyRevenue(orders, 30);
+  const topProducts = topShopifyProducts(orders, 5);
+
+  const formattedOrders = orders.slice(0, 25).map((o) => ({
     id: o.id,
     name: o.name,
-    email: o.email || "",
-    total: parseFloat(o.total_price || "0"),
-    currency: o.currency || shopInfo.currency || "USD",
+    email: o.email || o.customer?.email || "",
+    customer: o.customer
+      ? [o.customer.first_name, o.customer.last_name].filter(Boolean).join(" ").trim() || null
+      : null,
+    total: toNumber(o.total_price),
+    subtotal: toNumber(o.subtotal_price),
+    discount: toNumber(o.total_discounts),
+    currency: o.currency || currency,
     status: o.financial_status || "pending",
     fulfillment: o.fulfillment_status || "unfulfilled",
     createdAt: o.created_at,
     lineItemCount: (o.line_items || []).length,
   }));
 
+  const formattedCustomers = topCustomers
+    .map((c) => ({
+      id: c.id,
+      name: [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.email || "Anonymous",
+      email: c.email || "",
+      ordersCount: toNumber(c.orders_count),
+      totalSpent: toNumber(c.total_spent),
+      currency: c.currency || currency,
+    }))
+    .filter((c) => c.totalSpent > 0)
+    .slice(0, 5);
+
+  const abandonedTotal = checkouts.reduce((sum, c) => sum + toNumber(c.total_price), 0);
+  const formattedAbandoned = checkouts
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      email: c.email || "",
+      total: toNumber(c.total_price),
+      currency: c.currency || currency,
+      createdAt: c.created_at,
+      recoveryUrl: c.abandoned_checkout_url || null,
+    }))
+    .filter((c) => c.total > 0);
+
+  const lowStockItems: Array<{
+    productId: string | number;
+    productTitle: string;
+    variantTitle: string | null;
+    sku: string | null;
+    quantity: number;
+  }> = [];
+  for (const product of products) {
+    if (product.status && product.status !== "active") continue;
+    for (const variant of product.variants || []) {
+      if (!variant.inventory_management) continue;
+      const qty = toNumber(variant.inventory_quantity, Number.POSITIVE_INFINITY);
+      if (qty <= LOW_STOCK_THRESHOLD) {
+        lowStockItems.push({
+          productId: product.id,
+          productTitle: product.title || "Untitled product",
+          variantTitle: variant.title && variant.title !== "Default Title" ? variant.title : null,
+          sku: variant.sku || null,
+          quantity: qty,
+        });
+      }
+    }
+  }
+  lowStockItems.sort((a, b) => a.quantity - b.quantity);
+
+  const now = Date.now();
+  const activePriceRules = priceRules.filter((p) => {
+    if (!p.ends_at) return true;
+    const ends = new Date(p.ends_at).getTime();
+    return Number.isFinite(ends) ? ends > now : true;
+  });
+  const promotions = activePriceRules.slice(0, 5).map((p) => ({
+    id: p.id,
+    title: p.title || "Untitled rule",
+    value: p.value ?? null,
+    valueType: p.value_type ?? null,
+    targetType: p.target_type ?? null,
+    startsAt: p.starts_at ?? null,
+    endsAt: p.ends_at ?? null,
+    usageCount: toNumber(p.usage_count),
+  }));
+
+  const totalOrdersCount = toNumber(ordersCountData.count);
+  const ordersInWindow = orders.length;
+  const fulfilledInWindow = orders.filter((o) => o.fulfillment_status === "fulfilled").length;
+  const fulfillmentRate30d =
+    ordersInWindow > 0 ? Math.round((fulfilledInWindow / ordersInWindow) * 100) : null;
+  const conversionEstimate30d =
+    checkouts.length + ordersInWindow > 0
+      ? Math.round((ordersInWindow / (checkouts.length + ordersInWindow)) * 100)
+      : null;
+
+  const adminBase = `https://${shop}/admin`;
+
   return {
     shop: {
-      name: shopInfo.name,
-      domain: shopInfo.domain || shop,
-      currency: shopInfo.currency,
-      plan: shopInfo.plan_display_name || shopInfo.plan_name,
-      email: shopInfo.email,
+      name: (shopInfo.name as string | undefined) || shop,
+      domain: (shopInfo.domain as string | undefined) || shop,
+      myshopifyDomain: shop,
+      currency,
+      plan: (shopInfo.plan_display_name as string | undefined) || (shopInfo.plan_name as string | undefined) || null,
+      email: (shopInfo.email as string | undefined) || null,
+      country: (shopInfo.country_name as string | undefined) || (shopInfo.country as string | undefined) || null,
+      timezone: (shopInfo.iana_timezone as string | undefined) || (shopInfo.timezone as string | undefined) || null,
+      primaryLocale: (shopInfo.primary_locale as string | undefined) || null,
+      adminUrl: adminBase,
+      storefrontUrl: shopInfo.domain ? `https://${shopInfo.domain}` : `https://${shop}`,
     },
     stats: {
-      ordersCount: (ordersCountData as { count?: number }).count || 0,
-      productsCount: (productsCountData as { count?: number }).count || 0,
+      ordersCount: totalOrdersCount,
+      ordersWindow: ordersInWindow,
+      productsCount: toNumber(productsCountData.count),
+      customersCount: toNumber(customersCountData.count),
+      newCustomers30d: toNumber(new30dCustomersData.count),
       revenue30d: revenueStats.revenue30d,
       avgOrderValue: revenueStats.avgOrderValue,
-      currency: shopInfo.currency || "USD",
+      abandonedCheckouts30d: checkouts.length,
+      abandonedValue30d: Math.round(abandonedTotal * 100) / 100,
+      fulfillmentRate30d,
+      conversionEstimate30d,
+      lowStockCount: lowStockItems.length,
+      activePromotions: activePriceRules.length,
+      currency,
     },
     orders: formattedOrders,
+    topProducts,
+    topCustomers: formattedCustomers,
+    abandonedCheckouts: formattedAbandoned,
+    lowStock: lowStockItems.slice(0, 8),
+    promotions,
+    revenueTrend: dailyRevenue,
+    adminLinks: {
+      orders: `${adminBase}/orders`,
+      products: `${adminBase}/products`,
+      customers: `${adminBase}/customers`,
+      analytics: `${adminBase}/analytics/dashboards`,
+      discounts: `${adminBase}/discounts`,
+      checkouts: `${adminBase}/checkouts/abandoned`,
+    },
   };
 }

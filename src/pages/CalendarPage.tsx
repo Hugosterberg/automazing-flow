@@ -51,6 +51,7 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useAccountData } from "@/hooks/useAccountData";
 import type { ConnectedAccount } from "@/types/accounts";
 
@@ -95,6 +96,7 @@ type CalendarProviderData = {
 export default function CalendarPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("calendar");
   const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -237,6 +239,7 @@ export default function CalendarPage() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    if (activeBusinessProfileId) params.set("business_profile_id", activeBusinessProfileId);
     if (provider !== "auto") params.set("provider", provider);
     const query = params.toString() ? `?${params.toString()}` : "";
     window.location.href = `${apiUrl(`/api/auth/${platform}`)}${query}`;

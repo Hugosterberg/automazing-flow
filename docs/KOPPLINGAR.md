@@ -40,9 +40,36 @@ För Shopify OAuth måste callback vara publik HTTPS, även om backend kör loka
 
 Servern använder `SHOPIFY_APP_URL` för Shopify `redirect_uri` och skickar sedan tillbaka användaren till `BASE_URL` (din lokala frontend).
 
+## Nyckelmodell: globala plattformsnycklar vs per-profil-secrets
+
+Det finns två lager av nycklar:
+
+1. **Globala plattformsnycklar (env, ägs av plattformsoperatören).** OAuth-app-credentials
+   (`GOOGLE_CLIENT_ID/SECRET`, Meta/TikTok/X/Shopify/Notion/Microsoft), `ZERNIO_API_KEY`,
+   `OPENAI_API_KEY`, `SUPABASE_*`, `CRON_SECRET`, m.fl. Sätts som miljövariabler lokalt i `.env.local`
+   och i Vercel. **Preferences kan bara visa status (configured/missing) — aldrig värden, och skriver
+   dem inte.** En OAuth-app registreras en gång; varje användare loggar bara in sitt eget konto i den.
+
+2. **Per-profil-secrets (krypterade i Supabase).** "Bring-your-own"-nycklar som hör till en enskild
+   företagsprofil: Tripadvisor `location_id` + ev. egen nyckel, Google Ads `customer_id`, ev. egen
+   `OPENAI_API_KEY`/`PAGESPEED_API_KEY`. Fylls i under **Preferences → Integrations** per aktiv profil.
+   Krypteras med AES-256-GCM (`server/lib/secretCrypto.ts`) och lagras i `integration_secrets`.
+   Servern löser upp nycklar som **per-profil → global env** (`server/lib/secretResolver.ts`), så att
+   inget slutar fungera när en profil saknar egen nyckel.
+
+**Ny miljövariabel:** `SECRETS_ENCRYPTION_KEY` (32 byte, t.ex. `openssl rand -base64 32`) krävs för att
+per-profil-secrets ska kunna lagras. Sätt den lokalt **och** i Vercel. Saknas den (eller
+`SUPABASE_SERVICE_ROLE_KEY`) faller allt tillbaka på globala env-nycklar.
+
+## Zernio: en nyckel, en profil per företag
+
+`ZERNIO_API_KEY` är **en** global nyckel som täcker alla profiler. Varje företagsprofil får en egen
+Zernio-*profil* (workspace) som skapas på begäran och sparas i `business_profiles.zernio_profile_id`, så
+att en kunds kanaler/inbox hålls isolerade inom din enda Zernio-nyckel.
+
 ## Var sparas tokens och profiler?
 
-- **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.
+- **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`; per-profil-secrets (krypterade) i `integration_secrets`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.
 - **Supabase:** profiler + kontolistor per inloggad användare (`user_id`) när Google-login är aktiverat (`profiles`, `connected_accounts`).
 - **Webbläsare:** lokal cache för konton/profiler; inte källa för servertokens.
 

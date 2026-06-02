@@ -1,7 +1,9 @@
 import { m } from "framer-motion";
-import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink } from "lucide-react";
+import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
@@ -31,6 +33,7 @@ interface UnifiedMessage {
   body: string;
   isUnread: boolean;
   externalUrl?: string;
+  conversationId?: string;
 }
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
@@ -141,6 +144,11 @@ export default function MessagesPage() {
   const [zernioNote, setZernioNote] = useState<string | null>(null);
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
   const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
+  const { toast } = useToast();
+  const [replyDraft, setReplyDraft] = useState("");
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [sendBusy, setSendBusy] = useState(false);
+  const [replySent, setReplySent] = useState(false);
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
@@ -266,6 +274,71 @@ export default function MessagesPage() {
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
+  }
+
+  // Reset the reply box whenever a different message is opened.
+  useEffect(() => {
+    setReplyDraft("");
+    setReplySent(false);
+    setDraftBusy(false);
+    setSendBusy(false);
+  }, [selectedMessage?.id]);
+
+  async function draftDmReply() {
+    if (!selectedMessage) return;
+    setDraftBusy(true);
+    try {
+      const res = await fetch(apiUrl("/api/ai/reply-draft"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "dm",
+          authorName: selectedMessage.from.name || selectedMessage.subject,
+          text: selectedMessage.body || selectedMessage.snippet,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || "Could not draft a reply");
+      setReplyDraft(String(payload?.draft || ""));
+    } catch (e) {
+      toast({
+        title: "AI draft failed",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
+  async function sendDmReply() {
+    if (!selectedMessage?.conversationId || !replyDraft.trim()) return;
+    setSendBusy(true);
+    try {
+      const res = await fetch(apiUrl("/api/messages/reply"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: selectedMessage.accountId,
+          conversationId: selectedMessage.conversationId,
+          message: replyDraft.trim(),
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not send reply");
+      setReplySent(true);
+      toast({ title: "Reply sent", description: "Your message was sent via Zernio." });
+    } catch (e) {
+      toast({
+        title: "Could not send reply",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSendBusy(false);
+    }
   }
 
   const summaryPayload = useMemo(
@@ -592,9 +665,38 @@ export default function MessagesPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-auto rounded border border-border p-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="max-h-[50vh] overflow-auto rounded border border-border p-3 text-sm leading-relaxed whitespace-pre-wrap">
             {selectedMessage?.body?.trim() || selectedMessage?.snippet || "(No content)"}
           </div>
+
+          {selectedMessage?.kind === "dm" && selectedMessage.conversationId && (
+            <div className="space-y-2 pt-1">
+              {replySent ? (
+                <p className="text-xs text-emerald-600 inline-flex items-center gap-1">
+                  <Send className="h-3.5 w-3.5" /> Reply sent
+                </p>
+              ) : (
+                <>
+                  <Textarea
+                    value={replyDraft}
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                    placeholder="Write a reply, or generate one with AI…"
+                    className="min-h-[72px] text-sm"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void draftDmReply()} disabled={draftBusy}>
+                      {draftBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                      AI draft
+                    </Button>
+                    <Button size="sm" onClick={() => void sendDmReply()} disabled={sendBusy || !replyDraft.trim()}>
+                      {sendBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                      Send reply
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

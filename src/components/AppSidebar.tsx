@@ -516,6 +516,7 @@ export function AppSidebar() {
       const params = new URLSearchParams({ provider: "official" });
       const oauthProfileId = getOAuthProfileId(activeProfileId);
       if (oauthProfileId) params.set("profile_id", oauthProfileId);
+      if (aiBpId) params.set("business_profile_id", aiBpId);
       window.location.href = `${apiUrl("/api/auth/google_business")}?${params}`;
       return;
     }
@@ -533,6 +534,7 @@ export function AppSidebar() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    if (aiBpId) params.set("business_profile_id", aiBpId);
     if (platform === "tiktok" && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
@@ -560,6 +562,7 @@ export function AppSidebar() {
     const params = new URLSearchParams({ shop });
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    if (aiBpId) params.set("business_profile_id", aiBpId);
     setShopifyDialogOpen(false);
     setShopDomain("");
     window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
