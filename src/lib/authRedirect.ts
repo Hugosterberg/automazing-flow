@@ -14,45 +14,91 @@ export type OAuthRedirectBuildInput = {
   windowOrigin: string;
   pathname: string;
   search: string;
+  hash?: string;
 };
+
+const AUTH_PENDING_RETURN_KEY = "automazing-auth-pending-return";
+const AUTH_CALLBACK_PARAMS = new Set([
+  "code",
+  "state",
+  "error",
+  "error_code",
+  "error_description",
+]);
 
 function isLoopbackHostname(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+function getAuthBaseOrigin(input: OAuthRedirectBuildInput): string {
+  let baseOrigin = input.windowOrigin;
+
+  if (!input.prod) return baseOrigin;
+
+  const candidates = [
+    input.viteSiteUrl,
+    input.viteAppUrl,
+    input.viteVercelDeploymentOrigin,
+  ]
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  for (const raw of candidates) {
+    try {
+      const parsed = new URL(raw);
+      if (!isLoopbackHostname(parsed.hostname)) {
+        baseOrigin = `${parsed.protocol}//${parsed.host}`;
+        break;
+      }
+    } catch {
+      // skip invalid URL
+    }
+  }
+
+  return baseOrigin;
 }
 
 /**
  * Pure helper — used by tests and getOAuthRedirectUrl().
  */
 export function buildOAuthRedirectUrl(input: OAuthRedirectBuildInput): string {
-  const pathname = input.pathname || "/";
-  const search = input.search || "";
-  const pathWithQuery = `${pathname}${search}` || "/";
+  return new URL("/", getAuthBaseOrigin(input)).href;
+}
 
-  let baseOrigin = input.windowOrigin;
+export function buildAuthReturnPath(
+  input: Pick<OAuthRedirectBuildInput, "pathname" | "search" | "hash">
+): string {
+  const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
+  const params = new URLSearchParams(input.search || "");
 
-  if (input.prod) {
-    const candidates = [
-      input.viteSiteUrl,
-      input.viteAppUrl,
-      input.viteVercelDeploymentOrigin,
-    ]
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    for (const raw of candidates) {
-      try {
-        const parsed = new URL(raw);
-        if (!isLoopbackHostname(parsed.hostname)) {
-          baseOrigin = `${parsed.protocol}//${parsed.host}`;
-          break;
-        }
-      } catch {
-        // skip invalid URL
-      }
-    }
+  for (const key of AUTH_CALLBACK_PARAMS) {
+    params.delete(key);
   }
 
-  return new URL(pathWithQuery, baseOrigin).href;
+  const search = params.toString();
+  const hash = input.hash || "";
+  return `${pathname}${search ? `?${search}` : ""}${hash}`;
+}
+
+export function storePendingAuthReturn(): void {
+  sessionStorage.setItem(
+    AUTH_PENDING_RETURN_KEY,
+    buildAuthReturnPath({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+    })
+  );
+}
+
+export function readPendingAuthReturn(): string | null {
+  const value = sessionStorage.getItem(AUTH_PENDING_RETURN_KEY);
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
+
+export function clearPendingAuthReturn(): void {
+  sessionStorage.removeItem(AUTH_PENDING_RETURN_KEY);
 }
 
 export function getOAuthRedirectUrl(): string {
@@ -64,5 +110,6 @@ export function getOAuthRedirectUrl(): string {
     windowOrigin: window.location.origin,
     pathname: window.location.pathname,
     search: window.location.search,
+    hash: window.location.hash,
   });
 }

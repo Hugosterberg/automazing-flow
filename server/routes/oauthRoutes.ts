@@ -1330,7 +1330,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       await tokenStore.set(appAccountId, {
         platform: pending.platform,
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: null,
         isZernio: true,
@@ -1415,21 +1415,22 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         client_secret: clientSecret,
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
-        code: code,
+        code: String(code || ""),
       });
       const tokenRes = await fetch(IG_TOKEN, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=${data.error_message || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_message || data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const accountId = crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "instagram",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         userId: data.user_id,
@@ -1526,7 +1527,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_key: clientKey,
         client_secret: clientSecret,
-        code: code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -1538,9 +1539,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const accountId = crypto.randomUUID();
       let username = data.open_id;
@@ -1551,15 +1553,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             "Content-Type": "application/json",
           },
         });
-        const userData = await userRes.json();
+        const userData = await userRes.json().catch(() => ({}));
+        if (!userRes.ok) {
+          console.warn("[TikTok] user info failed:", userRes.status, userData?.error || userData?.message || "");
+        }
         if (userData.data?.user?.username) username = userData.data.user.username;
         else if (userData.data?.user?.display_name) username = userData.data.user.display_name;
-      } catch {
-        // behåll open_id som fallback
+      } catch (err) {
+        console.warn("[TikTok] user info request failed:", err);
       }
       await tokenStore.set(accountId, {
         platform: "tiktok",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -1620,11 +1625,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientId = process.env.X_CLIENT_ID;
     const clientSecret = process.env.X_CLIENT_SECRET;
     if (!clientId) return res.redirect(`${BASE_URL}/social-media?oauth_error=x_not_configured`);
+    if (!pending.codeVerifier) {
+      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_pkce_state`);
+    }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
       const body = new URLSearchParams({
         grant_type: "authorization_code",
-        code: String(code),
+        code: String(code || ""),
         redirect_uri: redirectUri,
         code_verifier: pending.codeVerifier,
       });
@@ -1635,21 +1643,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         body.set("client_id", clientId);
       }
       const tokenRes = await fetchXToken(body, headers);
-      const tokenData = await tokenRes.json();
-      if (tokenData.error) {
+      const tokenData = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         console.error("[X] token error:", tokenData.error, tokenData.error_description);
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${tokenData.error}`);
+        return res.redirect(
+          `${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`
+        );
       }
       const userRes = await fetch(
         "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
         { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
       );
-      const userData = await userRes.json();
+      const userData = await userRes.json().catch(() => ({}));
       const user = userData.data || {};
       const accountId = crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "x",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
@@ -1720,7 +1730,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code: code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -1729,28 +1739,29 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const accountId = crypto.randomUUID();
-      await tokenStore.set(accountId, {
-        platform: "youtube",
-        ownerUserId: pending.userId,
-        profileId: pending.profileId || null,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        username: null,
-      });
       // Hämta kanalinfo för username
       let username = "YouTube-konto";
       const meRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
-      const meData = await meRes.json();
+      const meData = await meRes.json().catch(() => ({}));
       if (meData.items?.[0]?.snippet?.title) {
         username = meData.items[0].snippet.title;
       }
+      await tokenStore.set(accountId, {
+        platform: "youtube",
+        ownerUserId: callbackUserId || pending.userId,
+        profileId: pending.profileId || null,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        username,
+      });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
         `${BASE_URL}/social-media?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
@@ -1841,9 +1852,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_not_configured`);
     }
     try {
-      const shopUrl = normalizeShopifyShop(pending.shop || shop);
-      if (!shopUrl) {
+      const shopUrl = normalizeShopifyShop(shop);
+      const pendingShopUrl = normalizeShopifyShop(pending.shop);
+      if (!shopUrl || !pendingShopUrl) {
         return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_invalid_shop`);
+      }
+      if (shopUrl !== pendingShopUrl) {
+        return res.redirect(`${BASE_URL}/ecommerce?oauth_error=shopify_shop_mismatch`);
       }
       const tokenRes = await fetch(`https://${shopUrl}/admin/oauth/access_token`, {
         method: "POST",
@@ -1851,7 +1866,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         body: JSON.stringify({
           client_id: apiKey,
           client_secret: apiSecret,
-          code,
+          code: String(code || ""),
         }),
       });
       const data = await tokenRes.json().catch(() => ({}));
@@ -1864,7 +1879,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const accountId = `shopify_${crypto.createHash("sha1").update(shopUrl).digest("hex").slice(0, 20)}`;
       await tokenStore.set(accountId, {
         platform: "shopify",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         username: shopName,
         accessToken: data.access_token,
@@ -1949,7 +1964,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         },
         body: JSON.stringify({
           grant_type: "authorization_code",
-          code,
+          code: String(code || ""),
           redirect_uri: redirectUri,
         }),
       });
@@ -1966,7 +1981,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       await tokenStore.set(accountId, {
         platform: "notion",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: tokenData.access_token,
         workspaceId: tokenData.workspace_id,
@@ -2083,7 +2098,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -2092,9 +2107,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/calendar?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       let username = "Google Calendar";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -2204,7 +2220,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -2213,9 +2229,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/calendar?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const accountId = crypto.randomUUID();
       let username = "Outlook Calendar";
@@ -2339,7 +2356,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -2545,7 +2562,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -2932,7 +2949,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -3111,7 +3128,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
+      const data = await tokenRes.json().catch(() => ({}));
       debugLog("pre-fix", "H3", "oauthRoutes.js:/api/auth/gmail/callback", "Google token exchange response", {
         status: tokenRes.status,
         ok: tokenRes.ok,
@@ -3119,11 +3136,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         hasRefreshToken: Boolean(data.refresh_token),
         tokenError: data.error ?? null,
       });
-      if (data.error) {
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(
-          buildPageOauthErrorUrl("messages", String(data.error), {
+          buildPageOauthErrorUrl("messages", String(rawErr), {
             status: tokenRes.status,
-            exception: data.error_description || data.error,
+            exception: data.error_description || data.error || "Google token exchange failed.",
           })
         );
       }
@@ -3131,7 +3149,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
-      const meData = await meRes.json();
+      const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = meData.email;
       const gmailIdentityRaw = String(meData.id || meData.email || username || "").toLowerCase();
       const gmailIdentityHash = crypto.createHash("sha1").update(gmailIdentityRaw).digest("hex").slice(0, 20);
@@ -3213,7 +3231,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
+        code: String(code || ""),
         grant_type: "authorization_code",
         redirect_uri: redirectUri,
       });
@@ -3222,21 +3240,22 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
-      const data = await tokenRes.json();
-      if (data.error) {
-        return res.redirect(`${BASE_URL}/messages?oauth_error=${data.error_description || data.error}`);
+      const data = await tokenRes.json().catch(() => ({}));
+      if (!tokenRes.ok || data.error || !data.access_token) {
+        const rawErr = data.error_description || data.error || "token_exchange_failed";
+        return res.redirect(`${BASE_URL}/messages?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const accountId = crypto.randomUUID();
       let username = "Outlook";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
-      const meData = await meRes.json();
+      const meData = await meRes.json().catch(() => ({}));
       if (meData.mail) username = meData.mail;
       else if (meData.userPrincipalName) username = meData.userPrincipalName;
       await tokenStore.set(accountId, {
         platform: "outlook",
-        ownerUserId: pending.userId,
+        ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,

@@ -6,6 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
+import {
+  buildAuthReturnPath,
+  clearPendingAuthReturn,
+  readPendingAuthReturn,
+} from "@/lib/authRedirect";
 import { storePendingOAuthReturn } from "@/lib/oauthCallbackState";
 import { cn } from "@/lib/utils";
 
@@ -209,12 +214,43 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading, enabled, authMode, setAuthMode, signInWithGoogle } = useAuth();
   const allowLocal = isLocalDevHost();
   const [authTab, setAuthTab] = useState<"email" | "google">("email");
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authMode === "local") return;
     if (user) return;
     storePendingOAuthReturn(window.location.pathname, window.location.search);
   }, [authMode, user]);
+
+  useEffect(() => {
+    if (authMode !== "cloud" || !user) return;
+    const pendingReturn = readPendingAuthReturn();
+    if (!pendingReturn) return;
+
+    clearPendingAuthReturn();
+    const current = buildAuthReturnPath({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+    });
+    if (pendingReturn !== current) {
+      window.location.replace(pendingReturn);
+    }
+  }, [authMode, user]);
+
+  async function handleGoogleSignIn() {
+    setGoogleError(null);
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      setGoogleLoading(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Något gick fel";
+      setGoogleError(translateAuthError(msg));
+      setGoogleLoading(false);
+    }
+  }
 
   if (authMode === "local") {
     return <>{children}</>;
@@ -344,7 +380,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
               </button>
               <button
                 type="button"
-                onClick={() => setAuthTab("google")}
+                onClick={() => {
+                  setAuthTab("google");
+                  setGoogleError(null);
+                }}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   authTab === "google"
@@ -361,10 +400,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
               <EmailLoginForm />
             ) : (
               <div className="space-y-3">
-                <Button className="w-full gap-2.5" variant="outline" onClick={() => void signInWithGoogle()}>
-                  <GoogleIcon className="h-4 w-4" />
-                  Fortsätt med Google
+                <Button
+                  className="w-full gap-2.5"
+                  variant="outline"
+                  onClick={() => void handleGoogleSignIn()}
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <GoogleIcon className="h-4 w-4" />
+                  )}
+                  {googleLoading ? "Öppnar Google…" : "Fortsätt med Google"}
                 </Button>
+                {googleError && (
+                  <p className="text-xs text-destructive text-center" role="alert">
+                    {googleError}
+                  </p>
+                )}
                 <p className="text-xs text-center text-muted-foreground">
                   Vi importerar bara ditt namn och din e-postadress.
                 </p>

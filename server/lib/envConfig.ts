@@ -37,6 +37,7 @@ export interface EnvConfig {
 
 export function createEnvConfig(deps: EnvConfigDeps): EnvConfig {
   const { envPath } = deps;
+  const envKeyPattern = /^[A-Z_][A-Z0-9_]*$/;
 
   function readEnvEntries(): Record<string, string> {
     if (!fs.existsSync(envPath)) return {};
@@ -60,8 +61,11 @@ export function createEnvConfig(deps: EnvConfigDeps): EnvConfig {
     const nextLines = [...lines];
 
     for (const [key, value] of Object.entries(updates)) {
+      if (!envKeyPattern.test(key)) {
+        throw new Error(`Invalid env key: ${key}`);
+      }
       const serialized = `${key}=${serializeEnvValue(value)}`;
-      const idx = nextLines.findIndex((line) => new RegExp(`^\\s*${key}\\s*=`).test(line));
+      const idx = nextLines.findIndex((line) => line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=/)?.[1] === key);
       if (idx >= 0) {
         nextLines[idx] = serialized;
       } else {

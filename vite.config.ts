@@ -5,7 +5,7 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiPort = env.PORT || "3001";
+  const apiPort = process.env.PORT || env.PORT || "3001";
   const apiTarget = `http://127.0.0.1:${apiPort}`;
 
   // Prefer the stable production alias (VERCEL_PROJECT_PRODUCTION_URL, e.g.

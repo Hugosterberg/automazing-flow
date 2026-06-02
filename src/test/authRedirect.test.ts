@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOAuthRedirectUrl } from "@/lib/authRedirect";
+import { buildAuthReturnPath, buildOAuthRedirectUrl } from "@/lib/authRedirect";
 
 describe("buildOAuthRedirectUrl", () => {
   it("production uses explicit https site URL over window", () => {
@@ -16,7 +16,7 @@ describe("buildOAuthRedirectUrl", () => {
     ).toBe("https://myapp.vercel.app/");
   });
 
-  it("production ignores explicit localhost and keeps window origin", () => {
+  it("production ignores explicit localhost and uses a stable app root", () => {
     expect(
       buildOAuthRedirectUrl({
         prod: true,
@@ -27,7 +27,7 @@ describe("buildOAuthRedirectUrl", () => {
         pathname: "/messages",
         search: "?x=1",
       })
-    ).toBe("https://myapp.vercel.app/messages?x=1");
+    ).toBe("https://myapp.vercel.app/");
   });
 
   it("production uses VITE_VERCEL-style origin when site/app are localhost", () => {
@@ -70,5 +70,35 @@ describe("buildOAuthRedirectUrl", () => {
         search: "",
       })
     ).toBe("http://localhost:8080/");
+  });
+});
+
+describe("buildAuthReturnPath", () => {
+  it("preserves app path, query and hash for post-login return", () => {
+    expect(
+      buildAuthReturnPath({
+        pathname: "/messages",
+        search: "?thread=123&filter=unread",
+        hash: "#latest",
+      })
+    ).toBe("/messages?thread=123&filter=unread#latest");
+  });
+
+  it("strips Supabase callback params from the stored return path", () => {
+    expect(
+      buildAuthReturnPath({
+        pathname: "/messages",
+        search: "?code=old&state=stale&error=server_error&error_description=nope&keep=1",
+      })
+    ).toBe("/messages?keep=1");
+  });
+
+  it("falls back to root for unsafe non-app paths", () => {
+    expect(
+      buildAuthReturnPath({
+        pathname: "https://evil.example",
+        search: "?keep=1",
+      })
+    ).toBe("/?keep=1");
   });
 });

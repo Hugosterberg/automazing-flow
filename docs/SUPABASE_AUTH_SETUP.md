@@ -113,9 +113,9 @@ In Supabase dashboard:
 3. **Supabase dashboard** → Authentication → URL configuration:
 
    - **Site URL**: must be your **live** app URL (e.g. `https://your-app.vercel.app`), **not** `http://localhost:...`. If Site URL is still localhost, Supabase will send users back to localhost after Google even when the app is deployed.
-   - **Redirect URLs**: add your deployment(s), e.g. `https://your-app.vercel.app/**` and, for preview builds, `https://*.vercel.app/**` so every `*.vercel.app` host is allowed.
+   - **Redirect URLs**: add your deployment root, e.g. `https://your-app.vercel.app/`. If you test preview builds, also allow the relevant preview hosts (for example `https://*.vercel.app/**`).
 
-4. **OAuth return URL in the app**: Production builds on Vercel inject `VITE_VERCEL_DEPLOYMENT_ORIGIN` from the platform `VERCEL_URL`. You can still set `VITE_SITE_URL` or `VITE_APP_URL` to your canonical domain (must not be localhost on Vercel). Localhost values in those variables are ignored in production in favor of the real deployment URL or `window.location`.
+4. **OAuth return URL in the app**: Supabase login uses the app root as its callback URL to avoid per-page redirect allow-list drift. The app stores the originally requested path in session storage and restores it after login. Production builds on Vercel inject `VITE_VERCEL_DEPLOYMENT_ORIGIN` from the platform `VERCEL_URL`; you can still set `VITE_SITE_URL` or `VITE_APP_URL` to your canonical domain (must not be localhost on Vercel). Localhost values in those variables are ignored in production in favor of the real deployment URL or `window.location`.
 
 5. **Google Cloud / other OAuth providers**: add authorized redirect URIs that match **this deployment**, e.g. `https://your-app.vercel.app/api/auth/gmail/callback`, `.../api/auth/instagram/callback`, etc. (same patterns as local but with production host).
 
@@ -127,4 +127,3 @@ In Supabase dashboard:
    - Prefer **same-origin** deploy: leave `VITE_API_URL` unset so the browser calls `/api` on the same Vercel hostname.
 
 7. **Preview deployments**: add each preview URL to `CORS_ORIGINS` (comma-separated) and to Supabase redirect allow list if you test login on previews.
-

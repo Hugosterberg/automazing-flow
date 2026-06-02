@@ -11,7 +11,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
-import { getOAuthRedirectUrl } from "@/lib/authRedirect";
+import { getOAuthRedirectUrl, storePendingAuthReturn } from "@/lib/authRedirect";
 import { apiUrl } from "@/lib/apiBase";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
@@ -159,12 +159,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle: async () => {
         if (!supabase) return;
         setAuthMode("cloud");
-        await supabase.auth.signInWithOAuth({
+        storePendingAuthReturn();
+        const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: getOAuthRedirectUrl(),
           },
         });
+        if (error) throw error;
       },
       signInWithEmail: async (email: string, password: string) => {
         if (!supabase) return;
@@ -181,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithMagicLink: async (email: string) => {
         if (!supabase) return { checkEmail: false };
         setAuthMode("cloud");
+        storePendingAuthReturn();
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: getOAuthRedirectUrl() },
