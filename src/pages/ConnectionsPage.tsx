@@ -127,6 +127,7 @@ export default function ConnectionsPage() {
       } else {
         setReconcileState({ loading: false, updated: result.updated });
         void refetch();
+        window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
       }
     },
     [refetch]
@@ -144,6 +145,7 @@ export default function ConnectionsPage() {
       const res = await reconcileConnections(businessProfileId);
       setReconcileState({ loading: false, updated: res.updated });
       await refetch();
+      window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
     } catch (e) {
       setReconcileState({
         loading: false,

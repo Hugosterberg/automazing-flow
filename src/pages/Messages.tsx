@@ -269,6 +269,7 @@ export default function MessagesPage() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    params.set("app_origin", window.location.origin);
     window.location.href = `${apiUrl("/api/auth/gmail")}?${params}`;
   }
 
@@ -277,6 +278,7 @@ export default function MessagesPage() {
     const params = new URLSearchParams();
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    params.set("app_origin", window.location.origin);
     window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
   }
 
@@ -398,6 +400,7 @@ export default function MessagesPage() {
     [messages]
   );
   const activeEmptyCopy = emptyCopyForTab(activeTab);
+  const showZernioNote = activeTab !== "mail" && Boolean(zernioNote);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -456,10 +459,12 @@ export default function MessagesPage() {
         </m.div>
       )}
 
-      {zernioNote && (
+      {showZernioNote && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/40 border-border">
-            <CardContent className="py-3 text-sm text-muted-foreground">{zernioNote}</CardContent>
+            <CardContent className="py-3 text-sm text-muted-foreground">
+              Social DM inbox unavailable: {zernioNote}
+            </CardContent>
           </Card>
         </m.div>
       )}
@@ -493,7 +498,7 @@ export default function MessagesPage() {
           <Card className="flex-1 bg-card border-border border-dashed">
             <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
-              <p className="font-medium text-sm">Connect Gmail</p>
+              <p className="font-medium text-sm">Gmail</p>
               <Button size="sm" onClick={() => void connectGmail()} className="glow-sm">
                 Connect Gmail
               </Button>
@@ -502,7 +507,7 @@ export default function MessagesPage() {
           <Card className="flex-1 bg-card border-border border-dashed">
             <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
-              <p className="font-medium text-sm">Connect Outlook</p>
+              <p className="font-medium text-sm">Outlook</p>
               <Button size="sm" variant="outline" onClick={() => void connectOutlook()}>
                 Connect Outlook
               </Button>

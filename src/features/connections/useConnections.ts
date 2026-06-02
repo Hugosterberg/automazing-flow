@@ -51,6 +51,7 @@ export function useConnections(businessProfileId: string | null | undefined) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: CONNECTIONS_KEY });
       void qc.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+      window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
     },
   });
 

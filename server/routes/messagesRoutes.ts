@@ -331,6 +331,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
           }
         }
         const conversationRows = new Map<string, Record<string, unknown>>();
+        let successfulInboxQueries = 0;
 
         async function addConversationRows(platform?: string) {
           const convResult = await zernio.listInboxConversations({
@@ -352,6 +353,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             return;
           }
 
+          successfulInboxQueries += 1;
           const rows = parseZernioConversationList(convResult.data);
           rows.forEach((raw, index) => {
             if (!raw || typeof raw !== "object") return;
@@ -368,6 +370,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
         await addConversationRows();
         for (const platform of queryPlatforms) {
           await addConversationRows(platform);
+        }
+        if (successfulInboxQueries > 0) {
+          zernioNote = undefined;
         }
 
         let rowIndex = 0;

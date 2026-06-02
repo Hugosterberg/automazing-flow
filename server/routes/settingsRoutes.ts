@@ -72,6 +72,12 @@ const TENANT_SECRET_CATALOG: TenantSecretDef[] = [
     description: "Optional. Your own PageSpeed Insights API key for Digital Brand audits.",
     inputType: "password",
   },
+  {
+    key: "APIAI_API_KEY",
+    label: "apiai.me API key",
+    description: "Your apiai.me API key for Content -> Create tools and pipelines.",
+    inputType: "password",
+  },
 ];
 
 const TENANT_SECRET_KEYS = new Set(TENANT_SECRET_CATALOG.map((d) => d.key));

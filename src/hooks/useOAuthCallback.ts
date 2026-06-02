@@ -95,6 +95,11 @@ export function useOAuthCallback() {
       window.setTimeout(() => {
         void queryClient.invalidateQueries({ queryKey: CONNECTIONS_KEY });
         void queryClient.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+        window.dispatchEvent(
+          new CustomEvent("automazing:connections-changed", {
+            detail: { platform: accountPlatform, accountId, preserveLocalMissing: true },
+          })
+        );
       }, 500);
       const next = new URLSearchParams(searchParams);
       next.delete("oauth_success");

@@ -41,6 +41,7 @@ import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoute
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
 import { registerContentRoutes } from "./routes/contentRoutes.ts";
+import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
@@ -403,6 +404,13 @@ registerContentRoutes(app, {
   tokenStore,
   getStoredAccountAccess,
   zernio: zernioModule,
+});
+
+registerApiaiRoutes(app, {
+  auth,
+  tokenStore,
+  secretResolver,
+  requireMembership,
 });
 
 registerAiRecommendationsRoutes(app, {

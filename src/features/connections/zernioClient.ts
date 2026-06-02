@@ -58,6 +58,7 @@ export function buildConnectUrl(
   const params = new URLSearchParams();
   params.set("oauth_return", options?.returnTo ?? "connections");
   params.set("business_profile_id", businessProfileId);
+  if (typeof window !== "undefined") params.set("app_origin", window.location.origin);
   // Legacy compat: some callbacks still read profile_id.
   params.set("profile_id", businessProfileId);
   if (options?.provider) params.set("provider", options.provider);

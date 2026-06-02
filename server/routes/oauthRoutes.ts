@@ -19,6 +19,7 @@ interface OAuthPendingRecord {
   userId?: string | null;
   profileId?: string | null;
   businessProfileId?: string | null;
+  appBaseUrl?: string | null;
   zernioProfileId?: string | null;
   codeVerifier?: string;
   createdAt?: number;
@@ -453,14 +454,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
   }
 
-  function buildPageUrl(page, params = {}) {
+  function buildPageUrlWithBase(baseUrl: string, page, params = {}) {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
       if (value == null || value === "") continue;
       query.set(key, String(value));
     }
     const suffix = query.toString();
-    return `${BASE_URL}/${page}${suffix ? `?${suffix}` : ""}`;
+    return `${baseUrl.replace(/\/$/, "")}/${page}${suffix ? `?${suffix}` : ""}`;
+  }
+
+  function buildPageUrl(page, params = {}) {
+    return buildPageUrlWithBase(BASE_URL, page, params);
   }
 
   function buildOauthErrorParams(errorCode: string, extras: OAuthErrorExtras = {}) {
@@ -474,6 +479,33 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   function buildPageOauthErrorUrl(page: string, errorCode: string, extras: OAuthErrorExtras = {}) {
     return buildPageUrl(page, buildOauthErrorParams(errorCode, extras));
+  }
+
+  function originOf(raw: unknown): string | null {
+    try {
+      const parsed = new URL(String(raw || ""));
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+      return parsed.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  function requestedAppBaseUrl(req): string | null {
+    const requested = originOf(req?.query?.app_origin);
+    if (!requested) return null;
+    const refererOrigin = originOf(req?.headers?.referer);
+    const knownOrigins = [originOf(BASE_URL), originOf(API_BASE_URL)].filter(Boolean);
+    if (refererOrigin && refererOrigin === requested) return requested;
+    if (knownOrigins.includes(requested)) return requested;
+    return null;
+  }
+
+  function buildPendingMessagesUrl(
+    pending: OAuthPendingRecord | null | undefined,
+    params: Record<string, unknown>
+  ) {
+    return buildPageUrlWithBase(pending?.appBaseUrl || BASE_URL, postOauthPage(pending, "gmail"), params);
   }
 
   function getExceptionMessage(error: unknown) {
@@ -1449,7 +1481,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   // --- TikTok OAuth ---
   app.get("/api/auth/tiktok", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "social-media");
+    const returnPage = parseOauthReturnPage(req) || "social-media";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
 
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
@@ -1467,6 +1500,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             profileId: ourProfileId,
             zernioProfileId,
             createdAt: Date.now(),
+            oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
           const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
           const authUrl = await getZernioConnectUrl({
@@ -1486,10 +1520,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     const clientKey = process.env.TIKTOK_CLIENT_KEY;
     if (!clientKey) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=tiktok_not_configured`);
+      return res.redirect(oauthRedirect("tiktok", "oauth_error=tiktok_not_configured", returnPage));
     }
     const state = generateState();
-    await oauthPendingStore.set(state, { platform: "tiktok", userId, profileId: ourProfileId, createdAt: Date.now() });
+    await oauthPendingStore.set(state, {
+      platform: "tiktok",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/tiktok/callback`;
     const url = new URL(TIKTOK_AUTH);
     url.searchParams.set("client_key", clientKey);
@@ -1502,24 +1542,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/tiktok/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=${error}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(oauthRedirect("tiktok", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("tiktok", "oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("tiktok", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientKey = process.env.TIKTOK_CLIENT_KEY;
     const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
     if (!clientKey || !clientSecret) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=tiktok_not_configured`);
+      return res.redirect(oauthRedirect("tiktok", "oauth_error=tiktok_not_configured", pending.oauthReturnPage));
     }
 
     try {
@@ -1542,7 +1582,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(rawErr))}`);
+        return res.redirect(oauthRedirect("tiktok", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       const accountId = crypto.randomUUID();
       let username = data.open_id;
@@ -1572,22 +1612,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         username,
       });
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "tiktok");
       res.redirect(
-        `${BASE_URL}/social-media?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("TikTok OAuth error:", err);
-      res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+      res.redirect(oauthRedirect("tiktok", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
   // --- X (Twitter) OAuth 2.0 with PKCE ---
   app.get("/api/auth/x", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "social-media");
+    const returnPage = parseOauthReturnPage(req) || "social-media";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const clientId = process.env.X_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=x_not_configured`);
+      return res.redirect(oauthRedirect("x", "oauth_error=x_not_configured", returnPage));
     }
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
@@ -1598,6 +1640,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       codeVerifier,
       createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
     const url = new URL(X_AUTH);
@@ -1613,20 +1656,20 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/x/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) return res.redirect(`${BASE_URL}/social-media?oauth_error=${error}`);
     const pending = await oauthPendingStore.get(state);
-    if (!pending) return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+    if (error) return res.redirect(oauthRedirect("x", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    if (!pending) return res.redirect(oauthRedirect("x", "oauth_error=invalid_state"));
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("x", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
     const clientId = process.env.X_CLIENT_ID;
     const clientSecret = process.env.X_CLIENT_SECRET;
-    if (!clientId) return res.redirect(`${BASE_URL}/social-media?oauth_error=x_not_configured`);
+    if (!clientId) return res.redirect(oauthRedirect("x", "oauth_error=x_not_configured", pending.oauthReturnPage));
     if (!pending.codeVerifier) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_pkce_state`);
+      return res.redirect(oauthRedirect("x", "oauth_error=invalid_pkce_state", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
@@ -1647,7 +1690,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         console.error("[X] token error:", tokenData.error, tokenData.error_description);
         return res.redirect(
-          `${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`
+          oauthRedirect("x", `oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
         );
       }
       const userRes = await fetch(
@@ -1667,22 +1710,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       });
       const username = user.username || user.name || accountId.slice(0, 8);
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "x");
       res.redirect(
-        `${BASE_URL}/social-media?oauth_success=1&platform=x&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=x&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("[X] OAuth error:", err);
-      res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+      res.redirect(oauthRedirect("x", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
   // --- YouTube (Google) OAuth ---
   app.get("/api/auth/youtube", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "social-media");
+    const returnPage = parseOauthReturnPage(req) || "social-media";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=youtube_not_configured`);
+      return res.redirect(oauthRedirect("youtube", "oauth_error=youtube_not_configured", returnPage));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -1690,6 +1735,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const redirectUri = `${API_BASE_URL}/api/auth/youtube/callback`;
     const url = new URL(GOOGLE_AUTH);
@@ -1705,24 +1751,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/youtube/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=${error}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(oauthRedirect("youtube", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("youtube", "oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("youtube", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/social-media?oauth_error=youtube_not_configured`);
+      return res.redirect(oauthRedirect("youtube", "oauth_error=youtube_not_configured", pending.oauthReturnPage));
     }
 
     try {
@@ -1742,7 +1788,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(`${BASE_URL}/social-media?oauth_error=${encodeURIComponent(String(rawErr))}`);
+        return res.redirect(oauthRedirect("youtube", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       const accountId = crypto.randomUUID();
       // Hämta kanalinfo för username
@@ -1763,12 +1809,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         username,
       });
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "youtube");
       res.redirect(
-        `${BASE_URL}/social-media?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("YouTube OAuth error:", err);
-      res.redirect(`${BASE_URL}/social-media?oauth_error=token_exchange_failed`);
+      res.redirect(oauthRedirect("youtube", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2018,7 +2065,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   // --- Google Calendar OAuth (official + optional Zernio auto path) ---
   app.get("/api/auth/google_calendar", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "calendar");
+    const returnPage = parseOauthReturnPage(req) || "calendar";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
@@ -2029,7 +2077,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         try {
           const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
-            return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_profile_failed`);
+            return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_profile_failed", returnPage));
           }
           const state = generateState();
           await oauthPendingStore.set(state, {
@@ -2038,6 +2086,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             profileId: ourProfileId,
             zernioProfileId,
             createdAt: Date.now(),
+            oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
           const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
           const authUrl = await getZernioConnectUrl({
@@ -2052,22 +2101,28 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           const msg = String(e?.message || "");
           if (provider === "zernio") {
             if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_connect_failed`);
+              return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_connect_failed", returnPage));
             }
-            return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_init_failed`);
+            return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_init_failed", returnPage));
           }
         }
       } else if (provider === "zernio") {
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_not_configured`);
+        return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_not_configured", returnPage));
       }
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=google_calendar_not_configured`);
+      return res.redirect(oauthRedirect("google_calendar", "oauth_error=google_calendar_not_configured", returnPage));
     }
     const state = generateState();
-    await oauthPendingStore.set(state, { platform: "google_calendar", userId, profileId: ourProfileId, createdAt: Date.now() });
+    await oauthPendingStore.set(state, {
+      platform: "google_calendar",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/google-calendar/callback`;
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
@@ -2082,12 +2137,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/google-calendar/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=${encodeURIComponent(String(error))}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(oauthRedirect("google_calendar", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("google_calendar", "oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2098,14 +2153,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       !callbackUserIdStr.startsWith("local_");
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("google_calendar", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=google_calendar_not_configured`);
+      return res.redirect(oauthRedirect("google_calendar", "oauth_error=google_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/google-calendar/callback`;
@@ -2124,7 +2179,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=${encodeURIComponent(String(rawErr))}`);
+        return res.redirect(oauthRedirect("google_calendar", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       let username = "Google Calendar";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -2143,18 +2198,20 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         refreshToken: data.refresh_token,
       });
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "google_calendar");
       res.redirect(
-        `${BASE_URL}/calendar?oauth_success=1&platform=google_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Calendar OAuth error:", err);
-      res.redirect(`${BASE_URL}/calendar?oauth_error=token_exchange_failed`);
+      res.redirect(oauthRedirect("google_calendar", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
   // --- Outlook Calendar OAuth (official + optional Zernio auto path) ---
   app.get("/api/auth/outlook_calendar", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "calendar");
+    const returnPage = parseOauthReturnPage(req) || "calendar";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
@@ -2165,7 +2222,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         try {
           const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
-            return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_profile_failed`);
+            return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_profile_failed", returnPage));
           }
           const state = generateState();
           await oauthPendingStore.set(state, {
@@ -2174,6 +2231,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             profileId: ourProfileId,
             zernioProfileId,
             createdAt: Date.now(),
+            oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
           const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
           const authUrl = await getZernioConnectUrl({
@@ -2188,22 +2246,28 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           const msg = String(e?.message || "");
           if (provider === "zernio") {
             if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_connect_failed`);
+              return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_connect_failed", returnPage));
             }
-            return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_init_failed`);
+            return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_init_failed", returnPage));
           }
         }
       } else if (provider === "zernio") {
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=zernio_not_configured`);
+        return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_not_configured", returnPage));
       }
     }
 
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=outlook_calendar_not_configured`);
+      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=outlook_calendar_not_configured", returnPage));
     }
     const state = generateState();
-    await oauthPendingStore.set(state, { platform: "outlook_calendar", userId, profileId: ourProfileId, createdAt: Date.now() });
+    await oauthPendingStore.set(state, {
+      platform: "outlook_calendar",
+      userId,
+      profileId: ourProfileId,
+      createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
+    });
     const redirectUri = `${API_BASE_URL}/api/auth/outlook-calendar/callback`;
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(OUTLOOK_CALENDAR_SCOPES)}&state=${state}&response_mode=query`;
     res.redirect(url);
@@ -2211,23 +2275,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/outlook-calendar/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=${error}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(oauthRedirect("outlook_calendar", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/calendar?oauth_error=outlook_calendar_not_configured`);
+      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=outlook_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/outlook-calendar/callback`;
@@ -2246,7 +2310,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(`${BASE_URL}/calendar?oauth_error=${encodeURIComponent(String(rawErr))}`);
+        return res.redirect(oauthRedirect("outlook_calendar", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       const accountId = crypto.randomUUID();
       let username = "Outlook Calendar";
@@ -2265,12 +2329,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         username,
       });
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "outlook_calendar");
       res.redirect(
-        `${BASE_URL}/calendar?oauth_success=1&platform=outlook_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=outlook_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Outlook Calendar OAuth error:", err);
-      res.redirect(`${BASE_URL}/calendar?oauth_error=token_exchange_failed`);
+      res.redirect(oauthRedirect("outlook_calendar", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2556,7 +2621,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         oauthRedirect(
           "google_business",
           "oauth_error=google_business_not_configured",
-          returnPage === "integrations" ? "integrations" : undefined
+          returnPage
         )
       );
     }
@@ -2582,13 +2647,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/google_business/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    const landing = "social-media";
-    if (error) {
-      return res.redirect(`${BASE_URL}/${landing}?oauth_error=${encodeURIComponent(String(error))}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(oauthRedirect("google_business", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/${landing}?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("google_business", "oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2599,14 +2663,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       !callbackUserIdStr.startsWith("local_");
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/${landing}?oauth_error=invalid_state`);
+      return res.redirect(oauthRedirect("google_business", "oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_not_configured`);
+      return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
@@ -2625,7 +2689,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         return res.redirect(
-          `${BASE_URL}/${landing}?oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`
+          oauthRedirect("google_business", `oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
         );
       }
 
@@ -2643,13 +2707,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       if (!accountsRes.ok && (!accounts || accounts.length === 0)) {
         const errHint = encodeURIComponent(String(accountsBody?.error?.message || accountsBody?.error || "accounts_api_failed"));
-        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_accounts_api_failed&oauth_hint=${errHint}`);
+        return res.redirect(
+          oauthRedirect("google_business", `oauth_error=google_business_accounts_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
+        );
       }
       const firstAccount = accounts[0] || null;
       const accountNamePath = String(firstAccount?.name || "");
       const accountId = accountNamePath.split("/")[1] || "";
       if (!accountId) {
-        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_no_account_access`);
+        return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_no_account_access", pending.oauthReturnPage));
       }
 
       const locationsRes = await fetch(
@@ -2671,14 +2737,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       if (!locationsRes.ok && (!locations || locations.length === 0)) {
         const errHint = encodeURIComponent(String(locationsBody?.error?.message || locationsBody?.error || "locations_api_failed"));
-        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_locations_api_failed&oauth_hint=${errHint}`);
+        return res.redirect(
+          oauthRedirect("google_business", `oauth_error=google_business_locations_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
+        );
       }
       const firstLocation = locations[0] || null;
       const locationNamePath = String(firstLocation?.name || "");
       const locationId = locationNamePath.split("/").pop() || "";
       const locationTitle = String(firstLocation?.title || firstLocation?.locationName || firstLocation?.storeCode || "Google location");
       if (!locationId) {
-        return res.redirect(`${BASE_URL}/${landing}?oauth_error=google_business_no_location_access`);
+        return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_no_location_access", pending.oauthReturnPage));
       }
 
       const appAccountId = crypto.randomUUID();
@@ -2700,7 +2768,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Google Business OAuth error:", err);
-      return res.redirect(`${BASE_URL}/${landing}?oauth_error=token_exchange_failed`);
+      return res.redirect(oauthRedirect("google_business", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2827,7 +2895,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   // --- Gmail OAuth (samma Google OAuth, andra scopes) ---
   app.get("/api/auth/gmail", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "messages");
+    const appBaseUrl = requestedAppBaseUrl(req);
+    const returnPage = parseOauthReturnPage(req) || "messages";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     debugLog("pre-fix", "H1", "oauthRoutes.js:/api/auth/gmail", "Gmail OAuth init hit", {
       hasUserId: Boolean(userId),
       profileIdPresent: Boolean(normalizeRequestedProfileId(req.query.profile_id)),
@@ -2838,10 +2908,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       return res.redirect(
-        buildPageOauthErrorUrl("messages", "gmail_not_configured", {
+        buildPageUrlWithBase(appBaseUrl || BASE_URL, returnPage, buildOauthErrorParams("gmail_not_configured", {
           status: 500,
           exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
-        })
+        }))
       );
     }
     const state = generateState();
@@ -2850,8 +2920,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "gmail",
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
+      appBaseUrl,
       redirectUri,
       createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
@@ -2865,7 +2937,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/google_drive", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "content");
+    const returnPage = parseOauthReturnPage(req) || "content";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -2885,7 +2958,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           BASE_URL
         );
       }
-      return res.redirect(buildContentUrl(BASE_URL, params));
+      return res.redirect(buildPageUrlWithBase(BASE_URL, returnPage, params));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2894,6 +2967,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       popup: req.query.popup === "1",
       createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const redirectUri = `${API_BASE_URL}/api/auth/google_drive/callback`;
     const url = new URL(GOOGLE_AUTH);
@@ -2909,9 +2983,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/google_drive/callback", async (req, res) => {
     const { code, state, error } = req.query;
+    const pending = await oauthPendingStore.get(state);
     if (error) {
       const errorCode = String(error);
-      if ((await oauthPendingStore.get(state))?.popup) {
+      if (pending?.popup) {
         return sendPopupOAuthResult(
           res,
           buildPopupOauthErrorPayload(errorCode),
@@ -2919,13 +2994,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           BASE_URL
         );
       }
-      return res.redirect(buildContentUrl(BASE_URL, buildOauthErrorParams(errorCode)));
+      return res.redirect(buildPageUrlWithBase(BASE_URL, postOauthPage(pending, "google_drive"), buildOauthErrorParams(errorCode)));
     }
-    const pending = await oauthPendingStore.get(state);
     if (!pending) {
       return res.redirect(
-        buildContentUrl(
+        buildPageUrlWithBase(
           BASE_URL,
+          oauthPageForPlatform("google_drive"),
           buildOauthErrorParams("invalid_state", {
             status: 400,
             exception: "OAuth state was missing or expired.",
@@ -2960,8 +3035,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       return res.redirect(
-        buildContentUrl(
+        buildPageUrlWithBase(
           BASE_URL,
+          postOauthPage(pending, "google_drive"),
           buildOauthErrorParams("invalid_state", {
             status: 400,
             exception: "OAuth state did not match the active session.",
@@ -2992,8 +3068,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       return res.redirect(
-        buildContentUrl(
+        buildPageUrlWithBase(
           BASE_URL,
+          postOauthPage(pending, "google_drive"),
           buildOauthErrorParams("google_drive_not_configured", {
             status: 500,
             exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
@@ -3036,10 +3113,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             BASE_URL
           );
         }
-        return res.redirect(buildContentUrl(BASE_URL, buildOauthErrorParams(errorCode, {
-          status: tokenRes.status,
-          exception: data.error_description || data.error || "Google token exchange failed.",
-        })));
+        return res.redirect(
+          buildPageUrlWithBase(
+            BASE_URL,
+            postOauthPage(pending, "google_drive"),
+            buildOauthErrorParams(errorCode, {
+              status: tokenRes.status,
+              exception: data.error_description || data.error || "Google token exchange failed.",
+            })
+          )
+        );
       }
 
       let username = "Google Drive";
@@ -3081,8 +3164,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "google_drive");
       return res.redirect(
-        `${BASE_URL}/content?oauth_success=1&platform=google_drive&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_drive&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Drive OAuth error:", err);
@@ -3104,8 +3188,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
       return res.redirect(
-        buildContentUrl(
+        buildPageUrlWithBase(
           BASE_URL,
+          postOauthPage(pending, "google_drive"),
           buildOauthErrorParams("token_exchange_failed", {
             status: 500,
             exception: getExceptionMessage(err),
@@ -3117,21 +3202,21 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   async function handleGmailCallback(req, res) {
     const { code, state, error } = req.query;
+    const pending = await oauthPendingStore.get(state);
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Gmail callback received", {
       hasCode: Boolean(code),
       hasState: Boolean(state),
       error: error ? String(error) : null,
     });
     if (error) {
-      return res.redirect(buildPageOauthErrorUrl("messages", String(error)));
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: String(error) }));
     }
-    const pending = await oauthPendingStore.get(state);
     debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Pending state lookup", {
       pendingFound: Boolean(pending),
       pendingPlatform: pending?.platform ?? null,
     });
     if (!pending) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "invalid_state" }));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -3148,7 +3233,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     });
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "invalid_state" }));
     }
     if (isLocalToCloudTransition) {
       debugLog("pre-fix", "H2", "oauthRoutes.js:/api/auth/gmail/callback", "Allowing local-to-cloud transition", {
@@ -3166,10 +3251,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       return res.redirect(
-        buildPageOauthErrorUrl("messages", "gmail_not_configured", {
+        buildPendingMessagesUrl(pending, buildOauthErrorParams("gmail_not_configured", {
           status: 500,
           exception: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.",
-        })
+        }))
       );
     }
     try {
@@ -3197,10 +3282,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(
-          buildPageOauthErrorUrl("messages", String(rawErr), {
+          buildPendingMessagesUrl(pending, buildOauthErrorParams(String(rawErr), {
             status: tokenRes.status,
             exception: data.error_description || data.error || "Google token exchange failed.",
-          })
+          }))
         );
       }
       let username = "Gmail";
@@ -3225,17 +3310,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
-      const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "gmail");
       res.redirect(
-        `${BASE_URL}/messages?oauth_success=1&platform=gmail&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        buildPageUrlWithBase(pending.appBaseUrl || BASE_URL, postPage, {
+          oauth_success: 1,
+          platform: "gmail",
+          account_id: accountId,
+          username,
+          profile_id: pending.profileId || undefined,
+        })
       );
     } catch (err) {
       console.error("Gmail OAuth error:", err);
       res.redirect(
-        buildPageOauthErrorUrl("messages", "token_exchange_failed", {
+        buildPendingMessagesUrl(pending, buildOauthErrorParams("token_exchange_failed", {
           status: 500,
           exception: getExceptionMessage(err),
-        })
+        }))
       );
     }
   }
@@ -3245,18 +3336,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   // --- Outlook OAuth (Microsoft) ---
   app.get("/api/auth/outlook", async (req, res) => {
-    const userId = requireSessionOrRedirect(req, res, "messages");
+    const appBaseUrl = requestedAppBaseUrl(req);
+    const returnPage = parseOauthReturnPage(req) || "messages";
+    const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=outlook_not_configured`);
+      return res.redirect(
+        buildPageUrlWithBase(appBaseUrl || BASE_URL, returnPage, { oauth_error: "outlook_not_configured" })
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
       platform: "outlook",
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
+      appBaseUrl,
       createdAt: Date.now(),
+      oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
     const scope = "offline_access openid profile email User.Read Mail.Read";
@@ -3266,23 +3363,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/outlook/callback", async (req, res) => {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=${error}`);
-    }
     const pending = await oauthPendingStore.get(state);
+    if (error) {
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: String(error) }));
+    }
     if (!pending) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "invalid_state" }));
     }
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(`${BASE_URL}/messages?oauth_error=invalid_state`);
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "invalid_state" }));
     }
     await oauthPendingStore.delete(state);
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${BASE_URL}/messages?oauth_error=outlook_not_configured`);
+      return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "outlook_not_configured" }));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
@@ -3301,7 +3398,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(`${BASE_URL}/messages?oauth_error=${encodeURIComponent(String(rawErr))}`);
+        return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: String(rawErr) }));
       }
       const accountId = crypto.randomUUID();
       let username = "Outlook";
@@ -3318,13 +3415,19 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
-      const profileQuery = profileParam(pending.profileId);
+      const postPage = postOauthPage(pending, "outlook");
       res.redirect(
-        `${BASE_URL}/messages?oauth_success=1&platform=outlook&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        buildPageUrlWithBase(pending.appBaseUrl || BASE_URL, postPage, {
+          oauth_success: 1,
+          platform: "outlook",
+          account_id: accountId,
+          username,
+          profile_id: pending.profileId || undefined,
+        })
       );
     } catch (err) {
       console.error("Outlook OAuth error:", err);
-      res.redirect(`${BASE_URL}/messages?oauth_error=token_exchange_failed`);
+      res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "token_exchange_failed" }));
     }
   });
 }

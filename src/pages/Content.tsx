@@ -14,8 +14,9 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
+import { CreateTab } from "@/features/content/CreateTab";
 import { apiUrl } from "@/lib/apiBase";
-import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft } from "lucide-react";
+import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2 } from "lucide-react";
 
 type DriveBrowserItem = {
   id: string;
@@ -166,6 +167,7 @@ export default function ContentPage() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
+  const [contentTab, setContentTab] = useState<"browse" | "create">("browse");
   const [popupOauthError, setPopupOauthError] = useState<OAuthErrorDetails | null>(null);
   const [selectedAssets, setSelectedAssets] = useState<SelectedContentAsset[]>(() =>
     loadSelectedContent(activeProfileId)
@@ -468,7 +470,7 @@ export default function ContentPage() {
       <PageHeader
         icon={FolderOpen}
         title="Content"
-        description="Connect Google Drive, browse folders, and mark media for creation."
+        description="Browse Drive media, select assets, and create new content with apiai.me."
         actions={
           <>
             <Button
@@ -503,6 +505,42 @@ export default function ContentPage() {
 
       <SectionConnectionStatus area="content" className="mt-0" />
 
+      <div className="flex items-center gap-1 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setContentTab("browse")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            contentTab === "browse"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <HardDrive className="h-3.5 w-3.5" />
+          Browse
+        </button>
+        <button
+          type="button"
+          onClick={() => setContentTab("create")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            contentTab === "create"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+          Create
+        </button>
+      </div>
+
+      {contentTab === "create" ? (
+        <CreateTab
+          businessProfileId={activeProfileId}
+          selectedAssets={selectedAssets}
+          onOpenBrowse={() => setContentTab("browse")}
+          onBeforeRequest={ensureBackendSession}
+        />
+      ) : (
+        <>
       <PublishComposer />
 
       {combinedOauthError && (
@@ -750,6 +788,8 @@ export default function ContentPage() {
             </Card>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

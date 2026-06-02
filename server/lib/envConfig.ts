@@ -145,6 +145,11 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     requiredAny: [["PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]],
     message: "Required for Digital Brand audits to fetch Google PageSpeed Insights and Lighthouse metrics reliably.",
   },
+  apiai: {
+    label: "apiai.me",
+    required: ["APIAI_API_KEY"],
+    message: "Required for Content -> Create to list and run apiai.me tools and pipelines.",
+  },
   notion: {
     label: "Notion OAuth",
     required: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_APP_URL"],

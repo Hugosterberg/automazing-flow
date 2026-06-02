@@ -25,8 +25,60 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och markera alla efterfrågade rättigheter.",
   account_already_connected:
     "Det här kontot är redan kopplat till en annan profil.",
+  gmail_not_configured:
+    "Gmail-kopplingen saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och att callback-URL:en för Gmail finns i Google Cloud.",
+  outlook_not_configured:
+    "Outlook-kopplingen saknar Microsoft OAuth-konfiguration. Kontrollera MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET och callback-URL:en i Azure/Entra.",
+  google_drive_not_configured:
+    "Google Drive-kopplingen saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och Drive-callbacken i Google Cloud.",
+  google_calendar_not_configured:
+    "Google Calendar saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och Calendar-callbacken i Google Cloud.",
+  outlook_calendar_not_configured:
+    "Outlook Calendar saknar Microsoft OAuth-konfiguration. Kontrollera MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET och callback-URL:en i Azure/Entra.",
+  google_business_not_configured:
+    "Google Business official saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och att Google Business Profile API är aktiverat.",
+  google_business_accounts_api_failed:
+    "Google Business kunde inte läsa konton från Google. Kontrollera att Google Business Profile API är aktiverat och att kontot har åtkomst till företagsprofilen.",
+  google_business_locations_api_failed:
+    "Google Business kunde inte läsa platser från Google. Kontrollera att kontot har åtkomst till minst en verifierad plats och att Business Information API är aktiverat.",
+  google_business_no_account_access:
+    "Google-kontot har ingen åtkomst till ett Google Business-konto. Koppla med ett konto som äger eller administrerar företagsprofilen.",
+  google_business_no_location_access:
+    "Google-kontot har ingen åtkomst till någon Google Business-plats. Kontrollera behörigheter och att platsen finns i Business Profile Manager.",
+  google_reviews_not_configured:
+    "Google Reviews saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och att Google Business Profile API är aktiverat.",
+  tripadvisor_not_configured:
+    "Tripadvisor official saknar API-nyckel eller location-id. Lägg till TRIPADVISOR_API_KEY och TRIPADVISOR_LOCATION_ID i miljön eller under Preferences - API keys.",
+  shopify_not_configured:
+    "Shopify-kopplingen saknar app-konfiguration. Kontrollera SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET och callback-URL:en i Shopify-appen.",
+  shopify_missing_shop:
+    "Shopify kräver en butiksdomän. Ange den som mystore.myshopify.com och försök igen.",
+  shopify_shop_mismatch:
+    "Shopify svarade med en annan butiksdomän än den du startade med. Starta kopplingen igen och kontrollera domänen.",
+  notion_not_configured:
+    "Notion-kopplingen saknar OAuth-konfiguration. Kontrollera NOTION_CLIENT_ID, NOTION_CLIENT_SECRET och callback-URL:en i Notion-integrationen.",
+  youtube_not_configured:
+    "YouTube-kopplingen saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och YouTube-scope/callback.",
+  tiktok_not_configured:
+    "TikTok-kopplingen saknar OAuth-konfiguration. Kontrollera TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET och redirect-URL:en i TikTok-portalen.",
+  x_not_configured:
+    "X-kopplingen saknar OAuth-konfiguration. Kontrollera X_CLIENT_ID, X_CLIENT_SECRET och callback-URL:en i X Developer Portal.",
+  invalid_pkce_state:
+    "OAuth PKCE-state saknas eller är ogiltigt. Starta kopplingen på nytt från Connections i en enda flik.",
   meta_business_not_configured:
     "Meta Business official saknar app-ID eller app-secret. Lägg till META_APP_ID och META_APP_SECRET i API-inställningar och kontrollera callback-URL:en i Meta-appen.",
+  google_ads_not_configured:
+    "Google Ads saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och Google Ads API-inställningarna.",
+  zernio_not_configured:
+    "Zernio är inte konfigurerat. Lägg till ZERNIO_API_KEY och koppla en Zernio-profil eller använd Official API om plattformen stödjer det.",
+  zernio_profile_failed:
+    "Zernio-profilen kunde inte hittas eller skapas för den aktiva företagsprofilen. Kontrollera business profile-kopplingen och Zernio-inställningarna.",
+  zernio_connect_failed:
+    "Zernio avvisade connect-förfrågan. Kontrollera API-nyckeln, att plattformen stöds i Zernio och att profilen har rätt behörigheter.",
+  zernio_no_auth_url:
+    "Zernio returnerade ingen inloggningslänk. Testa igen eller använd Official API om det finns som alternativ.",
+  zernio_gmb_not_supported:
+    "Zernio stöder inte Google Business i detta workspace. Använd Official API för Google Business.",
   zernio_init_failed:
     "Zernio kunde inte starta kopplingen. Testa Official API om det finns som alternativ, eller kontrollera ZERNIO_API_KEY och ZERNIO_PROFILE_ID.",
   zernio_fetch_failed:

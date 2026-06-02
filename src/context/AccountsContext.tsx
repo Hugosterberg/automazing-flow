@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
 import { useBusinessProfileBridge } from "@/features/business-profiles";
 import { logActivity } from "@/features/activity/activityLog";
-import type { Json, TablesInsert } from "@/types/supabase";
+import type { Json, Tables, TablesInsert } from "@/types/supabase";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -81,6 +81,26 @@ const AccountsContext = createContext<AccountsContextValue | null>(null);
  * boundary (Postgres jsonb accepts any record).
  */
 type AccountRow = TablesInsert<"connected_accounts">;
+type ConnectedAccountRow = Tables<"connected_accounts">;
+
+function mapConnectedAccountRows(rows: ConnectedAccountRow[]): ConnectedAccount[] {
+  return rows.map((a) => ({
+    id: a.id,
+    profileId: a.profile_id,
+    platform: a.platform as AccountPlatform,
+    username: a.username,
+    displayName: a.display_name ?? undefined,
+    avatarUrl: a.avatar_url ?? undefined,
+    profileUrl: a.profile_url ?? undefined,
+    connectedAt: a.connected_at,
+    isOAuth: a.is_oauth,
+    isZernio: a.is_zernio,
+    zernioAccountId: a.zernio_account_id ?? undefined,
+    stats: (a.stats ?? undefined) as unknown as AccountStats | undefined,
+    analysis: (a.analysis ?? undefined) as unknown as ConnectedAccount["analysis"],
+    disconnectedAt: a.disconnected_at ?? undefined,
+  }));
+}
 
 function loadProfiles(): Profile[] {
   try {
@@ -335,6 +355,25 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     setSelectedAccountIds((current) => cleanupSelectedAccounts(current, profiles, accounts));
   }, [profiles, accounts]);
 
+  const fetchAccountsFromSupabase = useCallback(async () => {
+    if (authLoading || !enabled || !supabase || !user || !userId) return null;
+
+    const { data: accountRows, error: accountsError } = await supabase
+      .from("connected_accounts")
+      .select(
+        "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis,disconnected_at"
+      )
+      .eq("user_id", userId)
+      .order("connected_at", { ascending: true });
+
+    if (accountsError) {
+      console.warn("[accounts] Supabase accounts hydrate failed, using local cache", accountsError);
+      return null;
+    }
+
+    return mapConnectedAccountRows((accountRows ?? []) as ConnectedAccountRow[]);
+  }, [authLoading, enabled, user, userId]);
+
   // Hydrate ONLY connected_accounts from Supabase in cloud mode.
   // Profiles are now owned by `business_profiles` (via useBusinessProfileBridge).
   useEffect(() => {
@@ -355,38 +394,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       // overwrite it before the sync effect has had a chance to upsert.
       const idsAtHydrateStart = new Set(accountsRef.current.map((a) => a.id));
       try {
-        const { data: accountRows, error: accountsError } = await supabase
-          .from("connected_accounts")
-          .select(
-            "id,user_id,profile_id,platform,username,display_name,avatar_url,profile_url,connected_at,is_oauth,is_zernio,zernio_account_id,stats,analysis,disconnected_at"
-          )
-          .eq("user_id", userId)
-          .order("connected_at", { ascending: true });
-
-        if (accountsError) {
-          console.warn("[accounts] Supabase accounts hydrate failed, using local cache", accountsError);
-          return;
-        }
+        const mappedAccounts = await fetchAccountsFromSupabase();
+        if (!mappedAccounts) return;
         if (ignore) return;
-
-        // Row shape comes from the generated Database types via the typed
-        // supabase client — no manual row type needed.
-        const mappedAccounts = (accountRows ?? []).map((a) => ({
-          id: a.id,
-          profileId: a.profile_id,
-          platform: a.platform as AccountPlatform,
-          username: a.username,
-          displayName: a.display_name ?? undefined,
-          avatarUrl: a.avatar_url ?? undefined,
-          profileUrl: a.profile_url ?? undefined,
-          connectedAt: a.connected_at,
-          isOAuth: a.is_oauth,
-          isZernio: a.is_zernio,
-          zernioAccountId: a.zernio_account_id ?? undefined,
-          stats: (a.stats ?? undefined) as unknown as AccountStats | undefined,
-          analysis: (a.analysis ?? undefined) as unknown as ConnectedAccount["analysis"],
-          disconnectedAt: a.disconnected_at ?? undefined,
-        })) as ConnectedAccount[];
 
         const mappedIds = new Set(mappedAccounts.map((a) => a.id));
         // Pending additions = rows added locally AFTER hydrate started that
@@ -405,7 +415,41 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     return () => {
       ignore = true;
     };
-  }, [enabled, authLoading, user, userId]);
+  }, [enabled, authLoading, user, fetchAccountsFromSupabase]);
+
+  useEffect(() => {
+    if (authLoading || !enabled || !supabase || !user) return;
+
+    let refreshTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let ignore = false;
+    const refreshAccounts = (event: Event) => {
+      const preserveLocalMissing =
+        event instanceof CustomEvent &&
+        Boolean((event.detail as { preserveLocalMissing?: unknown } | null)?.preserveLocalMissing);
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(async () => {
+        const mappedAccounts = await fetchAccountsFromSupabase();
+        if (ignore || !mappedAccounts) return;
+        if (!preserveLocalMissing) {
+          setAccounts(mappedAccounts);
+          return;
+        }
+
+        const mappedIds = new Set(mappedAccounts.map((account) => account.id));
+        const localMissing = accountsRef.current.filter(
+          (account) => !account.disconnectedAt && !mappedIds.has(account.id)
+        );
+        setAccounts(localMissing.length > 0 ? [...mappedAccounts, ...localMissing] : mappedAccounts);
+      }, 150);
+    };
+
+    window.addEventListener("automazing:connections-changed", refreshAccounts);
+    return () => {
+      ignore = true;
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      window.removeEventListener("automazing:connections-changed", refreshAccounts);
+    };
+  }, [authLoading, enabled, user, fetchAccountsFromSupabase]);
 
   useEffect(() => {
     if (!enabled || authLoading || !user || !supabase) return;
