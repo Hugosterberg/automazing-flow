@@ -491,12 +491,21 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
   }
 
+  /**
+   * Optional `?app_origin=` lets a known frontend ask to be redirected back to
+   * itself after OAuth. Only origins we already trust are accepted (BASE_URL,
+   * API_BASE_URL, CORS_ORIGINS) — matching against the Referer header would
+   * make this an open redirect: any site linking to /api/auth/* could set
+   * app_origin to itself and receive the post-OAuth redirect.
+   */
   function requestedAppBaseUrl(req): string | null {
     const requested = originOf(req?.query?.app_origin);
     if (!requested) return null;
-    const refererOrigin = originOf(req?.headers?.referer);
-    const knownOrigins = [originOf(BASE_URL), originOf(API_BASE_URL)].filter(Boolean);
-    if (refererOrigin && refererOrigin === requested) return requested;
+    const corsOrigins = String(process.env.CORS_ORIGINS || "")
+      .split(",")
+      .map((value) => originOf(value.trim()))
+      .filter(Boolean);
+    const knownOrigins = [originOf(BASE_URL), originOf(API_BASE_URL), ...corsOrigins].filter(Boolean);
     if (knownOrigins.includes(requested)) return requested;
     return null;
   }

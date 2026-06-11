@@ -79,6 +79,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
           max_tokens: 600,
           response_format: { type: "json_object" },
         }),
+        signal: AbortSignal.timeout(20_000),
       });
 
       if (!aiRes.ok) {
@@ -183,6 +184,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
           max_tokens: 500,
           response_format: { type: "json_object" },
         }),
+        signal: AbortSignal.timeout(20_000),
       });
 
       if (!aiRes.ok) {
@@ -310,6 +312,7 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
           temperature: 0.6,
           max_tokens: 350,
         }),
+        signal: AbortSignal.timeout(20_000),
       });
 
       if (!aiRes.ok) {

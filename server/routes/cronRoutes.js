@@ -172,9 +172,15 @@ export function registerCronRoutes(app, deps) {
         { drafted: 0, sent: 0, failed: 0 }
       );
       console.log(
-        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed}`
+        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed} skippedForTime=${result.skippedForTime}`
       );
-      return res.json({ ok: true, profiles: result.profiles, ...totals, summaries: result.summaries });
+      return res.json({
+        ok: true,
+        profiles: result.profiles,
+        skippedForTime: result.skippedForTime,
+        ...totals,
+        summaries: result.summaries,
+      });
     } catch (e) {
       console.error("[cron] auto-reply unexpected:", e?.message || e);
       return res.status(500).json({ error: "auto_reply_failed" });

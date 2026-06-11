@@ -297,11 +297,17 @@ export async function runAutoReplyForProfile(
 
 /**
  * Cron entrypoint: walks every profile with DM auto-reply enabled. Per-tenant
- * failures are isolated so one bad profile cannot abort the whole run.
+ * failures are isolated so one bad profile cannot abort the whole run, and a
+ * time budget keeps the sweep inside the serverless function limit (Vercel
+ * maxDuration is 60s) — remaining profiles are reported as skipped and picked
+ * up by the next run, which is safe because the engine is idempotent.
  */
 export async function runAutoReplyForAllProfiles(
-  deps: AutoReplyDeps
-): Promise<{ profiles: number; summaries: AutoReplyRunSummary[] }> {
+  deps: AutoReplyDeps,
+  options?: { timeBudgetMs?: number }
+): Promise<{ profiles: number; skippedForTime: number; summaries: AutoReplyRunSummary[] }> {
+  const startedAt = Date.now();
+  const timeBudgetMs = Math.max(5_000, options?.timeBudgetMs ?? 50_000);
   const { data: settingsRows, error: settingsError } = await deps.supabaseAdmin
     .from("automation_settings")
     .select("business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions")
@@ -311,7 +317,7 @@ export async function runAutoReplyForAllProfiles(
   }
 
   const rows = (settingsRows || []) as Array<Record<string, unknown>>;
-  if (rows.length === 0) return { profiles: 0, summaries: [] };
+  if (rows.length === 0) return { profiles: 0, skippedForTime: 0, summaries: [] };
 
   const profileIds = rows.map((r) => String(r.business_profile_id || "")).filter(Boolean);
   const { data: profileRows, error: profileError } = await deps.supabaseAdmin
@@ -326,10 +332,15 @@ export async function runAutoReplyForAllProfiles(
   );
 
   const summaries: AutoReplyRunSummary[] = [];
+  let skippedForTime = 0;
   for (const settingsRow of rows) {
     const businessProfileId = String(settingsRow.business_profile_id || "");
     const profileRow = profileById.get(businessProfileId);
     if (!profileRow) continue;
+    if (Date.now() - startedAt > timeBudgetMs) {
+      skippedForTime += 1;
+      continue;
+    }
     try {
       const summary = await runAutoReplyForProfile(
         deps,
@@ -355,5 +366,10 @@ export async function runAutoReplyForAllProfiles(
     }
   }
 
-  return { profiles: rows.length, summaries };
+  if (skippedForTime > 0) {
+    console.warn(
+      `[auto-reply] time budget ${timeBudgetMs}ms exhausted — ${skippedForTime} profile(s) deferred to the next run`
+    );
+  }
+  return { profiles: rows.length, skippedForTime, summaries };
 }

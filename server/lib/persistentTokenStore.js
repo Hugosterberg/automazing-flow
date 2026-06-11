@@ -114,7 +114,7 @@ export function createPersistentTokenStore({ supabaseAdmin, filePath, normalizeS
         .eq("account_id", id)
         .maybeSingle();
       if (error) {
-        console.error("[tokenStore] get:", error.message);
+        console.error(`[tokenStore] get ${id}:`, error.message);
         return undefined;
       }
       if (!data?.payload) return undefined;
@@ -142,7 +142,9 @@ export function createPersistentTokenStore({ supabaseAdmin, filePath, normalizeS
         },
         { onConflict: "account_id" }
       );
-      if (error) console.error("[tokenStore] set:", error.message);
+      // A failed write means a refreshed token may be lost on this instance —
+      // include the account id so the affected connection can be identified.
+      if (error) console.error(`[tokenStore] set ${id} failed (token update may be lost):`, error.message);
     },
 
     /** @param {string} accountId */
@@ -154,7 +156,7 @@ export function createPersistentTokenStore({ supabaseAdmin, filePath, normalizeS
         return ok;
       }
       const { error } = await supabaseAdmin.from("oauth_token_entries").delete().eq("account_id", id);
-      if (error) console.error("[tokenStore] delete:", error.message);
+      if (error) console.error(`[tokenStore] delete ${id}:`, error.message);
       return true;
     },
 

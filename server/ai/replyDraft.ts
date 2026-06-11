@@ -81,6 +81,9 @@ export async function generateReplyDraft(
         temperature: 0.6,
         max_tokens: 220,
       }),
+      // A hung OpenAI call must not stall the auto-reply cron sweep — fall
+      // back to the template draft instead.
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!aiRes.ok) {

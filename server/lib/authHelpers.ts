@@ -56,7 +56,15 @@ export interface AuthHelpers {
  * HMAC-signed session cookie secret. Prefers `AUTH_SESSION_SECRET` and falls
  * back to the Zernio key for local dev. Read lazily so process.env changes
  * (e.g. after /api/settings/api-keys writes) are picked up.
+ *
+ * In production a missing secret must NOT fall back to a value that ships in
+ * the repo — a public constant would let anyone forge a session cookie for
+ * any user id. We generate a random per-process secret instead: sessions
+ * won't survive across serverless instances (users get logged out), but they
+ * can't be forged. Local dev keeps a stable constant for convenience.
  */
+let generatedFallbackSecret: string | null = null;
+
 function getAuthSessionSigningSecret(): string {
   const s = (
     process.env.AUTH_SESSION_SECRET ||
@@ -65,10 +73,16 @@ function getAuthSessionSigningSecret(): string {
     ""
   ).trim();
   if (s) return s;
-  if (process.env.VERCEL === "1") {
-    console.warn(
-      "[auth] Set AUTH_SESSION_SECRET (or rely on ZERNIO_API_KEY) so session cookies can be verified on all instances."
-    );
+  const isProduction =
+    process.env.VERCEL === "1" || String(process.env.NODE_ENV || "") === "production";
+  if (isProduction) {
+    if (!generatedFallbackSecret) {
+      generatedFallbackSecret = crypto.randomBytes(32).toString("base64url");
+      console.warn(
+        "[auth] AUTH_SESSION_SECRET is not set — using a random per-instance secret. Sessions will not survive across instances; set AUTH_SESSION_SECRET to fix."
+      );
+    }
+    return generatedFallbackSecret;
   }
   return "automazing-dev-session-signing-key";
 }

@@ -113,6 +113,10 @@ konfigurerad): lokala sessioner kombinerat med ägarskapsbryggan skulle annars l
 komma åt molnägda OAuth-konton. Sätt `ALLOW_LOCAL_SESSIONS=1` om du uttryckligen vill tillåta dem
 på en deployment.
 
+Sessionscookien signeras med `AUTH_SESSION_SECRET` (fallback: `ZERNIO_API_KEY`). Sätt gärna en egen
+`AUTH_SESSION_SECRET` i Vercel — saknas båda används numera en slumpad per-instans-nyckel i
+produktion (sessioner överlever då inte mellan instanser, men kan aldrig förfalskas).
+
 ## Var sparas tokens och profiler?
 
 - **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`; per-profil-secrets (krypterade) i `integration_secrets`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.
