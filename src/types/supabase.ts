@@ -132,12 +132,113 @@ export type Database = {
           },
         ]
       }
+      auto_reply_log: {
+        Row: {
+          author_name: string | null
+          business_profile_id: string
+          conversation_id: string | null
+          created_at: string
+          draft_text: string | null
+          error: string | null
+          external_id: string
+          id: string
+          incoming_text: string | null
+          kind: string
+          platform: string | null
+          status: string
+          zernio_account_id: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          business_profile_id: string
+          conversation_id?: string | null
+          created_at?: string
+          draft_text?: string | null
+          error?: string | null
+          external_id: string
+          id?: string
+          incoming_text?: string | null
+          kind?: string
+          platform?: string | null
+          status: string
+          zernio_account_id?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          business_profile_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          draft_text?: string | null
+          error?: string | null
+          external_id?: string
+          id?: string
+          incoming_text?: string | null
+          kind?: string
+          platform?: string | null
+          status?: string
+          zernio_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_reply_log_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_settings: {
+        Row: {
+          business_profile_id: string
+          created_at: string
+          dm_auto_reply_enabled: boolean
+          dm_auto_reply_mode: string
+          instructions: string
+          language: string
+          tone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_profile_id: string
+          created_at?: string
+          dm_auto_reply_enabled?: boolean
+          dm_auto_reply_mode?: string
+          instructions?: string
+          language?: string
+          tone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_profile_id?: string
+          created_at?: string
+          dm_auto_reply_enabled?: boolean
+          dm_auto_reply_mode?: string
+          instructions?: string
+          language?: string
+          tone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_settings_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: true
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_profiles: {
         Row: {
           company: string | null
           created_at: string
           email: string | null
           id: string
+          kind: string
           location: string | null
           name: string
           notes: string | null
@@ -147,12 +248,14 @@ export type Database = {
           status: Database["public"]["Enums"]["business_profile_status"]
           updated_at: string
           website: string | null
+          zernio_profile_id: string | null
         }
         Insert: {
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          kind?: string
           location?: string | null
           name: string
           notes?: string | null
@@ -162,12 +265,14 @@ export type Database = {
           status?: Database["public"]["Enums"]["business_profile_status"]
           updated_at?: string
           website?: string | null
+          zernio_profile_id?: string | null
         }
         Update: {
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          kind?: string
           location?: string | null
           name?: string
           notes?: string | null
@@ -177,6 +282,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["business_profile_status"]
           updated_at?: string
           website?: string | null
+          zernio_profile_id?: string | null
         }
         Relationships: []
       }
@@ -250,6 +356,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "connected_accounts_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_secrets: {
+        Row: {
+          business_profile_id: string
+          created_at: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value_ciphertext: string
+          value_iv: string
+          value_tag: string
+        }
+        Insert: {
+          business_profile_id: string
+          created_at?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value_ciphertext: string
+          value_iv: string
+          value_tag: string
+        }
+        Update: {
+          business_profile_id?: string
+          created_at?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value_ciphertext?: string
+          value_iv?: string
+          value_tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_secrets_business_profile_id_fkey"
             columns: ["business_profile_id"]
             isOneToOne: false
             referencedRelation: "business_profiles"
@@ -600,6 +747,7 @@ export type Database = {
       }
     }
     Functions: {
+      is_bp_owner: { Args: { bp_id: string }; Returns: boolean }
       is_member: { Args: { bp_id: string }; Returns: boolean }
       is_member_with_role: {
         Args: { bp_id: string; roles: string[] }

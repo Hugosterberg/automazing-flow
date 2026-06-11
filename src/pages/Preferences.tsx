@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
 import {
   Bell,
+  Bot,
   CheckCircle2,
   ExternalLink,
   Globe,
@@ -16,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { TeamManager } from "@/components/TeamManager";
+import { AutomationPanel } from "@/features/automation";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -219,6 +221,10 @@ export default function PreferencesPage() {
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Team
           </TabsTrigger>
+          <TabsTrigger value="automation">
+            <Bot className="h-3.5 w-3.5 mr-1.5" />
+            Automation
+          </TabsTrigger>
           <TabsTrigger value="api-keys">Integrations</TabsTrigger>
         </TabsList>
 
@@ -265,6 +271,16 @@ export default function PreferencesPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="automation">
+          {activeBusinessProfileId ? (
+            <AutomationPanel businessProfileId={activeBusinessProfileId} />
+          ) : (
+            <p className="text-sm text-muted-foreground pt-2">
+              Välj en profil för att hantera dess automation.
+            </p>
+          )}
         </TabsContent>
 
         <TabsContent value="api-keys" className="space-y-5">

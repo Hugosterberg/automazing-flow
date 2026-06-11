@@ -67,6 +67,38 @@ per-profil-secrets ska kunna lagras. Sätt den lokalt **och** i Vercel. Saknas d
 Zernio-*profil* (workspace) som skapas på begäran och sparas i `business_profiles.zernio_profile_id`, så
 att en kunds kanaler/inbox hålls isolerade inom din enda Zernio-nyckel.
 
+## Auto-svar på DM:s (automation)
+
+Varje profil kan slå på **auto-svar** under **Preferences → Automation**:
+
+- **Utkast-läge (standard):** AI:n läser olästa Zernio-inbox-konversationer (Instagram/Facebook/WhatsApp)
+  och skriver svarsförslag som loggas i automationsloggen — inget skickas automatiskt. Varje utkast har
+  en "Skicka svaret"-knapp i loggen för granskat utskick.
+- **Skicka automatiskt:** AI:n skickar svaret direkt via Zernio (`/inbox/send`).
+
+Inställningarna (på/av, läge, ton, språk, extra instruktioner) lagras per profil i
+`automation_settings`. Varje hanterat meddelande loggas i `auto_reply_log` med en unik nyckel per
+inkommande meddelande — det är idempotensvakten som gör att samma meddelande aldrig besvaras två
+gånger, även om jobbet körs ofta.
+
+**Körning:**
+
+- **Manuellt:** knappen "Kör nu" i Preferences → Automation (kör för aktiv profil).
+- **Schemalagt:** `GET /api/cron/auto-reply` med `Authorization: Bearer <CRON_SECRET>`. Lägg till i
+  `vercel.json` under `crons` (kräver Vercel Pro för fler än 2 cron-jobb / tätare än dagligen), eller
+  trigga från extern schemaläggare (GitHub Actions, cron-job.org) mot produktion-URL:en.
+
+AI-svaren använder per-profil-`OPENAI_API_KEY` (integration_secrets) med global env-fallback; utan
+nyckel används en enkel standardtext. Kräver `SUPABASE_SERVICE_ROLE_KEY` (för settings/logg) och
+`ZERNIO_API_KEY`. **OBS:** kör `npm run supabase:db:push` för att applicera migrationen
+`20260611000000_profile_kind_and_auto_reply.sql` innan funktionen används.
+
+## Profiltyper: företag och privat
+
+En användare kan ha flera profiler i samma app — t.ex. en per företag och en för privatlivet.
+`business_profiles.kind` (`company` | `personal`) styr endast etiketter, ikoner och AI-standarder;
+all multitenant-logik (medlemskap, secrets, Zernio-profil per tenant) är identisk för båda typerna.
+
 ## Var sparas tokens och profiler?
 
 - **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`; per-profil-secrets (krypterade) i `integration_secrets`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.

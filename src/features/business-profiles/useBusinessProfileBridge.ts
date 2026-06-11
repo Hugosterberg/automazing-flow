@@ -38,6 +38,7 @@ function toLegacyProfile(p: BusinessProfile): Profile {
   return {
     id: p.id,
     name: p.name,
+    kind: p.kind,
     createdAt: p.createdAt,
     website: p.website,
     email: p.email,

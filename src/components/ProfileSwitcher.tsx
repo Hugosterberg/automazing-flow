@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -135,11 +135,18 @@ export function ProfileSwitcher() {
                   ) : (
                     <>
                       <div className="h-6 w-6 shrink-0 rounded-md bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary">
-                        {ProfileInitials(profile.name)}
+                        {profile.kind === "personal" ? (
+                          <User className="h-3.5 w-3.5" aria-hidden />
+                        ) : (
+                          ProfileInitials(profile.name)
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{profile.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{count} accounts</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {profile.kind === "personal" ? "Personal · " : ""}
+                          {count} accounts
+                        </p>
                       </div>
                       {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
                       <div

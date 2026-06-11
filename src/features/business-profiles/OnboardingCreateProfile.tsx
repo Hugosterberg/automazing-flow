@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Building2, CalendarDays, CheckCircle2, Loader2, PlugZap, Share2, Star } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Loader2, PlugZap, Share2, Star, User } from "lucide-react";
+import type { ProfileKind } from "@/types/businessProfile";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,6 +45,7 @@ export function OnboardingCreateProfile() {
   const { createProfile, isCreating } = useBusinessProfiles();
   const setActive = useSetActiveBusinessProfileId();
   const [step, setStep] = useState<"welcome" | "create">("welcome");
+  const [kind, setKind] = useState<ProfileKind>("company");
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [website, setWebsite] = useState("");
@@ -58,7 +60,8 @@ export function OnboardingCreateProfile() {
     try {
       const created = await createProfile({
         name: name.trim(),
-        company: company.trim() || undefined,
+        kind,
+        company: kind === "company" ? company.trim() || undefined : undefined,
         website: website.trim() || undefined,
       });
       setActive(created.id);
@@ -80,8 +83,8 @@ export function OnboardingCreateProfile() {
             </div>
             <h1 className="text-2xl font-bold">Välkommen till automazing!</h1>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
-              Börja med att skapa ditt första företagsprofil. Sedan kopplar du alla dina konton — Instagram,
-              Google, Shopify och mer — på ett och samma ställe.
+              Börja med att skapa din första profil — för ett företag eller för ditt privatliv. Sedan kopplar
+              du alla dina konton — Instagram, Google, Shopify och mer — på ett och samma ställe.
             </p>
           </div>
 
@@ -107,7 +110,7 @@ export function OnboardingCreateProfile() {
           </div>
 
           <Button className="w-full" size="lg" onClick={() => setStep("create")}>
-            Kom igång — skapa ditt företagsprofil
+            Kom igång — skapa din första profil
           </Button>
         </div>
       </div>
@@ -120,21 +123,59 @@ export function OnboardingCreateProfile() {
         <Card className="border-border/80 shadow-md">
           <CardHeader className="space-y-1 pb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border mb-1">
-              <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden />
+              {kind === "personal" ? (
+                <User className="h-5 w-5 text-muted-foreground" aria-hidden />
+              ) : (
+                <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden />
+              )}
             </div>
-            <CardTitle className="text-xl">Berätta om ditt företag</CardTitle>
+            <CardTitle className="text-xl">
+              {kind === "personal" ? "Berätta om din profil" : "Berätta om ditt företag"}
+            </CardTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Den här informationen visas i sidofältet och hjälper AI:n att ge dig mer relevanta förslag.
+              Du kan skapa fler profiler senare — t.ex. en per företag och en för privatlivet.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label>Typ av profil</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: "company", label: "Företag", desc: "Varumärke, kund eller verksamhet", icon: Building2 },
+                    { value: "personal", label: "Privat", desc: "Dina egna konton och kanaler", icon: User },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setKind(option.value)}
+                    aria-pressed={kind === option.value}
+                    className={`flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors ${
+                      kind === option.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <option.icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{option.label}</span>
+                      <span className="block text-xs text-muted-foreground">{option.desc}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="bp-name">
                 Profilnamn <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="bp-name"
-                placeholder="t.ex. Huvudkontoret eller Restaurang Söder"
+                placeholder={
+                  kind === "personal" ? "t.ex. Privat eller Mitt namn" : "t.ex. Huvudkontoret eller Restaurang Söder"
+                }
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -143,15 +184,17 @@ export function OnboardingCreateProfile() {
                 Visas i sidofältet när du väljer aktiv profil.
               </p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="bp-company">Företagsnamn (valfritt)</Label>
-              <Input
-                id="bp-company"
-                placeholder="Acme AB"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
-            </div>
+            {kind === "company" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="bp-company">Företagsnamn (valfritt)</Label>
+                <Input
+                  id="bp-company"
+                  placeholder="Acme AB"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                />
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="bp-website">Webbplats (valfritt)</Label>
               <Input

@@ -1,10 +1,19 @@
 /**
- * Canonical tenant entity. One row = one company/brand/client the user operates.
- * Replaces the legacy `Profile` shape from `./accounts.ts` going forward.
+ * Profile type: a user can run several profiles in the same app — one per
+ * company/brand/client plus a personal one for their private life. Only
+ * affects labels, icons and AI defaults; multi-tenant behaviour is identical.
+ */
+export type ProfileKind = "company" | "personal";
+
+/**
+ * Canonical tenant entity. One row = one company/brand/client (or the user's
+ * personal space). Replaces the legacy `Profile` shape from `./accounts.ts`
+ * going forward.
  */
 export interface BusinessProfile {
   id: string;
   name: string;
+  kind: ProfileKind;
   website?: string;
   company?: string;
   email?: string;
@@ -27,6 +36,7 @@ export interface Membership {
 
 export interface BusinessProfileInput {
   name: string;
+  kind?: ProfileKind;
   website?: string;
   company?: string;
   email?: string;

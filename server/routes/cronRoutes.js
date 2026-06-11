@@ -8,6 +8,7 @@
  */
 
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
+import { runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
 
 /**
  * Guard: returns true when the incoming request is authorised to run a
@@ -26,10 +27,12 @@ function isAuthorisedCron(req) {
  * @param {{
  *   oauthPendingStore: { deleteExpired?: () => Promise<{ removed: number }> };
  *   supabaseAdmin?: unknown;
+ *   zernio?: unknown;
+ *   secretResolver?: { resolve: (businessProfileId: string, key: string) => Promise<string | null> };
  * }} deps
  */
 export function registerCronRoutes(app, deps) {
-  const { oauthPendingStore, supabaseAdmin } = deps;
+  const { oauthPendingStore, supabaseAdmin, zernio, secretResolver } = deps;
 
   app.get("/api/cron/cleanup-oauth-pending", async (req, res) => {
     if (!isAuthorisedCron(req)) {
@@ -134,6 +137,47 @@ export function registerCronRoutes(app, deps) {
         e?.message || e
       );
       return res.status(500).json({ error: "refresh_failed" });
+    }
+  });
+
+  /**
+   * Auto-reply automation sweep: for every business_profile with
+   * `automation_settings.dm_auto_reply_enabled`, draft (or send, per the
+   * profile's mode) AI replies to unread Zernio inbox conversations.
+   * Idempotent via auto_reply_log — safe to trigger as often as you like
+   * (Vercel Cron on Pro, or any external scheduler with the CRON_SECRET).
+   */
+  app.get("/api/cron/auto-reply", async (req, res) => {
+    if (!isAuthorisedCron(req)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!supabaseAdmin || !zernio || !secretResolver) {
+      return res
+        .status(503)
+        .json({ error: "auto_reply_dependencies_not_configured" });
+    }
+
+    try {
+      const result = await runAutoReplyForAllProfiles({
+        supabaseAdmin,
+        zernio,
+        resolveOpenAiKey: (bpId) => secretResolver.resolve(bpId, "OPENAI_API_KEY"),
+      });
+      const totals = result.summaries.reduce(
+        (acc, s) => ({
+          drafted: acc.drafted + s.drafted,
+          sent: acc.sent + s.sent,
+          failed: acc.failed + s.failed,
+        }),
+        { drafted: 0, sent: 0, failed: 0 }
+      );
+      console.log(
+        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed}`
+      );
+      return res.json({ ok: true, profiles: result.profiles, ...totals, summaries: result.summaries });
+    } catch (e) {
+      console.error("[cron] auto-reply unexpected:", e?.message || e);
+      return res.status(500).json({ error: "auto_reply_failed" });
     }
   });
 }

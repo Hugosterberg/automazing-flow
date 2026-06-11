@@ -4,6 +4,7 @@ import type { BusinessProfile, BusinessProfileInput } from "@/types/businessProf
 type Row = {
   id: string;
   name: string;
+  kind: string | null;
   website: string | null;
   company: string | null;
   email: string | null;
@@ -16,12 +17,13 @@ type Row = {
 };
 
 const SELECT =
-  "id,name,website,company,email,phone,location,notes,owner_user_id,created_at,updated_at";
+  "id,name,kind,website,company,email,phone,location,notes,owner_user_id,created_at,updated_at";
 
 function rowToDomain(row: Row): BusinessProfile {
   return {
     id: row.id,
     name: row.name,
+    kind: row.kind === "personal" ? "personal" : "company",
     website: row.website ?? undefined,
     company: row.company ?? undefined,
     email: row.email ?? undefined,
@@ -35,7 +37,7 @@ function rowToDomain(row: Row): BusinessProfile {
 }
 
 function inputToRow(input: BusinessProfileInput): Record<string, string | null> {
-  return {
+  const row: Record<string, string | null> = {
     name: input.name.trim(),
     website: input.website?.trim() || null,
     company: input.company?.trim() || null,
@@ -44,6 +46,9 @@ function inputToRow(input: BusinessProfileInput): Record<string, string | null> 
     location: input.location?.trim() || null,
     notes: input.notes?.trim() || null,
   };
+  // Only written when explicitly provided so partial updates never reset the kind.
+  if (input.kind) row.kind = input.kind === "personal" ? "personal" : "company";
+  return row;
 }
 
 export async function listBusinessProfiles(

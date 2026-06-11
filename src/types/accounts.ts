@@ -28,6 +28,8 @@ export type AccountPlatform =
 export interface Profile {
   id: string;
   name: string;
+  /** "company" | "personal" — mirrors BusinessProfile.kind via the bridge. */
+  kind?: string;
   createdAt: string;
   website?: string;
   email?: string;

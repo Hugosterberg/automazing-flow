@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { generateReplyDraft } from "../ai/replyDraft.ts";
 
 type AiRouteDeps = {
   getSessionUserId?: (req: { [key: string]: unknown }) => string | null;
@@ -372,62 +373,16 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
       return res.status(400).json({ error: "text is required" });
     }
 
-    const who = authorName || (kind === "review" ? "the reviewer" : "the customer");
-    const fallbackDraft =
-      kind === "review"
-        ? `Thank you, ${who}, for taking the time to share your feedback${
-            rating != null && rating >= 4 ? " — we're glad you had a good experience!" : "."
-          } We appreciate it and would love to make things even better. Please reach out to us directly so we can help.`
-        : `Hi ${who}, thanks for reaching out! ${
-            text.length > 0 ? "We'd be happy to help with that. " : ""
-          }Could you share a few more details so we can assist you best?`;
-
     const openaiKey = String(
       (deps?.secretResolver
         ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || ""
     ).trim();
 
-    if (!openaiKey) {
-      return res.json({ draft: fallbackDraft, source: "fallback" });
-    }
-
-    try {
-      const promptLines = [
-        kind === "review"
-          ? "Write a short public reply to this customer review on behalf of the business."
-          : "Write a short, helpful reply to this customer direct message on behalf of the business.",
-        `Tone: ${tone}. Language: ${language}.`,
-        businessName ? `Business: ${businessName}.` : "",
-        authorName ? `From: ${authorName}.` : "",
-        rating != null ? `Star rating: ${rating}/5.` : "",
-        kind === "review"
-          ? "Acknowledge specifics, stay genuine, avoid generic filler, and keep it under 60 words."
-          : "Be friendly and actionable, keep it under 50 words, and end with a clear next step.",
-        "Return ONLY the reply text, no preamble or quotes.",
-        "",
-        `Message:\n${text}`,
-      ].filter(Boolean);
-
-      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: promptLines.join("\n") }],
-          temperature: 0.6,
-          max_tokens: 220,
-        }),
-      });
-
-      if (!aiRes.ok) {
-        return res.json({ draft: fallbackDraft, source: "fallback" });
-      }
-      const aiData = await aiRes.json();
-      const draft = String(aiData?.choices?.[0]?.message?.content || "").trim();
-      return res.json({ draft: draft || fallbackDraft, source: draft ? "openai" : "fallback" });
-    } catch {
-      return res.json({ draft: fallbackDraft, source: "fallback" });
-    }
+    const result = await generateReplyDraft(
+      { kind, text, authorName, rating, businessName, tone, language },
+      openaiKey
+    );
+    return res.json(result);
   });
 }

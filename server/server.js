@@ -44,6 +44,7 @@ import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
+import { registerAutomationRoutes } from "./routes/automationRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -311,6 +312,8 @@ const getOrCreateZernioProfileId = createGetOrCreateZernioProfileIdForTenant({
 registerCronRoutes(app, {
   oauthPendingStore,
   supabaseAdmin: supabaseServiceClient,
+  zernio: zernioModule,
+  secretResolver,
 });
 
 registerAuthRoutes(app, {
@@ -375,6 +378,14 @@ registerConnectionsRoutes(app, {
 registerTeamRoutes(app, {
   requireMembership,
   supabaseAdmin: supabaseServiceClient,
+  getSessionUserId,
+});
+
+registerAutomationRoutes(app, {
+  requireMembership,
+  supabaseAdmin: supabaseServiceClient,
+  zernio: zernioModule,
+  secretResolver,
   getSessionUserId,
 });
 
