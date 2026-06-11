@@ -6,7 +6,7 @@
  * that must carry a `zernioAccountId`; ownership is checked before publishing.
  */
 
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -123,15 +123,10 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     });
 
     if (!result.ok) {
-      if (result.status === 402 || result.status === 403) {
-        return res.status(result.status).json({
-          error: "zernio_publish_unavailable",
-          message: "Zernio could not publish (add-on or permission may be required).",
-          skipped,
-        });
-      }
+      const failure = describeZernioFailure(result);
       return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
-        error: result.error || "zernio_publish_failed",
+        error: failure.code,
+        message: failure.message,
         skipped,
       });
     }

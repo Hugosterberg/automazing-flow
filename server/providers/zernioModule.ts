@@ -155,6 +155,64 @@ export interface ZernioModule {
   }): Promise<ZernioResult<Record<string, unknown>>>;
 }
 
+/**
+ * Translate a failed ZernioResult into a stable error code + a message a user
+ * can act on. Zernio sometimes returns a structured `code` (e.g.
+ * INBOX_REQUIRED when the Inbox add-on isn't active) — surfacing that beats
+ * the generic "check API key" guesses the routes used to make.
+ */
+export function describeZernioFailure(result: {
+  status: number;
+  error?: string;
+  data?: unknown;
+}): { code: string; message: string } {
+  const body = (result.data || {}) as Record<string, unknown>;
+  const upstreamCode = String(body.code || "");
+  const upstreamMessage =
+    result.error || (typeof body.error === "string" ? body.error : "");
+  const detail = upstreamMessage ? `: ${upstreamMessage}` : "";
+
+  if (upstreamCode === "INBOX_REQUIRED" || /inbox addon/i.test(upstreamMessage)) {
+    return {
+      code: "zernio_inbox_addon_required",
+      message:
+        "The Zernio Inbox add-on is required for this feature. Enable it in your Zernio dashboard (zernio.com) and try again.",
+    };
+  }
+  if (result.status === 503) {
+    return { code: "zernio_api_key_missing", message: "ZERNIO_API_KEY is not set on the server." };
+  }
+  if (result.status === 401) {
+    return {
+      code: "zernio_unauthorized",
+      message: `Zernio rejected the API key (401${detail}). Check ZERNIO_API_KEY.`,
+    };
+  }
+  if (result.status === 402) {
+    return {
+      code: "zernio_payment_required",
+      message: `Zernio requires a plan upgrade or add-on for this feature (402${detail}).`,
+    };
+  }
+  if (result.status === 403) {
+    return {
+      code: "zernio_forbidden",
+      message: `Zernio denied the request (403${detail}${upstreamCode ? `, code ${upstreamCode}` : ""}).`,
+    };
+  }
+  if (result.status === 404) {
+    return {
+      code: "zernio_not_found",
+      message:
+        "Zernio endpoint or resource not found (404). This feature may not be available for this account or plan.",
+    };
+  }
+  return {
+    code: "zernio_request_failed",
+    message: `Zernio request failed (${result.status}${detail}).`,
+  };
+}
+
 export type ReviewCandidate =
   | "generic"
   | "account_nested"

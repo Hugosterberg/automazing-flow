@@ -14,7 +14,7 @@ import {
   runAutoReplyForProfile,
 } from "../automation/autoReply.ts";
 import type { AutoReplyDeps } from "../automation/autoReply.ts";
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
@@ -175,13 +175,14 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
         message,
       });
       if (!sendResult.ok) {
+        const failure = describeZernioFailure(sendResult);
         await supabaseAdmin
           .from("auto_reply_log")
-          .update({ error: sendResult.error || `zernio_send_failed_${sendResult.status}` })
+          .update({ error: failure.message })
           .eq("id", logId);
         return res
           .status(sendResult.status >= 400 && sendResult.status < 600 ? sendResult.status : 502)
-          .json({ error: sendResult.error || "zernio_dm_reply_failed" });
+          .json({ error: failure.code, message: failure.message });
       }
 
       const { error: updateError } = await supabaseAdmin

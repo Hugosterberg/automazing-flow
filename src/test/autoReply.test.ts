@@ -8,6 +8,7 @@ import {
 } from "../../server/automation/autoReply.ts";
 import { isInboundZernioMessage } from "../../server/lib/zernioInbox.ts";
 import { buildFallbackReplyDraft } from "../../server/ai/replyDraft.ts";
+import { describeZernioFailure } from "../../server/providers/zernioModule.ts";
 
 const PROFILE = { id: "bp-1", name: "Los Tios", zernioProfileId: "zp-1" };
 
@@ -186,7 +187,8 @@ describe("runAutoReplyForProfile", () => {
 
     expect(summary.failed).toBe(1);
     expect(summary.sent).toBe(0);
-    expect(supabase.inserted[0]).toMatchObject({ status: "failed", error: "inbox_addon_required" });
+    expect(supabase.inserted[0]).toMatchObject({ status: "failed" });
+    expect(String(supabase.inserted[0].error)).toContain("inbox_addon_required");
   });
 
   it("is idempotent: already-logged messages are skipped", async () => {
@@ -273,6 +275,35 @@ describe("isInboundZernioMessage", () => {
 
   it("returns null when no signal exists", () => {
     expect(isInboundZernioMessage({ text: "hello" })).toBeNull();
+  });
+});
+
+describe("describeZernioFailure", () => {
+  it("detects the INBOX_REQUIRED code from Zernio", () => {
+    const failure = describeZernioFailure({
+      status: 403,
+      error: "Inbox addon required. Upgrade to access inbox features.",
+      data: { error: "Inbox addon required. Upgrade to access inbox features.", code: "INBOX_REQUIRED" },
+    });
+    expect(failure.code).toBe("zernio_inbox_addon_required");
+    expect(failure.message).toContain("Zernio dashboard");
+  });
+
+  it("maps a missing API key", () => {
+    const failure = describeZernioFailure({ status: 503, error: "zernio_api_key_missing" });
+    expect(failure.code).toBe("zernio_api_key_missing");
+    expect(failure.message).toContain("ZERNIO_API_KEY");
+  });
+
+  it("keeps the upstream message for unauthorized", () => {
+    const failure = describeZernioFailure({ status: 401, error: "Invalid token" });
+    expect(failure.code).toBe("zernio_unauthorized");
+    expect(failure.message).toContain("Invalid token");
+  });
+
+  it("flags missing endpoints as plan/account limitations", () => {
+    const failure = describeZernioFailure({ status: 404, error: "zernio_request_failed" });
+    expect(failure.code).toBe("zernio_not_found");
   });
 });
 

@@ -137,12 +137,24 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
     try {
       const payload = await runAutomationNow(businessProfileId);
       const s = payload.summary;
-      toast({
-        title: "Automation körd",
-        description: `Skannade ${s.scanned} konversationer — ${s.sent} skickade, ${s.drafted} utkast, ${s.failed} misslyckade.${
-          s.note ? ` (${s.note})` : ""
-        }`,
-      });
+      const blocked = s.note && s.scanned === 0 && s.sent + s.drafted === 0;
+      if (blocked) {
+        toast({
+          title: "Automationen kunde inte läsa inboxen",
+          description:
+            s.note === "no_zernio_profile_for_tenant"
+              ? "Profilen har ingen Zernio-koppling ännu — koppla minst en kanal via Zernio först."
+              : s.note,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Automation körd",
+          description: `Skannade ${s.scanned} konversationer — ${s.sent} skickade, ${s.drafted} utkast, ${s.failed} misslyckade.${
+            s.note ? ` (${s.note})` : ""
+          }`,
+        });
+      }
       await loadLog();
     } catch (error) {
       toast({

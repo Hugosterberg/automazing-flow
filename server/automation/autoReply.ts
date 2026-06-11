@@ -17,7 +17,7 @@
  */
 
 import { generateReplyDraft } from "../ai/replyDraft.ts";
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import {
   parseZernioConversationList,
   parseZernioConversationMessages,
@@ -178,7 +178,7 @@ export async function runAutoReplyForProfile(
     profileId: profile.zernioProfileId,
   });
   if (!conversationsResult.ok) {
-    summary.note = conversationsResult.error || "zernio_inbox_unavailable";
+    summary.note = describeZernioFailure(conversationsResult).message;
     return summary;
   }
 
@@ -254,7 +254,7 @@ export async function runAutoReplyForProfile(
           status = "sent";
         } else {
           status = "failed";
-          errorText = sendResult.error || `zernio_send_failed_${sendResult.status}`;
+          errorText = describeZernioFailure(sendResult).message;
         }
       }
     } catch (e) {

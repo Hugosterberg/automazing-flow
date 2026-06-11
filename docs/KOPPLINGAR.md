@@ -90,14 +90,28 @@ gånger, även om jobbet körs ofta.
 
 AI-svaren använder per-profil-`OPENAI_API_KEY` (integration_secrets) med global env-fallback; utan
 nyckel används en enkel standardtext. Kräver `SUPABASE_SERVICE_ROLE_KEY` (för settings/logg) och
-`ZERNIO_API_KEY`. **OBS:** kör `npm run supabase:db:push` för att applicera migrationen
-`20260611000000_profile_kind_and_auto_reply.sql` innan funktionen används.
+`ZERNIO_API_KEY`.
+
+**Viktigt (verifierat 2026-06-11):** Zernios inbox-API kräver **Inbox-addonet** på Zernio-kontot.
+Utan det svarar `/inbox/*` med `403 INBOX_REQUIRED` — appen visar då "The Zernio Inbox add-on is
+required…" i Messages och i automationens körsammanfattning. Aktivera addonet i Zernio-dashboarden
+för att DM-läsning, DM-svar och auto-svar ska fungera. Zernios reviews-endpoints
+(`/reviews`, `/google-business/reviews` m.fl.) svarade 404 vid samma test — recensioner via Zernio
+är inte tillgängligt på nuvarande plan; Google Reviews fungerar via officiell Google Business OAuth.
 
 ## Profiltyper: företag och privat
 
 En användare kan ha flera profiler i samma app — t.ex. en per företag och en för privatlivet.
 `business_profiles.kind` (`company` | `personal`) styr endast etiketter, ikoner och AI-standarder;
 all multitenant-logik (medlemskap, secrets, Zernio-profil per tenant) är identisk för båda typerna.
+
+## Lokala sessioner (dev) och produktion
+
+`POST /api/auth/local-session` ger en oautentiserad `local_*`-session för lokal utveckling. Av
+säkerhetsskäl är den **avstängd i produktion** (Vercel/`NODE_ENV=production` när Supabase-auth är
+konfigurerad): lokala sessioner kombinerat med ägarskapsbryggan skulle annars låta en anonym besökare
+komma åt molnägda OAuth-konton. Sätt `ALLOW_LOCAL_SESSIONS=1` om du uttryckligen vill tillåta dem
+på en deployment.
 
 ## Var sparas tokens och profiler?
 

@@ -10,7 +10,7 @@
  * all OpenAI usage + per-tenant key resolution stays in one place.
  */
 
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -72,14 +72,10 @@ export function registerReviewsRoutes(app, deps: ReviewsRoutesDeps) {
 
     const result = await zernio.replyReview({ reviewId, message, accountId: zernioAccountId });
     if (!result.ok) {
-      if (result.status === 402 || result.status === 403) {
-        return res.status(result.status).json({
-          error: "zernio_review_reply_unavailable",
-          message: "Zernio could not post the reply (add-on or permission may be required).",
-        });
-      }
+      const failure = describeZernioFailure(result);
       return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
-        error: result.error || "zernio_review_reply_failed",
+        error: failure.code,
+        message: failure.message,
       });
     }
 

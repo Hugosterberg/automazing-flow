@@ -1,6 +1,6 @@
 import { fetchGmailAccountData } from "../providers/gmail.ts";
 import { fetchOutlookMailData } from "../providers/outlookMail.ts";
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import {
   parseZernioConversationList,
   parseZernioConversationMessages,
@@ -237,14 +237,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             platform,
           });
           if (!convResult.ok) {
-            if (convResult.status === 503) {
-              zernioNote =
-                "ZERNIO_API_KEY is not set - social DMs from connected accounts will not appear here.";
-            } else if (convResult.status === 401 || convResult.status === 403) {
-              zernioNote = "Zernio inbox returned unauthorized - check API key or reconnect with inbox permissions.";
-            } else if (convResult.status === 402) {
-              zernioNote = "Zernio Inbox may require inbox access for DM conversations.";
-            }
+            // Keep the actionable upstream reason (e.g. "Inbox add-on required")
+            // instead of guessing — one note per request is enough.
+            zernioNote = describeZernioFailure(convResult).message;
             return;
           }
 
@@ -387,14 +382,10 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
     const result = await zernio.sendInboxMessage({ conversationId, accountId: zernioAccountId, message });
     if (!result.ok) {
-      if (result.status === 402 || result.status === 403) {
-        return res.status(result.status).json({
-          error: "zernio_dm_reply_unavailable",
-          message: "Zernio could not send the message (inbox add-on or permission may be required).",
-        });
-      }
+      const failure = describeZernioFailure(result);
       return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
-        error: result.error || "zernio_dm_reply_failed",
+        error: failure.code,
+        message: failure.message,
       });
     }
 

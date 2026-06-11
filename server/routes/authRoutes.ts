@@ -26,6 +26,23 @@ interface AuthRoutesDeps {
 export function registerAuthRoutes(app, deps: AuthRoutesDeps) {
   const { auth, supabaseUrl, supabaseAnonKey, debugLog } = deps;
 
+  /**
+   * Local (unauthenticated) sessions are a dev convenience, but combined with
+   * the local<->cloud ownership bridge in authHelpers they would let any
+   * anonymous visitor on a deployed instance mint a `local_*` session and
+   * access cloud-owned OAuth accounts. So they are only allowed when:
+   *   - explicitly opted in via ALLOW_LOCAL_SESSIONS=1, or
+   *   - Supabase auth isn't configured (nothing but local mode can work), or
+   *   - running outside production (local dev).
+   */
+  function localSessionsAllowed(): boolean {
+    if (String(process.env.ALLOW_LOCAL_SESSIONS || "").trim() === "1") return true;
+    if (!supabaseUrl || !supabaseAnonKey) return true;
+    const isProduction =
+      process.env.VERCEL === "1" || String(process.env.NODE_ENV || "") === "production";
+    return !isProduction;
+  }
+
   app.post("/api/auth/session", async (req, res) => {
     debugLog("pre-fix", "H6", "authRoutes:/api/auth/session", "Auth session sync called", {
       hasSupabaseUrl: Boolean(supabaseUrl),
@@ -64,6 +81,13 @@ export function registerAuthRoutes(app, deps: AuthRoutesDeps) {
       hasCookie: Boolean(req.headers.cookie),
       hasRequestedLocalId: Boolean(req.headers["x-local-user-id"]),
     });
+    if (!localSessionsAllowed()) {
+      return res.status(403).json({
+        error: "local_sessions_disabled",
+        message:
+          "Local (unauthenticated) sessions are disabled on this deployment. Sign in with your account instead, or set ALLOW_LOCAL_SESSIONS=1 on the server to allow them.",
+      });
+    }
     const rawCookie = auth.parseCookies(req.headers.cookie || "")[AUTH_SESSION_COOKIE];
     const existingUser = rawCookie ? auth.verifyAuthSessionCookie(rawCookie) : null;
     if (existingUser && String(existingUser).startsWith("local_")) {
