@@ -78,16 +78,27 @@ export function registerTeamRoutes(app, { requireMembership, supabaseAdmin, getS
     }
   });
 
-  // POST /api/team/invite — invite by email, create pending membership
+  // POST /api/team/invite — invite by email, create pending membership.
+  // Only owners/admins may invite — otherwise a viewer could escalate by
+  // inviting their own second account as admin.
   app.post("/api/team/invite", requireMembership, async (req, res) => {
     if (!supabaseAdmin) return res.status(503).json({ error: "supabase_not_configured" });
 
+    const inviterRole = String((req as { membershipRole?: string }).membershipRole || "");
+    if (!["owner", "admin"].includes(inviterRole)) {
+      return res.status(403).json({ error: "insufficient_role" });
+    }
+
     const businessProfileId = String((req as { businessProfileId?: string }).businessProfileId || "");
-    const role = String((req as { body?: Record<string, unknown> }).body?.role || "member");
+    // The memberships check constraint allows owner/admin/editor/viewer.
+    // "member" is a legacy alias from older UI builds — map it to editor
+    // instead of letting Postgres reject the row with a 500.
+    const rawRole = String((req as { body?: Record<string, unknown> }).body?.role || "editor");
+    const role = rawRole === "member" ? "editor" : rawRole;
     const email = String((req as { body?: Record<string, unknown> }).body?.email || "").trim().toLowerCase();
 
     if (!email) return res.status(400).json({ error: "missing_email" });
-    if (!["admin", "member", "viewer"].includes(role)) return res.status(400).json({ error: "invalid_role" });
+    if (!["admin", "editor", "viewer"].includes(role)) return res.status(400).json({ error: "invalid_role" });
 
     try {
       // Try to find if the user already has an account
@@ -141,6 +152,21 @@ export function registerTeamRoutes(app, { requireMembership, supabaseAdmin, getS
     if (targetUserId === currentUserId) return res.status(400).json({ error: "cannot_remove_self" });
 
     try {
+      // The owner can never be removed — otherwise an admin could lock the
+      // owner out of their own business profile.
+      const { data: memberships, error: lookupErr } = await sb()
+        .from("memberships")
+        .select("user_id,role")
+        .eq("business_profile_id", businessProfileId);
+      if (lookupErr) return res.status(500).json({ error: lookupErr.message });
+      const target = (memberships ?? []).find(
+        (m) => String((m as Record<string, unknown>).user_id) === targetUserId
+      ) as Record<string, unknown> | undefined;
+      if (!target) return res.status(404).json({ error: "member_not_found" });
+      if (String(target.role) === "owner") {
+        return res.status(403).json({ error: "cannot_remove_owner" });
+      }
+
       const { error } = await sb()
         .from("memberships")
         .delete()

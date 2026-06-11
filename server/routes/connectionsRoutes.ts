@@ -1,4 +1,4 @@
-import type { ZernioModule, ZernioRawAccount } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule, type ZernioRawAccount } from "../providers/zernioModule.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import { recordSyncRun } from "../lib/syncRunLog.ts";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
@@ -69,8 +69,10 @@ export function registerConnectionsRoutes(
 
     const listing = await zernio.listAccounts();
     if (!listing.ok) {
-      return res.status(listing.status).json({
-        error: listing.error || "zernio_unavailable",
+      const failure = describeZernioFailure(listing);
+      return res.status(listing.status >= 400 && listing.status < 600 ? listing.status : 502).json({
+        error: failure.code,
+        message: failure.message,
         updated: 0,
       });
     }
@@ -274,20 +276,29 @@ export function registerConnectionsRoutes(
 
       const listing = await zernio.listAccounts();
       const runStart = new Date().toISOString();
+      const zid = String(row.zernio_account_id || "").trim();
+
+      // A Zernio-backed connection can't be health-checked while Zernio
+      // itself is unreachable — defaulting to "healthy" would silently
+      // clear a real expired/error state. Surface the failure instead.
+      if (zid && !listing.ok) {
+        const failure = describeZernioFailure(listing);
+        return res
+          .status(listing.status >= 400 && listing.status < 600 ? listing.status : 502)
+          .json({ error: failure.code, message: failure.message });
+      }
+
       let nextHealth = "healthy";
       let nextError: string | null = null;
 
-      if (listing.ok) {
-        const zid = String(row.zernio_account_id || "").trim();
-        if (zid) {
-          const known = listing.accounts.some((a) => {
-            const id = String(a.id || a.accountId || a._id || "").trim();
-            return id === zid;
-          });
-          if (!known) {
-            nextHealth = "expired";
-            nextError = "Zernio no longer reports this account. Re-connect required.";
-          }
+      if (listing.ok && zid) {
+        const known = listing.accounts.some((a) => {
+          const id = String(a.id || a.accountId || a._id || "").trim();
+          return id === zid;
+        });
+        if (!known) {
+          nextHealth = "expired";
+          nextError = "Zernio no longer reports this account. Re-connect required.";
         }
       }
 

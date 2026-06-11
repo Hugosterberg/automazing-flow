@@ -342,6 +342,7 @@ registerAccountRoutes(app, {
   mapZernioPlatform,
   tokenStore,
   getSessionUserId,
+  getStoredAccountAccess,
 });
 
 registerMessagesRoutes(app, {

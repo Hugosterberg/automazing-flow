@@ -47,52 +47,17 @@ interface AccountRoutesDeps {
     entries: () => Promise<Array<[string, Record<string, unknown>]>>;
   };
   getSessionUserId: (req: unknown) => string | null;
+  // Shared ownership/bridge policy from authHelpers — accountRoutes used to
+  // carry its own identical copy, which risked the two drifting apart.
+  getStoredAccountAccess: (
+    stored: Record<string, unknown>,
+    userId: string
+  ) => { allowed: boolean; migrate: boolean };
 }
 
 export function registerAccountRoutes(app, deps: AccountRoutesDeps) {
-  const { zernio, ERR_NO_ZERNIO_KEY, mapZernioPlatform, tokenStore, getSessionUserId } = deps;
-  function isAccessibleOwner(stored: Record<string, unknown>, userId: string) {
-    const ownerUserId = stored.ownerUserId ? String(stored.ownerUserId) : "";
-    if (!ownerUserId) return { allowed: true, migrate: true };
-    if (ownerUserId === userId) return { allowed: true, migrate: false };
-
-    const sameLocalPair = ownerUserId.startsWith("local_") && String(userId).startsWith("local_");
-    if (sameLocalPair) return { allowed: true, migrate: true };
-
-    const oauthOwnerBridgePlatforms = [
-      "gmail",
-      "google_drive",
-      "google_calendar",
-      "google_reviews",
-      "outlook",
-      "notion",
-      "shopify",
-      "tripadvisor",
-      "google_business",
-      "instagram",
-      "facebook",
-      "whatsapp",
-      "google_ads",
-      "meta_business",
-    ];
-
-    const localToCloudGoogleMigration =
-      ownerUserId.startsWith("local_") &&
-      !String(userId).startsWith("local_") &&
-      oauthOwnerBridgePlatforms.includes(String(stored.platform || ""));
-
-    if (localToCloudGoogleMigration) return { allowed: true, migrate: true };
-
-    const cloudToLocalGoogleMigration =
-      Boolean(ownerUserId) &&
-      !ownerUserId.startsWith("local_") &&
-      String(userId).startsWith("local_") &&
-      oauthOwnerBridgePlatforms.includes(String(stored.platform || ""));
-
-    if (cloudToLocalGoogleMigration) return { allowed: true, migrate: true };
-
-    return { allowed: false, migrate: false };
-  }
+  const { zernio, ERR_NO_ZERNIO_KEY, mapZernioPlatform, tokenStore, getSessionUserId, getStoredAccountAccess } =
+    deps;
 
   app.get("/api/accounts/connected", async (req, res) => {
     const userId = getSessionUserId(req);
@@ -108,7 +73,7 @@ export function registerAccountRoutes(app, deps: AccountRoutesDeps) {
       if (!stored || typeof stored !== "object") continue;
       if (platformFilter && String(stored.platform || "") !== platformFilter) continue;
 
-      const access = isAccessibleOwner(stored, userId);
+      const access = getStoredAccountAccess(stored, userId);
       if (!access.allowed) continue;
       if (access.migrate) {
         await tokenStore.set(accountId, { ...stored, ownerUserId: userId });

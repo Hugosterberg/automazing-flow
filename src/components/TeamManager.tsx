@@ -39,13 +39,15 @@ type Member = {
 const ROLE_LABELS: Record<string, string> = {
   owner: "Ägare",
   admin: "Admin",
-  member: "Medlem",
+  editor: "Redaktör",
+  member: "Medlem", // legacy alias for editor on old rows
   viewer: "Läsare",
 };
 
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-primary/10 text-primary border-primary/20",
   admin: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400",
+  editor: "bg-muted text-muted-foreground border-border",
   member: "bg-muted text-muted-foreground border-border",
   viewer: "bg-muted text-muted-foreground border-border",
 };
@@ -64,7 +66,7 @@ export function TeamManager({ businessProfileId }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
+  const [inviteRole, setInviteRole] = useState("editor");
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
 
   const { data, isLoading } = useQuery<{ members: Member[] }>({
@@ -223,7 +225,7 @@ export function TeamManager({ businessProfileId }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Medlem</SelectItem>
+                <SelectItem value="editor">Redaktör</SelectItem>
                 <SelectItem value="viewer">Läsare</SelectItem>
               </SelectContent>
             </Select>
@@ -236,7 +238,7 @@ export function TeamManager({ businessProfileId }: Props) {
             <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               <strong>Admin</strong> kan hantera kopplingar och teammedlemmar.{" "}
-              <strong>Medlem</strong> kan se och använda alla funktioner.{" "}
+              <strong>Redaktör</strong> kan se och använda alla funktioner.{" "}
               <strong>Läsare</strong> kan bara se data.
             </span>
           </div>
