@@ -1887,6 +1887,30 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     res.redirect(url);
   });
 
+  /**
+   * Shopify-required callback authentication: every query param except
+   * `hmac`/`signature`, sorted and joined, must HMAC-SHA256 to the `hmac`
+   * param under the app secret. Complements the state check (CSRF) by
+   * proving the callback actually came from Shopify.
+   */
+  function verifyShopifyCallbackHmac(query: Record<string, unknown>, secret: string): boolean {
+    const provided = String(query?.hmac || "");
+    if (!provided) return false;
+    const message = Object.keys(query)
+      .filter((key) => key !== "hmac" && key !== "signature")
+      .sort()
+      .map((key) => {
+        const value = query[key];
+        const flat = Array.isArray(value) ? value.join(",") : String(value ?? "");
+        return `${key}=${flat}`;
+      })
+      .join("&");
+    const digest = crypto.createHmac("sha256", secret).update(message).digest("hex");
+    const a = Buffer.from(digest, "utf8");
+    const b = Buffer.from(provided.toLowerCase(), "utf8");
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
   app.get("/api/auth/shopify/callback", async (req, res) => {
     const { code, state, shop, error } = req.query;
     const pending = await oauthPendingStore.get(state);
@@ -1910,6 +1934,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const apiSecret = process.env.SHOPIFY_API_SECRET;
     if (!apiKey || !apiSecret) {
       return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_not_configured", pending.oauthReturnPage));
+    }
+    if (!verifyShopifyCallbackHmac(req.query as Record<string, unknown>, apiSecret)) {
+      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_hmac_invalid", pending.oauthReturnPage));
     }
     try {
       const shopUrl = normalizeShopifyShop(shop);
