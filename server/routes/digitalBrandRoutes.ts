@@ -1,4 +1,5 @@
 import net from "net";
+import { lookup } from "node:dns/promises";
 
 interface DigitalBrandRoutesDeps {
   getSessionUserId: (req: unknown) => string | null;
@@ -22,7 +23,7 @@ function normalizeAuditUrl(raw: unknown): URL {
 }
 
 function isPrivateHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  let host = hostname.toLowerCase();
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||
@@ -30,6 +31,11 @@ function isPrivateHostname(hostname: string): boolean {
     host === "metadata.google.internal"
   ) {
     return true;
+  }
+
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1) must be judged as the IPv4 address.
+  if (host.startsWith("::ffff:") && net.isIP(host.slice(7)) === 4) {
+    host = host.slice(7);
   }
 
   const ipVersion = net.isIP(host);
@@ -296,10 +302,49 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs =
   }
 }
 
+/**
+ * SSRF guard for the audit fetches. The hostname allowlisting in the route
+ * only sees the URL the user typed; without this, a public site could still
+ * point the server at internal services in two ways:
+ *   1. a DNS name that resolves to a private/loopback address,
+ *   2. an HTTP redirect to localhost / link-local metadata endpoints.
+ * So we resolve the host first and follow redirects manually, re-validating
+ * every hop.
+ */
+async function assertPublicHost(url: URL): Promise<void> {
+  if (isPrivateHostname(url.hostname)) throw new Error("blocked_hostname");
+  if (net.isIP(url.hostname)) return;
+  let addresses: Array<{ address: string }>;
+  try {
+    addresses = await lookup(url.hostname, { all: true });
+  } catch {
+    return; // unresolvable — let the fetch fail with its own error
+  }
+  if (addresses.some((entry) => isPrivateHostname(entry.address))) {
+    throw new Error("blocked_hostname");
+  }
+}
+
+async function fetchPublicUrl(rawUrl: string, init: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+  let current = new URL(rawUrl);
+  for (let hop = 0; hop < 5; hop++) {
+    await assertPublicHost(current);
+    const res = await fetchWithTimeout(current.toString(), { ...init, redirect: "manual" }, timeoutMs);
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) return res;
+      current = new URL(location, current);
+      continue;
+    }
+    return res;
+  }
+  throw new Error("too_many_redirects");
+}
+
 async function probeStatus(url: URL, path: string): Promise<number | null> {
   try {
     const probe = new URL(path, url.origin);
-    const res = await fetchWithTimeout(probe.toString(), { method: "GET" }, 5000);
+    const res = await fetchPublicUrl(probe.toString(), { method: "GET" }, 5000);
     return res.status;
   } catch {
     return null;
@@ -308,7 +353,7 @@ async function probeStatus(url: URL, path: string): Promise<number | null> {
 
 async function runHtmlFallbackAudit(url: URL) {
   const started = Date.now();
-  const response = await fetchWithTimeout(url.toString());
+  const response = await fetchPublicUrl(url.toString());
   const responseTimeMs = Date.now() - started;
   const contentType = response.headers.get("content-type") || "";
   const html = await response.text();
