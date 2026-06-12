@@ -102,7 +102,15 @@ function fetchWithInsecureTls(url: string, init: RequestInit): Promise<Response>
   });
 }
 
+/** Upper bound for any single Zernio API call — a hung upstream request must
+ * not stall unified-messages, auto-reply runs, or OAuth callbacks. Callers can
+ * pass their own `signal` to override. */
+const ZERNIO_FETCH_TIMEOUT_MS = 30_000;
+
 export async function fetchZernio(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!init.signal) {
+    init = { ...init, signal: AbortSignal.timeout(ZERNIO_FETCH_TIMEOUT_MS) };
+  }
   try {
     return await fetch(url, init);
   } catch (error) {

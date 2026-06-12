@@ -49,6 +49,7 @@ async function refreshGoogleToken({
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const data = await res.json().catch(() => ({}));
   return data?.access_token || null;
@@ -73,6 +74,7 @@ async function refreshMicrosoftToken({
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const data = await res.json().catch(() => ({}));
   if (!data?.access_token) return null;
@@ -103,7 +105,7 @@ export async function fetchGoogleCalendarData(args: CalendarFetchArgs) {
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(
         timeMin
       )}&singleEvents=true&orderBy=startTime&maxResults=50`,
-      { headers: baseHeaders(t) }
+      { headers: baseHeaders(t), signal: AbortSignal.timeout(15_000) }
     );
   }
 
@@ -174,7 +176,7 @@ export async function fetchOutlookCalendarData(args: CalendarFetchArgs) {
       `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(
         startDateTime
       )}&endDateTime=${encodeURIComponent(endDateTime)}&$top=50&$orderby=start/dateTime`,
-      { headers: headers(t) }
+      { headers: headers(t), signal: AbortSignal.timeout(15_000) }
     );
   }
 

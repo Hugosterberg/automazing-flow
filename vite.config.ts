@@ -81,6 +81,22 @@ export default defineConfig(({ mode }) => {
             if (id.includes("/@radix-ui/")) {
               return "radix-vendor";
             }
+
+            // recharts (+ its d3 dependency tree) is ~300 kB and only changes
+            // when the dependency is bumped — keep it out of page chunks so
+            // Ecommerce/analytics pages stay small and the vendor chunk stays
+            // cached across deploys.
+            if (
+              id.includes("/recharts/") ||
+              id.includes("/d3-") ||
+              id.includes("/victory-vendor/")
+            ) {
+              return "charts-vendor";
+            }
+
+            if (id.includes("/@supabase/")) {
+              return "supabase-vendor";
+            }
           },
         },
       },

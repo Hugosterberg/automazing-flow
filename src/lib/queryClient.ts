@@ -44,6 +44,17 @@ function isSilent(meta: Record<string, unknown> | undefined): boolean {
 }
 
 export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Connections/profiles/analytics data is not realtime: a 30s freshness
+      // window prevents the refetch storm React Query's defaults cause by
+      // refetching EVERY query on each window focus — one source of lists
+      // visibly "updating all the time". Hooks can still override per query.
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
   queryCache: new QueryCache({
     onError: (error, query) => {
       if (query.state.data !== undefined) return;

@@ -104,6 +104,7 @@ export async function fetchGmailAccountData({
         refresh_token: rt,
         grant_type: "refresh_token",
       }).toString(),
+      signal: AbortSignal.timeout(15_000),
     });
     const d = (await r.json()) as {
       access_token?: string;
@@ -123,6 +124,7 @@ export async function fetchGmailAccountData({
   async function fetchMessagesList(token: string) {
     const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX", {
       headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
     });
     debugLog("pre-fix", "H5", "gmail.ts:fetchMessagesList", "Gmail list response status", {
       status: listRes.status,
@@ -226,6 +228,7 @@ export async function fetchGmailAccountData({
     messageIds.map((id) =>
       fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15_000),
       })
         .then(async (r) => (r.ok ? r.json() : null))
         .catch((error) => {

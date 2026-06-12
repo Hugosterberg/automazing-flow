@@ -49,6 +49,7 @@ async function refreshMicrosoftToken({
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const data = await res.json().catch(() => ({}));
   if (!data?.access_token) return null;
@@ -78,7 +79,7 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
     "$top=10&$orderby=receivedDateTime%20desc&$select=id,subject,bodyPreview,receivedDateTime,from,isRead,body";
 
   async function fetchList(t: string) {
-    return fetch(listUrl, { headers: headers(t) });
+    return fetch(listUrl, { headers: headers(t), signal: AbortSignal.timeout(15_000) });
   }
 
   let listRes = await fetchList(token);
