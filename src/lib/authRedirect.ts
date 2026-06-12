@@ -31,9 +31,25 @@ function isLoopbackHostname(hostname: string) {
 }
 
 function getAuthBaseOrigin(input: OAuthRedirectBuildInput): string {
-  let baseOrigin = input.windowOrigin;
+  const baseOrigin = input.windowOrigin;
 
   if (!input.prod) return baseOrigin;
+
+  // PKCE constraint: supabase-js stores the code_verifier in localStorage on
+  // the origin where sign-in STARTED. If the OAuth redirect lands on any
+  // other origin (canonical alias vs deployment URL, www vs apex, …) the
+  // verifier is missing, the code exchange fails silently, and the user is
+  // dumped back on the login screen — signing in "works the second time"
+  // because the retry starts and ends on the same origin. So the current
+  // origin always wins when it's a real host; env candidates only matter
+  // when the window origin is loopback (e.g. a local production build).
+  let isWindowLoopback = true;
+  try {
+    isWindowLoopback = isLoopbackHostname(new URL(baseOrigin).hostname);
+  } catch {
+    // invalid origin — fall through to candidates
+  }
+  if (!isWindowLoopback) return baseOrigin;
 
   const candidates = [
     input.viteSiteUrl,
@@ -47,8 +63,7 @@ function getAuthBaseOrigin(input: OAuthRedirectBuildInput): string {
     try {
       const parsed = new URL(raw);
       if (!isLoopbackHostname(parsed.hostname)) {
-        baseOrigin = `${parsed.protocol}//${parsed.host}`;
-        break;
+        return `${parsed.protocol}//${parsed.host}`;
       }
     } catch {
       // skip invalid URL

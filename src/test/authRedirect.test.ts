@@ -2,14 +2,30 @@ import { describe, expect, it } from "vitest";
 import { buildAuthReturnPath, buildOAuthRedirectUrl } from "@/lib/authRedirect";
 
 describe("buildOAuthRedirectUrl", () => {
-  it("production uses explicit https site URL over window", () => {
+  it("production prefers the current window origin (PKCE verifier lives there)", () => {
+    // Redirecting to a configured site URL that differs from where sign-in
+    // started loses the PKCE code_verifier and forces a second login.
     expect(
       buildOAuthRedirectUrl({
         prod: true,
         viteSiteUrl: "https://myapp.vercel.app",
         viteAppUrl: "",
         viteVercelDeploymentOrigin: "",
-        windowOrigin: "https://wrong.example.com",
+        windowOrigin: "https://myapp-abc123.vercel.app",
+        pathname: "/",
+        search: "",
+      })
+    ).toBe("https://myapp-abc123.vercel.app/");
+  });
+
+  it("production falls back to site URL when window origin is loopback", () => {
+    expect(
+      buildOAuthRedirectUrl({
+        prod: true,
+        viteSiteUrl: "https://myapp.vercel.app",
+        viteAppUrl: "",
+        viteVercelDeploymentOrigin: "",
+        windowOrigin: "http://localhost:4173",
         pathname: "/",
         search: "",
       })
