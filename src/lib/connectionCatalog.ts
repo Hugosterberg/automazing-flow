@@ -8,7 +8,7 @@ export const AREA_ORDER: AppArea[] = ["social", "marketing", "ecommerce", "messa
 export const AREA_LABELS: Record<AppArea, string> = {
   social: "Social media",
   marketing: "Marketing",
-  ecommerce: "Organization & commerce",
+  ecommerce: "E-commerce",
   messages: "Mail",
   calendar: "Calendar",
   reviews: "Reviews",
@@ -123,8 +123,8 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     label: "Shopify",
     area: "ecommerce",
     pageHref: "/ecommerce",
-    pageName: "Organization & Management",
-    connectSteps: "Open Organization & Management → Connect Shopify (you will be asked for the .myshopify.com shop domain).",
+    pageName: "E-commerce",
+    connectSteps: "Open E-commerce → Connect Shopify (you will be asked for the .myshopify.com shop domain).",
     serverNeeds: "SHOPIFY_API_KEY + SHOPIFY_API_SECRET + public HTTPS SHOPIFY_APP_URL for callbacks.",
   },
   {
@@ -132,8 +132,8 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     label: "Notion",
     area: "ecommerce",
     pageHref: "/ecommerce",
-    pageName: "Organization & Management",
-    connectSteps: "Open Organization & Management → Connect Notion.",
+    pageName: "E-commerce",
+    connectSteps: "Open E-commerce → Connect Notion.",
     serverNeeds: "NOTION_CLIENT_ID + NOTION_CLIENT_SECRET + public HTTPS NOTION_APP_URL for callbacks.",
   },
   {

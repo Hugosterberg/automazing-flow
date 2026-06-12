@@ -1918,6 +1918,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   // checkouts powers abandoned-cart insights; fulfillments enables shipment SLA tracking.
   const SHOPIFY_SCOPES = [
     "read_products",
+    "write_products",
     "read_orders",
     "read_customers",
     "read_inventory",

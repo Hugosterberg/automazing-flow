@@ -364,3 +364,80 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
     },
   };
 }
+
+type ShopifyDraftImageInput = {
+  filename: string;
+  attachment: string;
+};
+
+export async function createShopifyDraftProduct(
+  accessToken: string,
+  shop: string | undefined,
+  input: {
+    title: string;
+    description: string;
+    price?: string | null;
+    sourceUrl?: string | null;
+    images?: ShopifyDraftImageInput[];
+  }
+) {
+  if (!shop) {
+    return { error: "No shop domain stored for this account", status: 400 };
+  }
+
+  const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const price = String(input.price || "").replace(/[^\d.,]/g, "").replace(",", ".");
+  const parsedPrice = parseFloat(price);
+  const variantPrice = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice.toFixed(2) : "0.00";
+  const bodyHtml = [
+    input.description.trim(),
+    input.sourceUrl ? `<p><a href="${input.sourceUrl}" rel="nofollow">Source product</a></p>` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const payload = {
+    product: {
+      title: input.title.trim() || "Imported product",
+      body_html: bodyHtml,
+      status: "draft",
+      variants: [{ price: variantPrice }],
+      ...(input.images && input.images.length > 0 ? { images: input.images.slice(0, 10) } : {}),
+    },
+  };
+
+  const res = await fetch(`${apiBase}/products.json`, {
+    method: "POST",
+    headers: shopHeaders,
+    body: JSON.stringify(payload),
+  });
+  const raw = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = formatShopifyErrors(raw);
+    if (res.status === 401) {
+      return { error: detail || "Shopify rejected the access token. Reconnect the store.", status: 401 };
+    }
+    if (res.status === 403) {
+      return {
+        error:
+          detail ||
+          "Shopify denied product creation. Reconnect the store to grant write_products scope.",
+        status: 403,
+      };
+    }
+    return { error: detail || "Could not create Shopify product", status: res.status };
+  }
+
+  const product = (raw as { product?: Record<string, unknown> }).product || {};
+  const productId = product.id;
+  const adminBase = `https://${shop}/admin`;
+  return {
+    product: {
+      id: productId,
+      title: String(product.title || input.title),
+      status: String(product.status || "draft"),
+      adminUrl: productId ? `${adminBase}/products/${productId}` : `${adminBase}/products`,
+    },
+  };
+}

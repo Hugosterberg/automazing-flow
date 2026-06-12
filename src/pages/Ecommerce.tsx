@@ -16,7 +16,9 @@ import {
   Receipt,
   Box,
   ArrowUpRight,
+  ChevronDown,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +46,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -52,6 +54,7 @@ import { getOAuthProfileId } from "@/lib/oauthProfile";
 
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
+import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 
 function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
@@ -299,6 +302,7 @@ export default function Ecommerce() {
   const [notionContent, setNotionContent] = useState("");
   const [notionSaving, setNotionSaving] = useState(false);
   const [notionWriteMessage, setNotionWriteMessage] = useState<string | null>(null);
+  const [notionOpen, setNotionOpen] = useState(false);
 
   function handleConnect() {
     setShopDomain("");
@@ -316,21 +320,23 @@ export default function Ecommerce() {
     window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
   }
 
-  function handleConnectNotion() {
-    const params = new URLSearchParams();
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    window.location.href = `${apiUrl("/api/auth/notion")}${query}`;
-  }
-
   function handleRefresh() {
     void refresh();
   }
 
   const activeNotion = activeOrgAccount?.platform === "notion" ? activeOrgAccount : null;
+  const shopifyAccount = useMemo(
+    () => orgAccounts.find((account) => account.platform === "shopify") || null,
+    [orgAccounts]
+  );
   const shopifyData = isShopifyData(data) ? data : null;
   const notionData = isNotionData(data) ? data : null;
+
+  useEffect(() => {
+    if (notionData && activeOrgAccount?.platform === "notion") {
+      setNotionOpen(true);
+    }
+  }, [notionData, activeOrgAccount?.platform]);
 
   const stats = shopifyData?.stats;
   const currency = stats?.currency || "USD";
@@ -432,13 +438,13 @@ export default function Ecommerce() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={ShoppingCart}
-        title="Organization & Management"
+        title="E-commerce"
         description={
           shopifyData?.shop.name
             ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
             : notionData?.workspace?.name
               ? `${notionData.workspace.name} · Notion workspace`
-              : "Connect Shopify or Notion to get started"
+              : "Koppla Shopify och importera produkter från Alibaba"
         }
         actions={
           activeOrgAccount ? (
@@ -477,6 +483,10 @@ export default function Ecommerce() {
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="ecommerce" />
+      </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+        <AlibabaImportCard businessProfileId={activeProfileId} shopifyAccountId={shopifyAccount?.id ?? null} />
       </m.div>
 
       {authMode === "local" && (
@@ -543,42 +553,20 @@ export default function Ecommerce() {
         >
           <EmptyState
             icon={ShoppingBag}
-            title="Connect Shopify or Notion"
-            description="Manage commerce data in Shopify and workspace content in Notion."
+            title="Koppla Shopify"
+            description="Koppla din Shopify-butik för ordrar och lager. Importera produkter från Alibaba ovan."
             action={
               <Button onClick={handleConnect} className="glow-sm">
                 <ShopifyIcon className="h-4 w-4 mr-2" />
-                Connect Shopify
-              </Button>
-            }
-            secondaryAction={
-              <Button onClick={handleConnectNotion} variant="outline">
-                <NotionIcon className="h-4 w-4 mr-2" />
-                Connect Notion
+                Koppla Shopify
               </Button>
             }
           />
           <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
-            Requires{" "}
-            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
-              SHOPIFY_API_KEY
-            </code>{" "}
-            and{" "}
-            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
-              SHOPIFY_API_SECRET
-            </code>{" "}
-            in .env.local. For local tunnel OAuth, also set{" "}
-            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
-              SHOPIFY_APP_URL
-            </code>
-            . Notion requires{" "}
-            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
-              NOTION_CLIENT_ID
-            </code>{" "}
-            and{" "}
-            <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">
-              NOTION_CLIENT_SECRET
-            </code>
+            Notion kan kopplas via{" "}
+            <a href="/connections" className="underline underline-offset-2 hover:text-foreground">
+              Connections
+            </a>
             .
           </p>
         </m.div>
@@ -1018,169 +1006,166 @@ export default function Ecommerce() {
         </m.div>
       )}
 
-      {/* Notion workspace */}
       {!loading && notionData && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <NotionIcon className="h-5 w-5" />
-                Notion Workspace
-              </CardTitle>
-              <CardDescription>
-                {notionData.workspace.name || "Connected workspace"} · Read and write access enabled
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-muted-foreground">Pages found</p>
-                <p className="text-2xl font-bold">{notionData.stats.pagesCount}</p>
-              </div>
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-muted-foreground">Databases found</p>
-                <p className="text-2xl font-bold">{notionData.stats.databasesCount}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
-
-      {!loading && notionData && notionData.pages.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5" />
-                Recent Notion Pages
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {notionData.pages.map((page) => (
-                <a
-                  key={page.id}
-                  href={page.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors"
+        <Collapsible open={notionOpen} onOpenChange={setNotionOpen}>
+          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+            <Card className="bg-card border-border">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/20 transition-colors"
                 >
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{page.title || "Untitled"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{page.lastEditedTime ? formatDate(page.lastEditedTime) : "Unknown date"}</p>
+                  <div>
+                    <p className="font-medium flex items-center gap-2">
+                      <NotionIcon className="h-4 w-4" />
+                      Notion workspace (valfritt)
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {notionData.workspace.name || "Connected workspace"} · {notionData.stats.pagesCount} sidor
+                    </p>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-                </a>
-              ))}
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${notionOpen ? "rotate-180" : ""}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 px-6 pb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-muted-foreground">Pages found</p>
+                    <p className="text-2xl font-bold">{notionData.stats.pagesCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-muted-foreground">Databases found</p>
+                    <p className="text-2xl font-bold">{notionData.stats.databasesCount}</p>
+                  </div>
+                </div>
 
-      {!loading && notionData && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Database className="h-5 w-5" />
-                Create Notion Page
-              </CardTitle>
-              <CardDescription>
-                Share the parent page/database with your integration first, then create content directly from this app.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="notion-parent-select">Pick parent (optional)</Label>
-                <select
-                  id="notion-parent-select"
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={
-                    notionParentId
-                      ? `${notionParentType}:${notionParentId}`
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (!value) return;
-                    const [type, id] = value.split(":", 2);
-                    if (!id) return;
-                    setNotionParentType(type === "database_id" ? "database_id" : "page_id");
-                    setNotionParentId(id);
-                  }}
-                >
-                  <option value="">Select a page or database...</option>
-                  {notionPageOptions.length > 0 && (
-                    <optgroup label={`Pages (${notionPageOptions.length})`}>
-                      {notionPageOptions.map((option) => (
-                        <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
-                          {option.title} - {option.lastEditedLabel}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {notionDatabaseOptions.length > 0 && (
-                    <optgroup label={`Databases (${notionDatabaseOptions.length})`}>
-                      {notionDatabaseOptions.map((option) => (
-                        <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
-                          {option.title} - {option.lastEditedLabel}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="notion-parent-id">Parent ID</Label>
-                <Input
-                  id="notion-parent-id"
-                  placeholder="page or database id"
-                  value={notionParentId}
-                  onChange={(e) => setNotionParentId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="notion-parent-type">Parent type</Label>
-                <select
-                  id="notion-parent-type"
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={notionParentType}
-                  onChange={(e) => setNotionParentType(e.target.value === "database_id" ? "database_id" : "page_id")}
-                >
-                  <option value="page_id">Page</option>
-                  <option value="database_id">Database</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="notion-page-title">Title</Label>
-                <Input
-                  id="notion-page-title"
-                  placeholder="Weekly planning"
-                  value={notionTitle}
-                  onChange={(e) => setNotionTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="notion-page-content">Content (optional)</Label>
-                <Input
-                  id="notion-page-content"
-                  placeholder="First paragraph for the page"
-                  value={notionContent}
-                  onChange={(e) => setNotionContent(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleCreateNotionPage}
-                  disabled={notionSaving || !notionParentId.trim() || !notionTitle.trim() || !activeNotion}
-                >
-                  {notionSaving ? "Creating..." : "Create in Notion"}
-                </Button>
-                {notionWriteMessage && (
-                  <p className="text-xs text-muted-foreground">{notionWriteMessage}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </m.div>
+                {notionData.pages.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Recent Notion pages
+                    </p>
+                    {notionData.pages.map((page) => (
+                      <a
+                        key={page.id}
+                        href={page.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{page.title || "Untitled"}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {page.lastEditedTime ? formatDate(page.lastEditedTime) : "Unknown date"}
+                          </p>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-border p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Create Notion page
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Share the parent page/database with your integration first.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notion-parent-select">Pick parent (optional)</Label>
+                    <select
+                      id="notion-parent-select"
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={notionParentId ? `${notionParentType}:${notionParentId}` : ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (!value) return;
+                        const [type, id] = value.split(":", 2);
+                        if (!id) return;
+                        setNotionParentType(type === "database_id" ? "database_id" : "page_id");
+                        setNotionParentId(id);
+                      }}
+                    >
+                      <option value="">Select a page or database...</option>
+                      {notionPageOptions.length > 0 && (
+                        <optgroup label={`Pages (${notionPageOptions.length})`}>
+                          {notionPageOptions.map((option) => (
+                            <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
+                              {option.title} - {option.lastEditedLabel}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {notionDatabaseOptions.length > 0 && (
+                        <optgroup label={`Databases (${notionDatabaseOptions.length})`}>
+                          {notionDatabaseOptions.map((option) => (
+                            <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
+                              {option.title} - {option.lastEditedLabel}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notion-parent-id">Parent ID</Label>
+                    <Input
+                      id="notion-parent-id"
+                      placeholder="page or database id"
+                      value={notionParentId}
+                      onChange={(e) => setNotionParentId(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notion-parent-type">Parent type</Label>
+                    <select
+                      id="notion-parent-type"
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={notionParentType}
+                      onChange={(e) => setNotionParentType(e.target.value === "database_id" ? "database_id" : "page_id")}
+                    >
+                      <option value="page_id">Page</option>
+                      <option value="database_id">Database</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notion-page-title">Title</Label>
+                    <Input
+                      id="notion-page-title"
+                      placeholder="Weekly planning"
+                      value={notionTitle}
+                      onChange={(e) => setNotionTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notion-page-content">Content (optional)</Label>
+                    <Input
+                      id="notion-page-content"
+                      placeholder="First paragraph for the page"
+                      value={notionContent}
+                      onChange={(e) => setNotionContent(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleCreateNotionPage}
+                      disabled={notionSaving || !notionParentId.trim() || !notionTitle.trim() || !activeNotion}
+                    >
+                      {notionSaving ? "Creating..." : "Create in Notion"}
+                    </Button>
+                    {notionWriteMessage ? (
+                      <p className="text-xs text-muted-foreground">{notionWriteMessage}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </m.div>
+        </Collapsible>
       )}
 
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>

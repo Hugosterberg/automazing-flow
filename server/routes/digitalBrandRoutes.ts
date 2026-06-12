@@ -1,5 +1,4 @@
-import net from "net";
-import { lookup } from "node:dns/promises";
+import { fetchPublicUrl, isPrivateHostname } from "../lib/publicFetch.ts";
 
 interface DigitalBrandRoutesDeps {
   getSessionUserId: (req: unknown) => string | null;
@@ -20,41 +19,6 @@ function normalizeAuditUrl(raw: unknown): URL {
   if (!url.hostname) throw new Error("missing_hostname");
   url.hash = "";
   return url;
-}
-
-function isPrivateHostname(hostname: string): boolean {
-  let host = hostname.toLowerCase();
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host === "metadata.google.internal"
-  ) {
-    return true;
-  }
-
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1) must be judged as the IPv4 address.
-  if (host.startsWith("::ffff:") && net.isIP(host.slice(7)) === 4) {
-    host = host.slice(7);
-  }
-
-  const ipVersion = net.isIP(host);
-  if (ipVersion === 4) {
-    const parts = host.split(".").map((part) => Number(part));
-    const [a, b] = parts;
-    return (
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a === 0
-    );
-  }
-  if (ipVersion === 6) {
-    return host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80");
-  }
-  return false;
 }
 
 function textBetween(html: string, pattern: RegExp): string {
@@ -231,6 +195,25 @@ function normalizePageSpeedResult(body: unknown, strategy: "mobile" | "desktop")
   };
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      redirect: "follow",
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "AutomazingFlowDigitalBrandAudit/1.0",
+        Accept: "application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        ...(init.headers || {}),
+      },
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function runPageSpeed(url: URL, strategy: "mobile" | "desktop") {
   const params = new URLSearchParams({
     url: url.toString(),
@@ -283,68 +266,14 @@ async function runPageSpeedAudit(url: URL) {
   };
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 8000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, {
-      redirect: "follow",
-      ...init,
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "AutomazingFlowDigitalBrandAudit/1.0",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        ...(init.headers || {}),
-      },
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-/**
- * SSRF guard for the audit fetches. The hostname allowlisting in the route
- * only sees the URL the user typed; without this, a public site could still
- * point the server at internal services in two ways:
- *   1. a DNS name that resolves to a private/loopback address,
- *   2. an HTTP redirect to localhost / link-local metadata endpoints.
- * So we resolve the host first and follow redirects manually, re-validating
- * every hop.
- */
-async function assertPublicHost(url: URL): Promise<void> {
-  if (isPrivateHostname(url.hostname)) throw new Error("blocked_hostname");
-  if (net.isIP(url.hostname)) return;
-  let addresses: Array<{ address: string }>;
-  try {
-    addresses = await lookup(url.hostname, { all: true });
-  } catch {
-    return; // unresolvable — let the fetch fail with its own error
-  }
-  if (addresses.some((entry) => isPrivateHostname(entry.address))) {
-    throw new Error("blocked_hostname");
-  }
-}
-
-async function fetchPublicUrl(rawUrl: string, init: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
-  let current = new URL(rawUrl);
-  for (let hop = 0; hop < 5; hop++) {
-    await assertPublicHost(current);
-    const res = await fetchWithTimeout(current.toString(), { ...init, redirect: "manual" }, timeoutMs);
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (!location) return res;
-      current = new URL(location, current);
-      continue;
-    }
-    return res;
-  }
-  throw new Error("too_many_redirects");
-}
-
 async function probeStatus(url: URL, path: string): Promise<number | null> {
   try {
     const probe = new URL(path, url.origin);
-    const res = await fetchPublicUrl(probe.toString(), { method: "GET" }, 5000);
+    const res = await fetchPublicUrl(probe.toString(), {
+      init: { method: "GET" },
+      timeoutMs: 5000,
+      userAgent: "AutomazingFlowDigitalBrandAudit/1.0",
+    });
     return res.status;
   } catch {
     return null;
@@ -353,7 +282,9 @@ async function probeStatus(url: URL, path: string): Promise<number | null> {
 
 async function runHtmlFallbackAudit(url: URL) {
   const started = Date.now();
-  const response = await fetchPublicUrl(url.toString());
+  const response = await fetchPublicUrl(url.toString(), {
+    userAgent: "AutomazingFlowDigitalBrandAudit/1.0",
+  });
   const responseTimeMs = Date.now() - started;
   const contentType = response.headers.get("content-type") || "";
   const html = await response.text();

@@ -1,0 +1,326 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  Copy,
+  Download,
+  ExternalLink,
+  Image as ImageIcon,
+  Link2,
+  Loader2,
+  ShoppingCart,
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiUrl } from "@/lib/apiBase";
+import { loadAlibabaImport, saveAlibabaImport } from "@/lib/alibabaImportStorage";
+import type { AlibabaProductImport } from "@/types/ecommerce";
+import { toast } from "sonner";
+
+function slugifyFilename(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return slug || "product";
+}
+
+type Props = {
+  businessProfileId: string | null;
+  shopifyAccountId: string | null;
+};
+
+export function AlibabaImportCard({ businessProfileId, shopifyAccountId }: Props) {
+  const [alibabaUrl, setAlibabaUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [product, setProduct] = useState<AlibabaProductImport | null>(() => loadAlibabaImport(businessProfileId));
+  const [downloadingZip, setDownloadingZip] = useState(false);
+  const [creatingDraft, setCreatingDraft] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  useEffect(() => {
+    setProduct(loadAlibabaImport(businessProfileId));
+  }, [businessProfileId]);
+
+  useEffect(() => {
+    saveAlibabaImport(businessProfileId, product);
+  }, [businessProfileId, product]);
+
+  const previewImageUrl = useMemo(
+    () => (imageUrl: string) => apiUrl(`/api/ecommerce/alibaba/image?url=${encodeURIComponent(imageUrl)}`),
+    []
+  );
+  const downloadImageUrl = useMemo(
+    () => (imageUrl: string) =>
+      apiUrl(`/api/ecommerce/alibaba/image?url=${encodeURIComponent(imageUrl)}&download=1`),
+    []
+  );
+
+  async function handleImport() {
+    const url = alibabaUrl.trim();
+    if (!url) return;
+    setLoading(true);
+    setError(null);
+    setShowFullDescription(false);
+    try {
+      const res = await fetch(apiUrl("/api/ecommerce/alibaba/import"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.message || payload?.error || "Kunde inte importera produkten.");
+      }
+      setProduct(payload.product as AlibabaProductImport);
+    } catch (err) {
+      setProduct(null);
+      setError(err instanceof Error ? err.message : "Kunde inte importera produkten.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyText(label: string, value: string) {
+    if (!value.trim()) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} kopierad`);
+    } catch {
+      toast.error("Kunde inte kopiera till urklipp");
+    }
+  }
+
+  async function downloadZip() {
+    if (!product?.images.length) return;
+    setDownloadingZip(true);
+    try {
+      const res = await fetch(apiUrl("/api/ecommerce/alibaba/images/zip"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: product.images }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.message || payload?.error || "Kunde inte skapa zip-fil.");
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${slugifyFilename(product.title)}-images.zip`;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kunde inte ladda ner bilder.");
+    } finally {
+      setDownloadingZip(false);
+    }
+  }
+
+  async function createShopifyDraft() {
+    if (!shopifyAccountId || !product) return;
+    setCreatingDraft(true);
+    try {
+      const res = await fetch(apiUrl(`/api/ecommerce/shopify/${shopifyAccountId}/products`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: product.title,
+          description: product.description,
+          price: product.price,
+          sourceUrl: product.finalUrl,
+          images: product.images,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || payload?.message || "Kunde inte skapa Shopify-utkast.");
+      }
+      toast.success("Utkast skapat i Shopify");
+      if (payload?.product?.adminUrl) {
+        window.open(payload.product.adminUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kunde inte skapa Shopify-utkast.");
+    } finally {
+      setCreatingDraft(false);
+    }
+  }
+
+  const descriptionPreview =
+    product && product.description.length > 320 && !showFullDescription
+      ? `${product.description.slice(0, 320).trim()}…`
+      : product?.description;
+
+  return (
+    <Card className="bg-card border-border glow-border">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Link2 className="h-5 w-5" />
+          Importera från Alibaba
+        </CardTitle>
+        <CardDescription>
+          Klistra in en Alibaba- eller 1688-länk för att hämta titel, beskrivning, specifikationer och produktbilder.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input
+            value={alibabaUrl}
+            onChange={(e) => setAlibabaUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleImport()}
+            placeholder="https://www.alibaba.com/product-detail/..."
+            aria-label="Alibaba produktlänk"
+            className="flex-1"
+          />
+          <Button onClick={() => void handleImport()} disabled={loading || !alibabaUrl.trim()}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Hämtar...
+              </>
+            ) : (
+              "Importera produkt"
+            )}
+          </Button>
+        </div>
+
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        {product ? (
+          <div className="space-y-4 rounded-lg border border-border/70 bg-muted/20 p-4">
+            {product.warnings.length > 0 ? (
+              <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 space-y-1">
+                {product.warnings.map((warning) => (
+                  <p key={warning} className="text-xs text-warning flex items-start gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 space-y-2 flex-1">
+                <div className="flex flex-wrap items-start gap-2">
+                  <p className="text-base font-semibold flex-1">{product.title}</p>
+                  <Button variant="ghost" size="sm" onClick={() => void copyText("Titel", product.title)}>
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    Kopiera titel
+                  </Button>
+                </div>
+                {product.price ? (
+                  <p className="text-sm text-muted-foreground">
+                    Pris: {product.price}
+                    {product.currency ? ` ${product.currency}` : ""}
+                  </p>
+                ) : null}
+                {product.description ? (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{descriptionPreview}</p>
+                    {product.description.length > 320 ? (
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => setShowFullDescription((value) => !value)}
+                      >
+                        {showFullDescription ? "Visa mindre" : "Visa mer"}
+                      </button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="px-0 h-auto text-xs"
+                      onClick={() => void copyText("Beskrivning", product.description)}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      Kopiera beskrivning
+                    </Button>
+                  </div>
+                ) : null}
+                <a
+                  href={product.finalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Visa källsida
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                {product.images.length > 0 ? (
+                  <Button variant="outline" size="sm" onClick={() => void downloadZip()} disabled={downloadingZip}>
+                    {downloadingZip ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Ladda ner bilder (zip)
+                  </Button>
+                ) : null}
+                {shopifyAccountId ? (
+                  <Button size="sm" onClick={() => void createShopifyDraft()} disabled={creatingDraft}>
+                    {creatingDraft ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                    )}
+                    Skapa Shopify-utkast
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {product.specs.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {product.specs.map((spec) => (
+                  <div key={`${spec.label}-${spec.value}`} className="rounded-md border border-border/60 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{spec.label}</p>
+                    <p className="text-sm">{spec.value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {product.images.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {product.images.map((imageUrl, index) => (
+                  <div key={`${imageUrl}-${index}`} className="rounded-lg border border-border overflow-hidden bg-background">
+                    <img
+                      src={previewImageUrl(imageUrl)}
+                      alt={`${product.title} ${index + 1}`}
+                      className="aspect-square w-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                      <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" />
+                        Bild {index + 1}
+                      </span>
+                      <a
+                        href={downloadImageUrl(imageUrl)}
+                        download={`${slugifyFilename(product.title)}-${index + 1}.jpg`}
+                        className="text-[11px] text-primary hover:underline"
+                      >
+                        Ladda ner
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Inga produktbilder hittades på sidan.</p>
+            )}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}

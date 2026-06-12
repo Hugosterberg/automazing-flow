@@ -46,6 +46,7 @@ import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 import { registerAutomationRoutes } from "./routes/automationRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
+import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -432,6 +433,12 @@ registerAiRecommendationsRoutes(app, {
 
 registerDigitalBrandRoutes(app, {
   getSessionUserId,
+});
+
+registerEcommerceRoutes(app, {
+  getSessionUserId,
+  getStoredAccountAccess,
+  tokenStore,
 });
 
 registerMiscRoutes(app, {

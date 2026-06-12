@@ -170,7 +170,7 @@ const navItems: Array<{
   },
   {
     key: "ecommerce",
-    title: "Organization & Management",
+    title: "E-commerce",
     url: "/ecommerce",
     icon: ShoppingCart,
     platforms: ["shopify", "notion"] as AccountPlatform[],
