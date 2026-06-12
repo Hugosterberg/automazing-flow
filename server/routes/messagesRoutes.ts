@@ -91,6 +91,14 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       label: string;
     }> = [];
 
+    // Historical OAuth flows created a new token entry per reconnect, so the
+    // same mailbox can exist several times. Fetch each mailbox once: keyed by
+    // (platform, username), preferring entries that can refresh themselves.
+    const mailCandidates = new Map<string, { accountId: string; stored: StoredAccount }>();
+    function mailDedupeScore(stored: StoredAccount): number {
+      return (stored.refreshToken ? 2 : 0) + (stored.username ? 1 : 0);
+    }
+
     const mailEntries = await tokenStore.entries();
     for (const [accountId, rawStored] of mailEntries) {
       const stored = rawStored as StoredAccount;
@@ -115,6 +123,15 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
       if (platform !== "gmail" && platform !== "outlook") continue;
 
+      const mailboxKey = `${platform}:${String(stored.username || "").trim().toLowerCase()}`;
+      const existing = mailCandidates.get(mailboxKey);
+      if (!existing || mailDedupeScore(stored) > mailDedupeScore(existing.stored)) {
+        mailCandidates.set(mailboxKey, { accountId, stored });
+      }
+    }
+
+    for (const { accountId, stored } of mailCandidates.values()) {
+      const platform = String(stored.platform || "");
       mailTasks.push(
         (async () => {
           try {

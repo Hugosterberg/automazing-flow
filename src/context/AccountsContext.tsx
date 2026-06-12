@@ -12,6 +12,10 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
 import { useBusinessProfileBridge } from "@/features/business-profiles";
+import {
+  applyAccountLimit,
+  dedupeAccountsByProfilePlatform,
+} from "@/features/connections/accountLimits";
 import { logActivity } from "@/features/activity/activityLog";
 import type { Json, Tables, TablesInsert } from "@/types/supabase";
 
@@ -285,7 +289,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     loadActiveProfileId
   );
 
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>(loadAccounts);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>(() =>
+    dedupeAccountsByProfilePlatform(loadAccounts())
+  );
   const [selectedAccountIds, setSelectedAccountIds] = useState<SelectedAccountsState>(loadSelectedAccounts);
   const [showOverview, setShowOverview] = useState(false);
   const [legacyProfilesReady, setLegacyProfilesReady] = useState(false);
@@ -371,7 +377,11 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    return mapConnectedAccountRows((accountRows ?? []) as ConnectedAccountRow[]);
+    // One account per (profile, platform): collapse historical duplicates from
+    // older OAuth flows on read; the sync effect then deletes the extra rows.
+    return dedupeAccountsByProfilePlatform(
+      mapConnectedAccountRows((accountRows ?? []) as ConnectedAccountRow[])
+    );
   }, [authLoading, enabled, user, userId]);
 
   // Hydrate ONLY connected_accounts from Supabase in cloud mode.
@@ -451,14 +461,27 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     };
   }, [authLoading, enabled, user, fetchAccountsFromSupabase]);
 
+  // Snapshot of the last state pushed to Supabase. Hydrates set `accounts`
+  // straight from Supabase, which used to re-trigger a full upsert+delete of
+  // the same rows — and any concurrent refresh event then re-hydrated, giving
+  // a visible "connections keep updating" ping-pong. Skipping no-op syncs
+  // breaks that loop; only real changes (connect, disconnect, stats) write.
+  const lastSyncedSnapshotRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!enabled || authLoading || !user || !supabase) return;
     if (hydratingRef.current) return;
 
+    const snapshot = JSON.stringify(accounts);
+    if (snapshot === lastSyncedSnapshotRef.current) return;
+
     const sync = async () => {
+      lastSyncedSnapshotRef.current = snapshot;
       try {
         await syncAccounts({ accounts, userId });
       } catch (e) {
+        // Reset so the next accounts change retries the failed write.
+        lastSyncedSnapshotRef.current = null;
         console.warn("[accounts] Supabase sync failed, kept local cache", e);
       }
     };
@@ -569,10 +592,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         connectedAt: new Date().toISOString(),
         ...extra,
       };
-      setAccounts((prev) => {
-        const next = prev.filter((a) => a.id !== newAccount.id);
-        return [...next, newAccount];
-      });
+      // One account per (profile, platform): connecting a new account replaces
+      // the previous one on the same platform for this profile.
+      setAccounts((prev) => applyAccountLimit(prev, newAccount));
     },
     [effectiveProfileId]
   );
@@ -651,16 +673,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           return prev;
         }
 
-        const next = prev.filter((a) => {
-          if (a.id === accountId) return false;
-          const sameZernioAccount =
-            extra?.zernioAccountId &&
-            a.profileId === targetProfileId &&
-            a.platform === platform &&
-            a.zernioAccountId === extra.zernioAccountId;
-          return !sameZernioAccount;
-        });
-        return [...next, newAccount];
+        // One account per (profile, platform): the fresh OAuth account
+        // replaces whatever was previously connected on this platform.
+        return applyAccountLimit(prev, newAccount);
       });
       if (hasValidRequestedProfile && profileId && profileId !== activeProfileId) {
         setActiveProfileId(profileId);
