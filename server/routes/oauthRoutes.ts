@@ -13,6 +13,10 @@ import crypto from "crypto";
 import type { ZernioModule } from "../providers/zernioModule.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
 import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
+import {
+  deterministicAccountId,
+  pruneDuplicateAccountEntries,
+} from "../lib/accountIdentity.ts";
 
 interface OAuthPendingRecord {
   platform: string;
@@ -40,6 +44,7 @@ interface TokenStore {
   set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
   get: (id: string) => Promise<Record<string, unknown> | null>;
   entries: () => Promise<Array<[string, Record<string, unknown>]>>;
+  delete: (id: string) => Promise<unknown>;
 }
 
 interface OAuthRoutesDeps {
@@ -824,7 +829,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(`${BASE_URL}/${successPage}?oauth_error=zernio_no_account`);
       }
       const zernioId = String(accountId);
-      const storeId = crypto.randomUUID();
+      // Stable per (Zernio channel, business profile): reconnecting the same
+      // channel into the same profile overwrites, while the same channel can
+      // still be linked to other profiles as separate entries.
+      const storeId = deterministicAccountId("zernio", `${zernioId}:${pending.profileId || ""}`);
       await tokenStore.set(storeId, {
         platform: "instagram",
         ownerUserId: callbackUserId || pending.userId,
@@ -832,6 +840,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         zernioAccountId: zernioId,
         username: displayUsername ? decodeURIComponent(String(displayUsername)) : "Instagram",
         instagramViaZernio: true,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "instagram",
+        keepAccountId: storeId,
+        matchers: [{ key: "zernioAccountId", value: zernioId }],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const usernameParam = encodeURIComponent(
@@ -1366,7 +1381,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       });
 
       const zernioAccountId = String(accountId);
-      const appAccountId = crypto.randomUUID();
+      // Stable per (Zernio channel, business profile): reconnecting the same
+      // channel into the same profile overwrites, while the same channel can
+      // still be linked to other profiles as separate entries.
+      const appAccountId = deterministicAccountId(
+        "zernio",
+        `${zernioAccountId}:${pending.profileId || ""}`
+      );
       const safeUsername = String(username || pending.platform || "account").replace(/^@/, "");
 
       await tokenStore.set(appAccountId, {
@@ -1378,6 +1399,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         zernioAccountId,
         zernioPlatform: rawPlatform || pending.platform,
         username: safeUsername,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: pending.platform,
+        keepAccountId: appAccountId,
+        matchers: [{ key: "zernioAccountId", value: zernioAccountId }],
+        sameProfileId: pending.profileId || null,
       });
 
       const profileQuery = profileParam(pending.profileId);
@@ -1468,16 +1496,28 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const rawErr = data.error_message || data.error_description || data.error || "token_exchange_failed";
         return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
-      const accountId = crypto.randomUUID();
+      const username = data.user?.username || `user_${data.user_id}`;
+      // Stable id per Instagram user: reconnecting overwrites instead of duplicating.
+      const accountId = data.user_id
+        ? deterministicAccountId("ig", String(data.user_id))
+        : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "instagram",
         ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         userId: data.user_id,
-        username: data.user?.username || `user_${data.user_id}`,
+        username,
       });
-      const username = data.user?.username || `user_${data.user_id}`;
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "instagram",
+        keepAccountId: accountId,
+        matchers: [
+          { key: "userId", value: data.user_id ? String(data.user_id) : null },
+          { key: "username", value: username },
+        ],
+      });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
         `${BASE_URL}/${igSuccessPage}?oauth_success=1&platform=instagram&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
@@ -1593,7 +1633,6 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(oauthRedirect("tiktok", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
-      const accountId = crypto.randomUUID();
       let username = data.open_id;
       try {
         const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=username,display_name", {
@@ -1611,6 +1650,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       } catch (err) {
         console.warn("[TikTok] user info request failed:", err);
       }
+      // Stable id per TikTok open_id: reconnecting overwrites instead of duplicating.
+      const accountId = data.open_id
+        ? deterministicAccountId("tiktok", String(data.open_id))
+        : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "tiktok",
         ownerUserId: callbackUserId || pending.userId,
@@ -1619,6 +1662,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         refreshToken: data.refresh_token,
         openId: data.open_id,
         username,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "tiktok",
+        keepAccountId: accountId,
+        matchers: [
+          { key: "openId", value: data.open_id ? String(data.open_id) : null },
+          { key: "username", value: username },
+        ],
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "tiktok");
@@ -1708,7 +1760,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
       const userData = await userRes.json().catch(() => ({}));
       const user = userData.data || {};
-      const accountId = crypto.randomUUID();
+      // Stable id per X user: reconnecting overwrites instead of duplicating.
+      const accountId = user.id ? deterministicAccountId("x", String(user.id)) : crypto.randomUUID();
+      const username = user.username || user.name || accountId.slice(0, 8);
       await tokenStore.set(accountId, {
         platform: "x",
         ownerUserId: callbackUserId || pending.userId,
@@ -1716,8 +1770,17 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
         xUserId: user.id,
+        username,
       });
-      const username = user.username || user.name || accountId.slice(0, 8);
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "x",
+        keepAccountId: accountId,
+        matchers: [
+          { key: "xUserId", value: user.id ? String(user.id) : null },
+          { key: "username", value: user.username ? String(user.username) : null },
+        ],
+      });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "x");
       res.redirect(
@@ -1799,8 +1862,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(oauthRedirect("youtube", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
-      const accountId = crypto.randomUUID();
-      // Hämta kanalinfo för username
+      // Hämta kanalinfo för username + stabil kanal-id
       let username = "YouTube-konto";
       const meRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: { Authorization: `Bearer ${data.access_token}` },
@@ -1809,13 +1871,26 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (meData.items?.[0]?.snippet?.title) {
         username = meData.items[0].snippet.title;
       }
+      const channelId = meData.items?.[0]?.id ? String(meData.items[0].id) : "";
+      // Stable id per YouTube channel: reconnecting overwrites instead of duplicating.
+      const accountId = channelId ? deterministicAccountId("yt", channelId) : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "youtube",
         ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
+        channelId: channelId || undefined,
         username,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "youtube",
+        keepAccountId: accountId,
+        matchers: [
+          { key: "channelId", value: channelId },
+          { key: "username", value: username !== "YouTube-konto" ? username : null },
+        ],
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "youtube");
@@ -2072,7 +2147,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
 
       const workspaceId = String(tokenData.workspace_id || tokenData.bot_id || "").trim();
-      const accountId = crypto.randomUUID();
+      // Stable id per Notion workspace: reconnecting overwrites instead of duplicating.
+      const accountId = workspaceId
+        ? deterministicAccountId("notion", workspaceId)
+        : crypto.randomUUID();
       const workspaceName = String(tokenData.workspace_name || "Notion Workspace");
 
       await tokenStore.set(accountId, {
@@ -2084,6 +2162,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         workspaceName: tokenData.workspace_name,
         workspaceIcon: tokenData.workspace_icon,
         botId: tokenData.bot_id,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "notion",
+        keepAccountId: accountId,
+        matchers: [
+          { key: "workspaceId", value: tokenData.workspace_id ? String(tokenData.workspace_id) : null },
+          { key: "botId", value: tokenData.bot_id ? String(tokenData.bot_id) : null },
+        ],
       });
 
       const profileQuery = profileParam(pending.profileId);
@@ -2233,6 +2320,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
+      // Clean up legacy random-id entries for the same calendar account.
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "google_calendar",
+        keepAccountId: accountId,
+        matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+      });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_calendar");
       res.redirect(
@@ -2348,7 +2442,6 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(oauthRedirect("outlook_calendar", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
-      const accountId = crypto.randomUUID();
       let username = "Outlook Calendar";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${data.access_token}` },
@@ -2356,6 +2449,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meData = await meRes.json().catch(() => ({}));
       if (meData.mail) username = meData.mail;
       else if (meData.userPrincipalName) username = meData.userPrincipalName;
+      const msIdentity = String(meData.id || meData.userPrincipalName || meData.mail || "").trim();
+      // Stable id per Microsoft user: reconnecting overwrites instead of duplicating.
+      const accountId = msIdentity
+        ? deterministicAccountId("ocal", msIdentity)
+        : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "outlook_calendar",
         ownerUserId: callbackUserId || pending.userId,
@@ -2363,6 +2461,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         username,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "outlook_calendar",
+        keepAccountId: accountId,
+        matchers: [{ key: "username", value: username !== "Outlook Calendar" ? username : null }],
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "outlook_calendar");
@@ -2876,7 +2980,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         )
       );
     }
-    const accountId = crypto.randomUUID();
+    // Stable id per Tripadvisor location: reconnecting overwrites instead of duplicating.
+    const accountId = deterministicAccountId("ta", locationId);
     await tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
@@ -2885,6 +2990,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       accessToken: null,
       tripadvisorApiKey: apiKey,
       tripadvisorLocationId: locationId,
+    });
+    await pruneDuplicateAccountEntries({
+      tokenStore,
+      platform: "tripadvisor",
+      keepAccountId: accountId,
+      matchers: [{ key: "tripadvisorLocationId", value: locationId }],
     });
     const profileQuery = profileParam(ourProfileId);
     const postPage = returnPage === "connections" ? "connections" : "reviews";
@@ -2910,7 +3021,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!apiKey) {
       return res.status(400).json({ error: "Tripadvisor API key is required" });
     }
-    const accountId = crypto.randomUUID();
+    // Stable id per Tripadvisor location: reconnecting overwrites instead of duplicating.
+    const accountId = deterministicAccountId("ta", locationId);
     await tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
@@ -2919,6 +3031,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       accessToken: null,
       tripadvisorApiKey: apiKey,
       tripadvisorLocationId: locationId,
+    });
+    await pruneDuplicateAccountEntries({
+      tokenStore,
+      platform: "tripadvisor",
+      keepAccountId: accountId,
+      matchers: [{ key: "tripadvisorLocationId", value: locationId }],
     });
     return res.json({
       ok: true,
@@ -3178,6 +3296,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
+      // Clean up legacy random-id entries for the same Drive account.
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "google_drive",
+        keepAccountId: accountId,
+        matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+      });
       if (pending?.popup) {
         return sendPopupOAuthResult(
           res,
@@ -3346,6 +3471,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
+      // Clean up legacy random-id entries for the same mailbox.
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "gmail",
+        keepAccountId: accountId,
+        matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+      });
       const postPage = postOauthPage(pending, "gmail");
       res.redirect(
         buildPageUrlWithBase(pending.appBaseUrl || BASE_URL, postPage, {
@@ -3436,7 +3568,6 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: String(rawErr) }));
       }
-      const accountId = crypto.randomUUID();
       let username = "Outlook";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${data.access_token}` },
@@ -3444,12 +3575,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meData = await meRes.json().catch(() => ({}));
       if (meData.mail) username = meData.mail;
       else if (meData.userPrincipalName) username = meData.userPrincipalName;
+      const msIdentity = String(meData.id || meData.userPrincipalName || meData.mail || "").trim();
+      // Stable id per Microsoft user: reconnecting overwrites instead of duplicating.
+      const accountId = msIdentity
+        ? deterministicAccountId("outlook", msIdentity)
+        : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "outlook",
         ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
+        username,
+      });
+      await pruneDuplicateAccountEntries({
+        tokenStore,
+        platform: "outlook",
+        keepAccountId: accountId,
+        matchers: [{ key: "username", value: username !== "Outlook" ? username : null }],
       });
       const postPage = postOauthPage(pending, "outlook");
       res.redirect(

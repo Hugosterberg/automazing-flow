@@ -117,6 +117,16 @@ Sessionscookien signeras med `AUTH_SESSION_SECRET` (fallback: `ZERNIO_API_KEY`).
 `AUTH_SESSION_SECRET` i Vercel — saknas båda används numera en slumpad per-instans-nyckel i
 produktion (sessioner överlever då inte mellan instanser, men kan aldrig förfalskas).
 
+## Stabila konto-id:n (en koppling = en post)
+
+Alla OAuth-callbacks använder deterministiska konto-id:n baserade på leverantörens identitet
+(`gmail_<hash>`, `ig_<hash>`, `tiktok_<hash>`, `x_<hash>`, `yt_<hash>`, `notion_<hash>`,
+`outlook_<hash>`, `ocal_<hash>`, `ta_<hash>`, `zernio_<hash av kanal+profil>`): att koppla om samma
+konto skriver över den befintliga token-posten istället för att skapa en ny. Varje callback rensar
+dessutom äldre dubblett-poster som bevisligen pekar på samma externa konto (samma e-post/provider-id).
+Zernio-kanaler är stabila per (kanal, profil) så samma kanal fortfarande kan länkas till flera
+profiler.
+
 ## Var sparas tokens och profiler?
 
 - **Server / Supabase (rekommenderat i prod):** med `SUPABASE_SERVICE_ROLE_KEY` lagras OAuth-tokens och anslutningsmetadata i tabellen `oauth_token_entries`; kortlivad OAuth-state (CSRF/PKCE) i `oauth_pending_states`; per-profil-secrets (krypterade) i `integration_secrets`. Utan service role: `server/tokens.json` lokalt eller `/tmp` på Vercel.
