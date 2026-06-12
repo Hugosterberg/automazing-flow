@@ -75,7 +75,13 @@ async function refreshMicrosoftToken({
     }).toString(),
   });
   const data = await res.json().catch(() => ({}));
-  return data?.access_token || null;
+  if (!data?.access_token) return null;
+  // Microsoft rotates refresh tokens — the new one must be persisted or the
+  // sliding 90-day window never renews and the connection eventually dies.
+  return {
+    accessToken: String(data.access_token),
+    refreshToken: data.refresh_token ? String(data.refresh_token) : undefined,
+  };
 }
 
 export async function fetchGoogleCalendarData(args: CalendarFetchArgs) {
@@ -180,8 +186,12 @@ export async function fetchOutlookCalendarData(args: CalendarFetchArgs) {
       microsoftClientSecret,
     });
     if (!refreshed) return { error: "Outlook Calendar token invalid. Reconnect the account.", status: 401 };
-    token = refreshed;
-    await tokenStore.set(accountId, { ...stored, accessToken: refreshed });
+    token = refreshed.accessToken;
+    await tokenStore.set(accountId, {
+      ...stored,
+      accessToken: refreshed.accessToken,
+      ...(refreshed.refreshToken ? { refreshToken: refreshed.refreshToken } : {}),
+    });
     eventsRes = await fetchCalendarView(token);
   }
   if (!eventsRes.ok) {
