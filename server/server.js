@@ -335,6 +335,7 @@ registerSettingsRoutes(app, {
   integrationConfigChecks: INTEGRATION_CONFIG_CHECKS,
   secretResolver,
   requireMembership,
+  zernio: zernioModule,
 });
 
 registerAccountRoutes(app, {

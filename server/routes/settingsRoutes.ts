@@ -18,6 +18,7 @@
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import type { EnvConfig, RequirementDefinition } from "../lib/envConfig.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 
 interface SettingsRoutesDeps {
   auth: AuthHelpers;
@@ -25,6 +26,7 @@ interface SettingsRoutesDeps {
   integrationConfigChecks: Record<string, RequirementDefinition>;
   secretResolver: SecretResolver;
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;
+  zernio?: Pick<ZernioModule, "listProfiles" | "listInboxConversations">;
 }
 
 /** Per-tenant overridable keys. Anything not listed here can only be set as a global env var. */
@@ -93,7 +95,50 @@ function collectGlobalKeys(checks: Record<string, RequirementDefinition>): strin
 }
 
 export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
-  const { auth, envConfig, integrationConfigChecks, secretResolver, requireMembership } = deps;
+  const { auth, envConfig, integrationConfigChecks, secretResolver, requireMembership, zernio } = deps;
+
+  /**
+   * Live Zernio probe for the "Test" button: an env key being present says
+   * nothing about whether Zernio actually accepts it or which add-ons the
+   * plan includes. Verifies API access (profiles) and the Inbox add-on
+   * (needed for DMs/auto-reply) against the real API.
+   */
+  async function probeZernioLive(): Promise<{
+    ok: boolean;
+    api: string;
+    inbox: string;
+    message: string;
+  }> {
+    if (!zernio) {
+      return { ok: true, api: "not_probed", inbox: "not_probed", message: "Zernio is configured." };
+    }
+    const profilesResult = await zernio.listProfiles();
+    if (!profilesResult.ok) {
+      const failure = describeZernioFailure(profilesResult);
+      return {
+        ok: false,
+        api: failure.message,
+        inbox: "not_probed",
+        message: `Zernio API check failed: ${failure.message}`,
+      };
+    }
+    const inboxResult = await zernio.listInboxConversations({ limit: 1 });
+    if (!inboxResult.ok) {
+      const failure = describeZernioFailure(inboxResult);
+      return {
+        ok: true,
+        api: "ok",
+        inbox: failure.message,
+        message: `Zernio API works, but the Inbox is unavailable: ${failure.message} DMs and auto-reply will not work until this is resolved.`,
+      };
+    }
+    return {
+      ok: true,
+      api: "ok",
+      inbox: "ok",
+      message: "Zernio is configured and live: API and Inbox add-on both respond.",
+    };
+  }
 
   // --- Global platform keys: status only, never values, never writable here. ---
   app.get("/api/settings/api-keys", (req, res) => {
@@ -107,7 +152,7 @@ export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
   });
 
   // --- Config probe (env-based) for a known integration target. Session only. ---
-  app.post("/api/settings/api-keys/test", (req, res) => {
+  app.post("/api/settings/api-keys/test", async (req, res) => {
     const userId = auth.getSessionUserId(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -120,6 +165,35 @@ export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
     }
 
     const result = envConfig.evaluateRequirementSet(definition);
+
+    // Zernio gets a LIVE probe on top of the env check — connect problems are
+    // usually plan/add-on limits on Zernio's side, not missing keys.
+    if (target === "zernio" && result.ok) {
+      try {
+        const live = await probeZernioLive();
+        return res.json({
+          target,
+          label: definition.label,
+          ok: live.ok,
+          missing: [],
+          missingAny: [],
+          message: live.message,
+          live: { api: live.api, inbox: live.inbox },
+          authPath: live.ok ? definition.authPath || null : null,
+        });
+      } catch (e) {
+        return res.json({
+          target,
+          label: definition.label,
+          ok: false,
+          missing: [],
+          missingAny: [],
+          message: `Zernio live check failed: ${e instanceof Error ? e.message : "unknown error"}`,
+          authPath: null,
+        });
+      }
+    }
+
     return res.json({
       target,
       label: definition.label,

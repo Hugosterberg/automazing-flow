@@ -10,7 +10,7 @@
  */
 
 import crypto from "crypto";
-import type { ZernioModule } from "../providers/zernioModule.ts";
+import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
 import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
 import {
@@ -209,6 +209,55 @@ function sendPopupOAuthResult(
 </html>`);
 }
 
+/**
+ * Structured Zernio connect failure. `code` maps to a known oauth_error key
+ * and `hint` carries Zernio's actual reason (plan limit, unsupported platform,
+ * upstream outage, …) so the user sees WHY the connect was refused instead of
+ * a generic "connect failed".
+ */
+class ZernioConnectError extends Error {
+  code: string;
+  hint: string;
+  constructor(code: string, hint: string) {
+    super(code);
+    this.code = code;
+    this.hint = hint;
+  }
+}
+
+/** `oauth_error=<code>&oauth_hint=<reason>` query for redirect URLs. */
+function zernioOauthErrorQuery(e: unknown, fallbackCode = "zernio_init_failed"): string {
+  const err = e as { code?: string; hint?: string; message?: string } | null;
+  const code = String(err?.code || fallbackCode);
+  const hint = String(err?.hint || err?.message || "").slice(0, 240);
+  return `oauth_error=${encodeURIComponent(code)}${hint ? `&oauth_hint=${encodeURIComponent(hint)}` : ""}`;
+}
+
+/** Human-readable reason out of a failed Zernio connect response body. */
+function zernioConnectFailureHint(status: number, rawBody: string, platformSlug: string): string {
+  const upstream = rawBody.slice(0, 200);
+  try {
+    const parsed = JSON.parse(rawBody) as { message?: unknown; error?: unknown; code?: unknown };
+    const failure = describeZernioFailure({
+      status,
+      error:
+        typeof parsed.message === "string"
+          ? parsed.message
+          : typeof parsed.error === "string"
+            ? parsed.error
+            : "",
+      data: parsed,
+    });
+    return failure.message;
+  } catch {
+    // Body was not JSON (e.g. an HTML 404 page) — fall back to a generic line.
+  }
+  if (status === 404) {
+    return `Zernio has no connect endpoint for "${platformSlug}" — the platform may not be available on your Zernio plan.`;
+  }
+  return `Zernio replied ${status} on connect/${platformSlug}${upstream ? `: ${upstream}` : ""}`;
+}
+
 async function getZernioConnectUrl({
   ZERNIO_API_BASE,
   zernioKey,
@@ -217,7 +266,7 @@ async function getZernioConnectUrl({
   redirectUrl,
   extraParams,
 }: ZernioConnectUrlArgs): Promise<string> {
-  let lastErr = null;
+  let lastErr: ZernioConnectError | null = null;
   for (const platformSlug of platformSlugs) {
     const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/${platformSlug}`);
     if (profileId) connectUrl.searchParams.set("profileId", profileId);
@@ -236,22 +285,31 @@ async function getZernioConnectUrl({
     } catch (error) {
       const message = zernioFetchErrorMessage(error);
       console.warn(`[Zernio] connect/${platformSlug} request failed:`, message);
-      lastErr = `zernio_fetch_failed:${platformSlug}:${message}`;
+      lastErr = new ZernioConnectError(
+        "zernio_fetch_failed",
+        `Could not reach Zernio (connect/${platformSlug}): ${message}`
+      );
       continue;
     }
     if (!connectRes.ok) {
       const err = await connectRes.text().catch(() => "");
       console.warn(`[Zernio] connect/${platformSlug} failed:`, connectRes.status, err.slice(0, 200));
-      lastErr = `zernio_connect_failed:${connectRes.status}:${err.slice(0, 200)}`;
+      lastErr = new ZernioConnectError(
+        "zernio_connect_failed",
+        zernioConnectFailureHint(connectRes.status, err, platformSlug)
+      );
       continue;
     }
     const data = await connectRes.json().catch(() => ({}));
     if (data.authUrl) {
       return data.authUrl;
     }
-    lastErr = "zernio_no_auth_url";
+    lastErr = new ZernioConnectError(
+      "zernio_no_auth_url",
+      `Zernio accepted connect/${platformSlug} but returned no login link — try again, or contact Zernio support if it persists.`
+    );
   }
-  throw new Error(lastErr || "zernio_connect_failed");
+  throw lastErr || new ZernioConnectError("zernio_connect_failed", "Zernio refused the connect request.");
 }
 
 function parseLocationsFromBody(body): unknown[] {
@@ -727,13 +785,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         connectUrl.searchParams.set("profileId", zernioProfileId);
         connectUrl.searchParams.set("redirect_url", redirectUrl);
 
-        const connectRes = await fetch(connectUrl.toString(), {
+        const connectRes = await fetchZernio(connectUrl.toString(), {
           headers: { Authorization: `Bearer ${zernioKey}` },
         });
         if (!connectRes.ok) {
-          const err = await connectRes.text();
-          console.error("[Zernio] Instagram connect URL error:", connectRes.status, err);
-          return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_connect_failed`);
+          const err = await connectRes.text().catch(() => "");
+          console.error("[Zernio] Instagram connect URL error:", connectRes.status, err.slice(0, 200));
+          const hint = zernioConnectFailureHint(connectRes.status, err, "instagram");
+          return res.redirect(
+            `${BASE_URL}/${returnPage}?oauth_error=zernio_connect_failed&oauth_hint=${encodeURIComponent(hint.slice(0, 240))}`
+          );
         }
         const { authUrl } = await connectRes.json();
         if (!authUrl) {
@@ -742,7 +803,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(authUrl);
       } catch (err) {
         console.error("[Zernio] Instagram init error:", err);
-        return res.redirect(`${BASE_URL}/${returnPage}?oauth_error=zernio_init_failed`);
+        return res.redirect(`${BASE_URL}/${returnPage}?${zernioOauthErrorQuery(err)}`);
       }
     }
 
@@ -921,38 +982,22 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(authUrl);
       } catch (e) {
         const msg = String(e?.message || "");
-        console.error(`[Zernio ${routePlatform}] connect init failed:`, msg);
-        if (routePlatform === "google_business" && msg.includes("Platform not supported")) {
-          return res.redirect(
-            oauthRedirect(config.appPlatform, "oauth_error=zernio_gmb_not_supported", hubReturn || undefined)
-          );
-        }
-        if (msg.includes("Platform not supported")) {
-          return res.redirect(
-            oauthRedirect(config.appPlatform, "oauth_error=zernio_platform_not_supported", hubReturn || undefined)
-          );
-        }
-        if (msg.startsWith("zernio_connect_failed")) {
-          return res.redirect(
-            oauthRedirect(config.appPlatform, "oauth_error=zernio_connect_failed", hubReturn || undefined)
-          );
-        }
-        if (msg.startsWith("zernio_fetch_failed")) {
+        const hint = String((e as { hint?: string })?.hint || "");
+        console.error(`[Zernio ${routePlatform}] connect init failed:`, msg, hint.slice(0, 120));
+        if (`${msg} ${hint}`.includes("Platform not supported")) {
           return res.redirect(
             oauthRedirect(
               config.appPlatform,
-              `oauth_error=zernio_fetch_failed&oauth_hint=${encodeURIComponent(msg.slice(0, 240))}`,
+              routePlatform === "google_business"
+                ? "oauth_error=zernio_gmb_not_supported"
+                : "oauth_error=zernio_platform_not_supported",
               hubReturn || undefined
             )
           );
         }
-        if (msg === "zernio_no_auth_url") {
-          return res.redirect(
-            oauthRedirect(config.appPlatform, "oauth_error=zernio_no_auth_url", hubReturn || undefined)
-          );
-        }
+        // ZernioConnectError carries code + the upstream reason — surface both.
         return res.redirect(
-          oauthRedirect(config.appPlatform, "oauth_error=zernio_init_failed", hubReturn || undefined)
+          oauthRedirect(config.appPlatform, zernioOauthErrorQuery(e), hubReturn || undefined)
         );
       }
   }
@@ -1538,6 +1583,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const provider = String(req.query.provider || "auto").toLowerCase();
     const tryZernio = provider !== "official";
     const zernioKey = getZernioApiKey();
+    let zernioAutoFailure: unknown = null;
     if (tryZernio && zernioKey) {
       try {
         const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
@@ -1562,14 +1608,25 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           return res.redirect(authUrl);
         }
       } catch (e) {
-        // Fallback to official TikTok OAuth if Zernio connect is unavailable.
+        if (provider === "zernio") {
+          return res.redirect(oauthRedirect("tiktok", zernioOauthErrorQuery(e), returnPage));
+        }
+        // Fallback to official TikTok OAuth if Zernio connect is unavailable,
+        // but keep the Zernio reason in case official isn't configured either.
         console.warn("[TikTok] Zernio connect unavailable, using official OAuth:", String(e?.message || e));
+        zernioAutoFailure = e;
       }
     }
 
     const clientKey = process.env.TIKTOK_CLIENT_KEY;
     if (!clientKey) {
-      return res.redirect(oauthRedirect("tiktok", "oauth_error=tiktok_not_configured", returnPage));
+      return res.redirect(
+        oauthRedirect(
+          "tiktok",
+          zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=tiktok_not_configured",
+          returnPage
+        )
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2194,6 +2251,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    let zernioAutoFailure: unknown = null;
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -2222,13 +2280,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           });
           return res.redirect(authUrl);
         } catch (e) {
-          const msg = String(e?.message || "");
           if (provider === "zernio") {
-            if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_connect_failed", returnPage));
-            }
-            return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_init_failed", returnPage));
+            return res.redirect(oauthRedirect("google_calendar", zernioOauthErrorQuery(e), returnPage));
           }
+          // auto: remember WHY Zernio refused before falling back to official —
+          // if official isn't configured the user must see the Zernio reason,
+          // not a misleading "not configured".
+          zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
         return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_not_configured", returnPage));
@@ -2237,7 +2295,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(oauthRedirect("google_calendar", "oauth_error=google_calendar_not_configured", returnPage));
+      return res.redirect(
+        oauthRedirect(
+          "google_calendar",
+          zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=google_calendar_not_configured",
+          returnPage
+        )
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2346,6 +2410,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    let zernioAutoFailure: unknown = null;
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -2374,13 +2439,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           });
           return res.redirect(authUrl);
         } catch (e) {
-          const msg = String(e?.message || "");
           if (provider === "zernio") {
-            if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_connect_failed", returnPage));
-            }
-            return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_init_failed", returnPage));
+            return res.redirect(oauthRedirect("outlook_calendar", zernioOauthErrorQuery(e), returnPage));
           }
+          zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
         return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_not_configured", returnPage));
@@ -2389,7 +2451,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=outlook_calendar_not_configured", returnPage));
+      return res.redirect(
+        oauthRedirect(
+          "outlook_calendar",
+          zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=outlook_calendar_not_configured",
+          returnPage
+        )
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2487,6 +2555,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    let zernioAutoFailure: unknown = null;
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -2515,13 +2584,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           });
           return res.redirect(authUrl);
         } catch (e) {
-          const msg = String(e?.message || "");
           if (provider === "zernio") {
-            if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(oauthRedirect("google_reviews", "oauth_error=zernio_connect_failed", returnPage));
-            }
-            return res.redirect(oauthRedirect("google_reviews", "oauth_error=zernio_init_failed", returnPage));
+            return res.redirect(oauthRedirect("google_reviews", zernioOauthErrorQuery(e), returnPage));
           }
+          zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
         return res.redirect(oauthRedirect("google_reviews", "oauth_error=zernio_not_configured", returnPage));
@@ -2530,7 +2596,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(oauthRedirect("google_reviews", "oauth_error=google_reviews_not_configured", returnPage));
+      return res.redirect(
+        oauthRedirect(
+          "google_reviews",
+          zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=google_reviews_not_configured",
+          returnPage
+        )
+      );
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2741,17 +2813,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(authUrl);
       } catch (e) {
         const msg = String(e?.message || "");
-        console.error("[Zernio google_business] connect init failed:", msg);
-        if (msg.includes("Platform not supported")) {
+        const hint = String((e as { hint?: string })?.hint || "");
+        console.error("[Zernio google_business] connect init failed:", msg, hint.slice(0, 120));
+        if (`${msg} ${hint}`.includes("Platform not supported")) {
           return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_gmb_not_supported", returnPage));
         }
-        if (msg.startsWith("zernio_connect_failed")) {
-          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_connect_failed", returnPage));
-        }
-        if (msg === "zernio_no_auth_url") {
-          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_no_auth_url", returnPage));
-        }
-        return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_init_failed", returnPage));
+        return res.redirect(oauthRedirect("google_business", zernioOauthErrorQuery(e), returnPage));
       }
     }
     // Default Google Business Profile path: official Google OAuth.
@@ -2920,6 +2987,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    let zernioAutoFailure: unknown = null;
 
     if (provider !== "official") {
       const zernioKey = getZernioApiKey();
@@ -2948,13 +3016,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           });
           return res.redirect(authUrl);
         } catch (e) {
-          const msg = String(e?.message || "");
           if (provider === "zernio") {
-            if (msg.startsWith("zernio_connect_failed")) {
-              return res.redirect(oauthRedirect("tripadvisor", "oauth_error=zernio_connect_failed", returnPage));
-            }
-            return res.redirect(oauthRedirect("tripadvisor", "oauth_error=zernio_init_failed", returnPage));
+            return res.redirect(oauthRedirect("tripadvisor", zernioOauthErrorQuery(e), returnPage));
           }
+          zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
         return res.redirect(oauthRedirect("tripadvisor", "oauth_error=zernio_not_configured", returnPage));
@@ -2967,6 +3032,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       req.query.location_id || (await secretResolver.resolve(tripadvisorBp, "TRIPADVISOR_LOCATION_ID")) || ""
     ).trim();
     if (!apiKey || !locationId) {
+      if (zernioAutoFailure) {
+        return res.redirect(oauthRedirect("tripadvisor", zernioOauthErrorQuery(zernioAutoFailure), returnPage));
+      }
       const missing = [
         !apiKey ? "TRIPADVISOR_API_KEY" : "",
         !locationId ? "TRIPADVISOR_LOCATION_ID" : "",
