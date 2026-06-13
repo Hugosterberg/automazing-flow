@@ -283,7 +283,7 @@ export default function MarketingPage() {
                       Zernio
                     </Button>
                   </>
-                ) : item.platform === "meta_business" ? (
+                ) : (
                   <Button
                     size="sm"
                     variant={connected ? "outline" : "default"}
@@ -291,15 +291,6 @@ export default function MarketingPage() {
                     disabled={!businessProfileId}
                   >
                     Meta official
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={connected ? "outline" : "default"}
-                    onClick={() => connect(item.platform)}
-                    disabled={!businessProfileId}
-                  >
-                    {connected ? "Reconnect" : "Connect"}
                   </Button>
                 )}
               </CardContent>

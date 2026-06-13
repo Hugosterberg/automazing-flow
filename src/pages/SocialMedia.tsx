@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -949,13 +950,18 @@ export default function SocialMedia() {
                   {selectedContent.map((asset) => (
                     <div key={asset.id} className="rounded-lg border border-border overflow-hidden bg-secondary/20">
                       <div className="aspect-square bg-secondary/50 flex items-center justify-center overflow-hidden">
-                        {asset.thumbnailUrl ? (
-                          <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
-                        ) : asset.kind === "video" ? (
-                          <Film className="h-6 w-6 text-muted-foreground" />
-                        ) : (
-                          <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                        )}
+                        <ImageWithFallback
+                          src={asset.thumbnailUrl}
+                          alt={asset.name}
+                          className="w-full h-full object-cover"
+                          fallback={
+                            asset.kind === "video" ? (
+                              <Film className="h-6 w-6 text-muted-foreground" />
+                            ) : (
+                              <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                            )
+                          }
+                        />
                       </div>
                       <div className="p-2 space-y-2">
                         <p className="text-xs font-medium truncate">{asset.name}</p>
@@ -1029,11 +1035,12 @@ export default function SocialMedia() {
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-14 h-14 rounded-md overflow-hidden bg-secondary/60 flex items-center justify-center shrink-0">
-                              {asset.thumbnailUrl ? (
-                                <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <Film className="h-5 w-5 text-muted-foreground" />
-                              )}
+                              <ImageWithFallback
+                                src={asset.thumbnailUrl}
+                                alt={asset.name}
+                                className="w-full h-full object-cover"
+                                fallback={<Film className="h-5 w-5 text-muted-foreground" />}
+                              />
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{asset.name}</p>
@@ -1166,8 +1173,17 @@ export default function SocialMedia() {
             />
             <div className="flex flex-wrap gap-4 items-start">
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="Ladda upp bild"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-32 h-32 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground/50 hover:bg-secondary/50 cursor-pointer flex items-center justify-center transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className="w-32 h-32 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground/50 hover:bg-secondary/50 cursor-pointer flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {uploadedImage ? (
                   <img
@@ -1366,10 +1382,15 @@ export default function SocialMedia() {
                       rel="noopener noreferrer"
                       className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
                     >
-                      <img
+                      <ImageWithFallback
                         src={post.picture}
                         alt={post.caption.slice(0, 40)}
                         className="w-full h-full object-cover"
+                        fallback={
+                          <div className="w-full h-full flex items-center justify-center bg-secondary/40">
+                            <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        }
                       />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
                         <div className="flex items-center gap-1 text-white text-xs font-semibold">

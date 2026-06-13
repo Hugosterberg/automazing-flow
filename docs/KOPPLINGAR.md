@@ -84,9 +84,12 @@ gånger, även om jobbet körs ofta.
 **Körning:**
 
 - **Manuellt:** knappen "Kör nu" i Preferences → Automation (kör för aktiv profil).
-- **Schemalagt:** `GET /api/cron/auto-reply` med `Authorization: Bearer <CRON_SECRET>`. Lägg till i
-  `vercel.json` under `crons` (kräver Vercel Pro för fler än 2 cron-jobb / tätare än dagligen), eller
-  trigga från extern schemaläggare (GitHub Actions, cron-job.org) mot produktion-URL:en.
+- **Schemalagt:** `GET /api/cron/auto-reply` med `Authorization: Bearer <CRON_SECRET>`. Schemalagt
+  via GitHub Actions (`.github/workflows/auto-reply-cron.yml`, var 15:e minut) eftersom Vercel Hobby
+  bara tillåter 2 dagliga cron-jobb. Kräver repo-secret `CRON_SECRET` (samma värde som på Vercel)
+  och repo-variabel `CRON_BASE_URL` (produktions-URL:en) under Settings → Secrets and variables →
+  Actions; tills de är satta hoppar jobbet över körningen med en notis. Alternativ: lägg till i
+  `vercel.json` under `crons` (kräver Vercel Pro) eller annan extern schemaläggare (cron-job.org).
 
 AI-svaren använder per-profil-`OPENAI_API_KEY` (integration_secrets) med global env-fallback; utan
 nyckel används en enkel standardtext. Kräver `SUPABASE_SERVICE_ROLE_KEY` (för settings/logg) och

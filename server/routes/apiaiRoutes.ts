@@ -10,43 +10,23 @@
 import { fetchGoogleDriveFileResponse } from "../providers/googleDrive.ts";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
+import {
+  checkApiaiHealth,
+  imageFieldNamesForTool,
+  listTools,
+  makeApiaiUrl,
+  parseApiaiError,
+  requiresImage,
+  APIAI_TIMEOUT_MS,
+} from "../providers/apiai.ts";
 
-const APIAI_BASE_URL = "https://apiai.me/api";
 const APIAI_KEY = "APIAI_API_KEY";
 const MAX_INPUT_BYTES = 12 * 1024 * 1024;
 const MAX_INLINE_RESULT_BYTES = 3 * 1024 * 1024;
-const APIAI_TIMEOUT_MS = 50_000;
 
 type TokenStore = {
   get: (id: string) => Promise<Record<string, unknown> | null | undefined>;
   set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
-};
-
-type ApiaiParam = {
-  name?: string;
-  expose_name?: string;
-  description?: string;
-  default_value?: unknown;
-  allowed_values?: unknown[];
-  required?: boolean;
-  is_image?: boolean;
-};
-
-type ApiaiTool = {
-  id?: number | string;
-  slug: string;
-  name: string;
-  description?: string;
-  endpoint: string;
-  type: "workflow" | "pipeline" | "flow";
-  acceptedInputs: string[];
-  requiredInputs: string[];
-  responseType?: string;
-  outputTypes: string[];
-  params: ApiaiParam[];
-  supportsPrompt?: boolean;
-  maxImages?: number;
-  pricePerRequest?: number | null;
 };
 
 type SelectedAssetInput = {
@@ -62,122 +42,6 @@ interface ApiaiRoutesDeps {
   tokenStore: TokenStore;
   secretResolver: SecretResolver;
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : [];
-}
-
-function normalizeParams(value: unknown): ApiaiParam[] {
-  return Array.isArray(value) ? (value as ApiaiParam[]) : [];
-}
-
-function normalizeWorkflow(raw: Record<string, unknown>): ApiaiTool | null {
-  const slug = String(raw.slug || "").trim();
-  const endpoint = String(raw.endpoint || "").trim();
-  if (!slug || !endpoint) return null;
-  const type = raw.type === "pipeline" ? "pipeline" : "workflow";
-  const params = normalizeParams(raw.params);
-  return {
-    id: typeof raw.id === "number" || typeof raw.id === "string" ? raw.id : undefined,
-    slug,
-    name: String(raw.name || slug),
-    description: String(raw.description || ""),
-    endpoint,
-    type,
-    acceptedInputs: normalizeStringArray(raw.accepted_inputs),
-    requiredInputs: normalizeStringArray(raw.required_inputs),
-    responseType: String(raw.response_type || ""),
-    outputTypes: normalizeStringArray(raw.output_types),
-    params,
-    supportsPrompt: raw.supports_prompt == null ? undefined : Boolean(raw.supports_prompt),
-    maxImages: typeof raw.max_images === "number" ? raw.max_images : undefined,
-    pricePerRequest: typeof raw.price_per_request === "number" ? raw.price_per_request : null,
-  };
-}
-
-function normalizeFlow(raw: Record<string, unknown>): ApiaiTool | null {
-  const slug = String(raw.slug || "").trim();
-  if (!slug) return null;
-  const params = normalizeParams(raw.params);
-  const firstStepRequiresImage = Boolean(raw.first_step_requires_image);
-  return {
-    id: typeof raw.id === "number" || typeof raw.id === "string" ? raw.id : undefined,
-    slug,
-    name: String(raw.name || slug),
-    description: String(raw.description || ""),
-    endpoint: `/api/flow/${encodeURIComponent(slug)}`,
-    type: "flow",
-    acceptedInputs: firstStepRequiresImage ? ["image", "prompt"] : ["prompt", "image"],
-    requiredInputs: firstStepRequiresImage ? ["image"] : [],
-    responseType: String(raw.response_type || ""),
-    outputTypes: normalizeStringArray(raw.output_types),
-    params,
-    supportsPrompt: raw.supports_prompt == null ? true : Boolean(raw.supports_prompt),
-    pricePerRequest: typeof raw.price_per_request === "number" ? raw.price_per_request : null,
-  };
-}
-
-async function parseApiaiError(res: Response): Promise<string> {
-  const body = await res.text().catch(() => "");
-  if (!body) return res.statusText || "apiai_request_failed";
-  try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed?.error === "string") return parsed.error;
-    if (typeof parsed?.error?.message === "string") return parsed.error.message;
-    if (typeof parsed?.message === "string") return parsed.message;
-  } catch {
-    // fall through to plain text
-  }
-  return body.slice(0, 500);
-}
-
-function makeApiaiUrl(endpoint: string): string {
-  const clean = endpoint.startsWith("/api/") ? endpoint.slice(4) : endpoint;
-  return `${APIAI_BASE_URL}${clean.startsWith("/") ? clean : `/${clean}`}`;
-}
-
-async function fetchApiaiJson(apiKey: string, endpoint: string): Promise<unknown[]> {
-  const res = await fetch(makeApiaiUrl(endpoint), {
-    headers: { "X-API-Key": apiKey },
-    signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    throw new Error(await parseApiaiError(res));
-  }
-  const body = await res.json().catch(() => []);
-  return Array.isArray(body) ? body : [];
-}
-
-async function listTools(apiKey: string): Promise<ApiaiTool[]> {
-  const [workflowRows, flowRows] = await Promise.all([
-    fetchApiaiJson(apiKey, "/api/workflows"),
-    fetchApiaiJson(apiKey, "/api/flows").catch(() => []),
-  ]);
-  const workflows = workflowRows
-    .map((row) => normalizeWorkflow(row as Record<string, unknown>))
-    .filter((tool): tool is ApiaiTool => Boolean(tool));
-  const flows = flowRows
-    .map((row) => normalizeFlow(row as Record<string, unknown>))
-    .filter((tool): tool is ApiaiTool => Boolean(tool));
-  return [...workflows, ...flows];
-}
-
-function imageFieldNamesForTool(tool: ApiaiTool): string[] {
-  const fromParams = tool.params
-    .filter((param) => Boolean(param.is_image))
-    .map((param) => String(param.expose_name || param.name || "").trim())
-    .filter(Boolean);
-  if (fromParams.length > 0) return fromParams;
-  const inputs = [...tool.requiredInputs, ...tool.acceptedInputs].map((input) => input.toLowerCase());
-  if (inputs.includes("image")) return ["image"];
-  if (inputs.includes("video")) return ["video"];
-  return [];
-}
-
-function requiresImage(tool: ApiaiTool): boolean {
-  return tool.requiredInputs.some((input) => input.toLowerCase() === "image" || input.toLowerCase() === "video")
-    || tool.params.some((param) => Boolean(param.required && param.is_image));
 }
 
 async function appendDriveAsset({
@@ -250,6 +114,17 @@ async function resolveApiaiKey(secretResolver: SecretResolver, businessProfileId
 
 export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
   const { auth, tokenStore, secretResolver, requireMembership } = deps;
+
+  // Connectivity + auth probe. Returns a structured diagnosis (key present?
+  // host reachable? key accepted? how many tools?) so the UI / smoke script can
+  // pinpoint exactly where the apiai.me integration breaks. Always 200 with a
+  // body — the `ok` flag and `error` string carry the verdict.
+  app.get("/api/apiai/health", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    const health = await checkApiaiHealth(apiKey);
+    return res.json(health);
+  });
 
   app.get("/api/apiai/tools", requireMembership, async (req, res) => {
     const businessProfileId = String(req.businessProfileId || "").trim();

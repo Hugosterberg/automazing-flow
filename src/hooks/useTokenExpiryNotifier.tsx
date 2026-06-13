@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import type { Connection } from "@/types/connection";
 import { useNavigate } from "react-router-dom";
 
@@ -72,11 +73,12 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
     toast({
       title: "Anslutningsproblem upptäckta",
       description: parts.join(" · "),
-      action: {
-        altText: "Hantera",
-        onClick: () => navigate("/connections"),
-      },
-    } as Parameters<typeof toast>[0]);
+      action: (
+        <ToastAction altText="Hantera" onClick={() => navigate("/connections")}>
+          Hantera
+        </ToastAction>
+      ),
+    });
 
     // Mark as warned
     for (const c of problematic) {

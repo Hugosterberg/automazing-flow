@@ -114,7 +114,7 @@ export async function readResponseWithLimit(response: Response, maxBytes: number
     if (buffer.length > maxBytes) throw new Error("response_too_large");
     return buffer;
   }
-  for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
+  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
     total += chunk.length;
     if (total > maxBytes) throw new Error("response_too_large");
     chunks.push(Buffer.from(chunk));

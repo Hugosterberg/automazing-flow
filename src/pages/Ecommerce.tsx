@@ -17,6 +17,8 @@ import {
   Box,
   ArrowUpRight,
   ChevronDown,
+  LayoutDashboard,
+  Boxes,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -46,7 +48,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -55,6 +57,18 @@ import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
+import { ProductsTab } from "@/features/ecommerce/ProductsTab";
+import { alibabaImportToInput } from "@/lib/productStore";
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  importShopifyProducts,
+} from "@/lib/productsApi";
+import type { Product, ProductInput, AlibabaProductImport } from "@/types/ecommerce";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { toast } from "sonner";
 
 function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
@@ -294,6 +308,7 @@ export default function Ecommerce() {
       return res.json();
     },
   });
+  const [tab, setTab] = useState<"overview" | "products">("overview");
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
   const [notionParentId, setNotionParentId] = useState("");
@@ -331,6 +346,88 @@ export default function Ecommerce() {
   );
   const shopifyData = isShopifyData(data) ? data : null;
   const notionData = isNotionData(data) ? data : null;
+
+  // Product catalogue (DB-backed, scoped to the active business profile).
+  const productProfileId = useActiveBusinessProfileIdOptional();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [importingShopify, setImportingShopify] = useState(false);
+
+  useEffect(() => {
+    if (!productProfileId) {
+      setProducts([]);
+      return;
+    }
+    let ignore = false;
+    setProductsLoading(true);
+    setProductsError(null);
+    fetchProducts(productProfileId)
+      .then((list) => {
+        if (!ignore) setProducts(list);
+      })
+      .catch((e) => {
+        if (!ignore) setProductsError(e instanceof Error ? e.message : "Kunde inte ladda produkter.");
+      })
+      .finally(() => {
+        if (!ignore) setProductsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [productProfileId]);
+
+  const handleCreateProduct = useCallback(
+    async (input: ProductInput) => {
+      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      const product = await createProduct(productProfileId, input);
+      setProducts((prev) => [product, ...prev]);
+      return product;
+    },
+    [productProfileId]
+  );
+
+  const handleUpdateProduct = useCallback(
+    async (id: string, patch: Partial<ProductInput>) => {
+      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      const product = await updateProduct(productProfileId, id, patch);
+      setProducts((prev) => prev.map((p) => (p.id === id ? product : p)));
+    },
+    [productProfileId]
+  );
+
+  const handleDeleteProduct = useCallback(
+    async (id: string) => {
+      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      await deleteProduct(productProfileId, id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    },
+    [productProfileId]
+  );
+
+  const handleImportShopify = useCallback(async () => {
+    if (!productProfileId || !shopifyAccount?.id) return;
+    setImportingShopify(true);
+    try {
+      const result = await importShopifyProducts(productProfileId, shopifyAccount.id);
+      setProducts(result.products);
+      toast.success(
+        `Synkade Shopify: ${result.imported} nya, ${result.updated} uppdaterade.`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kunde inte importera från Shopify.");
+    } finally {
+      setImportingShopify(false);
+    }
+  }, [productProfileId, shopifyAccount?.id]);
+
+  const handleSaveAsProduct = useCallback(
+    async (imported: AlibabaProductImport) => {
+      await handleCreateProduct(alibabaImportToInput(imported));
+      setTab("products");
+    },
+    [handleCreateProduct]
+  );
 
   useEffect(() => {
     if (notionData && activeOrgAccount?.platform === "notion") {
@@ -485,10 +582,62 @@ export default function Ecommerce() {
         <SectionConnectionStatus area="ecommerce" />
       </m.div>
 
-      <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
-        <AlibabaImportCard businessProfileId={activeProfileId} shopifyAccountId={shopifyAccount?.id ?? null} />
-      </m.div>
+      <div className="flex items-center gap-1 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab("overview")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            tab === "overview"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" />
+          Overview
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("products")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            tab === "products"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Boxes className="h-3.5 w-3.5" />
+          Products
+          {products.length > 0 ? (
+            <span className="ml-0.5 text-xs text-muted-foreground">({products.length})</span>
+          ) : null}
+        </button>
+      </div>
 
+      {tab === "products" && (
+        <div className="space-y-8">
+          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+            <AlibabaImportCard
+              businessProfileId={activeProfileId}
+              shopifyAccountId={shopifyAccount?.id ?? null}
+              onSaveAsProduct={handleSaveAsProduct}
+            />
+          </m.div>
+          <ProductsTab
+            businessProfileId={activeProfileId}
+            products={products}
+            loading={productsLoading}
+            error={productsError}
+            shopifyAccountId={shopifyAccount?.id ?? null}
+            importingShopify={importingShopify}
+            onCreate={handleCreateProduct}
+            onUpdate={handleUpdateProduct}
+            onDelete={handleDeleteProduct}
+            onImportShopify={handleImportShopify}
+          />
+        </div>
+      )}
+
+      {tab === "overview" && (
+      <div className="space-y-8">
       {authMode === "local" && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
@@ -1166,6 +1315,8 @@ export default function Ecommerce() {
             </Card>
           </m.div>
         </Collapsible>
+      )}
+      </div>
       )}
 
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>

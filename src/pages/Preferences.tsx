@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
+import { checkApiaiHealth } from "@/features/content/apiaiClient";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
 
@@ -102,6 +103,35 @@ export default function PreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [runningTests, setRunningTests] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, ConfigTestResult>>({});
+  const [apiaiTesting, setApiaiTesting] = useState(false);
+
+  const handleTestApiai = useCallback(async () => {
+    if (!activeBusinessProfileId) return;
+    setApiaiTesting(true);
+    try {
+      const health = await checkApiaiHealth(activeBusinessProfileId);
+      if (health.ok) {
+        toast({
+          title: "apiai.me is connected",
+          description: `${health.toolCount} tools available (${health.workflowCount} workflows, ${health.flowCount} flows) · ${health.latencyMs ?? "?"} ms.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "apiai.me check failed",
+          description: health.error ?? "Unknown error.",
+        });
+      }
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Could not reach the server",
+        description: e instanceof Error ? e.message : "Request failed.",
+      });
+    } finally {
+      setApiaiTesting(false);
+    }
+  }, [activeBusinessProfileId, toast]);
 
   const loadGlobal = useCallback(async () => {
     const res = await fetch(apiUrl("/api/settings/api-keys"), { credentials: "include" });
@@ -359,6 +389,20 @@ export default function PreferencesPage() {
                                 </>
                               ) : entry.configured ? (
                                 <span className="text-muted-foreground">Using platform default</span>
+                              ) : null}
+                              {entry.key === "APIAI_API_KEY" ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px] ml-auto"
+                                  onClick={() => void handleTestApiai()}
+                                  disabled={apiaiTesting}
+                                >
+                                  {apiaiTesting ? (
+                                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                                  ) : null}
+                                  Test connection
+                                </Button>
                               ) : null}
                             </div>
                           </div>

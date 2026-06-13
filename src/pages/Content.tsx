@@ -69,6 +69,77 @@ function formatBytes(value?: number) {
   return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+function MediaTile({
+  file,
+  checked,
+  onToggle,
+}: {
+  file: DriveBrowserItem;
+  checked: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  // Per-tile image-failure state so a dead Drive thumbnail falls back to the
+  // type icon instead of rendering a broken image.
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = Boolean(file.thumbnailUrl) && !imgFailed;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={checked}
+      aria-label={`${checked ? "Deselect" : "Select"} ${file.name}`}
+      className="group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      onClick={() => onToggle(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle(!checked);
+        }
+      }}
+    >
+      <div className="aspect-square bg-secondary/50 flex items-center justify-center overflow-hidden relative">
+        {showImage ? (
+          <img
+            src={file.thumbnailUrl}
+            alt={file.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : file.kind === "video" ? (
+          <Film className="h-8 w-8 text-muted-foreground" />
+        ) : (
+          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+        )}
+        {checked && (
+          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+            <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-[10px] text-primary-foreground font-bold">✓</span>
+            </div>
+          </div>
+        )}
+        {file.webViewLink && (
+          <a
+            href={file.webViewLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-1.5 right-1.5 h-7 w-7 rounded-md bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-black/80"
+            title="Open in Google Drive"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-white" />
+          </a>
+        )}
+      </div>
+      <div className="p-2">
+        <p className="text-[11px] font-medium truncate">{file.name}</p>
+        {file.size ? <p className="text-[10px] text-muted-foreground/70">{formatBytes(file.size)}</p> : null}
+      </div>
+    </div>
+  );
+}
+
 function MediaSection({
   title,
   icon,
@@ -99,49 +170,14 @@ function MediaSection({
         <span className="text-xs text-muted-foreground">({files.length})</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {visible.map((file) => {
-          const checked = selectedIds.has(file.id);
-          return (
-            <div
-              key={file.id}
-              className="group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20"
-              onClick={() => onToggleAsset(file, !checked)}
-            >
-              <div className="aspect-square bg-secondary/50 flex items-center justify-center overflow-hidden relative">
-                {file.thumbnailUrl ? (
-                  <img src={file.thumbnailUrl} alt={file.name} className="w-full h-full object-cover" />
-                ) : file.kind === "video" ? (
-                  <Film className="h-8 w-8 text-muted-foreground" />
-                ) : (
-                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                )}
-                {checked && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-[10px] text-primary-foreground font-bold">✓</span>
-                    </div>
-                  </div>
-                )}
-                {file.webViewLink && (
-                  <a
-                    href={file.webViewLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-1.5 right-1.5 h-7 w-7 rounded-md bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
-                    title="Open in Google Drive"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 text-white" />
-                  </a>
-                )}
-              </div>
-              <div className="p-2">
-                <p className="text-[11px] font-medium truncate">{file.name}</p>
-                {file.size ? <p className="text-[10px] text-muted-foreground/70">{formatBytes(file.size)}</p> : null}
-              </div>
-            </div>
-          );
-        })}
+        {visible.map((file) => (
+          <MediaTile
+            key={file.id}
+            file={file}
+            checked={selectedIds.has(file.id)}
+            onToggle={(checked) => onToggleAsset(file, checked)}
+          />
+        ))}
       </div>
       {files.length > previewCount && (
         <button

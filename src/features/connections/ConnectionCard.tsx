@@ -264,7 +264,7 @@ export function ConnectionCard({
                   onClick={() => startConnect("official")}
                 >
                   <PrimaryIcon className="h-3.5 w-3.5" />
-                  {entry.platform === "meta_business" ? "Meta official" : "Official API"}
+                  Official API
                 </Button>
                 <Button
                   type="button"

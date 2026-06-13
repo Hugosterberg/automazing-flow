@@ -6,7 +6,7 @@ import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import { LazyMotion, domAnimation } from "framer-motion";
+import { LazyMotion, domAnimation, MotionConfig } from "framer-motion";
 import { AccountsProvider } from "@/context/AccountsContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthGate } from "@/components/AuthGate";
@@ -94,6 +94,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LazyMotion features={domAnimation} strict>
+        <MotionConfig reducedMotion="user">
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -146,6 +147,7 @@ const App = () => {
             </AuthGate>
           </BrowserRouter>
         </TooltipProvider>
+        </MotionConfig>
         </LazyMotion>
       </AuthProvider>
     </QueryClientProvider>

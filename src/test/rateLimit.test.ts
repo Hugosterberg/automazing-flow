@@ -15,8 +15,6 @@ describe("rateLimit", () => {
     expect(checkRateLimit(key, 2, 60_000).ok).toBe(true);
     const blocked = checkRateLimit(key, 2, 60_000);
     expect(blocked.ok).toBe(false);
-    if (!blocked.ok) {
-      expect(blocked.retryAfterMs).toBeGreaterThanOrEqual(0);
-    }
+    expect("retryAfterMs" in blocked ? blocked.retryAfterMs : -1).toBeGreaterThanOrEqual(0);
   });
 });

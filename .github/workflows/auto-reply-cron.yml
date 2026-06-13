@@ -1,0 +1,40 @@
+# Triggers the DM auto-reply sweep against the production deployment.
+# GitHub Actions is the scheduler because Vercel Hobby allows at most two
+# daily cron jobs (both slots are taken in vercel.json) — see
+# docs/KOPPLINGAR.md, "Auto-svar på DM:s (automation)".
+#
+# The endpoint is idempotent (auto_reply_log guards every message), so a
+# frequent schedule is safe.
+#
+# Required repository configuration (Settings → Secrets and variables → Actions):
+#   secret  CRON_SECRET    — same value as the CRON_SECRET env var on Vercel
+#   variable CRON_BASE_URL — production origin, e.g. https://automazing.vercel.app
+# Until both are set the job exits early with a notice instead of failing.
+name: Auto-reply cron
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub may delay scheduled runs a few minutes
+    # under load; that's fine for an idempotent sweep.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/cron/auto-reply
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_BASE_URL: ${{ vars.CRON_BASE_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$CRON_BASE_URL" ]; then
+            echo "::notice::CRON_SECRET secret or CRON_BASE_URL variable is not configured — skipping the sweep."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${CRON_BASE_URL%/}/api/cron/auto-reply"

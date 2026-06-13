@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ActiveProfileContextBar } from "@/components/ActiveProfileContextBar";
+import { CommandPalette } from "@/components/CommandPalette";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 /**
  * Pick a stable single-character fallback for the avatar badge.
@@ -34,6 +36,7 @@ export default function Layout() {
   const allowLocal = isLocalDevHost();
   const email = user?.email ?? null;
   const location = useLocation();
+  useDocumentTitle();
 
   return (
     <SidebarProvider>
@@ -56,6 +59,7 @@ export default function Layout() {
             <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0" />
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-2 shrink-0">
+              <CommandPalette />
               {authMode === "cloud" ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

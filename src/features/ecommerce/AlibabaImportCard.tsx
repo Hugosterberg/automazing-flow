@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   Link2,
   Loader2,
+  PackagePlus,
   ShoppingCart,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiUrl } from "@/lib/apiBase";
 import { loadAlibabaImport, saveAlibabaImport } from "@/lib/alibabaImportStorage";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import type { AlibabaProductImport } from "@/types/ecommerce";
 import { toast } from "sonner";
 
@@ -29,11 +31,13 @@ function slugifyFilename(value: string): string {
 type Props = {
   businessProfileId: string | null;
   shopifyAccountId: string | null;
+  onSaveAsProduct?: (product: AlibabaProductImport) => Promise<void>;
 };
 
-export function AlibabaImportCard({ businessProfileId, shopifyAccountId }: Props) {
+export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveAsProduct }: Props) {
   const [alibabaUrl, setAlibabaUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [product, setProduct] = useState<AlibabaProductImport | null>(() => loadAlibabaImport(businessProfileId));
   const [downloadingZip, setDownloadingZip] = useState(false);
@@ -255,6 +259,30 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId }: Props
                 </a>
               </div>
               <div className="flex flex-col gap-2 shrink-0">
+                {onSaveAsProduct ? (
+                  <Button
+                    size="sm"
+                    disabled={savingProduct}
+                    onClick={async () => {
+                      setSavingProduct(true);
+                      try {
+                        await onSaveAsProduct(product);
+                        toast.success("Sparad som produkt");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Kunde inte spara produkten.");
+                      } finally {
+                        setSavingProduct(false);
+                      }
+                    }}
+                  >
+                    {savingProduct ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <PackagePlus className="h-4 w-4 mr-2" />
+                    )}
+                    Spara som produkt
+                  </Button>
+                ) : null}
                 {product.images.length > 0 ? (
                   <Button variant="outline" size="sm" onClick={() => void downloadZip()} disabled={downloadingZip}>
                     {downloadingZip ? (
@@ -266,7 +294,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId }: Props
                   </Button>
                 ) : null}
                 {shopifyAccountId ? (
-                  <Button size="sm" onClick={() => void createShopifyDraft()} disabled={creatingDraft}>
+                  <Button variant="outline" size="sm" onClick={() => void createShopifyDraft()} disabled={creatingDraft}>
                     {creatingDraft ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
@@ -293,11 +321,15 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId }: Props
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {product.images.map((imageUrl, index) => (
                   <div key={`${imageUrl}-${index}`} className="rounded-lg border border-border overflow-hidden bg-background">
-                    <img
+                    <ImageWithFallback
                       src={previewImageUrl(imageUrl)}
                       alt={`${product.title} ${index + 1}`}
                       className="aspect-square w-full object-cover"
-                      loading="lazy"
+                      fallback={
+                        <div className="aspect-square w-full flex items-center justify-center bg-secondary/40">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      }
                     />
                     <div className="flex items-center justify-between gap-2 px-2 py-1.5">
                       <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">

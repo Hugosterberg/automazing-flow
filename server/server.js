@@ -47,6 +47,7 @@ import { registerTeamRoutes } from "./routes/teamRoutes.ts";
 import { registerAutomationRoutes } from "./routes/automationRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
+import { registerProductRoutes } from "./routes/productRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -437,6 +438,14 @@ registerDigitalBrandRoutes(app, {
 });
 
 registerEcommerceRoutes(app, {
+  getSessionUserId,
+  getStoredAccountAccess,
+  tokenStore,
+});
+
+registerProductRoutes(app, {
+  requireMembership,
+  supabaseAdmin: supabaseServiceClient,
   getSessionUserId,
   getStoredAccountAccess,
   tokenStore,

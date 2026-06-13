@@ -42,6 +42,7 @@ import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
@@ -179,6 +180,7 @@ export default function Index() {
     useAccounts();
   const activeBpId = useActiveBusinessProfileIdOptional();
   const homeBusinessProfileId = activeBpId ?? activeProfileId ?? null;
+  const { connections } = useConnections(homeBusinessProfileId);
   const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -263,12 +265,13 @@ export default function Index() {
   );
   const connectionIssues = useMemo(() => {
     // Surface connections that need user attention. We treat anything
-    // other than "healthy" as an issue so the home dashboard is honest
-    // about what the user still needs to fix.
-    return accounts.filter(
-      (a) => a.health && a.health !== "healthy" && a.health !== "pending"
+    // other than "healthy"/"pending" as an issue so the home dashboard is
+    // honest about what the user still needs to fix. Health lives on the
+    // connections view (not on ConnectedAccount), so read it from there.
+    return connections.filter(
+      (c) => c.health && c.health !== "healthy" && c.health !== "pending"
     );
-  }, [accounts]);
+  }, [connections]);
 
   const profileSummary = useMemo(() => {
     const connectedCount = accounts.length;

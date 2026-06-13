@@ -100,11 +100,23 @@ export function ProfileSwitcher() {
               return (
                 <div
                   key={profile.id}
-                  className={`flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 hover:bg-accent/50 group cursor-pointer transition-colors ${
+                  role={editingId === profile.id ? undefined : "button"}
+                  tabIndex={editingId === profile.id ? undefined : 0}
+                  aria-label={editingId === profile.id ? undefined : `Switch to ${profile.name}`}
+                  aria-current={isSelected ? "true" : undefined}
+                  className={`flex items-center gap-2 rounded-sm mx-1 px-2 py-1.5 hover:bg-accent/50 group cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     isSelected ? "bg-accent/60" : ""
                   }`}
                   onClick={() => {
                     if (editingId !== profile.id) {
+                      setActiveProfileId(profile.id);
+                      setOpen(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (editingId === profile.id) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
                       setActiveProfileId(profile.id);
                       setOpen(false);
                     }

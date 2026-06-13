@@ -365,6 +365,160 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
   };
 }
 
+type ShopifyProductImage = {
+  id?: number | string;
+  src?: string;
+  alt?: string | null;
+};
+
+type ShopifyFullProduct = {
+  id: number | string;
+  title?: string;
+  body_html?: string | null;
+  handle?: string;
+  vendor?: string;
+  product_type?: string;
+  tags?: string;
+  status?: string;
+  images?: ShopifyProductImage[];
+  image?: ShopifyProductImage | null;
+  variants?: Array<
+    ShopifyProductVariant & { image_id?: number | string | null }
+  >;
+};
+
+/** Strip HTML tags/entities to a plain-text description we can edit safely. */
+export function htmlToText(html: string | null | undefined): string {
+  if (!html) return "";
+  return html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/p\s*>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export type NormalizedShopifyProduct = {
+  externalId: string;
+  title: string;
+  description: string;
+  price: string | null;
+  currency: string;
+  status: string | null;
+  vendor: string | null;
+  productType: string | null;
+  tags: string[];
+  handle: string | null;
+  adminUrl: string;
+  images: Array<{ src: string; alt: string | null }>;
+  variants: Array<{ id: string; title: string; price: string | null; sku: string | null }>;
+};
+
+/**
+ * Pure mapping from Shopify's raw products payload to our normalized catalogue
+ * shape. Extracted from {@link fetchShopifyProducts} so it can be unit-tested
+ * without hitting the network.
+ */
+export function normalizeShopifyProducts(
+  products: ShopifyFullProduct[],
+  currency: string,
+  shop: string
+): NormalizedShopifyProduct[] {
+  const adminBase = `https://${shop}/admin`;
+  return products.map((p) => {
+    const variants = p.variants || [];
+    const firstPrice = variants.find((v) => v.price != null)?.price;
+    const images = (p.images && p.images.length > 0 ? p.images : p.image ? [p.image] : [])
+      .map((img) => ({ src: String(img?.src || ""), alt: img?.alt ?? null }))
+      .filter((img) => img.src);
+    return {
+      externalId: String(p.id),
+      title: p.title || "Untitled product",
+      description: htmlToText(p.body_html),
+      price: firstPrice != null ? String(firstPrice) : null,
+      currency,
+      status: p.status ?? null,
+      vendor: p.vendor || null,
+      productType: p.product_type || null,
+      tags: (p.tags || "")
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      handle: p.handle || null,
+      adminUrl: `${adminBase}/products/${p.id}`,
+      images,
+      variants: variants.map((v) => ({
+        id: String(v.id),
+        title: v.title && v.title !== "Default Title" ? v.title : "",
+        price: v.price != null ? String(v.price) : null,
+        sku: v.sku || null,
+      })),
+    };
+  });
+}
+
+/**
+ * Pull the full product catalogue from a Shopify store (title, description,
+ * images, variants, vendor, etc.) so it can be mirrored into our `products`
+ * table. Distinct from {@link fetchShopifyAccountData}, which only returns the
+ * trimmed analytics slice the dashboard needs.
+ */
+export async function fetchShopifyProducts(
+  accessToken: string,
+  shop: string | undefined,
+  limit = 100
+): Promise<
+  | { error: string; status: number }
+  | { products: NormalizedShopifyProduct[]; currency: string }
+> {
+  if (!shop) {
+    return { error: "No shop domain stored for this account", status: 400 };
+  }
+
+  const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const cappedLimit = Math.min(250, Math.max(1, limit));
+
+  const [shopRes, productsRes] = await Promise.all([
+    fetch(`${apiBase}/shop.json?fields=currency`, { headers: shopHeaders }),
+    fetch(
+      `${apiBase}/products.json?limit=${cappedLimit}&fields=id,title,body_html,handle,vendor,product_type,tags,status,images,image,variants`,
+      { headers: shopHeaders }
+    ),
+  ]);
+
+  if (!productsRes.ok) {
+    const raw = await productsRes.json().catch(() => ({}));
+    const detail = formatShopifyErrors(raw);
+    if (productsRes.status === 401) {
+      return { error: detail || "Shopify rejected the access token. Reconnect the store.", status: 401 };
+    }
+    if (productsRes.status === 403) {
+      return {
+        error: detail || "Shopify denied reading products. Reconnect to grant read_products scope.",
+        status: 403,
+      };
+    }
+    return { error: detail || "Could not fetch Shopify products", status: productsRes.status };
+  }
+
+  const shopData = await shopRes.json().catch(() => ({}));
+  const currency =
+    (shopData?.shop?.currency && String(shopData.shop.currency)) || "USD";
+  const productsData = (await productsRes.json().catch(() => ({}))) as {
+    products?: ShopifyFullProduct[];
+  };
+  const products = productsData.products || [];
+
+  return { products: normalizeShopifyProducts(products, currency, shop), currency };
+}
+
 type ShopifyDraftImageInput = {
   filename: string;
   attachment: string;

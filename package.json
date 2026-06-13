@@ -19,12 +19,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:server": "tsc -p server/tsconfig.json",
-    "verify": "npm run typecheck:server && npm run lint && npm test && npm run build",
+    "typecheck:client": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "npm run typecheck:server && npm run typecheck:client",
+    "verify": "npm run typecheck:server && npm run typecheck:client && npm run lint && npm test && npm run build",
     "supabase:link": "npx supabase link --project-ref plkptubozuzeieurxsok",
     "supabase:migration:new": "npx supabase migration new",
     "supabase:db:push": "npx supabase db push",
     "supabase:gen:types": "npx supabase gen types typescript --linked --schema public > src/types/supabase.ts",
-    "verify:supabase": "node --experimental-strip-types scripts/verify-supabase.ts"
+    "verify:supabase": "node --experimental-strip-types scripts/verify-supabase.ts",
+    "smoke:apiai": "node --experimental-strip-types scripts/apiai-smoke.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

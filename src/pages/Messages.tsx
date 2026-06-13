@@ -581,8 +581,17 @@ export default function MessagesPage() {
                   <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
                     <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
                       <CardContent
-                        className="p-4 flex items-start gap-3"
+                        className="p-4 flex items-start gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Öppna meddelande: ${msg.subject}`}
                         onClick={() => setSelectedMessage(msg)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedMessage(msg);
+                          }
+                        }}
                       >
                         <div className={`h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-white ${avatarColor(msg.from.name || msg.from.email || msg.id)}`}>
                           {senderInitial(msg.from.name || msg.from.email)}

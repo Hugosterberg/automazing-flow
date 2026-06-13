@@ -58,6 +58,34 @@ async function readError(res: Response): Promise<string> {
   return res.statusText || "Request failed";
 }
 
+export type ApiaiHealth = {
+  ok: boolean;
+  keyConfigured: boolean;
+  reachable: boolean;
+  authorized: boolean;
+  status: number | null;
+  latencyMs: number | null;
+  toolCount: number;
+  workflowCount: number;
+  flowCount: number;
+  sampleTools: Array<{ slug: string; name: string; type: string }>;
+  error: string | null;
+};
+
+/**
+ * Probe apiai.me connectivity + auth for a profile. The endpoint always
+ * returns 200 with a structured verdict, so this only throws on transport
+ * errors (server unreachable), not on a bad/missing apiai key.
+ */
+export async function checkApiaiHealth(businessProfileId: string): Promise<ApiaiHealth> {
+  const params = new URLSearchParams({ business_profile_id: businessProfileId });
+  const res = await fetch(apiUrl(`/api/apiai/health?${params.toString()}`), {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as ApiaiHealth;
+}
+
 export async function listApiaiTools(businessProfileId: string): Promise<ApiaiTool[]> {
   const params = new URLSearchParams({ business_profile_id: businessProfileId });
   const res = await fetch(apiUrl(`/api/apiai/tools?${params.toString()}`), {

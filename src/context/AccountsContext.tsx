@@ -430,14 +430,14 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (authLoading || !enabled || !supabase || !user) return;
 
-    let refreshTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     let ignore = false;
     const refreshAccounts = (event: Event) => {
       const preserveLocalMissing =
         event instanceof CustomEvent &&
         Boolean((event.detail as { preserveLocalMissing?: unknown } | null)?.preserveLocalMissing);
-      if (refreshTimer) window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(async () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
         const mappedAccounts = await fetchAccountsFromSupabase();
         if (ignore || !mappedAccounts) return;
         if (!preserveLocalMissing) {
@@ -456,7 +456,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     window.addEventListener("automazing:connections-changed", refreshAccounts);
     return () => {
       ignore = true;
-      if (refreshTimer) window.clearTimeout(refreshTimer);
+      if (refreshTimer) clearTimeout(refreshTimer);
       window.removeEventListener("automazing:connections-changed", refreshAccounts);
     };
   }, [authLoading, enabled, user, fetchAccountsFromSupabase]);
