@@ -29,7 +29,7 @@ interface AutomationRoutesDeps {
 }
 
 const SETTINGS_COLUMNS =
-  "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,updated_at";
+  "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,daily_digest_enabled,marketing_alerts_enabled,notification_email,updated_at";
 
 function canManageAutomation(role: unknown): boolean {
   return role === "owner" || role === "admin" || role === "editor";
@@ -44,9 +44,11 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
       return res.json({ storeEnabled: false, settings: { ...DEFAULT_AUTOMATION_SETTINGS } });
     }
     try {
+      // Select "*" so a not-yet-applied migration (new notification columns)
+      // never breaks reads — the domain mapper treats missing columns as off.
       const { data, error } = await supabaseAdmin
         .from("automation_settings")
-        .select(SETTINGS_COLUMNS)
+        .select("*")
         .eq("business_profile_id", businessProfileId)
         .maybeSingle();
       if (error) {
@@ -75,9 +77,15 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
       tone?: string;
       language?: string;
       instructions?: string;
+      dailyDigestEnabled?: boolean;
+      marketingAlertsEnabled?: boolean;
+      notificationEmail?: string;
     };
 
     const mode = body.dmAutoReplyMode === "send" ? "send" : "draft";
+    // A notification email is optional; when provided it must look like one.
+    const rawEmail = String(body.notificationEmail ?? "").trim().slice(0, 254);
+    const notificationEmail = rawEmail && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawEmail) ? rawEmail : "";
     const row = {
       business_profile_id: businessProfileId,
       dm_auto_reply_enabled: Boolean(body.dmAutoReplyEnabled),
@@ -86,6 +94,9 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
       language:
         String(body.language ?? DEFAULT_AUTOMATION_SETTINGS.language).trim() || DEFAULT_AUTOMATION_SETTINGS.language,
       instructions: String(body.instructions ?? "").slice(0, 2000),
+      daily_digest_enabled: Boolean(body.dailyDigestEnabled),
+      marketing_alerts_enabled: Boolean(body.marketingAlertsEnabled),
+      notification_email: notificationEmail || null,
       updated_by: getSessionUserId(req),
       updated_at: new Date().toISOString(),
     };

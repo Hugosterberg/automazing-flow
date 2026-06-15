@@ -40,6 +40,7 @@ const DigitalBrandPage = lazy(() => import("./pages/DigitalBrand"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const ContentPage = lazy(() => import("./pages/Content"));
 const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage"));
+const CompanyPage = lazy(() => import("./pages/Company"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
 const ActivityPage = lazy(() => import("./pages/Activity"));
 
@@ -129,6 +130,7 @@ const App = () => {
                       <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
                       <Route path="/preferences" element={<PreferencesPage />} />
                       <Route path="/connections" element={<ConnectionsPage />} />
+                      <Route path="/company" element={<CompanyPage />} />
                       <Route path="/integrations" element={<ConnectionsPage />} />
                       {/*
                        * Back-compat redirects. `/connect-accounts` lives on

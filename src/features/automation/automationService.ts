@@ -12,6 +12,10 @@ export interface AutomationSettings {
   tone: string;
   language: string;
   instructions: string;
+  dailyDigestEnabled: boolean;
+  marketingAlertsEnabled: boolean;
+  /** Where automated updates are emailed; empty = fall back to profile/owner email. */
+  notificationEmail: string;
 }
 
 export interface AutoReplyLogEntry {

@@ -255,7 +255,21 @@ describe("automationSettingsRowToDomain", () => {
       tone: "friendly",
       language: "Swedish",
       instructions: "Never mention prices.",
+      dailyDigestEnabled: false,
+      marketingAlertsEnabled: false,
+      notificationEmail: "",
     });
+  });
+
+  it("maps the notification preferences", () => {
+    const settings = automationSettingsRowToDomain({
+      daily_digest_enabled: true,
+      marketing_alerts_enabled: true,
+      notification_email: "owner@example.com",
+    });
+    expect(settings.dailyDigestEnabled).toBe(true);
+    expect(settings.marketingAlertsEnabled).toBe(true);
+    expect(settings.notificationEmail).toBe("owner@example.com");
   });
 });
 

@@ -15,8 +15,14 @@ import { sendEmail, isEmailConfigured } from "../lib/email.ts";
 import { buildMarketingAlert } from "../lib/marketingAlert.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
 
-/** Resolve where a profile's notifications go: its contact email, else the owner's login email. */
-async function resolveRecipientEmail(supabaseAdmin, profile) {
+/**
+ * Resolve where a profile's notifications go: the explicit notification email
+ * chosen on the Company page, else the profile's contact email, else the
+ * owner's login email.
+ */
+async function resolveRecipientEmail(supabaseAdmin, profile, overrideEmail) {
+  const override = String(overrideEmail || "").trim();
+  if (override) return override;
   const direct = String(profile?.email || "").trim();
   if (direct) return direct;
   const ownerId = profile?.owner_user_id ? String(profile.owner_user_id) : "";
@@ -256,10 +262,30 @@ export function registerCronRoutes(app, deps) {
     const timeBudgetMs = 50_000;
 
     try {
+      // Only profiles that opted in on the Company/Updates page.
+      const { data: optedIn, error: settingsError } = await supabaseAdmin
+        .from("automation_settings")
+        .select("business_profile_id,notification_email")
+        .eq("daily_digest_enabled", true);
+      if (settingsError) {
+        console.error("[cron] daily-digest settings select failed:", settingsError.message);
+        return res.status(500).json({ error: "settings_load_failed" });
+      }
+      const optedInEmails = new Map(
+        (Array.isArray(optedIn) ? optedIn : []).map((r) => [
+          String(r.business_profile_id),
+          String(r.notification_email || ""),
+        ]),
+      );
+      if (optedInEmails.size === 0) {
+        return res.json({ ok: true, sent: 0, note: "no_profiles_opted_in" });
+      }
+
       const { data: profiles, error } = await supabaseAdmin
         .from("business_profiles")
         .select("id,name,email,owner_user_id")
-        .eq("status", "active");
+        .eq("status", "active")
+        .in("id", Array.from(optedInEmails.keys()));
       if (error) {
         console.error("[cron] daily-digest profiles select failed:", error.message);
         return res.status(500).json({ error: "list_profiles_failed" });
@@ -335,8 +361,12 @@ export function registerCronRoutes(app, deps) {
             continue;
           }
 
-          // Recipient: the profile's contact email, else the owner's login email.
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile);
+          // Recipient: chosen notification email → profile email → owner email.
+          const recipient = await resolveRecipientEmail(
+            supabaseAdmin,
+            profile,
+            optedInEmails.get(businessProfileId),
+          );
           if (!recipient) {
             skippedNoRecipient += 1;
             continue;
@@ -392,14 +422,33 @@ export function registerCronRoutes(app, deps) {
     const timeBudgetMs = 50_000;
 
     try {
-      // Group the user's ad/store accounts by business profile.
+      // Only profiles that opted into marketing alerts on the Company page.
+      const { data: optedIn, error: settingsError } = await supabaseAdmin
+        .from("automation_settings")
+        .select("business_profile_id,notification_email")
+        .eq("marketing_alerts_enabled", true);
+      if (settingsError) {
+        console.error("[cron] marketing-alerts settings select failed:", settingsError.message);
+        return res.status(500).json({ error: "settings_load_failed" });
+      }
+      const optedInEmails = new Map(
+        (Array.isArray(optedIn) ? optedIn : []).map((r) => [
+          String(r.business_profile_id),
+          String(r.notification_email || ""),
+        ]),
+      );
+      if (optedInEmails.size === 0) {
+        return res.json({ ok: true, sent: 0, note: "no_profiles_opted_in" });
+      }
+
+      // Group the user's ad/store accounts by business profile (opted-in only).
       const byProfile = new Map();
       for (const [, rawStored] of await tokenStore.entries()) {
         const stored = rawStored || {};
         const platform = String(stored.platform || "");
         if (platform !== "meta_business" && platform !== "google_ads" && platform !== "shopify") continue;
         const pid = String(stored.profileId || "").trim();
-        if (!pid) continue;
+        if (!pid || !optedInEmails.has(pid)) continue;
         if (!byProfile.has(pid)) byProfile.set(pid, { meta: [], google: [], shopify: null });
         const bucket = byProfile.get(pid);
         if (platform === "meta_business") bucket.meta.push(stored);
@@ -451,7 +500,7 @@ export function registerCronRoutes(app, deps) {
             skippedNoRecipient += 1;
             continue;
           }
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile);
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, optedInEmails.get(profileId));
           if (!recipient) {
             skippedNoRecipient += 1;
             continue;

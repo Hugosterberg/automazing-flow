@@ -14,6 +14,7 @@ import {
   Activity,
   Megaphone,
   Globe2,
+  Building2,
 } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import type { AccountPlatform } from "@/types/accounts";
@@ -53,6 +54,14 @@ export interface NavItem extends TopNavItem {
 }
 
 export const topNavItems: TopNavItem[] = [
+  {
+    key: "company",
+    title: "Company",
+    url: "/company",
+    icon: Building2,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
   {
     key: "connections",
     title: "Connections",

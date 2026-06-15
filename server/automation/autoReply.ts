@@ -37,6 +37,10 @@ export interface AutomationSettings {
   tone: string;
   language: string;
   instructions: string;
+  dailyDigestEnabled: boolean;
+  marketingAlertsEnabled: boolean;
+  /** Where automated updates are emailed; empty = fall back to profile/owner email. */
+  notificationEmail: string;
 }
 
 export const DEFAULT_AUTOMATION_SETTINGS: AutomationSettings = {
@@ -45,6 +49,9 @@ export const DEFAULT_AUTOMATION_SETTINGS: AutomationSettings = {
   tone: "warm, professional and concise",
   language: "the same language as the message",
   instructions: "",
+  dailyDigestEnabled: false,
+  marketingAlertsEnabled: false,
+  notificationEmail: "",
 };
 
 export function automationSettingsRowToDomain(row: Record<string, unknown> | null | undefined): AutomationSettings {
@@ -55,6 +62,9 @@ export function automationSettingsRowToDomain(row: Record<string, unknown> | nul
     tone: String(row.tone || DEFAULT_AUTOMATION_SETTINGS.tone),
     language: String(row.language || DEFAULT_AUTOMATION_SETTINGS.language),
     instructions: String(row.instructions || ""),
+    dailyDigestEnabled: Boolean(row.daily_digest_enabled),
+    marketingAlertsEnabled: Boolean(row.marketing_alerts_enabled),
+    notificationEmail: String(row.notification_email || ""),
   };
 }
 
