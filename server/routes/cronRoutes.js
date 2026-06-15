@@ -12,6 +12,22 @@ import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
 import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
+import { buildMarketingAlert } from "../lib/marketingAlert.ts";
+import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
+
+/** Resolve where a profile's notifications go: its contact email, else the owner's login email. */
+async function resolveRecipientEmail(supabaseAdmin, profile) {
+  const direct = String(profile?.email || "").trim();
+  if (direct) return direct;
+  const ownerId = profile?.owner_user_id ? String(profile.owner_user_id) : "";
+  if (!ownerId) return "";
+  try {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(ownerId);
+    return String(data?.user?.email || "").trim();
+  } catch {
+    return "";
+  }
+}
 
 /** Display label for a connection platform (digest copy). */
 function platformLabel(platform) {
@@ -62,7 +78,7 @@ function isAuthorisedCron(req) {
  * }} deps
  */
 export function registerCronRoutes(app, deps) {
-  const { oauthPendingStore, supabaseAdmin, zernio, secretResolver } = deps;
+  const { oauthPendingStore, supabaseAdmin, zernio, secretResolver, tokenStore } = deps;
 
   app.get("/api/cron/cleanup-oauth-pending", async (req, res) => {
     if (!isAuthorisedCron(req)) {
@@ -320,17 +336,7 @@ export function registerCronRoutes(app, deps) {
           }
 
           // Recipient: the profile's contact email, else the owner's login email.
-          let recipient = String(profile.email || "").trim();
-          if (!recipient && profile.owner_user_id) {
-            try {
-              const { data: userData } = await supabaseAdmin.auth.admin.getUserById(
-                String(profile.owner_user_id),
-              );
-              recipient = String(userData?.user?.email || "").trim();
-            } catch {
-              // owner lookup is best-effort
-            }
-          }
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile);
           if (!recipient) {
             skippedNoRecipient += 1;
             continue;
@@ -360,6 +366,131 @@ export function registerCronRoutes(app, deps) {
     } catch (e) {
       console.error("[cron] daily-digest unexpected:", e?.message || e);
       return res.status(500).json({ error: "daily_digest_failed" });
+    }
+  });
+
+  /**
+   * Marketing watchdog: per business profile, recomputes blended marketing
+   * performance from its connected ad/store accounts and emails an alert when
+   * ad spend is running underwater (ROAS < 1×) or campaigns run while the store
+   * is out of stock. Reuses the exact same gathering as the Marketing page, so
+   * the alert and the dashboard never disagree. No-ops without email config.
+   */
+  app.get("/api/cron/marketing-alerts", async (req, res) => {
+    if (!isAuthorisedCron(req)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!supabaseAdmin || !tokenStore) {
+      return res.status(503).json({ error: "dependencies_not_configured" });
+    }
+    if (!isEmailConfigured()) {
+      return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
+    }
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+
+    try {
+      // Group the user's ad/store accounts by business profile.
+      const byProfile = new Map();
+      for (const [, rawStored] of await tokenStore.entries()) {
+        const stored = rawStored || {};
+        const platform = String(stored.platform || "");
+        if (platform !== "meta_business" && platform !== "google_ads" && platform !== "shopify") continue;
+        const pid = String(stored.profileId || "").trim();
+        if (!pid) continue;
+        if (!byProfile.has(pid)) byProfile.set(pid, { meta: [], google: [], shopify: null });
+        const bucket = byProfile.get(pid);
+        if (platform === "meta_business") bucket.meta.push(stored);
+        else if (platform === "google_ads") bucket.google.push(stored);
+        else if (platform === "shopify" && !bucket.shopify) bucket.shopify = stored;
+      }
+
+      const graphVersion = readMetaGraphVersion();
+      const googleAdsConfig = readGoogleAdsConfig();
+      let sent = 0;
+      let noAlert = 0;
+      let skippedNoRecipient = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const [profileId, accounts] of byProfile) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        // Need at least one ad platform for a campaign/ROAS signal.
+        if (accounts.meta.length === 0 && accounts.google.length === 0) {
+          noAlert += 1;
+          continue;
+        }
+
+        try {
+          const data = await gatherMarketingData(accounts, { graphVersion, googleAdsConfig });
+          const alert = buildMarketingAlert({
+            businessName: "Your business",
+            appUrl: appUrl || undefined,
+            currency: data.performance.adSpendCurrency || data.performance.revenueCurrency,
+            roas: data.performance.roas,
+            adSpend: data.performance.adSpend,
+            revenue: data.performance.revenue,
+            inventory: data.inventoryAlert,
+          });
+          if (!alert.hasAlert) {
+            noAlert += 1;
+            continue;
+          }
+
+          const { data: profile } = await supabaseAdmin
+            .from("business_profiles")
+            .select("id,name,email,owner_user_id")
+            .eq("id", profileId)
+            .maybeSingle();
+          if (!profile) {
+            skippedNoRecipient += 1;
+            continue;
+          }
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile);
+          if (!recipient) {
+            skippedNoRecipient += 1;
+            continue;
+          }
+
+          // Re-render with the real business name now that we have it.
+          const named = buildMarketingAlert({
+            businessName: String(profile.name || "Your business"),
+            appUrl: appUrl || undefined,
+            currency: data.performance.adSpendCurrency || data.performance.revenueCurrency,
+            roas: data.performance.roas,
+            adSpend: data.performance.adSpend,
+            revenue: data.performance.revenue,
+            inventory: data.inventoryAlert,
+          });
+          const result = await sendEmail({
+            to: recipient,
+            subject: named.subject,
+            html: named.html,
+            text: named.text,
+          });
+          if (result.ok) sent += 1;
+          else failed += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(
+            `[cron] marketing-alerts profile=${profileId} failed:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+
+      console.log(
+        `[cron] marketing-alerts: profiles=${byProfile.size} sent=${sent} noAlert=${noAlert} noRecipient=${skippedNoRecipient} failed=${failed} deferred=${deferred}`,
+      );
+      return res.json({ ok: true, sent, noAlert, skippedNoRecipient, failed, deferred });
+    } catch (e) {
+      console.error("[cron] marketing-alerts unexpected:", e?.message || e);
+      return res.status(500).json({ error: "marketing_alerts_failed" });
     }
   });
 }

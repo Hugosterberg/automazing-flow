@@ -331,6 +331,7 @@ registerCronRoutes(app, {
   supabaseAdmin: supabaseServiceClient,
   zernio: zernioModule,
   secretResolver,
+  tokenStore,
 });
 
 registerAuthRoutes(app, {
