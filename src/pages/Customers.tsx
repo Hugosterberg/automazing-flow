@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
 import { useProfileDocument } from "@/features/profile-documents";
+import { CustomerInsightsCard } from "@/features/customers/CustomerInsightsCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -214,6 +215,12 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
       </m.div>
+
+      {rows.length > 0 ? (
+        <m.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
+          <CustomerInsightsCard columns={columns} rows={rows} />
+        </m.div>
+      ) : null}
 
       <m.div
         initial={{ opacity: 0, y: 12 }}
