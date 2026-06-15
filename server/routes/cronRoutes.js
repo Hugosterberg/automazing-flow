@@ -14,6 +14,7 @@ import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
 import { buildMarketingAlert } from "../lib/marketingAlert.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
+import { logActivity } from "../lib/activityLog.ts";
 
 /**
  * Resolve where a profile's notifications go: the explicit notification email
@@ -539,8 +540,20 @@ export function registerCronRoutes(app, deps) {
             html: named.html,
             text: named.text,
           });
-          if (result.ok) sent += 1;
-          else failed += 1;
+          if (result.ok) {
+            sent += 1;
+            // Record it so the alert also shows in the notifications bell / Activity.
+            void logActivity(supabaseAdmin, {
+              businessProfileId: profileId,
+              module: "marketing",
+              eventType: "marketing.alert",
+              severity: "warning",
+              summary: named.reasons[0] || "Marketing needs attention",
+              payload: { reasons: named.reasons },
+            });
+          } else {
+            failed += 1;
+          }
         } catch (err) {
           failed += 1;
           console.warn(
