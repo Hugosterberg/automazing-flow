@@ -1,4 +1,5 @@
 import { Layers, Loader2 } from "lucide-react";
+import type { JSX } from "react";
 import {
   Dialog,
   DialogContent,

@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import type { JSX } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import {

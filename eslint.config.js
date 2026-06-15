@@ -22,6 +22,9 @@ export default tseslint.config(
       "react-hooks/immutability": "off",
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
+      // React Compiler optimisation hint, not a correctness rule — off, in line
+      // with the other compiler checks disabled above.
+      "react-hooks/preserve-manual-memoization": "off",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
     },

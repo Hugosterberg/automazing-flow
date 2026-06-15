@@ -235,7 +235,7 @@ export async function checkApiaiHealth(apiKey: string | null | undefined): Promi
   }
 
   // Authorized — enumerate tools so the caller sees what's actually available.
-  let tools: ApiaiTool[] = [];
+  let tools: ApiaiTool[];
   try {
     tools = await listTools(apiKey);
   } catch (error) {

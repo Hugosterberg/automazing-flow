@@ -79,7 +79,7 @@ export async function fetchGoogleAdsActiveCampaigns(
   if (config.loginCustomerId) headers["login-customer-id"] = String(config.loginCustomerId).replace(/-/g, "");
 
   // 1. Discover the first accessible customer (ads account).
-  let customerId = "";
+  let customerId: string;
   try {
     const res = await fetch(`${ADS_API}/customers:listAccessibleCustomers`, {
       headers,
@@ -103,7 +103,7 @@ export async function fetchGoogleAdsActiveCampaigns(
     "metrics.impressions, metrics.clicks, metrics.conversions_value FROM campaign " +
     "WHERE campaign.status = 'ENABLED' AND segments.date DURING LAST_7_DAYS";
 
-  let results: Array<Record<string, unknown>> = [];
+  let results: Array<Record<string, unknown>>;
   let currency: string | undefined;
   try {
     const res = await fetch(`${ADS_API}/customers/${customerId}/googleAds:searchStream`, {
