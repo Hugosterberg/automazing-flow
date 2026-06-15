@@ -18,6 +18,7 @@
 
 import { generateReplyDraft } from "../ai/replyDraft.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
+import { logActivity } from "../lib/activityLog.ts";
 import {
   parseZernioConversationList,
   parseZernioConversationMessages,
@@ -312,8 +313,19 @@ export async function runAutoReplyForProfile(
       summary.errors.push(`log_insert_failed: ${insertError.message}`);
     }
 
-    if (status === "sent") summary.sent += 1;
-    else if (status === "drafted") summary.drafted += 1;
+    if (status === "sent") {
+      summary.sent += 1;
+      // Surface the auto-reply in the notifications bell / Activity feed.
+      void logActivity(deps.supabaseAdmin, {
+        businessProfileId: profile.id,
+        module: "automation",
+        eventType: "auto_reply.sent",
+        subjectType: "conversation",
+        subjectId: candidate.conversationId,
+        severity: "success",
+        summary: `Auto-replied to ${candidate.authorName || "a customer"} on ${candidate.platform || "DM"}`,
+      });
+    } else if (status === "drafted") summary.drafted += 1;
     else {
       summary.failed += 1;
       if (errorText) summary.errors.push(errorText);
