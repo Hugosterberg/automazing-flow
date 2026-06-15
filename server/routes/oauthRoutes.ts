@@ -17,6 +17,7 @@ import {
   deterministicAccountId,
   pruneDuplicateAccountEntries,
 } from "../lib/accountIdentity.ts";
+import { exchangeForLongLivedInstagramToken } from "../providers/instagram.ts";
 
 interface OAuthPendingRecord {
   platform: string;
@@ -1542,6 +1543,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(`${BASE_URL}/${igSuccessPage}?oauth_error=${encodeURIComponent(String(rawErr))}`);
       }
       const username = data.user?.username || `user_${data.user_id}`;
+      // Instagram returns a short-lived (~1h) token. Exchange it for a
+      // long-lived (~60 day) token up front and store its expiry so the
+      // account-data handler can refresh it before it dies. Fall back to the
+      // short-lived token if the exchange fails (the handler still surfaces a
+      // clean reconnect prompt in that case).
+      const longLived = await exchangeForLongLivedInstagramToken(data.access_token, clientSecret);
+      const igAccessToken = longLived?.accessToken || data.access_token;
+      const igExpiresAt = longLived?.expiresAt || null;
       // Stable id per Instagram user: reconnecting overwrites instead of duplicating.
       const accountId = data.user_id
         ? deterministicAccountId("ig", String(data.user_id))
@@ -1550,7 +1559,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "instagram",
         ownerUserId: callbackUserId || pending.userId,
         profileId: pending.profileId || null,
-        accessToken: data.access_token,
+        accessToken: igAccessToken,
+        expiresAt: igExpiresAt,
         userId: data.user_id,
         username,
       });

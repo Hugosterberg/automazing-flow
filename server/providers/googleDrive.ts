@@ -35,6 +35,7 @@ async function refreshGoogleToken({
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const data = await res.json().catch(() => ({}));
   return data?.access_token || null;

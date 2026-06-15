@@ -26,6 +26,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { apiUrl } from "@/lib/apiBase";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type RecommendationArea = "seo" | "performance" | "trust" | "channels";
 type RecommendationPriority = "high" | "medium" | "low";
@@ -462,7 +463,7 @@ function calculateReadiness(audit: WebsiteAudit | null, recommendations: BrandRe
 
 async function fetchAudit(websiteUrl: string): Promise<WebsiteAudit> {
   const params = new URLSearchParams({ url: websiteUrl });
-  const response = await fetch(apiUrl(`/api/digital-brand/audit?${params.toString()}`), {
+  const response = await fetchWithTimeout(apiUrl(`/api/digital-brand/audit?${params.toString()}`), {
     credentials: "include",
   });
   const payload = await response.json().catch(() => ({}));

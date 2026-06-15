@@ -48,6 +48,8 @@ import {
   WhatsAppIcon,
 } from "@/components/platform-icons";
 import type { ConnectedAccount, SocialPlatform } from "@/types/accounts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   instagram: InstagramIcon,
@@ -203,7 +205,7 @@ async function runAIAnalysis(
   profile: { displayName?: string; username?: string; followersCount?: number }
 ): Promise<{ about: string; writes: string; perception: string }> {
   const captions = posts.map((p) => p.caption).filter(Boolean);
-  const res = await fetch(apiUrl(`/api/accounts/${accountId}/analyze`), {
+  const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/analyze`), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -243,7 +245,7 @@ async function generateVideoDraft(payload: {
   platform: string;
   objective: string;
 }): Promise<{ draft: VideoDraftResult; source: string }> {
-  const res = await fetch(apiUrl("/api/content/video-draft"), {
+  const res = await fetchWithTimeout(apiUrl("/api/content/video-draft"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -251,7 +253,7 @@ async function generateVideoDraft(payload: {
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
-    throw new Error(payload?.error || "Could not generate video draft");
+    throw new Error(apiErrorMessage(payload, "Could not generate video draft"));
   }
   return res.json();
 }
@@ -304,23 +306,23 @@ export default function SocialMedia() {
     allowImplicitFirstAccount: false,
     scopeSort: sortSocialPageAccounts,
     fetcher: async (accountId) => {
-      let res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      let res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (res.status === 401 && authMode === "local") {
-        await fetch(apiUrl("/api/auth/local-session"), {
+        await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         }).catch(() => {});
-        res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+        res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       }
       if (res.status === 401 && authMode === "cloud" && session?.access_token) {
-        await fetch(apiUrl("/api/auth/session"), {
+        await fetchWithTimeout(apiUrl("/api/auth/session"), {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}` },
           credentials: "include",
         }).catch(() => {});
-        res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+        res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));

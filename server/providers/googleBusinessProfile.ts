@@ -272,6 +272,7 @@ export async function fetchGoogleBusinessOfficialAccountData(
         refresh_token: refreshToken,
         grant_type: "refresh_token",
       }).toString(),
+      signal: AbortSignal.timeout(15_000),
     });
     const refreshData = (await refreshRes.json().catch(() => ({}))) as Loose;
     const newTok = typeof refreshData.access_token === "string" ? refreshData.access_token : null;
@@ -283,11 +284,11 @@ export async function fetchGoogleBusinessOfficialAccountData(
   }
 
   async function fetchJson(url: string): Promise<{ res: Response; data: unknown }> {
-    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
     if (res.status === 401 && refreshToken && googleClientId && googleClientSecret) {
       const refreshed = await refreshAccess();
       if (refreshed) {
-        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
       }
     }
     const data = await res.json().catch(() => ({}));

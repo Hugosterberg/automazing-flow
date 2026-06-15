@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/apiBase";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export type ApiaiParam = {
   name?: string;
@@ -79,7 +80,7 @@ export type ApiaiHealth = {
  */
 export async function checkApiaiHealth(businessProfileId: string): Promise<ApiaiHealth> {
   const params = new URLSearchParams({ business_profile_id: businessProfileId });
-  const res = await fetch(apiUrl(`/api/apiai/health?${params.toString()}`), {
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/health?${params.toString()}`), {
     credentials: "include",
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -88,7 +89,7 @@ export async function checkApiaiHealth(businessProfileId: string): Promise<Apiai
 
 export async function listApiaiTools(businessProfileId: string): Promise<ApiaiTool[]> {
   const params = new URLSearchParams({ business_profile_id: businessProfileId });
-  const res = await fetch(apiUrl(`/api/apiai/tools?${params.toString()}`), {
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/tools?${params.toString()}`), {
     credentials: "include",
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -104,7 +105,7 @@ export async function runApiaiTool(input: {
   assets: SelectedContentAsset[];
   outputFilename?: string;
 }): Promise<ApiaiRunResult> {
-  const res = await fetch(apiUrl("/api/apiai/run"), {
+  const res = await fetchWithTimeout(apiUrl("/api/apiai/run"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

@@ -3,6 +3,7 @@ import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export type ZernioAccountRow = {
   _id?: string;
@@ -41,7 +42,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
     setZernioLoading(true);
     setZernioError(null);
     try {
-      const r = await fetch(apiUrl("/api/zernio/accounts"), { credentials: "include" });
+      const r = await fetchWithTimeout(apiUrl("/api/zernio/accounts"), { credentials: "include" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         throw new Error(typeof j.error === "string" ? j.error : "Could not load Zernio accounts");
@@ -62,7 +63,7 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
       setZernioLinking(zid);
       setZernioError(null);
       try {
-        const r = await fetch(apiUrl("/api/zernio/link"), {
+        const r = await fetchWithTimeout(apiUrl("/api/zernio/link"), {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

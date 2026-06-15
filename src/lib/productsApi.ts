@@ -6,6 +6,7 @@
 
 import { apiUrl } from "@/lib/apiBase";
 import type { Product, ProductInput } from "@/types/ecommerce";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T> {
   const payload = await res.json().catch(() => ({}));
@@ -16,7 +17,7 @@ async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T>
 }
 
 export async function fetchProducts(businessProfileId: string): Promise<Product[]> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     apiUrl(`/api/products?business_profile_id=${encodeURIComponent(businessProfileId)}`),
     { credentials: "include" }
   );
@@ -28,7 +29,7 @@ export async function createProduct(
   businessProfileId: string,
   input: ProductInput
 ): Promise<Product> {
-  const res = await fetch(apiUrl("/api/products"), {
+  const res = await fetchWithTimeout(apiUrl("/api/products"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -43,7 +44,7 @@ export async function updateProduct(
   id: string,
   patch: Partial<ProductInput>
 ): Promise<Product> {
-  const res = await fetch(apiUrl(`/api/products/${encodeURIComponent(id)}`), {
+  const res = await fetchWithTimeout(apiUrl(`/api/products/${encodeURIComponent(id)}`), {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -54,7 +55,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(businessProfileId: string, id: string): Promise<void> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     apiUrl(
       `/api/products/${encodeURIComponent(id)}?business_profile_id=${encodeURIComponent(businessProfileId)}`
     ),
@@ -67,7 +68,7 @@ export async function importShopifyProducts(
   businessProfileId: string,
   accountId: string
 ): Promise<{ imported: number; updated: number; products: Product[] }> {
-  const res = await fetch(apiUrl("/api/products/import/shopify"), {
+  const res = await fetchWithTimeout(apiUrl("/api/products/import/shopify"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

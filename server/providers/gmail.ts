@@ -106,7 +106,7 @@ export async function fetchGmailAccountData({
       }).toString(),
       signal: AbortSignal.timeout(15_000),
     });
-    const d = (await r.json()) as {
+    const d = (await r.json().catch(() => ({}))) as {
       access_token?: string;
       error?: string;
       error_description?: string;

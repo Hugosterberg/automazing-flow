@@ -1,5 +1,7 @@
 import type { TypedSupabaseClient } from "@/lib/supabase";
 import type { Tables, TablesUpdate } from "@/types/supabase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 export type AiRecommendationRow = Tables<"ai_recommendations">;
 export type AiRecommendationKind = AiRecommendationRow["kind"];
@@ -98,7 +100,7 @@ export interface GenerateAiRecommendationsResult {
 export async function generateAiRecommendations(
   businessProfileId: string
 ): Promise<GenerateAiRecommendationsResult> {
-  const res = await fetch("/api/ai-recommendations/generate", {
+  const res = await fetchWithTimeout("/api/ai-recommendations/generate", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -111,11 +113,7 @@ export async function generateAiRecommendations(
     // Body wasn't JSON — fall through to the status-based error below.
   }
   if (!res.ok) {
-    const message =
-      body && typeof body === "object" && "error" in body
-        ? String((body as { error?: unknown }).error ?? "generate_failed")
-        : `generate_failed_${res.status}`;
-    throw new Error(message);
+    throw new Error(apiErrorMessage(body, `Couldn't refresh recommendations (${res.status}).`));
   }
   const result = (body ?? {}) as GenerateAiRecommendationsResult;
   return {

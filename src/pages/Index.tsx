@@ -44,6 +44,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
+import { SmartDailyBrief } from "@/features/daily-brief";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
   useTasks,
@@ -53,27 +54,7 @@ import {
 } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  x: "X",
-  facebook: "Facebook",
-  google_business: "Google Business",
-  google_ads: "Google Ads",
-  meta_business: "Meta Business",
-  google_reviews: "Google Reviews",
-  tripadvisor: "Tripadvisor",
-  whatsapp: "WhatsApp",
-  shopify: "Shopify",
-  notion: "Notion",
-  gmail: "Gmail",
-  outlook: "Outlook",
-  google_calendar: "Google Calendar",
-  outlook_calendar: "Outlook Calendar",
-  google_drive: "Google Drive",
-};
+import { platformLabel } from "@/lib/platformLabels";
 
 /**
  * Today tile — one compact stat with a deep-link. Rendered in the home
@@ -281,7 +262,7 @@ export default function Index() {
     }, {});
     const platformText = Object.entries(grouped)
       .map(
-        ([platform, count]) => `${PLATFORM_LABEL[platform] || platform} (${count})`
+        ([platform, count]) => `${platformLabel(platform)} (${count})`
       )
       .join(", ");
 
@@ -346,6 +327,8 @@ export default function Index() {
       </header>
 
       <ProfileList />
+
+      <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 
       <section aria-label="Today" className="space-y-2">
         <div className="flex items-baseline justify-between">

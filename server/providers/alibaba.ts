@@ -199,11 +199,11 @@ function extractEmbeddedProductJson(html: string): Partial<AlibabaProductImport>
   };
 }
 
-function extractImageUrls(html: string, baseUrl: string): string[] {
+export function extractImageUrls(html: string, baseUrl: string): string[] {
   const found = new Set<string>();
   const patterns = [
-    /https?:\/\/[^"'\\s>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\\s>]*)?/gi,
-    /\/\/[^"'\\s>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\\s>]*)?/gi,
+    /https?:\/\/[^"'\s>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s>]*)?/gi,
+    /\/\/[^"'\s>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s>]*)?/gi,
   ];
   for (const pattern of patterns) {
     for (const match of html.matchAll(pattern)) {

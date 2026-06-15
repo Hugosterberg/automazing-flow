@@ -26,6 +26,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
 import { useAuth } from "@/context/AuthContext";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 type Member = {
   userId: string;
@@ -72,7 +74,7 @@ export function TeamManager({ businessProfileId }: Props) {
   const { data, isLoading } = useQuery<{ members: Member[] }>({
     queryKey: ["team-members", businessProfileId],
     queryFn: async () => {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         apiUrl(`/api/team/members?business_profile_id=${encodeURIComponent(businessProfileId)}`),
         { credentials: "include" }
       );
@@ -84,7 +86,7 @@ export function TeamManager({ businessProfileId }: Props) {
 
   const inviteMut = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      const res = await fetch(apiUrl("/api/team/invite"), {
+      const res = await fetchWithTimeout(apiUrl("/api/team/invite"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -92,7 +94,7 @@ export function TeamManager({ businessProfileId }: Props) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Inbjudan misslyckades");
+        throw new Error(apiErrorMessage(body, "Inbjudan misslyckades"));
       }
       return res.json();
     },
@@ -108,13 +110,13 @@ export function TeamManager({ businessProfileId }: Props) {
 
   const removeMut = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         apiUrl(`/api/team/members/${encodeURIComponent(userId)}?business_profile_id=${encodeURIComponent(businessProfileId)}`),
         { method: "DELETE", credentials: "include" }
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Borttagning misslyckades");
+        throw new Error(apiErrorMessage(body, "Borttagning misslyckades"));
       }
     },
     onSuccess: () => {

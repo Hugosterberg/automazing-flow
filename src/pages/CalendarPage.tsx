@@ -54,6 +54,8 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useAccountData } from "@/hooks/useAccountData";
 import type { ConnectedAccount } from "@/types/accounts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -127,10 +129,10 @@ export default function CalendarPage() {
     initialData: null,
     scopeSort: sortCalendarAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(payload?.error || "Could not fetch external calendar events.");
+        throw new Error(apiErrorMessage(payload, "Could not fetch external calendar events."));
       }
       return res.json();
     },

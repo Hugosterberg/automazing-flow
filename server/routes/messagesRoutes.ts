@@ -364,6 +364,62 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     });
   });
 
+  /**
+   * Lightweight unread-DM count for the home dashboard's daily brief. Unlike
+   * /unified this makes a single Zernio call and never fetches per-conversation
+   * messages or mail — it just sums unread inbox conversations that belong to
+   * the user's connected social accounts. Failures degrade to a 0 count with a
+   * note so the brief never breaks the home page.
+   */
+  app.get("/api/messages/unread-count", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // The user's DM-capable Zernio accounts, so we never count another
+    // tenant's conversations that share the same Zernio workspace/profile.
+    const myZernioAccountIds = new Set<string>();
+    const myPlatforms = new Set<string>();
+    const entries = await tokenStore.entries();
+    for (const [, rawStored] of entries) {
+      const stored = rawStored as StoredAccount;
+      if (!getStoredAccountAccess(stored, userId).allowed) continue;
+      const platform = String(stored.platform || "");
+      if (!SOCIAL_MESSAGE_PLATFORMS.includes(platform as (typeof SOCIAL_MESSAGE_PLATFORMS)[number])) continue;
+      const zid = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
+      if (zid) myZernioAccountIds.add(zid.toLowerCase());
+      const normalized = normalizeDmPlatform(platform);
+      if (normalized) myPlatforms.add(normalized);
+    }
+    if (myZernioAccountIds.size === 0 && myPlatforms.size === 0) {
+      return res.json({ count: 0 });
+    }
+
+    const convResult = await zernio.listInboxConversations({
+      limit: 100,
+      sortOrder: "desc",
+      status: "active",
+      profileId: zernioProfileIdFilter || null,
+    });
+    if (!convResult.ok) {
+      return res.json({ count: 0, note: describeZernioFailure(convResult).message });
+    }
+
+    let count = 0;
+    for (const raw of parseZernioConversationList(convResult.data)) {
+      if (!raw || typeof raw !== "object") continue;
+      const c = raw as Record<string, unknown>;
+      if (Number(c.unreadCount || 0) <= 0) continue;
+      const ids = zernioConversationAccountIds(c).map((id) => String(id).toLowerCase());
+      const linkedById = ids.some((id) => myZernioAccountIds.has(id));
+      const convPlatform = normalizeDmPlatform(zernioConversationPlatform(c));
+      const linkedByPlatform = ids.length === 0 && Boolean(convPlatform) && myPlatforms.has(convPlatform);
+      if (linkedById || linkedByPlatform) count += 1;
+    }
+    return res.json({ count });
+  });
+
   // Reply to a social DM conversation via the Zernio inbox. Email replies are
   // not supported here (current Gmail/Outlook scopes are read-only).
   app.post("/api/messages/reply", async (req, res) => {

@@ -17,6 +17,8 @@ import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
 import { apiUrl } from "@/lib/apiBase";
 import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2 } from "lucide-react";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 type DriveBrowserItem = {
   id: string;
@@ -215,7 +217,7 @@ export default function ContentPage() {
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
-      await fetch(apiUrl("/api/auth/local-session"), {
+      await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -225,7 +227,7 @@ export default function ContentPage() {
     }
 
     if (authMode === "cloud" && accessToken) {
-      await fetch(apiUrl("/api/auth/session"), {
+      await fetchWithTimeout(apiUrl("/api/auth/session"), {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: "include",
@@ -285,14 +287,14 @@ export default function ContentPage() {
     setError(null);
     (async () => {
       try {
-        let res = await fetch(url, { credentials: "include" });
+        let res = await fetchWithTimeout(url, { credentials: "include" });
         if (res.status === 401) {
           await ensureBackendSessionRef.current();
-          res = await fetch(url, { credentials: "include" });
+          res = await fetchWithTimeout(url, { credentials: "include" });
         }
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
-          throw new Error(payload?.error || "Could not fetch Google Drive content.");
+          throw new Error(apiErrorMessage(payload, "Could not fetch Google Drive content."));
         }
         const data = await res.json();
         if (driveRequestIdRef.current !== reqId) return;
@@ -336,10 +338,10 @@ export default function ContentPage() {
 
     async function syncDriveAccountsFromBackend() {
       try {
-        let res = await fetch(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
+        let res = await fetchWithTimeout(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
         if (res.status === 401) {
           await ensureBackendSession();
-          res = await fetch(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
+          res = await fetchWithTimeout(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
         }
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || ignore) return;
@@ -413,7 +415,7 @@ export default function ContentPage() {
     setPopupOauthError(null);
     try {
       await ensureBackendSession();
-      const healthRes = await fetch(apiUrl("/api/health"), { credentials: "include" });
+      const healthRes = await fetchWithTimeout(apiUrl("/api/health"), { credentials: "include" });
       if (!healthRes.ok) {
         setPopupOauthError({
           code: "backend_unavailable",

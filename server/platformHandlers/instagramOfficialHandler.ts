@@ -6,34 +6,88 @@
  * Instagram account-data handler for accounts connected via the native
  * Instagram/Meta Graph API (non-Zernio flow).
  *
- * Pulls profile + media count + recent media via `graph.instagram.com`.
+ * Pulls profile + media count + recent media via `graph.instagram.com`, and
+ * keeps the long-lived token alive: it refreshes proactively when the token is
+ * near expiry and reactively when the API reports an expired token, persisting
+ * the renewed token so the connection never silently dies.
  */
 
 import type { PlatformHandlerResult } from "./types.ts";
+import {
+  isInstagramAuthError,
+  refreshLongLivedInstagramToken,
+  shouldRefreshInstagramToken,
+} from "../providers/instagram.ts";
+
+type TokenStore = {
+  set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
+};
 
 export async function handleInstagramOfficialAccountData({
   accessToken,
+  accountId,
+  tokenStore,
+  stored,
 }: {
   accessToken: string;
+  accountId?: string;
+  tokenStore?: TokenStore;
+  stored?: Record<string, unknown>;
 }): Promise<PlatformHandlerResult> {
-  // Begär alla tillgängliga statistikfält (Graph API: followers_count, follows_count, media_count)
+  let token = accessToken;
+
+  async function persist(nextToken: string, expiresAt: string) {
+    token = nextToken;
+    if (accountId && tokenStore && stored) {
+      await tokenStore.set(accountId, { ...stored, accessToken: nextToken, expiresAt });
+    }
+  }
+
+  // Proactive refresh: long-lived IG tokens last ~60 days and must be renewed
+  // before they expire. Refresh once we're inside the window and persist.
+  if (tokenStore && accountId && stored && shouldRefreshInstagramToken(stored.expiresAt)) {
+    const refreshed = await refreshLongLivedInstagramToken(token);
+    if (refreshed) await persist(refreshed.accessToken, refreshed.expiresAt);
+  }
+
   const fields = "id,username,account_type,media_count,followers_count,follows_count";
-  const mediaRes = await fetch(
-    `https://graph.instagram.com/me?fields=${fields}&access_token=${accessToken}`
-  );
-  const media: any = await mediaRes.json();
+  const fetchProfile = (t: string) =>
+    fetch(`https://graph.instagram.com/me?fields=${fields}&access_token=${t}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
+
+  let mediaRes = await fetchProfile(token);
+  let media: any = await mediaRes.json().catch(() => ({}));
+
+  // Reactive refresh: if Instagram reports an auth error, try one refresh and
+  // retry before giving up — covers tokens that slipped past the proactive
+  // window. An already-expired token can't be refreshed, so this then surfaces
+  // a clean 401 telling the user to reconnect.
+  if (isInstagramAuthError(media?.error) && tokenStore && accountId && stored) {
+    const refreshed = await refreshLongLivedInstagramToken(token);
+    if (refreshed) {
+      await persist(refreshed.accessToken, refreshed.expiresAt);
+      mediaRes = await fetchProfile(token);
+      media = await mediaRes.json().catch(() => ({}));
+    }
+  }
 
   if (media?.error) {
     return {
       kind: "error",
-      status: 400,
-      body: { error: media.error.message || "Failed to fetch Instagram profile" },
+      status: isInstagramAuthError(media.error) ? 401 : 400,
+      body: {
+        error: isInstagramAuthError(media.error)
+          ? "Instagram access expired. Reconnect the account."
+          : media.error.message || "Failed to fetch Instagram profile",
+      },
     };
   }
   const mediaListRes = await fetch(
-    `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=${accessToken}&limit=12`
+    `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=${token}&limit=12`,
+    { signal: AbortSignal.timeout(15_000) }
   );
-  const mediaList: any = await mediaListRes.json();
+  const mediaList: any = await mediaListRes.json().catch(() => ({}));
   let mediaCount = media.media_count != null && !media.error ? Number(media.media_count) : undefined;
   const mediaListData = Array.isArray(mediaList?.data) ? mediaList.data : [];
   if (mediaCount == null && mediaListData.length > 0) {

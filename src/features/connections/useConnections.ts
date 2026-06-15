@@ -5,6 +5,8 @@ import type { Connection } from "@/types/connection";
 import { deleteConnection, listConnectionsForBusinessProfile } from "./connectionsService";
 import { logActivity, ACTIVITY_FEED_KEY } from "@/features/activity";
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 export const CONNECTIONS_KEY = ["connections"] as const;
 
@@ -31,7 +33,7 @@ export function useConnections(businessProfileId: string | null | undefined) {
       if (!supabase || !enabled) throw new Error("Not signed in.");
       // Clear backend tokens first so a fresh OAuth can re-link.
       // Best-effort — the Supabase row removal is what the user sees.
-      await fetch(apiUrl(`/api/accounts/${encodeURIComponent(connectionId)}`), {
+      await fetchWithTimeout(apiUrl(`/api/accounts/${encodeURIComponent(connectionId)}`), {
         method: "DELETE",
         credentials: "include",
       }).catch(() => {});
@@ -58,13 +60,13 @@ export function useConnections(businessProfileId: string | null | undefined) {
   const resyncMut = useMutation({
     mutationFn: async (connectionId: string) => {
       if (!enabled) throw new Error("Not signed in.");
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         apiUrl(`/api/connections/${encodeURIComponent(connectionId)}/resync?business_profile_id=${encodeURIComponent(businessProfileId ?? "")}`),
         { method: "POST", credentials: "include" }
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Resync failed");
+        const body = await res.json().catch(() => ({}));
+        throw new Error(apiErrorMessage(body, `Couldn't resync the connection (${res.status}).`));
       }
       return res.json() as Promise<{ health: string }>;
     },

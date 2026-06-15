@@ -69,6 +69,8 @@ import {
 import type { Product, ProductInput, AlibabaProductImport } from "@/types/ecommerce";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { toast } from "sonner";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
@@ -300,10 +302,10 @@ export default function Ecommerce() {
     initialData: initialOrganizationData,
     scopeSort: sortOrgAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.error ?? "Could not fetch store data.");
+        throw new Error(apiErrorMessage(d, "Could not fetch store data."));
       }
       return res.json();
     },
@@ -505,7 +507,7 @@ export default function Ecommerce() {
     setNotionSaving(true);
     setNotionWriteMessage(null);
     try {
-      const res = await fetch(apiUrl(`/api/notion/${activeNotion.id}/pages`), {
+      const res = await fetchWithTimeout(apiUrl(`/api/notion/${activeNotion.id}/pages`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -518,7 +520,7 @@ export default function Ecommerce() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.error || "Could not create Notion page.");
+        throw new Error(apiErrorMessage(payload, "Could not create Notion page."));
       }
       setNotionWriteMessage("Page created in Notion.");
       setNotionTitle("");

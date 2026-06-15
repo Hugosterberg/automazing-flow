@@ -122,17 +122,44 @@ export function registerAccountDataRoute(app, deps) {
       }
 
       if (platform === "instagram") {
-        const result = await handleInstagramOfficialAccountData({ accessToken });
+        const result = await handleInstagramOfficialAccountData({
+          accessToken,
+          accountId,
+          tokenStore,
+          stored,
+        });
         return sendHandlerResult(res, result);
       }
 
       if (platform === "tiktok") {
-        const data = await fetchTikTokAccountData(accessToken);
+        const data = await fetchTikTokAccountData({
+          accessToken,
+          refreshToken: stored.refreshToken,
+          accountId,
+          tokenStore,
+          stored,
+          tiktokClientKey: process.env.TIKTOK_CLIENT_KEY,
+          tiktokClientSecret: process.env.TIKTOK_CLIENT_SECRET,
+        });
+        if (data?.error) {
+          return res.status(data.status || 500).json({ error: data.error });
+        }
         return res.json(data);
       }
 
       if (platform === "youtube") {
-        const data = await fetchYouTubeAccountData(accessToken);
+        const data = await fetchYouTubeAccountData({
+          accessToken,
+          refreshToken: stored.refreshToken,
+          accountId,
+          tokenStore,
+          stored,
+          googleClientId: process.env.GOOGLE_CLIENT_ID,
+          googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        });
+        if (data?.error) {
+          return res.status(data.status || 500).json({ error: data.error });
+        }
         return res.json(data);
       }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALIBABA_IMAGE_HOSTS,
   ALIBABA_PRODUCT_HOSTS,
+  extractImageUrls,
   normalizeAlibabaImageUrl,
   normalizeAlibabaProductUrl,
   upgradeAlicdnUrl,
@@ -40,6 +41,24 @@ describe("alibaba provider", () => {
     expect(upgradeAlicdnUrl("https://sc04.alicdn.com/kf/H123.jpg_350x350.jpg")).toBe(
       "https://sc04.alicdn.com/kf/H123.jpg"
     );
+  });
+
+  it("extracts image URLs whose host/path contain the letter 's'", () => {
+    // Regression: the URL char-class previously excluded the literal 's'
+    // (\\s instead of \s), so alicdn hosts like sc04 / paths like /assets/
+    // were dropped or truncated. Whitespace must still terminate a URL.
+    const html = [
+      '<img src="https://sc04.alicdn.com/kf/assets/photo.jpg">',
+      "<div>https://sc04.alicdn.com/kf/first.jpg next-word</div>",
+      '<img data-src="//img.alicdn.com/imgextra/season-banner.png">',
+    ].join("\n");
+    const urls = extractImageUrls(html, "https://www.alibaba.com/product");
+    expect(urls).toContain("https://sc04.alicdn.com/kf/assets/photo.jpg");
+    expect(urls).toContain("https://sc04.alicdn.com/kf/first.jpg");
+    // whitespace still terminates the match — the trailing word is not glued on
+    expect(urls.every((u) => !u.includes("next-word"))).toBe(true);
+    // banner/logo-style assets are still filtered out by the deny pattern
+    expect(urls.some((u) => /banner/i.test(u))).toBe(false);
   });
 
   it("exports stable host allowlists", () => {

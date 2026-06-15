@@ -28,6 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
 
@@ -134,19 +136,19 @@ export default function PreferencesPage() {
   }, [activeBusinessProfileId, toast]);
 
   const loadGlobal = useCallback(async () => {
-    const res = await fetch(apiUrl("/api/settings/api-keys"), { credentials: "include" });
+    const res = await fetchWithTimeout(apiUrl("/api/settings/api-keys"), { credentials: "include" });
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || "Could not load platform keys.");
+    if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not load platform keys."));
     setGlobalEntries(Array.isArray(payload.entries) ? payload.entries : []);
   }, []);
 
   const loadTenant = useCallback(async (businessProfileId: string) => {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       apiUrl(`/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`),
       { credentials: "include" }
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || "Could not load profile secrets.");
+    if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not load profile secrets."));
     setStoreEnabled(Boolean(payload.storeEnabled));
     setTenantEntries(Array.isArray(payload.entries) ? payload.entries : []);
   }, []);
@@ -188,7 +190,7 @@ export default function PreferencesPage() {
     const entries = dirtyKeys.map((key) => ({ key, value: edited[key] }));
     setSaving(true);
     try {
-      const res = await fetch(apiUrl("/api/settings/secrets"), {
+      const res = await fetchWithTimeout(apiUrl("/api/settings/secrets"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -216,14 +218,14 @@ export default function PreferencesPage() {
   async function runConfigTest(target: string) {
     setRunningTests((current) => ({ ...current, [target]: true }));
     try {
-      const res = await fetch(apiUrl("/api/settings/api-keys/test"), {
+      const res = await fetchWithTimeout(apiUrl("/api/settings/api-keys/test"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || `Could not test ${target}.`);
+      if (!res.ok) throw new Error(apiErrorMessage(payload, `Could not test ${target}.`));
       setTestResults((current) => ({ ...current, [target]: payload }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

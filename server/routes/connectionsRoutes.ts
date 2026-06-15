@@ -61,7 +61,10 @@ export function registerConnectionsRoutes(
 ) {
   app.post("/api/connections/reconcile", requireMembership, async (req, res) => {
     if (!supabaseAdmin) {
-      return res.status(503).json({ error: "supabase_service_role_not_configured" });
+      return res.status(503).json({
+        error: "supabase_service_role_not_configured",
+        message: "Connection syncing isn't configured on the server yet. Contact support if this persists.",
+      });
     }
 
     const businessProfileId = String(req.businessProfileId || "");
@@ -109,7 +112,10 @@ export function registerConnectionsRoutes(
 
     if (error) {
       console.warn("[connections/reconcile] select failed:", error.message);
-      return res.status(500).json({ error: "read_connections_failed" });
+      return res.status(500).json({
+        error: "read_connections_failed",
+        message: "Couldn't read your connections from the database. Please try again.",
+      });
     }
 
     const rows: ConnectionRow[] = (data ?? []).filter((r) => !r.disconnected_at);
@@ -242,11 +248,14 @@ export function registerConnectionsRoutes(
     requireMembership,
     async (req, res) => {
       if (!supabaseAdmin) {
-        return res.status(503).json({ error: "supabase_service_role_not_configured" });
+        return res.status(503).json({
+        error: "supabase_service_role_not_configured",
+        message: "Connection syncing isn't configured on the server yet. Contact support if this persists.",
+      });
       }
       const businessProfileId = String(req.businessProfileId || "");
       const connectionId = String(req.params?.id || "").trim();
-      if (!connectionId) return res.status(400).json({ error: "missing_connection_id" });
+      if (!connectionId) return res.status(400).json({ error: "missing_connection_id", message: "No connection was specified." });
       const userId = getSessionUserId(req);
 
       const sb = supabaseAdmin as unknown as {
@@ -271,8 +280,19 @@ export function registerConnectionsRoutes(
         .eq("business_profile_id", businessProfileId)
         .maybeSingle();
 
-      if (selErr) return res.status(500).json({ error: selErr.message });
-      if (!row) return res.status(404).json({ error: "connection_not_found" });
+      if (selErr) {
+        console.warn("[connections/resync] select failed:", selErr.message);
+        return res.status(500).json({
+          error: "resync_read_failed",
+          message: "Couldn't load that connection. Please try again.",
+        });
+      }
+      if (!row) {
+        return res.status(404).json({
+          error: "connection_not_found",
+          message: "That connection no longer exists. Refresh and try again.",
+        });
+      }
 
       const listing = await zernio.listAccounts();
       const runStart = new Date().toISOString();
@@ -308,7 +328,13 @@ export function registerConnectionsRoutes(
         .update({ health: nextHealth, last_synced_at: runFinish, last_sync_error: nextError })
         .eq("id", connectionId);
 
-      if (updErr) return res.status(500).json({ error: updErr.message });
+      if (updErr) {
+        console.warn("[connections/resync] update failed:", updErr.message);
+        return res.status(500).json({
+          error: "resync_update_failed",
+          message: "Couldn't save the connection's status. Please try again.",
+        });
+      }
 
       await recordSyncRun(supabaseAdmin as unknown as Parameters<typeof recordSyncRun>[0], {
         businessProfileId,
@@ -344,12 +370,15 @@ export function registerConnectionsRoutes(
     requireMembership,
     async (req, res) => {
       if (!supabaseAdmin) {
-        return res.status(503).json({ error: "supabase_service_role_not_configured" });
+        return res.status(503).json({
+        error: "supabase_service_role_not_configured",
+        message: "Connection syncing isn't configured on the server yet. Contact support if this persists.",
+      });
       }
       const businessProfileId = String(req.businessProfileId || "");
       const connectionId = String(req.params?.id || "").trim();
       if (!connectionId) {
-        return res.status(400).json({ error: "missing_connection_id" });
+        return res.status(400).json({ error: "missing_connection_id", message: "No connection was specified." });
       }
 
       const sb = supabaseAdmin as unknown as {
@@ -372,7 +401,10 @@ export function registerConnectionsRoutes(
 
       if (error) {
         console.warn("[connections/disconnect] delete failed:", error.message);
-        return res.status(500).json({ error: "disconnect_failed" });
+        return res.status(500).json({
+          error: "disconnect_failed",
+          message: "Couldn't disconnect that account. Please try again.",
+        });
       }
 
       // Also drop any server-side OAuth token entry so provider API calls stop.

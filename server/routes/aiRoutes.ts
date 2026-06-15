@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { generateReplyDraft } from "../ai/replyDraft.ts";
+import { rateLimitMiddleware } from "../lib/rateLimit.ts";
 
 type AiRouteDeps = {
   getSessionUserId?: (req: { [key: string]: unknown }) => string | null;
@@ -19,11 +20,21 @@ function bodyBusinessProfileId(req: { body?: unknown }): string | null {
 }
 
 export function registerAiRoutes(app, deps?: AiRouteDeps) {
+  // These endpoints each call OpenAI, which costs money per request. Per-user
+  // rate limits keep a runaway client (or a stuck retry loop) from racking up
+  // spend. Limits are generous enough for normal interactive use.
+  const getUserId = (req: { [key: string]: unknown }) => deps?.getSessionUserId?.(req) ?? null;
+  const limitSummaries = rateLimitMiddleware("ai:summaries", getUserId, 30, 60_000);
+  const limitVideoDraft = rateLimitMiddleware("ai:video-draft", getUserId, 20, 60_000);
+  const limitAnalyze = rateLimitMiddleware("ai:analyze", getUserId, 20, 60_000);
+  const limitReplyDraft = rateLimitMiddleware("ai:reply-draft", getUserId, 30, 60_000);
+
   async function postMessageSummaries(req: import("express").Request, res: import("express").Response) {
     const userId = deps?.getSessionUserId?.(req);
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
+    if (!limitSummaries(req, res)) return;
 
     const body = (req.body ?? {}) as {
       messages?: Array<{
@@ -115,6 +126,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
+    if (!limitVideoDraft(req, res)) return;
 
     const body = (req.body ?? {}) as {
       asset?: {
@@ -224,6 +236,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
+    if (!limitAnalyze(req, res)) return;
     const accountId = String(req.params?.accountId || "");
     const stored = accountId && deps?.tokenStore?.get ? await deps.tokenStore.get(accountId) : null;
     if (stored) {
@@ -354,6 +367,7 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
+    if (!limitReplyDraft(req, res)) return;
 
     const body = (req.body ?? {}) as {
       kind?: "review" | "dm";

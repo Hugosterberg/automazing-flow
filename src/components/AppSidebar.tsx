@@ -81,6 +81,7 @@ import {
   navItems,
   topNavItems,
 } from "@/components/navConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
   instagram: InstagramIcon,
@@ -286,7 +287,7 @@ export function AppSidebar() {
       }
 
       try {
-        const res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
+        const res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data.messages) ? data.messages : [];
@@ -394,7 +395,7 @@ export function AppSidebar() {
     setTripadvisorConnecting(true);
     setTripadvisorConnectError(null);
     try {
-      const res = await fetch(apiUrl("/api/auth/tripadvisor/manual-connect"), {
+      const res = await fetchWithTimeout(apiUrl("/api/auth/tripadvisor/manual-connect"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

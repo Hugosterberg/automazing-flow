@@ -48,6 +48,7 @@ import { registerAutomationRoutes } from "./routes/automationRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
 import { registerProductRoutes } from "./routes/productRoutes.ts";
+import { registerMarketingRoutes } from "./routes/marketingRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -191,6 +192,20 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Baseline security headers on every API response. These are cheap, safe
+// defaults (no CSP here — the static frontend owns that via vercel.json) that
+// harden the JSON API against MIME sniffing, clickjacking and referrer leaks.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  // API responses are per-user and token-bearing — never let a shared cache
+  // hold them. Individual routes can still opt into caching if needed.
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const SUPABASE_ANON_KEY = (
@@ -451,10 +466,42 @@ registerProductRoutes(app, {
   tokenStore,
 });
 
+registerMarketingRoutes(app, {
+  getSessionUserId,
+  getStoredAccountAccess,
+  tokenStore,
+});
+
 registerMiscRoutes(app, {
   envPath,
   zernioApiBase: ZERNIO_API_BASE,
   getZernioApiKey,
+});
+
+// ---------------------------------------------------------------------------
+// Fallbacks: JSON 404 + safety-net error handler
+//
+// The frontend always expects JSON from /api/*, so unknown routes and any
+// error that escapes a route's own try/catch must still return a JSON
+// envelope — never Express's default HTML page (which the client can't parse)
+// and never a raw stack trace (which leaks internals). These run last, after
+// every route has had its chance to respond.
+// ---------------------------------------------------------------------------
+
+app.use((req, res) => {
+  res.status(404).json({ error: "not_found", path: req.path });
+});
+
+// Express identifies error handlers by their 4-arg arity, so `next` must stay
+// even though it is unused.
+app.use((err, req, res, next) => {
+  const status = Number(err?.status || err?.statusCode) || 500;
+  console.error(`[server] Unhandled error on ${req.method} ${req.path}:`, err?.stack || err?.message || err);
+  if (res.headersSent) return;
+  res.status(status).json({
+    error: "internal_error",
+    message: process.env.NODE_ENV === "production" ? "An unexpected error occurred." : String(err?.message || err),
+  });
 });
 
 // ---------------------------------------------------------------------------

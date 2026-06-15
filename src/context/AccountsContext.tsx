@@ -18,6 +18,7 @@ import {
 } from "@/features/connections/accountLimits";
 import { logActivity } from "@/features/activity/activityLog";
 import type { Json, Tables, TablesInsert } from "@/types/supabase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const ACCOUNTS_STORAGE_KEY = "automazing-connected-accounts";
 const PROFILES_STORAGE_KEY = "automazing-profiles";
@@ -709,7 +710,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const removeAccount = useCallback(
     async (id: string) => {
       try {
-        await fetch(apiUrl(`/api/accounts/${encodeURIComponent(id)}`), { method: "DELETE", credentials: "include" });
+        await fetchWithTimeout(apiUrl(`/api/accounts/${encodeURIComponent(id)}`), { method: "DELETE", credentials: "include" });
       } catch {
         // Backend may not be running or account does not exist
       }

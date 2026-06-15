@@ -16,6 +16,7 @@ import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
@@ -123,7 +124,7 @@ export default function ReviewsPage() {
     initialData: null,
     scopeSort: sortReviewAccounts,
     fetcher: async (accountId) => {
-      const res = await fetch(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         throw new Error(displayString(payload?.error) || displayString(payload?.message) || "Could not fetch reviews");
@@ -181,7 +182,7 @@ export default function ReviewsPage() {
   async function draftReply(r: { id: string; author: string; rating?: number; text: string }) {
     setDraftBusy((cur) => ({ ...cur, [r.id]: true }));
     try {
-      const res = await fetch(apiUrl("/api/ai/reply-draft"), {
+      const res = await fetchWithTimeout(apiUrl("/api/ai/reply-draft"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +213,7 @@ export default function ReviewsPage() {
     if (!activeAccount || !message) return;
     setSendBusy((cur) => ({ ...cur, [reviewId]: true }));
     try {
-      const res = await fetch(apiUrl("/api/reviews/reply"), {
+      const res = await fetchWithTimeout(apiUrl("/api/reviews/reply"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

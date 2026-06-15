@@ -7,8 +7,22 @@
  * so a half-deployed environment can't silently run housekeeping jobs.
  */
 
+import crypto from "crypto";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
+
+/** Constant-time string comparison that never short-circuits on length. */
+function timingSafeStringEqual(a, b) {
+  const bufA = Buffer.from(String(a), "utf8");
+  const bufB = Buffer.from(String(b), "utf8");
+  if (bufA.length !== bufB.length) {
+    // Still compare against a same-length buffer so the work (and timing)
+    // does not leak the secret's length.
+    crypto.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 /**
  * Guard: returns true when the incoming request is authorised to run a
@@ -19,7 +33,7 @@ function isAuthorisedCron(req) {
   const secret = String(process.env.CRON_SECRET || "").trim();
   if (!secret) return false;
   const auth = String(req.headers.authorization || "").trim();
-  return auth === `Bearer ${secret}`;
+  return timingSafeStringEqual(auth, `Bearer ${secret}`);
 }
 
 /**

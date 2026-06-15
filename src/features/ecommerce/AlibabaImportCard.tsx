@@ -18,6 +18,8 @@ import { loadAlibabaImport, saveAlibabaImport } from "@/lib/alibabaImportStorage
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import type { AlibabaProductImport } from "@/types/ecommerce";
 import { toast } from "sonner";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 function slugifyFilename(value: string): string {
   const slug = value
@@ -69,7 +71,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
     setError(null);
     setShowFullDescription(false);
     try {
-      const res = await fetch(apiUrl("/api/ecommerce/alibaba/import"), {
+      const res = await fetchWithTimeout(apiUrl("/api/ecommerce/alibaba/import"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -77,7 +79,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.message || payload?.error || "Kunde inte importera produkten.");
+        throw new Error(apiErrorMessage(payload, "Kunde inte importera produkten."));
       }
       setProduct(payload.product as AlibabaProductImport);
     } catch (err) {
@@ -102,7 +104,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
     if (!product?.images.length) return;
     setDownloadingZip(true);
     try {
-      const res = await fetch(apiUrl("/api/ecommerce/alibaba/images/zip"), {
+      const res = await fetchWithTimeout(apiUrl("/api/ecommerce/alibaba/images/zip"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +112,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(payload?.message || payload?.error || "Kunde inte skapa zip-fil.");
+        throw new Error(apiErrorMessage(payload, "Kunde inte skapa zip-fil."));
       }
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -130,7 +132,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
     if (!shopifyAccountId || !product) return;
     setCreatingDraft(true);
     try {
-      const res = await fetch(apiUrl(`/api/ecommerce/shopify/${shopifyAccountId}/products`), {
+      const res = await fetchWithTimeout(apiUrl(`/api/ecommerce/shopify/${shopifyAccountId}/products`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -144,7 +146,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.error || payload?.message || "Kunde inte skapa Shopify-utkast.");
+        throw new Error(apiErrorMessage(payload, "Kunde inte skapa Shopify-utkast."));
       }
       toast.success("Utkast skapat i Shopify");
       if (payload?.product?.adminUrl) {

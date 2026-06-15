@@ -9,17 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/context/AccountsContext";
 import { apiUrl } from "@/lib/apiBase";
 import type { AccountPlatform } from "@/types/accounts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { platformLabel } from "@/lib/platformLabels";
 
 /** Platforms we can publish to via Zernio. */
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
 
-const PLATFORM_LABELS: Partial<Record<AccountPlatform, string>> = {
-  instagram: "Instagram",
-  facebook: "Facebook",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  x: "X",
-};
 
 export function PublishComposer() {
   const { toast } = useToast();
@@ -54,7 +49,7 @@ export function PublishComposer() {
     }
     setBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/content/publish"), {
+      const res = await fetchWithTimeout(apiUrl("/api/content/publish"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -122,7 +117,7 @@ export function PublishComposer() {
                       : "border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {a.username} · {PLATFORM_LABELS[a.platform] || a.platform}
+                  {a.username} · {platformLabel(a.platform)}
                 </button>
               );
             })}

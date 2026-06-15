@@ -1,4 +1,6 @@
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 /**
  * Thin client for our own /api/zernio/* endpoints. The browser never talks
@@ -17,12 +19,10 @@ export interface ZernioWorkspaceAccount {
 }
 
 export async function listZernioAccounts(): Promise<ZernioWorkspaceAccount[]> {
-  const res = await fetch(apiUrl("/api/zernio/accounts"), { credentials: "include" });
+  const res = await fetchWithTimeout(apiUrl("/api/zernio/accounts"), { credentials: "include" });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      typeof body?.error === "string" ? body.error : `Zernio accounts: ${res.statusText}`
-    );
+    throw new Error(apiErrorMessage(body, `Couldn't load Zernio accounts (${res.status}).`));
   }
   return Array.isArray(body?.accounts) ? body.accounts : [];
 }
@@ -32,15 +32,13 @@ export async function reconcileConnections(businessProfileId: string): Promise<{
   updated: number;
 }> {
   const params = new URLSearchParams({ business_profile_id: businessProfileId });
-  const res = await fetch(apiUrl(`/api/connections/reconcile?${params.toString()}`), {
+  const res = await fetchWithTimeout(apiUrl(`/api/connections/reconcile?${params.toString()}`), {
     method: "POST",
     credentials: "include",
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      typeof body?.error === "string" ? body.error : `Reconcile failed: ${res.statusText}`
-    );
+    throw new Error(apiErrorMessage(body, `Couldn't refresh connections (${res.status}).`));
   }
   return { ok: Boolean(body?.ok), updated: Number(body?.updated ?? 0) };
 }

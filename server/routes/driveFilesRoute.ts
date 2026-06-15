@@ -70,6 +70,10 @@ export function registerDriveFilesRoute(app, deps: DriveFilesRouteDeps) {
       if (contentLength) res.setHeader("Content-Length", contentLength);
       if (contentRange) res.setHeader("Content-Range", contentRange);
       if (acceptRanges) res.setHeader("Accept-Ranges", acceptRanges);
+      // Drive thumbnails/content are immutable per file id and auth-scoped, so
+      // let the browser cache them privately (overrides the global no-store)
+      // instead of re-proxying the same bytes on every render.
+      res.setHeader("Cache-Control", "private, max-age=3600");
       res.status(upstream.status);
 
       return res.end(Buffer.from(await upstream.arrayBuffer()));

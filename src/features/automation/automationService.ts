@@ -4,6 +4,7 @@
  */
 
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export interface AutomationSettings {
   dmAutoReplyEnabled: boolean;
@@ -47,7 +48,7 @@ async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T>
 export async function fetchAutomationSettings(
   businessProfileId: string
 ): Promise<{ storeEnabled: boolean; settings: AutomationSettings }> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     apiUrl(`/api/automation/settings?business_profile_id=${encodeURIComponent(businessProfileId)}`),
     { credentials: "include" }
   );
@@ -58,7 +59,7 @@ export async function saveAutomationSettings(
   businessProfileId: string,
   settings: AutomationSettings
 ): Promise<{ ok: boolean; settings: AutomationSettings }> {
-  const res = await fetch(apiUrl("/api/automation/settings"), {
+  const res = await fetchWithTimeout(apiUrl("/api/automation/settings"), {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -71,7 +72,7 @@ export async function fetchAutoReplyLog(
   businessProfileId: string,
   limit = 25
 ): Promise<{ entries: AutoReplyLogEntry[] }> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     apiUrl(
       `/api/automation/log?business_profile_id=${encodeURIComponent(businessProfileId)}&limit=${limit}`
     ),
@@ -85,7 +86,7 @@ export async function sendAutomationDraft(
   logId: string,
   message?: string
 ): Promise<{ ok: boolean }> {
-  const res = await fetch(apiUrl("/api/automation/send-draft"), {
+  const res = await fetchWithTimeout(apiUrl("/api/automation/send-draft"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -97,7 +98,7 @@ export async function sendAutomationDraft(
 export async function runAutomationNow(
   businessProfileId: string
 ): Promise<{ ok: boolean; summary: AutoReplyRunSummary }> {
-  const res = await fetch(apiUrl("/api/automation/run"), {
+  const res = await fetchWithTimeout(apiUrl("/api/automation/run"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

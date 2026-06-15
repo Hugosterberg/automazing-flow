@@ -199,7 +199,7 @@ export async function runAutoReplyForProfile(
   // One batched idempotency lookup instead of a query per conversation.
   const { data: existingRows, error: existingError } = await deps.supabaseAdmin
     .from("auto_reply_log")
-    .select("external_id")
+    .select("external_id,status")
     .eq("business_profile_id", profile.id)
     .eq("kind", "dm")
     .in("external_id", candidates.map((c) => c.externalId));
@@ -207,9 +207,19 @@ export async function runAutoReplyForProfile(
     summary.note = `log_lookup_failed: ${existingError.message}`;
     return summary;
   }
-  const alreadyHandled = new Set(
-    (existingRows || []).map((r) => String((r as Record<string, unknown>).external_id || ""))
-  );
+  // Rows with a terminal outcome ('drafted' or 'sent') are never reprocessed.
+  // Rows left in 'failed' (e.g. a transient Zernio/send error) stay eligible
+  // for retry on a later run instead of being abandoned forever — the prior
+  // failed row is overwritten via upsert when the retry produces a result.
+  const alreadyHandled = new Set<string>();
+  const retryableFailures = new Set<string>();
+  for (const raw of existingRows || []) {
+    const row = raw as Record<string, unknown>;
+    const externalId = String(row.external_id || "");
+    if (!externalId) continue;
+    if (String(row.status || "") === "failed") retryableFailures.add(externalId);
+    else alreadyHandled.add(externalId);
+  }
 
   const maxReplies = Math.max(1, options?.maxRepliesPerRun ?? MAX_REPLIES_PER_RUN);
   let handled = 0;
@@ -262,7 +272,7 @@ export async function runAutoReplyForProfile(
       errorText = e instanceof Error ? e.message : "auto_reply_failed";
     }
 
-    const { error: insertError } = await deps.supabaseAdmin.from("auto_reply_log").insert({
+    const logRow = {
       business_profile_id: profile.id,
       kind: "dm",
       external_id: candidate.externalId,
@@ -274,7 +284,15 @@ export async function runAutoReplyForProfile(
       draft_text: draftText.slice(0, MAX_LOGGED_TEXT),
       status,
       error: errorText,
-    });
+    };
+    // Fresh messages use insert so the unique constraint guards against
+    // overlapping runs; a previously-failed message is upserted to overwrite
+    // its stale failure row with the retry's outcome.
+    const { error: insertError } = retryableFailures.has(candidate.externalId)
+      ? await deps.supabaseAdmin
+          .from("auto_reply_log")
+          .upsert(logRow, { onConflict: "business_profile_id,kind,external_id" })
+      : await deps.supabaseAdmin.from("auto_reply_log").insert(logRow);
     if (insertError) {
       // 23505 = unique violation: another run handled this message in parallel.
       if (insertError.code === "23505") {

@@ -19,6 +19,8 @@ import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 
 interface UnifiedMessage {
   id: string;
@@ -157,7 +159,7 @@ export default function MessagesPage() {
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
-      await fetch(apiUrl("/api/auth/local-session"), {
+      await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -167,7 +169,7 @@ export default function MessagesPage() {
     }
 
     if (authMode === "cloud" && accessToken) {
-      await fetch(apiUrl("/api/auth/session"), {
+      await fetchWithTimeout(apiUrl("/api/auth/session"), {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: "include",
@@ -181,14 +183,14 @@ export default function MessagesPage() {
     setZernioNote(null);
     setMailErrors([]);
     try {
-      let res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
+      let res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
       if (res.status === 401) {
         await ensureBackendSession();
-        res = await fetch(apiUrl("/api/messages/unified"), { credentials: "include" });
+        res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.error ?? "Could not load messages.");
+        throw new Error(apiErrorMessage(d, "Could not load messages."));
       }
       const data = await res.json();
       setMessages(Array.isArray(data.messages) ? data.messages : []);
@@ -227,10 +229,10 @@ export default function MessagesPage() {
         const platforms = MESSAGE_ACCOUNT_PLATFORMS;
         const existingAccountIds = new Set(accounts.map((account) => account.id));
         for (const platform of platforms) {
-          let res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+          let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
           if (res.status === 401) {
             await ensureBackendSession();
-            res = await fetch(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+            res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
           }
           const payload = await res.json().catch(() => ({}));
           if (!res.ok || ignore) continue;
@@ -294,7 +296,7 @@ export default function MessagesPage() {
     if (!selectedMessage) return;
     setDraftBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/ai/reply-draft"), {
+      const res = await fetchWithTimeout(apiUrl("/api/ai/reply-draft"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -305,7 +307,7 @@ export default function MessagesPage() {
         }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || "Could not draft a reply");
+      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not draft a reply"));
       setReplyDraft(String(payload?.draft || ""));
     } catch (e) {
       toast({
@@ -322,7 +324,7 @@ export default function MessagesPage() {
     if (!selectedMessage?.conversationId || !replyDraft.trim()) return;
     setSendBusy(true);
     try {
-      const res = await fetch(apiUrl("/api/messages/reply"), {
+      const res = await fetchWithTimeout(apiUrl("/api/messages/reply"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -364,7 +366,7 @@ export default function MessagesPage() {
       return;
     }
     const ac = new AbortController();
-      void fetch(apiUrl("/api/messages/summaries"), {
+      void fetchWithTimeout(apiUrl("/api/messages/summaries"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

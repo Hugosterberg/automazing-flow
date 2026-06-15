@@ -282,6 +282,7 @@ export async function handleGoogleReviewsAccountData({
           refresh_token: String(refreshToken),
           grant_type: "refresh_token",
         }).toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const refreshData: any = await refreshRes.json().catch(() => ({}));
       if (refreshData.access_token) {

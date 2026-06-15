@@ -26,6 +26,7 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
+import { MarketingCampaigns, MarketingPerformance, InventoryAdsAlert } from "@/features/marketing";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks";
@@ -297,6 +298,18 @@ export default function MarketingPage() {
             </Card>
           );
         })}
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
+        <InventoryAdsAlert />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.05 }}>
+        <MarketingPerformance />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
+        <MarketingCampaigns />
       </m.div>
 
       <m.section {...pageFadeUp} transition={{ delay: 0.08 }}>

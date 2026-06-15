@@ -102,6 +102,103 @@ function isoNDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86400000).toISOString();
 }
 
+export interface ShopifyRevenueSummary {
+  windowDays: number;
+  revenue: number;
+  orders: number;
+  currency: string | null;
+}
+
+/**
+ * Lightweight gross-sales summary for the trailing `days` window — one orders
+ * call, just enough to compute marketing ROAS without the full account-data
+ * fan-out. Cancelled orders are excluded. Returns null on any failure so the
+ * caller can treat "no Shopify data" uniformly.
+ */
+export async function fetchShopifyRevenueSummary(
+  accessToken: string,
+  shop: string | undefined,
+  days = 7,
+): Promise<ShopifyRevenueSummary | null> {
+  if (!accessToken || !shop) return null;
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since = isoNDaysAgo(days);
+  const url =
+    `${apiBase}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(since)}` +
+    `&fields=total_price,currency,cancelled_at,created_at`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => ({}))) as { orders?: ShopifyOrder[] };
+    const orders = Array.isArray(body.orders) ? body.orders : [];
+    let revenue = 0;
+    let count = 0;
+    let currency: string | null = null;
+    for (const o of orders) {
+      if ((o as { cancelled_at?: string | null })?.cancelled_at) continue;
+      revenue += toNumber(o?.total_price);
+      count += 1;
+      if (!currency && o?.currency) currency = String(o.currency);
+    }
+    return { windowDays: days, revenue, orders: count, currency };
+  } catch {
+    return null;
+  }
+}
+
+export interface ShopifyStockSummary {
+  threshold: number;
+  outOfStock: number;
+  lowStock: number;
+  examples: string[];
+}
+
+/**
+ * Lightweight inventory health check — one products call, counts active
+ * products that are out of or low on stock (only variants that actually track
+ * inventory). Used to flag "you're advertising but the shelves are empty".
+ */
+export async function fetchShopifyLowStock(
+  accessToken: string,
+  shop: string | undefined,
+  threshold = LOW_STOCK_THRESHOLD,
+): Promise<ShopifyStockSummary | null> {
+  if (!accessToken || !shop) return null;
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const url = `${apiBase}/products.json?status=active&limit=250&fields=id,title,status,variants`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => ({}))) as { products?: ShopifyProduct[] };
+    const products = Array.isArray(body.products) ? body.products : [];
+    let outOfStock = 0;
+    let lowStock = 0;
+    const examples: string[] = [];
+    for (const product of products) {
+      const tracked = (product.variants || []).filter((v) => v.inventory_management);
+      if (tracked.length === 0) continue;
+      const quantities = tracked.map((v) => toNumber(v.inventory_quantity));
+      const maxQty = Math.max(...quantities);
+      if (maxQty <= 0) {
+        outOfStock += 1;
+        if (examples.length < 3) examples.push(String(product.title || "Produkt"));
+      } else if (maxQty <= threshold) {
+        lowStock += 1;
+        if (examples.length < 3) examples.push(String(product.title || "Produkt"));
+      }
+    }
+    return { threshold, outOfStock, lowStock, examples };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchShopifyAccountData(accessToken: string, shop: string | undefined) {
   if (!shop) {
     return { error: "No shop domain stored for this account", status: 400 };

@@ -13,6 +13,7 @@ import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { isLocalDevHost } from "@/lib/deployment";
 import { getOAuthRedirectUrl, storePendingAuthReturn } from "@/lib/authRedirect";
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 const AUTH_MODE_STORAGE_KEY = "automazing-auth-mode";
 const LOCAL_USER_ID_STORAGE_KEY = "automazing-local-user-id";
 type AuthMode = "cloud" | "local";
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!enabled) {
       const localUserId = getOrCreateLocalUserId();
-      void fetch(apiUrl("/api/auth/local-session"), {
+      void fetchWithTimeout(apiUrl("/api/auth/local-session"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!token) {
       if (prev) {
-        void fetch(apiUrl("/api/auth/session"), {
+        void fetchWithTimeout(apiUrl("/api/auth/session"), {
           method: "DELETE",
           credentials: "include",
         }).catch(() => {
@@ -137,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     prevSyncedAccessTokenRef.current = token;
-    void fetch(apiUrl("/api/auth/session"), {
+    void fetchWithTimeout(apiUrl("/api/auth/session"), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -202,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (supabase) {
           await supabase.auth.signOut();
         }
-        await fetch(apiUrl("/api/auth/session"), { method: "DELETE", credentials: "include" }).catch(() => {
+        await fetchWithTimeout(apiUrl("/api/auth/session"), { method: "DELETE", credentials: "include" }).catch(() => {
           // Ignore session cleanup failures
         });
       },
