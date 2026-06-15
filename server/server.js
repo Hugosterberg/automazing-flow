@@ -50,6 +50,7 @@ import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
 import { registerProductRoutes } from "./routes/productRoutes.ts";
 import { registerMarketingRoutes } from "./routes/marketingRoutes.ts";
 import { registerSalesRoutes } from "./routes/salesRoutes.ts";
+import { registerDiagnosticsRoute } from "./routes/diagnosticsRoute.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -477,6 +478,11 @@ registerMarketingRoutes(app, {
 registerSalesRoutes(app, {
   getSessionUserId,
   secretResolver,
+});
+
+registerDiagnosticsRoute(app, {
+  getSessionUserId,
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerMiscRoutes(app, {

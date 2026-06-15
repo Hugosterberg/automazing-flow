@@ -27,6 +27,7 @@
     "supabase:db:push": "npx supabase@2.106.0 db push",
     "supabase:gen:types": "npx supabase@2.106.0 gen types typescript --linked --schema public > src/types/supabase.ts",
     "verify:supabase": "node --experimental-strip-types scripts/verify-supabase.ts",
+    "diagnose": "node --experimental-strip-types scripts/diagnose.ts",
     "smoke:apiai": "node --experimental-strip-types scripts/apiai-smoke.ts"
   },
   "dependencies": {
