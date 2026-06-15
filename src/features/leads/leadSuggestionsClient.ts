@@ -16,6 +16,33 @@ export interface LeadSuggestionInput {
   sampleCustomers?: string[];
 }
 
+export interface LeadEnrichment {
+  url: string;
+  company?: string;
+  description?: string;
+}
+
+/** Look up a company's name + description from its website. */
+export async function enrichLeadFromWebsite(url: string): Promise<LeadEnrichment> {
+  const res = await fetchWithTimeout(
+    apiUrl("/api/sales/lead-enrich"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    },
+    20_000,
+  );
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't read that website."));
+  return {
+    url: String(body.url || url),
+    company: body.company ? String(body.company) : undefined,
+    description: body.description ? String(body.description) : undefined,
+  };
+}
+
 export async function fetchLeadSuggestions(
   input: LeadSuggestionInput,
 ): Promise<{ suggestions: LeadSuggestion[]; source: string }> {

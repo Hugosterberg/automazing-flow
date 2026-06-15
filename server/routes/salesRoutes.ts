@@ -12,6 +12,7 @@ import {
   parseLeadSuggestions,
   type LeadSuggestionContext,
 } from "../ai/leadSuggestions.ts";
+import { fetchSiteMeta } from "../lib/siteMeta.ts";
 
 type SalesRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
@@ -23,6 +24,26 @@ type SalesRouteDeps = {
 export function registerSalesRoutes(app: import("express").Express, deps: SalesRouteDeps) {
   const { getSessionUserId } = deps;
   const limit = rateLimitMiddleware("sales:lead-suggestions", (req) => getSessionUserId(req), 12, 60_000);
+  const limitEnrich = rateLimitMiddleware("sales:lead-enrich", (req) => getSessionUserId(req), 20, 60_000);
+
+  // Auto-fill a lead from its website: fetch the site (SSRF-safe) and read its
+  // company name + description from meta tags. Degrades to an empty result.
+  app.post("/api/sales/lead-enrich", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitEnrich(req, res)) return;
+    const url = String((req.body as { url?: string })?.url || "").trim();
+    if (!url) return res.status(400).json({ error: "missing_url", message: "Enter a website to look up." });
+    try {
+      const meta = await fetchSiteMeta(url);
+      return res.json({ ok: true, ...meta });
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "enrich_failed";
+      return res
+        .status(422)
+        .json({ error: code, message: "Couldn't read that website. Enter the details manually." });
+    }
+  });
 
   app.post("/api/sales/lead-suggestions", async (req, res) => {
     const userId = getSessionUserId(req);

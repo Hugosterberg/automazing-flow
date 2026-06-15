@@ -10,4 +10,4 @@ export {
   isFollowUpDueToday,
   compareLeads,
 } from "./leadHelpers";
-export { fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
+export { fetchLeadSuggestions, enrichLeadFromWebsite, type LeadSuggestion } from "./leadSuggestionsClient";

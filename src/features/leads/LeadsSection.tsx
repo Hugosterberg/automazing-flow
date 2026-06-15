@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ import {
   isFollowUpOverdue,
   type LeadStatus,
 } from "./leadHelpers";
-import { fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
+import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -125,6 +125,28 @@ export function LeadsSection({ businessProfileId, context }: Props) {
   const [suggestions, setSuggestions] = useState<LeadSuggestion[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestSource, setSuggestSource] = useState<string>("");
+  const [enriching, setEnriching] = useState(false);
+
+  async function autofillFromWebsite() {
+    const url = form.website.trim();
+    if (!url) return;
+    setEnriching(true);
+    try {
+      const meta = await enrichLeadFromWebsite(url);
+      setForm((f) => ({
+        ...f,
+        website: meta.url || f.website,
+        company: f.company.trim() ? f.company : meta.company || f.company,
+        notes: f.notes.trim() ? f.notes : meta.description || f.notes,
+      }));
+      if (!meta.company && !meta.description) toast.message("Nothing useful found on that page.");
+      else toast.success("Filled in from website");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't read that website.");
+    } finally {
+      setEnriching(false);
+    }
+  }
 
   const sortedLeads = useMemo(() => [...leads].sort(compareLeads), [leads]);
   const openCount = leads.filter((l) => l.status !== "won" && l.status !== "lost").length;
@@ -141,7 +163,7 @@ export function LeadsSection({ businessProfileId, context }: Props) {
         contactName: form.contactName || null,
         email: form.email || null,
         phone: form.phone || null,
-        website: form.website || null,
+        website: form.website.trim() || null,
         notes: form.notes || null,
         nextFollowUpAt: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : null,
         source: "manual",
@@ -278,6 +300,33 @@ export function LeadsSection({ businessProfileId, context }: Props) {
             <DialogDescription>A company or contact to follow up with.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-website" className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5" /> Website
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="lead-website"
+                  value={form.website}
+                  onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && void autofillFromWebsite()}
+                  placeholder="example.com"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void autofillFromWebsite()}
+                  disabled={enriching || !form.website.trim()}
+                  className="shrink-0"
+                >
+                  {enriching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  <span className="ml-1.5 hidden sm:inline">Auto-fill</span>
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Paste a site and we'll pull in the company name + description.
+              </p>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="lead-company">Company *</Label>
               <Input
