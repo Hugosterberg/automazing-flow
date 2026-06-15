@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { clearSelectedContent, loadSelectedContent, saveSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { loadSelectedContent, saveSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { useProfileDocument } from "@/features/profile-documents";
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
@@ -207,13 +208,17 @@ export default function ContentPage() {
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
   const [contentTab, setContentTab] = useState<"browse" | "create">("browse");
   const [popupOauthError, setPopupOauthError] = useState<OAuthErrorDetails | null>(null);
-  const [selectedAssets, setSelectedAssets] = useState<SelectedContentAsset[]>(() =>
-    loadSelectedContent(activeProfileId)
-  );
-
-  useEffect(() => {
-    setSelectedAssets(loadSelectedContent(activeProfileId));
-  }, [activeProfileId]);
+  // Selected content assets persist per business profile in the DB (synced
+  // across devices and live across pages via React Query), migrating any
+  // device-local selection on first load.
+  const selectionDoc = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
+    legacyRead: () => {
+      const v = loadSelectedContent(activeProfileId);
+      return v.length ? v : undefined;
+    },
+    legacyWrite: (_bpId, value) => saveSelectedContent(activeProfileId, value),
+  });
+  const selectedAssets = selectionDoc.data;
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
@@ -483,8 +488,7 @@ export default function ContentPage() {
         ]
       : selectedAssets.filter((asset) => asset.id !== file.id);
 
-    setSelectedAssets(next);
-    saveSelectedContent(activeProfileId, next);
+    selectionDoc.save(next);
   }
 
   function navigateIntoFolder(folder: { id: string; name: string }) {
@@ -499,8 +503,7 @@ export default function ContentPage() {
   }
 
   function handleClearSelection() {
-    setSelectedAssets([]);
-    clearSelectedContent(activeProfileId);
+    selectionDoc.save([]);
   }
 
   return (

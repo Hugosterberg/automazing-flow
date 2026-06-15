@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Copy,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiUrl } from "@/lib/apiBase";
 import { loadAlibabaImport, saveAlibabaImport } from "@/lib/alibabaImportStorage";
+import { useProfileDocument } from "@/features/profile-documents";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import type { AlibabaProductImport } from "@/types/ecommerce";
 import { toast } from "sonner";
@@ -41,18 +42,18 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
   const [loading, setLoading] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [product, setProduct] = useState<AlibabaProductImport | null>(() => loadAlibabaImport(businessProfileId));
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [creatingDraft, setCreatingDraft] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
-  useEffect(() => {
-    setProduct(loadAlibabaImport(businessProfileId));
-  }, [businessProfileId]);
-
-  useEffect(() => {
-    saveAlibabaImport(businessProfileId, product);
-  }, [businessProfileId, product]);
+  // The last imported product persists per business profile in the DB (synced
+  // across devices), migrating any device-local draft on first load.
+  const importDoc = useProfileDocument<AlibabaProductImport | null>("alibaba-import", null, {
+    legacyRead: () => loadAlibabaImport(businessProfileId) ?? undefined,
+    legacyWrite: (_bpId, value) => saveAlibabaImport(businessProfileId, value),
+  });
+  const product = importDoc.data;
+  const setProduct = (value: AlibabaProductImport | null) => importDoc.save(value);
 
   const previewImageUrl = useMemo(
     () => (imageUrl: string) => apiUrl(`/api/ecommerce/alibaba/image?url=${encodeURIComponent(imageUrl)}`),

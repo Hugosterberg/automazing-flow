@@ -126,9 +126,14 @@ export default function CustomersPage() {
       },
     },
   );
-  const columns = Array.isArray(customersDoc.data.columns) ? customersDoc.data.columns : [];
-  const rows = Array.isArray(customersDoc.data.rows) ? customersDoc.data.rows : [];
-  const fileName = typeof customersDoc.data.fileName === "string" ? customersDoc.data.fileName : "";
+  const { columns, rows, fileName } = useMemo(() => {
+    const d = customersDoc.data;
+    return {
+      columns: Array.isArray(d.columns) ? d.columns : [],
+      rows: Array.isArray(d.rows) ? d.rows : [],
+      fileName: typeof d.fileName === "string" ? d.fileName : "",
+    };
+  }, [customersDoc.data]);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

@@ -29,7 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { type SelectedContentAsset } from "@/lib/contentSelection";
+import { useProfileDocument } from "@/features/profile-documents";
 import {
   createId,
   emptyProductInput,
@@ -145,14 +146,9 @@ export function ProductsTab({
   const [sourceFilter, setSourceFilter] = useState<"all" | Product["source"]>("all");
   const [sortBy, setSortBy] = useState<"updated" | "name" | "price">("updated");
 
-  // Assets the user marked in the Content page — the images that can be
-  // "tagged" onto a product as a new version.
-  const [contentAssets, setContentAssets] = useState<SelectedContentAsset[]>(() =>
-    loadSelectedContent(businessProfileId)
-  );
-  useEffect(() => {
-    setContentAssets(loadSelectedContent(businessProfileId));
-  }, [businessProfileId]);
+  // Assets the user marked in the Content page — read from the shared,
+  // DB-backed content selection (synced across devices/pages).
+  const contentAssets = useProfileDocument<SelectedContentAsset[]>("content-selection", []).data;
 
   const editingProduct = useMemo(
     () => products.find((product) => product.id === editingId) ?? null,

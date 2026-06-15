@@ -33,6 +33,7 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { useProfileDocument } from "@/features/profile-documents";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -422,9 +423,13 @@ export default function SocialMedia() {
   const [videoDraftSource, setVideoDraftSource] = useState<string | null>(null);
   const [videoDraft, setVideoDraft] = useState<VideoDraftResult | null>(null);
   const [videoDraftError, setVideoDraftError] = useState<string | null>(null);
-  const [selectedContent, setSelectedContent] = useState<SelectedContentAsset[]>(() =>
-    loadSelectedContent(activeProfileId)
-  );
+  // Read the shared content selection from the DB (synced across devices/pages).
+  const selectedContent = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
+    legacyRead: () => {
+      const v = loadSelectedContent(activeProfileId);
+      return v.length ? v : undefined;
+    },
+  }).data;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const socialAccounts = useMemo(() => {
@@ -439,9 +444,6 @@ export default function SocialMedia() {
   const selectedContentImages = selectedContent.filter((asset) => asset.kind === "image");
   const selectedContentVideos = selectedContent.filter((asset) => asset.kind === "video");
 
-  useEffect(() => {
-    setSelectedContent(loadSelectedContent(activeProfileId));
-  }, [activeProfileId]);
 
   useEffect(() => {
     if (!uploadedImage && selectedContentImages.length > 0) {
