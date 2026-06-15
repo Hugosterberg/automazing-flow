@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -180,7 +181,19 @@ export function LeadsSection({ businessProfileId, context }: Props) {
     }
   }
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
+
   const sortedLeads = useMemo(() => [...leads].sort(compareLeads), [leads]);
+  const filteredLeads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sortedLeads.filter((l) => {
+      if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (!q) return true;
+      return [l.company, l.contactName, l.email].some((v) => v?.toLowerCase().includes(q));
+    });
+  }, [sortedLeads, search, statusFilter]);
+  const showToolbar = leads.length > 4;
   const openCount = leads.filter((l) => l.status !== "won" && l.status !== "lost").length;
   const followUpDue = leads.filter(
     (l) => isFollowUpOverdue(l.nextFollowUpAt) || isFollowUpDueToday(l.nextFollowUpAt),
@@ -317,6 +330,34 @@ export function LeadsSection({ businessProfileId, context }: Props) {
           </div>
         ) : null}
 
+        {showToolbar ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search company, contact, email…"
+                aria-label="Search leads"
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as LeadStatus | "all")}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+                {LEAD_STATUS_ORDER.map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">
+                    {LEAD_STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
@@ -328,9 +369,11 @@ export function LeadsSection({ businessProfileId, context }: Props) {
               No leads yet. Add one, or get AI suggestions for who to contact.
             </p>
           </div>
+        ) : filteredLeads.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No leads match your filters.</p>
         ) : (
           <div className="space-y-2">
-            {sortedLeads.map((lead) => (
+            {filteredLeads.map((lead) => (
               <LeadRow
                 key={lead.id}
                 lead={lead}
