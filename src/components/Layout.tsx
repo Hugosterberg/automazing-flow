@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ActiveProfileContextBar } from "@/components/ActiveProfileContextBar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationsBell } from "@/features/activity";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -60,6 +61,7 @@ export default function Layout() {
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-2 shrink-0">
               <CommandPalette />
+              <NotificationsBell />
               {authMode === "cloud" ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

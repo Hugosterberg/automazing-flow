@@ -6,3 +6,4 @@ export {
 } from "./useActivityFeed";
 export type { ActivityEventRow, ActivityFeedFilters } from "./useActivityFeed";
 export { ActivityFeed } from "./ActivityFeed";
+export { NotificationsBell } from "./NotificationsBell";
