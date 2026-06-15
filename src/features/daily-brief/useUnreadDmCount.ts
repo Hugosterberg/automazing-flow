@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
@@ -13,12 +14,20 @@ export const UNREAD_DM_KEY = ["unread-dm-count"] as const;
  */
 export function useUnreadDmCount() {
   const { enabled, user } = useAuth();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
   const query = useQuery({
-    queryKey: [...UNREAD_DM_KEY, user?.id ?? null],
+    queryKey: [...UNREAD_DM_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
-      const res = await fetchWithTimeout(apiUrl("/api/messages/unread-count"), {
-        credentials: "include",
-      });
+      const res = await fetchWithTimeout(
+        apiUrl(
+          `/api/messages/unread-count${
+            businessProfileId ? `?business_profile_id=${encodeURIComponent(businessProfileId)}` : ""
+          }`,
+        ),
+        {
+          credentials: "include",
+        },
+      );
       if (!res.ok) return 0;
       const body = await res.json().catch(() => ({}));
       return Number((body as { count?: unknown })?.count ?? 0) || 0;

@@ -13,6 +13,7 @@ import {
   readMetaGraphVersion,
   type MarketingStoredAccount,
 } from "../lib/marketingData.ts";
+import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
 
 type MarketingRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
@@ -35,6 +36,10 @@ export function registerMarketingRoutes(app: import("express").Express, deps: Ma
       return res.status(401).json({ error: "Not authenticated" });
     }
 
+    // Scope to the caller's active business profile so one user's profiles
+    // never aggregate each other's ad/store accounts.
+    const businessProfileId = readRequestBusinessProfileId(req);
+
     const meta: MarketingStoredAccount[] = [];
     const google: MarketingStoredAccount[] = [];
     let shopify: MarketingStoredAccount | null = null;
@@ -48,6 +53,7 @@ export function registerMarketingRoutes(app: import("express").Express, deps: Ma
       if (access.migrate) {
         await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
+      if (!accountInBusinessProfile(stored, businessProfileId)) continue;
       if (platform === "meta_business") meta.push(stored);
       else if (platform === "google_ads") google.push(stored);
       else if (platform === "shopify" && !shopify) shopify = stored;

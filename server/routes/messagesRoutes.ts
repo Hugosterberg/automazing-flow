@@ -12,6 +12,7 @@ import {
   textFromZernioMessage,
   dateFromZernioMessage,
 } from "../lib/zernioInbox.ts";
+import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -81,6 +82,10 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       return res.status(401).json({ error: "Not authenticated" });
     }
 
+    // Scope every mailbox and DM account to the caller's active business
+    // profile, so profiles under the same user never see each other's inbox.
+    const businessProfileId = readRequestBusinessProfileId(req);
+
     const unified: UnifiedMessage[] = [];
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
     const mailTasks: Promise<void>[] = [];
@@ -108,6 +113,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       if (access.migrate) {
         await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
       }
+      if (!accountInBusinessProfile(stored, businessProfileId)) continue;
 
       const platform = String(stored.platform || "");
       const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
@@ -377,14 +383,18 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    // The user's DM-capable Zernio accounts, so we never count another
-    // tenant's conversations that share the same Zernio workspace/profile.
+    const businessProfileId = readRequestBusinessProfileId(req);
+
+    // The active profile's DM-capable Zernio accounts, so we never count
+    // another tenant's — or another of this user's profiles' — conversations
+    // that share the same Zernio workspace/profile.
     const myZernioAccountIds = new Set<string>();
     const myPlatforms = new Set<string>();
     const entries = await tokenStore.entries();
     for (const [, rawStored] of entries) {
       const stored = rawStored as StoredAccount;
       if (!getStoredAccountAccess(stored, userId).allowed) continue;
+      if (!accountInBusinessProfile(stored, businessProfileId)) continue;
       const platform = String(stored.platform || "");
       if (!SOCIAL_MESSAGE_PLATFORMS.includes(platform as (typeof SOCIAL_MESSAGE_PLATFORMS)[number])) continue;
       const zid = String(stored.zernioAccountId || stored.lateAccountId || "").trim();

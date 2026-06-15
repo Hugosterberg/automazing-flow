@@ -183,10 +183,17 @@ export default function MessagesPage() {
     setZernioNote(null);
     setMailErrors([]);
     try {
-      let res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
+      // Scope the inbox to the active business profile so switching profiles
+      // never shows another profile's mailboxes/DMs.
+      const unifiedUrl = apiUrl(
+        `/api/messages/unified${
+          activeProfileId ? `?business_profile_id=${encodeURIComponent(activeProfileId)}` : ""
+        }`,
+      );
+      let res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
       if (res.status === 401) {
         await ensureBackendSession();
-        res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
+        res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -202,7 +209,7 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [ensureBackendSession]);
+  }, [ensureBackendSession, activeProfileId]);
 
   useEffect(() => {
     void loadUnified();

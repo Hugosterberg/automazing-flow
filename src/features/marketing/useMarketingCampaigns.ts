@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
@@ -65,12 +66,20 @@ export const MARKETING_CAMPAIGNS_KEY = ["marketing-campaigns"] as const;
  */
 export function useMarketingCampaigns() {
   const { enabled, user } = useAuth();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
   const query = useQuery<MarketingCampaignsResponse>({
-    queryKey: [...MARKETING_CAMPAIGNS_KEY, user?.id ?? null],
+    queryKey: [...MARKETING_CAMPAIGNS_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
-      const res = await fetchWithTimeout(apiUrl("/api/marketing/campaigns"), {
-        credentials: "include",
-      });
+      const res = await fetchWithTimeout(
+        apiUrl(
+          `/api/marketing/campaigns${
+            businessProfileId ? `?business_profile_id=${encodeURIComponent(businessProfileId)}` : ""
+          }`,
+        ),
+        {
+          credentials: "include",
+        },
+      );
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load campaigns."));
       return body as MarketingCampaignsResponse;
@@ -99,8 +108,9 @@ export function useMarketingCampaigns() {
  */
 export function useCachedMarketingRoas(): number | null {
   const { user } = useAuth();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
   const query = useQuery<MarketingCampaignsResponse>({
-    queryKey: [...MARKETING_CAMPAIGNS_KEY, user?.id ?? null],
+    queryKey: [...MARKETING_CAMPAIGNS_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
       throw new Error("cache-only");
     },
