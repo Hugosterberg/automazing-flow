@@ -16,6 +16,7 @@ import {
   type AutomationSettings,
 } from "@/features/automation";
 import { platformLabel } from "@/lib/platformLabels";
+import { SystemHealthCard } from "@/features/diagnostics";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -244,6 +245,11 @@ export default function CompanyPage() {
             )}
           </CardContent>
         </Card>
+      </m.div>
+
+      {/* System health — config + schema diagnostics */}
+      <m.div {...pageFadeUp} transition={{ delay: 0.1 }}>
+        <SystemHealthCard />
       </m.div>
     </m.div>
   );
