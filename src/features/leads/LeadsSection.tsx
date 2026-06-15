@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ import {
   type LeadStatus,
 } from "./leadHelpers";
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
+import { parseLeadsCsv } from "./parseLeadsCsv";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -118,7 +119,27 @@ function LeadRow({
 }
 
 export function LeadsSection({ businessProfileId, context }: Props) {
-  const { leads, isLoading, createLead, updateLead, deleteLead } = useLeads(businessProfileId);
+  const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
+    useLeads(businessProfileId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const { leads: parsed, skipped } = parseLeadsCsv(text);
+      if (parsed.length === 0) {
+        toast.error("No leads found in that file. Expected a header row with a company column.");
+        return;
+      }
+      const count = await importLeads(parsed);
+      toast.success(`Imported ${count} lead${count === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't import that file.");
+    }
+  }
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -228,6 +249,23 @@ export function LeadsSection({ businessProfileId, context }: Props) {
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => void handleCsvFile(e)}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting || !businessProfileId}
+              title="Import leads from a CSV"
+            >
+              {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              <span className="ml-1.5 hidden sm:inline">Import CSV</span>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => void getSuggestions()} disabled={suggesting}>
               {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
               Suggest companies

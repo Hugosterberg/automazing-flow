@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { logActivity, ACTIVITY_FEED_KEY } from "@/features/activity";
-import { createLead, deleteLead, listLeads, updateLead, type Lead, type LeadInput } from "./leadsService";
+import { createLead, createLeads, deleteLead, listLeads, updateLead, type Lead, type LeadInput } from "./leadsService";
 
 export const LEADS_KEY = ["leads"] as const;
 
@@ -71,6 +71,26 @@ export function useLeads(businessProfileId: string | null | undefined) {
     onSuccess: invalidate,
   });
 
+  const importMut = useMutation({
+    mutationFn: async (inputs: LeadInput[]) => {
+      if (!businessProfileId) throw new Error("No active business profile.");
+      return createLeads(businessProfileId, inputs, user?.id ?? null);
+    },
+    onSuccess: (count) => {
+      invalidate();
+      if (supabase && businessProfileId && count > 0) {
+        void logActivity(supabase, {
+          businessProfileId,
+          module: "sales",
+          eventType: "leads.imported",
+          severity: "info",
+          summary: `Imported ${count} lead${count === 1 ? "" : "s"} from CSV`,
+        });
+        void qc.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+      }
+    },
+  });
+
   return {
     leads: query.data ?? [],
     isLoading: query.isLoading,
@@ -81,5 +101,7 @@ export function useLeads(businessProfileId: string | null | undefined) {
     isUpdating: updateMut.isPending,
     deleteLead: deleteMut.mutateAsync,
     isDeleting: deleteMut.isPending,
+    importLeads: importMut.mutateAsync,
+    isImporting: importMut.isPending,
   };
 }

@@ -97,6 +97,22 @@ export async function createLead(
   return rowToLead(data);
 }
 
+export async function createLeads(
+  businessProfileId: string,
+  inputs: LeadInput[],
+  createdBy: string | null,
+): Promise<number> {
+  const c = client();
+  if (!c) throw new Error("Not signed in.");
+  const rows = inputs
+    .filter((i) => i.company && i.company.trim())
+    .map((i) => ({ business_profile_id: businessProfileId, created_by: createdBy, ...inputToRow(i) }));
+  if (rows.length === 0) return 0;
+  const { error } = await c.from("leads").insert(rows);
+  if (error) throw new Error(error.message || "leads_import_failed");
+  return rows.length;
+}
+
 export async function updateLead(id: string, patch: Partial<LeadInput>): Promise<Lead> {
   const c = client();
   if (!c) throw new Error("Not signed in.");
