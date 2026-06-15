@@ -1,4 +1,4 @@
-import type { LeadInput } from "./leadsService";
+import type { Lead, LeadInput } from "./leadsService";
 
 /** Split one CSV line into fields, honouring double-quoted values with commas. */
 function splitCsvLine(line: string): string[] {
@@ -33,7 +33,7 @@ function splitCsvLine(line: string): string[] {
 
 const HEADER_ALIASES: Record<keyof LeadInput, string[]> = {
   company: ["company", "företag", "foretag", "organization", "organisation", "business", "account"],
-  contactName: ["contact", "contact name", "kontakt", "name", "namn", "person", "full name"],
+  contactName: ["contact", "contact name", "contactname", "kontakt", "name", "namn", "person", "full name"],
   email: ["email", "e-mail", "mail", "e-post", "epost"],
   phone: ["phone", "telefon", "tel", "mobile", "mobil", "phone number"],
   website: ["website", "url", "webbplats", "site", "web", "hemsida"],
@@ -96,4 +96,29 @@ export function parseLeadsCsv(text: string, maxRows = 500): ParsedLeadsCsv {
     leads.push({ ...lead, company: lead.company.trim() } as LeadInput);
   }
   return { leads, skipped };
+}
+
+const EXPORT_COLUMNS: Array<keyof Lead> = [
+  "company",
+  "contactName",
+  "email",
+  "phone",
+  "website",
+  "status",
+  "notes",
+  "nextFollowUpAt",
+];
+
+function csvEscape(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Serialize leads to a CSV string (header + one row per lead). */
+export function leadsToCsv(leads: Lead[]): string {
+  const lines = [EXPORT_COLUMNS.join(",")];
+  for (const lead of leads) {
+    lines.push(EXPORT_COLUMNS.map((c) => csvEscape(lead[c])).join(","));
+  }
+  return lines.join("\n");
 }

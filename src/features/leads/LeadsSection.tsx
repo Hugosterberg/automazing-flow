@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
   type LeadStatus,
 } from "./leadHelpers";
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
-import { parseLeadsCsv } from "./parseLeadsCsv";
+import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -139,6 +139,17 @@ export function LeadsSection({ businessProfileId, context }: Props) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't import that file.");
     }
+  }
+
+  function exportCsv() {
+    if (leads.length === 0) return;
+    const blob = new Blob([leadsToCsv(leads)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -266,6 +277,12 @@ export function LeadsSection({ businessProfileId, context }: Props) {
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
               <span className="ml-1.5 hidden sm:inline">Import CSV</span>
             </Button>
+            {leads.length > 0 ? (
+              <Button size="sm" variant="ghost" onClick={exportCsv} title="Export leads to CSV">
+                <Download className="h-3.5 w-3.5" />
+                <span className="ml-1.5 hidden sm:inline">Export</span>
+              </Button>
+            ) : null}
             <Button size="sm" variant="outline" onClick={() => void getSuggestions()} disabled={suggesting}>
               {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
               Suggest companies

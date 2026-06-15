@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseLeadsCsv } from "../features/leads/parseLeadsCsv";
+import { parseLeadsCsv, leadsToCsv } from "../features/leads/parseLeadsCsv";
+import type { Lead } from "../features/leads/leadsService";
 
 describe("parseLeadsCsv", () => {
   it("maps recognised columns (English + Swedish) to lead fields", () => {
@@ -44,5 +45,31 @@ describe("parseLeadsCsv", () => {
   it("returns empty for a header-only or blank file", () => {
     expect(parseLeadsCsv("Company,Email").leads).toEqual([]);
     expect(parseLeadsCsv("").leads).toEqual([]);
+  });
+
+  it("round-trips through leadsToCsv, escaping special characters", () => {
+    const lead = {
+      id: "1",
+      businessProfileId: "bp",
+      company: "Smith, Jones",
+      contactName: 'A "B"',
+      email: "a@b.com",
+      phone: null,
+      website: null,
+      source: "manual",
+      status: "new" as const,
+      notes: "important, urgent",
+      nextFollowUpAt: null,
+      createdAt: "",
+      updatedAt: "",
+    } satisfies Lead;
+    const csv = leadsToCsv([lead]);
+    expect(csv.split("\n")[0]).toBe("company,contactName,email,phone,website,status,notes,nextFollowUpAt");
+    expect(csv).toContain('"Smith, Jones"');
+    expect(csv).toContain('"A ""B"""');
+    const reparsed = parseLeadsCsv(csv);
+    expect(reparsed.leads[0].company).toBe("Smith, Jones");
+    expect(reparsed.leads[0].contactName).toBe('A "B"');
+    expect(reparsed.leads[0].notes).toBe("important, urgent");
   });
 });
