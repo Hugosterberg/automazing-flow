@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { m } from "framer-motion";
 import { Users, Upload, Search, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
+import { useProfileDocument } from "@/features/profile-documents";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -98,40 +99,36 @@ async function parseCustomerFile(
 
 export default function CustomersPage() {
   const { activeProfileId } = useAccounts();
-  const [columns, setColumns] = useState<string[]>([]);
-  const [rows, setRows] = useState<CustomerRow[]>([]);
   const [search, setSearch] = useState("");
-  const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const storageKey = useMemo(
-    () => `automazing-customers-upload:${activeProfileId || "default"}`,
-    [activeProfileId]
+
+  // Uploaded customer data persists per business profile in the DB (synced
+  // across devices). One-time migration reads the legacy per-profile key.
+  const legacyKey = `automazing-customers-upload:${activeProfileId || "default"}`;
+  const customersDoc = useProfileDocument<CustomersStoragePayload>(
+    "customers",
+    { columns: [], rows: [], fileName: "" },
+    {
+      legacyRead: () => {
+        try {
+          const raw = localStorage.getItem(legacyKey);
+          return raw ? (JSON.parse(raw) as CustomersStoragePayload) : undefined;
+        } catch {
+          return undefined;
+        }
+      },
+      legacyWrite: (_bpId, value) => {
+        try {
+          localStorage.setItem(legacyKey, JSON.stringify(value));
+        } catch {
+          /* ignore */
+        }
+      },
+    },
   );
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) {
-        setColumns([]);
-        setRows([]);
-        setFileName("");
-        return;
-      }
-      const parsed = JSON.parse(raw) as CustomersStoragePayload;
-      setColumns(Array.isArray(parsed.columns) ? parsed.columns : []);
-      setRows(Array.isArray(parsed.rows) ? parsed.rows : []);
-      setFileName(typeof parsed.fileName === "string" ? parsed.fileName : "");
-    } catch {
-      setColumns([]);
-      setRows([]);
-      setFileName("");
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    const payload: CustomersStoragePayload = { columns, rows, fileName };
-    localStorage.setItem(storageKey, JSON.stringify(payload));
-  }, [columns, rows, fileName, storageKey]);
+  const columns = Array.isArray(customersDoc.data.columns) ? customersDoc.data.columns : [];
+  const rows = Array.isArray(customersDoc.data.rows) ? customersDoc.data.rows : [];
+  const fileName = typeof customersDoc.data.fileName === "string" ? customersDoc.data.fileName : "";
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -144,13 +141,9 @@ export default function CustomersPage() {
         throw new Error("Only CSV files are supported.");
       }
       const parsed = await parseCustomerFile(file);
-      setColumns(parsed.columns);
-      setRows(parsed.rows);
-      setFileName(file.name);
+      customersDoc.save({ columns: parsed.columns, rows: parsed.rows, fileName: file.name });
     } catch (e) {
-      setColumns([]);
-      setRows([]);
-      setFileName("");
+      customersDoc.save({ columns: [], rows: [], fileName: "" });
       setError(e instanceof Error ? e.message : "Could not parse the file.");
     } finally {
       event.target.value = "";
@@ -158,12 +151,9 @@ export default function CustomersPage() {
   }
 
   function clearData() {
-    setColumns([]);
-    setRows([]);
-    setFileName("");
+    customersDoc.save({ columns: [], rows: [], fileName: "" });
     setSearch("");
     setError(null);
-    localStorage.removeItem(storageKey);
   }
 
   const filteredRows = useMemo(() => {

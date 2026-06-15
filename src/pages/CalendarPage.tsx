@@ -56,6 +56,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { useProfileDocument } from "@/features/profile-documents";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -66,17 +67,21 @@ function sortCalendarAccounts(a: ConnectedAccount, b: ConnectedAccount): number 
   return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
 }
 
-function loadEvents(): CalendarEvent[] {
+function readLegacyEvents(): CalendarEvent[] | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return raw ? (JSON.parse(raw) as CalendarEvent[]) : undefined;
   } catch {
-    return [];
+    return undefined;
   }
 }
 
-function saveEvents(events: CalendarEvent[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+function writeLegacyEvents(events: CalendarEvent[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  } catch {
+    /* ignore */
+  }
 }
 
 function sortByTime(events: CalendarEvent[]): CalendarEvent[] {
@@ -100,7 +105,13 @@ export default function CalendarPage() {
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("calendar");
-  const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
+  // Calendar events persist per business profile in the DB (synced across
+  // devices), migrating any existing device-local events on first load.
+  const eventsDoc = useProfileDocument<CalendarEvent[]>("calendar-events", [], {
+    legacyRead: () => readLegacyEvents(),
+    legacyWrite: (_bpId, value) => writeLegacyEvents(value),
+  });
+  const events = eventsDoc.data;
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
@@ -109,10 +120,6 @@ export default function CalendarPage() {
   const [formTitle, setFormTitle] = useState("");
   const [formTime, setFormTime] = useState("");
   const [formAutomated, setFormAutomated] = useState(false);
-
-  useEffect(() => {
-    saveEvents(events);
-  }, [events]);
 
   const {
     activeAccount: activeCalendarAccount,
@@ -163,8 +170,8 @@ export default function CalendarPage() {
 
   const addEvent = () => {
     if (!formTitle.trim() || !formDate) return;
-    setEvents((prev) => [
-      ...prev,
+    eventsDoc.save([
+      ...events,
       {
         id: crypto.randomUUID(),
         title: formTitle.trim(),
@@ -182,7 +189,7 @@ export default function CalendarPage() {
   };
 
   const removeEvent = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    eventsDoc.save(events.filter((e) => e.id !== id));
   };
 
   const openDialog = () => {

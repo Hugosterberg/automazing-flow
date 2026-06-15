@@ -36,6 +36,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
+import { useProfileDocument } from "@/features/profile-documents";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -197,23 +198,30 @@ export default function SalesMarketingPage() {
     [tasks]
   );
 
-  // Goals stored in localStorage per business profile
-  const GOALS_KEY = `automazing-goals-${businessProfileId ?? "default"}`;
-  const [goals, setGoals] = useState<GoalItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(GOALS_KEY);
-      return stored
-        ? (JSON.parse(stored) as GoalItem[]).map(normalizeGoal)
-        : DEFAULT_GOALS.map((g) => ({ ...g }));
-    } catch {
-      return DEFAULT_GOALS.map((g) => ({ ...g }));
-    }
+  // Goals persist per business profile in the DB (synced across devices), with
+  // a one-time migration from the legacy per-profile localStorage key.
+  const legacyGoalsKey = `automazing-goals-${businessProfileId ?? "default"}`;
+  const goalsDoc = useProfileDocument<GoalItem[]>("goals", DEFAULT_GOALS.map((g) => ({ ...g })), {
+    legacyRead: () => {
+      try {
+        const stored = localStorage.getItem(legacyGoalsKey);
+        return stored ? (JSON.parse(stored) as GoalItem[]).map(normalizeGoal) : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    legacyWrite: (_bpId, value) => {
+      try {
+        localStorage.setItem(legacyGoalsKey, JSON.stringify(value));
+      } catch {
+        /* ignore */
+      }
+    },
   });
+  const goals = goalsDoc.data;
 
   function updateGoal(id: string, current: number, target: number) {
-    const next = goals.map((g) => g.id === id ? { ...g, current, target } : g);
-    setGoals(next);
-    try { localStorage.setItem(GOALS_KEY, JSON.stringify(next)); } catch { /* */ }
+    goalsDoc.save(goals.map((g) => (g.id === id ? { ...g, current, target } : g)));
   }
 
   // Add pipeline lead dialog
