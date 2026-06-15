@@ -430,6 +430,7 @@ registerReviewsRoutes(app, {
   tokenStore,
   getStoredAccountAccess,
   zernio: zernioModule,
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerContentRoutes(app, {

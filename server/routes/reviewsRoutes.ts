@@ -11,10 +11,12 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
+import { logActivity } from "../lib/activityLog.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
   ownerUserId?: string;
+  profileId?: string | null;
   zernioAccountId?: string;
   lateAccountId?: string;
 };
@@ -30,10 +32,11 @@ interface ReviewsRoutesDeps {
     userId: string
   ) => { allowed: boolean; migrate: boolean };
   zernio: ZernioModule;
+  supabaseAdmin?: unknown;
 }
 
 export function registerReviewsRoutes(app, deps: ReviewsRoutesDeps) {
-  const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio } = deps;
+  const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio, supabaseAdmin } = deps;
 
   app.post("/api/reviews/reply", async (req, res) => {
     const userId = getSessionUserId(req);
@@ -76,6 +79,21 @@ export function registerReviewsRoutes(app, deps: ReviewsRoutesDeps) {
       return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
         error: failure.code,
         message: failure.message,
+      });
+    }
+
+    // Record the reply so it shows in the notifications bell / Activity feed.
+    const businessProfileId = String(stored.profileId || "").trim();
+    if (supabaseAdmin && businessProfileId) {
+      void logActivity(supabaseAdmin as Parameters<typeof logActivity>[0], {
+        businessProfileId,
+        actorUserId: userId,
+        module: "reviews",
+        eventType: "review.replied",
+        subjectType: "review",
+        subjectId: reviewId,
+        severity: "success",
+        summary: `Replied to a review on ${String(stored.platform || "a review site")}`,
       });
     }
 
