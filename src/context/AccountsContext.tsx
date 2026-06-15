@@ -65,6 +65,12 @@ interface AccountsContextValue {
       profileUrl?: string;
       displayName?: string;
       isZernio?: boolean;
+      /**
+       * Whether attaching this account should switch the active profile to
+       * `profileId`. True (default) for the interactive OAuth-connect flow;
+       * pass false for background hydration so the active profile never flips.
+       */
+      switchActiveProfile?: boolean;
     }
   ) => void;
   removeAccount: (id: string) => void;
@@ -611,6 +617,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       profileUrl?: string;
       displayName?: string;
       isZernio?: boolean;
+      switchActiveProfile?: boolean;
     }
   ) => {
       const hasValidRequestedProfile = Boolean(
@@ -678,7 +685,15 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         // replaces whatever was previously connected on this platform.
         return applyAccountLimit(prev, newAccount);
       });
-      if (hasValidRequestedProfile && profileId && profileId !== activeProfileId) {
+      // Switch to the account's profile for the interactive connect flow, but
+      // never for background hydration (which would flip the active profile as
+      // it ingests accounts that live under different profiles).
+      if (
+        extra?.switchActiveProfile !== false &&
+        hasValidRequestedProfile &&
+        profileId &&
+        profileId !== activeProfileId
+      ) {
         setActiveProfileId(profileId);
       }
 

@@ -251,6 +251,8 @@ export default function MessagesPage() {
                 displayName: account.displayName ? String(account.displayName) : undefined,
                 isZernio: Boolean(account.isZernio),
                 zernioAccountId: account.zernioAccountId ? String(account.zernioAccountId) : undefined,
+                // Background hydration must not flip the active profile.
+                switchActiveProfile: false,
               }
             );
           }

@@ -369,6 +369,8 @@ export default function ContentPage() {
               profileUrl: account.profileUrl ? String(account.profileUrl) : undefined,
               isZernio: Boolean(account.isZernio),
               zernioAccountId: account.zernioAccountId ? String(account.zernioAccountId) : undefined,
+              // Background hydration must not flip the active profile.
+              switchActiveProfile: false,
             }
           );
         }
