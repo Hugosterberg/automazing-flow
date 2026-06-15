@@ -33,7 +33,8 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
+import { LeadsSection } from "@/features/leads";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -189,6 +190,13 @@ export default function SalesMarketingPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfileId } = useAccounts();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const { profiles } = useBusinessProfiles();
+  const activeProfile = profiles.find((p) => p.id === businessProfileId);
+  const leadsContext = {
+    businessName: activeProfile?.name,
+    description: activeProfile?.notes ?? undefined,
+    location: activeProfile?.location ?? undefined,
+  };
 
   const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
 
@@ -284,6 +292,11 @@ export default function SalesMarketingPage() {
             </CardContent>
           </Card>
         ))}
+      </m.div>
+
+      {/* Leads — register + follow up, with AI outreach suggestions */}
+      <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
+        <LeadsSection businessProfileId={businessProfileId} context={leadsContext} />
       </m.div>
 
       {/* Pipeline kanban */}

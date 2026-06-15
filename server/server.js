@@ -49,6 +49,7 @@ import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
 import { registerProductRoutes } from "./routes/productRoutes.ts";
 import { registerMarketingRoutes } from "./routes/marketingRoutes.ts";
+import { registerSalesRoutes } from "./routes/salesRoutes.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -471,6 +472,11 @@ registerMarketingRoutes(app, {
   getSessionUserId,
   getStoredAccountAccess,
   tokenStore,
+});
+
+registerSalesRoutes(app, {
+  getSessionUserId,
+  secretResolver,
 });
 
 registerMiscRoutes(app, {
