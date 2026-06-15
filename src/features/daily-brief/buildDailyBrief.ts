@@ -10,7 +10,7 @@
  * DMs, pending reviews, …) plug in by adding another block here.
  */
 
-export type BriefItemKind = "connection" | "message" | "marketing" | "task" | "recommendation";
+export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -43,6 +43,8 @@ export interface DailyBriefInput {
   unreadDms?: number;
   /** Blended marketing ROAS (revenue ÷ ad spend) when it has dropped below 1×. */
   underwaterRoas?: number | null;
+  /** Open leads whose follow-up is overdue or due today. */
+  leadsToFollowUp?: number;
   overdueTasks: Array<{ title: string }>;
   dueTodayTasks: Array<{ title: string }>;
   newRecommendations: Array<{ title: string }>;
@@ -100,6 +102,20 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
         unreadDms === 1 ? "A customer is waiting for a reply." : "Customers are waiting for replies.",
       to: "/messages",
       count: unreadDms,
+    });
+  }
+
+  const leadsToFollowUp = Math.max(0, Math.trunc(input.leadsToFollowUp ?? 0));
+  if (leadsToFollowUp > 0) {
+    items.push({
+      id: "leads-followup",
+      kind: "lead",
+      severity: "warning",
+      title: `${leadsToFollowUp} ${leadsToFollowUp === 1 ? "lead" : "leads"} to follow up`,
+      description:
+        leadsToFollowUp === 1 ? "A follow-up is due — don't let it go cold." : "Follow-ups are due — keep deals moving.",
+      to: "/sales",
+      count: leadsToFollowUp,
     });
   }
 
@@ -162,6 +178,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
   const actionCount =
     input.connectionIssues.length +
     unreadDms +
+    leadsToFollowUp +
     hasUnderwaterRoas +
     input.overdueTasks.length +
     input.dueTodayTasks.length +

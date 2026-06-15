@@ -14,6 +14,8 @@ export interface DigestInput {
   appUrl?: string;
   connectionIssues: Array<{ label: string; health: string }>;
   unreadDms?: number;
+  /** Open leads whose follow-up is overdue or due today. */
+  leadsToFollowUp?: number;
   overdueTasks: Array<{ title: string }>;
   dueTodayTasks: Array<{ title: string }>;
   newRecommendations: Array<{ title: string }>;
@@ -52,6 +54,7 @@ function titles(rows: Array<{ title: string }>, max = 5): string[] {
 export function buildDigest(input: DigestInput): Digest {
   const sections: DigestSection[] = [];
   const unreadDms = Math.max(0, Math.trunc(input.unreadDms ?? 0));
+  const leadsToFollowUp = Math.max(0, Math.trunc(input.leadsToFollowUp ?? 0));
 
   if (input.connectionIssues.length > 0) {
     sections.push({
@@ -63,6 +66,12 @@ export function buildDigest(input: DigestInput): Digest {
     sections.push({
       heading: `${unreadDms} unread message(s)`,
       items: ["Customers are waiting for a reply in your inbox."],
+    });
+  }
+  if (leadsToFollowUp > 0) {
+    sections.push({
+      heading: `${leadsToFollowUp} lead(s) to follow up`,
+      items: ["A follow-up is due — keep deals moving in Sales."],
     });
   }
   if (input.overdueTasks.length > 0) {
@@ -81,6 +90,7 @@ export function buildDigest(input: DigestInput): Digest {
   const actionCount =
     input.connectionIssues.length +
     unreadDms +
+    leadsToFollowUp +
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length;

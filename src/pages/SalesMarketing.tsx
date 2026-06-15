@@ -34,7 +34,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
-import { LeadsSection } from "@/features/leads";
+import { LeadsSection, useLeads, isLeadOpen } from "@/features/leads";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -265,9 +265,13 @@ export default function SalesMarketingPage() {
     await updateTask({ id, patch: { status } });
   }
 
-  const totalLeads = pipelineTasks.length;
-  const wonLeads = pipelineTasks.filter((t) => t.status === "done").length;
-  const conversionRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+  // KPIs are driven by the real leads pipeline (not pipeline-tagged tasks).
+  const { leads } = useLeads(businessProfileId);
+  const activeLeads = leads.filter((l) => isLeadOpen(l.status)).length;
+  const wonLeads = leads.filter((l) => l.status === "won").length;
+  const lostLeads = leads.filter((l) => l.status === "lost").length;
+  const closedLeads = wonLeads + lostLeads;
+  const conversionRate = closedLeads > 0 ? Math.round((wonLeads / closedLeads) * 100) : 0;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -280,7 +284,7 @@ export default function SalesMarketingPage() {
       {/* KPI tiles */}
       <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
-          { label: "Active leads", value: pipelineTasks.filter((t) => t.status !== "done").length, icon: CircleDot, color: "text-blue-500" },
+          { label: "Active leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
           { label: "Won deals", value: wonLeads, icon: Trophy, color: "text-green-500" },
           { label: "Conversion rate", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
         ].map((kpi) => (

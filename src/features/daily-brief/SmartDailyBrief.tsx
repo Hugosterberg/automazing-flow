@@ -9,6 +9,7 @@ import {
   PlugZap,
   Sparkles,
   Sun,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
@@ -17,6 +18,7 @@ import { useConnections } from "@/features/connections/useConnections";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
 import { useCachedMarketingRoas } from "@/features/marketing";
+import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
@@ -24,6 +26,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   connection: PlugZap,
   message: MessageSquare,
   marketing: Gauge,
+  lead: UserPlus,
   task: ListChecks,
   recommendation: Sparkles,
 };
@@ -83,23 +86,28 @@ export function SmartDailyBrief({
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
   const { unreadDms, isLoading: dmsLoading } = useUnreadDmCount();
   const marketingRoas = useCachedMarketingRoas();
+  const { leads } = useLeads(businessProfileId);
 
   const brief = useMemo(() => {
     const nowMs = Date.now();
     const openTasks = tasks.filter(isTaskOpen);
+    const leadsToFollowUp = leads.filter(
+      (l) => isLeadOpen(l.status) && (isFollowUpOverdue(l.nextFollowUpAt, nowMs) || isFollowUpDueToday(l.nextFollowUpAt, nowMs)),
+    ).length;
     return buildDailyBrief({
       connectionIssues: connections
         .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
         .map((c) => ({ label: platformLabel(c.platform), health: c.health })),
       unreadDms,
       underwaterRoas: marketingRoas,
+      leadsToFollowUp,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
       newRecommendations: recommendations
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
     });
-  }, [connections, tasks, recommendations, unreadDms, marketingRoas]);
+  }, [connections, tasks, recommendations, unreadDms, marketingRoas, leads]);
 
   // Avoid flashing "all caught up" before the first data lands.
   const isInitialLoading =

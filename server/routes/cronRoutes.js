@@ -347,10 +347,27 @@ export function registerCronRoutes(app, deps) {
             title: String(r?.title || "Recommendation"),
           }));
 
+          // Open leads whose follow-up is overdue or due today (best-effort —
+          // the table may not exist before its migration is applied).
+          let leadsToFollowUp = 0;
+          try {
+            const { data: leadRows } = await supabaseAdmin
+              .from("leads")
+              .select("status,next_follow_up_at")
+              .eq("business_profile_id", businessProfileId)
+              .in("status", ["new", "contacted", "qualified"])
+              .not("next_follow_up_at", "is", null)
+              .lte("next_follow_up_at", endOfToday.toISOString());
+            leadsToFollowUp = Array.isArray(leadRows) ? leadRows.length : 0;
+          } catch {
+            /* leads table not available yet */
+          }
+
           const digest = buildDigest({
             businessName: String(profile.name || "Your business"),
             appUrl: appUrl || undefined,
             connectionIssues,
+            leadsToFollowUp,
             overdueTasks,
             dueTodayTasks,
             newRecommendations,

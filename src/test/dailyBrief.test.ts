@@ -62,6 +62,16 @@ describe("buildDailyBrief", () => {
     expect(buildDailyBrief({ ...empty, unreadDms: 2.9 }).items[0].count).toBe(2);
   });
 
+  it("surfaces leads due for follow-up as a warning", () => {
+    const brief = buildDailyBrief({ ...empty, leadsToFollowUp: 3 });
+    expect(brief.items[0].kind).toBe("lead");
+    expect(brief.items[0].severity).toBe("warning");
+    expect(brief.items[0].title).toBe("3 leads to follow up");
+    expect(brief.items[0].to).toBe("/sales");
+    expect(brief.actionCount).toBe(3);
+    expect(buildDailyBrief({ ...empty, leadsToFollowUp: 0 }).allClear).toBe(true);
+  });
+
   it("warns when marketing ROAS drops below 1× but stays quiet otherwise", () => {
     const underwater = buildDailyBrief({ ...empty, underwaterRoas: 0.7 });
     expect(underwater.items[0].kind).toBe("marketing");

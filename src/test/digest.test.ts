@@ -24,13 +24,15 @@ describe("buildDigest", () => {
       appUrl: "https://app.example.com/",
       connectionIssues: [{ label: "Instagram", health: "expired" }],
       unreadDms: 2,
+      leadsToFollowUp: 1,
       overdueTasks: [{ title: "Pay invoice" }],
       dueTodayTasks: [{ title: "Call supplier" }],
       newRecommendations: [{ title: "Post a reel" }],
     });
     expect(d.hasContent).toBe(true);
-    expect(d.actionCount).toBe(6);
-    expect(d.subject).toContain("6 things need attention");
+    expect(d.actionCount).toBe(7);
+    expect(d.subject).toContain("7 things need attention");
+    expect(d.sections.some((s) => /lead/i.test(s.heading))).toBe(true);
     expect(d.sections.map((s) => s.heading)[0]).toMatch(/connection/i);
     // CTA link points at the app (trailing slash trimmed)
     expect(d.html).toContain('href="https://app.example.com"');
