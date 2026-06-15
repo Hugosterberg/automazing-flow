@@ -165,6 +165,7 @@ const DB_PROBES: Array<{ id: string; label: string; table: string; column: strin
   { id: "db_profile_documents", label: "profile_documents table", table: "profile_documents", column: "key", migration: "20260615130000_profile_documents.sql" },
   { id: "db_leads", label: "leads table", table: "leads", column: "company", migration: "20260615140000_leads.sql" },
   { id: "db_notification_settings", label: "automation_settings.notification_email", table: "automation_settings", column: "notification_email", migration: "20260615120000_notification_settings.sql" },
+  { id: "db_marketing_snapshots", label: "marketing_snapshots table", table: "marketing_snapshots", column: "snapshot_date", migration: "20260615150000_marketing_snapshots.sql" },
 ];
 
 type ProbeClient = {

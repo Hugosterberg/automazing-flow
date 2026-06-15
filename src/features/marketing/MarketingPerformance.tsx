@@ -1,8 +1,35 @@
-import { Gauge, Info, TrendingUp } from "lucide-react";
+import { Gauge, Info, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useMarketingCampaigns, type MarketingPerformance as Performance } from "./useMarketingCampaigns";
+import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney, formatNumber, formatRoas } from "./format";
+
+function pct(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const rounded = Math.round(value);
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}
+
+/** Week-over-week trend strip, shown once there's a baseline ~7 days back. */
+function TrendStrip() {
+  const { trend } = useMarketingTrend();
+  if (!trend || !trend.previous || trend.roasDelta == null) return null;
+  const Icon = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
+  const tone =
+    trend.direction === "up" ? "text-success" : trend.direction === "down" ? "text-destructive" : "text-muted-foreground";
+  const delta = `${trend.roasDelta > 0 ? "+" : ""}${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(trend.roasDelta)}×`;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+      <span className={cn("inline-flex items-center gap-1 font-medium", tone)}>
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+        ROAS {delta} vs last week
+      </span>
+      <span>Spend {pct(trend.spendChangePct)}</span>
+      <span>Revenue {pct(trend.revenueChangePct)}</span>
+    </div>
+  );
+}
 
 /**
  * One derived KPI with its calculation shown inline. `formula` is rendered
@@ -156,6 +183,8 @@ export function MarketingPerformance() {
             }
           />
         </div>
+
+        <TrendStrip />
 
         {hasAdSpend ? <ChannelMix performance={p} /> : null}
 
