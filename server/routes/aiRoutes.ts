@@ -1,6 +1,12 @@
 import crypto from "crypto";
 import { generateReplyDraft } from "../ai/replyDraft.ts";
 import { rateLimitMiddleware } from "../lib/rateLimit.ts";
+import {
+  buildContentIdeaPrompt,
+  heuristicContentIdeas,
+  parseContentIdeas,
+  type ContentIdeaContext,
+} from "../ai/contentIdeas.ts";
 
 type AiRouteDeps = {
   getSessionUserId?: (req: { [key: string]: unknown }) => string | null;
@@ -28,6 +34,55 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
   const limitVideoDraft = rateLimitMiddleware("ai:video-draft", getUserId, 20, 60_000);
   const limitAnalyze = rateLimitMiddleware("ai:analyze", getUserId, 20, 60_000);
   const limitReplyDraft = rateLimitMiddleware("ai:reply-draft", getUserId, 30, 60_000);
+  const limitContentIdeas = rateLimitMiddleware("ai:content-ideas", getUserId, 12, 60_000);
+
+  // AI content ideas — proposes post concepts; heuristic fallback without a key.
+  app.post("/api/content/ideas", async (req, res) => {
+    const userId = deps?.getSessionUserId?.(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitContentIdeas(req, res)) return;
+
+    const body = (req.body ?? {}) as {
+      businessName?: string;
+      description?: string;
+      audience?: string;
+      platform?: string;
+    };
+    const ctx: ContentIdeaContext = {
+      businessName: String(body.businessName || "").slice(0, 200),
+      description: String(body.description || "").slice(0, 1000),
+      audience: String(body.audience || "").slice(0, 200),
+      platform: String(body.platform || "").slice(0, 60),
+    };
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || "",
+    ).trim();
+    if (!openaiKey) return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+
+    try {
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: buildContentIdeaPrompt(ctx) }],
+          temperature: 0.7,
+          max_tokens: 800,
+          response_format: { type: "json_object" },
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!aiRes.ok) return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+      const aiData = await aiRes.json().catch(() => ({}));
+      const content = aiData?.choices?.[0]?.message?.content ?? "{}";
+      const ideas = parseContentIdeas(content);
+      return res.json(ideas.length ? { ideas, source: "ai" } : { ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+    } catch {
+      return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+    }
+  });
 
   async function postMessageSummaries(req: import("express").Request, res: import("express").Response) {
     const userId = deps?.getSessionUserId?.(req);

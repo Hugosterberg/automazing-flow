@@ -29,7 +29,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks } from "@/features/tasks";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
+import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -268,6 +269,13 @@ export default function SocialMedia() {
   const businessProfileId = activeBp ?? activeProfileId ?? null;
   const { recommendations: aiRecs } = useAiRecommendations(businessProfileId);
   const { tasks: contentTasks } = useTasks(businessProfileId);
+  const { profiles: bizProfiles } = useBusinessProfiles();
+  const activeBizProfile = bizProfiles.find((p) => p.id === businessProfileId);
+  const contentIdeasContext = {
+    businessName: activeBizProfile?.name,
+    description: activeBizProfile?.notes ?? undefined,
+    platform: "social media",
+  };
   const contentIdeas = useMemo(
     () => aiRecs.filter((r) => r.kind === "content" && (r.status === "new" || r.status === "seen")).slice(0, 5),
     [aiRecs]
@@ -590,6 +598,10 @@ export default function SocialMedia() {
         title="Social Media"
         description="Automate and manage your social media"
       />
+
+      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <ContentIdeasCard businessProfileId={businessProfileId} context={contentIdeasContext} />
+      </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <Tabs value={activeSocialTab} onValueChange={handleSocialTabChange}>
