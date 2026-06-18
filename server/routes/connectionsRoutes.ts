@@ -2,6 +2,7 @@ import { describeZernioFailure, type ZernioModule, type ZernioRawAccount } from 
 import { logActivity } from "../lib/activityLog.ts";
 import { recordSyncRun } from "../lib/syncRunLog.ts";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
+import { probeOAuthConnection } from "../lib/tokenProbe.ts";
 
 /**
  * /api/connections/* — multi-tenant connection lifecycle.
@@ -128,8 +129,24 @@ export function registerConnectionsRoutes(
       let nextError: string | null = null;
 
       if (!zid) {
-        // Non-Zernio connection: leave alone unless explicitly missing; just touch timestamp.
-        nextHealth = row.health || "healthy";
+        // Direct OAuth connection: actively verify the token so a revoked
+        // Gmail/Outlook/Drive/Ads grant surfaces as "reconnect required"
+        // instead of silently staying healthy. Only an explicit provider
+        // revocation downgrades health; transient/unsupported probes leave it.
+        const stored = await tokenStore.get(row.id).catch(() => null);
+        if (stored) {
+          const probe = await probeOAuthConnection({ accountId: row.id, stored, tokenStore });
+          if (probe.status === "expired") {
+            nextHealth = "expired";
+            nextError = probe.error;
+          } else if (probe.status === "healthy") {
+            nextHealth = "healthy";
+          } else {
+            nextHealth = row.health || "healthy";
+          }
+        } else {
+          nextHealth = row.health || "healthy";
+        }
       } else if (zernioById.has(zid)) {
         nextHealth = "healthy";
       } else {
@@ -319,6 +336,21 @@ export function registerConnectionsRoutes(
         if (!known) {
           nextHealth = "expired";
           nextError = "Zernio no longer reports this account. Re-connect required.";
+        }
+      } else if (!zid) {
+        // Direct OAuth connection: verify the token by refresh probe.
+        const stored = await tokenStore.get(connectionId).catch(() => null);
+        if (stored) {
+          const probe = await probeOAuthConnection({ accountId: connectionId, stored, tokenStore });
+          if (probe.status === "expired") {
+            nextHealth = "expired";
+            nextError = probe.error;
+          } else if (probe.status === "unknown") {
+            // Inconclusive (transient/unconfigured) — keep the recorded health.
+            nextHealth = row.health || "healthy";
+          }
+        } else {
+          nextHealth = row.health || "healthy";
         }
       }
 
