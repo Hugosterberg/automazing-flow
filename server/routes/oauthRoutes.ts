@@ -626,6 +626,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "google_ads",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: hubReturn || undefined,
     });
@@ -656,6 +657,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "meta_business",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: hubReturn || undefined,
     });
@@ -1199,7 +1201,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const successPath = postOauthPage(pending, "google_ads");
       return res.redirect(
-        `${BASE_URL}/${successPath}?oauth_success=1&platform=google_ads&account_id=${encodeURIComponent(
+        `${postOauthBaseUrl(pending)}/${successPath}?oauth_success=1&platform=google_ads&account_id=${encodeURIComponent(
           accountId
         )}&username=${encodeURIComponent(username)}${profileQuery}`
       );
@@ -1358,7 +1360,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const successPath = postOauthPage(pending, "meta_business");
       return res.redirect(
-        `${BASE_URL}/${successPath}?oauth_success=1&platform=meta_business&account_id=${encodeURIComponent(
+        `${postOauthBaseUrl(pending)}/${successPath}?oauth_success=1&platform=meta_business&account_id=${encodeURIComponent(
           accountId
         )}&username=${encodeURIComponent(displayName)}${profileQuery}`
       );
@@ -1685,6 +1687,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "tiktok",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -1784,7 +1787,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "tiktok");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=tiktok&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("TikTok OAuth error:", err);
@@ -1809,6 +1812,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       codeVerifier,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -1893,7 +1897,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "x");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=x&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=x&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("[X] OAuth error:", err);
@@ -1915,6 +1919,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "youtube",
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2004,7 +2009,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "youtube");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=youtube&account_id=${accountId}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("YouTube OAuth error:", err);
@@ -2063,6 +2068,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       shop,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2163,7 +2169,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "shopify");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=shopify&account_id=${accountId}&username=${encodeURIComponent(shopName)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=shopify&account_id=${accountId}&username=${encodeURIComponent(shopName)}${profileQuery}`
       );
     } catch (err) {
       console.error("Shopify OAuth error:", err);
@@ -2193,6 +2199,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "notion",
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2286,7 +2293,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "notion");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=notion&account_id=${encodeURIComponent(
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=notion&account_id=${encodeURIComponent(
           accountId
         )}&username=${encodeURIComponent(workspaceName)}${profileQuery}`
       );
@@ -2361,6 +2368,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "google_calendar",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2448,7 +2456,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_calendar");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=google_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Calendar OAuth error:", err);
@@ -2518,6 +2526,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "outlook_calendar",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2594,7 +2603,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "outlook_calendar");
       res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=outlook_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=outlook_calendar&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Outlook Calendar OAuth error:", err);
@@ -2664,6 +2673,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "google_reviews",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -2819,7 +2829,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_reviews");
       return res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_reviews&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=google_reviews&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Reviews OAuth error:", err);
@@ -2894,6 +2904,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "google_business",
       userId,
       profileId: ourProfileId,
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -3028,7 +3039,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_business");
       return res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_business&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=google_business&account_id=${encodeURIComponent(appAccountId)}&username=${encodeURIComponent(locationTitle)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Business OAuth error:", err);
@@ -3043,6 +3054,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    // Synchronous (env-key) connect resolves on this same request, so return
+    // the user to the origin they came from rather than a hardcoded BASE_URL.
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     let zernioAutoFailure: unknown = null;
 
     if (provider !== "official") {
@@ -3074,12 +3088,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           return res.redirect(authUrl);
         } catch (e) {
           if (provider === "zernio") {
-            return res.redirect(oauthRedirect("tripadvisor", zernioOauthErrorQuery(e), returnPage));
+            return res.redirect(oauthRedirectTo(base, "tripadvisor", zernioOauthErrorQuery(e), returnPage));
           }
           zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
-        return res.redirect(oauthRedirect("tripadvisor", "oauth_error=zernio_not_configured", returnPage));
+        return res.redirect(oauthRedirectTo(base, "tripadvisor", "oauth_error=zernio_not_configured", returnPage));
       }
     }
 
@@ -3090,14 +3104,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     ).trim();
     if (!apiKey || !locationId) {
       if (zernioAutoFailure) {
-        return res.redirect(oauthRedirect("tripadvisor", zernioOauthErrorQuery(zernioAutoFailure), returnPage));
+        return res.redirect(oauthRedirectTo(base, "tripadvisor", zernioOauthErrorQuery(zernioAutoFailure), returnPage));
       }
       const missing = [
         !apiKey ? "TRIPADVISOR_API_KEY" : "",
         !locationId ? "TRIPADVISOR_LOCATION_ID" : "",
       ].filter(Boolean);
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "tripadvisor",
           `oauth_error=tripadvisor_not_configured&oauth_hint=${encodeURIComponent(
           `Missing ${missing.join(" and ")}. Add them in .env.local or Preferences -> API keys, or use the sidebar manual connect form.`
@@ -3126,7 +3141,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const profileQuery = profileParam(ourProfileId);
     const postPage = returnPage === "connections" ? "connections" : "reviews";
     return res.redirect(
-      `${BASE_URL}/${postPage}?oauth_success=1&platform=tripadvisor&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(`Tripadvisor ${locationId}`)}${profileQuery}`
+      `${base}/${postPage}?oauth_success=1&platform=tripadvisor&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(`Tripadvisor ${locationId}`)}${profileQuery}`
     );
   });
 
@@ -3246,6 +3261,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       userId,
       profileId: normalizeRequestedProfileId(req.query.profile_id),
       popup: req.query.popup === "1",
+      appBaseUrl: requestedAppBaseUrl(req),
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
@@ -3274,7 +3290,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           BASE_URL
         );
       }
-      return res.redirect(buildPageUrlWithBase(BASE_URL, postOauthPage(pending, "google_drive"), buildOauthErrorParams(errorCode)));
+      return res.redirect(buildPageUrlWithBase(postOauthBaseUrl(pending), postOauthPage(pending, "google_drive"), buildOauthErrorParams(errorCode)));
     }
     if (!pending) {
       return res.redirect(
@@ -3316,7 +3332,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       return res.redirect(
         buildPageUrlWithBase(
-          BASE_URL,
+          postOauthBaseUrl(pending),
           postOauthPage(pending, "google_drive"),
           buildOauthErrorParams("invalid_state", {
             status: 400,
@@ -3453,7 +3469,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_drive");
       return res.redirect(
-        `${BASE_URL}/${postPage}?oauth_success=1&platform=google_drive&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
+        `${postOauthBaseUrl(pending)}/${postPage}?oauth_success=1&platform=google_drive&account_id=${encodeURIComponent(accountId)}&username=${encodeURIComponent(username)}${profileQuery}`
       );
     } catch (err) {
       console.error("Google Drive OAuth error:", err);
@@ -3476,7 +3492,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       return res.redirect(
         buildPageUrlWithBase(
-          BASE_URL,
+          postOauthBaseUrl(pending),
           postOauthPage(pending, "google_drive"),
           buildOauthErrorParams("token_exchange_failed", {
             status: 500,
