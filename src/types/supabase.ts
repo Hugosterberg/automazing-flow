@@ -192,10 +192,13 @@ export type Database = {
         Row: {
           business_profile_id: string
           created_at: string
+          daily_digest_enabled: boolean
           dm_auto_reply_enabled: boolean
           dm_auto_reply_mode: string
           instructions: string
           language: string
+          marketing_alerts_enabled: boolean
+          notification_email: string | null
           tone: string
           updated_at: string
           updated_by: string | null
@@ -203,10 +206,13 @@ export type Database = {
         Insert: {
           business_profile_id: string
           created_at?: string
+          daily_digest_enabled?: boolean
           dm_auto_reply_enabled?: boolean
           dm_auto_reply_mode?: string
           instructions?: string
           language?: string
+          marketing_alerts_enabled?: boolean
+          notification_email?: string | null
           tone?: string
           updated_at?: string
           updated_by?: string | null
@@ -214,10 +220,13 @@ export type Database = {
         Update: {
           business_profile_id?: string
           created_at?: string
+          daily_digest_enabled?: boolean
           dm_auto_reply_enabled?: boolean
           dm_auto_reply_mode?: string
           instructions?: string
           language?: string
+          marketing_alerts_enabled?: boolean
+          notification_email?: string | null
           tone?: string
           updated_at?: string
           updated_by?: string | null
@@ -440,6 +449,65 @@ export type Database = {
         }
         Relationships: []
       }
+      leads: {
+        Row: {
+          business_profile_id: string
+          company: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          next_follow_up_at: string | null
+          notes: string | null
+          phone: string | null
+          source: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          business_profile_id: string
+          company: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          business_profile_id?: string
+          company?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          next_follow_up_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           business_profile_id: string
@@ -510,6 +578,138 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      products: {
+        Row: {
+          business_profile_id: string
+          connected_account_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          description: string
+          external_id: string | null
+          id: string
+          images: Json
+          metadata: Json
+          name: string
+          price: string | null
+          product_type: string | null
+          source: string
+          source_url: string | null
+          specs: Json
+          status: string | null
+          tags: string[]
+          updated_at: string
+          vendor: string | null
+          versions: Json
+        }
+        Insert: {
+          business_profile_id: string
+          connected_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string
+          external_id?: string | null
+          id?: string
+          images?: Json
+          metadata?: Json
+          name: string
+          price?: string | null
+          product_type?: string | null
+          source?: string
+          source_url?: string | null
+          specs?: Json
+          status?: string | null
+          tags?: string[]
+          updated_at?: string
+          vendor?: string | null
+          versions?: Json
+        }
+        Update: {
+          business_profile_id?: string
+          connected_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string
+          external_id?: string | null
+          id?: string
+          images?: Json
+          metadata?: Json
+          name?: string
+          price?: string | null
+          product_type?: string | null
+          source?: string
+          source_url?: string | null
+          specs?: Json
+          status?: string | null
+          tags?: string[]
+          updated_at?: string
+          vendor?: string | null
+          versions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_connection_health"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_documents: {
+        Row: {
+          business_profile_id: string
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          business_profile_id: string
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          business_profile_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_documents_business_profile_id_fkey"
+            columns: ["business_profile_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -779,6 +979,7 @@ export type Database = {
         | "mail"
         | "analytics"
         | "custom"
+      lead_status: "new" | "contacted" | "qualified" | "won" | "lost"
       sync_run_kind:
         | "full"
         | "delta"
@@ -948,6 +1149,7 @@ export const Constants = {
         "analytics",
         "custom",
       ],
+      lead_status: ["new", "contacted", "qualified", "won", "lost"],
       sync_run_kind: [
         "full",
         "delta",
