@@ -357,7 +357,7 @@ async function resolveAndSelectGoogleBusinessLocation({
 
   let locations = [];
   for (const endpoint of listEndpoints) {
-    const r = await fetch(endpoint, { headers });
+    const r = await fetch(endpoint, { headers, signal: AbortSignal.timeout(15_000) });
     if (!r.ok) continue;
     const body = await r.json().catch(() => ({}));
     locations = parseLocationsFromBody(body);
@@ -388,6 +388,7 @@ async function resolveAndSelectGoogleBusinessLocation({
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
       });
       if (r.ok) return;
     }
@@ -451,9 +452,9 @@ async function fetchXToken(
   body: URLSearchParams,
   headers: Record<string, string>
 ): Promise<Response> {
-  const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+  const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
   if (primary.ok) return primary;
-  return fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
+  return fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
 }
 
 export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
@@ -1168,6 +1169,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -1185,6 +1187,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Google Ads";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = String(meData.email);
@@ -1277,6 +1280,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       const tokenRes = await fetch(tokenUrl.toString(), {
         headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(15_000),
       });
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
@@ -1299,7 +1303,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const graphBase = `https://graph.facebook.com/${graphVersion}`;
       const meRes = await fetch(
         `${graphBase}/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,
-        { headers: { Accept: "application/json" } }
+        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
       );
       const meData = await meRes.json().catch(() => ({}));
       if (!meRes.ok || meData.error) {
@@ -1319,13 +1323,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           `${graphBase}/me/businesses?fields=id,name,verification_status&limit=25&access_token=${encodeURIComponent(
             accessToken
           )}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
         ),
         fetch(
           `${graphBase}/me/adaccounts?fields=id,account_id,name,account_status,currency,timezone_name&limit=25&access_token=${encodeURIComponent(
             accessToken
           )}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
         ),
       ]);
       const businesses =
@@ -1587,6 +1591,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -1750,6 +1755,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           "Cache-Control": "no-cache",
         },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -1763,6 +1769,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             Authorization: `Bearer ${data.access_token}`,
             "Content-Type": "application/json",
           },
+          signal: AbortSignal.timeout(15_000),
         });
         const userData = await userRes.json().catch(() => ({}));
         if (!userRes.ok) {
@@ -1882,7 +1889,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       const userRes = await fetch(
         "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
-        { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+        { headers: { Authorization: `Bearer ${tokenData.access_token}` }, signal: AbortSignal.timeout(15_000) }
       );
       const userData = await userRes.json().catch(() => ({}));
       const user = userData.data || {};
@@ -1985,6 +1992,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -1995,6 +2003,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "YouTube-konto";
       const meRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.items?.[0]?.snippet?.title) {
@@ -2163,6 +2172,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           client_secret: apiSecret,
           code: String(code || ""),
         }),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -2272,6 +2282,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           code: String(code || ""),
           redirect_uri: redirectUri,
         }),
+        signal: AbortSignal.timeout(15_000),
       });
 
       const tokenData = await tokenRes.json().catch(() => ({}));
@@ -2446,6 +2457,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -2455,6 +2467,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Google Calendar";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = meData.email;
@@ -2593,6 +2606,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -2602,6 +2616,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Outlook Calendar";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.mail) username = meData.mail;
@@ -2761,6 +2776,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
@@ -2776,11 +2792,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       const headers = { Authorization: `Bearer ${tokenData.access_token}` };
       // Primary API: account management v1. Fallback: legacy v4 for tenants with partial migration.
-      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers });
+      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers, signal: AbortSignal.timeout(15_000) });
       const accountsBody = await accountsRes.json().catch(() => ({}));
       let accounts = Array.isArray(accountsBody.accounts) ? accountsBody.accounts : [];
       if ((!accounts || accounts.length === 0) && accountsRes.ok) {
-        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers });
+        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers, signal: AbortSignal.timeout(15_000) });
         const legacyAccountsBody = await legacyAccountsRes.json().catch(() => ({}));
         const legacyAccounts = Array.isArray(legacyAccountsBody.accounts) ? legacyAccountsBody.accounts : [];
         if (legacyAccounts.length > 0) {
@@ -2809,14 +2825,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       const locationsRes = await fetch(
         `https://mybusinessbusinessinformation.googleapis.com/v1/${accountNamePath}/locations?pageSize=20&readMask=name,title`,
-        { headers }
+        { headers, signal: AbortSignal.timeout(15_000) }
       );
       const locationsBody = await locationsRes.json().catch(() => ({}));
       let locations = Array.isArray(locationsBody.locations) ? locationsBody.locations : [];
       if ((!locations || locations.length === 0) && locationsRes.ok) {
         const legacyLocationsRes = await fetch(
           `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountId)}/locations?pageSize=20`,
-          { headers }
+          { headers, signal: AbortSignal.timeout(15_000) }
         );
         const legacyLocationsBody = await legacyLocationsRes.json().catch(() => ({}));
         const legacyLocations = Array.isArray(legacyLocationsBody.locations) ? legacyLocationsBody.locations : [];
@@ -2994,6 +3010,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
@@ -3003,11 +3020,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
 
       const headers = { Authorization: `Bearer ${tokenData.access_token}` };
-      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers });
+      const accountsRes = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers, signal: AbortSignal.timeout(15_000) });
       const accountsBody = await accountsRes.json().catch(() => ({}));
       let accounts = Array.isArray(accountsBody.accounts) ? accountsBody.accounts : [];
       if ((!accounts || accounts.length === 0) && accountsRes.ok) {
-        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers });
+        const legacyAccountsRes = await fetch("https://mybusiness.googleapis.com/v4/accounts", { headers, signal: AbortSignal.timeout(15_000) });
         const legacyAccountsBody = await legacyAccountsRes.json().catch(() => ({}));
         const legacyAccounts = Array.isArray(legacyAccountsBody.accounts) ? legacyAccountsBody.accounts : [];
         if (legacyAccounts.length > 0) {
@@ -3029,14 +3046,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
       const locationsRes = await fetch(
         `https://mybusinessbusinessinformation.googleapis.com/v1/${accountNamePath}/locations?pageSize=20&readMask=name,title`,
-        { headers }
+        { headers, signal: AbortSignal.timeout(15_000) }
       );
       const locationsBody = await locationsRes.json().catch(() => ({}));
       let locations = Array.isArray(locationsBody.locations) ? locationsBody.locations : [];
       if ((!locations || locations.length === 0) && locationsRes.ok) {
         const legacyLocationsRes = await fetch(
           `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(accountId)}/locations?pageSize=20`,
-          { headers }
+          { headers, signal: AbortSignal.timeout(15_000) }
         );
         const legacyLocationsBody = await legacyLocationsRes.json().catch(() => ({}));
         const legacyLocations = Array.isArray(legacyLocationsBody.locations) ? legacyLocationsBody.locations : [];
@@ -3422,6 +3439,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -3458,6 +3476,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Google Drive";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = String(meData.email);
@@ -3607,6 +3626,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       debugLog("pre-fix", "H3", "oauthRoutes.js:/api/auth/gmail/callback", "Google token exchange response", {
@@ -3628,6 +3648,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Gmail";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = meData.email;
@@ -3738,6 +3759,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
+        signal: AbortSignal.timeout(15_000),
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
@@ -3747,6 +3769,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       let username = "Outlook";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(15_000),
       });
       const meData = await meRes.json().catch(() => ({}));
       if (meData.mail) username = meData.mail;
