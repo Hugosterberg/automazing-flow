@@ -31,10 +31,10 @@ export async function fetchXAccountData({
       "https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url,description,username,name,created_at",
     ];
     for (const endpoint of endpoints) {
-      const r = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
       if (r.ok || r.status === 401) return r;
     }
-    return fetch(endpoints[0], { headers: { Authorization: `Bearer ${token}` } });
+    return fetch(endpoints[0], { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
   }
 
   async function refreshXToken(rt: string) {
@@ -46,9 +46,9 @@ export async function fetchXAccountData({
     } else {
       body.set("client_id", xClientId);
     }
-    let r = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString() });
+    let r = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
     if (!r.ok) {
-      r = await fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString() });
+      r = await fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
     }
     const d = await r.json().catch(() => ({}));
     if (d.access_token) {
@@ -84,9 +84,9 @@ export async function fetchXAccountData({
       `https://api.x.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
       `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
     ];
-    let tweetsRes = await fetch(tweetsEndpoints[0], { headers: { Authorization: `Bearer ${token}` } });
+    let tweetsRes = await fetch(tweetsEndpoints[0], { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
     if (!tweetsRes.ok) {
-      tweetsRes = await fetch(tweetsEndpoints[1], { headers: { Authorization: `Bearer ${token}` } });
+      tweetsRes = await fetch(tweetsEndpoints[1], { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
     }
     if (tweetsRes.ok) {
       const tweetsData = await tweetsRes.json().catch(() => ({}));

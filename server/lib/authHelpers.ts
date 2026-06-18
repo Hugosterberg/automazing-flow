@@ -202,6 +202,9 @@ export function createAuthHelpers(deps: AuthHelperDeps): AuthHelpers {
           apikey: supabaseAnonKey,
           Authorization: `Bearer ${token}`,
         },
+        // Runs on every authenticated request — never let a slow auth backend
+        // hang the whole request.
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) return null;
       const user = (await res.json().catch(() => ({}))) as { id?: string; email?: string };

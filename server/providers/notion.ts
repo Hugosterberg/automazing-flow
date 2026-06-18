@@ -61,7 +61,7 @@ export async function fetchNotionAccountData(accessToken: string) {
   };
 
   const [meRes, pagesRes, dbRes] = await Promise.all([
-    fetch("https://api.notion.com/v1/users/me", { headers }),
+    fetch("https://api.notion.com/v1/users/me", { headers, signal: AbortSignal.timeout(15_000) }),
     fetch("https://api.notion.com/v1/search", {
       method: "POST",
       headers,
@@ -70,6 +70,7 @@ export async function fetchNotionAccountData(accessToken: string) {
         sort: { direction: "descending", timestamp: "last_edited_time" },
         page_size: 10,
       }),
+      signal: AbortSignal.timeout(15_000),
     }),
     fetch("https://api.notion.com/v1/search", {
       method: "POST",
@@ -79,6 +80,7 @@ export async function fetchNotionAccountData(accessToken: string) {
         sort: { direction: "descending", timestamp: "last_edited_time" },
         page_size: 10,
       }),
+      signal: AbortSignal.timeout(15_000),
     }),
   ]);
 
@@ -208,6 +210,7 @@ export async function createNotionPage(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
   });
 
   const data = await res.json().catch(() => ({}));

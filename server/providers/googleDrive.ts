@@ -135,7 +135,10 @@ async function driveList(token: string, params: Record<string, string>): Promise
   url.searchParams.set("includeItemsFromAllDrives", "true");
   url.searchParams.set("fields", DRIVE_FIELDS);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
   if (res.status === 401) throw new Error("unauthorized");
   if (!res.ok) return [];
   const body = await res.json().catch(() => ({}));
@@ -184,7 +187,7 @@ export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
       if (folderId !== "root") {
         const r = await fetch(
           `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,parents`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) }
         );
         if (r.status === 401) throw new Error("unauthorized");
         if (r.ok) {
@@ -229,6 +232,9 @@ export async function fetchGoogleDriveFileResponse(
               Authorization: `Bearer ${token}`,
               ...(args.rangeHeader ? { Range: args.rangeHeader } : {}),
             },
+            // Generous: file contents can be large, but still bounded so a
+            // stalled download can't hold the request open indefinitely.
+            signal: AbortSignal.timeout(60_000),
           }
         );
         if (res.status === 401) throw new Error("unauthorized");
@@ -237,7 +243,7 @@ export async function fetchGoogleDriveFileResponse(
 
       const metaRes = await fetch(
         `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(args.fileId)}?fields=thumbnailLink`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) }
       );
       if (metaRes.status === 401) throw new Error("unauthorized");
       if (!metaRes.ok) return metaRes;
@@ -246,7 +252,10 @@ export async function fetchGoogleDriveFileResponse(
       if (!thumbnailLink) {
         return new Response(null, { status: 404 });
       }
-      return fetch(thumbnailLink, { headers: { Authorization: `Bearer ${token}` } });
+      return fetch(thumbnailLink, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15_000),
+      });
     },
   });
 }

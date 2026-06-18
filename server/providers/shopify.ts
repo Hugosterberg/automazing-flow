@@ -230,25 +230,27 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
     priceRulesRes,
     new30dCustomersRes,
   ] = await Promise.all([
-    fetch(`${apiBase}/shop.json`, { headers: shopHeaders }),
+    fetch(`${apiBase}/shop.json`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
     fetch(
       `${apiBase}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(since30d)}&order=created_at+desc&fields=id,name,email,total_price,subtotal_price,total_discounts,currency,financial_status,fulfillment_status,created_at,processed_at,line_items,customer`,
-      { headers: shopHeaders }
+      { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }
     ),
-    fetch(`${apiBase}/products/count.json`, { headers: shopHeaders }),
-    fetch(`${apiBase}/orders/count.json?status=any`, { headers: shopHeaders }),
-    fetch(`${apiBase}/customers/count.json`, { headers: shopHeaders }),
+    fetch(`${apiBase}/products/count.json`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
+    fetch(`${apiBase}/orders/count.json?status=any`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
+    fetch(`${apiBase}/customers/count.json`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
     fetch(`${apiBase}/customers.json?limit=10&order=total_spent+desc&fields=id,first_name,last_name,email,orders_count,total_spent,currency`, {
       headers: shopHeaders,
+      signal: AbortSignal.timeout(15_000),
     }),
     fetch(
       `${apiBase}/checkouts.json?limit=50&created_at_min=${encodeURIComponent(since30d)}&status=open`,
-      { headers: shopHeaders }
+      { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }
     ),
-    fetch(`${apiBase}/products.json?limit=50&fields=id,title,status,variants`, { headers: shopHeaders }),
-    fetch(`${apiBase}/price_rules.json?limit=10`, { headers: shopHeaders }),
+    fetch(`${apiBase}/products.json?limit=50&fields=id,title,status,variants`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
+    fetch(`${apiBase}/price_rules.json?limit=10`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
     fetch(`${apiBase}/customers/count.json?created_at_min=${encodeURIComponent(since30d)}`, {
       headers: shopHeaders,
+      signal: AbortSignal.timeout(15_000),
     }),
   ]);
 
@@ -583,10 +585,10 @@ export async function fetchShopifyProducts(
   const cappedLimit = Math.min(250, Math.max(1, limit));
 
   const [shopRes, productsRes] = await Promise.all([
-    fetch(`${apiBase}/shop.json?fields=currency`, { headers: shopHeaders }),
+    fetch(`${apiBase}/shop.json?fields=currency`, { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }),
     fetch(
       `${apiBase}/products.json?limit=${cappedLimit}&fields=id,title,body_html,handle,vendor,product_type,tags,status,images,image,variants`,
-      { headers: shopHeaders }
+      { headers: shopHeaders, signal: AbortSignal.timeout(15_000) }
     ),
   ]);
 
@@ -662,6 +664,7 @@ export async function createShopifyDraftProduct(
     method: "POST",
     headers: shopHeaders,
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15_000),
   });
   const raw = await res.json().catch(() => ({}));
   if (!res.ok) {

@@ -124,6 +124,7 @@ export async function fetchGoogleCalendarData(args: CalendarFetchArgs) {
   const eventsData = await eventsRes.json().catch(() => ({}));
   const listRes = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=20", {
     headers: baseHeaders(token),
+    signal: AbortSignal.timeout(15_000),
   });
   const listData = listRes.ok ? await listRes.json().catch(() => ({})) : {};
 
@@ -203,6 +204,7 @@ export async function fetchOutlookCalendarData(args: CalendarFetchArgs) {
   const eventsData = await eventsRes.json().catch(() => ({}));
   const listRes = await fetch("https://graph.microsoft.com/v1.0/me/calendars?$top=20", {
     headers: headers(token),
+    signal: AbortSignal.timeout(15_000),
   });
   const listData = listRes.ok ? await listRes.json().catch(() => ({})) : {};
 
