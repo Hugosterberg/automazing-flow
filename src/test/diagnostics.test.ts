@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConfigChecks,
+  buildOriginChecks,
   snapshotFromEnv,
   summarize,
   type ConfigSnapshot,
@@ -53,6 +54,53 @@ describe("buildConfigChecks", () => {
     expect(report.summary.error).toBe(1); // supabase url
     expect(report.summary.warn).toBe(1); // cron secret
     expect(report.ok).toBe(false);
+  });
+});
+
+describe("buildOriginChecks", () => {
+  const base = "https://app.example.com";
+  const api = "https://api.example.com";
+
+  it("passes when you view from BASE_URL", () => {
+    const checks = buildOriginChecks({ baseUrl: base, apiBaseUrl: api, corsOrigins: "", requestOrigin: base });
+    expect(checks.find((c) => c.id === "oauth_origin_allowlisted")?.status).toBe("ok");
+    expect(checks.find((c) => c.id === "oauth_base_url")?.status).toBe("ok");
+  });
+
+  it("passes when the viewing origin is in CORS_ORIGINS", () => {
+    const preview = "https://preview-123.vercel.app";
+    const checks = buildOriginChecks({
+      baseUrl: base,
+      apiBaseUrl: api,
+      corsOrigins: `${preview}, https://other.example.com`,
+      requestOrigin: `${preview}/connections`,
+    });
+    expect(checks.find((c) => c.id === "oauth_origin_allowlisted")?.status).toBe("ok");
+  });
+
+  it("flags a non-allowlisted viewing origin as the logout-causing error", () => {
+    const rogue = "https://staging.example.com";
+    const checks = buildOriginChecks({ baseUrl: base, apiBaseUrl: api, corsOrigins: "", requestOrigin: rogue });
+    const origin = checks.find((c) => c.id === "oauth_origin_allowlisted");
+    expect(origin?.status).toBe("error");
+    expect(origin?.detail).toMatch(/logged out/i);
+    expect(origin?.fix).toMatch(/CORS_ORIGINS/);
+    expect(summarize(checks).ok).toBe(false);
+  });
+
+  it("errors when BASE_URL is unset or invalid", () => {
+    const checks = buildOriginChecks({ baseUrl: "", apiBaseUrl: api, corsOrigins: "", requestOrigin: api });
+    expect(checks.find((c) => c.id === "oauth_base_url")?.status).toBe("error");
+  });
+
+  it("warns (not errors) when the browser origin is unknown", () => {
+    const checks = buildOriginChecks({ baseUrl: base, apiBaseUrl: api, corsOrigins: "", requestOrigin: null });
+    expect(checks.find((c) => c.id === "oauth_origin_allowlisted")?.status).toBe("warn");
+  });
+
+  it("warns when CORS_ORIGINS is empty", () => {
+    const checks = buildOriginChecks({ baseUrl: base, apiBaseUrl: api, corsOrigins: "", requestOrigin: base });
+    expect(checks.find((c) => c.id === "oauth_cors_origins")?.status).toBe("warn");
   });
 });
 

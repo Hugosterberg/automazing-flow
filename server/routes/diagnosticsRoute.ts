@@ -6,6 +6,7 @@
 
 import {
   buildConfigChecks,
+  buildOriginChecks,
   runDatabaseChecks,
   snapshotFromEnv,
   summarize,
@@ -14,6 +15,8 @@ import {
 type DiagnosticsRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
   supabaseAdmin: unknown;
+  baseUrl: string;
+  apiBaseUrl: string;
 };
 
 export function registerDiagnosticsRoute(app: import("express").Express, deps: DiagnosticsRouteDeps) {
@@ -23,8 +26,15 @@ export function registerDiagnosticsRoute(app: import("express").Express, deps: D
     }
     try {
       const configChecks = buildConfigChecks(snapshotFromEnv());
+      const originChecks = buildOriginChecks({
+        baseUrl: deps.baseUrl,
+        apiBaseUrl: deps.apiBaseUrl,
+        corsOrigins: process.env.CORS_ORIGINS || "",
+        requestOrigin:
+          (req.headers?.origin as string | undefined) ?? (req.headers?.referer as string | undefined) ?? null,
+      });
       const dbChecks = await runDatabaseChecks(deps.supabaseAdmin);
-      const report = summarize([...configChecks, ...dbChecks]);
+      const report = summarize([...configChecks, ...originChecks, ...dbChecks]);
       // 200 always — the report body carries the status; a non-200 would make
       // a healthy "warn-only" environment look like an endpoint failure.
       return res.json(report);

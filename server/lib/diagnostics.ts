@@ -134,6 +134,100 @@ export function buildConfigChecks(s: ConfigSnapshot): DiagnosticCheck[] {
   ];
 }
 
+/** Parse any string into its http(s) origin, or null if it isn't one. */
+function originOf(raw: unknown): string | null {
+  try {
+    const u = new URL(String(raw || ""));
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+export interface OriginContext {
+  /** Resolved server BASE_URL (post-OAuth redirect base). */
+  baseUrl: string;
+  /** Resolved API_BASE_URL (where /api/auth/* lives). */
+  apiBaseUrl: string;
+  /** Raw CORS_ORIGINS env (comma-separated). */
+  corsOrigins: string;
+  /** The browser origin this diagnostics request came from (Origin/Referer). */
+  requestOrigin: string | null;
+}
+
+/**
+ * OAuth redirect-origin checks — catch the class of misconfiguration where a
+ * successful connect bounces the user to BASE_URL and logs them out.
+ *
+ * The OAuth flow only honours an `app_origin` (and the Referer fallback) when it
+ * matches an allowlisted origin (BASE_URL / API_BASE_URL / CORS_ORIGINS); any
+ * other origin falls back to BASE_URL. Since the dashboard fetches /api/diagnostics
+ * from the very origin the user is on, we can compare that origin against the
+ * allowlist and tell them, concretely, whether connecting an account here will
+ * log them out — before they try it.
+ */
+export function buildOriginChecks(ctx: OriginContext): DiagnosticCheck[] {
+  const checks: DiagnosticCheck[] = [];
+  const base = originOf(ctx.baseUrl);
+
+  checks.push(
+    base
+      ? { id: "oauth_base_url", label: "OAuth redirect base", status: "ok", detail: `BASE_URL = ${base}.` }
+      : {
+          id: "oauth_base_url",
+          label: "OAuth redirect base",
+          status: "error",
+          detail: "BASE_URL is unset or not a valid http(s) origin — connects can't compute a safe return URL.",
+          fix: "Set BASE_URL to the app's public origin, e.g. https://app.example.com.",
+        },
+  );
+
+  const cors = String(ctx.corsOrigins || "")
+    .split(",")
+    .map((v) => originOf(v.trim()))
+    .filter((v): v is string => Boolean(v));
+  const allowlist = [base, originOf(ctx.apiBaseUrl), ...cors].filter((v): v is string => Boolean(v));
+  const reqOrigin = originOf(ctx.requestOrigin);
+
+  if (!reqOrigin) {
+    checks.push({
+      id: "oauth_origin_allowlisted",
+      label: "This origin is OAuth-allowlisted",
+      status: "warn",
+      detail: "Couldn't read the browser origin from this request, so the post-OAuth return origin can't be verified here.",
+      fix: "If connecting an account logs you out, ensure your frontend origin is in CORS_ORIGINS (or equals BASE_URL).",
+    });
+  } else if (allowlist.includes(reqOrigin)) {
+    checks.push({
+      id: "oauth_origin_allowlisted",
+      label: "This origin is OAuth-allowlisted",
+      status: "ok",
+      detail: reqOrigin === base ? `${reqOrigin} matches BASE_URL.` : `${reqOrigin} is in the OAuth return allowlist.`,
+    });
+  } else {
+    checks.push({
+      id: "oauth_origin_allowlisted",
+      label: "This origin is OAuth-allowlisted",
+      status: "error",
+      detail: `You're on ${reqOrigin}, which is NOT in the OAuth return allowlist (BASE_URL / API_BASE_URL / CORS_ORIGINS). After connecting an account you'll be sent to ${base || "BASE_URL"} and appear logged out.`,
+      fix: `Add ${reqOrigin} to CORS_ORIGINS (comma-separated), or set BASE_URL to it.`,
+    });
+  }
+
+  if (cors.length === 0) {
+    checks.push({
+      id: "oauth_cors_origins",
+      label: "CORS_ORIGINS",
+      status: "warn",
+      detail: "Empty — only BASE_URL and API_BASE_URL origins are accepted as OAuth return targets, so any preview/staging/custom-domain origin will be bounced to BASE_URL and logged out.",
+      fix: "Set CORS_ORIGINS to a comma-separated list of every frontend origin you serve the app from.",
+    });
+  }
+
+  return checks;
+}
+
 export function snapshotFromEnv(env: NodeJS.ProcessEnv = process.env): ConfigSnapshot {
   const has = (...keys: string[]) => keys.some((k) => String(env[k] || "").trim().length > 0);
   const all = (...keys: string[]) => keys.every((k) => String(env[k] || "").trim().length > 0);

@@ -484,6 +484,8 @@ registerSalesRoutes(app, {
 registerDiagnosticsRoute(app, {
   getSessionUserId,
   supabaseAdmin: supabaseServiceClient,
+  baseUrl: BASE_URL,
+  apiBaseUrl: API_BASE_URL,
 });
 
 registerMiscRoutes(app, {
