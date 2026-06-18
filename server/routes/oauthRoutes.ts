@@ -613,10 +613,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   async function startOfficialGoogleAdsOAuth(req, res, userId, hubReturn) {
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const clientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
     if (!clientId) {
       return res.redirect(
-        oauthRedirect("google_ads", "oauth_error=google_ads_not_configured", hubReturn || undefined)
+        oauthRedirectTo(base, "google_ads","oauth_error=google_ads_not_configured", hubReturn || undefined)
       );
     }
 
@@ -644,10 +645,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   async function startOfficialMetaBusinessOAuth(req, res, userId, hubReturn) {
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const appId = getMetaAppId();
     if (!appId) {
       return res.redirect(
-        oauthRedirect("meta_business", "oauth_error=meta_business_not_configured", hubReturn || undefined)
+        oauthRedirectTo(base, "meta_business","oauth_error=meta_business_not_configured", hubReturn || undefined)
       );
     }
 
@@ -1110,15 +1112,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
   app.get("/api/auth/google_ads/callback", async (req, res) => {
     const { code, state, error } = req.query;
+    const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirect("google_ads", `oauth_error=${encodeURIComponent(String(error))}`)
+        oauthRedirectTo(base, "google_ads",`oauth_error=${encodeURIComponent(String(error))}`)
       );
     }
 
-    const pending = await oauthPendingStore.get(state);
     if (!pending || pending.platform !== "google_ads") {
-      return res.redirect(oauthRedirect("google_ads", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "google_ads","oauth_error=invalid_state"));
     }
 
     const callbackUserId = getSessionUserId(req);
@@ -1139,7 +1142,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     ) {
       await oauthPendingStore.delete(state);
       return res.redirect(
-        oauthRedirect("google_ads", "oauth_error=invalid_state", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "google_ads","oauth_error=invalid_state", pending?.oauthReturnPage)
       );
     }
     await oauthPendingStore.delete(state);
@@ -1148,7 +1151,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
     if (!clientId || !clientSecret) {
       return res.redirect(
-        oauthRedirect("google_ads", "oauth_error=google_ads_not_configured", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "google_ads","oauth_error=google_ads_not_configured", pending?.oauthReturnPage)
       );
     }
 
@@ -1170,7 +1173,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "google_ads",
             `oauth_error=${encodeURIComponent(String(rawErr))}`,
             pending?.oauthReturnPage
@@ -1208,7 +1212,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     } catch (err) {
       console.error("Google Ads OAuth error:", err);
       return res.redirect(
-        oauthRedirect("google_ads", "oauth_error=token_exchange_failed", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "google_ads","oauth_error=token_exchange_failed", pending?.oauthReturnPage)
       );
     }
   });
@@ -1216,9 +1220,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/meta_business/callback", async (req, res) => {
     const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "meta_business",
           `oauth_error=${encodeURIComponent(String(errorDescription || error))}`,
           pending?.oauthReturnPage
@@ -1226,7 +1232,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     if (!pending || pending.platform !== "meta_business") {
-      return res.redirect(oauthRedirect("meta_business", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "meta_business","oauth_error=invalid_state"));
     }
 
     const callbackUserId = getSessionUserId(req);
@@ -1247,7 +1253,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     ) {
       await oauthPendingStore.delete(state);
       return res.redirect(
-        oauthRedirect("meta_business", "oauth_error=invalid_state", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "meta_business","oauth_error=invalid_state", pending?.oauthReturnPage)
       );
     }
     await oauthPendingStore.delete(state);
@@ -1256,7 +1262,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const appSecret = getMetaAppSecret();
     if (!appId || !appSecret) {
       return res.redirect(
-        oauthRedirect("meta_business", "oauth_error=meta_business_not_configured", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "meta_business","oauth_error=meta_business_not_configured", pending?.oauthReturnPage)
       );
     }
 
@@ -1280,7 +1286,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           tokenData?.error ||
           "token_exchange_failed";
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "meta_business",
             `oauth_error=${encodeURIComponent(String(rawErr))}`,
             pending?.oauthReturnPage
@@ -1298,7 +1305,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!meRes.ok || meData.error) {
         const rawErr = meData?.error?.message || "meta_profile_failed";
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "meta_business",
             `oauth_error=${encodeURIComponent(String(rawErr))}`,
             pending?.oauthReturnPage
@@ -1367,7 +1375,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     } catch (err) {
       console.error("Meta Business OAuth error:", err);
       return res.redirect(
-        oauthRedirect("meta_business", "oauth_error=token_exchange_failed", pending?.oauthReturnPage)
+        oauthRedirectTo(base, "meta_business","oauth_error=token_exchange_failed", pending?.oauthReturnPage)
       );
     }
   });
@@ -1633,6 +1641,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!userId) return;
 
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const provider = String(req.query.provider || "auto").toLowerCase();
     const tryZernio = provider !== "official";
     const zernioKey = getZernioApiKey();
@@ -1663,7 +1672,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         }
       } catch (e) {
         if (provider === "zernio") {
-          return res.redirect(oauthRedirect("tiktok", zernioOauthErrorQuery(e), returnPage));
+          return res.redirect(oauthRedirectTo(base, "tiktok",zernioOauthErrorQuery(e), returnPage));
         }
         // Fallback to official TikTok OAuth if Zernio connect is unavailable,
         // but keep the Zernio reason in case official isn't configured either.
@@ -1675,7 +1684,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientKey = process.env.TIKTOK_CLIENT_KEY;
     if (!clientKey) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "tiktok",
           zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=tiktok_not_configured",
           returnPage
@@ -1704,23 +1714,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/tiktok/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirect("tiktok", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "tiktok",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("tiktok", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "tiktok","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("tiktok", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "tiktok","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientKey = process.env.TIKTOK_CLIENT_KEY;
     const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
     if (!clientKey || !clientSecret) {
-      return res.redirect(oauthRedirect("tiktok", "oauth_error=tiktok_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "tiktok","oauth_error=tiktok_not_configured", pending.oauthReturnPage));
     }
 
     try {
@@ -1743,7 +1754,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(oauthRedirect("tiktok", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "tiktok",`oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       let username = data.open_id;
       try {
@@ -1791,7 +1802,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("TikTok OAuth error:", err);
-      res.redirect(oauthRedirect("tiktok", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "tiktok","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -1800,9 +1811,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "social-media";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const clientId = process.env.X_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(oauthRedirect("x", "oauth_error=x_not_configured", returnPage));
+      return res.redirect(oauthRedirectTo(base, "x","oauth_error=x_not_configured", returnPage));
     }
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
@@ -1831,19 +1843,20 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/x/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
-    if (error) return res.redirect(oauthRedirect("x", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
-    if (!pending) return res.redirect(oauthRedirect("x", "oauth_error=invalid_state"));
+    const base = postOauthBaseUrl(pending);
+    if (error) return res.redirect(oauthRedirectTo(base, "x",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    if (!pending) return res.redirect(oauthRedirectTo(base, "x","oauth_error=invalid_state"));
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("x", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "x","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
     const clientId = process.env.X_CLIENT_ID;
     const clientSecret = process.env.X_CLIENT_SECRET;
-    if (!clientId) return res.redirect(oauthRedirect("x", "oauth_error=x_not_configured", pending.oauthReturnPage));
+    if (!clientId) return res.redirect(oauthRedirectTo(base, "x","oauth_error=x_not_configured", pending.oauthReturnPage));
     if (!pending.codeVerifier) {
-      return res.redirect(oauthRedirect("x", "oauth_error=invalid_pkce_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "x","oauth_error=invalid_pkce_state", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
@@ -1864,7 +1877,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         console.error("[X] token error:", tokenData.error, tokenData.error_description);
         return res.redirect(
-          oauthRedirect("x", `oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "x",`oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
         );
       }
       const userRes = await fetch(
@@ -1901,7 +1914,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("[X] OAuth error:", err);
-      res.redirect(oauthRedirect("x", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "x","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -1910,9 +1923,10 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "social-media";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(oauthRedirect("youtube", "oauth_error=youtube_not_configured", returnPage));
+      return res.redirect(oauthRedirectTo(base, "youtube","oauth_error=youtube_not_configured", returnPage));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -1938,23 +1952,24 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/youtube/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirect("youtube", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "youtube",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("youtube", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "youtube","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("youtube", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "youtube","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(oauthRedirect("youtube", "oauth_error=youtube_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "youtube","oauth_error=youtube_not_configured", pending.oauthReturnPage));
     }
 
     try {
@@ -1974,7 +1989,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(oauthRedirect("youtube", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "youtube",`oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       // Hämta kanalinfo för username + stabil kanal-id
       let username = "YouTube-konto";
@@ -2013,7 +2028,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("YouTube OAuth error:", err);
-      res.redirect(oauthRedirect("youtube", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "youtube","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2047,20 +2062,21 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "ecommerce";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const clientId = process.env.SHOPIFY_API_KEY;
     if (!clientId) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_not_configured", returnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_not_configured", returnPage));
     }
     const shop = normalizeShopifyShop(req.query.shop);
     if (!shop) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_invalid_shop", returnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_invalid_shop", returnPage));
     }
     const shopifyPublicBase = getShopifyPublicBaseUrl();
     if (!shopifyPublicBase) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_public_url_missing", returnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_public_url_missing", returnPage));
     }
     if (!/^https:\/\//i.test(shopifyPublicBase)) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_public_url_must_be_https", returnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_public_url_must_be_https", returnPage));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
@@ -2105,38 +2121,39 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/shopify/callback", async (req, res) => {
     const { code, state, shop, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirect("shopify", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(base, "shopify",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
       );
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     // Tunnel callbacks run on a different host than localhost, so callback cookies may be missing.
     // If callback user is present we still enforce strict owner match.
     if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("shopify", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
     const apiKey = process.env.SHOPIFY_API_KEY;
     const apiSecret = process.env.SHOPIFY_API_SECRET;
     if (!apiKey || !apiSecret) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_not_configured", pending.oauthReturnPage));
     }
     if (!verifyShopifyCallbackHmac(req.query as Record<string, unknown>, apiSecret)) {
-      return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_hmac_invalid", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_hmac_invalid", pending.oauthReturnPage));
     }
     try {
       const shopUrl = normalizeShopifyShop(shop);
       const pendingShopUrl = normalizeShopifyShop(pending.shop);
       if (!shopUrl || !pendingShopUrl) {
-        return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_invalid_shop", pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_invalid_shop", pending.oauthReturnPage));
       }
       if (shopUrl !== pendingShopUrl) {
-        return res.redirect(oauthRedirect("shopify", "oauth_error=shopify_shop_mismatch", pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "shopify","oauth_error=shopify_shop_mismatch", pending.oauthReturnPage));
       }
       const tokenRes = await fetch(`https://${shopUrl}/admin/oauth/access_token`, {
         method: "POST",
@@ -2151,7 +2168,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || data.error || !data.access_token) {
         const errorCode = String(data.error_description || data.error || "token_exchange_failed");
         return res.redirect(
-          oauthRedirect("shopify", `oauth_error=${encodeURIComponent(errorCode)}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "shopify",`oauth_error=${encodeURIComponent(errorCode)}`, pending.oauthReturnPage)
         );
       }
       const shopName = shopUrl.replace(/\.myshopify\.com$/, "");
@@ -2173,7 +2190,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Shopify OAuth error:", err);
-      res.redirect(oauthRedirect("shopify", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "shopify","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2182,15 +2199,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "ecommerce";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
 
     const clientId = String(process.env.NOTION_CLIENT_ID || "").trim();
     if (!clientId) {
-      return res.redirect(oauthRedirect("notion", "oauth_error=notion_not_configured", returnPage));
+      return res.redirect(oauthRedirectTo(base, "notion","oauth_error=notion_not_configured", returnPage));
     }
 
     const notionPublicBase = getNotionPublicBaseUrl();
     if (!/^https:\/\//i.test(notionPublicBase)) {
-      return res.redirect(oauthRedirect("notion", "oauth_error=notion_public_url_must_be_https", returnPage));
+      return res.redirect(oauthRedirectTo(base, "notion","oauth_error=notion_public_url_must_be_https", returnPage));
     }
     const redirectUri = `${notionPublicBase}/api/auth/notion/callback`;
 
@@ -2216,26 +2234,27 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/notion/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirect("notion", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(base, "notion",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
       );
     }
     if (!pending || pending.platform !== "notion") {
-      return res.redirect(oauthRedirect("notion", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "notion","oauth_error=invalid_state"));
     }
 
     const callbackUserId = getSessionUserId(req);
     if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("notion", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "notion","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = String(process.env.NOTION_CLIENT_ID || "").trim();
     const clientSecret = String(process.env.NOTION_CLIENT_SECRET || "").trim();
     if (!clientId || !clientSecret) {
-      return res.redirect(oauthRedirect("notion", "oauth_error=notion_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "notion","oauth_error=notion_not_configured", pending.oauthReturnPage));
     }
 
     try {
@@ -2259,7 +2278,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!tokenRes.ok || !tokenData?.access_token) {
         const rawErr = tokenData?.error || tokenData?.message || "token_exchange_failed";
         return res.redirect(
-          oauthRedirect("notion", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "notion",`oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage)
         );
       }
 
@@ -2299,7 +2318,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Notion OAuth error:", err);
-      res.redirect(oauthRedirect("notion", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "notion","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2308,6 +2327,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "calendar";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     let zernioAutoFailure: unknown = null;
@@ -2318,7 +2338,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         try {
           const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
-            return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_profile_failed", returnPage));
+            return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=zernio_profile_failed", returnPage));
           }
           const state = generateState();
           await oauthPendingStore.set(state, {
@@ -2341,7 +2361,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           return res.redirect(authUrl);
         } catch (e) {
           if (provider === "zernio") {
-            return res.redirect(oauthRedirect("google_calendar", zernioOauthErrorQuery(e), returnPage));
+            return res.redirect(oauthRedirectTo(base, "google_calendar",zernioOauthErrorQuery(e), returnPage));
           }
           // auto: remember WHY Zernio refused before falling back to official —
           // if official isn't configured the user must see the Zernio reason,
@@ -2349,14 +2369,15 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
-        return res.redirect(oauthRedirect("google_calendar", "oauth_error=zernio_not_configured", returnPage));
+        return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=zernio_not_configured", returnPage));
       }
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "google_calendar",
           zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=google_calendar_not_configured",
           returnPage
@@ -2387,11 +2408,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/google-calendar/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirect("google_calendar", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_calendar",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("google_calendar", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2402,14 +2424,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       !callbackUserIdStr.startsWith("local_");
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("google_calendar", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(oauthRedirect("google_calendar", "oauth_error=google_calendar_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=google_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/google-calendar/callback`;
@@ -2428,7 +2450,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(oauthRedirect("google_calendar", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "google_calendar",`oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       let username = "Google Calendar";
       const meRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -2460,7 +2482,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Google Calendar OAuth error:", err);
-      res.redirect(oauthRedirect("google_calendar", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2469,6 +2491,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "calendar";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     let zernioAutoFailure: unknown = null;
@@ -2479,7 +2502,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         try {
           const zernioProfileId = await getOrCreateZernioProfileId(requestBusinessProfileId(req));
           if (!zernioProfileId) {
-            return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_profile_failed", returnPage));
+            return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=zernio_profile_failed", returnPage));
           }
           const state = generateState();
           await oauthPendingStore.set(state, {
@@ -2502,19 +2525,20 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           return res.redirect(authUrl);
         } catch (e) {
           if (provider === "zernio") {
-            return res.redirect(oauthRedirect("outlook_calendar", zernioOauthErrorQuery(e), returnPage));
+            return res.redirect(oauthRedirectTo(base, "outlook_calendar",zernioOauthErrorQuery(e), returnPage));
           }
           zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
-        return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=zernio_not_configured", returnPage));
+        return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=zernio_not_configured", returnPage));
       }
     }
 
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     if (!clientId) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "outlook_calendar",
           zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=outlook_calendar_not_configured",
           returnPage
@@ -2538,22 +2562,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/outlook-calendar/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirect("outlook_calendar", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "outlook_calendar",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     if (callbackUserId && !isAllowedOAuthCallbackUser(pending, callbackUserId)) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(oauthRedirect("outlook_calendar", "oauth_error=outlook_calendar_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=outlook_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/outlook-calendar/callback`;
@@ -2572,7 +2597,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
         const rawErr = data.error_description || data.error || "token_exchange_failed";
-        return res.redirect(oauthRedirect("outlook_calendar", `oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "outlook_calendar",`oauth_error=${encodeURIComponent(String(rawErr))}`, pending.oauthReturnPage));
       }
       let username = "Outlook Calendar";
       const meRes = await fetch("https://graph.microsoft.com/v1.0/me", {
@@ -2607,7 +2632,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Outlook Calendar OAuth error:", err);
-      res.redirect(oauthRedirect("outlook_calendar", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -2616,6 +2641,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const returnPage = parseOauthReturnPage(req) || "reviews";
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const provider = String(req.query.provider || "auto").trim().toLowerCase();
     const ourProfileId = normalizeRequestedProfileId(req.query.profile_id);
     let zernioAutoFailure: unknown = null;
@@ -2649,19 +2675,20 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           return res.redirect(authUrl);
         } catch (e) {
           if (provider === "zernio") {
-            return res.redirect(oauthRedirect("google_reviews", zernioOauthErrorQuery(e), returnPage));
+            return res.redirect(oauthRedirectTo(base, "google_reviews",zernioOauthErrorQuery(e), returnPage));
           }
           zernioAutoFailure = e;
         }
       } else if (provider === "zernio") {
-        return res.redirect(oauthRedirect("google_reviews", "oauth_error=zernio_not_configured", returnPage));
+        return res.redirect(oauthRedirectTo(base, "google_reviews","oauth_error=zernio_not_configured", returnPage));
       }
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "google_reviews",
           zernioAutoFailure ? zernioOauthErrorQuery(zernioAutoFailure) : "oauth_error=google_reviews_not_configured",
           returnPage
@@ -2692,13 +2719,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/google-reviews/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirect("google_reviews", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(base, "google_reviews",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
       );
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("google_reviews", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "google_reviews","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2709,7 +2737,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       !callbackUserIdStr.startsWith("local_");
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("google_reviews", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_reviews","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
@@ -2717,7 +2745,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       return res.redirect(
-        oauthRedirect("google_reviews", "oauth_error=google_reviews_not_configured", pending.oauthReturnPage)
+        oauthRedirectTo(base, "google_reviews","oauth_error=google_reviews_not_configured", pending.oauthReturnPage)
       );
     }
     try {
@@ -2737,7 +2765,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "google_reviews",
             `oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`,
             pending.oauthReturnPage
@@ -2761,7 +2790,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!accountsRes.ok && (!accounts || accounts.length === 0)) {
         const errHint = encodeURIComponent(String(accountsBody?.error?.message || accountsBody?.error || "accounts_api_failed"));
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "google_reviews",
             `oauth_error=google_reviews_accounts_api_failed&oauth_hint=${errHint}`,
             pending.oauthReturnPage
@@ -2773,7 +2803,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const accountId = accountNamePath.split("/")[1] || "";
       if (!accountId) {
         return res.redirect(
-          oauthRedirect("google_reviews", "oauth_error=google_reviews_no_account_access", pending.oauthReturnPage)
+          oauthRedirectTo(base, "google_reviews","oauth_error=google_reviews_no_account_access", pending.oauthReturnPage)
         );
       }
 
@@ -2797,7 +2827,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!locationsRes.ok && (!locations || locations.length === 0)) {
         const errHint = encodeURIComponent(String(locationsBody?.error?.message || locationsBody?.error || "locations_api_failed"));
         return res.redirect(
-          oauthRedirect(
+          oauthRedirectTo(
+            base,
             "google_reviews",
             `oauth_error=google_reviews_locations_api_failed&oauth_hint=${errHint}`,
             pending.oauthReturnPage
@@ -2810,7 +2841,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const locationTitle = String(firstLocation?.title || firstLocation?.locationName || firstLocation?.storeCode || "Google location");
       if (!locationId) {
         return res.redirect(
-          oauthRedirect("google_reviews", "oauth_error=google_reviews_no_location_access", pending.oauthReturnPage)
+          oauthRedirectTo(base, "google_reviews","oauth_error=google_reviews_no_location_access", pending.oauthReturnPage)
         );
       }
 
@@ -2834,7 +2865,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     } catch (err) {
       console.error("Google Reviews OAuth error:", err);
       return res.redirect(
-        oauthRedirect("google_reviews", "oauth_error=token_exchange_failed", pending.oauthReturnPage)
+        oauthRedirectTo(base, "google_reviews","oauth_error=token_exchange_failed", pending.oauthReturnPage)
       );
     }
   });
@@ -2845,11 +2876,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const userId = requireSessionOrRedirect(req, res, returnPage);
     if (!userId) return;
     res.set("Cache-Control", "no-store, no-cache");
+    const base = requestedAppBaseUrl(req) || BASE_URL;
     const provider = String(req.query.provider || "official").trim().toLowerCase();
     if (provider === "zernio") {
       const zernioKey = getZernioApiKey();
       if (!zernioKey) {
-        return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_not_configured", returnPage));
+        return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=zernio_not_configured", returnPage));
       }
       try {
         const zernioProfileId = await getOptionalZernioProfileId(
@@ -2882,9 +2914,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         const hint = String((e as { hint?: string })?.hint || "");
         console.error("[Zernio google_business] connect init failed:", msg, hint.slice(0, 120));
         if (`${msg} ${hint}`.includes("Platform not supported")) {
-          return res.redirect(oauthRedirect("google_business", "oauth_error=zernio_gmb_not_supported", returnPage));
+          return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=zernio_gmb_not_supported", returnPage));
         }
-        return res.redirect(oauthRedirect("google_business", zernioOauthErrorQuery(e), returnPage));
+        return res.redirect(oauthRedirectTo(base, "google_business",zernioOauthErrorQuery(e), returnPage));
       }
     }
     // Default Google Business Profile path: official Google OAuth.
@@ -2892,7 +2924,8 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       return res.redirect(
-        oauthRedirect(
+        oauthRedirectTo(
+          base,
           "google_business",
           "oauth_error=google_business_not_configured",
           returnPage
@@ -2923,11 +2956,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   app.get("/api/auth/google_business/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const pending = await oauthPendingStore.get(state);
+    const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirect("google_business", `oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_business",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
     }
     if (!pending) {
-      return res.redirect(oauthRedirect("google_business", "oauth_error=invalid_state"));
+      return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=invalid_state"));
     }
     const callbackUserId = getSessionUserId(req);
     const pendingUserId = pending?.userId ? String(pending.userId) : "";
@@ -2938,14 +2972,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       !callbackUserIdStr.startsWith("local_");
     if (callbackUserIdStr && pendingUserId !== callbackUserIdStr && !isLocalToCloudTransition) {
       await oauthPendingStore.delete(state);
-      return res.redirect(oauthRedirect("google_business", "oauth_error=invalid_state", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=invalid_state", pending.oauthReturnPage));
     }
     await oauthPendingStore.delete(state);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_not_configured", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=google_business_not_configured", pending.oauthReturnPage));
     }
     try {
       const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
@@ -2964,7 +2998,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const tokenData = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
         return res.redirect(
-          oauthRedirect("google_business", `oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "google_business",`oauth_error=${encodeURIComponent(String(tokenData.error || "token_exchange_failed"))}`, pending.oauthReturnPage)
         );
       }
 
@@ -2983,14 +3017,14 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!accountsRes.ok && (!accounts || accounts.length === 0)) {
         const errHint = encodeURIComponent(String(accountsBody?.error?.message || accountsBody?.error || "accounts_api_failed"));
         return res.redirect(
-          oauthRedirect("google_business", `oauth_error=google_business_accounts_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "google_business",`oauth_error=google_business_accounts_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
         );
       }
       const firstAccount = accounts[0] || null;
       const accountNamePath = String(firstAccount?.name || "");
       const accountId = accountNamePath.split("/")[1] || "";
       if (!accountId) {
-        return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_no_account_access", pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=google_business_no_account_access", pending.oauthReturnPage));
       }
 
       const locationsRes = await fetch(
@@ -3013,7 +3047,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (!locationsRes.ok && (!locations || locations.length === 0)) {
         const errHint = encodeURIComponent(String(locationsBody?.error?.message || locationsBody?.error || "locations_api_failed"));
         return res.redirect(
-          oauthRedirect("google_business", `oauth_error=google_business_locations_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
+          oauthRedirectTo(base, "google_business",`oauth_error=google_business_locations_api_failed&oauth_hint=${errHint}`, pending.oauthReturnPage)
         );
       }
       const firstLocation = locations[0] || null;
@@ -3021,7 +3055,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const locationId = locationNamePath.split("/").pop() || "";
       const locationTitle = String(firstLocation?.title || firstLocation?.locationName || firstLocation?.storeCode || "Google location");
       if (!locationId) {
-        return res.redirect(oauthRedirect("google_business", "oauth_error=google_business_no_location_access", pending.oauthReturnPage));
+        return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=google_business_no_location_access", pending.oauthReturnPage));
       }
 
       const appAccountId = crypto.randomUUID();
@@ -3043,7 +3077,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     } catch (err) {
       console.error("Google Business OAuth error:", err);
-      return res.redirect(oauthRedirect("google_business", "oauth_error=token_exchange_failed", pending.oauthReturnPage));
+      return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=token_exchange_failed", pending.oauthReturnPage));
     }
   });
 
@@ -3253,7 +3287,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           BASE_URL
         );
       }
-      return res.redirect(buildPageUrlWithBase(BASE_URL, returnPage, params));
+      return res.redirect(buildPageUrlWithBase(requestedAppBaseUrl(req) || BASE_URL, returnPage, params));
     }
     const state = generateState();
     await oauthPendingStore.set(state, {
