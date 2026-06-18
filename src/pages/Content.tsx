@@ -445,6 +445,7 @@ export default function ContentPage() {
     }
 
     const params = new URLSearchParams();
+    params.set("app_origin", window.location.origin);
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     params.set("popup", "1");

@@ -330,6 +330,7 @@ export default function Ecommerce() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!shop) return;
     const params = new URLSearchParams({ shop });
+    params.set("app_origin", window.location.origin);
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     setConnectDialogOpen(false);

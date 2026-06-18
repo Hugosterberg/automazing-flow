@@ -246,6 +246,7 @@ export default function CalendarPage() {
     provider: "auto" | "zernio" | "official"
   ) {
     const params = new URLSearchParams();
+    params.set("app_origin", window.location.origin);
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (activeBusinessProfileId) params.set("business_profile_id", activeBusinessProfileId);

@@ -557,21 +557,30 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   /**
-   * Optional `?app_origin=` lets a known frontend ask to be redirected back to
-   * itself after OAuth. Only origins we already trust are accepted (BASE_URL,
-   * API_BASE_URL, CORS_ORIGINS) — matching against the Referer header would
-   * make this an open redirect: any site linking to /api/auth/* could set
-   * app_origin to itself and receive the post-OAuth redirect.
+   * The frontend origin to send the user back to after OAuth. Prefer the
+   * explicit `?app_origin=`; fall back to the request's `Referer` origin for
+   * connect entry points that don't pass app_origin (e.g. the sidebar's manual
+   * connect buttons). This is only ever read at connect-INIT time, where the
+   * Referer is the user's own page — never at callback time (the provider would
+   * be the referer there; callbacks use the stored `pending.appBaseUrl`).
+   *
+   * Crucially, BOTH sources are only honoured when they match an origin we
+   * already trust (BASE_URL, API_BASE_URL, CORS_ORIGINS), so the post-OAuth
+   * redirect target is always in the allowlist — this is not an open redirect.
    */
   function requestedAppBaseUrl(req): string | null {
-    const requested = originOf(req?.query?.app_origin);
-    if (!requested) return null;
     const corsOrigins = String(process.env.CORS_ORIGINS || "")
       .split(",")
       .map((value) => originOf(value.trim()))
       .filter(Boolean);
     const knownOrigins = [originOf(BASE_URL), originOf(API_BASE_URL), ...corsOrigins].filter(Boolean);
-    if (knownOrigins.includes(requested)) return requested;
+    const candidates = [
+      originOf(req?.query?.app_origin),
+      originOf(req?.headers?.referer ?? req?.headers?.referrer),
+    ];
+    for (const candidate of candidates) {
+      if (candidate && knownOrigins.includes(candidate)) return candidate;
+    }
     return null;
   }
 

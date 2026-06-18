@@ -332,6 +332,7 @@ export function AppSidebar() {
     }
     if (platform === "google_business" && options?.provider === "official") {
       const params = new URLSearchParams({ provider: "official" });
+      params.set("app_origin", window.location.origin);
       const oauthProfileId = getOAuthProfileId(activeProfileId);
       if (oauthProfileId) params.set("profile_id", oauthProfileId);
       if (aiBpId) params.set("business_profile_id", aiBpId);
@@ -350,6 +351,9 @@ export function AppSidebar() {
       return;
     }
     const params = new URLSearchParams();
+    // Return to THIS origin after OAuth, not the server's BASE_URL — otherwise
+    // a user on a different origin lands on BASE_URL and appears logged out.
+    params.set("app_origin", window.location.origin);
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (aiBpId) params.set("business_profile_id", aiBpId);
@@ -378,6 +382,7 @@ export function AppSidebar() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!shop) return;
     const params = new URLSearchParams({ shop });
+    params.set("app_origin", window.location.origin);
     const oauthProfileId = getOAuthProfileId(activeProfileId);
     if (oauthProfileId) params.set("profile_id", oauthProfileId);
     if (aiBpId) params.set("business_profile_id", aiBpId);
