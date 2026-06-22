@@ -11,6 +11,8 @@ export type OAuthRedirectBuildInput = {
   viteAppUrl: string;
   /** Set automatically on Vercel builds via vite.config (from VERCEL_URL). */
   viteVercelDeploymentOrigin: string;
+  /** Set automatically on Vercel builds via vite.config (from VERCEL_PROJECT_PRODUCTION_URL). */
+  viteVercelProductionOrigin?: string;
   windowOrigin: string;
   pathname: string;
   search: string;
@@ -122,9 +124,84 @@ export function getOAuthRedirectUrl(): string {
     viteSiteUrl: (import.meta.env.VITE_SITE_URL || "").trim(),
     viteAppUrl: (import.meta.env.VITE_APP_URL || "").trim(),
     viteVercelDeploymentOrigin: (import.meta.env.VITE_VERCEL_DEPLOYMENT_ORIGIN || "").trim(),
+    viteVercelProductionOrigin: (import.meta.env.VITE_VERCEL_PRODUCTION_ORIGIN || "").trim(),
     windowOrigin: window.location.origin,
     pathname: window.location.pathname,
     search: window.location.search,
     hash: window.location.hash,
   });
+}
+
+function firstNonLoopbackOrigin(values: string[]): string | null {
+  for (const raw of values) {
+    const value = raw.trim();
+    if (!value) continue;
+    try {
+      const parsed = new URL(value);
+      if (!isLoopbackHostname(parsed.hostname)) {
+        return parsed.origin;
+      }
+    } catch {
+      // skip invalid URL
+    }
+  }
+  return null;
+}
+
+export type AuthCallbackCanonicalizeInput = {
+  prod: boolean;
+  siteUrl: string;
+  appUrl: string;
+  vercelDeploymentOrigin: string;
+  vercelProductionOrigin?: string;
+  windowOrigin: string;
+  pathname: string;
+  search: string;
+  hash?: string;
+  hasPendingAuthReturn: boolean;
+};
+
+export function buildCanonicalAuthCallbackUrl(input: AuthCallbackCanonicalizeInput): string | null {
+  if (!input.prod || input.hasPendingAuthReturn) return null;
+
+  const params = new URLSearchParams(input.search || "");
+  const hasSupabaseCallback = params.has("code") || params.has("error") || params.has("error_code");
+  if (!hasSupabaseCallback) return null;
+
+  const canonicalOrigin = firstNonLoopbackOrigin([
+    input.siteUrl,
+    input.appUrl,
+    input.vercelProductionOrigin || "",
+  ]);
+  if (!canonicalOrigin || canonicalOrigin === input.windowOrigin) return null;
+
+  const deploymentOrigin = firstNonLoopbackOrigin([input.vercelDeploymentOrigin]);
+  if (deploymentOrigin && deploymentOrigin !== input.windowOrigin) return null;
+
+  const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
+  return `${canonicalOrigin}${pathname}${input.search || ""}${input.hash || ""}`;
+}
+
+/**
+ * If Supabase sends a PKCE callback to Vercel's deployment URL while sign-in
+ * started on the production alias, move the full callback URL back to the
+ * alias before supabase-js tries to exchange the code.
+ */
+export function redirectMismatchedAuthCallbackToCanonicalOrigin(): boolean {
+  if (typeof window === "undefined") return false;
+  const target = buildCanonicalAuthCallbackUrl({
+    prod: import.meta.env.PROD,
+    siteUrl: (import.meta.env.VITE_SITE_URL || "").trim(),
+    appUrl: (import.meta.env.VITE_APP_URL || "").trim(),
+    vercelDeploymentOrigin: (import.meta.env.VITE_VERCEL_DEPLOYMENT_ORIGIN || "").trim(),
+    vercelProductionOrigin: (import.meta.env.VITE_VERCEL_PRODUCTION_ORIGIN || "").trim(),
+    windowOrigin: window.location.origin,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    hasPendingAuthReturn: Boolean(readPendingAuthReturn()),
+  });
+  if (!target) return false;
+  window.location.replace(target);
+  return true;
 }

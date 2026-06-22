@@ -574,7 +574,23 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       .split(",")
       .map((value) => originOf(value.trim()))
       .filter(Boolean);
-    const knownOrigins = [originOf(BASE_URL), originOf(API_BASE_URL), ...corsOrigins].filter(Boolean);
+    const vercelProductionOrigin = originOf(
+      process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${String(process.env.VERCEL_PROJECT_PRODUCTION_URL).replace(/^https?:\/\//, "")}`
+        : ""
+    );
+    const vercelCurrentOrigin = originOf(
+      process.env.VERCEL_URL
+        ? `https://${String(process.env.VERCEL_URL).replace(/^https?:\/\//, "")}`
+        : ""
+    );
+    const knownOrigins = [
+      originOf(BASE_URL),
+      originOf(API_BASE_URL),
+      vercelProductionOrigin,
+      vercelCurrentOrigin,
+      ...corsOrigins,
+    ].filter(Boolean);
     const candidates = [
       originOf(req?.query?.app_origin),
       originOf(req?.headers?.referer ?? req?.headers?.referrer),

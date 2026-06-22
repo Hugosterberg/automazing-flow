@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAuthReturnPath, buildOAuthRedirectUrl } from "@/lib/authRedirect";
+import { buildAuthReturnPath, buildCanonicalAuthCallbackUrl, buildOAuthRedirectUrl } from "@/lib/authRedirect";
 
 describe("buildOAuthRedirectUrl", () => {
   it("production prefers the current window origin (PKCE verifier lives there)", () => {
@@ -16,6 +16,54 @@ describe("buildOAuthRedirectUrl", () => {
         search: "",
       })
     ).toBe("https://myapp-abc123.vercel.app/");
+  });
+
+  describe("buildCanonicalAuthCallbackUrl", () => {
+    it("moves a Supabase callback from Vercel deployment origin back to the canonical app origin", () => {
+      expect(
+        buildCanonicalAuthCallbackUrl({
+          prod: true,
+          siteUrl: "https://automazing.vercel.app",
+          appUrl: "",
+          vercelDeploymentOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/",
+          search: "?code=d9baafac-a0bc-427d-8d84-86a0bb71780f",
+          hasPendingAuthReturn: false,
+        })
+      ).toBe("https://automazing.vercel.app/?code=d9baafac-a0bc-427d-8d84-86a0bb71780f");
+    });
+
+    it("keeps the deployment origin when sign-in started there", () => {
+      expect(
+        buildCanonicalAuthCallbackUrl({
+          prod: true,
+          siteUrl: "https://automazing.vercel.app",
+          appUrl: "",
+          vercelDeploymentOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/",
+          search: "?code=abc",
+          hasPendingAuthReturn: true,
+        })
+      ).toBeNull();
+    });
+
+    it("uses Vercel production origin when no explicit site URL is configured", () => {
+      expect(
+        buildCanonicalAuthCallbackUrl({
+          prod: true,
+          siteUrl: "",
+          appUrl: "",
+          vercelProductionOrigin: "https://automazing.vercel.app",
+          vercelDeploymentOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/",
+          search: "?code=abc",
+          hasPendingAuthReturn: false,
+        })
+      ).toBe("https://automazing.vercel.app/?code=abc");
+    });
   });
 
   it("production falls back to site URL when window origin is loopback", () => {

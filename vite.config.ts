@@ -8,21 +8,19 @@ export default defineConfig(({ mode }) => {
   const apiPort = process.env.PORT || env.PORT || "3001";
   const apiTarget = `http://127.0.0.1:${apiPort}`;
 
-  // Prefer the stable production alias (VERCEL_PROJECT_PRODUCTION_URL, e.g.
-  // automazing.vercel.app) over the deployment-specific VERCEL_URL when
-  // building for production. Otherwise OAuth callbacks would return the
-  // browser to a deployment-unique hostname where the user's localStorage
-  // session doesn't exist, forcing them to sign in again every time.
-  const vercelEnv = process.env.VERCEL_ENV || "";
-  const vercelUrl =
-    (vercelEnv === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL) ||
-    process.env.VERCEL_URL ||
-    "";
+  const vercelUrl = process.env.VERCEL_URL || "";
+  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || "";
   const vercelDeploymentOrigin =
     vercelUrl.length > 0
       ? vercelUrl.includes("://")
         ? vercelUrl
         : `https://${vercelUrl}`
+      : "";
+  const vercelProductionOrigin =
+    vercelProductionUrl.length > 0
+      ? vercelProductionUrl.includes("://")
+        ? vercelProductionUrl
+        : `https://${vercelProductionUrl}`
       : "";
 
   return {
@@ -42,8 +40,9 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      // OAuth redirect base on Vercel builds (VERCEL_URL is set by the platform).
+      // Vercel host metadata for auth callback canonicalization.
       "import.meta.env.VITE_VERCEL_DEPLOYMENT_ORIGIN": JSON.stringify(vercelDeploymentOrigin),
+      "import.meta.env.VITE_VERCEL_PRODUCTION_ORIGIN": JSON.stringify(vercelProductionOrigin),
     },
     resolve: {
       alias: {

@@ -131,8 +131,12 @@ function resolveApiBaseUrl() {
   const explicitApi = String(process.env.API_BASE_URL || "").trim();
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
+  const isProductionVercel = onVercel && String(process.env.VERCEL_ENV || "").trim() === "production";
   const deployed = vercelDeploymentOrigin();
 
+  if (isProductionVercel && deployed) {
+    return deployed;
+  }
   if (explicitApi && !parseOriginIsLoopback(explicitApi)) {
     return explicitApi.replace(/\/$/, "");
   }
@@ -149,8 +153,12 @@ function resolveApiBaseUrl() {
 function resolveBaseUrl(apiBaseResolved) {
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
+  const isProductionVercel = onVercel && String(process.env.VERCEL_ENV || "").trim() === "production";
   const deployed = vercelDeploymentOrigin();
 
+  if (isProductionVercel && deployed) {
+    return deployed;
+  }
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
     return explicitBase.replace(/\/$/, "");
   }
