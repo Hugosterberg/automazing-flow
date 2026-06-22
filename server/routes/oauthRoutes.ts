@@ -15,6 +15,7 @@ import type { SecretResolver } from "../lib/secretResolver.ts";
 import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
 import {
   deterministicAccountId,
+  profileScopedAccountId,
   pruneDuplicateAccountEntries,
 } from "../lib/accountIdentity.ts";
 import { exchangeForLongLivedInstagramToken } from "../providers/instagram.ts";
@@ -1202,7 +1203,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       if (meData.email) username = String(meData.email);
 
       const identityRaw = String(meData.id || meData.email || username || "").toLowerCase();
-      const accountId = `gads_${crypto.createHash("sha1").update(identityRaw).digest("hex").slice(0, 20)}`;
+      const accountId = profileScopedAccountId("gads", identityRaw, pending.profileId);
       await tokenStore.set(accountId, {
         platform: "google_ads",
         ownerUserId: callbackUserId || pending.userId,
@@ -1359,7 +1360,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         "Meta Business"
       );
       const identityRaw = String(meData.id || meData.email || displayName || "").toLowerCase();
-      const accountId = `meta_${crypto.createHash("sha1").update(identityRaw).digest("hex").slice(0, 20)}`;
+      const accountId = profileScopedAccountId("meta", identityRaw, pending.profileId);
 
       await tokenStore.set(accountId, {
         platform: "meta_business",
@@ -1618,7 +1619,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const igExpiresAt = longLived?.expiresAt || null;
       // Stable id per Instagram user: reconnecting overwrites instead of duplicating.
       const accountId = data.user_id
-        ? deterministicAccountId("ig", String(data.user_id))
+        ? profileScopedAccountId("ig", String(data.user_id), pending.profileId)
         : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "instagram",
@@ -1637,6 +1638,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           { key: "userId", value: data.user_id ? String(data.user_id) : null },
           { key: "username", value: username },
         ],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       res.redirect(
@@ -1791,7 +1793,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       // Stable id per TikTok open_id: reconnecting overwrites instead of duplicating.
       const accountId = data.open_id
-        ? deterministicAccountId("tiktok", String(data.open_id))
+        ? profileScopedAccountId("tiktok", String(data.open_id), pending.profileId)
         : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "tiktok",
@@ -1810,6 +1812,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           { key: "openId", value: data.open_id ? String(data.open_id) : null },
           { key: "username", value: username },
         ],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "tiktok");
@@ -1903,7 +1906,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const userData = await userRes.json().catch(() => ({}));
       const user = userData.data || {};
       // Stable id per X user: reconnecting overwrites instead of duplicating.
-      const accountId = user.id ? deterministicAccountId("x", String(user.id)) : crypto.randomUUID();
+      const accountId = user.id ? profileScopedAccountId("x", String(user.id), pending.profileId) : crypto.randomUUID();
       const username = user.username || user.name || accountId.slice(0, 8);
       await tokenStore.set(accountId, {
         platform: "x",
@@ -1922,6 +1925,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           { key: "xUserId", value: user.id ? String(user.id) : null },
           { key: "username", value: user.username ? String(user.username) : null },
         ],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "x");
@@ -2020,7 +2024,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       const channelId = meData.items?.[0]?.id ? String(meData.items[0].id) : "";
       // Stable id per YouTube channel: reconnecting overwrites instead of duplicating.
-      const accountId = channelId ? deterministicAccountId("yt", channelId) : crypto.randomUUID();
+      const accountId = channelId ? profileScopedAccountId("yt", channelId, pending.profileId) : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "youtube",
         ownerUserId: callbackUserId || pending.userId,
@@ -2038,6 +2042,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           { key: "channelId", value: channelId },
           { key: "username", value: username !== "YouTube-konto" ? username : null },
         ],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "youtube");
@@ -2192,7 +2197,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       }
       const shopName = shopUrl.replace(/\.myshopify\.com$/, "");
       // Reuse a stable account id per shop so reconnects update the same record (matches Drive/Gmail pattern).
-      const accountId = `shopify_${crypto.createHash("sha1").update(shopUrl).digest("hex").slice(0, 20)}`;
+      const accountId = profileScopedAccountId("shopify", shopUrl, pending.profileId);
       await tokenStore.set(accountId, {
         platform: "shopify",
         ownerUserId: callbackUserId || pending.userId,
@@ -2305,7 +2310,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const workspaceId = String(tokenData.workspace_id || tokenData.bot_id || "").trim();
       // Stable id per Notion workspace: reconnecting overwrites instead of duplicating.
       const accountId = workspaceId
-        ? deterministicAccountId("notion", workspaceId)
+        ? profileScopedAccountId("notion", workspaceId, pending.profileId)
         : crypto.randomUUID();
       const workspaceName = String(tokenData.workspace_name || "Notion Workspace");
 
@@ -2327,6 +2332,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           { key: "workspaceId", value: tokenData.workspace_id ? String(tokenData.workspace_id) : null },
           { key: "botId", value: tokenData.bot_id ? String(tokenData.bot_id) : null },
         ],
+        sameProfileId: pending.profileId || null,
       });
 
       const profileQuery = profileParam(pending.profileId);
@@ -2481,7 +2487,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = meData.email;
       const identityRaw = String(meData.id || meData.email || username || "").toLowerCase();
-      const accountId = `gcal_${crypto.createHash("sha1").update(identityRaw).digest("hex").slice(0, 20)}`;
+      const accountId = profileScopedAccountId("gcal", identityRaw, pending.profileId);
       await tokenStore.set(accountId, {
         platform: "google_calendar",
         ownerUserId: callbackUserId || pending.userId,
@@ -2496,6 +2502,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "google_calendar",
         keepAccountId: accountId,
         matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "google_calendar");
@@ -2633,7 +2640,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const msIdentity = String(meData.id || meData.userPrincipalName || meData.mail || "").trim();
       // Stable id per Microsoft user: reconnecting overwrites instead of duplicating.
       const accountId = msIdentity
-        ? deterministicAccountId("ocal", msIdentity)
+        ? profileScopedAccountId("ocal", msIdentity, pending.profileId)
         : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "outlook_calendar",
@@ -2648,6 +2655,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "outlook_calendar",
         keepAccountId: accountId,
         matchers: [{ key: "username", value: username !== "Outlook Calendar" ? username : null }],
+        sameProfileId: pending.profileId || null,
       });
       const profileQuery = profileParam(pending.profileId);
       const postPage = postOauthPage(pending, "outlook_calendar");
@@ -2870,7 +2878,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         );
       }
 
-      const appAccountId = crypto.randomUUID();
+      const appAccountId = profileScopedAccountId(
+        "grev",
+        `${accountId}:${locationId}`,
+        pending.profileId
+      );
       await tokenStore.set(appAccountId, {
         platform: "google_reviews",
         ownerUserId: callbackUserId || pending.userId,
@@ -3084,7 +3096,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=google_business_no_location_access", pending.oauthReturnPage));
       }
 
-      const appAccountId = crypto.randomUUID();
+      const appAccountId = profileScopedAccountId(
+        "gbp",
+        `${accountId}:${locationId}`,
+        pending.profileId
+      );
       await tokenStore.set(appAccountId, {
         platform: "google_business",
         ownerUserId: callbackUserId || pending.userId,
@@ -3182,7 +3198,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     // Stable id per Tripadvisor location: reconnecting overwrites instead of duplicating.
-    const accountId = deterministicAccountId("ta", locationId);
+    const accountId = profileScopedAccountId("ta", locationId, ourProfileId);
     await tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
@@ -3197,6 +3213,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "tripadvisor",
       keepAccountId: accountId,
       matchers: [{ key: "tripadvisorLocationId", value: locationId }],
+      sameProfileId: ourProfileId || null,
     });
     const profileQuery = profileParam(ourProfileId);
     const postPage = returnPage === "connections" ? "connections" : "reviews";
@@ -3223,7 +3240,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.status(400).json({ error: "Tripadvisor API key is required" });
     }
     // Stable id per Tripadvisor location: reconnecting overwrites instead of duplicating.
-    const accountId = deterministicAccountId("ta", locationId);
+    const accountId = profileScopedAccountId("ta", locationId, profileId);
     await tokenStore.set(accountId, {
       platform: "tripadvisor",
       ownerUserId: userId,
@@ -3238,6 +3255,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       platform: "tripadvisor",
       keepAccountId: accountId,
       matchers: [{ key: "tripadvisorLocationId", value: locationId }],
+      sameProfileId: profileId || null,
     });
     return res.json({
       ok: true,
@@ -3490,8 +3508,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = String(meData.email);
       const driveIdentityRaw = String(meData.id || meData.email || username || "").toLowerCase();
-      const driveIdentityHash = crypto.createHash("sha1").update(driveIdentityRaw).digest("hex").slice(0, 20);
-      const accountId = `gdrive_${driveIdentityHash}`;
+      const accountId = profileScopedAccountId("gdrive", driveIdentityRaw, pending.profileId);
       await tokenStore.set(accountId, {
         platform: "google_drive",
         ownerUserId: callbackUserId || pending.userId,
@@ -3506,6 +3523,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "google_drive",
         keepAccountId: accountId,
         matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+        sameProfileId: pending.profileId || null,
       });
       if (pending?.popup) {
         return sendPopupOAuthResult(
@@ -3662,8 +3680,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const meData = await meRes.json().catch(() => ({}));
       if (meData.email) username = meData.email;
       const gmailIdentityRaw = String(meData.id || meData.email || username || "").toLowerCase();
-      const gmailIdentityHash = crypto.createHash("sha1").update(gmailIdentityRaw).digest("hex").slice(0, 20);
-      const accountId = `gmail_${gmailIdentityHash}`;
+      const accountId = profileScopedAccountId("gmail", gmailIdentityRaw, pending.profileId);
       debugLog("pre-fix", "H3", "oauthRoutes.js:/api/auth/gmail/callback", "Resolved stable Gmail account id", {
         hasGoogleUserId: Boolean(meData.id),
         hasEmail: Boolean(meData.email),
@@ -3683,6 +3700,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "gmail",
         keepAccountId: accountId,
         matchers: [{ key: "username", value: meData.email ? String(meData.email) : null }],
+        sameProfileId: pending.profileId || null,
       });
       const postPage = postOauthPage(pending, "gmail");
       res.redirect(
@@ -3786,7 +3804,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       const msIdentity = String(meData.id || meData.userPrincipalName || meData.mail || "").trim();
       // Stable id per Microsoft user: reconnecting overwrites instead of duplicating.
       const accountId = msIdentity
-        ? deterministicAccountId("outlook", msIdentity)
+        ? profileScopedAccountId("outlook", msIdentity, pending.profileId)
         : crypto.randomUUID();
       await tokenStore.set(accountId, {
         platform: "outlook",
@@ -3801,6 +3819,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         platform: "outlook",
         keepAccountId: accountId,
         matchers: [{ key: "username", value: username !== "Outlook" ? username : null }],
+        sameProfileId: pending.profileId || null,
       });
       const postPage = postOauthPage(pending, "outlook");
       res.redirect(

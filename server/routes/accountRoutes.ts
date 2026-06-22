@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ZernioModule } from "../providers/zernioModule.ts";
+import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
 
 const PLATFORM_PROFILE_URL_FALLBACKS: Record<string, (username: string, displayName?: string) => string> = {
   facebook: (username) => `https://facebook.com/${username}`,
@@ -66,12 +67,14 @@ export function registerAccountRoutes(app, deps: AccountRoutesDeps) {
     }
 
     const platformFilter = String(req.query?.platform || "").trim();
+    const businessProfileId = readRequestBusinessProfileId(req);
     const results = [];
 
     const allEntries = await tokenStore.entries();
     for (const [accountId, stored] of allEntries) {
       if (!stored || typeof stored !== "object") continue;
       if (platformFilter && String(stored.platform || "") !== platformFilter) continue;
+      if (!accountInBusinessProfile(stored, businessProfileId)) continue;
 
       const access = getStoredAccountAccess(stored, userId);
       if (!access.allowed) continue;

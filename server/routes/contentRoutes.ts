@@ -7,6 +7,7 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -54,6 +55,7 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
       publishNow?: boolean;
       timezone?: string;
       mediaUrls?: string[];
+      business_profile_id?: string;
     };
     const accountIds = Array.isArray(body.accountIds)
       ? body.accountIds.map((id) => String(id || "").trim()).filter(Boolean)
@@ -61,6 +63,7 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     const content = String(body.content || "").trim();
     const scheduledFor = String(body.scheduledFor || "").trim();
     const publishNow = Boolean(body.publishNow);
+    const businessProfileId = String(body.business_profile_id || "").trim() || null;
 
     if (accountIds.length === 0) {
       return res.status(400).json({ error: "Select at least one account" });
@@ -88,6 +91,10 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
       }
       if (access.migrate) {
         await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+      }
+      if (!accountInBusinessProfile(stored, businessProfileId)) {
+        skipped.push({ accountId, reason: "wrong_business_profile" });
+        continue;
       }
       const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
       const slug = ZERNIO_POST_PLATFORM[String(stored.platform || "")];

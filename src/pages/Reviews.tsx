@@ -17,6 +17,8 @@ import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { accountDataUrl } from "@/lib/accountDataUrl";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
@@ -100,7 +102,8 @@ function displayNumber(value: unknown): number | undefined {
 export default function ReviewsPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { toast } = useToast();
-  const { accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("reviews");
 
   const [replyText, setReplyText] = useState<Record<string, string>>({});
@@ -122,9 +125,10 @@ export default function ReviewsPage() {
     setSelectedAccountId: (id) => setSelectedAccountId("reviews", id),
     accountFilter: (a) => (a.platform === "google_reviews" || a.platform === "tripadvisor") && Boolean(a.isOAuth),
     initialData: null,
+    requestKey: activeBusinessProfileId ?? activeProfileId,
     scopeSort: sortReviewAccounts,
     fetcher: async (accountId) => {
-      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         throw new Error(displayString(payload?.error) || displayString(payload?.message) || "Could not fetch reviews");
@@ -188,6 +192,7 @@ export default function ReviewsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "review",
+          business_profile_id: activeBusinessProfileId ?? activeProfileId,
           authorName: r.author,
           rating: r.rating,
           text: r.text,
@@ -217,7 +222,12 @@ export default function ReviewsPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId: activeAccount.id, reviewId, message }),
+        body: JSON.stringify({
+          accountId: activeAccount.id,
+          reviewId,
+          message,
+          business_profile_id: activeBusinessProfileId ?? activeProfileId,
+        }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {

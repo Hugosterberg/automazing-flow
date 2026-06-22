@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { AccountPlatform, SocialPlatform } from "@/types/accounts";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { appendOAuthProfileParams, getOAuthProfileId } from "@/lib/oauthProfile";
 
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -63,12 +63,15 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
       setZernioLinking(zid);
       setZernioError(null);
       try {
+        const params = new URLSearchParams();
+        appendOAuthProfileParams(params, activeProfileId);
         const r = await fetchWithTimeout(apiUrl("/api/zernio/link"), {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             zernioAccountId: zid,
+            business_profile_id: params.get("business_profile_id") ?? undefined,
             profile_id: getOAuthProfileId(activeProfileId) ?? undefined,
           }),
         });

@@ -11,6 +11,7 @@ import { apiUrl } from "@/lib/apiBase";
 import type { AccountPlatform } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { platformLabel } from "@/lib/platformLabels";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 
 /** Platforms we can publish to via Zernio. */
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
@@ -18,7 +19,9 @@ const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tikt
 
 export function PublishComposer() {
   const { toast } = useToast();
-  const { accounts } = useAccounts();
+  const { accounts, activeProfileId } = useAccounts();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
+  const businessProfileId = activeBusinessProfileId ?? activeProfileId;
 
   const postable = useMemo(
     () =>
@@ -55,6 +58,7 @@ export function PublishComposer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accountIds: selectedIds,
+          business_profile_id: businessProfileId,
           content: caption.trim(),
           publishNow: mode === "now",
           scheduledFor: mode === "schedule" ? new Date(scheduledFor).toISOString() : undefined,

@@ -9,6 +9,7 @@
  */
 
 import { fetchShopifyProducts, type NormalizedShopifyProduct } from "../providers/shopify.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
 type SupabaseAdminLike = { from: (table: string) => any };
@@ -307,6 +308,9 @@ export function registerProductRoutes(app, deps: ProductRoutesDeps) {
     if (!access.allowed) return res.status(403).json({ error: "forbidden_account" });
     if (stored.platform !== "shopify") {
       return res.status(400).json({ error: "not_a_shopify_account" });
+    }
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      return res.status(404).json({ error: "account_not_connected_for_business_profile" });
     }
 
     const result = await fetchShopifyProducts(

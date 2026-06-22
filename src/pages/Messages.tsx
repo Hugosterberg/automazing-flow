@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
@@ -236,10 +236,12 @@ export default function MessagesPage() {
         const platforms = MESSAGE_ACCOUNT_PLATFORMS;
         const existingAccountIds = new Set(accounts.map((account) => account.id));
         for (const platform of platforms) {
-          let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+          const params = new URLSearchParams({ platform });
+          if (activeProfileId) params.set("business_profile_id", activeProfileId);
+          let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${params.toString()}`), { credentials: "include" });
           if (res.status === 401) {
             await ensureBackendSession();
-            res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?platform=${platform}`), { credentials: "include" });
+            res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${params.toString()}`), { credentials: "include" });
           }
           const payload = await res.json().catch(() => ({}));
           if (!res.ok || ignore) continue;
@@ -273,13 +275,12 @@ export default function MessagesPage() {
     return () => {
       ignore = true;
     };
-  }, [accounts, addAccountFromOAuth, ensureBackendSession]);
+  }, [accounts, activeProfileId, addAccountFromOAuth, ensureBackendSession]);
 
   async function connectGmail() {
     await ensureBackendSession();
     const params = new URLSearchParams();
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    appendOAuthProfileParams(params, activeProfileId);
     params.set("app_origin", window.location.origin);
     window.location.href = `${apiUrl("/api/auth/gmail")}?${params}`;
   }
@@ -287,8 +288,7 @@ export default function MessagesPage() {
   async function connectOutlook() {
     await ensureBackendSession();
     const params = new URLSearchParams();
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    appendOAuthProfileParams(params, activeProfileId);
     params.set("app_origin", window.location.origin);
     window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
   }
@@ -341,6 +341,7 @@ export default function MessagesPage() {
           accountId: selectedMessage.accountId,
           conversationId: selectedMessage.conversationId,
           message: replyDraft.trim(),
+          business_profile_id: activeProfileId,
         }),
       });
       const payload = await res.json().catch(() => ({}));

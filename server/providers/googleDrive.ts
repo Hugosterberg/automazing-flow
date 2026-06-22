@@ -78,7 +78,19 @@ async function runWithFreshToken<T>({
 const DRIVE_FIELDS =
   "files(id,name,mimeType,iconLink,thumbnailLink,webViewLink,modifiedTime,size,parents,owners(displayName),shortcutDetails(targetId,targetMimeType))";
 
-function mapDriveFile(file: Record<string, unknown>, accountId: string): Record<string, unknown> {
+function driveFileProxyUrl(accountId: string, fileId: string, mode: "content" | "thumbnail", profileId?: string | null) {
+  const params = new URLSearchParams();
+  const normalizedProfileId = String(profileId || "").trim();
+  if (normalizedProfileId) params.set("business_profile_id", normalizedProfileId);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(fileId)}/${mode}${suffix}`;
+}
+
+function mapDriveFile(
+  file: Record<string, unknown>,
+  accountId: string,
+  profileId?: string | null
+): Record<string, unknown> {
   const id = String(file.id || "");
   const mimeType = String(file.mimeType || "");
   const shortcutDetails =
@@ -106,8 +118,8 @@ function mapDriveFile(file: Record<string, unknown>, accountId: string): Record<
     kind === "folder" || kind === "other"
       ? ""
       : kind === "image"
-      ? `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
-      : `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/thumbnail`;
+      ? driveFileProxyUrl(accountId, effectiveId, "content", profileId)
+      : driveFileProxyUrl(accountId, effectiveId, "thumbnail", profileId);
 
   return {
     id: effectiveId,
@@ -119,7 +131,7 @@ function mapDriveFile(file: Record<string, unknown>, accountId: string): Record<
     isShortcut: mimeType === "application/vnd.google-apps.shortcut",
     previewUrl:
       kind === "image"
-        ? `/api/accounts/${encodeURIComponent(accountId)}/drive/files/${encodeURIComponent(effectiveId)}/content`
+        ? driveFileProxyUrl(accountId, effectiveId, "content", profileId)
         : undefined,
     webViewLink: String(file.webViewLink || ""),
     modifiedTime: String(file.modifiedTime || ""),
@@ -206,8 +218,8 @@ export async function fetchGoogleDriveAccountData(args: GoogleDriveArgs) {
 
   return {
     source: "google_drive",
-    items: items.map((f) => mapDriveFile(f, args.accountId)),
-    sharedItems: sharedItems.map((f) => mapDriveFile(f, args.accountId)),
+    items: items.map((f) => mapDriveFile(f, args.accountId, String(args.stored.profileId || ""))),
+    sharedItems: sharedItems.map((f) => mapDriveFile(f, args.accountId, String(args.stored.profileId || ""))),
     currentFolderId: folderId === "root" ? null : folderId,
     currentFolderName: currentFolder?.name || null,
     parentFolderId: currentFolder?.parentId || null,

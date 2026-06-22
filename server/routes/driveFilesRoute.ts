@@ -8,6 +8,7 @@
 
 import { fetchGoogleDriveFileResponse } from "../providers/googleDrive.ts";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
+import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
 
 interface DriveFilesRouteDeps {
   auth: AuthHelpers;
@@ -41,6 +42,13 @@ export function registerDriveFilesRoute(app, deps: DriveFilesRouteDeps) {
     }
     if (access.migrate) {
       await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+    const businessProfileId = readRequestBusinessProfileId(req);
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      return res.status(404).json({ error: "Drive account not connected for this business profile" });
     }
 
     try {

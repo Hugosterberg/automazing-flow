@@ -24,6 +24,7 @@ import { fetchOutlookMailData } from "../providers/outlookMail.ts";
 import { fetchGoogleDriveAccountData } from "../providers/googleDrive.ts";
 import { fetchXAccountData } from "../providers/x.ts";
 import { fetchGoogleBusinessOfficialAccountData } from "../providers/googleBusinessProfile.ts";
+import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
 
 import { handleZernioGenericAccountData } from "../platformHandlers/zernioGenericHandler.ts";
 import { handleInstagramZernioAccountData } from "../platformHandlers/instagramZernioHandler.ts";
@@ -95,6 +96,15 @@ export function registerAccountDataRoute(app, deps) {
       zernioAccountId,
       zernioPlatform,
     } = stored;
+    const businessProfileId = readRequestBusinessProfileId(req);
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      debugLog("pre-fix", "H4", "accountDataRoute:/api/accounts/:accountId/data", "Profile scope mismatch", {
+        accountId,
+        requestedBusinessProfileId: businessProfileId,
+        storedProfileId: stored.profileId ? String(stored.profileId) : null,
+      });
+      return res.status(404).json({ error: "Account not connected for this business profile" });
+    }
     const instagramViaZernio = stored.instagramViaZernio || stored.isLate;
     const zernioInstagramAccountId = zernioAccountId || stored.lateAccountId;
 

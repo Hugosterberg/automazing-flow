@@ -16,6 +16,14 @@ export function deterministicAccountId(prefix: string, identity: string): string
   return `${prefix}_${hash}`;
 }
 
+export function profileScopedAccountId(
+  prefix: string,
+  externalIdentity: string,
+  profileId: string | null | undefined
+): string {
+  return deterministicAccountId(prefix, `${externalIdentity}:${String(profileId || "").trim()}`);
+}
+
 type PruneTokenStore = {
   entries: () => Promise<Array<[string, Record<string, unknown>]>>;
   delete: (accountId: string) => Promise<unknown>;

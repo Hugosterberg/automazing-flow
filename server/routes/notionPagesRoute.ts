@@ -6,6 +6,7 @@
 
 import { createNotionPage } from "../providers/notion.ts";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 
 interface NotionPagesRouteDeps {
   auth: AuthHelpers;
@@ -32,6 +33,13 @@ export function registerNotionPagesRoute(app, deps: NotionPagesRouteDeps) {
     }
     if (stored.platform !== "notion") {
       return res.status(400).json({ error: "Account is not a Notion integration" });
+    }
+    const businessProfileId = String(req.body?.business_profile_id || "").trim() || null;
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      return res.status(404).json({ error: "Account not connected for this business profile" });
     }
 
     const parentId = String(req.body?.parentId || "").trim();

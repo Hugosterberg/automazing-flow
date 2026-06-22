@@ -9,7 +9,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { loadSelectedContent, saveSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -20,6 +20,8 @@ import { apiUrl } from "@/lib/apiBase";
 import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2 } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { accountDataUrl } from "@/lib/accountDataUrl";
 
 type DriveBrowserItem = {
   id: string;
@@ -201,6 +203,7 @@ export default function ContentPage() {
   const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, addAccountFromOAuth, getSelectedAccountId, setSelectedAccountId } = useAccounts();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("content");
   const [isConnecting, setIsConnecting] = useState(false);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -286,8 +289,7 @@ export default function ContentPage() {
     const params = new URLSearchParams();
     if (currentFolderId) params.set("folderId", currentFolderId);
     if (driveView === "shared-with-me") params.set("view", "shared-with-me");
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const url = apiUrl(`/api/accounts/${activeAccountId}/data${query}`);
+    const url = accountDataUrl(activeAccountId, activeBusinessProfileId ?? activeProfileId, params);
     setLoading(true);
     setError(null);
     (async () => {
@@ -311,7 +313,7 @@ export default function ContentPage() {
         if (driveRequestIdRef.current === reqId) setLoading(false);
       }
     })();
-  }, [activeAccountId, currentFolderId, driveView, refreshTick]);
+  }, [activeAccountId, activeBusinessProfileId, activeProfileId, currentFolderId, driveView, refreshTick]);
 
   const refresh = useCallback(() => {
     setRefreshTick((t) => t + 1);
@@ -343,10 +345,13 @@ export default function ContentPage() {
 
     async function syncDriveAccountsFromBackend() {
       try {
-        let res = await fetchWithTimeout(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
+        const connectedParams = new URLSearchParams({ platform: "google_drive" });
+        const connectedProfileId = activeBusinessProfileId ?? activeProfileId;
+        if (connectedProfileId) connectedParams.set("business_profile_id", connectedProfileId);
+        let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${connectedParams.toString()}`), { credentials: "include" });
         if (res.status === 401) {
           await ensureBackendSession();
-          res = await fetchWithTimeout(apiUrl("/api/accounts/connected?platform=google_drive"), { credentials: "include" });
+          res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${connectedParams.toString()}`), { credentials: "include" });
         }
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || ignore) return;
@@ -387,7 +392,7 @@ export default function ContentPage() {
     return () => {
       ignore = true;
     };
-  }, [accounts, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
+  }, [accounts, activeBusinessProfileId, activeProfileId, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
 
   useEffect(() => {
     function handleDriveOauthMessage(event: MessageEvent<DriveOAuthPopupMessage>) {
@@ -446,8 +451,7 @@ export default function ContentPage() {
 
     const params = new URLSearchParams();
     params.set("app_origin", window.location.origin);
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    appendOAuthProfileParams(params, activeProfileId);
     params.set("popup", "1");
     const query = params.toString() ? `?${params.toString()}` : "";
     const popupWidth = 540;

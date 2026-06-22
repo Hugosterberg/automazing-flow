@@ -52,6 +52,7 @@ import {
 import type { ConnectedAccount, SocialPlatform } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { accountDataUrl } from "@/lib/accountDataUrl";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
   instagram: InstagramIcon,
@@ -204,7 +205,8 @@ function messageForOAuthError(code: string): string {
 async function runAIAnalysis(
   accountId: string,
   posts: { caption: string }[],
-  profile: { displayName?: string; username?: string; followersCount?: number }
+  profile: { displayName?: string; username?: string; followersCount?: number },
+  businessProfileId: string | null
 ): Promise<{ about: string; writes: string; perception: string }> {
   const captions = posts.map((p) => p.caption).filter(Boolean);
   const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/analyze`), {
@@ -216,6 +218,7 @@ async function runAIAnalysis(
       displayName: profile.displayName ?? "",
       username: profile.username ?? "",
       followersCount: profile.followersCount,
+      business_profile_id: businessProfileId,
     }),
   });
   if (!res.ok) throw new Error("Analysis failed");
@@ -313,9 +316,11 @@ export default function SocialMedia() {
     initialData: initialSocialData,
     autoSelectFirst: !showOverview,
     allowImplicitFirstAccount: false,
+    requestKey: businessProfileId,
     scopeSort: sortSocialPageAccounts,
     fetcher: async (accountId) => {
-      let res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const url = accountDataUrl(accountId, businessProfileId);
+      let res = await fetchWithTimeout(url, { credentials: "include" });
       if (res.status === 401 && authMode === "local") {
         await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
           method: "POST",
@@ -323,7 +328,7 @@ export default function SocialMedia() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         }).catch(() => {});
-        res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+        res = await fetchWithTimeout(url, { credentials: "include" });
       }
       if (res.status === 401 && authMode === "cloud" && session?.access_token) {
         await fetchWithTimeout(apiUrl("/api/auth/session"), {
@@ -331,7 +336,7 @@ export default function SocialMedia() {
           headers: { Authorization: `Bearer ${session.access_token}` },
           credentials: "include",
         }).catch(() => {});
-        res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+        res = await fetchWithTimeout(url, { credentials: "include" });
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -403,7 +408,8 @@ export default function SocialMedia() {
             displayName: data.profile?.displayName as string | undefined,
             username: data.profile?.username as string | undefined,
             followersCount: data.stats?.followersCount,
-          }
+          },
+          businessProfileId
         )
           .then((result) => {
             setAnalysisResult(result);
@@ -419,7 +425,7 @@ export default function SocialMedia() {
         });
       }
     }
-  }, [socialData, dataAccountId, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
+  }, [businessProfileId, socialData, dataAccountId, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);

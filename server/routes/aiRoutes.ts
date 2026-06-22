@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { generateReplyDraft } from "../ai/replyDraft.ts";
 import { rateLimitMiddleware } from "../lib/rateLimit.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 import {
   buildContentIdeaPrompt,
   heuristicContentIdeas,
@@ -294,7 +295,13 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     if (!limitAnalyze(req, res)) return;
     const accountId = String(req.params?.accountId || "");
     const stored = accountId && deps?.tokenStore?.get ? await deps.tokenStore.get(accountId) : null;
+    const analysisBusinessProfileId = String(
+      (req.body as { business_profile_id?: string } | undefined)?.business_profile_id || ""
+    ).trim() || null;
     if (stored) {
+      if (!analysisBusinessProfileId) {
+        return res.status(400).json({ error: "business_profile_id is required" });
+      }
       if (stored.ownerUserId && stored.ownerUserId !== userId) {
         const isLocalPair =
           String(stored.ownerUserId).startsWith("local_") && String(userId).startsWith("local_");
@@ -306,6 +313,9 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
         }
       } else if (!stored.ownerUserId && deps?.tokenStore?.set) {
         await deps.tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+      }
+      if (!accountInBusinessProfile(stored, analysisBusinessProfileId)) {
+        return res.status(404).json({ error: "Account not connected for this business profile" });
       }
     }
 

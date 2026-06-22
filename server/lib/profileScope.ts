@@ -32,10 +32,8 @@ export function readRequestBusinessProfileId(req: {
  *
  * - No active profile requested → user scope (every owned account).
  * - Account tagged with a profileId → must match exactly.
- * - Account with no profileId → treated as unassigned legacy and kept visible
- *   under every profile (best-effort, no data loss). Every account connected
- *   through the current OAuth flow always carries a profileId, so this only
- *   affects pre-business-profile connections.
+ * - Account with no profileId → rejected when a profile scope is requested.
+ *   Legacy/unassigned tokens must not bleed into every profile.
  */
 export function accountInBusinessProfile(
   stored: ProfileScopedAccount | null | undefined,
@@ -43,5 +41,5 @@ export function accountInBusinessProfile(
 ): boolean {
   if (!businessProfileId) return true;
   const pid = String((stored && stored.profileId) ?? "").trim();
-  return !pid || pid === businessProfileId;
+  return pid === businessProfileId;
 }

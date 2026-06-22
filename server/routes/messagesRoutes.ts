@@ -438,12 +438,21 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const body = (req.body ?? {}) as { accountId?: string; conversationId?: string; message?: string };
+    const body = (req.body ?? {}) as {
+      accountId?: string;
+      conversationId?: string;
+      message?: string;
+      business_profile_id?: string;
+    };
     const accountId = String(body.accountId || "").trim();
     const conversationId = String(body.conversationId || "").trim();
     const message = String(body.message || "").trim();
+    const businessProfileId = String(body.business_profile_id || "").trim() || null;
     if (!accountId || !conversationId || !message) {
       return res.status(400).json({ error: "accountId, conversationId and message are required" });
+    }
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
     }
 
     const stored = await tokenStore.get(accountId);
@@ -456,6 +465,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     }
     if (access.migrate) {
       await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      return res.status(404).json({ error: "Account not connected for this business profile" });
     }
 
     const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();

@@ -3,6 +3,7 @@ import { logActivity } from "../lib/activityLog.ts";
 import { recordSyncRun } from "../lib/syncRunLog.ts";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { probeOAuthConnection } from "../lib/tokenProbe.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 
 /**
  * /api/connections/* — multi-tenant connection lifecycle.
@@ -134,7 +135,7 @@ export function registerConnectionsRoutes(
         // instead of silently staying healthy. Only an explicit provider
         // revocation downgrades health; transient/unsupported probes leave it.
         const stored = await tokenStore.get(row.id).catch(() => null);
-        if (stored) {
+        if (stored && accountInBusinessProfile(stored, businessProfileId)) {
           const probe = await probeOAuthConnection({ accountId: row.id, stored, tokenStore });
           if (probe.status === "expired") {
             nextHealth = "expired";
@@ -145,7 +146,8 @@ export function registerConnectionsRoutes(
             nextHealth = row.health || "healthy";
           }
         } else {
-          nextHealth = row.health || "healthy";
+          nextHealth = "expired";
+          nextError = "OAuth token is not connected to this business profile. Re-connect required.";
         }
       } else if (zernioById.has(zid)) {
         nextHealth = "healthy";
@@ -340,7 +342,7 @@ export function registerConnectionsRoutes(
       } else if (!zid) {
         // Direct OAuth connection: verify the token by refresh probe.
         const stored = await tokenStore.get(connectionId).catch(() => null);
-        if (stored) {
+        if (stored && accountInBusinessProfile(stored, businessProfileId)) {
           const probe = await probeOAuthConnection({ accountId: connectionId, stored, tokenStore });
           if (probe.status === "expired") {
             nextHealth = "expired";
@@ -350,7 +352,8 @@ export function registerConnectionsRoutes(
             nextHealth = row.health || "healthy";
           }
         } else {
-          nextHealth = row.health || "healthy";
+          nextHealth = "expired";
+          nextError = "OAuth token is not connected to this business profile. Re-connect required.";
         }
       }
 

@@ -143,6 +143,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
           price: product.price,
           sourceUrl: product.finalUrl,
           images: product.images,
+          business_profile_id: businessProfileId,
         }),
       });
       const payload = await res.json().catch(() => ({}));

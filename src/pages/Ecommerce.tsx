@@ -52,7 +52,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 
 import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
@@ -71,6 +71,7 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { accountDataUrl } from "@/lib/accountDataUrl";
 
 function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
@@ -284,6 +285,7 @@ export default function Ecommerce() {
   const { authMode } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
+  const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("ecommerce");
   const [initialOrganizationData] = useState<OrganizationData>(null);
   const {
@@ -300,9 +302,10 @@ export default function Ecommerce() {
     setSelectedAccountId: (id) => setSelectedAccountId("ecommerce", id),
     accountFilter: (a) => (a.platform === "shopify" || a.platform === "notion") && Boolean(a.isOAuth),
     initialData: initialOrganizationData,
+    requestKey: activeBusinessProfileId ?? activeProfileId,
     scopeSort: sortOrgAccounts,
     fetcher: async (accountId) => {
-      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(apiErrorMessage(d, "Could not fetch store data."));
@@ -331,8 +334,7 @@ export default function Ecommerce() {
     if (!shop) return;
     const params = new URLSearchParams({ shop });
     params.set("app_origin", window.location.origin);
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
+    appendOAuthProfileParams(params, activeProfileId);
     setConnectDialogOpen(false);
     setShopDomain("");
     window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
@@ -351,7 +353,7 @@ export default function Ecommerce() {
   const notionData = isNotionData(data) ? data : null;
 
   // Product catalogue (DB-backed, scoped to the active business profile).
-  const productProfileId = useActiveBusinessProfileIdOptional();
+  const productProfileId = activeBusinessProfileId;
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -517,6 +519,7 @@ export default function Ecommerce() {
           parentType: notionParentType,
           title: notionTitle.trim(),
           content: notionContent.trim(),
+          business_profile_id: activeBusinessProfileId ?? activeProfileId,
         }),
       });
       const payload = await res.json().catch(() => ({}));

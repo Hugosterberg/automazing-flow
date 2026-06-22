@@ -57,6 +57,7 @@ import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useProfileDocument } from "@/features/profile-documents";
+import { accountDataUrl } from "@/lib/accountDataUrl";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -134,9 +135,10 @@ export default function CalendarPage() {
     accountFilter: (a) =>
       (a.platform === "google_calendar" || a.platform === "outlook_calendar") && Boolean(a.isOAuth),
     initialData: null,
+    requestKey: activeBusinessProfileId ?? activeProfileId,
     scopeSort: sortCalendarAccounts,
     fetcher: async (accountId) => {
-      const res = await fetchWithTimeout(apiUrl(`/api/accounts/${accountId}/data`), { credentials: "include" });
+      const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         throw new Error(apiErrorMessage(payload, "Could not fetch external calendar events."));

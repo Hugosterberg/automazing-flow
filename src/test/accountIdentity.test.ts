@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deterministicAccountId,
+  profileScopedAccountId,
   pruneDuplicateAccountEntries,
 } from "../../server/lib/accountIdentity.ts";
 
@@ -19,6 +20,17 @@ describe("deterministicAccountId", () => {
     expect(deterministicAccountId("ig", "12345")).toBe(deterministicAccountId("ig", "12345"));
     expect(deterministicAccountId("ig", "12345")).not.toBe(deterministicAccountId("ig", "67890"));
     expect(deterministicAccountId("ig", "12345")).toMatch(/^ig_[0-9a-f]{20}$/);
+  });
+});
+
+describe("profileScopedAccountId", () => {
+  it("is stable within the same profile and differs across profiles", () => {
+    expect(profileScopedAccountId("ig", "external-1", "bp-1")).toBe(
+      profileScopedAccountId("ig", "external-1", "bp-1")
+    );
+    expect(profileScopedAccountId("ig", "external-1", "bp-1")).not.toBe(
+      profileScopedAccountId("ig", "external-1", "bp-2")
+    );
   });
 });
 

@@ -10,6 +10,7 @@
 import { fetchGoogleDriveFileResponse } from "../providers/googleDrive.ts";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
+import { accountInBusinessProfile } from "../lib/profileScope.ts";
 import {
   checkApiaiHealth,
   imageFieldNamesForTool,
@@ -49,6 +50,7 @@ async function appendDriveAsset({
   fieldName,
   asset,
   userId,
+  businessProfileId,
   tokenStore,
   auth,
 }: {
@@ -56,6 +58,7 @@ async function appendDriveAsset({
   fieldName: string;
   asset: SelectedAssetInput;
   userId: string;
+  businessProfileId: string;
   tokenStore: TokenStore;
   auth: AuthHelpers;
 }) {
@@ -75,6 +78,9 @@ async function appendDriveAsset({
   }
   if (access.migrate) {
     await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+  }
+  if (!accountInBusinessProfile(stored, businessProfileId)) {
+    throw new Error(`Drive account for ${asset.name || fileId} is not connected to this profile.`);
   }
 
   const upstream = await fetchGoogleDriveFileResponse({
@@ -208,7 +214,7 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
 
       const targetImageField = imageFieldNames[0] || "image";
       for (const asset of selectedAssets) {
-        await appendDriveAsset({ form, fieldName: targetImageField, asset, userId, tokenStore, auth });
+        await appendDriveAsset({ form, fieldName: targetImageField, asset, userId, businessProfileId, tokenStore, auth });
       }
 
       const upstream = await fetch(makeApiaiUrl(tool.endpoint), {

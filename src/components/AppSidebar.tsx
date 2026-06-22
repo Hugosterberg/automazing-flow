@@ -5,7 +5,7 @@ import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { formatConnectFetchError } from "@/lib/oauthErrors";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
+import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import {
   Dialog,
   DialogContent,
@@ -333,9 +333,7 @@ export function AppSidebar() {
     if (platform === "google_business" && options?.provider === "official") {
       const params = new URLSearchParams({ provider: "official" });
       params.set("app_origin", window.location.origin);
-      const oauthProfileId = getOAuthProfileId(activeProfileId);
-      if (oauthProfileId) params.set("profile_id", oauthProfileId);
-      if (aiBpId) params.set("business_profile_id", aiBpId);
+      appendOAuthProfileParams(params, aiBusinessProfileId);
       window.location.href = `${apiUrl("/api/auth/google_business")}?${params}`;
       return;
     }
@@ -354,9 +352,7 @@ export function AppSidebar() {
     // Return to THIS origin after OAuth, not the server's BASE_URL — otherwise
     // a user on a different origin lands on BASE_URL and appears logged out.
     params.set("app_origin", window.location.origin);
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    if (aiBpId) params.set("business_profile_id", aiBpId);
+    appendOAuthProfileParams(params, aiBusinessProfileId);
     if (platform === "tiktok" && options?.provider && options.provider !== "auto") {
       params.set("provider", options.provider);
     }
@@ -383,9 +379,7 @@ export function AppSidebar() {
     if (!shop) return;
     const params = new URLSearchParams({ shop });
     params.set("app_origin", window.location.origin);
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    if (aiBpId) params.set("business_profile_id", aiBpId);
+    appendOAuthProfileParams(params, aiBusinessProfileId);
     setShopifyDialogOpen(false);
     setShopDomain("");
     window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
@@ -409,6 +403,7 @@ export function AppSidebar() {
           locationId,
           apiKey: apiKey || undefined,
           profileId: activeProfileId || undefined,
+          business_profile_id: aiBusinessProfileId || undefined,
         }),
       });
       const payload = await res.json().catch(() => ({}));
