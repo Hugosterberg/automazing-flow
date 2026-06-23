@@ -261,7 +261,7 @@ export function AppSidebar() {
   // a user actually needs to act on, so the badge stays sharp rather than
   // inflating with every open task. Uses the same cached query as the
   // Tasks page/widget, no extra fetch. Definition lives in taskFilters.ts
-  // and is shared with the /tasks page tabs and home dashboard.
+  // and is shared with the /tasks board and home dashboard.
   const { tasks } = useTasks(aiBusinessProfileId);
   const tasksOverdueCount = useMemo(() => {
     const nowMs = Date.now();

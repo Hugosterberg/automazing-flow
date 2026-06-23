@@ -7,9 +7,11 @@ import {
   deleteTask,
   listTasks,
   setTaskCompleted,
+  setTaskStatus,
   updateTask,
   type TaskInput,
   type TaskRow,
+  type TaskStatus,
 } from "./tasksService";
 
 export const TASKS_KEY = ["tasks"] as const;
@@ -107,6 +109,35 @@ export function useTasks(businessProfileId: string | null | undefined) {
     },
   });
 
+  const setStatusMut = useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: TaskStatus;
+    }) => {
+      if (!supabase || !enabled) throw new Error("Not signed in.");
+      const task = await setTaskStatus(supabase, id, status);
+      if (status === "done" && businessProfileId) {
+        void logActivity(supabase, {
+          businessProfileId,
+          module: "tasks",
+          eventType: "task.completed",
+          subjectType: "task",
+          subjectId: id,
+          severity: "success",
+          summary: `Completed task "${task.title}"`,
+        });
+      }
+      return task;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: TASKS_KEY });
+      void qc.invalidateQueries({ queryKey: ACTIVITY_FEED_KEY });
+    },
+  });
+
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
       if (!supabase || !enabled) throw new Error("Not signed in.");
@@ -141,6 +172,8 @@ export function useTasks(businessProfileId: string | null | undefined) {
     isUpdating: updateMut.isPending,
     setCompleted: toggleCompleteMut.mutateAsync,
     isToggling: toggleCompleteMut.isPending,
+    setStatus: setStatusMut.mutateAsync,
+    isSettingStatus: setStatusMut.isPending,
     deleteTask: deleteMut.mutateAsync,
     isDeleting: deleteMut.isPending,
   };

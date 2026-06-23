@@ -2,7 +2,7 @@ import type { TaskRow } from "./tasksService";
 
 /**
  * Shared predicates for task filtering. Centralising these keeps the sidebar
- * badge, the /tasks page tabs and the home dashboard tiles on exactly the
+ * badge, the /tasks board and the home dashboard tiles on exactly the
  * same definition of "open", "overdue" and "due today". If product tweaks
  * the semantics (e.g. extending overdue to include same-day slippage), one
  * edit here propagates everywhere.

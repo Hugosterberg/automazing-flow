@@ -193,9 +193,8 @@ export default function Index() {
   /**
    * Derive the headline number shown in the Tasks tile. Prioritised
    * so the most urgent bucket always wins the value slot: overdue →
-   * due-today → open → all clear. `to` deep-links into the matching
-   * /tasks view so clicking the tile lands on exactly the list that
-   * produced the count.
+   * due-today → open → all clear. `to` opens the Tasks board with the
+   * relevant context preserved in the URL for existing deep links.
    */
   const tasksTile = useMemo(() => {
     if (overdueTasks.length > 0) {

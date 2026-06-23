@@ -3,6 +3,7 @@ export {
   createTask,
   updateTask,
   setTaskCompleted,
+  setTaskStatus,
   deleteTask,
   TASK_STATUS_ORDER,
   TASK_PRIORITY_ORDER,
@@ -18,4 +19,5 @@ export type {
 export { useTasks, TASKS_KEY } from "./useTasks";
 export { TaskForm } from "./TaskForm";
 export { TaskList } from "./TaskList";
+export { TaskBoard } from "./TaskBoard";
 export { isTaskOpen, isTaskOverdue, isTaskDueToday } from "./taskFilters";

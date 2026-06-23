@@ -122,9 +122,17 @@ export async function setTaskCompleted(
   id: string,
   completed: boolean
 ): Promise<TaskRow> {
+  return setTaskStatus(supabase, id, completed ? "done" : "open");
+}
+
+export async function setTaskStatus(
+  supabase: TypedSupabaseClient,
+  id: string,
+  status: TaskStatus
+): Promise<TaskRow> {
   return updateTask(supabase, id, {
-    status: completed ? "done" : "open",
-    completedAt: completed ? new Date().toISOString() : null,
+    status,
+    completedAt: status === "done" ? new Date().toISOString() : null,
   });
 }
 

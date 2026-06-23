@@ -1,0 +1,323 @@
+import { useMemo, useState, type DragEvent } from "react";
+import { CalendarDays, CheckCircle2, Clock3, GripVertical, Loader2, PlayCircle, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/relativeTime";
+import { isTaskOverdue } from "./taskFilters";
+import {
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+  type TaskPriority,
+  type TaskRow,
+  type TaskStatus,
+} from "./tasksService";
+
+type BoardStatus = "open" | "in_progress" | "done";
+
+type ColumnConfig = {
+  status: BoardStatus;
+  title: string;
+  description: string;
+  icon: typeof Clock3;
+  accent: string;
+  empty: string;
+};
+
+interface Props {
+  tasks: TaskRow[];
+  isLoading?: boolean;
+  onSetStatus: (id: string, status: TaskStatus) => void;
+  onDelete: (id: string) => void;
+  isMutating?: boolean;
+  isDeleting?: boolean;
+}
+
+const COLUMNS: ColumnConfig[] = [
+  {
+    status: "open",
+    title: "To-do",
+    description: "New tasks start here.",
+    icon: Clock3,
+    accent: "from-sky-500/15 to-sky-500/5 border-sky-500/25",
+    empty: "Create a task above and it will appear here.",
+  },
+  {
+    status: "in_progress",
+    title: "In progress",
+    description: "Work that is being handled now.",
+    icon: PlayCircle,
+    accent: "from-amber-500/15 to-amber-500/5 border-amber-500/25",
+    empty: "Drag a task here when work starts.",
+  },
+  {
+    status: "done",
+    title: "Done",
+    description: "Completed and ready to review.",
+    icon: CheckCircle2,
+    accent: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/25",
+    empty: "Drop finished tasks here.",
+  },
+];
+
+const PRIORITY_STYLES: Record<TaskPriority, string> = {
+  low: "border-border text-muted-foreground",
+  medium: "border-info/40 text-info",
+  high: "border-warning/50 text-warning",
+  urgent: "border-destructive/50 text-destructive",
+};
+
+function columnForTask(task: TaskRow): BoardStatus | null {
+  if (task.status === "archived") return null;
+  if (task.status === "done") return "done";
+  if (task.status === "in_progress") return "in_progress";
+  return "open";
+}
+
+function safeRelative(iso: string | null): string | null {
+  if (!iso) return null;
+  return formatRelativeTime(iso) ?? iso.slice(0, 19);
+}
+
+function formatDueDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+  return date.toLocaleDateString("sv-SE", { month: "short", day: "numeric" });
+}
+
+function TaskCard({
+  task,
+  onSetStatus,
+  onDelete,
+  isMutating,
+  isDeleting,
+}: {
+  task: TaskRow;
+  onSetStatus: (id: string, status: TaskStatus) => void;
+  onDelete: (id: string) => void;
+  isMutating?: boolean;
+  isDeleting?: boolean;
+}) {
+  const overdue = isTaskOverdue(task);
+  const createdAgo = safeRelative(task.created_at);
+  const dueDate = formatDueDate(task.due_at);
+  const completed = task.status === "done";
+
+  return (
+    <article
+      draggable={!isMutating}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/task-id", task.id);
+        event.dataTransfer.setData("text/plain", task.id);
+      }}
+      className={cn(
+        "group rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
+        completed && "bg-muted/40"
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h3
+                className={cn(
+                  "text-sm font-semibold leading-snug break-words",
+                  completed && "text-muted-foreground line-through"
+                )}
+              >
+                {task.title}
+              </h3>
+              {task.status === "blocked" ? (
+                <Badge variant="outline" className="border-destructive/50 text-[10px] uppercase text-destructive">
+                  {TASK_STATUS_LABELS.blocked}
+                </Badge>
+              ) : null}
+            </div>
+            {task.description ? (
+              <p className="line-clamp-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                {task.description}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
+              {TASK_PRIORITY_LABELS[task.priority]}
+            </Badge>
+            {dueDate ? (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "gap-1 text-[10px] uppercase tracking-wide",
+                  overdue ? "border-destructive/50 text-destructive" : "border-border text-muted-foreground"
+                )}
+              >
+                <CalendarDays className="h-3 w-3" />
+                {overdue ? "Overdue " : "Due "}
+                {dueDate}
+              </Badge>
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              {createdAgo ? `Created ${createdAgo}` : "Created"}
+            </p>
+            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+              {task.status !== "open" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => onSetStatus(task.id, "open")}
+                  disabled={isMutating}
+                >
+                  To-do
+                </Button>
+              ) : null}
+              {task.status !== "in_progress" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => onSetStatus(task.id, "in_progress")}
+                  disabled={isMutating}
+                >
+                  Start
+                </Button>
+              ) : null}
+              {task.status !== "done" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => onSetStatus(task.id, "done")}
+                  disabled={isMutating}
+                >
+                  Done
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(task.id)}
+                disabled={isDeleting}
+                aria-label="Delete task"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, isMutating, isDeleting }: Props) {
+  const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
+  const grouped = useMemo(() => {
+    const next: Record<BoardStatus, TaskRow[]> = {
+      open: [],
+      in_progress: [],
+      done: [],
+    };
+    for (const task of tasks) {
+      const status = columnForTask(task);
+      if (status) next[status].push(task);
+    }
+    return next;
+  }, [tasks]);
+
+  function handleDrop(event: DragEvent<HTMLElement>, status: BoardStatus) {
+    event.preventDefault();
+    setDragOverStatus(null);
+    const taskId = event.dataTransfer.getData("text/task-id") || event.dataTransfer.getData("text/plain");
+    if (!taskId) return;
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task || columnForTask(task) === status) return;
+    onSetStatus(task.id, status);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading tasks…
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      {COLUMNS.map((column) => {
+        const Icon = column.icon;
+        const columnTasks = grouped[column.status];
+        const activeDrop = dragOverStatus === column.status;
+        return (
+          <section
+            key={column.status}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDragOverStatus(column.status);
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setDragOverStatus(null);
+              }
+            }}
+            onDrop={(event) => handleDrop(event, column.status)}
+            className={cn(
+              "min-h-[420px] rounded-2xl border bg-gradient-to-b p-3 transition-all",
+              column.accent,
+              activeDrop && "scale-[1.01] border-primary/60 ring-2 ring-primary/20"
+            )}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3 px-1">
+              <div className="flex items-start gap-2">
+                <div className="rounded-xl border border-border/70 bg-background/70 p-2">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold">{column.title}</h2>
+                  <p className="text-xs text-muted-foreground">{column.description}</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="tabular-nums">
+                {columnTasks.length}
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              {columnTasks.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-background/45 p-4 text-center text-xs text-muted-foreground">
+                  {column.empty}
+                </div>
+              ) : (
+                columnTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onSetStatus={onSetStatus}
+                    onDelete={onDelete}
+                    isMutating={isMutating}
+                    isDeleting={isDeleting}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
