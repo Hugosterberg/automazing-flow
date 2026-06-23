@@ -61,8 +61,9 @@ describe("mail replies", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(String(fetchMock.mock.calls[1][0])).toContain("/gmail/v1/users/me/messages/send");
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({ threadId: "t1" });
+    const calls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit?]>;
+    expect(String(calls[1]?.[0])).toContain("/gmail/v1/users/me/messages/send");
+    expect(JSON.parse(String(calls[1]?.[1]?.body))).toMatchObject({ threadId: "t1" });
   });
 
   it("sends Outlook replies through Graph message reply", async () => {
@@ -79,7 +80,8 @@ describe("mail replies", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/me/messages/m1/reply");
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ comment: "Svar" });
+    const calls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit?]>;
+    expect(String(calls[0]?.[0])).toContain("/me/messages/m1/reply");
+    expect(JSON.parse(String(calls[0]?.[1]?.body))).toEqual({ comment: "Svar" });
   });
 });

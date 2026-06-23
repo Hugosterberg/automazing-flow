@@ -22,6 +22,7 @@ import {
   type ApiaiRunResult,
   type ApiaiTool,
 } from "./apiaiClient";
+import { APIAI_DOCUMENTED_IMAGE_ACTIONS, findToolForAction, type ApiaiDocumentedImageAction } from "./apiaiQuickActions";
 
 function paramKey(param: ApiaiParam): string {
   return String(param.expose_name || param.name || "").trim();
@@ -74,11 +75,15 @@ function formatHeaderValue(value?: string | null) {
 export function CreateTab({
   businessProfileId,
   selectedAssets,
+  availableAssets = [],
+  onToggleAssetSelection,
   onOpenBrowse,
   onBeforeRequest,
 }: {
   businessProfileId: string | null;
   selectedAssets: SelectedContentAsset[];
+  availableAssets?: SelectedContentAsset[];
+  onToggleAssetSelection?: (asset: SelectedContentAsset, selected: boolean) => void;
   onOpenBrowse: () => void;
   onBeforeRequest?: () => Promise<void>;
 }) {
@@ -97,6 +102,14 @@ export function CreateTab({
     () => tools.find((tool) => `${tool.type}:${tool.slug}` === selectedToolKey) ?? null,
     [tools, selectedToolKey]
   );
+  const quickActions = useMemo(
+    () =>
+      APIAI_DOCUMENTED_IMAGE_ACTIONS.map((action) => ({
+        action,
+        tool: findToolForAction(action, tools),
+      })),
+    [tools]
+  );
 
   const editableParams = useMemo(
     () =>
@@ -112,6 +125,14 @@ export function CreateTab({
   }, [selectedAssets, selectedTool]);
 
   const excludedAssets = selectedAssets.filter((asset) => !usableAssets.includes(asset));
+  const selectedAssetKeys = useMemo(
+    () => new Set(selectedAssets.map((asset) => `${asset.sourceAccountId}:${asset.id}`)),
+    [selectedAssets]
+  );
+  const availableImageAssets = useMemo(
+    () => availableAssets.filter((asset) => asset.kind === "image"),
+    [availableAssets]
+  );
   const needsImage = toolNeedsImage(selectedTool);
   const supportsPrompt = toolSupportsPrompt(selectedTool);
   const requiresPrompt = toolRequiresPrompt(selectedTool);
@@ -183,6 +204,15 @@ export function CreateTab({
     }
   }
 
+  function applyQuickAction(action: ApiaiDocumentedImageAction, tool: ApiaiTool | null) {
+    if (!tool) return;
+    setSelectedToolKey(`${tool.type}:${tool.slug}`);
+    setOutputFilename((current) => current || action.defaultOutputFilename);
+    if (action.promptPlaceholder) {
+      setPrompt((current) => current || action.promptPlaceholder || "");
+    }
+  }
+
   const canRun = Boolean(
     businessProfileId &&
       selectedTool &&
@@ -230,6 +260,40 @@ export function CreateTab({
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.7fr)]">
             <div className="space-y-3">
+              <div className="space-y-2">
+                <div>
+                  <Label>Quick actions from apiai.me docs</Label>
+                  <p className="text-xs text-muted-foreground">
+                    These shortcuts map the documented image request patterns to the tools exposed by your apiai.me account.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {quickActions.map(({ action, tool }) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      disabled={!tool}
+                      onClick={() => applyQuickAction(action, tool)}
+                      className={`rounded-lg border p-3 text-left transition-colors ${
+                        tool
+                          ? "border-border bg-muted/20 hover:border-primary/50 hover:bg-accent/40"
+                          : "border-dashed border-border/70 bg-muted/10 opacity-70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{action.title}</span>
+                        <Badge variant={tool ? "secondary" : "outline"}>{tool ? tool.type : "not found"}</Badge>
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{action.description}</p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        Docs: <code>{action.docsEndpoint}</code>
+                      </p>
+                      {tool ? <p className="mt-1 text-[11px] text-primary">Uses: {tool.name}</p> : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Tool or pipeline</Label>
                 <Select value={selectedToolKey} onValueChange={setSelectedToolKey} disabled={loadingTools || tools.length === 0}>
@@ -346,11 +410,48 @@ export function CreateTab({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {selectedAssets.length === 0 ? (
+                  {availableImageAssets.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Choose a Google Drive image from the current folder.</p>
+                      <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                        {availableImageAssets.map((asset) => {
+                          const key = `${asset.sourceAccountId}:${asset.id}`;
+                          const checked = selectedAssetKeys.has(key);
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              aria-pressed={checked}
+                              onClick={() => onToggleAssetSelection?.(asset, !checked)}
+                              className={`overflow-hidden rounded-lg border text-left transition-colors ${
+                                checked ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent/40"
+                              }`}
+                            >
+                              <div className="aspect-square bg-secondary/40">
+                                {asset.thumbnailUrl ? (
+                                  <img src={asset.thumbnailUrl} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center">
+                                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <p className="truncate text-[11px] font-medium">{asset.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{checked ? "Selected" : "Click to select"}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
                     <Button variant="outline" size="sm" onClick={onOpenBrowse}>
                       Select media in Browse
                     </Button>
-                  ) : (
+                  )}
+
+                  {selectedAssets.length > 0 ? (
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {usableAssets.map((asset) => (
                         <div key={`${asset.sourceAccountId}:${asset.id}`} className="flex items-center gap-2 text-xs">
@@ -362,7 +463,7 @@ export function CreateTab({
                         </div>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                   {selectedTool?.maxImages && usableAssets.length > selectedTool.maxImages ? (
                     <p className="text-[11px] text-muted-foreground">
                       This tool accepts {selectedTool.maxImages} image{selectedTool.maxImages === 1 ? "" : "s"}; the first selected assets will be used.

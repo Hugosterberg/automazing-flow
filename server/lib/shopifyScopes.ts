@@ -18,6 +18,6 @@ export function parseShopifyExtraScopes(raw: string | null | undefined): string[
  * (for example `customer_read_quick_sale`). Operators can opt into approved
  * extras with SHOPIFY_EXTRA_SCOPES.
  */
-export function getShopifyScopes(env: Pick<NodeJS.ProcessEnv, "SHOPIFY_EXTRA_SCOPES"> = process.env): string {
+export function getShopifyScopes(env: Partial<Pick<NodeJS.ProcessEnv, "SHOPIFY_EXTRA_SCOPES">> = process.env): string {
   return [...new Set([...DEFAULT_SHOPIFY_SCOPES, ...parseShopifyExtraScopes(env.SHOPIFY_EXTRA_SCOPES)])].join(",");
 }

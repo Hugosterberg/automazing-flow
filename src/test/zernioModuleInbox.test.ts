@@ -26,7 +26,8 @@ describe("Zernio inbox gateway", () => {
       platform: "instagram",
     });
 
-    const url = String(fetchMock.mock.calls[0][0]);
+    const calls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit?]>;
+    const url = String(calls[0]?.[0]);
     expect(url).toContain("/accounts/za-1/inbox/conversations?");
     expect(url).toContain("accountId=za-1");
     expect(url).toContain("account_id=za-1");
@@ -43,7 +44,8 @@ describe("Zernio inbox gateway", () => {
       sortOrder: "desc",
     });
 
-    expect(String(fetchMock.mock.calls[0][0])).toContain(
+    const calls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit?]>;
+    expect(String(calls[0]?.[0])).toContain(
       "/accounts/za-1/inbox/conversations/conv-1/messages?"
     );
   });

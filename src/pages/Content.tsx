@@ -333,6 +333,7 @@ export default function ContentPage() {
   const selectedImages = selectedAssets.filter((asset) => asset.kind === "image");
   const selectedVideos = selectedAssets.filter((asset) => asset.kind === "video");
   const combinedOauthError = popupOauthError || oauthErrorDetails;
+  const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId;
 
   useEffect(() => {
     setCurrentFolderId(null);
@@ -474,28 +475,40 @@ export default function ContentPage() {
     popup.focus();
   }
 
-  function toggleAsset(file: DriveBrowserItem, checked: boolean) {
-    // Only image/video assets are selectable as content — folders and
-    // non-media files (kind === "other") are not part of the selection model.
-    if (file.kind !== "image" && file.kind !== "video") return;
+  function assetFromDriveFile(file: DriveBrowserItem): SelectedContentAsset | null {
+    if ((file.kind !== "image" && file.kind !== "video") || !activeAccount) return null;
+    return {
+      id: file.id,
+      name: file.name,
+      mimeType: file.mimeType,
+      kind: file.kind,
+      thumbnailUrl: file.thumbnailUrl,
+      previewUrl: file.previewUrl,
+      webViewLink: file.webViewLink,
+      sourceAccountId: activeAccount.id,
+      sourceAccountName: activeAccount.username || "Google Drive",
+    };
+  }
+
+  function saveAssetSelection(asset: SelectedContentAsset, checked: boolean) {
     const next: SelectedContentAsset[] = checked
       ? [
-          ...selectedAssets.filter((asset) => asset.id !== file.id),
-          {
-            id: file.id,
-            name: file.name,
-            mimeType: file.mimeType,
-            kind: file.kind,
-            thumbnailUrl: file.thumbnailUrl,
-            previewUrl: file.previewUrl,
-            webViewLink: file.webViewLink,
-            sourceAccountId: activeAccount?.id || "",
-            sourceAccountName: activeAccount?.username || "Google Drive",
-          },
+          ...selectedAssets.filter(
+            (existing) => `${existing.sourceAccountId}:${existing.id}` !== `${asset.sourceAccountId}:${asset.id}`
+          ),
+          asset,
         ]
-      : selectedAssets.filter((asset) => asset.id !== file.id);
+      : selectedAssets.filter(
+          (existing) => `${existing.sourceAccountId}:${existing.id}` !== `${asset.sourceAccountId}:${asset.id}`
+        );
 
     selectionDoc.save(next);
+  }
+
+  function toggleAsset(file: DriveBrowserItem, checked: boolean) {
+    const asset = assetFromDriveFile(file);
+    if (!asset) return;
+    saveAssetSelection(asset, checked);
   }
 
   function navigateIntoFolder(folder: { id: string; name: string }) {
@@ -582,8 +595,10 @@ export default function ContentPage() {
 
       {contentTab === "create" ? (
         <CreateTab
-          businessProfileId={activeProfileId}
+          businessProfileId={createBusinessProfileId}
           selectedAssets={selectedAssets}
+          availableAssets={imageItems.map((file) => assetFromDriveFile(file)).filter((asset): asset is SelectedContentAsset => Boolean(asset))}
+          onToggleAssetSelection={saveAssetSelection}
           onOpenBrowse={() => setContentTab("browse")}
           onBeforeRequest={ensureBackendSession}
         />

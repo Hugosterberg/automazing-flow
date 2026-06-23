@@ -102,6 +102,10 @@ function channelBadge(msg: UnifiedMessage): string {
   return DM_CHANNEL_LABELS[key] || msg.channel || "DM";
 }
 
+function providerMessageIdFor(msg: UnifiedMessage): string {
+  return msg.providerMessageId || (msg.kind === "email" ? msg.id : "");
+}
+
 function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): boolean {
   const channel = msg.channel.toLowerCase();
   if (tab === "mail") return msg.kind === "email";
