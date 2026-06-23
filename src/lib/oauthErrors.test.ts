@@ -23,4 +23,14 @@ describe("formatOAuthErrorMessage", () => {
     const msg = formatOAuthErrorMessage(details("unknown_xyz_code"));
     expect(msg).toContain("unknown xyz code");
   });
+
+  it("explains Shopify permission denials", () => {
+    const msg = formatOAuthErrorMessage({
+      ...details("missing_shopify_permission"),
+      hint: "customer_read_quick_sale",
+    });
+    expect(msg).toContain("Shopify nekade");
+    expect(msg).toContain("permission");
+    expect(msg).toContain("customer_read_quick_sale");
+  });
 });

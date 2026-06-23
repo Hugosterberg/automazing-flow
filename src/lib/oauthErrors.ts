@@ -52,9 +52,11 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   tripadvisor_not_configured:
     "Tripadvisor official saknar API-nyckel eller location-id. Lägg till TRIPADVISOR_API_KEY och TRIPADVISOR_LOCATION_ID i miljön eller under Preferences - API keys.",
   shopify_not_configured:
-    "Shopify-kopplingen saknar app-konfiguration. Kontrollera SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET och callback-URL:en i Shopify-appen.",
+    "Shopify-kopplingen saknar app-konfiguration. Kontrollera SHOPIFY_API_KEY, SHOPIFY_API_SECRET och callback-URL:en i Shopify-appen.",
   shopify_missing_shop:
     "Shopify kräver en butiksdomän. Ange den som mystore.myshopify.com och försök igen.",
+  missing_shopify_permission:
+    "Shopify nekade en app-permission som OAuth-kopplingen bad om. Be app-operatören ta bort icke godkända Shopify-scopes eller godkänna permissionen i Shopify Partner Dashboard.",
   shopify_shop_mismatch:
     "Shopify svarade med en annan butiksdomän än den du startade med. Starta kopplingen igen och kontrollera domänen.",
   notion_not_configured:
@@ -115,7 +117,12 @@ export function formatOAuthErrorMessage(
   fallbackPrefix = "Koppling misslyckades"
 ) {
   const merged = { ...DEFAULT_OAUTH_ERROR_MESSAGES, ...(messages || {}) };
-  if (merged[details.code]) return merged[details.code];
+  if (merged[details.code]) {
+    if (details.code === "missing_shopify_permission" && details.hint) {
+      return `${merged[details.code]} Shopify rapporterade: ${details.hint}.`;
+    }
+    return merged[details.code];
+  }
   // Humanize the error code for the fallback
   const humanCode = details.code.replace(/_/g, " ");
   return `${fallbackPrefix}: ${humanCode}`;

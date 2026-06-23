@@ -19,6 +19,7 @@ import {
   pruneDuplicateAccountEntries,
 } from "../lib/accountIdentity.ts";
 import { exchangeForLongLivedInstagramToken } from "../providers/instagram.ts";
+import { getShopifyScopes } from "../lib/shopifyScopes.ts";
 
 interface OAuthPendingRecord {
   platform: string;
@@ -2103,22 +2104,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (!/^[a-z0-9](?:[a-z0-9-]{1,58}[a-z0-9])?$/.test(handle)) return null;
     return `${handle}.myshopify.com`;
   }
-  // Scopes — must match the Shopify app configuration in the Partner dashboard.
-  // Inventory + locations enable low-stock detection; price_rules + discounts cover promos;
-  // checkouts powers abandoned-cart insights; fulfillments enables shipment SLA tracking.
-  const SHOPIFY_SCOPES = [
-    "read_products",
-    "write_products",
-    "read_orders",
-    "read_customers",
-    "read_inventory",
-    "read_locations",
-    "read_price_rules",
-    "read_discounts",
-    "read_checkouts",
-    "read_fulfillments",
-    "read_shipping",
-  ].join(",");
+  const SHOPIFY_SCOPES = getShopifyScopes();
   app.get("/api/auth/shopify", async (req, res) => {
     const returnPage = parseOauthReturnPage(req) || "ecommerce";
     const userId = requireSessionOrRedirect(req, res, returnPage);
@@ -2180,12 +2166,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   }
 
   app.get("/api/auth/shopify/callback", async (req, res) => {
-    const { code, state, shop, error } = req.query;
+    const { code, state, shop, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
+      const hint = errorDescription ? `&oauth_hint=${encodeURIComponent(String(errorDescription))}` : "";
       return res.redirect(
-        oauthRedirectTo(base, "shopify",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(
+          base,
+          "shopify",
+          `oauth_error=${encodeURIComponent(String(error))}${hint}`,
+          pending?.oauthReturnPage
+        )
       );
     }
     if (!pending) {
