@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildAuthReturnPath, buildCanonicalAuthCallbackUrl, buildOAuthRedirectUrl } from "@/lib/authRedirect";
+import {
+  buildAuthReturnPath,
+  buildCanonicalAppOriginUrl,
+  buildCanonicalAuthCallbackUrl,
+  buildOAuthRedirectUrl,
+} from "@/lib/authRedirect";
 
 describe("buildOAuthRedirectUrl", () => {
   it("production prefers the current window origin (PKCE verifier lives there)", () => {
@@ -63,6 +68,36 @@ describe("buildOAuthRedirectUrl", () => {
           hasPendingAuthReturn: false,
         })
       ).toBe("https://automazing.vercel.app/?code=abc");
+    });
+  });
+
+  describe("buildCanonicalAppOriginUrl", () => {
+    it("moves ordinary app loads from a Vercel deployment host to the production alias", () => {
+      expect(
+        buildCanonicalAppOriginUrl({
+          prod: true,
+          siteUrl: "https://automazing.vercel.app",
+          appUrl: "",
+          vercelProductionOrigin: "https://automazing.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/connections",
+          search: "?tab=social",
+        })
+      ).toBe("https://automazing.vercel.app/connections?tab=social");
+    });
+
+    it("does not move active OAuth provider callbacks", () => {
+      expect(
+        buildCanonicalAppOriginUrl({
+          prod: true,
+          siteUrl: "https://automazing.vercel.app",
+          appUrl: "",
+          vercelProductionOrigin: "https://automazing.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/connections",
+          search: "?oauth_success=1&platform=instagram",
+        })
+      ).toBeNull();
     });
   });
 

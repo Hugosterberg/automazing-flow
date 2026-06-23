@@ -1,6 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
-import { redirectMismatchedAuthCallbackToCanonicalOrigin } from "@/lib/authRedirect";
+import {
+  redirectMismatchedAppOriginToCanonicalOrigin,
+  redirectMismatchedAuthCallbackToCanonicalOrigin,
+} from "@/lib/authRedirect";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 /** Matches Supabase dashboard / UI: publishable key (new) or legacy anon key names. */
@@ -11,7 +14,8 @@ const supabaseKey = (
   ""
 ).trim();
 
-const authCallbackRedirecting = redirectMismatchedAuthCallbackToCanonicalOrigin();
+const authCallbackRedirecting =
+  redirectMismatchedAuthCallbackToCanonicalOrigin() || redirectMismatchedAppOriginToCanonicalOrigin();
 
 export const supabaseEnabled = Boolean(supabaseUrl && supabaseKey && !authCallbackRedirecting);
 

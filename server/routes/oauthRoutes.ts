@@ -570,6 +570,27 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
    * redirect target is always in the allowlist — this is not an open redirect.
    */
   function requestedAppBaseUrl(req): string | null {
+    function isTrustedVercelAppOrigin(candidate: string): boolean {
+      try {
+        const host = new URL(candidate).hostname.toLowerCase();
+        if (!host.endsWith(".vercel.app")) return false;
+        const knownHosts = [originOf(BASE_URL), originOf(API_BASE_URL)]
+          .filter(Boolean)
+          .map((origin) => new URL(origin as string).hostname.toLowerCase())
+          .filter((hostName) => hostName.endsWith(".vercel.app"));
+        for (const knownHost of knownHosts) {
+          if (host === knownHost) return true;
+          const alias = knownHost.replace(/\.vercel\.app$/, "");
+          if (alias && host.startsWith(`${alias}-`)) return true;
+          const aliasRoot = alias.split("-")[0];
+          if (aliasRoot && host.startsWith(`${aliasRoot}-`)) return true;
+        }
+      } catch {
+        // Invalid candidate origins are rejected below.
+      }
+      return false;
+    }
+
     const corsOrigins = String(process.env.CORS_ORIGINS || "")
       .split(",")
       .map((value) => originOf(value.trim()))
@@ -597,6 +618,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     ];
     for (const candidate of candidates) {
       if (candidate && knownOrigins.includes(candidate)) return candidate;
+      if (candidate && isTrustedVercelAppOrigin(candidate)) return candidate;
     }
     return null;
   }

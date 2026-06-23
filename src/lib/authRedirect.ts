@@ -27,6 +27,7 @@ const AUTH_CALLBACK_PARAMS = new Set([
   "error_code",
   "error_description",
 ]);
+const OAUTH_CALLBACK_PARAMS = new Set(["oauth_success", "oauth_error"]);
 
 function isLoopbackHostname(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1";
@@ -148,6 +149,21 @@ function firstNonLoopbackOrigin(values: string[]): string | null {
   return null;
 }
 
+function isSameVercelAppOrigin(origin: string, canonicalOrigin: string): boolean {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    const canonicalHost = new URL(canonicalOrigin).hostname.toLowerCase();
+    if (!host.endsWith(".vercel.app") || !canonicalHost.endsWith(".vercel.app")) return false;
+    if (host === canonicalHost) return true;
+    const alias = canonicalHost.replace(/\.vercel\.app$/, "");
+    if (alias && host.startsWith(`${alias}-`)) return true;
+    const aliasRoot = alias.split("-")[0];
+    return Boolean(aliasRoot && host.startsWith(`${aliasRoot}-`));
+  } catch {
+    return false;
+  }
+}
+
 export type AuthCallbackCanonicalizeInput = {
   prod: boolean;
   siteUrl: string;
@@ -200,6 +216,54 @@ export function redirectMismatchedAuthCallbackToCanonicalOrigin(): boolean {
     search: window.location.search,
     hash: window.location.hash,
     hasPendingAuthReturn: Boolean(readPendingAuthReturn()),
+  });
+  if (!target) return false;
+  window.location.replace(target);
+  return true;
+}
+
+export type AppOriginCanonicalizeInput = {
+  prod: boolean;
+  siteUrl: string;
+  appUrl: string;
+  vercelProductionOrigin?: string;
+  windowOrigin: string;
+  pathname: string;
+  search: string;
+  hash?: string;
+};
+
+export function buildCanonicalAppOriginUrl(input: AppOriginCanonicalizeInput): string | null {
+  if (!input.prod) return null;
+
+  const params = new URLSearchParams(input.search || "");
+  for (const key of [...AUTH_CALLBACK_PARAMS, ...OAUTH_CALLBACK_PARAMS]) {
+    if (params.has(key)) return null;
+  }
+
+  const canonicalOrigin = firstNonLoopbackOrigin([
+    input.siteUrl,
+    input.appUrl,
+    input.vercelProductionOrigin || "",
+  ]);
+  if (!canonicalOrigin || canonicalOrigin === input.windowOrigin) return null;
+  if (!isSameVercelAppOrigin(input.windowOrigin, canonicalOrigin)) return null;
+
+  const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
+  return `${canonicalOrigin}${pathname}${input.search || ""}${input.hash || ""}`;
+}
+
+export function redirectMismatchedAppOriginToCanonicalOrigin(): boolean {
+  if (typeof window === "undefined") return false;
+  const target = buildCanonicalAppOriginUrl({
+    prod: import.meta.env.PROD,
+    siteUrl: (import.meta.env.VITE_SITE_URL || "").trim(),
+    appUrl: (import.meta.env.VITE_APP_URL || "").trim(),
+    vercelProductionOrigin: (import.meta.env.VITE_VERCEL_PRODUCTION_ORIGIN || "").trim(),
+    windowOrigin: window.location.origin,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
   });
   if (!target) return false;
   window.location.replace(target);
