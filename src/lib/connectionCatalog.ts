@@ -124,7 +124,8 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     area: "ecommerce",
     pageHref: "/ecommerce",
     pageName: "E-commerce",
-    connectSteps: "Open E-commerce → Connect Shopify (you will be asked for the .myshopify.com shop domain).",
+    connectSteps:
+      "Open E-commerce → Connect Shopify. Find the shop domain in Shopify Admin → Settings → Domains and use the value ending in .myshopify.com.",
     serverNeeds: "SHOPIFY_API_KEY + SHOPIFY_API_SECRET + public HTTPS SHOPIFY_APP_URL for callbacks.",
   },
   {

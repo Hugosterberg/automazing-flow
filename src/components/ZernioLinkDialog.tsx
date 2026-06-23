@@ -22,6 +22,7 @@ type Props = {
   zernioError: string | null;
   onRefresh: () => Promise<void> | void;
   onLink: (row: ZernioAccountRow) => Promise<void> | void;
+  onConnectNew?: (platform: SocialPlatform) => void;
   platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element>;
 };
 
@@ -35,6 +36,7 @@ export function ZernioLinkDialog({
   zernioError,
   onRefresh,
   onLink,
+  onConnectNew,
   platformIcons,
 }: Props) {
   const filtered = zernioFilter
@@ -47,18 +49,31 @@ export function ZernioLinkDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Layers className="h-4 w-4" />
-            Link Zernio account
+            Link existing Zernio account
           </DialogTitle>
           <DialogDescription>
             {zernioFilter
-              ? `Showing only ${zernioFilter.replace(/_/g, " ")}. Connect the channel in the Zernio dashboard first.`
-              : "Choose a channel already connected in Zernio (Facebook, TikTok, Google Business, WhatsApp, etc.)."}
+              ? `Advanced fallback: this only shows ${zernioFilter.replace(/_/g, " ")} channels that Zernio already exposes. Normal Connect starts a new provider login through Automazing.`
+              : "Advanced fallback: choose a channel already connected in Zernio if you do not want to run a new provider login."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <p className="text-xs text-muted-foreground">
-            Click <span className="font-medium">Link</span> on the account you want to add.
-          </p>
+          {zernioFilter && onConnectNew ? (
+            <div className="rounded-lg border border-border bg-muted/25 p-3 space-y-2">
+              <p className="text-sm font-medium">Saknas kontot i listan?</p>
+              <p className="text-xs text-muted-foreground">
+                Då ska du köra vanlig Connect. Den öppnar Zernios OAuth-flöde från Automazing och skapar
+                kopplingen utan att du behöver gå till Zernio-dashboarden.
+              </p>
+              <Button type="button" size="sm" onClick={() => onConnectNew(zernioFilter)}>
+                Start Connect for {zernioFilter.replace(/_/g, " ")}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Click <span className="font-medium">Link</span> only when the account already exists in Zernio.
+            </p>
+          )}
           {zernioLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
               <Loader2 className="h-4 w-4 animate-spin shrink-0" />
@@ -73,20 +88,13 @@ export function ZernioLinkDialog({
           {!zernioLoading && (
             <>
               {filtered.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No accounts here yet. Connect the channel in{" "}
-                  <a
-                    href="https://zernio.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-2"
-                  >
-                    Zernio
-                  </a>
-                  , set <code className="text-xs bg-muted px-1 rounded">ZERNIO_API_KEY</code> in the server{" "}
-                  <code className="text-xs bg-muted px-1 rounded">.env</code>, see{" "}
-                  <code className="text-xs bg-muted px-1 rounded">docs/KOPPLINGAR.md</code>.
-                </p>
+                <div className="rounded-md border border-border/70 bg-background p-3 text-sm text-muted-foreground space-y-2">
+                  <p>No accounts here yet.</p>
+                  <p>
+                    If you just connected a new channel, click <span className="font-medium text-foreground">Refresh list</span>.
+                    If it still does not appear, Zernio did not expose that channel for this workspace/profile.
+                  </p>
+                </div>
               ) : (
                 <ul className="space-y-2">
                   {filtered.map((row) => {

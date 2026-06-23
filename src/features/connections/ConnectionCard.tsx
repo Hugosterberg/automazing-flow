@@ -30,6 +30,8 @@ import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { aggregateStatus } from "./connectionStatus";
 import { buildConnectUrl } from "./zernioClient";
 import { getConnectConfig, getConnectionPathOptions } from "./connectAuthPath";
+import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
+import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 
 interface Props {
   entry: ConnectionCatalogEntry;
@@ -69,6 +71,7 @@ export function ConnectionCard({
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopifyShop, setShopifyShop] = useState("");
+  const [shopifyShopError, setShopifyShopError] = useState<string | null>(null);
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
@@ -93,14 +96,19 @@ export function ConnectionCard({
 
   function startShopifyConnect() {
     setShopifyShop("");
+    setShopifyShopError(null);
     setShopifyDialogOpen(true);
   }
 
   function submitShopifyConnect() {
-    const shop = shopifyShop.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
-    if (!shop) return;
+    const shop = normalizeShopifyShopDomain(shopifyShop);
+    if (!shop) {
+      setShopifyShopError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
+      return;
+    }
     setShopifyDialogOpen(false);
     setShopifyShop("");
+    setShopifyShopError(null);
     startConnect(undefined, { shop });
   }
 
@@ -274,7 +282,7 @@ export function ConnectionCard({
                   onClick={() => startConnect("zernio")}
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  Zernio
+                  Connect via Zernio
                 </Button>
               </>
             ) : (
@@ -328,22 +336,32 @@ export function ConnectionCard({
       </AlertDialog>
     </Card>
     <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Connect Shopify</DialogTitle>
           <DialogDescription>
-            Enter your Shopify store domain. Use the format mystore.myshopify.com.
+            Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
           </DialogDescription>
         </DialogHeader>
+        <ShopifyConnectGuide />
         <div className="space-y-2">
           <Label htmlFor={`shopify-shop-${entry.platform}`}>Shop domain</Label>
           <Input
             id={`shopify-shop-${entry.platform}`}
             value={shopifyShop}
-            onChange={(event) => setShopifyShop(event.target.value)}
-            placeholder="mystore.myshopify.com"
+            onChange={(event) => {
+              setShopifyShop(event.target.value);
+              setShopifyShopError(null);
+            }}
+            onKeyDown={(event) => event.key === "Enter" && submitShopifyConnect()}
+            placeholder={SHOPIFY_DOMAIN_EXAMPLE}
+            aria-invalid={Boolean(shopifyShopError)}
             autoFocus
           />
+          <p className="text-xs text-muted-foreground">
+            Du kan också klistra in en Shopify Admin-länk, t.ex. admin.shopify.com/store/mystore.
+          </p>
+          {shopifyShopError ? <p className="text-xs text-destructive">{shopifyShopError}</p> : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>

@@ -110,6 +110,7 @@ export interface ZernioModule {
     sortOrder?: "asc" | "desc";
     status?: string;
     profileId?: string | null;
+    accountId?: string;
     platform?: string;
     cursor?: string;
   }): Promise<ZernioResult<Record<string, unknown>>>;
@@ -285,6 +286,21 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     }
   }
 
+  async function firstOk<T = Record<string, unknown>>(paths: string[]): Promise<ZernioResult<T>> {
+    let last: ZernioResult<T> = {
+      ok: false,
+      status: 404,
+      data: {} as T,
+      error: "zernio_endpoint_unavailable",
+    };
+    for (const path of paths) {
+      const result = await request<T>(path);
+      if (result.ok) return result;
+      last = result;
+    }
+    return last;
+  }
+
   async function listAccounts() {
     const result = await request<unknown>("/accounts");
     if (!result.ok) {
@@ -388,6 +404,7 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     sortOrder?: "asc" | "desc";
     status?: string;
     profileId?: string | null;
+    accountId?: string;
     platform?: string;
     cursor?: string;
   }) {
@@ -395,10 +412,27 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
     q.set("limit", String(options?.limit ?? 75));
     q.set("sortOrder", options?.sortOrder ?? "desc");
     q.set("status", options?.status ?? "active");
-    if (options?.profileId) q.set("profileId", options.profileId);
+    if (options?.profileId) {
+      q.set("profileId", options.profileId);
+      q.set("profile_id", options.profileId);
+    }
+    if (options?.accountId) {
+      q.set("accountId", options.accountId);
+      q.set("account_id", options.accountId);
+    }
     if (options?.platform) q.set("platform", options.platform);
     if (options?.cursor) q.set("cursor", options.cursor);
-    return request<Record<string, unknown>>(`/inbox/conversations?${q.toString()}`);
+    const query = q.toString();
+    const accountId = options?.accountId ? encodeURIComponent(options.accountId) : "";
+    const candidates = accountId
+      ? [
+          `/accounts/${accountId}/inbox/conversations?${query}`,
+          `/inbox/accounts/${accountId}/conversations?${query}`,
+          `/inbox/conversations/${accountId}?${query}`,
+          `/inbox/conversations?${query}`,
+        ]
+      : [`/inbox/conversations?${query}`];
+    return firstOk<Record<string, unknown>>(candidates);
   }
 
   function listInboxConversationMessages(
@@ -412,12 +446,19 @@ export function createZernioModule(deps: ZernioModuleDeps): ZernioModule {
   ) {
     const q = new URLSearchParams();
     q.set("accountId", options.accountId);
+    q.set("account_id", options.accountId);
     q.set("limit", String(options.limit ?? 1));
     q.set("sortOrder", options.sortOrder ?? "desc");
     if (options.cursor) q.set("cursor", options.cursor);
-    return request<Record<string, unknown>>(
-      `/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${q.toString()}`
-    );
+    const query = q.toString();
+    const cid = encodeURIComponent(conversationId);
+    const aid = encodeURIComponent(options.accountId);
+    return firstOk<Record<string, unknown>>([
+      `/accounts/${aid}/inbox/conversations/${cid}/messages?${query}`,
+      `/inbox/messages?conversationId=${cid}&${query}`,
+      `/inbox/conversation-messages?conversationId=${cid}&${query}`,
+      `/inbox/conversations/${cid}/messages?${query}`,
+    ]);
   }
 
   function sendInboxMessage(options: {

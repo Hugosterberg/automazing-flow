@@ -321,6 +321,11 @@ export function AppSidebar() {
     navigate("/social-media");
   }
 
+  function handleConnectNewZernioAccount(platform: SocialPlatform) {
+    setZernioOpen(false);
+    handleConnectPlatform(platform, { provider: "zernio" });
+  }
+
   function handleConnectPlatform(
     platform: AccountPlatform,
     options?: { provider?: "auto" | "zernio" | "official" }
@@ -660,6 +665,7 @@ export function AppSidebar() {
             zernioError={zernioError}
             onRefresh={loadZernioAccounts}
             onLink={handleLinkZernioAccount}
+            onConnectNew={handleConnectNewZernioAccount}
             platformIcons={platformIcons}
           />
         </Suspense>

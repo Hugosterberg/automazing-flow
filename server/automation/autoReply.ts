@@ -29,6 +29,7 @@ import {
   textFromZernioMessage,
   dateFromZernioMessage,
   zernioMessageId,
+  zernioConversationUnreadCount,
   isInboundZernioMessage,
 } from "../lib/zernioInbox.ts";
 
@@ -195,7 +196,7 @@ export async function runAutoReplyForProfile(
 
   const rows = parseZernioConversationList(conversationsResult.data)
     .filter((raw): raw is Record<string, unknown> => Boolean(raw && typeof raw === "object"))
-    .filter((row) => Number(row.unreadCount || 0) > 0);
+    .filter((row) => zernioConversationUnreadCount(row) > 0);
   summary.scanned = rows.length;
   if (rows.length === 0) return summary;
 

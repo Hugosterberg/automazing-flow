@@ -3,6 +3,7 @@ import { m } from "framer-motion";
 import {
   Bell,
   Bot,
+  HelpCircle,
   CheckCircle2,
   ExternalLink,
   Globe,
@@ -30,6 +31,7 @@ import { apiUrl } from "@/lib/apiBase";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
 
@@ -258,6 +260,10 @@ export default function PreferencesPage() {
             Automation
           </TabsTrigger>
           <TabsTrigger value="api-keys">Integrations</TabsTrigger>
+          <TabsTrigger value="help">
+            <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
+            Help
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -519,6 +525,10 @@ export default function PreferencesPage() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="help">
+          <ZernioHelpTab />
         </TabsContent>
       </Tabs>
     </div>

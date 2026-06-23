@@ -14,8 +14,19 @@ export function parseZernioConversationList(body: Record<string, unknown>): unkn
   if (data && typeof data === "object" && Array.isArray((data as { conversations?: unknown[] }).conversations)) {
     return (data as { conversations: unknown[] }).conversations;
   }
+  if (data && typeof data === "object" && Array.isArray((data as { items?: unknown[] }).items)) {
+    return (data as { items: unknown[] }).items;
+  }
+  if (data && typeof data === "object" && Array.isArray((data as { results?: unknown[] }).results)) {
+    return (data as { results: unknown[] }).results;
+  }
+  if (data && typeof data === "object" && Array.isArray((data as { threads?: unknown[] }).threads)) {
+    return (data as { threads: unknown[] }).threads;
+  }
   if (Array.isArray(body.conversations)) return body.conversations as unknown[];
   if (Array.isArray((body as { items?: unknown[] }).items)) return (body as { items: unknown[] }).items;
+  if (Array.isArray((body as { results?: unknown[] }).results)) return (body as { results: unknown[] }).results;
+  if (Array.isArray((body as { threads?: unknown[] }).threads)) return (body as { threads: unknown[] }).threads;
   return [];
 }
 
@@ -25,8 +36,22 @@ export function parseZernioConversationMessages(body: Record<string, unknown>): 
   if (data && typeof data === "object" && Array.isArray((data as { messages?: unknown[] }).messages)) {
     return (data as { messages: Array<Record<string, unknown>> }).messages;
   }
+  if (data && typeof data === "object" && Array.isArray((data as { items?: unknown[] }).items)) {
+    return (data as { items: Array<Record<string, unknown>> }).items;
+  }
+  if (data && typeof data === "object" && Array.isArray((data as { results?: unknown[] }).results)) {
+    return (data as { results: Array<Record<string, unknown>> }).results;
+  }
   if (Array.isArray(body.messages)) return body.messages as Array<Record<string, unknown>>;
   if (Array.isArray((body as { items?: unknown[] }).items)) return (body as { items: Array<Record<string, unknown>> }).items;
+  if (Array.isArray((body as { results?: unknown[] }).results)) return (body as { results: Array<Record<string, unknown>> }).results;
+  if (
+    body.conversation &&
+    typeof body.conversation === "object" &&
+    Array.isArray((body.conversation as { messages?: unknown[] }).messages)
+  ) {
+    return (body.conversation as { messages: Array<Record<string, unknown>> }).messages;
+  }
   return [];
 }
 
@@ -64,14 +89,38 @@ export function zernioConversationAccountIds(row: Record<string, unknown>): stri
     "account_id",
     "socialAccountId",
     "social_account_id",
-    "connectedAccountId",
-    "channelAccountId",
     "providerAccountId",
+    "provider_account_id",
+    "connectedAccountId",
+    "connected_account_id",
+    "channelAccountId",
+    "channel_account_id",
+    "zernioAccountId",
+    "zernio_account_id",
+    "instagramAccountId",
+    "instagram_account_id",
+    "integrationId",
+    "integration_id",
     "pageId",
     "page_id",
+    "__queryZernioAccountId",
   ]);
   if (direct) out.add(direct);
-  for (const key of ["account", "socialAccount", "channelAccount", "providerAccount", "page"]) {
+  for (const key of [
+    "account",
+    "socialAccount",
+    "social_account",
+    "connectedAccount",
+    "connected_account",
+    "channelAccount",
+    "channel_account",
+    "providerAccount",
+    "provider_account",
+    "zernioAccount",
+    "zernio_account",
+    "integration",
+    "page",
+  ]) {
     collectObjectIds(row[key], out);
   }
   return [...out];
@@ -90,13 +139,39 @@ export function normalizeDmPlatform(raw: unknown): string | null {
 }
 
 export function zernioConversationPlatform(row: Record<string, unknown>): string | null {
-  const direct = firstString(row, ["platform", "channel", "provider", "type", "source", "__queryPlatform"]);
+  const direct = firstString(row, [
+    "platform",
+    "platformSlug",
+    "platform_slug",
+    "socialPlatform",
+    "social_platform",
+    "channel",
+    "provider",
+    "network",
+    "type",
+    "source",
+    "__queryPlatform",
+  ]);
   const normalizedDirect = normalizeDmPlatform(direct);
   if (normalizedDirect) return normalizedDirect;
-  for (const key of ["account", "socialAccount", "channelAccount", "providerAccount", "page"]) {
+  for (const key of [
+    "account",
+    "socialAccount",
+    "social_account",
+    "connectedAccount",
+    "connected_account",
+    "channelAccount",
+    "channel_account",
+    "providerAccount",
+    "provider_account",
+    "zernioAccount",
+    "zernio_account",
+    "integration",
+    "page",
+  ]) {
     const value = row[key];
     if (!value || typeof value !== "object") continue;
-    const nested = firstString(value as Record<string, unknown>, ["platform", "channel", "provider", "type"]);
+    const nested = firstString(value as Record<string, unknown>, ["platform", "platformSlug", "channel", "provider", "network", "type"]);
     const normalizedNested = normalizeDmPlatform(nested);
     if (normalizedNested) return normalizedNested;
   }
@@ -104,7 +179,7 @@ export function zernioConversationPlatform(row: Record<string, unknown>): string
 }
 
 export function zernioConversationId(row: Record<string, unknown>): string {
-  return firstString(row, ["id", "_id", "conversationId", "conversation_id", "threadId"]);
+  return firstString(row, ["id", "_id", "conversationId", "conversation_id", "threadId", "thread_id", "chatId", "chat_id"]);
 }
 
 export function zernioConversationKey(row: Record<string, unknown>, index: number): string {
@@ -112,7 +187,7 @@ export function zernioConversationKey(row: Record<string, unknown>, index: numbe
   if (id) return id;
   const accountIds = zernioConversationAccountIds(row).join("|");
   const participant = firstString(row, ["participantId", "participantUsername", "participantName"]);
-  const updated = firstString(row, ["updatedTime", "updatedAt", "lastMessageAt", "timestamp"]);
+  const updated = firstString(row, ["updatedTime", "updatedAt", "updated_at", "lastMessageAt", "last_message_at", "timestamp"]);
   return `${accountIds}:${participant}:${updated}:${index}`;
 }
 
@@ -120,16 +195,52 @@ export function textFromZernioMessage(row: Record<string, unknown>): string {
   const nested =
     row.latestMessage && typeof row.latestMessage === "object"
       ? textFromZernioMessage(row.latestMessage as Record<string, unknown>)
+      : row.latest_message && typeof row.latest_message === "object"
+      ? textFromZernioMessage(row.latest_message as Record<string, unknown>)
       : "";
-  return String(row.message || row.text || row.body || row.content || row.preview || nested || "").trim();
+  return String(
+    row.message ||
+      row.text ||
+      row.body ||
+      row.content ||
+      row.preview ||
+      row.lastMessage ||
+      row.last_message ||
+      row.lastMessageText ||
+      row.last_message_text ||
+      nested ||
+      ""
+  ).trim();
 }
 
 export function dateFromZernioMessage(row: Record<string, unknown>): string {
-  return String(row.createdTime || row.createdAt || row.timestamp || row.sentAt || row.date || "").trim();
+  return String(
+    row.createdTime ||
+      row.createdAt ||
+      row.created_at ||
+      row.timestamp ||
+      row.sentAt ||
+      row.sent_at ||
+      row.date ||
+      ""
+  ).trim();
 }
 
 export function zernioMessageId(row: Record<string, unknown>): string {
-  return firstString(row, ["id", "_id", "messageId", "message_id"]);
+  return firstString(row, ["id", "_id", "messageId", "message_id", "mid"]);
+}
+
+export function zernioConversationUnreadCount(row: Record<string, unknown>): number {
+  const raw =
+    row.unreadCount ??
+    row.unread_count ??
+    row.unreadMessagesCount ??
+    row.unread_messages_count ??
+    row.unread ??
+    0;
+  if (typeof raw === "boolean") return raw ? 1 : 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 /**

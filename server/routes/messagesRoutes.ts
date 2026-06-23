@@ -9,6 +9,7 @@ import {
   normalizeDmPlatform,
   zernioConversationPlatform,
   zernioConversationKey,
+  zernioConversationUnreadCount,
   textFromZernioMessage,
   dateFromZernioMessage,
 } from "../lib/zernioInbox.ts";
@@ -255,13 +256,14 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
         const conversationRows = new Map<string, Record<string, unknown>>();
         let successfulInboxQueries = 0;
 
-        async function addConversationRows(platform?: string) {
+        async function addConversationRows(platform?: string, zernioAccountId?: string) {
           const convResult = await zernio.listInboxConversations({
             limit: 100,
             sortOrder: "desc",
             status: "active",
             profileId: zernioProfileIdFilter || null,
             platform,
+            accountId: zernioAccountId,
           });
           if (!convResult.ok) {
             // Keep the actionable upstream reason (e.g. "Inbox add-on required")
@@ -276,10 +278,13 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             if (!raw || typeof raw !== "object") return;
             const c = raw as Record<string, unknown>;
             const normalizedQueryPlatform = normalizeDmPlatform(platform);
-            const row =
-              normalizedQueryPlatform && !zernioConversationPlatform(c)
-                ? { ...c, __queryPlatform: normalizedQueryPlatform }
-                : c;
+            const row = {
+              ...c,
+              ...(normalizedQueryPlatform && !zernioConversationPlatform(c)
+                ? { __queryPlatform: normalizedQueryPlatform }
+                : {}),
+              ...(zernioAccountId ? { __queryZernioAccountId: zernioAccountId } : {}),
+            };
             conversationRows.set(zernioConversationKey(row, index), row);
           });
         }
@@ -287,6 +292,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
         await addConversationRows();
         for (const platform of queryPlatforms) {
           await addConversationRows(platform);
+        }
+        for (const account of zernioMessageAccounts) {
+          await addConversationRows(account.platform, account.zernioAccountId);
         }
         if (successfulInboxQueries > 0) {
           zernioNote = undefined;
@@ -309,7 +317,17 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
           }
           if (!linkedAccount) continue;
 
-          const participantName = String(c.participantName || c.participantUsername || "Direct message");
+          const participantName =
+            firstString(c, [
+              "participantName",
+              "participant_name",
+              "participantUsername",
+              "participant_username",
+              "contactName",
+              "contact_name",
+              "senderName",
+              "sender_name",
+            ]) || "Direct message";
           const messageResult = cid
             ? await zernio.listInboxConversationMessages(cid, {
                 accountId: linkedAccount.zernioAccountId,
@@ -322,12 +340,13 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
               ? parseZernioConversationMessages(messageResult.data)[0]
               : undefined;
           const latestText = latestMessage ? textFromZernioMessage(latestMessage) : "";
-          const fallbackText = String(c.lastMessage || c.preview || "").trim();
+          const fallbackText = textFromZernioMessage(c);
           const last = latestText || fallbackText;
           const plat = rowPlatform || linkedAccount.platform;
           const date = latestMessage
-            ? dateFromZernioMessage(latestMessage) || String(c.updatedTime || c.updatedAt || c.lastMessageAt || "")
-            : String(c.updatedTime || c.updatedAt || c.lastMessageAt || "");
+            ? dateFromZernioMessage(latestMessage) ||
+              firstString(c, ["updatedTime", "updatedAt", "updated_at", "lastMessageAt", "last_message_at", "timestamp"])
+            : firstString(c, ["updatedTime", "updatedAt", "updated_at", "lastMessageAt", "last_message_at", "timestamp"]);
 
           unified.push({
             id: `dm:zernio:${linkedAccount.localAccountId}:${cid || zernioConversationKey(c, rowIndex++)}`,
@@ -340,7 +359,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             date,
             snippet: last,
             body: last,
-            isUnread: Number(c.unreadCount || 0) > 0,
+            isUnread: zernioConversationUnreadCount(c) > 0,
             externalUrl: c.url ? String(c.url) : undefined,
             conversationId: cid || undefined,
           });
@@ -424,7 +443,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     for (const raw of parseZernioConversationList(convResult.data)) {
       if (!raw || typeof raw !== "object") continue;
       const c = raw as Record<string, unknown>;
-      if (Number(c.unreadCount || 0) <= 0) continue;
+      if (zernioConversationUnreadCount(c) <= 0) continue;
       const ids = zernioConversationAccountIds(c).map((id) => String(id).toLowerCase());
       const linkedById = ids.some((id) => myZernioAccountIds.has(id));
       const convPlatform = normalizeDmPlatform(zernioConversationPlatform(c));

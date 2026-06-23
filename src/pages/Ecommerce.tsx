@@ -58,6 +58,8 @@ import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
+import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
+import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 import { alibabaImportToInput } from "@/lib/productStore";
 import {
   fetchProducts,
@@ -316,6 +318,7 @@ export default function Ecommerce() {
   const [tab, setTab] = useState<"overview" | "products">("overview");
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
+  const [shopDomainError, setShopDomainError] = useState<string | null>(null);
   const [notionParentId, setNotionParentId] = useState("");
   const [notionParentType, setNotionParentType] = useState<"page_id" | "database_id">("page_id");
   const [notionTitle, setNotionTitle] = useState("");
@@ -326,17 +329,22 @@ export default function Ecommerce() {
 
   function handleConnect() {
     setShopDomain("");
+    setShopDomainError(null);
     setConnectDialogOpen(true);
   }
 
   function handleConnectSubmit() {
-    const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
-    if (!shop) return;
+    const shop = normalizeShopifyShopDomain(shopDomain);
+    if (!shop) {
+      setShopDomainError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
+      return;
+    }
     const params = new URLSearchParams({ shop });
     params.set("app_origin", window.location.origin);
     appendOAuthProfileParams(params, activeProfileId);
     setConnectDialogOpen(false);
     setShopDomain("");
+    setShopDomainError(null);
     window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
   }
 
@@ -1326,26 +1334,35 @@ export default function Ecommerce() {
       )}
 
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShopifyIcon className="h-4 w-4" />
               Connect Shopify
             </DialogTitle>
             <DialogDescription>
-              Enter your Shopify store domain to get started.
+              Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
             </DialogDescription>
           </DialogHeader>
+          <ShopifyConnectGuide />
           <div className="space-y-2 py-2">
             <Label htmlFor="ecom-shop-domain">Store domain</Label>
             <Input
               id="ecom-shop-domain"
-              placeholder="mystore.myshopify.com"
+              placeholder={SHOPIFY_DOMAIN_EXAMPLE}
               value={shopDomain}
-              onChange={(e) => setShopDomain(e.target.value)}
+              onChange={(e) => {
+                setShopDomain(e.target.value);
+                setShopDomainError(null);
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleConnectSubmit()}
+              aria-invalid={Boolean(shopDomainError)}
               autoFocus
             />
+            <p className="text-xs text-muted-foreground">
+              Du kan också klistra in en Shopify Admin-länk, t.ex. admin.shopify.com/store/mystore.
+            </p>
+            {shopDomainError ? <p className="text-xs text-destructive">{shopDomainError}</p> : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
