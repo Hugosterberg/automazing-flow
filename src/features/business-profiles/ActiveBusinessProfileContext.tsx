@@ -1,13 +1,13 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { scopedStorageKey } from "@/lib/storageUtils";
+import { ActiveBusinessProfileContext } from "./activeBusinessProfileContextCore";
 
 /**
  * Tenant key for the whole app. Every data-layer hook must consume
@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 const STORAGE_PREFIX = "automazing:active-business-profile";
 
 function storageKey(userId: string | null | undefined): string {
-  return userId ? `${STORAGE_PREFIX}:${userId}` : STORAGE_PREFIX;
+  return scopedStorageKey(STORAGE_PREFIX, userId, null);
 }
 
 function readStored(userId: string | null | undefined): string | null {
@@ -40,13 +40,6 @@ function readUrlOverride(): string | null {
     return null;
   }
 }
-
-interface ActiveBusinessProfileContextValue {
-  activeBusinessProfileId: string | null;
-  setActiveBusinessProfileId: (id: string | null) => void;
-}
-
-const Ctx = createContext<ActiveBusinessProfileContextValue | null>(null);
 
 export function ActiveBusinessProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -92,40 +85,9 @@ export function ActiveBusinessProfileProvider({ children }: { children: ReactNod
     [activeId, setActiveBusinessProfileId]
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-/** Returns the active business profile id, or null if none selected yet. */
-export function useActiveBusinessProfileIdOptional(): string | null {
-  const ctx = useContext(Ctx);
-  if (!ctx) {
-    throw new Error(
-      "useActiveBusinessProfileIdOptional must be used inside ActiveBusinessProfileProvider"
-    );
-  }
-  return ctx.activeBusinessProfileId;
-}
-
-/**
- * Hard guard: throws if no active profile is set. Use inside tenant-scoped
- * hooks/components that are always rendered behind <ActiveProfileGuard>.
- */
-export function useActiveBusinessProfileId(): string {
-  const id = useActiveBusinessProfileIdOptional();
-  if (!id) {
-    throw new Error(
-      "No active business profile. Render this tree behind <ActiveProfileGuard>."
-    );
-  }
-  return id;
-}
-
-export function useSetActiveBusinessProfileId(): (id: string | null) => void {
-  const ctx = useContext(Ctx);
-  if (!ctx) {
-    throw new Error(
-      "useSetActiveBusinessProfileId must be used inside ActiveBusinessProfileProvider"
-    );
-  }
-  return ctx.setActiveBusinessProfileId;
+  return (
+    <ActiveBusinessProfileContext.Provider value={value}>
+      {children}
+    </ActiveBusinessProfileContext.Provider>
+  );
 }

@@ -33,6 +33,14 @@ function isLoopbackHostname(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1";
 }
 
+function parseUrlSafe(raw: string): URL | null {
+  try {
+    return new URL(raw);
+  } catch {
+    return null;
+  }
+}
+
 function getAuthBaseOrigin(input: OAuthRedirectBuildInput): string {
   const baseOrigin = input.windowOrigin;
 
@@ -46,30 +54,23 @@ function getAuthBaseOrigin(input: OAuthRedirectBuildInput): string {
   // because the retry starts and ends on the same origin. So the current
   // origin always wins when it's a real host; env candidates only matter
   // when the window origin is loopback (e.g. a local production build).
-  let isWindowLoopback = true;
-  try {
-    isWindowLoopback = isLoopbackHostname(new URL(baseOrigin).hostname);
-  } catch {
-    // invalid origin — fall through to candidates
-  }
+  const windowUrl = parseUrlSafe(baseOrigin);
+  const isWindowLoopback = windowUrl ? isLoopbackHostname(windowUrl.hostname) : true;
   if (!isWindowLoopback) return baseOrigin;
 
   const candidates = [
     input.viteSiteUrl,
     input.viteAppUrl,
+    input.viteVercelProductionOrigin || "",
     input.viteVercelDeploymentOrigin,
   ]
     .map((s) => s.trim())
     .filter(Boolean);
 
   for (const raw of candidates) {
-    try {
-      const parsed = new URL(raw);
-      if (!isLoopbackHostname(parsed.hostname)) {
-        return `${parsed.protocol}//${parsed.host}`;
-      }
-    } catch {
-      // skip invalid URL
+    const parsed = parseUrlSafe(raw);
+    if (parsed && !isLoopbackHostname(parsed.hostname)) {
+      return `${parsed.protocol}//${parsed.host}`;
     }
   }
 
@@ -137,31 +138,26 @@ function firstNonLoopbackOrigin(values: string[]): string | null {
   for (const raw of values) {
     const value = raw.trim();
     if (!value) continue;
-    try {
-      const parsed = new URL(value);
-      if (!isLoopbackHostname(parsed.hostname)) {
-        return parsed.origin;
-      }
-    } catch {
-      // skip invalid URL
+    const parsed = parseUrlSafe(value);
+    if (parsed && !isLoopbackHostname(parsed.hostname)) {
+      return parsed.origin;
     }
   }
   return null;
 }
 
 function isSameVercelAppOrigin(origin: string, canonicalOrigin: string): boolean {
-  try {
-    const host = new URL(origin).hostname.toLowerCase();
-    const canonicalHost = new URL(canonicalOrigin).hostname.toLowerCase();
-    if (!host.endsWith(".vercel.app") || !canonicalHost.endsWith(".vercel.app")) return false;
-    if (host === canonicalHost) return true;
-    const alias = canonicalHost.replace(/\.vercel\.app$/, "");
-    if (alias && host.startsWith(`${alias}-`)) return true;
-    const aliasRoot = alias.split("-")[0];
-    return Boolean(aliasRoot && host.startsWith(`${aliasRoot}-`));
-  } catch {
-    return false;
-  }
+  const originUrl = parseUrlSafe(origin);
+  const canonicalUrl = parseUrlSafe(canonicalOrigin);
+  if (!originUrl || !canonicalUrl) return false;
+  const host = originUrl.hostname.toLowerCase();
+  const canonicalHost = canonicalUrl.hostname.toLowerCase();
+  if (!host.endsWith(".vercel.app") || !canonicalHost.endsWith(".vercel.app")) return false;
+  if (host === canonicalHost) return true;
+  const alias = canonicalHost.replace(/\.vercel\.app$/, "");
+  if (alias && host.startsWith(`${alias}-`)) return true;
+  const aliasRoot = alias.split("-")[0];
+  return Boolean(aliasRoot && host.startsWith(`${aliasRoot}-`));
 }
 
 export type AuthCallbackCanonicalizeInput = {

@@ -12,7 +12,11 @@ import {
   textFromZernioMessage,
   dateFromZernioMessage,
 } from "../lib/zernioInbox.ts";
-import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
+import {
+  accountInBusinessProfile,
+  readRequestBodyBusinessProfileId,
+  readRequestBusinessProfileId,
+} from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -447,7 +451,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const accountId = String(body.accountId || "").trim();
     const conversationId = String(body.conversationId || "").trim();
     const message = String(body.message || "").trim();
-    const businessProfileId = String(body.business_profile_id || "").trim() || null;
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
     if (!accountId || !conversationId || !message) {
       return res.status(400).json({ error: "accountId, conversationId and message are required" });
     }

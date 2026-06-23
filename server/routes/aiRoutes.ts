@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { generateReplyDraft } from "../ai/replyDraft.ts";
 import { rateLimitMiddleware } from "../lib/rateLimit.ts";
-import { accountInBusinessProfile } from "../lib/profileScope.ts";
+import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 import {
   buildContentIdeaPrompt,
   heuristicContentIdeas,
@@ -20,12 +20,6 @@ type AiRouteDeps = {
   };
 };
 
-/** business_profile_id from the request body, used for per-tenant key resolution. */
-function bodyBusinessProfileId(req: { body?: unknown }): string | null {
-  const v = String((req.body as { business_profile_id?: string })?.business_profile_id || "").trim();
-  return v.length > 0 ? v : null;
-}
-
 export function registerAiRoutes(app, deps?: AiRouteDeps) {
   // These endpoints each call OpenAI, which costs money per request. Per-user
   // rate limits keep a runaway client (or a stuck retry loop) from racking up
@@ -36,6 +30,11 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
   const limitAnalyze = rateLimitMiddleware("ai:analyze", getUserId, 20, 60_000);
   const limitReplyDraft = rateLimitMiddleware("ai:reply-draft", getUserId, 30, 60_000);
   const limitContentIdeas = rateLimitMiddleware("ai:content-ideas", getUserId, 12, 60_000);
+
+  async function warnOpenAiFallback(context: string, response: Response) {
+    const detail = (await response.text().catch(() => "")).slice(0, 300);
+    console.warn(`[${context}] OpenAI request failed:`, response.status, detail);
+  }
 
   // AI content ideas — proposes post concepts; heuristic fallback without a key.
   app.post("/api/content/ideas", async (req, res) => {
@@ -57,7 +56,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     };
     const openaiKey = String(
       (deps?.secretResolver
-        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || "",
     ).trim();
     if (!openaiKey) return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
@@ -75,12 +74,16 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
         }),
         signal: AbortSignal.timeout(20_000),
       });
-      if (!aiRes.ok) return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+      if (!aiRes.ok) {
+        await warnOpenAiFallback("ai/content-ideas", aiRes);
+        return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+      }
       const aiData = await aiRes.json().catch(() => ({}));
       const content = aiData?.choices?.[0]?.message?.content ?? "{}";
       const ideas = parseContentIdeas(content);
       return res.json(ideas.length ? { ideas, source: "ai" } : { ideas: heuristicContentIdeas(ctx), source: "heuristic" });
-    } catch {
+    } catch (error) {
+      console.warn("[ai/content-ideas] Falling back to heuristic ideas:", error instanceof Error ? error.message : error);
       return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
     }
   });
@@ -114,7 +117,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
 
     const openaiKey = String(
       (deps?.secretResolver
-        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || ""
     ).trim();
     if (!openaiKey) {
@@ -150,6 +153,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       });
 
       if (!aiRes.ok) {
+        await warnOpenAiFallback("ai/message-summaries", aiRes);
         const summaries = Object.fromEntries(
           messages.map((m) => [String(m.id || crypto.randomUUID()), heuristicSummary(m)])
         );
@@ -166,7 +170,8 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
         if (id && !summaries[id]) summaries[id] = heuristicSummary(m);
       }
       return res.json({ summaries });
-    } catch {
+    } catch (error) {
+      console.warn("[ai/message-summaries] Falling back to heuristic summaries:", error instanceof Error ? error.message : error);
       const summaries = Object.fromEntries(
         messages.map((m) => [String(m.id || crypto.randomUUID()), heuristicSummary(m)])
       );
@@ -205,7 +210,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     const prompt = String(body.prompt || "").trim();
     const openaiKey = String(
       (deps?.secretResolver
-        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || ""
     ).trim();
 
@@ -256,6 +261,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
       });
 
       if (!aiRes.ok) {
+        await warnOpenAiFallback("ai/video-draft", aiRes);
         return res.json({ draft: fallbackDraft, source: "fallback" });
       }
 
@@ -281,7 +287,8 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
         },
         source: "openai",
       });
-    } catch {
+    } catch (error) {
+      console.warn("[ai/video-draft] Falling back to draft template:", error instanceof Error ? error.message : error);
       return res.json({ draft: fallbackDraft, source: "fallback" });
     }
   });
@@ -295,9 +302,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     if (!limitAnalyze(req, res)) return;
     const accountId = String(req.params?.accountId || "");
     const stored = accountId && deps?.tokenStore?.get ? await deps.tokenStore.get(accountId) : null;
-    const analysisBusinessProfileId = String(
-      (req.body as { business_profile_id?: string } | undefined)?.business_profile_id || ""
-    ).trim() || null;
+    const analysisBusinessProfileId = readRequestBodyBusinessProfileId(req);
     if (stored) {
       if (!analysisBusinessProfileId) {
         return res.status(400).json({ error: "business_profile_id is required" });
@@ -328,7 +333,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     const { captions = [], displayName = "", username = "", followersCount } = body;
     const openaiKey = String(
       (deps?.secretResolver
-        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || ""
     ).trim();
 
@@ -457,7 +462,7 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
 
     const openaiKey = String(
       (deps?.secretResolver
-        ? await deps.secretResolver.resolve(bodyBusinessProfileId(req), "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || ""
     ).trim();
 

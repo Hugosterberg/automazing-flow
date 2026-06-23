@@ -1,3 +1,5 @@
+import { scopedStorageKey } from "@/lib/storageUtils";
+
 export type SelectedContentAsset = {
   id: string;
   name: string;
@@ -13,7 +15,7 @@ export type SelectedContentAsset = {
 const STORAGE_PREFIX = "automazing-content-selection";
 
 function storageKey(profileId?: string | null) {
-  return `${STORAGE_PREFIX}:${profileId || "default"}`;
+  return scopedStorageKey(STORAGE_PREFIX, profileId);
 }
 
 export function loadSelectedContent(profileId?: string | null): SelectedContentAsset[] {

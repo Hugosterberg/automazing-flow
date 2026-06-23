@@ -8,7 +8,7 @@ import {
   normalizeAlibabaProductUrl,
 } from "../providers/alibaba.ts";
 import { createShopifyDraftProduct } from "../providers/shopify.ts";
-import { accountInBusinessProfile } from "../lib/profileScope.ts";
+import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
 interface EcommerceRoutesDeps {
   getSessionUserId: (req: unknown) => string | null;
@@ -174,7 +174,7 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     if (stored.platform !== "shopify") {
       return res.status(400).json({ error: "Account is not a Shopify store" });
     }
-    const businessProfileId = String(req.body?.business_profile_id || "").trim() || null;
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
     if (!businessProfileId) {
       return res.status(400).json({ error: "business_profile_id is required" });
     }

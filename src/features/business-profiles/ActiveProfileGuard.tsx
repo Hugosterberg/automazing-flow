@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   useActiveBusinessProfileIdOptional,
   useSetActiveBusinessProfileId,
-} from "./ActiveBusinessProfileContext";
+} from "./useActiveBusinessProfileId";
 import { useBusinessProfiles } from "./useBusinessProfiles";
 import { OnboardingCreateProfile } from "./OnboardingCreateProfile";
 

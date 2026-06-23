@@ -4,7 +4,7 @@ import type { BusinessProfile } from "@/types/businessProfile";
 import {
   useActiveBusinessProfileIdOptional,
   useSetActiveBusinessProfileId,
-} from "./ActiveBusinessProfileContext";
+} from "./useActiveBusinessProfileId";
 import { useBusinessProfiles } from "./useBusinessProfiles";
 
 /**

@@ -1,3 +1,5 @@
+import { isNonEmptyString } from "@/lib/utils";
+
 /**
  * Pull the most user-presentable string out of an API error envelope.
  *
@@ -11,8 +13,8 @@
 export function apiErrorMessage(payload: unknown, fallback: string): string {
   if (payload && typeof payload === "object") {
     const p = payload as { message?: unknown; error?: unknown };
-    if (typeof p.message === "string" && p.message.trim()) return p.message;
-    if (typeof p.error === "string" && p.error.trim()) return p.error;
+    if (isNonEmptyString(p.message)) return p.message;
+    if (isNonEmptyString(p.error)) return p.error;
   }
   return fallback;
 }

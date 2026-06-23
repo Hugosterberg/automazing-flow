@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBusinessProfiles } from "./useBusinessProfiles";
-import { useSetActiveBusinessProfileId } from "./ActiveBusinessProfileContext";
+import { useSetActiveBusinessProfileId } from "./useActiveBusinessProfileId";
 
 const FEATURE_STEPS = [
   {

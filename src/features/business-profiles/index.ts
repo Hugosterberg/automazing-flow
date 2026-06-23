@@ -1,9 +1,11 @@
 export {
   ActiveBusinessProfileProvider,
+} from "./ActiveBusinessProfileContext";
+export {
   useActiveBusinessProfileId,
   useActiveBusinessProfileIdOptional,
   useSetActiveBusinessProfileId,
-} from "./ActiveBusinessProfileContext";
+} from "./useActiveBusinessProfileId";
 export { ActiveProfileGuard } from "./ActiveProfileGuard";
 export { OnboardingCreateProfile } from "./OnboardingCreateProfile";
 export { useBusinessProfiles, BUSINESS_PROFILES_KEY } from "./useBusinessProfiles";

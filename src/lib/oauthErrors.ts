@@ -1,3 +1,5 @@
+import { isNonEmptyString } from "@/lib/utils";
+
 export type OAuthErrorDetails = {
   code: string;
   statusCode: string | null;
@@ -131,11 +133,11 @@ export function formatConnectFetchError(params: {
         ? String(params.status)
         : "okänd";
   const errorCode =
-    typeof params.payload?.error === "string" && params.payload.error.trim().length > 0
+    isNonEmptyString(params.payload?.error)
       ? params.payload.error
       : params.fallbackMessage;
   const exception =
-    typeof params.payload?.exception === "string" && params.payload.exception.trim().length > 0
+    isNonEmptyString(params.payload?.exception)
       ? params.payload.exception
       : "ej angiven";
 

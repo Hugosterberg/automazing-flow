@@ -13,6 +13,7 @@ import {
   type LeadSuggestionContext,
 } from "../ai/leadSuggestions.ts";
 import { fetchSiteMeta } from "../lib/siteMeta.ts";
+import { readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
 type SalesRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
@@ -72,7 +73,7 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
 
     const openaiKey = String(
       (deps.secretResolver
-        ? await deps.secretResolver.resolve(body.business_profile_id || null, "OPENAI_API_KEY")
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
         : process.env.OPENAI_API_KEY) || "",
     ).trim();
 
@@ -94,6 +95,8 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
         signal: AbortSignal.timeout(20_000),
       });
       if (!aiRes.ok) {
+        const detail = (await aiRes.text().catch(() => "")).slice(0, 300);
+        console.warn("[sales/lead-suggestions] OpenAI request failed:", aiRes.status, detail);
         return res.json({ suggestions: heuristicLeadSuggestions(ctx), source: "heuristic" });
       }
       const aiData = await aiRes.json().catch(() => ({}));
@@ -103,7 +106,8 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
         return res.json({ suggestions: heuristicLeadSuggestions(ctx), source: "heuristic" });
       }
       return res.json({ suggestions, source: "ai" });
-    } catch {
+    } catch (error) {
+      console.warn("[sales/lead-suggestions] Falling back to heuristic suggestions:", error instanceof Error ? error.message : error);
       return res.json({ suggestions: heuristicLeadSuggestions(ctx), source: "heuristic" });
     }
   });

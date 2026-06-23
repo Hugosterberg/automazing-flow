@@ -28,6 +28,17 @@ export function readRequestBusinessProfileId(req: {
 }
 
 /**
+ * Active business-profile id from a JSON request body. Write/action endpoints
+ * use this when profile scope is part of the POST payload rather than query.
+ */
+export function readRequestBodyBusinessProfileId(req: { body?: unknown }): string | null {
+  const body = req?.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+  const normalized = String(body.business_profile_id || "").trim();
+  if (!normalized || normalized === "default") return null;
+  return normalized;
+}
+
+/**
  * Whether a stored token account belongs to the active business profile.
  *
  * - No active profile requested → user scope (every owned account).

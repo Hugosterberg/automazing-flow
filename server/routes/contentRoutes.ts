@@ -7,7 +7,7 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
-import { accountInBusinessProfile } from "../lib/profileScope.ts";
+import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -63,7 +63,7 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     const content = String(body.content || "").trim();
     const scheduledFor = String(body.scheduledFor || "").trim();
     const publishNow = Boolean(body.publishNow);
-    const businessProfileId = String(body.business_profile_id || "").trim() || null;
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
 
     if (accountIds.length === 0) {
       return res.status(400).json({ error: "Select at least one account" });
@@ -73,6 +73,9 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     }
     if (!publishNow && !scheduledFor) {
       return res.status(400).json({ error: "Provide scheduledFor or set publishNow" });
+    }
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
     }
 
     const platforms: Array<{ platform: string; accountId: string }> = [];

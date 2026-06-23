@@ -1,9 +1,10 @@
 import type { AlibabaProductImport } from "@/types/ecommerce";
+import { scopedStorageKey } from "@/lib/storageUtils";
 
 const STORAGE_PREFIX = "automazing-alibaba-import";
 
 function storageKey(profileId: string | null | undefined): string {
-  return `${STORAGE_PREFIX}:${profileId || "default"}`;
+  return scopedStorageKey(STORAGE_PREFIX, profileId);
 }
 
 export function loadAlibabaImport(profileId: string | null | undefined): AlibabaProductImport | null {

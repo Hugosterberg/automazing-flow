@@ -12,7 +12,7 @@
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import { logActivity } from "../lib/activityLog.ts";
-import { accountInBusinessProfile } from "../lib/profileScope.ts";
+import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -49,7 +49,7 @@ export function registerReviewsRoutes(app, deps: ReviewsRoutesDeps) {
     const accountId = String(body.accountId || "").trim();
     const reviewId = String(body.reviewId || "").trim();
     const message = String(body.message || "").trim();
-    const businessProfileId = String(body.business_profile_id || "").trim() || null;
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
 
     if (!accountId || !reviewId || !message) {
       return res.status(400).json({ error: "accountId, reviewId and message are required" });
