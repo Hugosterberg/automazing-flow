@@ -12,6 +12,11 @@ type OutlookMailFetchArgs = {
   microsoftClientSecret?: string;
 };
 
+type OutlookReplyArgs = OutlookMailFetchArgs & {
+  messageId: string;
+  replyText: string;
+};
+
 type GraphMessage = {
   id?: string;
   subject?: string;
@@ -30,7 +35,7 @@ type GraphMessage = {
   };
 };
 
-async function refreshMicrosoftToken({
+export async function refreshMicrosoftToken({
   refreshToken,
   microsoftClientId,
   microsoftClientSecret,
@@ -135,4 +140,53 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
   });
 
   return { messages };
+}
+
+export async function sendOutlookMailReply({
+  accessToken,
+  refreshToken,
+  accountId,
+  tokenStore,
+  stored,
+  microsoftClientId,
+  microsoftClientSecret,
+  messageId,
+  replyText,
+}: OutlookReplyArgs) {
+  async function sendWithToken(token: string) {
+    return fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/reply`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: replyText.trim() }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  }
+
+  async function refreshStoredToken() {
+    const refreshed = await refreshMicrosoftToken({
+      refreshToken,
+      microsoftClientId,
+      microsoftClientSecret,
+    });
+    if (!refreshed) return null;
+    await tokenStore.set(accountId, {
+      ...stored,
+      accessToken: refreshed.accessToken,
+      ...(refreshed.refreshToken ? { refreshToken: refreshed.refreshToken } : {}),
+    });
+    return refreshed.accessToken;
+  }
+
+  let res = await sendWithToken(accessToken);
+  if (res.status === 401) {
+    const nextToken = await refreshStoredToken();
+    if (!nextToken) return { ok: false, status: 401, error: "outlook_reconnect_required" };
+    res = await sendWithToken(nextToken);
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const error = String(body?.error?.message || body?.error || "outlook_reply_failed");
+    return { ok: false, status: res.status, error };
+  }
+  return { ok: true, status: res.status, data: {} };
 }

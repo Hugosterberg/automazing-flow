@@ -10,7 +10,7 @@
  */
 
 export interface ReplyDraftInput {
-  kind: "review" | "dm";
+  kind: "review" | "dm" | "email";
   text: string;
   authorName?: string;
   rating?: number;
@@ -32,6 +32,11 @@ export function buildFallbackReplyDraft(input: ReplyDraftInput): string {
     return `Thank you, ${who}, for taking the time to share your feedback${
       input.rating != null && input.rating >= 4 ? " — we're glad you had a good experience!" : "."
     } We appreciate it and would love to make things even better. Please reach out to us directly so we can help.`;
+  }
+  if (input.kind === "email") {
+    return `Hi ${who},\n\nThanks for your email. ${
+      input.text.trim().length > 0 ? "We'd be happy to help with that. " : ""
+    }Could you share a few more details so we can assist you best?\n\nBest regards`;
   }
   return `Hi ${who}, thanks for reaching out! ${
     input.text.trim().length > 0 ? "We'd be happy to help with that. " : ""
@@ -58,14 +63,18 @@ export async function generateReplyDraft(
     const promptLines = [
       input.kind === "review"
         ? "Write a short public reply to this customer review on behalf of the business."
-        : "Write a short, helpful reply to this customer direct message on behalf of the business.",
+        : input.kind === "email"
+          ? "Write a concise email reply on behalf of the business."
+          : "Write a short, helpful reply to this customer direct message on behalf of the business.",
       `Tone: ${tone}. Language: ${language}.`,
       businessName ? `Business: ${businessName}.` : "",
       authorName ? `From: ${authorName}.` : "",
       input.rating != null ? `Star rating: ${input.rating}/5.` : "",
       input.kind === "review"
         ? "Acknowledge specifics, stay genuine, avoid generic filler, and keep it under 60 words."
-        : "Be friendly and actionable, keep it under 50 words, and end with a clear next step.",
+        : input.kind === "email"
+          ? "Be friendly, specific, actionable, and keep it under 120 words. Include a natural sign-off if helpful."
+          : "Be friendly and actionable, keep it under 50 words, and end with a clear next step.",
       instructions ? `Extra instructions from the business: ${instructions}` : "",
       "Return ONLY the reply text, no preamble or quotes.",
       "",

@@ -440,7 +440,7 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
     if (!limitReplyDraft(req, res)) return;
 
     const body = (req.body ?? {}) as {
-      kind?: "review" | "dm";
+      kind?: "review" | "dm" | "email";
       authorName?: string;
       rating?: number;
       text?: string;
@@ -448,7 +448,7 @@ PERCEPTION: [How a regular person with no prior knowledge of the topic would des
       tone?: string;
       language?: string;
     };
-    const kind = body.kind === "dm" ? "dm" : "review";
+    const kind = body.kind === "dm" || body.kind === "email" ? body.kind : "review";
     const authorName = String(body.authorName || "").trim();
     const text = String(body.text || "").trim();
     const businessName = String(body.businessName || "").trim();

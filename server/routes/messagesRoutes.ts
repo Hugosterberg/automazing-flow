@@ -1,5 +1,5 @@
-import { fetchGmailAccountData } from "../providers/gmail.ts";
-import { fetchOutlookMailData } from "../providers/outlookMail.ts";
+import { fetchGmailAccountData, sendGmailReply } from "../providers/gmail.ts";
+import { fetchOutlookMailData, sendOutlookMailReply } from "../providers/outlookMail.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import {
   parseZernioConversationList,
@@ -62,6 +62,8 @@ type UnifiedMessage = {
   isUnread: boolean;
   externalUrl?: string;
   conversationId?: string;
+  providerMessageId?: string;
+  threadId?: string;
 };
 
 const SOCIAL_MESSAGE_PLATFORMS = ["instagram", "facebook", "whatsapp"] as const;
@@ -179,6 +181,8 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   snippet: String(m.snippet || ""),
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
+                  providerMessageId: mid,
+                  threadId: m.threadId ? String(m.threadId) : undefined,
                 });
               }
               return;
@@ -217,6 +221,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   snippet: String(m.snippet || ""),
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
+                  providerMessageId: mid,
                 });
               }
             }
@@ -453,8 +458,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     return res.json({ count });
   });
 
-  // Reply to a social DM conversation via the Zernio inbox. Email replies are
-  // not supported here (current Gmail/Outlook scopes are read-only).
+  // Reply to a social DM conversation via Zernio or to an email via Gmail/Outlook.
   app.post("/api/messages/reply", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {
@@ -464,15 +468,17 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const body = (req.body ?? {}) as {
       accountId?: string;
       conversationId?: string;
+      messageId?: string;
       message?: string;
       business_profile_id?: string;
     };
     const accountId = String(body.accountId || "").trim();
     const conversationId = String(body.conversationId || "").trim();
+    const messageId = String(body.messageId || "").trim();
     const message = String(body.message || "").trim();
     const businessProfileId = readRequestBodyBusinessProfileId(req);
-    if (!accountId || !conversationId || !message) {
-      return res.status(400).json({ error: "accountId, conversationId and message are required" });
+    if (!accountId || !message) {
+      return res.status(400).json({ error: "accountId and message are required" });
     }
     if (!businessProfileId) {
       return res.status(400).json({ error: "business_profile_id is required" });
@@ -493,11 +499,75 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       return res.status(404).json({ error: "Account not connected for this business profile" });
     }
 
+    const platform = String(stored.platform || "");
+
+    if (platform === "gmail") {
+      if (!messageId) return res.status(400).json({ error: "messageId is required" });
+      const result = await sendGmailReply({
+        accessToken: String(stored.accessToken || ""),
+        refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+        accountId,
+        tokenStore,
+        stored,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        messageId,
+        replyText: message,
+      });
+      if (!result.ok) {
+        const reconnect =
+          result.status === 401 ||
+          result.status === 403 ||
+          String(result.error || "").toLowerCase().includes("insufficient") ||
+          String(result.error || "").toLowerCase().includes("gmail.send");
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+          error: reconnect ? "gmail_reconnect_required" : "gmail_reply_failed",
+          message: reconnect
+            ? "Reconnect Gmail to grant send permission, then try again."
+            : String(result.error || "Could not send Gmail reply."),
+        });
+      }
+      return res.json({ ok: true, data: result.data });
+    }
+
+    if (platform === "outlook") {
+      if (!messageId) return res.status(400).json({ error: "messageId is required" });
+      const result = await sendOutlookMailReply({
+        accessToken: String(stored.accessToken || ""),
+        refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+        accountId,
+        tokenStore,
+        stored,
+        microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+        microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+        messageId,
+        replyText: message,
+      });
+      if (!result.ok) {
+        const reconnect =
+          result.status === 401 ||
+          result.status === 403 ||
+          String(result.error || "").toLowerCase().includes("privileges") ||
+          String(result.error || "").toLowerCase().includes("permission") ||
+          String(result.error || "").toLowerCase().includes("mail.send");
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+          error: reconnect ? "outlook_reconnect_required" : "outlook_reply_failed",
+          message: reconnect
+            ? "Reconnect Outlook to grant Mail.Send permission, then try again."
+            : String(result.error || "Could not send Outlook reply."),
+        });
+      }
+      return res.json({ ok: true, data: result.data });
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "conversationId is required" });
+    }
+
     const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
     if (!zernioAccountId) {
       return res.status(400).json({ error: "dm_reply_requires_zernio" });
     }
-
     const result = await zernio.sendInboxMessage({ conversationId, accountId: zernioAccountId, message });
     if (!result.ok) {
       const failure = describeZernioFailure(result);

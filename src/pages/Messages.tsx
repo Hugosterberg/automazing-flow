@@ -36,6 +36,8 @@ interface UnifiedMessage {
   isUnread: boolean;
   externalUrl?: string;
   conversationId?: string;
+  providerMessageId?: string;
+  threadId?: string;
 }
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
@@ -114,6 +116,11 @@ function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: 
       title: "No mail yet",
       description: "Connect Gmail or Outlook to see email here.",
     };
+  }
+
+  function providerMessageIdFor(message: UnifiedMessage): string {
+    if (message.providerMessageId) return message.providerMessageId;
+    return message.kind === "email" ? message.id.split(":").pop() || "" : "";
   }
   if (tab === "instagram") {
     return {
@@ -301,7 +308,7 @@ export default function MessagesPage() {
     setSendBusy(false);
   }, [selectedMessage?.id]);
 
-  async function draftDmReply() {
+  async function draftReply() {
     if (!selectedMessage) return;
     setDraftBusy(true);
     try {
@@ -310,7 +317,7 @@ export default function MessagesPage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          kind: "dm",
+          kind: selectedMessage.kind === "email" ? "email" : "dm",
           authorName: selectedMessage.from.name || selectedMessage.subject,
           text: selectedMessage.body || selectedMessage.snippet,
         }),
@@ -329,8 +336,18 @@ export default function MessagesPage() {
     }
   }
 
-  async function sendDmReply() {
-    if (!selectedMessage?.conversationId || !replyDraft.trim()) return;
+  async function sendReply() {
+    if (!selectedMessage || !replyDraft.trim()) return;
+    const messageId = providerMessageIdFor(selectedMessage);
+    if (selectedMessage.kind === "email" && !messageId) {
+      toast({
+        title: "Could not send reply",
+        description: "This email is missing a provider message id. Refresh messages and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (selectedMessage.kind === "dm" && !selectedMessage.conversationId) return;
     setSendBusy(true);
     try {
       const res = await fetchWithTimeout(apiUrl("/api/messages/reply"), {
@@ -339,15 +356,22 @@ export default function MessagesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accountId: selectedMessage.accountId,
-          conversationId: selectedMessage.conversationId,
+          conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
+          messageId: selectedMessage.kind === "email" ? messageId : undefined,
           message: replyDraft.trim(),
           business_profile_id: activeProfileId,
         }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not send reply");
+      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
       setReplySent(true);
-      toast({ title: "Reply sent", description: "Your message was sent via Zernio." });
+      toast({
+        title: "Reply sent",
+        description:
+          selectedMessage.kind === "email"
+            ? `Your ${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"} reply was sent.`
+            : "Your message was sent via Zernio.",
+      });
     } catch (e) {
       toast({
         title: "Could not send reply",
@@ -699,7 +723,9 @@ export default function MessagesPage() {
             {selectedMessage?.body?.trim() || selectedMessage?.snippet || "(No content)"}
           </div>
 
-          {selectedMessage?.kind === "dm" && selectedMessage.conversationId && (
+          {selectedMessage &&
+            ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
+              (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage))) && (
             <div className="space-y-2 pt-1">
               {replySent ? (
                 <p className="text-xs text-emerald-600 inline-flex items-center gap-1">
@@ -710,15 +736,19 @@ export default function MessagesPage() {
                   <Textarea
                     value={replyDraft}
                     onChange={(e) => setReplyDraft(e.target.value)}
-                    placeholder="Write a reply, or generate one with AI…"
+                    placeholder={
+                      selectedMessage.kind === "email"
+                        ? "Write an email reply, or generate one with AI..."
+                        : "Write a reply, or generate one with AI..."
+                    }
                     className="min-h-[72px] text-sm"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={() => void draftDmReply()} disabled={draftBusy}>
+                    <Button variant="outline" size="sm" onClick={() => void draftReply()} disabled={draftBusy}>
                       {draftBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                       AI draft
                     </Button>
-                    <Button size="sm" onClick={() => void sendDmReply()} disabled={sendBusy || !replyDraft.trim()}>
+                    <Button size="sm" onClick={() => void sendReply()} disabled={sendBusy || !replyDraft.trim()}>
                       {sendBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                       Send reply
                     </Button>
