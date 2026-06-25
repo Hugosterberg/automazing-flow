@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
@@ -318,6 +318,7 @@ async function generateVideoDraft(payload: {
 }
 
 export default function SocialMedia() {
+  const [searchParams] = useSearchParams();
   const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
@@ -505,6 +506,7 @@ export default function SocialMedia() {
     },
   }).data;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvaInputRef = useRef<HTMLInputElement>(null);
 
   const socialAccounts = useMemo(() => {
     const list = accounts.filter((a) => SOCIAL_PAGE_PLATFORM_SET.has(a.platform));
@@ -539,6 +541,15 @@ export default function SocialMedia() {
     setAnalysisResult(null);
     setAnalyzing(false);
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "canva") return;
+    const timeout = window.setTimeout(() => {
+      canvaInputRef.current?.focus();
+      canvaInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedAccount && selectedAccount.platform !== activeSocialTab) {
@@ -1353,6 +1364,7 @@ export default function SocialMedia() {
                 </Button>
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <Input
+                    ref={canvaInputRef}
                     value={canvaDesignId}
                     onChange={(event) => setCanvaDesignId(event.target.value)}
                     placeholder="Canva design link or ID"
