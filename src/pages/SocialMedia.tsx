@@ -275,6 +275,20 @@ async function exportCanvaImage(payload: {
   return data;
 }
 
+function normalizeCanvaDesignId(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const designIndex = parts.findIndex((part) => part === "design");
+    if (designIndex >= 0 && parts[designIndex + 1]) return parts[designIndex + 1];
+  } catch {
+    // Plain design id, not a URL.
+  }
+  return trimmed.replace(/^design:/i, "").trim();
+}
+
 type VideoDraftResult = {
   title: string;
   hook: string;
@@ -641,15 +655,16 @@ export default function SocialMedia() {
   }
 
   async function handleExportCanvaDesign() {
-    if (!canvaDesignId.trim()) {
-      setImageWorkflowError("Paste a Canva design ID first.");
+    const designId = normalizeCanvaDesignId(canvaDesignId);
+    if (!designId) {
+      setImageWorkflowError("Paste a Canva design link or ID first.");
       return;
     }
     setExportingCanva(true);
     setImageWorkflowError(null);
     try {
       const result = await exportCanvaImage({
-        designId: canvaDesignId.trim(),
+        designId,
         businessProfileId,
       });
       setUploadedImage(result.url);
@@ -1340,7 +1355,7 @@ export default function SocialMedia() {
                   <Input
                     value={canvaDesignId}
                     onChange={(event) => setCanvaDesignId(event.target.value)}
-                    placeholder="Canva design ID"
+                    placeholder="Canva design link or ID"
                   />
                   <Button type="button" variant="outline" onClick={() => void handleExportCanvaDesign()} disabled={exportingCanva}>
                     {exportingCanva ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
