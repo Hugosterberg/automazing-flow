@@ -22,6 +22,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   google_calendar: "Google Calendar",
   outlook_calendar: "Outlook Calendar",
   google_drive: "Google Drive",
+  canva: "Canva",
 };
 
 export function platformLabel(platform: string | null | undefined): string {

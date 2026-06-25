@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -259,7 +260,7 @@ export function ConnectionCard({
         ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1">
-          {connectConfig ? (
+          {connectConfig && !connectConfig.manual ? (
             entry.platform === "google_ads" ||
             entry.platform === "google_business" ||
             entry.platform === "tripadvisor" ? (
@@ -304,9 +305,12 @@ export function ConnectionCard({
               </Button>
             )
           ) : (
-            <span className="text-[11px] text-muted-foreground italic">
-              Manual setup — see {entry.pageName}
-            </span>
+            <Button type="button" size="sm" variant="outline" className="gap-1.5" asChild>
+              <Link to={entry.pageHref}>
+                <PrimaryIcon className="h-3.5 w-3.5" />
+                Setup in {entry.pageName}
+              </Link>
+            </Button>
           )}
         </div>
       </CardContent>

@@ -203,6 +203,17 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     connectSteps: "Open Content → Connect Google Drive.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Drive scope enabled for your OAuth client).",
   },
+  {
+    platform: "canva",
+    label: "Canva",
+    area: "content",
+    pageHref: "/preferences",
+    pageName: "Preferences",
+    connectSteps:
+      "Open Preferences -> Integrations and add CANVA_ACCESS_TOKEN. Then use Social Media -> Create post image -> Export Canva.",
+    serverNeeds:
+      "CANVA_ACCESS_TOKEN from Canva Connect OAuth with design:content:read scope. Full in-app OAuth is not implemented yet.",
+  },
 ];
 
 const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {

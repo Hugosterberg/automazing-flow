@@ -140,6 +140,15 @@ export function GoogleDriveIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function CanvaIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.8 12.8c-.5 1.4-1.8 2.3-3.6 2.3-3 0-5-2-5-5s2-5 5-5c1.8 0 3.1.8 3.7 2.2l-2.1 1c-.3-.7-.9-1.1-1.7-1.1-1.4 0-2.3 1.1-2.3 2.9s.9 2.9 2.4 2.9c.9 0 1.5-.4 1.8-1.2l1.8 1Z" />
+    </svg>
+  );
+}
+
 export function GoogleReviewsIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, ...rest } = props;
   return (

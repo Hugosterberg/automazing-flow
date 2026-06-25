@@ -86,7 +86,7 @@ export const navItems: NavItem[] = [
     title: "Content",
     url: "/content",
     icon: FolderOpen,
-    platforms: ["google_drive"] as AccountPlatform[],
+    platforms: ["google_drive", "canva"] as AccountPlatform[],
     group: "work",
   },
   {

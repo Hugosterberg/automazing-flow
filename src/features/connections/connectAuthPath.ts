@@ -51,6 +51,7 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
 
   // Content
   google_drive: { authPath: "google_drive" },
+  canva: { authPath: "canva", manual: true },
 };
 
 const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
@@ -96,6 +97,7 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
     { id: "official", label: "Tripadvisor official" },
   ],
   google_drive: [{ id: "official", label: "Google official", isDefault: true }],
+  canva: [{ id: "manual", label: "Preferences token", isDefault: true }],
 };
 
 export function getConnectConfig(platform: AccountPlatform): ConnectStartConfig | null {

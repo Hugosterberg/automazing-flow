@@ -71,6 +71,7 @@ import {
   GoogleDriveIcon,
   GoogleReviewsIcon,
   TripadvisorIcon,
+  CanvaIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
 import { apiUrl } from "@/lib/apiBase";
@@ -99,6 +100,7 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   google_calendar: GoogleCalendarIcon,
   outlook_calendar: OutlookIcon,
   google_drive: GoogleDriveIcon,
+  canva: CanvaIcon,
   google_reviews: GoogleReviewsIcon,
   tripadvisor: TripadvisorIcon,
   google_ads: GoogleBusinessIcon,
