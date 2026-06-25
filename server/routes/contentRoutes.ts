@@ -7,6 +7,8 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
+import { exportCanvaDesignImage } from "../providers/canva.ts";
+import { publicMediaUrl, readGeneratedMedia, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
 import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
 type StoredAccount = Record<string, unknown> & {
@@ -28,6 +30,9 @@ interface ContentRoutesDeps {
     userId: string
   ) => { allowed: boolean; migrate: boolean };
   zernio: ZernioModule;
+  secretResolver?: {
+    resolve: (businessProfileId: string | null | undefined, key: string) => Promise<string | null>;
+  };
 }
 
 /** Map our app platform to the Zernio post platform slug. */
@@ -40,7 +45,81 @@ const ZERNIO_POST_PLATFORM: Record<string, string> = {
 };
 
 export function registerContentRoutes(app, deps: ContentRoutesDeps) {
-  const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio } = deps;
+  const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio, secretResolver } = deps;
+
+  app.get("/api/content/media/:id", (req, res) => {
+    const id = String(req.params?.id || "");
+    const item = readGeneratedMedia(id);
+    if (!item) return res.status(404).json({ error: "media_not_found" });
+    res.setHeader("Content-Type", item.contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.send(item.buffer);
+  });
+
+  app.post("/api/content/canva/export", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const body = (req.body ?? {}) as {
+      designId?: string;
+      format?: "png" | "jpg";
+      width?: number;
+      height?: number;
+      business_profile_id?: string;
+    };
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
+    const designId = String(body.designId || "").trim();
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+    if (!designId) {
+      return res.status(400).json({ error: "designId is required" });
+    }
+
+    const accessToken = String(
+      (secretResolver ? await secretResolver.resolve(businessProfileId, "CANVA_ACCESS_TOKEN") : process.env.CANVA_ACCESS_TOKEN) ||
+        process.env.CANVA_ACCESS_TOKEN ||
+        ""
+    ).trim();
+    if (!accessToken) {
+      return res.status(400).json({
+        error: "canva_not_configured",
+        message:
+          "Add CANVA_ACCESS_TOKEN under Preferences -> API keys or .env.local. Canva Connect uses OAuth access tokens with design:content:read.",
+      });
+    }
+
+    const result = await exportCanvaDesignImage({
+      accessToken,
+      designId,
+      format: body.format === "jpg" ? "jpg" : "png",
+      width: Number.isFinite(Number(body.width)) ? Number(body.width) : undefined,
+      height: Number.isFinite(Number(body.height)) ? Number(body.height) : undefined,
+    });
+    if (result.ok === false) {
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+        error: "canva_export_failed",
+        message: result.message,
+        details: result.details,
+      });
+    }
+
+    let url = result.url;
+    try {
+      const downloaded = await fetch(result.url, { signal: AbortSignal.timeout(20_000) });
+      if (downloaded.ok) {
+        const contentType = downloaded.headers.get("content-type") || (body.format === "jpg" ? "image/jpeg" : "image/png");
+        const buffer = Buffer.from(await downloaded.arrayBuffer());
+        const id = storeGeneratedMedia(buffer, contentType);
+        url = publicMediaUrl(req, id);
+      }
+    } catch {
+      // The Canva URL is still usable for immediate publish; it expires after 24h.
+    }
+
+    return res.json({ ok: true, url, canvaUrl: result.url, jobId: result.jobId, urls: result.urls, source: "canva" });
+  });
 
   app.post("/api/content/publish", async (req, res) => {
     const userId = getSessionUserId(req);

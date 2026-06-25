@@ -80,6 +80,13 @@ const TENANT_SECRET_CATALOG: TenantSecretDef[] = [
     description: "Your apiai.me API key for Content -> Create tools and pipelines.",
     inputType: "password",
   },
+  {
+    key: "CANVA_ACCESS_TOKEN",
+    label: "Canva Connect access token",
+    description:
+      "Optional. Canva Connect OAuth token for exporting designs as publishable images for this profile.",
+    inputType: "password",
+  },
 ];
 
 const TENANT_SECRET_KEYS = new Set(TENANT_SECRET_CATALOG.map((d) => d.key));

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Send, CalendarClock, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,15 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
 
 
-export function PublishComposer() {
+export function PublishComposer({
+  initialCaption = "",
+  mediaUrls = [],
+  onPublished,
+}: {
+  initialCaption?: string;
+  mediaUrls?: string[];
+  onPublished?: () => void;
+}) {
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
@@ -31,7 +39,7 @@ export function PublishComposer() {
     [accounts]
   );
 
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(initialCaption);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [mode, setMode] = useState<"now" | "schedule">("now");
   const [scheduledFor, setScheduledFor] = useState("");
@@ -39,6 +47,10 @@ export function PublishComposer() {
   const [done, setDone] = useState(false);
 
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
+
+  useEffect(() => {
+    setCaption((current) => current || initialCaption);
+  }, [initialCaption]);
 
   if (postable.length === 0) {
     return null; // Nothing to publish to yet — keep the page clean.
@@ -63,6 +75,7 @@ export function PublishComposer() {
           publishNow: mode === "now",
           scheduledFor: mode === "schedule" ? new Date(scheduledFor).toISOString() : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          mediaUrls,
         }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -70,6 +83,7 @@ export function PublishComposer() {
       setDone(true);
       setCaption("");
       setSelected({});
+      onPublished?.();
       toast({
         title: mode === "now" ? "Published" : "Scheduled",
         description: `${payload?.published ?? selectedIds.length} account(s) via Zernio.`,
@@ -172,7 +186,7 @@ export function PublishComposer() {
             )}
             <Button onClick={() => void publish()} disabled={busy || selectedIds.length === 0 || !caption.trim()}>
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              {mode === "now" ? "Publish" : "Schedule"}
+              {mode === "now" ? "Publish" : "Schedule"}{mediaUrls.length > 0 ? " with media" : ""}
             </Button>
           </div>
         </div>

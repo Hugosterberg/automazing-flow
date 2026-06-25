@@ -117,6 +117,12 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     requiredAny: [["ZERNIO_API_KEY", "LATE_API_KEY"]],
     message: "Required for Zernio-backed social and review integrations.",
   },
+  canva: {
+    label: "Canva Connect",
+    required: ["CANVA_ACCESS_TOKEN"],
+    message:
+      "Required to export Canva designs into publishable social media images. The token needs design:content:read scope.",
+  },
   google_drive: {
     label: "Google Drive OAuth",
     required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],

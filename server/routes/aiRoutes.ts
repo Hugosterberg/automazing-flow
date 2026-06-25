@@ -8,6 +8,7 @@ import {
   parseContentIdeas,
   type ContentIdeaContext,
 } from "../ai/contentIdeas.ts";
+import { publicMediaUrl, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
 
 type AiRouteDeps = {
   getSessionUserId?: (req: { [key: string]: unknown }) => string | null;
@@ -30,6 +31,7 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
   const limitAnalyze = rateLimitMiddleware("ai:analyze", getUserId, 20, 60_000);
   const limitReplyDraft = rateLimitMiddleware("ai:reply-draft", getUserId, 30, 60_000);
   const limitContentIdeas = rateLimitMiddleware("ai:content-ideas", getUserId, 12, 60_000);
+  const limitImageGeneration = rateLimitMiddleware("ai:image-generation", getUserId, 8, 60_000);
 
   async function warnOpenAiFallback(context: string, response: Response) {
     const detail = (await response.text().catch(() => "")).slice(0, 300);
@@ -85,6 +87,93 @@ export function registerAiRoutes(app, deps?: AiRouteDeps) {
     } catch (error) {
       console.warn("[ai/content-ideas] Falling back to heuristic ideas:", error instanceof Error ? error.message : error);
       return res.json({ ideas: heuristicContentIdeas(ctx), source: "heuristic" });
+    }
+  });
+
+  app.post("/api/content/image/generate", async (req, res) => {
+    const userId = deps?.getSessionUserId?.(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitImageGeneration(req, res)) return;
+
+    const body = (req.body ?? {}) as {
+      prompt?: string;
+      caption?: string;
+      style?: string;
+      size?: "1024x1024" | "1024x1536" | "1536x1024";
+      business_profile_id?: string;
+    };
+    const prompt = String(body.prompt || "").trim();
+    const caption = String(body.caption || "").trim();
+    const style = String(body.style || "polished social media image, brand-safe, no text overlays").trim();
+    const size = ["1024x1024", "1024x1536", "1536x1024"].includes(String(body.size))
+      ? String(body.size)
+      : "1024x1024";
+    if (!prompt) {
+      return res.status(400).json({ error: "prompt is required" });
+    }
+
+    const openaiKey = String(
+      (deps?.secretResolver
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
+    if (!openaiKey) {
+      return res.status(400).json({
+        error: "openai_not_configured",
+        message: "Add OPENAI_API_KEY under Preferences -> API keys before generating images.",
+      });
+    }
+
+    const imagePrompt = [
+      prompt,
+      caption ? `Context/caption: ${caption}` : "",
+      `Style: ${style}`,
+      "Create a finished social media image. Avoid readable text, logos, watermarks, or UI screenshots unless explicitly requested.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      const aiRes = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt: imagePrompt,
+          size,
+          n: 1,
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      const payload = await aiRes.json().catch(() => ({}));
+      if (!aiRes.ok) {
+        return res.status(aiRes.status >= 400 && aiRes.status < 600 ? aiRes.status : 502).json({
+          error: "image_generation_failed",
+          message: payload?.error?.message || payload?.message || "OpenAI image generation failed.",
+        });
+      }
+
+      const first = Array.isArray(payload?.data) ? payload.data[0] : null;
+      const b64 = String(first?.b64_json || "");
+      const remoteUrl = String(first?.url || "");
+      if (b64) {
+        const buffer = Buffer.from(b64, "base64");
+        const id = storeGeneratedMedia(buffer, "image/png");
+        const url = publicMediaUrl(req, id);
+        return res.json({ ok: true, url, previewUrl: `data:image/png;base64,${b64}`, source: "openai" });
+      }
+      if (remoteUrl) {
+        return res.json({ ok: true, url: remoteUrl, previewUrl: remoteUrl, source: "openai" });
+      }
+      return res.status(502).json({ error: "image_generation_empty", message: "OpenAI returned no image." });
+    } catch (error) {
+      return res.status(502).json({
+        error: "image_generation_failed",
+        message: error instanceof Error ? error.message : "OpenAI image generation failed.",
+      });
     }
   });
 

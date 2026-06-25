@@ -446,6 +446,7 @@ registerContentRoutes(app, {
   tokenStore,
   getStoredAccountAccess,
   zernio: zernioModule,
+  secretResolver,
 });
 
 registerApiaiRoutes(app, {

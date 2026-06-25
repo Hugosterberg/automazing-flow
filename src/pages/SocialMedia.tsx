@@ -31,6 +31,7 @@ import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
+import { PublishComposer } from "@/features/content/PublishComposer";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -235,6 +236,45 @@ async function generateImageVariants(): Promise<string[]> {
   ];
 }
 
+async function generateSocialImage(payload: {
+  prompt: string;
+  caption: string;
+  businessProfileId: string | null;
+}): Promise<{ url: string; previewUrl?: string; source: string }> {
+  const res = await fetchWithTimeout(apiUrl("/api/content/image/generate"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: payload.prompt,
+      caption: payload.caption,
+      business_profile_id: payload.businessProfileId,
+    }),
+  }, 70_000);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not generate image"));
+  return data;
+}
+
+async function exportCanvaImage(payload: {
+  designId: string;
+  businessProfileId: string | null;
+}): Promise<{ url: string; canvaUrl?: string; source: string }> {
+  const res = await fetchWithTimeout(apiUrl("/api/content/canva/export"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      designId: payload.designId,
+      format: "png",
+      business_profile_id: payload.businessProfileId,
+    }),
+  }, 60_000);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not export Canva design"));
+  return data;
+}
+
 type VideoDraftResult = {
   title: string;
   hook: string;
@@ -429,6 +469,12 @@ export default function SocialMedia() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [variants, setVariants] = useState<string[]>([]);
   const [generatingVariants, setGeneratingVariants] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
+  const [imageWorkflowError, setImageWorkflowError] = useState<string | null>(null);
+  const [imageSource, setImageSource] = useState<"openai" | "canva" | null>(null);
+  const [canvaDesignId, setCanvaDesignId] = useState("");
+  const [exportingCanva, setExportingCanva] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoPlatform, setVideoPlatform] = useState("Instagram Reels");
@@ -550,6 +596,8 @@ export default function SocialMedia() {
     if (file) {
       const url = URL.createObjectURL(file);
       setUploadedImage(url);
+      setGeneratedMediaUrl(null);
+      setImageSource(null);
       setVariants([]);
     }
     e.target.value = "";
@@ -564,6 +612,54 @@ export default function SocialMedia() {
       setVariants(urls);
     } finally {
       setGeneratingVariants(false);
+    }
+  }
+
+  async function handleGenerateSocialImage() {
+    const prompt = imagePrompt.trim() || postContent.trim();
+    if (!prompt) {
+      setImageWorkflowError("Describe the image or write a caption first.");
+      return;
+    }
+    setGeneratingVariants(true);
+    setImageWorkflowError(null);
+    try {
+      const result = await generateSocialImage({
+        prompt,
+        caption: postContent,
+        businessProfileId,
+      });
+      setUploadedImage(result.previewUrl || result.url);
+      setGeneratedMediaUrl(result.url);
+      setVariants([result.previewUrl || result.url]);
+      setImageSource("openai");
+    } catch (error) {
+      setImageWorkflowError(error instanceof Error ? error.message : "Could not generate image");
+    } finally {
+      setGeneratingVariants(false);
+    }
+  }
+
+  async function handleExportCanvaDesign() {
+    if (!canvaDesignId.trim()) {
+      setImageWorkflowError("Paste a Canva design ID first.");
+      return;
+    }
+    setExportingCanva(true);
+    setImageWorkflowError(null);
+    try {
+      const result = await exportCanvaImage({
+        designId: canvaDesignId.trim(),
+        businessProfileId,
+      });
+      setUploadedImage(result.url);
+      setGeneratedMediaUrl(result.url);
+      setVariants([result.url]);
+      setImageSource("canva");
+    } catch (error) {
+      setImageWorkflowError(error instanceof Error ? error.message : "Could not export Canva design");
+    } finally {
+      setExportingCanva(false);
     }
   }
 
@@ -1179,10 +1275,10 @@ export default function SocialMedia() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ImagePlus className="h-5 w-5" />
-              AI Image Variants
+              Create post image
             </CardTitle>
             <CardDescription>
-              Upload an image and let AI generate different variants and suggestions
+              Generate an image with AI or export a Canva design, then publish it with your post.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1218,9 +1314,19 @@ export default function SocialMedia() {
                 )}
               </div>
               <div className="flex-1 space-y-2">
+                <div className="space-y-2">
+                  <Label htmlFor="social-image-prompt">AI image prompt</Label>
+                  <Textarea
+                    id="social-image-prompt"
+                    value={imagePrompt}
+                    onChange={(event) => setImagePrompt(event.target.value)}
+                    placeholder="Describe the image you want for this post..."
+                    className="min-h-[80px]"
+                  />
+                </div>
                 <Button
-                  onClick={handleGenerateVariants}
-                  disabled={!uploadedImage || generatingVariants}
+                  onClick={() => void handleGenerateSocialImage()}
+                  disabled={generatingVariants}
                   variant="outline"
                 >
                   {generatingVariants ? (
@@ -1228,24 +1334,45 @@ export default function SocialMedia() {
                   ) : (
                     <Sparkles className="h-4 w-4 mr-2" />
                   )}
-                  {generatingVariants ? "Generating variants..." : "Generate AI variants"}
+                  {generatingVariants ? "Generating image..." : "Generate with AI"}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Click the box to upload, or use a selected Google Drive image above, then generate.
-                </p>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <Input
+                    value={canvaDesignId}
+                    onChange={(event) => setCanvaDesignId(event.target.value)}
+                    placeholder="Canva design ID"
+                  />
+                  <Button type="button" variant="outline" onClick={() => void handleExportCanvaDesign()} disabled={exportingCanva}>
+                    {exportingCanva ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
+                    Export Canva
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Uploaded local images can be previewed here, but AI/Canva images are the ones published automatically.</p>
               </div>
             </div>
+            {imageWorkflowError && (
+              <p className="text-sm text-destructive">{imageWorkflowError}</p>
+            )}
+            {generatedMediaUrl && (
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Ready to publish{imageSource ? ` from ${imageSource === "canva" ? "Canva" : "AI"}` : ""}.
+                </p>
+              </div>
+            )}
             {variants.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Suggested variants</h4>
+                <h4 className="text-sm font-medium">Generated media</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {variants.map((url, i) => (
-                    <div
+                    <button
+                      type="button"
                       key={i}
+                      onClick={() => setUploadedImage(url)}
                       className="aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
                     >
                       <img src={url} alt={`Variant ${i + 1}`} className="w-full h-full object-cover" />
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1253,6 +1380,20 @@ export default function SocialMedia() {
           </CardContent>
         </Card>
       </m.div>
+
+      {generatedMediaUrl && (
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
+          <PublishComposer
+            initialCaption={postContent}
+            mediaUrls={[generatedMediaUrl]}
+            onPublished={() => {
+              setGeneratedMediaUrl(null);
+              setVariants([]);
+              setImageSource(null);
+            }}
+          />
+        </m.div>
+      )}
 
       {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
         <div className="flex items-center gap-2">

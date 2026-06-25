@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
@@ -58,6 +59,13 @@ type ConfigTestResult = {
   label?: string;
 };
 
+type IntegrationHelp = {
+  title: string;
+  setup: string;
+  find: string;
+  url: string;
+};
+
 const overviewFeatures = [
   { icon: Bell, title: "Notifications", desc: "Manage reminders and alerts" },
   { icon: Palette, title: "Appearance", desc: "Theme and visual settings" },
@@ -68,10 +76,12 @@ const overviewFeatures = [
 const featureRequirements: FeatureRequirement[] = [
   { name: "AI analysis", testTarget: "openai" },
   { name: "Zernio social / reviews integrations", testTarget: "zernio" },
+  { name: "Canva design export", testTarget: "canva" },
   { name: "Google Drive / Gmail / Calendar / Reviews OAuth", testTarget: "google_drive" },
   { name: "Google Ads OAuth / API", testTarget: "google_ads" },
   { name: "Meta Business OAuth / API", testTarget: "meta_business" },
   { name: "Digital Brand PageSpeed audits", testTarget: "pagespeed" },
+  { name: "apiai.me content tools", testTarget: "apiai" },
   { name: "Outlook / Outlook Calendar OAuth", testTarget: "microsoft" },
   { name: "Notion OAuth", testTarget: "notion" },
   { name: "Shopify OAuth", testTarget: "shopify" },
@@ -80,6 +90,175 @@ const featureRequirements: FeatureRequirement[] = [
   { name: "X / Twitter OAuth", testTarget: "x" },
   { name: "Tripadvisor official API", testTarget: "tripadvisor" },
 ];
+
+const HELP_BY_TARGET: Record<string, IntegrationHelp> = {
+  openai: {
+    title: "OpenAI",
+    setup: "Create a project API key and add it as OPENAI_API_KEY.",
+    find: "OpenAI Platform -> API keys -> Create new secret key.",
+    url: "https://platform.openai.com/api-keys",
+  },
+  zernio: {
+    title: "Zernio",
+    setup: "Add ZERNIO_API_KEY for Zernio-backed social accounts, posting, reviews, inbox, and auto-reply.",
+    find: "Zernio dashboard -> Settings -> API Keys.",
+    url: "https://zernio.com",
+  },
+  canva: {
+    title: "Canva Connect",
+    setup: "Create a Canva integration, authorize a user with design:content:read, then add the access token as CANVA_ACCESS_TOKEN.",
+    find: "Canva Developer Portal -> Your integrations. Canva Connect access tokens come from OAuth and expire, so refresh-token support is the production path.",
+    url: "https://www.canva.dev/docs/connect/authentication/",
+  },
+  google_drive: {
+    title: "Google OAuth",
+    setup: "Create a Web OAuth client and add GOOGLE_CLIENT_ID plus GOOGLE_CLIENT_SECRET.",
+    find: "Google Cloud Console -> APIs & Services -> Credentials -> Create credentials -> OAuth client ID.",
+    url: "https://developers.google.com/identity/protocols/oauth2",
+  },
+  google_ads: {
+    title: "Google Ads",
+    setup: "Use Google OAuth credentials plus GOOGLE_ADS_DEVELOPER_TOKEN and the customer id values.",
+    find: "Developer token: Google Ads manager account -> API Center. OAuth client: Google Cloud Credentials.",
+    url: "https://developers.google.com/google-ads/api/docs/api-policy/developer-token",
+  },
+  meta_business: {
+    title: "Meta Business",
+    setup: "Create a Meta app and add META_APP_ID plus META_APP_SECRET, or the FACEBOOK_* aliases.",
+    find: "Meta for Developers -> My Apps -> your app -> Settings -> Basic.",
+    url: "https://developers.facebook.com/docs/development/create-an-app/",
+  },
+  pagespeed: {
+    title: "PageSpeed Insights",
+    setup: "Enable PageSpeed Insights API in Google Cloud and add PAGESPEED_API_KEY.",
+    find: "Google Cloud Console -> APIs & Services -> Credentials -> Create credentials -> API key.",
+    url: "https://developers.google.com/speed/docs/insights/v5/get-started",
+  },
+  apiai: {
+    title: "apiai.me",
+    setup: "Add APIAI_API_KEY to use Content -> Create tools, workflows, and pipelines.",
+    find: "Open your apiai.me account dashboard and copy your API key.",
+    url: "https://apiai.me",
+  },
+  microsoft: {
+    title: "Microsoft Outlook",
+    setup: "Register an app in Microsoft Entra and add MICROSOFT_CLIENT_ID plus MICROSOFT_CLIENT_SECRET.",
+    find: "Microsoft Entra admin center -> App registrations -> your app -> Overview / Certificates & secrets.",
+    url: "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app",
+  },
+  notion: {
+    title: "Notion",
+    setup: "Create a public Notion integration and add NOTION_CLIENT_ID, NOTION_CLIENT_SECRET, and NOTION_APP_URL.",
+    find: "Notion integrations -> your public integration -> OAuth / Distribution settings.",
+    url: "https://developers.notion.com/guides/get-started/authorization",
+  },
+  shopify: {
+    title: "Shopify",
+    setup: "Create a Shopify app and add SHOPIFY_API_KEY, SHOPIFY_API_SECRET, and a public SHOPIFY_APP_URL when needed.",
+    find: "Shopify Partner/Dev Dashboard -> Apps -> your app -> API credentials.",
+    url: "https://shopify.dev/docs/apps/build/authentication-authorization/client-secrets",
+  },
+  instagram_direct: {
+    title: "Instagram Direct Fallback",
+    setup: "Only needed without Zernio. Create a Meta app and add INSTAGRAM_CLIENT_ID plus INSTAGRAM_CLIENT_SECRET.",
+    find: "Meta for Developers -> My Apps -> your app -> Instagram product / Settings -> Basic.",
+    url: "https://developers.facebook.com/docs/development/create-an-app/",
+  },
+  tiktok: {
+    title: "TikTok",
+    setup: "Create a TikTok developer app and add TIKTOK_CLIENT_KEY plus TIKTOK_CLIENT_SECRET.",
+    find: "TikTok for Developers -> Manage apps -> your app.",
+    url: "https://developers.tiktok.com/doc/login-kit-web/",
+  },
+  x: {
+    title: "X / Twitter",
+    setup: "Create an X developer app with OAuth 2.0 user auth and add X_CLIENT_ID plus X_CLIENT_SECRET.",
+    find: "X Developer Portal -> Projects & Apps -> your app -> Keys and tokens / User authentication settings.",
+    url: "https://docs.x.com/fundamentals/authentication/oauth-2-0/overview",
+  },
+  tripadvisor: {
+    title: "Tripadvisor",
+    setup: "Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID, globally or per profile.",
+    find: "API key from Tripadvisor developer access. Location ID is the numeric d-id in the public Tripadvisor page URL.",
+    url: "https://www.tripadvisor.com/developers",
+  },
+};
+
+const KEY_TO_TARGET: Record<string, string> = {
+  OPENAI_API_KEY: "openai",
+  ZERNIO_API_KEY: "zernio",
+  LATE_API_KEY: "zernio",
+  CANVA_ACCESS_TOKEN: "canva",
+  GOOGLE_CLIENT_ID: "google_drive",
+  GOOGLE_CLIENT_SECRET: "google_drive",
+  GOOGLE_ADS_DEVELOPER_TOKEN: "google_ads",
+  GOOGLE_ADS_CUSTOMER_ID: "google_ads",
+  GOOGLE_ADS_LOGIN_CUSTOMER_ID: "google_ads",
+  META_APP_ID: "meta_business",
+  META_APP_SECRET: "meta_business",
+  FACEBOOK_CLIENT_ID: "meta_business",
+  FACEBOOK_CLIENT_SECRET: "meta_business",
+  FACEBOOK_APP_ID: "meta_business",
+  FACEBOOK_APP_SECRET: "meta_business",
+  PAGESPEED_API_KEY: "pagespeed",
+  GOOGLE_PAGESPEED_API_KEY: "pagespeed",
+  MICROSOFT_CLIENT_ID: "microsoft",
+  MICROSOFT_CLIENT_SECRET: "microsoft",
+  NOTION_CLIENT_ID: "notion",
+  NOTION_CLIENT_SECRET: "notion",
+  NOTION_APP_URL: "notion",
+  SHOPIFY_API_KEY: "shopify",
+  SHOPIFY_API_SECRET: "shopify",
+  SHOPIFY_APP_URL: "shopify",
+  INSTAGRAM_CLIENT_ID: "instagram_direct",
+  INSTAGRAM_CLIENT_SECRET: "instagram_direct",
+  TIKTOK_CLIENT_KEY: "tiktok",
+  TIKTOK_CLIENT_SECRET: "tiktok",
+  X_CLIENT_ID: "x",
+  X_CLIENT_SECRET: "x",
+  TRIPADVISOR_API_KEY: "tripadvisor",
+  TRIPADVISOR_LOCATION_ID: "tripadvisor",
+  APIAI_API_KEY: "apiai",
+};
+
+const EXTRA_HELP_BY_KEY: Record<string, IntegrationHelp> = {
+  APIAI_API_KEY: {
+    title: "apiai.me",
+    setup: "Add APIAI_API_KEY to use Content -> Create tools, workflows, and pipelines.",
+    find: "Open your apiai.me account dashboard and copy your API key.",
+    url: "https://apiai.me",
+  },
+};
+
+function helpForKey(key: string): IntegrationHelp | null {
+  return EXTRA_HELP_BY_KEY[key] ?? HELP_BY_TARGET[KEY_TO_TARGET[key] || ""] ?? null;
+}
+
+function IntegrationHelpIcon({ help }: { help: IntegrationHelp | null }) {
+  if (!help) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label={`Help for ${help.title}`}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-sm space-y-2" side="top" align="start">
+        <p className="text-xs font-medium text-foreground">{help.title}</p>
+        <p className="text-xs">{help.setup}</p>
+        <p className="text-xs">{help.find}</p>
+        <a href={help.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs underline">
+          Open docs
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function StatusBadge({ configured }: { configured: boolean }) {
   return configured ? (
@@ -359,7 +538,10 @@ export default function PreferencesPage() {
                           <div key={entry.key} className="rounded-lg border border-border p-4 space-y-3">
                             <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,300px)_minmax(0,1fr)] gap-3 items-start">
                               <div className="space-y-1">
-                                <Label htmlFor={`secret-${entry.key}`}>{entry.label}</Label>
+                                <div className="flex items-center gap-1.5">
+                                  <Label htmlFor={`secret-${entry.key}`}>{entry.label}</Label>
+                                  <IntegrationHelpIcon help={helpForKey(entry.key)} />
+                                </div>
                                 <p className="text-[11px] text-muted-foreground font-mono">{entry.key}</p>
                               </div>
                               <div className="space-y-1.5">
@@ -446,7 +628,10 @@ export default function PreferencesPage() {
                         key={entry.key}
                         className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
                       >
-                        <span className="text-xs font-mono truncate">{entry.key}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="text-xs font-mono truncate">{entry.key}</span>
+                          <IntegrationHelpIcon help={helpForKey(entry.key)} />
+                        </span>
                         <StatusBadge configured={entry.configured} />
                       </div>
                     ))}
@@ -473,7 +658,10 @@ export default function PreferencesPage() {
                     return (
                       <div key={feature.name} className="rounded-lg border border-border bg-background p-3 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-medium">{feature.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium">{feature.name}</p>
+                            <IntegrationHelpIcon help={HELP_BY_TARGET[target] ?? null} />
+                          </div>
                           <Button
                             variant="outline"
                             size="sm"
