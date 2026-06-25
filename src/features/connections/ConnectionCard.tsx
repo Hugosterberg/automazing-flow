@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { CheckSquare2, ExternalLink, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
@@ -50,6 +50,8 @@ interface Props {
   onViewDetails?: (connection: Connection) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  manuallyConnected?: boolean;
+  onManualConnectionChange?: (platform: ConnectionCatalogEntry["platform"], connected: boolean) => void;
 }
 
 /**
@@ -72,6 +74,8 @@ export function ConnectionCard({
   onViewDetails,
   selectedIds,
   onToggleSelect,
+  manuallyConnected = false,
+  onManualConnectionChange,
 }: Props) {
   const { toast } = useToast();
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
@@ -82,7 +86,6 @@ export function ConnectionCard({
   const [canvaToken, setCanvaToken] = useState("");
   const [canvaSaveError, setCanvaSaveError] = useState<string | null>(null);
   const [savingCanvaToken, setSavingCanvaToken] = useState(false);
-  const [canvaSecretStatus, setCanvaSecretStatus] = useState<"unknown" | "configured" | "missing">("unknown");
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
@@ -92,31 +95,8 @@ export function ConnectionCard({
   const connectConfig = getConnectConfig(entry.platform);
   const pathOptions = getConnectionPathOptions(entry.platform);
   const status = useMemo(() => aggregateStatus(rows), [rows]);
-  const displayStatus = entry.platform === "canva" && canvaSecretStatus === "configured" ? "connected" : status;
+  const displayStatus = manuallyConnected ? "connected" : status;
   const reconnectNeeded = status === "reconnect_required";
-
-  useEffect(() => {
-    if (entry.platform !== "canva") return;
-    let cancelled = false;
-    async function loadCanvaStatus() {
-      try {
-        const res = await fetchWithTimeout(
-          apiUrl(`/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`),
-          { credentials: "include" }
-        );
-        const payload = await res.json().catch(() => ({}));
-        const entries = Array.isArray(payload.entries) ? payload.entries : [];
-        const canva = entries.find((item: { key?: string }) => item.key === "CANVA_ACCESS_TOKEN");
-        if (!cancelled) setCanvaSecretStatus(canva?.configured ? "configured" : "missing");
-      } catch {
-        if (!cancelled) setCanvaSecretStatus("unknown");
-      }
-    }
-    void loadCanvaStatus();
-    return () => {
-      cancelled = true;
-    };
-  }, [businessProfileId, entry.platform]);
 
   function startConnect(
     provider?: "zernio" | "official",
@@ -175,7 +155,7 @@ export function ConnectionCard({
       if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not save Canva token."));
       setCanvaDialogOpen(false);
       setCanvaToken("");
-      setCanvaSecretStatus("configured");
+      onManualConnectionChange?.(entry.platform, true);
       toast({
         title: "Canva connected",
         description: "The token was saved for this business profile. You can now export Canva designs in Social Media.",
@@ -236,7 +216,7 @@ export function ConnectionCard({
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
-        {entry.platform === "canva" && canvaSecretStatus === "configured" ? (
+        {entry.platform === "canva" && manuallyConnected ? (
           <div className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-xs text-success">
             Ready for Canva exports on this business profile.
           </div>

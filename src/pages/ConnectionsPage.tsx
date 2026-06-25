@@ -37,6 +37,9 @@ import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 
 function normalizeWebsiteUrl(value: string): string {
@@ -99,6 +102,7 @@ export default function ConnectionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDisconnecting, setIsBulkDisconnecting] = useState(false);
+  const [manuallyConnectedPlatforms, setManuallyConnectedPlatforms] = useState<Set<AccountPlatform>>(new Set());
 
   // Details drawer wiring. We stash the id (not the object) so the drawer
   // always reads the freshest row from the query cache.
@@ -119,6 +123,34 @@ export default function ConnectionsPage() {
   useEffect(() => {
     setWebsiteInput(legacy.activeProfile?.website ?? "");
   }, [legacy.activeProfile?.website, businessProfileId]);
+
+  useEffect(() => {
+    if (!businessProfileId) {
+      setManuallyConnectedPlatforms(new Set());
+      return;
+    }
+    let cancelled = false;
+    async function loadManualConnections() {
+      try {
+        const res = await fetchWithTimeout(
+          apiUrl(`/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId!)}`),
+          { credentials: "include" }
+        );
+        const payload = await res.json().catch(() => ({}));
+        const entries = Array.isArray(payload.entries) ? payload.entries : [];
+        const next = new Set<AccountPlatform>();
+        const canva = entries.find((item: { key?: string; configured?: boolean }) => item.key === "CANVA_ACCESS_TOKEN");
+        if (canva?.configured) next.add("canva");
+        if (!cancelled) setManuallyConnectedPlatforms(next);
+      } catch {
+        if (!cancelled) setManuallyConnectedPlatforms(new Set());
+      }
+    }
+    void loadManualConnections();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessProfileId]);
 
   const handleReconcileDone = useCallback(
     (result: { updated?: number; error?: string }) => {
@@ -179,6 +211,15 @@ export default function ConnectionsPage() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  }
+
+  function handleManualConnectionChange(platform: AccountPlatform, connected: boolean) {
+    setManuallyConnectedPlatforms((current) => {
+      const next = new Set(current);
+      if (connected) next.add(platform);
+      else next.delete(platform);
       return next;
     });
   }
@@ -252,7 +293,7 @@ export default function ConnectionsPage() {
     );
   }
 
-  const activeCount = connections.length;
+  const activeCount = connections.length + manuallyConnectedPlatforms.size;
   const effectiveFilter = statusFilter === "all" ? null : statusFilter;
 
   const summary = isLoading
@@ -466,6 +507,8 @@ export default function ConnectionsPage() {
           searchQuery={searchQuery}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+          manuallyConnectedPlatforms={manuallyConnectedPlatforms}
+          onManualConnectionChange={handleManualConnectionChange}
         />
       )}
 

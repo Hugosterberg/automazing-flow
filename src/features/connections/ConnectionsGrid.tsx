@@ -1,4 +1,5 @@
 import { AREA_LABELS, AREA_ORDER, getCatalogByArea } from "@/lib/connectionCatalog";
+import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 import { ConnectionCard } from "./ConnectionCard";
 import { aggregateStatus, type ConnectionStatus } from "./connectionStatus";
@@ -17,6 +18,8 @@ interface Props {
   searchQuery?: string;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  manuallyConnectedPlatforms?: Set<AccountPlatform>;
+  onManualConnectionChange?: (platform: AccountPlatform, connected: boolean) => void;
 }
 
 /**
@@ -37,9 +40,20 @@ export function ConnectionsGrid({
   searchQuery = "",
   selectedIds,
   onToggleSelect,
+  manuallyConnectedPlatforms = new Set<AccountPlatform>(),
+  onManualConnectionChange,
 }: Props) {
   const byArea = getCatalogByArea();
   const query = searchQuery.trim().toLowerCase();
+
+  function entryStatus(platform: AccountPlatform): ConnectionStatus {
+    if (manuallyConnectedPlatforms.has(platform)) return "connected";
+    return aggregateStatus(connections.filter((c) => c.platform === platform));
+  }
+
+  function entryIsLinked(platform: AccountPlatform): boolean {
+    return manuallyConnectedPlatforms.has(platform) || connections.some((c) => c.platform === platform);
+  }
 
   return (
     <div className="space-y-8">
@@ -48,10 +62,7 @@ export function ConnectionsGrid({
         if (!entries.length) return null;
 
         let visible = statusFilter
-          ? entries.filter((e) => {
-              const rows = connections.filter((c) => c.platform === e.platform);
-              return aggregateStatus(rows) === statusFilter;
-            })
+          ? entries.filter((e) => entryStatus(e.platform) === statusFilter)
           : entries;
 
         // Search: match on platform label or connected account usernames
@@ -81,9 +92,7 @@ export function ConnectionsGrid({
               </h2>
               <span className="text-[11px] text-muted-foreground tabular-nums">
                 {
-                  entries.filter((e) =>
-                    connections.some((c) => c.platform === e.platform)
-                  ).length
+                  entries.filter((e) => entryIsLinked(e.platform)).length
                 }{" "}
                 / {entries.length} linked
               </span>
@@ -103,6 +112,8 @@ export function ConnectionsGrid({
                   onViewDetails={onViewDetails}
                   selectedIds={selectedIds}
                   onToggleSelect={onToggleSelect}
+                  manuallyConnected={manuallyConnectedPlatforms.has(entry.platform)}
+                  onManualConnectionChange={onManualConnectionChange}
                 />
               ))}
             </div>
