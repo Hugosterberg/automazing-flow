@@ -38,6 +38,7 @@ interface UnifiedMessage {
   conversationId?: string;
   providerMessageId?: string;
   threadId?: string;
+  profileId?: string | null;
 }
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
@@ -363,7 +364,7 @@ export default function MessagesPage() {
           conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
           messageId: selectedMessage.kind === "email" ? messageId : undefined,
           message: replyDraft.trim(),
-          business_profile_id: activeProfileId,
+          business_profile_id: selectedMessage.profileId || activeProfileId,
         }),
       });
       const payload = await res.json().catch(() => ({}));

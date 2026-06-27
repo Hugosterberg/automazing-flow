@@ -119,9 +119,12 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
   },
   canva: {
     label: "Canva Connect",
-    required: ["CANVA_ACCESS_TOKEN"],
+    requiredAny: [
+      ["CANVA_ACCESS_TOKEN", "CANVA_CLIENT_ID"],
+      ["CANVA_ACCESS_TOKEN", "CANVA_CLIENT_SECRET"],
+    ],
     message:
-      "Required to export Canva designs into publishable social media images. The token needs design:content:read scope.",
+      "Required to export Canva designs. Prefer CANVA_CLIENT_ID + CANVA_CLIENT_SECRET for OAuth login; CANVA_ACCESS_TOKEN remains a legacy fallback.",
   },
   google_drive: {
     label: "Google Drive OAuth",

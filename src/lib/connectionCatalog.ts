@@ -207,12 +207,12 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     platform: "canva",
     label: "Canva",
     area: "content",
-    pageHref: "/preferences",
-    pageName: "Preferences",
+    pageHref: "/connections",
+    pageName: "Connections",
     connectSteps:
-      "Open Preferences -> Integrations and add CANVA_ACCESS_TOKEN. Then use Social Media -> Create post image -> Export Canva.",
+      "Connect with Canva OAuth, then use Social Media -> Create post image -> Export Canva.",
     serverNeeds:
-      "CANVA_ACCESS_TOKEN from Canva Connect OAuth with design:content:read scope. Full in-app OAuth is not implemented yet.",
+      "CANVA_CLIENT_ID + CANVA_CLIENT_SECRET from a Canva Connect integration. CANVA_ACCESS_TOKEN is still supported as a legacy fallback.",
   },
 ];
 

@@ -1,15 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, ExternalLink, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
+import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiErrorMessage } from "@/lib/apiError";
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,17 +71,11 @@ export function ConnectionCard({
   selectedIds,
   onToggleSelect,
   manuallyConnected = false,
-  onManualConnectionChange,
 }: Props) {
-  const { toast } = useToast();
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopifyShop, setShopifyShop] = useState("");
   const [shopifyShopError, setShopifyShopError] = useState<string | null>(null);
-  const [canvaDialogOpen, setCanvaDialogOpen] = useState(false);
-  const [canvaToken, setCanvaToken] = useState("");
-  const [canvaSaveError, setCanvaSaveError] = useState<string | null>(null);
-  const [savingCanvaToken, setSavingCanvaToken] = useState(false);
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
@@ -125,46 +115,6 @@ export function ConnectionCard({
     setShopifyShop("");
     setShopifyShopError(null);
     startConnect(undefined, { shop });
-  }
-
-  function startCanvaConnect() {
-    setCanvaToken("");
-    setCanvaSaveError(null);
-    setCanvaDialogOpen(true);
-  }
-
-  async function submitCanvaConnect() {
-    const token = canvaToken.trim();
-    if (!token) {
-      setCanvaSaveError("Paste a Canva Connect access token first.");
-      return;
-    }
-    setSavingCanvaToken(true);
-    setCanvaSaveError(null);
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/settings/secrets"), {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          business_profile_id: businessProfileId,
-          entries: [{ key: "CANVA_ACCESS_TOKEN", value: token }],
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not save Canva token."));
-      setCanvaDialogOpen(false);
-      setCanvaToken("");
-      onManualConnectionChange?.(entry.platform, true);
-      toast({
-        title: "Canva connected",
-        description: "The token was saved for this business profile. You can now export Canva designs in Social Media.",
-      });
-    } catch (error) {
-      setCanvaSaveError(error instanceof Error ? error.message : "Could not save Canva token.");
-    } finally {
-      setSavingCanvaToken(false);
-    }
   }
 
   const lastSync = useMemo(() => {
@@ -368,25 +318,12 @@ export function ConnectionCard({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => {
-                if (entry.platform === "canva") {
-                  startCanvaConnect();
-                  return;
-                }
-              }}
-              asChild={entry.platform !== "canva"}
+              asChild
             >
-              {entry.platform === "canva" ? (
-                <>
-                  <PrimaryIcon className="h-3.5 w-3.5" />
-                  Connect manually
-                </>
-              ) : (
-                <Link to={entry.pageHref}>
-                  <PrimaryIcon className="h-3.5 w-3.5" />
-                  Setup in {entry.pageName}
-                </Link>
-              )}
+              <Link to={entry.pageHref}>
+                <PrimaryIcon className="h-3.5 w-3.5" />
+                Setup in {entry.pageName}
+              </Link>
             </Button>
           )}
           {entry.platform === "canva" ? (
@@ -458,57 +395,6 @@ export function ConnectionCard({
           </Button>
           <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
             Continue
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <Dialog open={canvaDialogOpen} onOpenChange={setCanvaDialogOpen}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Connect Canva</DialogTitle>
-          <DialogDescription>
-            Save a Canva Connect access token for this profile. It is used to export a design into a publishable image.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground space-y-2">
-            <p>1. Create or open a Canva Developer integration.</p>
-            <p>2. Authorize it with <code>design:content:read</code>.</p>
-            <p>3. Paste the OAuth access token here.</p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://www.canva.dev/docs/connect/authentication/" target="_blank" rel="noreferrer">
-                Canva docs
-                <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-              </a>
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="canva-access-token">Canva access token</Label>
-            <Input
-              id="canva-access-token"
-              type="password"
-              value={canvaToken}
-              onChange={(event) => {
-                setCanvaToken(event.target.value);
-                setCanvaSaveError(null);
-              }}
-              onKeyDown={(event) => event.key === "Enter" && void submitCanvaConnect()}
-              placeholder="Paste CANVA_ACCESS_TOKEN"
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Canva access tokens expire. If exports stop working, generate or refresh the token and save it again.
-            </p>
-            {canvaSaveError ? <p className="text-xs text-destructive">{canvaSaveError}</p> : null}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setCanvaDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => void submitCanvaConnect()} disabled={!canvaToken.trim() || savingCanvaToken}>
-            {savingCanvaToken ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-            Save token
           </Button>
         </DialogFooter>
       </DialogContent>

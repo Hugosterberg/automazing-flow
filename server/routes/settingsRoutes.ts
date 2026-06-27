@@ -84,7 +84,7 @@ const TENANT_SECRET_CATALOG: TenantSecretDef[] = [
     key: "CANVA_ACCESS_TOKEN",
     label: "Canva Connect access token",
     description:
-      "Optional. Canva Connect OAuth token for exporting designs as publishable images for this profile.",
+      "Optional legacy fallback. Prefer connecting Canva with the OAuth button; this token is used only when no Canva account is connected.",
     inputType: "password",
   },
 ];

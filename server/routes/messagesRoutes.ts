@@ -64,6 +64,7 @@ type UnifiedMessage = {
   conversationId?: string;
   providerMessageId?: string;
   threadId?: string;
+  profileId?: string | null;
 };
 
 const SOCIAL_MESSAGE_PLATFORMS = ["instagram", "facebook", "whatsapp"] as const;
@@ -101,6 +102,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       zernioAccountId: string;
       platform: string;
       label: string;
+      profileId: string | null;
     }> = [];
 
     // Historical OAuth flows created a new token entry per reconnect, so the
@@ -131,6 +133,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
           zernioAccountId,
           platform,
           label: String(stored.username || stored.displayName || platform),
+          profileId: stored.profileId ? String(stored.profileId) : null,
         });
       }
 
@@ -183,6 +186,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   isUnread: Boolean(m.isUnread),
                   providerMessageId: mid,
                   threadId: m.threadId ? String(m.threadId) : undefined,
+                  profileId: stored.profileId ? String(stored.profileId) : null,
                 });
               }
               return;
@@ -222,6 +226,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
                   providerMessageId: mid,
+                  profileId: stored.profileId ? String(stored.profileId) : null,
                 });
               }
             }
@@ -367,6 +372,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
             isUnread: zernioConversationUnreadCount(c) > 0,
             externalUrl: c.url ? String(c.url) : undefined,
             conversationId: cid || undefined,
+            profileId: linkedAccount.profileId,
           });
         }
       } catch {
@@ -480,9 +486,6 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     if (!accountId || !message) {
       return res.status(400).json({ error: "accountId and message are required" });
     }
-    if (!businessProfileId) {
-      return res.status(400).json({ error: "business_profile_id is required" });
-    }
 
     const stored = await tokenStore.get(accountId);
     if (!stored) {
@@ -495,7 +498,17 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     if (access.migrate) {
       await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
     }
-    if (!accountInBusinessProfile(stored, businessProfileId)) {
+
+    // Replies are tenant-scoped. The client normally sends the active
+    // business_profile_id, but we also accept the stored account profile as a
+    // fallback so an inbox row can still reply from its own mailbox if the UI
+    // loses active-profile state during a refresh/OAuth transition.
+    const effectiveBusinessProfileId =
+      businessProfileId || (stored.profileId ? String(stored.profileId) : null);
+    if (!effectiveBusinessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+    if (!accountInBusinessProfile(stored, effectiveBusinessProfileId)) {
       return res.status(404).json({ error: "Account not connected for this business profile" });
     }
 

@@ -33,6 +33,8 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Outlook-kopplingen saknar Microsoft OAuth-konfiguration. Kontrollera MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET och callback-URL:en i Azure/Entra.",
   google_drive_not_configured:
     "Google Drive-kopplingen saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och Drive-callbacken i Google Cloud.",
+  canva_not_configured:
+    "Canva-kopplingen saknar Canva Connect-konfiguration. Kontrollera CANVA_CLIENT_ID, CANVA_CLIENT_SECRET och callback-URL:en i Canva Developer Portal.",
   google_calendar_not_configured:
     "Google Calendar saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och Calendar-callbacken i Google Cloud.",
   outlook_calendar_not_configured:

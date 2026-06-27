@@ -25,7 +25,7 @@ function sectionForPlatform(platform: AccountPlatform): AccountSection {
   if (platform === "gmail" || platform === "outlook") return "messages";
   if (platform === "google_calendar" || platform === "outlook_calendar") return "calendar";
   if (platform === "google_reviews" || platform === "tripadvisor") return "reviews";
-  if (platform === "google_drive") return "content";
+  if (platform === "google_drive" || platform === "canva") return "content";
   if (platform === "google_ads" || platform === "meta_business") return "marketing";
   return "social-media";
 }

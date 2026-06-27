@@ -7,7 +7,7 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
-import { exportCanvaDesignImage } from "../providers/canva.ts";
+import { exportCanvaDesignImage, refreshCanvaAccessToken } from "../providers/canva.ts";
 import { publicMediaUrl, readGeneratedMedia, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
 import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
@@ -24,6 +24,7 @@ interface ContentRoutesDeps {
   tokenStore: {
     get: (accountId: string) => Promise<StoredAccount | null | undefined>;
     set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
+    entries: () => Promise<Array<[string, StoredAccount]>>;
   };
   getStoredAccountAccess: (
     stored: StoredAccount | null | undefined,
@@ -46,6 +47,68 @@ const ZERNIO_POST_PLATFORM: Record<string, string> = {
 
 export function registerContentRoutes(app, deps: ContentRoutesDeps) {
   const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio, secretResolver } = deps;
+
+  function canvaTokenFreshEnough(stored: StoredAccount): boolean {
+    const raw = String(stored.expiresAt || "").trim();
+    if (!raw) return true;
+    const expiresAt = new Date(raw).getTime();
+    return Number.isFinite(expiresAt) && expiresAt - Date.now() > 60_000;
+  }
+
+  async function refreshStoredCanvaToken(accountId: string, stored: StoredAccount): Promise<string | null> {
+    const clientId = String(process.env.CANVA_CLIENT_ID || "").trim();
+    const clientSecret = String(process.env.CANVA_CLIENT_SECRET || "").trim();
+    const refreshToken = String(stored.refreshToken || "").trim();
+    if (!clientId || !clientSecret || !refreshToken) return null;
+
+    const refreshed = await refreshCanvaAccessToken({ clientId, clientSecret, refreshToken });
+    if (!refreshed.ok) return null;
+    const expiresAt = refreshed.expiresIn
+      ? new Date(Date.now() + refreshed.expiresIn * 1000).toISOString()
+      : stored.expiresAt;
+    await tokenStore.set(accountId, {
+      ...stored,
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken || refreshToken,
+      expiresAt,
+      ...(refreshed.scope ? { scope: refreshed.scope } : {}),
+    });
+    return refreshed.accessToken;
+  }
+
+  async function resolveCanvaOAuthToken(options: {
+    userId: string;
+    businessProfileId: string | null;
+  }): Promise<{
+    token: string | null;
+    accountId?: string;
+    stored?: StoredAccount;
+    source: "oauth" | "secret" | "none";
+  }> {
+    const entries = await tokenStore.entries();
+    for (const [accountId, stored] of entries) {
+      if (String(stored.platform || "") !== "canva") continue;
+      const access = getStoredAccountAccess(stored, options.userId);
+      if (!access.allowed) continue;
+      if (access.migrate) {
+        await tokenStore.set(accountId, { ...stored, ownerUserId: options.userId });
+      }
+      if (!accountInBusinessProfile(stored, options.businessProfileId)) continue;
+
+      if (canvaTokenFreshEnough(stored) && stored.accessToken) {
+        return { token: String(stored.accessToken), accountId, stored, source: "oauth" };
+      }
+      const refreshed = await refreshStoredCanvaToken(accountId, stored);
+      if (refreshed) return { token: refreshed, accountId, stored, source: "oauth" };
+    }
+
+    const secretToken = String(
+      (secretResolver ? await secretResolver.resolve(options.businessProfileId, "CANVA_ACCESS_TOKEN") : process.env.CANVA_ACCESS_TOKEN) ||
+        process.env.CANVA_ACCESS_TOKEN ||
+        ""
+    ).trim();
+    return secretToken ? { token: secretToken, source: "secret" } : { token: null, source: "none" };
+  }
 
   app.get("/api/content/media/:id", (req, res) => {
     const id = String(req.params?.id || "");
@@ -77,26 +140,40 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
       return res.status(400).json({ error: "designId is required" });
     }
 
-    const accessToken = String(
-      (secretResolver ? await secretResolver.resolve(businessProfileId, "CANVA_ACCESS_TOKEN") : process.env.CANVA_ACCESS_TOKEN) ||
-        process.env.CANVA_ACCESS_TOKEN ||
-        ""
-    ).trim();
-    if (!accessToken) {
+    const tokenResolution = await resolveCanvaOAuthToken({ userId, businessProfileId });
+    if (!tokenResolution.token) {
       return res.status(400).json({
         error: "canva_not_configured",
         message:
-          "Add CANVA_ACCESS_TOKEN under Preferences -> API keys or .env.local. Canva Connect uses OAuth access tokens with design:content:read.",
+          "Connect Canva from Connections, or add CANVA_ACCESS_TOKEN under Preferences -> API keys or .env.local. Canva Connect needs design:content:read.",
       });
     }
 
-    const result = await exportCanvaDesignImage({
-      accessToken,
+    let result = await exportCanvaDesignImage({
+      accessToken: tokenResolution.token,
       designId,
       format: body.format === "jpg" ? "jpg" : "png",
       width: Number.isFinite(Number(body.width)) ? Number(body.width) : undefined,
       height: Number.isFinite(Number(body.height)) ? Number(body.height) : undefined,
     });
+    if (
+      result.ok === false &&
+      result.status === 401 &&
+      tokenResolution.source === "oauth" &&
+      tokenResolution.accountId &&
+      tokenResolution.stored
+    ) {
+      const refreshed = await refreshStoredCanvaToken(tokenResolution.accountId, tokenResolution.stored);
+      if (refreshed) {
+        result = await exportCanvaDesignImage({
+          accessToken: refreshed,
+          designId,
+          format: body.format === "jpg" ? "jpg" : "png",
+          width: Number.isFinite(Number(body.width)) ? Number(body.width) : undefined,
+          height: Number.isFinite(Number(body.height)) ? Number(body.height) : undefined,
+        });
+      }
+    }
     if (result.ok === false) {
       return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
         error: "canva_export_failed",

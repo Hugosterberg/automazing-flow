@@ -106,8 +106,8 @@ const HELP_BY_TARGET: Record<string, IntegrationHelp> = {
   },
   canva: {
     title: "Canva Connect",
-    setup: "Create a Canva integration, authorize a user with design:content:read, then add the access token as CANVA_ACCESS_TOKEN.",
-    find: "Canva Developer Portal -> Your integrations. Canva Connect access tokens come from OAuth and expire, so refresh-token support is the production path.",
+    setup: "Create a Canva Connect integration and add CANVA_CLIENT_ID plus CANVA_CLIENT_SECRET. Users then connect with the Canva OAuth button.",
+    find: "Canva Developer Portal -> Your integrations -> OAuth settings. Add the app callback URL and enable the scopes used for design export.",
     url: "https://www.canva.dev/docs/connect/authentication/",
   },
   google_drive: {
@@ -189,6 +189,8 @@ const KEY_TO_TARGET: Record<string, string> = {
   ZERNIO_API_KEY: "zernio",
   LATE_API_KEY: "zernio",
   CANVA_ACCESS_TOKEN: "canva",
+  CANVA_CLIENT_ID: "canva",
+  CANVA_CLIENT_SECRET: "canva",
   GOOGLE_CLIENT_ID: "google_drive",
   GOOGLE_CLIENT_SECRET: "google_drive",
   GOOGLE_ADS_DEVELOPER_TOKEN: "google_ads",

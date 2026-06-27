@@ -1,9 +1,21 @@
 const CANVA_API_BASE = "https://api.canva.com/rest/v1";
+const CANVA_TOKEN_URL = "https://api.canva.com/rest/v1/oauth/token";
 
 export type CanvaExportFormat = "png" | "jpg";
 
 export type CanvaExportResult =
   | { ok: true; url: string; jobId: string; urls: string[] }
+  | { ok: false; status: number; message: string; details?: unknown };
+
+export type CanvaTokenResult =
+  | {
+      ok: true;
+      accessToken: string;
+      refreshToken?: string;
+      expiresIn?: number;
+      scope?: string;
+      tokenType?: string;
+    }
   | { ok: false; status: number; message: string; details?: unknown };
 
 function canvaHeaders(accessToken: string): Record<string, string> {
@@ -15,6 +27,94 @@ function canvaHeaders(accessToken: string): Record<string, string> {
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   return ((await response.json().catch(() => ({}))) || {}) as Record<string, unknown>;
+}
+
+function basicAuth(clientId: string, clientSecret: string): string {
+  return Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64");
+}
+
+async function requestCanvaToken(
+  body: URLSearchParams,
+  clientId: string,
+  clientSecret: string
+): Promise<CanvaTokenResult> {
+  const response = await fetch(CANVA_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basicAuth(clientId, clientSecret)}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const payload = await readJson(response);
+  if (!response.ok || !payload.access_token) {
+    return {
+      ok: false,
+      status: response.status,
+      message: String(payload.error_description || payload.message || payload.error || "Canva token request failed."),
+      details: payload,
+    };
+  }
+  return {
+    ok: true,
+    accessToken: String(payload.access_token),
+    refreshToken: payload.refresh_token ? String(payload.refresh_token) : undefined,
+    expiresIn: Number.isFinite(Number(payload.expires_in)) ? Number(payload.expires_in) : undefined,
+    scope: payload.scope ? String(payload.scope) : undefined,
+    tokenType: payload.token_type ? String(payload.token_type) : undefined,
+  };
+}
+
+export async function exchangeCanvaOAuthCode(options: {
+  clientId: string;
+  clientSecret: string;
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}): Promise<CanvaTokenResult> {
+  return requestCanvaToken(
+    new URLSearchParams({
+      grant_type: "authorization_code",
+      code: options.code,
+      code_verifier: options.codeVerifier,
+      redirect_uri: options.redirectUri,
+    }),
+    options.clientId,
+    options.clientSecret
+  );
+}
+
+export async function refreshCanvaAccessToken(options: {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+}): Promise<CanvaTokenResult> {
+  return requestCanvaToken(
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: options.refreshToken,
+    }),
+    options.clientId,
+    options.clientSecret
+  );
+}
+
+export async function fetchCanvaUserIdentity(accessToken: string): Promise<{
+  id: string | null;
+  username: string;
+}> {
+  const response = await fetch(`${CANVA_API_BASE}/users/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  const payload = await readJson(response);
+  const user = (payload.user || payload) as Record<string, unknown>;
+  const id = String(user.id || user.team_user_id || "").trim() || null;
+  const username =
+    String(user.display_name || user.name || user.email || user.id || "").trim() ||
+    "Canva";
+  return { id, username };
 }
 
 export async function exportCanvaDesignImage(options: {

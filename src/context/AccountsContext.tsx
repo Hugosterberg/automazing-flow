@@ -640,6 +640,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         google_reviews: "google.com/maps",
         tripadvisor: "tripadvisor.com",
         google_drive: "drive.google.com",
+        canva: "canva.com",
         facebook: "facebook.com",
         google_business: "google.com/maps",
         google_ads: "ads.google.com",
