@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Send, CalendarClock, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,10 +22,12 @@ export function PublishComposer({
   initialCaption = "",
   mediaUrls = [],
   onPublished,
+  onCaptionChange,
 }: {
   initialCaption?: string;
   mediaUrls?: string[];
   onPublished?: () => void;
+  onCaptionChange?: (caption: string) => void;
 }) {
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
@@ -49,14 +52,14 @@ export function PublishComposer({
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
 
   useEffect(() => {
-    setCaption((current) => current || initialCaption);
+    setCaption(initialCaption);
   }, [initialCaption]);
 
-  if (postable.length === 0) {
-    return null; // Nothing to publish to yet — keep the page clean.
-  }
-
   async function publish() {
+    if (!businessProfileId) {
+      toast({ title: "Select a business profile first", variant: "destructive" });
+      return;
+    }
     if (selectedIds.length === 0 || !caption.trim()) return;
     if (mode === "schedule" && !scheduledFor) {
       toast({ title: "Pick a date and time", variant: "destructive" });
@@ -82,6 +85,7 @@ export function PublishComposer({
       if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not publish");
       setDone(true);
       setCaption("");
+      onCaptionChange?.("");
       setSelected({});
       onPublished?.();
       toast({
@@ -109,17 +113,29 @@ export function PublishComposer({
         <CardDescription>Write a caption, pick accounts, and publish now or schedule — sent via Zernio.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {postable.length === 0 ? (
+          <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+            Connect a Zernio-backed social account to publish or schedule posts from here.
+            <Button variant="link" size="sm" className="h-auto px-1 py-0 text-sm" asChild>
+              <Link to="/connections">Manage connections</Link>
+            </Button>
+          </div>
+        ) : null}
+
         <Textarea
           value={caption}
           onChange={(e) => {
-            setCaption(e.target.value);
+            const next = e.target.value;
+            setCaption(next);
+            onCaptionChange?.(next);
             setDone(false);
           }}
           placeholder="What do you want to post?"
           className="min-h-[90px]"
         />
 
-        <div className="space-y-2">
+        {postable.length > 0 ? (
+          <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Accounts</Label>
           <div className="flex flex-wrap gap-2">
             {postable.map((a) => {
@@ -135,12 +151,13 @@ export function PublishComposer({
                       : "border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {a.username} · {platformLabel(a.platform)}
+                  {a.username} - {platformLabel(a.platform)}
                 </button>
               );
             })}
           </div>
-        </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
@@ -178,13 +195,21 @@ export function PublishComposer({
               />
             </div>
           )}
+          {mode === "schedule" && mediaUrls.length > 0 ? (
+            <p className="basis-full text-xs text-muted-foreground">
+              AI and Canva media links are temporary. Schedule media posts within 20 hours, or regenerate the media closer to publish time.
+            </p>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             {done && (
               <span className="text-xs text-emerald-600 inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Sent
               </span>
             )}
-            <Button onClick={() => void publish()} disabled={busy || selectedIds.length === 0 || !caption.trim()}>
+            <Button
+              onClick={() => void publish()}
+              disabled={busy || postable.length === 0 || selectedIds.length === 0 || !caption.trim()}
+            >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               {mode === "now" ? "Publish" : "Schedule"}{mediaUrls.length > 0 ? " with media" : ""}
             </Button>

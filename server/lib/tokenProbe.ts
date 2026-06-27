@@ -19,6 +19,8 @@
  * still persist the freshened access token for free.
  */
 
+import { refreshCanvaAccessToken } from "../providers/canva.ts";
+
 type TokenStoreLike = {
   set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
 };
@@ -42,10 +44,11 @@ const GOOGLE_PLATFORMS = new Set([
 ]);
 
 const MICROSOFT_PLATFORMS = new Set(["outlook", "outlook_calendar"]);
+const CANVA_PLATFORMS = new Set(["canva"]);
 
 /** Whether this platform's token can be actively verified by a refresh probe. */
 export function isProbeablePlatform(platform: string): boolean {
-  return GOOGLE_PLATFORMS.has(platform) || MICROSOFT_PLATFORMS.has(platform);
+  return GOOGLE_PLATFORMS.has(platform) || MICROSOFT_PLATFORMS.has(platform) || CANVA_PLATFORMS.has(platform);
 }
 
 /**
@@ -67,6 +70,9 @@ export async function probeOAuthConnection(args: {
   }
   if (MICROSOFT_PLATFORMS.has(platform)) {
     return probeMicrosoft({ accountId, stored, refreshToken, tokenStore });
+  }
+  if (CANVA_PLATFORMS.has(platform)) {
+    return probeCanva({ accountId, stored, refreshToken, tokenStore });
   }
   return { status: "unknown" };
 }
@@ -179,4 +185,52 @@ async function probeMicrosoft(args: {
     return { status: "expired", error: "Microsoft revoked access to this account — reconnect to restore it." };
   }
   return { status: "unknown", error: data.error_description || data.error || "Microsoft token check failed." };
+}
+
+async function probeCanva(args: {
+  accountId: string;
+  stored: Record<string, unknown>;
+  refreshToken: string;
+  tokenStore: TokenStoreLike;
+}): Promise<TokenProbeResult> {
+  const { accountId, stored, refreshToken, tokenStore } = args;
+  const clientId = String(process.env.CANVA_CLIENT_ID || "").trim();
+  const clientSecret = String(process.env.CANVA_CLIENT_SECRET || "").trim();
+  if (!clientId || !clientSecret) {
+    return { status: "unknown", error: "Canva OAuth isn't configured on the server." };
+  }
+  if (!refreshToken) {
+    return { status: "unknown", error: "No refresh token stored for this account." };
+  }
+
+  let result: Awaited<ReturnType<typeof refreshCanvaAccessToken>>;
+  try {
+    result = await refreshCanvaAccessToken({ clientId, clientSecret, refreshToken });
+  } catch {
+    return { status: "unknown", error: "Couldn't reach Canva to verify the connection." };
+  }
+
+  if (result.ok === true) {
+    const expiresAt = result.expiresIn
+      ? new Date(Date.now() + result.expiresIn * 1000).toISOString()
+      : stored.expiresAt;
+    await tokenStore
+      .set(accountId, {
+        ...stored,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken || refreshToken,
+        expiresAt,
+        ...(result.scope ? { scope: result.scope } : {}),
+      })
+      .catch(() => {});
+    return { status: "healthy" };
+  }
+
+  const details = result.details && typeof result.details === "object" ? result.details as Record<string, unknown> : {};
+  const code = String(details.error || "").toLowerCase();
+  const message = String(result.message || details.error_description || "").toLowerCase();
+  if (code === "invalid_grant" || message.includes("invalid_grant") || message.includes("revoked")) {
+    return { status: "expired", error: "Canva revoked access to this account - reconnect to restore exports." };
+  }
+  return { status: "unknown", error: result.message || "Canva token check failed." };
 }

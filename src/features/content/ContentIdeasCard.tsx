@@ -8,6 +8,7 @@ import { fetchContentIdeas, type ContentIdea } from "./contentIdeasClient";
 interface Props {
   businessProfileId: string | null;
   context?: { businessName?: string; description?: string; audience?: string; platform?: string };
+  onUseIdea?: (text: string) => void;
 }
 
 /**
@@ -15,7 +16,7 @@ interface Props {
  * CTA) from the business context, with a heuristic fallback when no OpenAI key
  * is set. Self-contained: collapsed until the user asks for ideas.
  */
-export function ContentIdeasCard({ businessProfileId, context }: Props) {
+export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Props) {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState("");
@@ -40,14 +41,23 @@ export function ContentIdeasCard({ businessProfileId, context }: Props) {
     }
   }
 
+  function ideaText(idea: ContentIdea) {
+    return `${idea.title}\n\nHook: ${idea.hook}\nFormat: ${idea.format}\nCTA: ${idea.cta}`;
+  }
+
   async function copyIdea(idea: ContentIdea) {
-    const text = `${idea.title}\n\nHook: ${idea.hook}\nFormat: ${idea.format}\nCTA: ${idea.cta}`;
+    const text = ideaText(idea);
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Copied");
     } catch {
       toast.error("Couldn't copy");
     }
+  }
+
+  function handleUseIdea(idea: ContentIdea) {
+    onUseIdea?.(ideaText(idea));
+    toast.success("Added to composer");
   }
 
   return (
@@ -81,10 +91,17 @@ export function ContentIdeasCard({ businessProfileId, context }: Props) {
                   {[idea.format, idea.cta].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => void copyIdea(idea)}>
-                <Copy className="h-3.5 w-3.5" />
-                <span className="sr-only">Copy idea</span>
-              </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                {onUseIdea ? (
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => handleUseIdea(idea)}>
+                    Use
+                  </Button>
+                ) : null}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void copyIdea(idea)}>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="sr-only">Copy idea</span>
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>

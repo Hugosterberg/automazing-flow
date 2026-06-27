@@ -4,7 +4,6 @@ import {
   Users,
   FileText,
   Sparkles,
-  Clock,
   Heart,
   Eye,
   ImagePlus,
@@ -514,6 +513,16 @@ export default function SocialMedia() {
     return [...list].sort(sortSocialPageAccounts);
   }, [accounts]);
   const selectedAccount = socialAccounts.find((a) => a.id === selectedAccountId) ?? null;
+  const canvaConnected = useMemo(
+    () =>
+      accounts.some(
+        (account) =>
+          account.platform === "canva" &&
+          !account.disconnectedAt &&
+          (!businessProfileId || account.profileId === businessProfileId)
+      ),
+    [accounts, businessProfileId]
+  );
   const selectedZernioNote =
     (socialData?.stats as { zernioNote?: string } | undefined)?.zernioNote ||
     selectedAccount?.stats?.zernioNote;
@@ -728,7 +737,11 @@ export default function SocialMedia() {
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-        <ContentIdeasCard businessProfileId={businessProfileId} context={contentIdeasContext} />
+        <ContentIdeasCard
+          businessProfileId={businessProfileId}
+          context={contentIdeasContext}
+          onUseIdea={setPostContent}
+        />
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -1374,6 +1387,14 @@ export default function SocialMedia() {
                     Export Canva
                   </Button>
                 </div>
+                {!canvaConnected ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    <span>Canva is not connected with OAuth for this profile.</span>
+                    <Button variant="link" size="sm" className="h-auto px-0 py-0 text-xs" asChild>
+                      <Link to="/connections">Connect Canva</Link>
+                    </Button>
+                  </div>
+                ) : null}
                 <p className="text-xs text-muted-foreground">Uploaded local images can be previewed here, but AI/Canva images are the ones published automatically.</p>
               </div>
             </div>
@@ -1408,19 +1429,18 @@ export default function SocialMedia() {
         </Card>
       </m.div>
 
-      {generatedMediaUrl && (
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
-          <PublishComposer
-            initialCaption={postContent}
-            mediaUrls={[generatedMediaUrl]}
-            onPublished={() => {
-              setGeneratedMediaUrl(null);
-              setVariants([]);
-              setImageSource(null);
-            }}
-          />
-        </m.div>
-      )}
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
+        <PublishComposer
+          initialCaption={postContent}
+          mediaUrls={generatedMediaUrl ? [generatedMediaUrl] : []}
+          onCaptionChange={setPostContent}
+          onPublished={() => {
+            setGeneratedMediaUrl(null);
+            setVariants([]);
+            setImageSource(null);
+          }}
+        />
+      </m.div>
 
       {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
         <div className="flex items-center gap-2">
@@ -1664,33 +1684,7 @@ export default function SocialMedia() {
         </m.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <m.div className="lg:col-span-2" {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
-          <Card className="bg-card border-border glow-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Clock className="h-5 w-5" />
-                Schedule post
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                placeholder="Write your post here..."
-                value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
-                className="bg-secondary border-border min-h-[100px] resize-none"
-              />
-              <div className="flex gap-3">
-                <Input type="date" className="bg-secondary border-border w-auto" />
-                <Input type="time" className="bg-secondary border-border w-auto" />
-                <Button className="glow-sm hover:glow-md transition-shadow duration-300">
-                  Schedule
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </m.div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border glow-border h-full">
             <CardHeader>

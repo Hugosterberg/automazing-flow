@@ -293,7 +293,10 @@ export default function ConnectionsPage() {
     );
   }
 
-  const activeCount = connections.length + manuallyConnectedPlatforms.size;
+  const manualOnlyCount = [...manuallyConnectedPlatforms].filter(
+    (platform) => !connections.some((connection) => connection.platform === platform)
+  ).length;
+  const activeCount = connections.length + manualOnlyCount;
   const effectiveFilter = statusFilter === "all" ? null : statusFilter;
 
   const summary = isLoading

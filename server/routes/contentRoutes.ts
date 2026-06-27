@@ -45,6 +45,22 @@ const ZERNIO_POST_PLATFORM: Record<string, string> = {
   x: "twitter",
 };
 
+const EPHEMERAL_MEDIA_SCHEDULE_LIMIT_MS = 20 * 60 * 60 * 1000;
+
+function isEphemeralGeneratedMediaUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("/api/content/media/") || lower.includes("canva");
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function registerContentRoutes(app, deps: ContentRoutesDeps) {
   const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio, secretResolver } = deps;
 
@@ -233,6 +249,15 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     if (!businessProfileId) {
       return res.status(400).json({ error: "business_profile_id is required" });
     }
+    const scheduledAtMs = scheduledFor ? Date.parse(scheduledFor) : NaN;
+    if (!publishNow) {
+      if (!Number.isFinite(scheduledAtMs)) {
+        return res.status(400).json({ error: "scheduledFor must be a valid date" });
+      }
+      if (scheduledAtMs < Date.now() - 60_000) {
+        return res.status(400).json({ error: "scheduledFor must be in the future" });
+      }
+    }
 
     const platforms: Array<{ platform: string; accountId: string }> = [];
     const skipped: Array<{ accountId: string; reason: string }> = [];
@@ -272,18 +297,36 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
       });
     }
 
-    const mediaItems = Array.isArray(body.mediaUrls)
-      ? body.mediaUrls
-          .map((url) => String(url || "").trim())
-          .filter(Boolean)
-          .map((url) => ({ type: /\.(mp4|mov|webm)$/i.test(url) ? "video" : "image", url }))
-      : undefined;
+    const mediaUrls = Array.isArray(body.mediaUrls)
+      ? body.mediaUrls.map((url) => String(url || "").trim()).filter(Boolean).slice(0, 10)
+      : [];
+    if (mediaUrls.some((url) => !isHttpUrl(url))) {
+      return res.status(400).json({
+        error: "invalid_media_url",
+        message: "Every media URL must be a valid http(s) URL.",
+      });
+    }
+    if (
+      !publishNow &&
+      mediaUrls.some(isEphemeralGeneratedMediaUrl) &&
+      scheduledAtMs - Date.now() > EPHEMERAL_MEDIA_SCHEDULE_LIMIT_MS
+    ) {
+      return res.status(400).json({
+        error: "media_url_expires_before_schedule",
+        message:
+          "Generated AI/Canva media URLs are temporary. Publish now or schedule within 20 hours, then regenerate/export fresh media for later posts.",
+      });
+    }
+    const mediaItems =
+      mediaUrls.length > 0
+        ? mediaUrls.map((url) => ({ type: /\.(mp4|mov|webm)(\?|#|$)/i.test(url) ? "video" : "image", url }))
+        : undefined;
 
     const result = await zernio.createPost({
       content,
       platforms,
       publishNow,
-      scheduledFor: publishNow ? undefined : scheduledFor,
+      scheduledFor: publishNow ? undefined : new Date(scheduledAtMs).toISOString(),
       timezone: body.timezone ? String(body.timezone) : undefined,
       mediaItems,
     });

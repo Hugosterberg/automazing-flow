@@ -47,8 +47,10 @@ export function ConnectionsGrid({
   const query = searchQuery.trim().toLowerCase();
 
   function entryStatus(platform: AccountPlatform): ConnectionStatus {
+    const rows = connections.filter((c) => c.platform === platform);
+    if (rows.length > 0) return aggregateStatus(rows);
     if (manuallyConnectedPlatforms.has(platform)) return "connected";
-    return aggregateStatus(connections.filter((c) => c.platform === platform));
+    return "not_connected";
   }
 
   function entryIsLinked(platform: AccountPlatform): boolean {
@@ -112,7 +114,10 @@ export function ConnectionsGrid({
                   onViewDetails={onViewDetails}
                   selectedIds={selectedIds}
                   onToggleSelect={onToggleSelect}
-                  manuallyConnected={manuallyConnectedPlatforms.has(entry.platform)}
+                  manuallyConnected={
+                    manuallyConnectedPlatforms.has(entry.platform) &&
+                    !connections.some((connection) => connection.platform === entry.platform)
+                  }
                   onManualConnectionChange={onManualConnectionChange}
                 />
               ))}
