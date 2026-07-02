@@ -123,28 +123,30 @@ function vercelDeploymentOrigin() {
 }
 
 /**
- * Public URL of this API (OAuth redirect_uri / Zernio redirect_url). On Vercel, never use localhost
- * from .env if VERCEL_URL is set — otherwise Zernio sends the browser to localhost:3001.
+ * Public URL of this API (OAuth redirect_uri / Zernio redirect_url).
+ *
+ * An explicit non-loopback API_BASE_URL/BASE_URL always wins — including on
+ * Vercel production — so a custom domain (e.g. automazing.life) is honoured
+ * instead of the platform's *.vercel.app alias. The Vercel-derived origin is
+ * only a fallback for deployments that never configured a canonical URL.
+ * Loopback values from .env are still ignored on Vercel — otherwise Zernio
+ * would send the browser to localhost:3001.
  */
 function resolveApiBaseUrl() {
   const fallbackLocal = `http://localhost:${PORT}`;
   const explicitApi = String(process.env.API_BASE_URL || "").trim();
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
-  const isProductionVercel = onVercel && String(process.env.VERCEL_ENV || "").trim() === "production";
   const deployed = vercelDeploymentOrigin();
 
-  if (isProductionVercel && deployed) {
-    return deployed;
-  }
   if (explicitApi && !parseOriginIsLoopback(explicitApi)) {
     return explicitApi.replace(/\/$/, "");
   }
-  if (onVercel && deployed) {
-    return deployed;
-  }
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
     return explicitBase.replace(/\/$/, "");
+  }
+  if (onVercel && deployed) {
+    return deployed;
   }
   if (explicitApi) return explicitApi.replace(/\/$/, "");
   return fallbackLocal;
@@ -153,12 +155,8 @@ function resolveApiBaseUrl() {
 function resolveBaseUrl(apiBaseResolved) {
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
-  const isProductionVercel = onVercel && String(process.env.VERCEL_ENV || "").trim() === "production";
   const deployed = vercelDeploymentOrigin();
 
-  if (isProductionVercel && deployed) {
-    return deployed;
-  }
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
     return explicitBase.replace(/\/$/, "");
   }

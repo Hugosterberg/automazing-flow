@@ -586,9 +586,31 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
    * be the referer there; callbacks use the stored `pending.appBaseUrl`).
    *
    * Crucially, BOTH sources are only honoured when they match an origin we
-   * already trust (BASE_URL, API_BASE_URL, CORS_ORIGINS), so the post-OAuth
-   * redirect target is always in the allowlist — this is not an open redirect.
+   * already trust (BASE_URL, API_BASE_URL, CORS_ORIGINS, or the origin the
+   * request itself arrived on), so the post-OAuth redirect target is always
+   * in the allowlist — this is not an open redirect.
    */
+  /**
+   * Origin the request itself was served on (custom domains included).
+   * Behind Vercel the platform only routes hostnames that belong to the
+   * project, and a victim's browser always sets Host from the real URL, so
+   * "send the user back to the origin they are already browsing" is safe.
+   * This is what keeps OAuth flows on e.g. automazing.life instead of
+   * bouncing to the *.vercel.app alias.
+   */
+  function requestOwnOrigin(req): string | null {
+    const forwardedHost = String(req?.headers?.["x-forwarded-host"] ?? "")
+      .split(",")[0]
+      .trim();
+    const host = forwardedHost || String(req?.headers?.host ?? "").trim();
+    if (!host) return null;
+    const forwardedProto = String(req?.headers?.["x-forwarded-proto"] ?? "")
+      .split(",")[0]
+      .trim();
+    const proto = forwardedProto || req?.protocol || "https";
+    return originOf(`${proto}://${host}`);
+  }
+
   function requestedAppBaseUrl(req): string | null {
     function isTrustedVercelAppOrigin(candidate: string): boolean {
       try {
@@ -630,6 +652,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       originOf(API_BASE_URL),
       vercelProductionOrigin,
       vercelCurrentOrigin,
+      requestOwnOrigin(req),
       ...corsOrigins,
     ].filter(Boolean);
     const candidates = [
@@ -669,11 +692,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   function requireSessionOrRedirect(req, res, page) {
     const userId = getSessionUserId(req);
     if (!userId) {
+      // Send the error back to the origin the user is actually browsing on
+      // (custom domain), not the canonical BASE_URL fallback.
+      const base = requestedAppBaseUrl(req) || BASE_URL;
       res.redirect(
-        buildPageOauthErrorUrl(page, "not_authenticated", {
-          status: 401,
-          exception: "No active session found on the server.",
-        })
+        buildPageUrlWithBase(
+          base,
+          page,
+          buildOauthErrorParams("not_authenticated", {
+            status: 401,
+            exception: "No active session found on the server.",
+          })
+        )
       );
       return null;
     }
