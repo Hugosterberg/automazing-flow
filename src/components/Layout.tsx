@@ -16,9 +16,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, Settings, Terminal, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { WorkspaceModeTabs, useWorkspaceMode } from "@/features/workspace-mode";
+import { isNavUrlAllowedInMode } from "@/components/navConfig";
 
 /**
  * Pick a stable single-character fallback for the avatar badge.
@@ -37,7 +40,18 @@ export default function Layout() {
   const allowLocal = isLocalDevHost();
   const email = user?.email ?? null;
   const location = useLocation();
+  const navigate = useNavigate();
+  const { mode } = useWorkspaceMode();
   useDocumentTitle();
+
+  // Mode fence: business-only pages don't exist in the private workspace.
+  // Covers deep links and mode flips triggered from the profile switcher
+  // (the header tabs handle their own redirect on click).
+  useEffect(() => {
+    if (!isNavUrlAllowedInMode(location.pathname, mode)) {
+      navigate("/", { replace: true });
+    }
+  }, [location.pathname, mode, navigate]);
 
   return (
     <SidebarProvider>
@@ -58,6 +72,7 @@ export default function Layout() {
         <main className="flex-1 flex flex-col">
           <header className="sticky top-0 z-30 glass safe-top safe-x flex h-14 items-center border-b border-border px-3 sm:px-4 gap-2 min-w-0">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0" />
+            <WorkspaceModeTabs />
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-2 shrink-0">
               <CommandPalette />

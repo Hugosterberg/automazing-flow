@@ -80,9 +80,10 @@ import { apiUrl } from "@/lib/apiBase";
 import {
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
-  navItems,
-  topNavItems,
+  navItemsForMode,
+  topNavItemsForMode,
 } from "@/components/navConfig";
+import { useWorkspaceMode } from "@/features/workspace-mode";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
@@ -213,6 +214,9 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const prefetchFor = useRoutePrefetch();
+  const { mode } = useWorkspaceMode();
+  const visibleTopNavItems = topNavItemsForMode(mode);
+  const visibleNavItems = navItemsForMode(mode);
   const {
     accounts,
     activeProfileId,
@@ -290,7 +294,14 @@ export function AppSidebar() {
       }
 
       try {
-        const res = await fetchWithTimeout(apiUrl("/api/messages/unified"), { credentials: "include" });
+        // Scope to the active profile like the Messages page does — otherwise
+        // the badge counts unread across every profile.
+        const unifiedUrl = apiUrl(
+          `/api/messages/unified${
+            aiBusinessProfileId ? `?business_profile_id=${encodeURIComponent(aiBusinessProfileId)}` : ""
+          }`
+        );
+        const res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data.messages) ? data.messages : [];
@@ -307,7 +318,7 @@ export function AppSidebar() {
       ignore = true;
       window.removeEventListener("automazing:oauth-success", loadUnreadCount);
     };
-  }, [messagesAccountKey]);
+  }, [messagesAccountKey, aiBusinessProfileId]);
 
   function openZernioPicker(filter: SocialPlatform | null) {
     setZernioFilter(filter);
@@ -462,7 +473,7 @@ export function AppSidebar() {
       </button>
       <SidebarContent className="pt-4" role="navigation" aria-label="Main">
         <SidebarMenu>
-          {topNavItems.map((item) => {
+          {visibleTopNavItems.map((item) => {
             const isActive = location.pathname === item.url;
             return (
               <SidebarMenuItem key={item.key}>
@@ -504,7 +515,7 @@ export function AppSidebar() {
         </SidebarMenu>
         <SidebarSeparator className="my-2" />
         {NAV_GROUP_ORDER.map((groupKey) => {
-          const groupItems = navItems.filter((i) => i.group === groupKey);
+          const groupItems = visibleNavItems.filter((i) => i.group === groupKey);
           if (groupItems.length === 0) return null;
           const showLabel = groupKey !== "work";
           return (
@@ -647,7 +658,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
-            Business profiles
+            {mode === "private" ? "Private profiles" : "Business profiles"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <ProfileSwitcher />

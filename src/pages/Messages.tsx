@@ -122,11 +122,6 @@ function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: 
       description: "Connect Gmail or Outlook to see email here.",
     };
   }
-
-  function providerMessageIdFor(message: UnifiedMessage): string {
-    if (message.providerMessageId) return message.providerMessageId;
-    return message.kind === "email" ? message.id.split(":").pop() || "" : "";
-  }
   if (tab === "instagram") {
     return {
       title: "No Instagram messages yet",

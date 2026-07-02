@@ -1,9 +1,22 @@
 import type { AccountPlatform } from "@/types/accounts";
+import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
 /** Logical product areas (matches main nav groupings). */
 export type AppArea = "social" | "marketing" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
 
 export const AREA_ORDER: AppArea[] = ["social", "marketing", "ecommerce", "messages", "calendar", "reviews", "content"];
+
+/**
+ * Areas that make sense in the private workspace. Mirrors the nav's mode
+ * split: company-oriented areas (marketing, e-commerce, reviews) only show
+ * in Business.
+ */
+const PRIVATE_AREAS: ReadonlySet<AppArea> = new Set(["social", "messages", "calendar", "content"]);
+
+export function areaOrderForMode(mode: WorkspaceMode): AppArea[] {
+  if (mode === "business") return AREA_ORDER;
+  return AREA_ORDER.filter((area) => PRIVATE_AREAS.has(area));
+}
 
 export const AREA_LABELS: Record<AppArea, string> = {
   social: "Social media",

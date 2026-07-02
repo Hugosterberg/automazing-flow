@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Circle } from "lucide-react";
 import { useAccounts } from "@/context/AccountsContext";
+import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   AREA_LABELS,
-  AREA_ORDER,
+  areaOrderForMode,
   getCatalogByArea,
-  type AppArea,
 } from "@/lib/connectionCatalog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -15,7 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
  */
 export function ConnectionsMap() {
   const { activeProfile, activeProfileId, allAccounts } = useAccounts();
+  const { mode } = useWorkspaceMode();
   const byArea = getCatalogByArea();
+  const areaOrder = useMemo(() => areaOrderForMode(mode), [mode]);
 
   const linked = useMemo(
     () => allAccounts.filter((a) => a.profileId === activeProfileId && !a.disconnectedAt),
@@ -23,19 +25,19 @@ export function ConnectionsMap() {
   );
 
   const totalIntegrations = useMemo(
-    () => AREA_ORDER.reduce((n, a) => n + byArea[a].length, 0),
-    [byArea]
+    () => areaOrder.reduce((n, a) => n + byArea[a].length, 0),
+    [areaOrder, byArea]
   );
   const linkedPlatforms = useMemo(() => new Set(linked.map((a) => a.platform)), [linked]);
   const linkedCount = useMemo(() => {
     let c = 0;
-    for (const area of AREA_ORDER) {
+    for (const area of areaOrder) {
       for (const row of byArea[area]) {
         if (linkedPlatforms.has(row.platform)) c += 1;
       }
     }
     return c;
-  }, [byArea, linkedPlatforms]);
+  }, [areaOrder, byArea, linkedPlatforms]);
 
   return (
     <div className="space-y-6">
@@ -62,7 +64,7 @@ export function ConnectionsMap() {
         </p>
       </div>
 
-      {AREA_ORDER.map((area) => (
+      {areaOrder.map((area) => (
         <Card key={area} className="border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">{AREA_LABELS[area]}</CardTitle>

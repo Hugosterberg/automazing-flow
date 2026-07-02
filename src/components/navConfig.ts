@@ -15,9 +15,11 @@ import {
   Megaphone,
   Globe2,
   Building2,
+  Zap,
 } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import type { AccountPlatform } from "@/types/accounts";
+import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
 /**
  * Shared navigation config. Single source of truth for the app's routes,
@@ -47,6 +49,13 @@ export interface TopNavItem {
   icon: ComponentType<{ className?: string }>;
   platforms: AccountPlatform[];
   hideAccounts?: boolean;
+  /**
+   * Workspace modes where the item is shown. Omitted = visible in both.
+   * Private keeps the personally useful surface (content, socials, calendar,
+   * messages, tasks, activity, AI); everything company-oriented is
+   * business-only.
+   */
+  modes?: WorkspaceMode[];
 }
 
 export interface NavItem extends TopNavItem {
@@ -61,6 +70,7 @@ export const topNavItems: TopNavItem[] = [
     icon: Building2,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
+    modes: ["business"],
   },
   {
     key: "connections",
@@ -112,6 +122,7 @@ export const navItems: NavItem[] = [
     icon: ShoppingCart,
     platforms: ["shopify", "notion"] as AccountPlatform[],
     group: "work",
+    modes: ["business"],
   },
   {
     key: "sales-marketing",
@@ -121,6 +132,7 @@ export const navItems: NavItem[] = [
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
     group: "work",
+    modes: ["business"],
   },
   {
     key: "marketing",
@@ -129,6 +141,7 @@ export const navItems: NavItem[] = [
     icon: Megaphone,
     platforms: ["google_ads", "meta_business"] as AccountPlatform[],
     group: "work",
+    modes: ["business"],
   },
   {
     key: "digital-brand",
@@ -138,6 +151,7 @@ export const navItems: NavItem[] = [
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
     group: "work",
+    modes: ["business"],
   },
   {
     key: "customers",
@@ -147,6 +161,7 @@ export const navItems: NavItem[] = [
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
     group: "work",
+    modes: ["business"],
   },
   {
     key: "calendar",
@@ -171,6 +186,7 @@ export const navItems: NavItem[] = [
     icon: Star,
     platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
     group: "work",
+    modes: ["business"],
   },
   {
     key: "tasks",
@@ -191,6 +207,15 @@ export const navItems: NavItem[] = [
     group: "productivity",
   },
   {
+    key: "automations",
+    title: "Automations",
+    url: "/automations",
+    icon: Zap,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+    group: "productivity",
+  },
+  {
     key: "ai-recommendations",
     title: "AI Recommendations",
     url: "/ai-recommendations",
@@ -200,3 +225,29 @@ export const navItems: NavItem[] = [
     group: "productivity",
   },
 ];
+
+function itemVisibleInMode(item: TopNavItem, mode: WorkspaceMode): boolean {
+  return !item.modes || item.modes.includes(mode);
+}
+
+/** Sidebar/palette nav items visible in the given workspace mode. */
+export function navItemsForMode(mode: WorkspaceMode): NavItem[] {
+  return navItems.filter((item) => itemVisibleInMode(item, mode));
+}
+
+/** Top (system) nav items visible in the given workspace mode. */
+export function topNavItemsForMode(mode: WorkspaceMode): TopNavItem[] {
+  return topNavItems.filter((item) => itemVisibleInMode(item, mode));
+}
+
+/**
+ * Whether a pathname is reachable in the given mode. Non-nav URLs (home,
+ * not-found, deep links with query params handled upstream) are always
+ * allowed — this only fences off pages whose nav entry is mode-restricted.
+ */
+export function isNavUrlAllowedInMode(pathname: string, mode: WorkspaceMode): boolean {
+  const restricted = [...topNavItems, ...navItems].find(
+    (item) => item.url === pathname && item.modes && !item.modes.includes(mode)
+  );
+  return !restricted;
+}

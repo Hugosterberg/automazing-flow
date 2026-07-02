@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Layers, Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,19 @@ export default function MarketingPage() {
   const [campaignStatus, setCampaignStatus] = useState<TaskStatus>("open");
   const [campaignSaving, setCampaignSaving] = useState(false);
 
+  // Deep link from the command palette: /marketing?new=campaign opens the
+  // create dialog directly. The param is consumed (removed) so refresh or
+  // back navigation doesn't re-open the dialog.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") !== "campaign") return;
+    setEditingCampaignId(null);
+    setCampaignOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   function connect(platform: "google_ads" | "meta_business", provider?: "official" | "zernio") {
     if (!businessProfileId) return;
     const config = getConnectConfig(platform);
@@ -163,7 +177,14 @@ export default function MarketingPage() {
     setCampaignEndDate(campaignField(task.description, "Slut"));
     setCampaignAudience(campaignField(task.description, "Målgrupp"));
     setCampaignCta(campaignField(task.description, "CTA"));
-    setCampaignNotes(campaignField(task.description, "Anteckningar") || task.description || "");
+    // Fall back to the raw description ONLY for legacy tasks without the
+    // structured "Mål:"-lines. For structured descriptions an empty notes
+    // field must stay empty — otherwise the whole description would be
+    // re-saved inside "Anteckningar:" and duplicate every field on each edit.
+    const isStructured = Boolean(campaignField(task.description, "Mål"));
+    setCampaignNotes(
+      campaignField(task.description, "Anteckningar") || (isStructured ? "" : task.description || "")
+    );
     setCampaignStatus(task.status);
     setCampaignOpen(true);
   }

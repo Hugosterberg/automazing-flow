@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Activity as ActivityIcon,
   CalendarDays,
+  HeartPulse,
   Star,
   MessageSquare,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
@@ -55,6 +57,7 @@ import {
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
+import { computeBusinessHealth } from "@/lib/businessHealth";
 
 /**
  * Today tile — one compact stat with a deep-link. Rendered in the home
@@ -161,6 +164,7 @@ export default function Index() {
     useAccounts();
   const activeBpId = useActiveBusinessProfileIdOptional();
   const homeBusinessProfileId = activeBpId ?? activeProfileId ?? null;
+  const { mode } = useWorkspaceMode();
   const { connections } = useConnections(homeBusinessProfileId);
   const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -253,6 +257,19 @@ export default function Index() {
     );
   }, [connections]);
 
+  // One glanceable number for "how is this business doing operationally".
+  // Weighs the same signals the tiles below already show; see businessHealth.ts.
+  const health = useMemo(
+    () =>
+      computeBusinessHealth({
+        connectionIssues: connectionIssues.length,
+        overdueTasks: overdueTasks.length,
+        dueTodayTasks: dueTodayTasks.length,
+        activeRecommendations: activeRecs.length,
+      }),
+    [connectionIssues.length, overdueTasks.length, dueTodayTasks.length, activeRecs.length]
+  );
+
   const profileSummary = useMemo(() => {
     const connectedCount = accounts.length;
     const grouped = accounts.reduce<Record<string, number>>((acc, account) => {
@@ -340,7 +357,23 @@ export default function Index() {
             Activity feed
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-3",
+            mode === "business" ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+          )}
+        >
+          {mode === "business" ? (
+            <TodayTile
+              title={`Business health · ${health.label}`}
+              value={health.score}
+              hint={health.topReason ?? "Everything looks good"}
+              icon={HeartPulse}
+              to="/activity"
+              tone={health.tone}
+              onPrefetch={prefetchFor}
+            />
+          ) : null}
           <TodayTile
             title={tasksTile.title}
             value={tasksTile.value}
@@ -455,8 +488,9 @@ export default function Index() {
         <section aria-label="Snabböversikt" className="space-y-2">
           <h2 className="text-sm font-semibold text-foreground">Snabböversikt</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Reviews widget */}
+            {/* Reviews widget — business-only (the Reviews page is fenced off in Private) */}
             {(() => {
+              if (mode === "private") return null;
               const reviewAccounts = accounts.filter(
                 (a) => a.platform === "google_reviews" || a.platform === "tripadvisor"
               );

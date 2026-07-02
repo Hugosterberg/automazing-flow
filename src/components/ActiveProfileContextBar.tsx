@@ -1,6 +1,7 @@
-import { Building2, ChevronDown, Check } from "lucide-react";
+import { Building2, ChevronDown, Check, User } from "lucide-react";
 import { useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
+import { isPersonalProfile, profileMatchesMode, useWorkspaceMode } from "@/features/workspace-mode";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,7 +11,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
  */
 export function ActiveProfileContextBar() {
   const { activeProfile, profiles, accounts, setActiveProfileId, profilesReady } = useAccounts();
+  const { mode } = useWorkspaceMode();
   const [open, setOpen] = useState(false);
+
+  // Stay inside the current workspace; the header tabs cross the boundary.
+  const modeProfiles = profiles.filter((p) => profileMatchesMode(p, mode));
+  const ProfileIcon = isPersonalProfile(activeProfile) ? User : Building2;
 
   if (!profilesReady) {
     return (
@@ -41,15 +47,15 @@ export function ActiveProfileContextBar() {
             className="h-8 gap-2 px-3 bg-muted/30 border-border/50 hover:bg-muted/50"
             aria-label={`Active profile: ${activeProfile?.name ?? "none"}. Click to change profile`}
           >
-            <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <ProfileIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <span className="text-sm font-medium truncate">{activeProfile?.name ?? "—"}</span>
-            {profiles.length > 1 && <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+            {modeProfiles.length > 1 && <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
           </Button>
         </PopoverTrigger>
-        {profiles.length > 1 && (
+        {modeProfiles.length > 1 && (
           <PopoverContent className="w-48 p-2" align="start">
             <div className="space-y-1">
-              {profiles.map((profile) => (
+              {modeProfiles.map((profile) => (
                 <button
                   key={profile.id}
                   onClick={() => handleSelectProfile(profile.id)}

@@ -17,8 +17,8 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { TeamManager } from "@/components/TeamManager";
-import { AutomationPanel } from "@/features/automation";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -493,13 +493,29 @@ export default function PreferencesPage() {
         </TabsContent>
 
         <TabsContent value="automation">
-          {activeBusinessProfileId ? (
-            <AutomationPanel businessProfileId={activeBusinessProfileId} />
-          ) : (
-            <p className="text-sm text-muted-foreground pt-2">
-              Välj en profil för att hantera dess automation.
-            </p>
-          )}
+          {/* Automation settings moved to the dedicated /automations page so
+              every automated flow lives under one heading. This tab stays as
+              a signpost for users who look for it here. */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                Automationer har flyttat
+              </CardTitle>
+              <CardDescription>
+                Auto-svar, rapporter och AI-jobb hanteras nu samlat på sidan Automations — per ämne,
+                med inställningar och schema på samma ställe.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link to="/automations">
+                  Öppna Automations
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="api-keys" className="space-y-5">

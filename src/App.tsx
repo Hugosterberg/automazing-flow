@@ -43,6 +43,7 @@ const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage"));
 const CompanyPage = lazy(() => import("./pages/Company"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
 const ActivityPage = lazy(() => import("./pages/Activity"));
+const AutomationsPage = lazy(() => import("./pages/Automations"));
 
 /**
  * Shared fallback while a lazy route chunk is streaming in. Kept quiet
@@ -127,6 +128,7 @@ const App = () => {
                       <Route path="/content" element={<ContentPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/activity" element={<ActivityPage />} />
+                      <Route path="/automations" element={<AutomationsPage />} />
                       <Route path="/ai-recommendations" element={<AIRecommendationsPage />} />
                       <Route path="/preferences" element={<PreferencesPage />} />
                       <Route path="/connections" element={<ConnectionsPage />} />

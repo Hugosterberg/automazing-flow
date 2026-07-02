@@ -26,6 +26,7 @@ const prefetchers: Record<string, Prefetcher> = {
   "/content": () => import("@/pages/Content"),
   "/tasks": () => import("@/pages/Tasks"),
   "/activity": () => import("@/pages/Activity"),
+  "/automations": () => import("@/pages/Automations"),
   "/ai-recommendations": () => import("@/pages/AIRecommendations"),
   "/preferences": () => import("@/pages/Preferences"),
   "/connections": () => import("@/pages/ConnectionsPage"),

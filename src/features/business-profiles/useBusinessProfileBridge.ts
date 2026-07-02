@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { Profile } from "@/types/accounts";
-import type { BusinessProfile } from "@/types/businessProfile";
+import type { BusinessProfile, ProfileKind } from "@/types/businessProfile";
 import {
   useActiveBusinessProfileIdOptional,
   useSetActiveBusinessProfileId,
@@ -25,7 +25,7 @@ export interface BusinessProfileBridge {
   profiles: Profile[];
   activeProfileId: string | null;
   setActiveProfileId: (id: string | null) => void;
-  addProfile: (name: string) => Promise<Profile>;
+  addProfile: (name: string, kind?: ProfileKind) => Promise<Profile>;
   renameProfile: (id: string, name: string) => Promise<void>;
   updateProfile: (
     id: string,
@@ -63,8 +63,11 @@ export function useBusinessProfileBridge(): BusinessProfileBridge {
   const profiles = useMemo(() => newProfiles.map(toLegacyProfile), [newProfiles]);
 
   const addProfile = useCallback(
-    async (name: string): Promise<Profile> => {
-      const created = await createProfile({ name: name.trim() || "New profile" });
+    async (name: string, kind?: ProfileKind): Promise<Profile> => {
+      const created = await createProfile({
+        name: name.trim() || "New profile",
+        ...(kind ? { kind } : {}),
+      });
       setActive(created.id);
       return toLegacyProfile(created);
     },

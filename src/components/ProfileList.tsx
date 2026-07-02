@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAccounts } from "@/context/AccountsContext";
+import { profileMatchesMode, useWorkspaceMode } from "@/features/workspace-mode";
 
 export function ProfileList() {
   const { profiles, activeProfileId, setActiveProfileId, addProfile, allAccounts } = useAccounts();
+  const { mode } = useWorkspaceMode();
 
   function connectedCount(profileId: string) {
     return allAccounts.filter((a) => a.profileId === profileId && !a.disconnectedAt).length;
@@ -14,9 +16,11 @@ export function ProfileList() {
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
 
+  const modeProfiles = profiles.filter((p) => profileMatchesMode(p, mode));
+
   function handleAddProfile() {
     const name = newName.trim() || "New profile";
-    addProfile(name);
+    addProfile(name, mode === "private" ? "personal" : "company");
     setNewName("");
     setShowInput(false);
   }
@@ -24,14 +28,18 @@ export function ProfileList() {
   return (
     <div className="w-full max-w-2xl space-y-3">
       <div className="text-center space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Business profiles</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {mode === "private" ? "Private profiles" : "Business profiles"}
+        </p>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          One login—separate spaces per brand or client. Channels and picks stay inside each profile.
+          {mode === "private"
+            ? "Your personal space — channels and picks stay separate from your businesses."
+            : "One login—separate spaces per brand or client. Channels and picks stay inside each profile."}
         </p>
       </div>
       <div className="rounded-lg border border-border bg-secondary/30 overflow-hidden">
         <div className="flex items-stretch">
-          {profiles.map((profile) => {
+          {modeProfiles.map((profile) => {
             const isSelected = activeProfileId === profile.id;
             const n = connectedCount(profile.id);
             return (

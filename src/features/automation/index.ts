@@ -1,4 +1,16 @@
 export { AutomationPanel } from "./AutomationPanel";
+export { AutomatedUpdatesCard } from "./AutomatedUpdatesCard";
+export {
+  AUTOMATION_TOPICS,
+  AUTOMATION_TOPIC_ORDER,
+  automationCatalog,
+  catalogEntriesForTopic,
+} from "./automationCatalog";
+export type {
+  AutomationTopic,
+  AutomationTopicInfo,
+  AutomationCatalogEntry,
+} from "./automationCatalog";
 export {
   fetchAutomationSettings,
   saveAutomationSettings,

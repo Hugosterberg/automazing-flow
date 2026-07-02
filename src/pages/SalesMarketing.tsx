@@ -1,4 +1,5 @@
-﻿import { useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import {
   ChevronRight,
@@ -135,7 +136,8 @@ function GoalCard({ goal, onUpdate }: {
   const [editing, setEditing] = useState(false);
   const [current, setCurrent] = useState(String(goal.current));
   const [target, setTarget] = useState(String(goal.target));
-  const pct = Math.min(100, Math.round((goal.current / goal.target) * 100));
+  // Guard against target 0 from legacy/stored docs — otherwise NaN%.
+  const pct = goal.target > 0 ? Math.min(100, Math.round((goal.current / goal.target) * 100)) : 0;
 
   function save() {
     const c = Number(current);
@@ -240,6 +242,17 @@ export default function SalesMarketingPage() {
   const [pipelineDue, setPipelineDue] = useState("");
   const [pipelineAdding, setPipelineAdding] = useState(false);
 
+  // Deep link from the command palette: /sales?new=lead opens the add-lead
+  // dialog directly. Param is consumed so refresh doesn't re-open it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") !== "lead") return;
+    setPipelineOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   async function addLead() {
     if (!pipelineTitle.trim()) return;
     setPipelineAdding(true);
@@ -250,7 +263,9 @@ export default function SalesMarketingPage() {
         priority: pipelinePriority,
         status: "open",
         module: "pipeline",
-        dueAt: pipelineDue || null,
+        // End of the chosen day in local time — a bare date string would be
+        // parsed as UTC midnight and flag the lead overdue all day.
+        dueAt: pipelineDue ? new Date(`${pipelineDue}T23:59:59`).toISOString() : null,
       });
       setPipelineOpen(false);
       setPipelineTitle("");

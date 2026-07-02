@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAccounts } from "@/context/AccountsContext";
+import { profileMatchesMode, useWorkspaceMode } from "@/features/workspace-mode";
 
 function ProfileInitials(name: string): string {
   return name
@@ -44,10 +45,13 @@ export function ProfileSwitcher() {
   const [editName, setEditName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [open, setOpen] = useState(false);
+  const { mode } = useWorkspaceMode();
 
   function handleAddProfile() {
     const name = newName.trim() || "New profile";
-    addProfile(name);
+    // New profiles inherit the current workspace: personal in Private,
+    // company in Business — so they show up in the list they were created from.
+    addProfile(name, mode === "private" ? "personal" : "company");
     setNewName("");
   }
 
@@ -62,9 +66,11 @@ export function ProfileSwitcher() {
     return allAccounts.filter((a) => a.profileId === profileId && !a.disconnectedAt).length;
   }
 
-  const sortedProfiles = [...profiles].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Only profiles of the current workspace: the header tabs are the one
+  // place that crosses the Private/Business boundary.
+  const sortedProfiles = profiles
+    .filter((p) => profileMatchesMode(p, mode))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const activeCount = activeProfile ? getAccountCount(activeProfile.id) : 0;
 
@@ -91,7 +97,9 @@ export function ProfileSwitcher() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-full min-w-64">
           <div className="px-2 py-1.5 border-b border-border/50">
-            <p className="text-xs font-medium text-foreground">Profiles</p>
+            <p className="text-xs font-medium text-foreground">
+              {mode === "private" ? "Private profiles" : "Business profiles"}
+            </p>
           </div>
           <div className="max-h-[240px] overflow-y-auto py-1">
             {sortedProfiles.map((profile) => {

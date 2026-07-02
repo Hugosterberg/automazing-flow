@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Search } from "lucide-react";
+import { Briefcase, ListPlus, LogOut, Megaphone, Search, Target, User } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,24 +12,13 @@ import {
 } from "@/components/ui/command";
 import {
   NAV_GROUP_LABELS,
-  navItems,
-  topNavItems,
+  navItemsForMode,
+  topNavItemsForMode,
   type NavGroup,
 } from "@/components/navConfig";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { useAuth } from "@/context/AuthContext";
-
-/**
- * Page groups shown in the palette. Mirrors the sidebar: Work and
- * Productivity come from `navItems`; Connections/Preferences live in
- * `topNavItems` and surface here under the System heading.
- */
-const PAGE_GROUPS: Array<{ label: string; items: typeof navItems }> = (
-  ["work", "productivity"] as NavGroup[]
-).map((group) => ({
-  label: NAV_GROUP_LABELS[group],
-  items: navItems.filter((item) => item.group === group),
-}));
+import { useWorkspaceMode } from "@/features/workspace-mode";
 
 function isMacLike(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -47,6 +36,17 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const prefetchFor = useRoutePrefetch();
   const { authMode, signOut } = useAuth();
+  const { mode, setMode } = useWorkspaceMode();
+
+  // Page groups mirror the sidebar for the current workspace mode: Work and
+  // Productivity come from navItems; Connections/Preferences surface under
+  // the System heading.
+  const modeNavItems = navItemsForMode(mode);
+  const pageGroups = (["work", "productivity"] as NavGroup[]).map((group) => ({
+    label: NAV_GROUP_LABELS[group],
+    items: modeNavItems.filter((item) => item.group === group),
+  }));
+  const systemItems = topNavItemsForMode(mode);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -62,6 +62,12 @@ export function CommandPalette() {
   function goTo(url: string) {
     setOpen(false);
     navigate(url);
+  }
+
+  function switchWorkspace() {
+    setOpen(false);
+    setMode(mode === "private" ? "business" : "private");
+    navigate("/");
   }
 
   return (
@@ -83,7 +89,49 @@ export function CommandPalette() {
         <CommandInput placeholder="Search pages and actions…" />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          {PAGE_GROUPS.map((group) => (
+          <CommandGroup heading="Actions">
+            <CommandItem
+              value={mode === "private" ? "Switch to Business workspace" : "Switch to Private workspace"}
+              onSelect={switchWorkspace}
+            >
+              {mode === "private" ? (
+                <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
+              ) : (
+                <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
+              {mode === "private" ? "Switch to Business workspace" : "Switch to Private workspace"}
+            </CommandItem>
+            <CommandItem
+              value="New task"
+              onSelect={() => goTo("/tasks")}
+              onPointerEnter={() => prefetchFor("/tasks")}
+            >
+              <ListPlus className="mr-2 h-4 w-4 text-muted-foreground" />
+              New task
+            </CommandItem>
+            {mode === "business" ? (
+              <>
+                <CommandItem
+                  value="New campaign"
+                  onSelect={() => goTo("/marketing?new=campaign")}
+                  onPointerEnter={() => prefetchFor("/marketing")}
+                >
+                  <Megaphone className="mr-2 h-4 w-4 text-muted-foreground" />
+                  New campaign
+                </CommandItem>
+                <CommandItem
+                  value="New lead"
+                  onSelect={() => goTo("/sales?new=lead")}
+                  onPointerEnter={() => prefetchFor("/sales")}
+                >
+                  <Target className="mr-2 h-4 w-4 text-muted-foreground" />
+                  New lead
+                </CommandItem>
+              </>
+            ) : null}
+          </CommandGroup>
+          <CommandSeparator />
+          {pageGroups.map((group) => (
             <CommandGroup key={group.label} heading={group.label}>
               {group.items.map((item) => (
                 <CommandItem
@@ -99,7 +147,7 @@ export function CommandPalette() {
             </CommandGroup>
           ))}
           <CommandGroup heading="System">
-            {topNavItems.map((item) => (
+            {systemItems.map((item) => (
               <CommandItem
                 key={item.key}
                 value={item.title}

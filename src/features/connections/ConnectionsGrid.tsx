@@ -1,4 +1,5 @@
-import { AREA_LABELS, AREA_ORDER, getCatalogByArea } from "@/lib/connectionCatalog";
+import { AREA_LABELS, areaOrderForMode, getCatalogByArea } from "@/lib/connectionCatalog";
+import { useWorkspaceMode } from "@/features/workspace-mode";
 import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 import { ConnectionCard } from "./ConnectionCard";
@@ -43,7 +44,9 @@ export function ConnectionsGrid({
   manuallyConnectedPlatforms = new Set<AccountPlatform>(),
   onManualConnectionChange,
 }: Props) {
+  const { mode } = useWorkspaceMode();
   const byArea = getCatalogByArea();
+  const areaOrder = areaOrderForMode(mode);
   const query = searchQuery.trim().toLowerCase();
 
   function entryStatus(platform: AccountPlatform): ConnectionStatus {
@@ -59,7 +62,7 @@ export function ConnectionsGrid({
 
   return (
     <div className="space-y-8">
-      {AREA_ORDER.map((area) => {
+      {areaOrder.map((area) => {
         const entries = byArea[area];
         if (!entries.length) return null;
 

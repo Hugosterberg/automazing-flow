@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@/types/accounts";
+import type { ProfileKind } from "@/types/businessProfile";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
@@ -45,8 +46,9 @@ interface AccountsContextValue {
   /**
    * Cloud mode: resolves after the row lands in `business_profiles` (React Query).
    * Local mode: resolves synchronously with the in-memory profile.
+   * `kind` defaults to "company"; pass "personal" for the private space.
    */
-  addProfile: (name: string) => Promise<Profile> | Profile;
+  addProfile: (name: string, kind?: ProfileKind) => Promise<Profile> | Profile;
   renameProfile: (id: string, name: string) => void | Promise<void>;
   updateProfile: (
     id: string,
@@ -508,13 +510,14 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   );
 
   const addProfile = useCallback(
-    (name: string): Profile | Promise<Profile> => {
+    (name: string, kind?: ProfileKind): Profile | Promise<Profile> => {
       if (enabled) {
-        return bridge.addProfile(name);
+        return bridge.addProfile(name, kind);
       }
       const newProfile: Profile = {
         id: crypto.randomUUID(),
         name: name.trim() || "New profile",
+        ...(kind ? { kind } : {}),
         createdAt: new Date().toISOString(),
       };
       setLocalProfiles((prev) => [...prev, newProfile]);
