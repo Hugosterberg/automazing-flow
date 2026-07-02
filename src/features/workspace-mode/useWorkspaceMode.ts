@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import {
+  kindForMode,
   modeForProfile,
   profileMatchesMode,
   readLastProfileIdForMode,
@@ -19,6 +21,15 @@ const DEFAULT_PROFILE_NAMES: Record<WorkspaceMode, string> = {
   business: "Mitt företag",
 };
 
+/**
+ * Module-level re-entrancy guard for first-time profile creation. The hook is
+ * mounted by several components (tabs, palette, sidebar…), each with its own
+ * `switching` state — without a shared guard, two surfaces triggering setMode
+ * in the same tick could both take the "no profile of this kind" branch and
+ * create duplicate default profiles.
+ */
+let creatingDefaultProfile = false;
+
 export interface WorkspaceModeState {
   /** Current mode, derived from the active profile's kind. */
   mode: WorkspaceMode;
@@ -28,7 +39,7 @@ export interface WorkspaceModeState {
    * that kind, one is created automatically so the tab always works.
    */
   setMode: (mode: WorkspaceMode) => void;
-  /** True while a first-time profile is being created for the target space. */
+  /** True while this instance is creating a first-time profile. */
   switching: boolean;
 }
 
@@ -39,13 +50,15 @@ export function useWorkspaceMode(): WorkspaceModeState {
   const [switching, setSwitching] = useState(false);
 
   const mode = modeForProfile(activeProfile);
+  const activeProfileIdForStorage = activeProfile?.id ?? null;
 
   // Remember the active profile per mode so returning to a tab restores the
   // profile you were last working in (e.g. two companies + one personal).
+  // Keyed on the id (not the object) so profile-list refetches don't re-fire.
   useEffect(() => {
-    if (!activeProfile) return;
-    writeLastProfileIdForMode(mode, userId, activeProfile.id);
-  }, [mode, userId, activeProfile]);
+    if (!activeProfileIdForStorage) return;
+    writeLastProfileIdForMode(mode, userId, activeProfileIdForStorage);
+  }, [mode, userId, activeProfileIdForStorage]);
 
   const setMode = useCallback(
     (target: WorkspaceMode) => {
@@ -64,18 +77,26 @@ export function useWorkspaceMode(): WorkspaceModeState {
       // No profile of the target kind exists yet (e.g. onboarded with only a
       // personal profile, or never opened Private before): create the space's
       // first profile transparently so the tab always works.
+      if (creatingDefaultProfile) return;
+      creatingDefaultProfile = true;
       setSwitching(true);
-      Promise.resolve(
-        addProfile(DEFAULT_PROFILE_NAMES[target], target === "private" ? "personal" : "company")
-      )
+      Promise.resolve(addProfile(DEFAULT_PROFILE_NAMES[target], kindForMode(target)))
         .then((created) => setActiveProfileId(created.id))
         .catch((err) => {
           console.warn(`[workspace-mode] Could not create ${target} profile`, err);
+          toast.error(
+            target === "private"
+              ? "Could not create your private profile. Try again."
+              : "Could not create a business profile. Try again."
+          );
         })
-        .finally(() => setSwitching(false));
+        .finally(() => {
+          creatingDefaultProfile = false;
+          setSwitching(false);
+        });
     },
     [mode, switching, profiles, userId, setActiveProfileId, addProfile]
   );
 
-  return useMemo(() => ({ mode, setMode, switching }), [mode, setMode, switching]);
+  return { mode, setMode, switching };
 }

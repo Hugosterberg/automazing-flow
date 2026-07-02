@@ -1,7 +1,5 @@
 import { Briefcase, Loader2, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useWorkspaceMode } from "./useWorkspaceMode";
-import { isNavUrlAllowedInMode } from "@/components/navConfig";
 import type { WorkspaceMode } from "./workspaceMode";
 
 const TABS: Array<{
@@ -17,20 +15,11 @@ const TABS: Array<{
  * Minimal segmented control in the app header that switches between the
  * Private and Business workspaces. The active tab mirrors the active
  * profile's kind; clicking the other tab activates (or creates) a profile
- * of that kind. If the current page doesn't exist in the target mode we
- * land on Home instead of a hidden route.
+ * of that kind. Layout's mode fence handles redirecting away from pages
+ * that don't exist in the target mode.
  */
 export function WorkspaceModeTabs() {
   const { mode, setMode, switching } = useWorkspaceMode();
-  const navigate = useNavigate();
-
-  function handleSelect(target: WorkspaceMode) {
-    if (target === mode) return;
-    setMode(target);
-    if (!isNavUrlAllowedInMode(window.location.pathname, target)) {
-      navigate("/");
-    }
-  }
 
   return (
     <div
@@ -45,7 +34,7 @@ export function WorkspaceModeTabs() {
           <button
             key={tabMode}
             type="button"
-            onClick={() => handleSelect(tabMode)}
+            onClick={() => setMode(tabMode)}
             disabled={switching}
             aria-pressed={isActive}
             className={`flex h-7 items-center gap-1.5 rounded-full px-2.5 sm:px-3 text-xs font-medium transition-colors ${
@@ -59,8 +48,7 @@ export function WorkspaceModeTabs() {
             ) : (
               <Icon className="h-3.5 w-3.5" aria-hidden />
             )}
-            <span className="hidden sm:inline">{label}</span>
-            <span className="sr-only sm:hidden">{label}</span>
+            <span className="sr-only sm:not-sr-only">{label}</span>
           </button>
         );
       })}

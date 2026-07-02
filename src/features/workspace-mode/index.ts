@@ -2,6 +2,8 @@ export {
   modeForProfile,
   isPersonalProfile,
   profileMatchesMode,
+  kindForMode,
+  profilesLabelForMode,
   readLastProfileIdForMode,
   writeLastProfileIdForMode,
 } from "./workspaceMode";

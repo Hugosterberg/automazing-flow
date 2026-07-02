@@ -1,4 +1,5 @@
 import type { Profile } from "@/types/accounts";
+import type { ProfileKind } from "@/types/businessProfile";
 import { scopedStorageKey } from "@/lib/storageUtils";
 
 /**
@@ -27,6 +28,16 @@ export function modeForProfile(profile: Pick<Profile, "kind"> | null | undefined
 /** Does this profile belong in the given workspace mode? */
 export function profileMatchesMode(profile: Pick<Profile, "kind">, mode: WorkspaceMode): boolean {
   return modeForProfile(profile) === mode;
+}
+
+/** Inverse of modeForProfile: the profile kind that belongs to a mode. */
+export function kindForMode(mode: WorkspaceMode): ProfileKind {
+  return mode === "private" ? "personal" : "company";
+}
+
+/** Heading for the profile list in each workspace (sidebar, switcher, home). */
+export function profilesLabelForMode(mode: WorkspaceMode): string {
+  return mode === "private" ? "Private profiles" : "Business profiles";
 }
 
 const LAST_PROFILE_PREFIX = "automazing:workspace-last-profile";

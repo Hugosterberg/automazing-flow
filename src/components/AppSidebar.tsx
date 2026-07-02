@@ -83,7 +83,7 @@ import {
   navItemsForMode,
   topNavItemsForMode,
 } from "@/components/navConfig";
-import { useWorkspaceMode } from "@/features/workspace-mode";
+import { profilesLabelForMode, useWorkspaceMode } from "@/features/workspace-mode";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
@@ -658,7 +658,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs text-muted-foreground">
-            {mode === "private" ? "Private profiles" : "Business profiles"}
+            {profilesLabelForMode(mode)}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <ProfileSwitcher />

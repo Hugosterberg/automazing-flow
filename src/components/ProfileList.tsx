@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAccounts } from "@/context/AccountsContext";
-import { profileMatchesMode, useWorkspaceMode } from "@/features/workspace-mode";
+import {
+  kindForMode,
+  profileMatchesMode,
+  profilesLabelForMode,
+  useWorkspaceMode,
+} from "@/features/workspace-mode";
 
 export function ProfileList() {
   const { profiles, activeProfileId, setActiveProfileId, addProfile, allAccounts } = useAccounts();
@@ -20,7 +25,7 @@ export function ProfileList() {
 
   function handleAddProfile() {
     const name = newName.trim() || "New profile";
-    addProfile(name, mode === "private" ? "personal" : "company");
+    addProfile(name, kindForMode(mode));
     setNewName("");
     setShowInput(false);
   }
@@ -29,7 +34,7 @@ export function ProfileList() {
     <div className="w-full max-w-2xl space-y-3">
       <div className="text-center space-y-1">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {mode === "private" ? "Private profiles" : "Business profiles"}
+          {profilesLabelForMode(mode)}
         </p>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           {mode === "private"

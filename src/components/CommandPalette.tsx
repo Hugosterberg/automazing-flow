@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Briefcase, ListPlus, LogOut, Megaphone, Search, Target, User } from "lucide-react";
 import {
@@ -40,13 +40,18 @@ export function CommandPalette() {
 
   // Page groups mirror the sidebar for the current workspace mode: Work and
   // Productivity come from navItems; Connections/Preferences surface under
-  // the System heading.
-  const modeNavItems = navItemsForMode(mode);
-  const pageGroups = (["work", "productivity"] as NavGroup[]).map((group) => ({
-    label: NAV_GROUP_LABELS[group],
-    items: modeNavItems.filter((item) => item.group === group),
-  }));
-  const systemItems = topNavItemsForMode(mode);
+  // the System heading. Memoized on mode — the palette re-renders on every
+  // accounts-context update even while closed.
+  const { pageGroups, systemItems } = useMemo(() => {
+    const modeNavItems = navItemsForMode(mode);
+    return {
+      pageGroups: (["work", "productivity"] as NavGroup[]).map((group) => ({
+        label: NAV_GROUP_LABELS[group],
+        items: modeNavItems.filter((item) => item.group === group),
+      })),
+      systemItems: topNavItemsForMode(mode),
+    };
+  }, [mode]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

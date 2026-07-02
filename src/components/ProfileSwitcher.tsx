@@ -19,7 +19,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAccounts } from "@/context/AccountsContext";
-import { profileMatchesMode, useWorkspaceMode } from "@/features/workspace-mode";
+import {
+  kindForMode,
+  profileMatchesMode,
+  profilesLabelForMode,
+  useWorkspaceMode,
+} from "@/features/workspace-mode";
 
 function ProfileInitials(name: string): string {
   return name
@@ -51,7 +56,7 @@ export function ProfileSwitcher() {
     const name = newName.trim() || "New profile";
     // New profiles inherit the current workspace: personal in Private,
     // company in Business — so they show up in the list they were created from.
-    addProfile(name, mode === "private" ? "personal" : "company");
+    addProfile(name, kindForMode(mode));
     setNewName("");
   }
 
@@ -97,9 +102,7 @@ export function ProfileSwitcher() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-full min-w-64">
           <div className="px-2 py-1.5 border-b border-border/50">
-            <p className="text-xs font-medium text-foreground">
-              {mode === "private" ? "Private profiles" : "Business profiles"}
-            </p>
+            <p className="text-xs font-medium text-foreground">{profilesLabelForMode(mode)}</p>
           </div>
           <div className="max-h-[240px] overflow-y-auto py-1">
             {sortedProfiles.map((profile) => {
