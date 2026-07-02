@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AccountPlatform, AccountStats, ConnectedAccount, Profile } from "@/types/accounts";
 import type { ProfileKind } from "@/types/businessProfile";
 import { useAuth } from "@/context/AuthContext";
@@ -17,6 +18,9 @@ import {
   applyAccountLimit,
   dedupeAccountsByProfilePlatform,
 } from "@/features/connections/accountLimits";
+// Direct file import (not the feature index) to avoid a context ↔ feature
+// import cycle via ConnectionsGrid → useWorkspaceMode → AccountsContext.
+import { CONNECTIONS_KEY } from "@/features/connections/useConnections";
 import { logActivity } from "@/features/activity/activityLog";
 import type { Json, Tables, TablesInsert } from "@/types/supabase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -287,6 +291,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const { enabled, loading: authLoading, user } = useAuth();
   const userId = user?.id ?? null;
   const bridge = useBusinessProfileBridge();
+  const queryClient = useQueryClient();
 
   // Local-mode profile state (offline dev).
   // In cloud mode these are derived from the bridge; we still keep the state
@@ -322,9 +327,11 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
   const profilesReady = enabled ? bridge.ready : legacyProfilesReady;
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null;
-  // Non-null id only when we actually have a tenant; otherwise null so that
-  // filters don't match the removed "default" fallback.
-  const effectiveProfileId = activeProfileId ?? activeProfile?.id ?? null;
+  // Prefer the resolved profile's id so a stale stored id (e.g. a profile
+  // deleted on another device) can't drive tenant queries while the UI shows
+  // the fallback profile. Falls back to the raw id while profiles are still
+  // loading, and null when there is no tenant at all.
+  const effectiveProfileId = activeProfile?.id ?? activeProfileId ?? null;
 
   useEffect(() => {
     localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
@@ -744,8 +751,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         }
       }
       setAccounts((prev) => prev.filter((a) => a.id !== id));
+      // Keep the Connections Center in sync: the connections query caches the
+      // row we just deleted (staleTime 15s), so without this the page shows
+      // an account the sidebar already removed.
+      void queryClient.invalidateQueries({ queryKey: CONNECTIONS_KEY });
     },
-    [enabled, userId]
+    [enabled, userId, queryClient]
   );
 
   const updateAccountAnalysis = useCallback((id: string, analysis: ConnectedAccount["analysis"]) => {

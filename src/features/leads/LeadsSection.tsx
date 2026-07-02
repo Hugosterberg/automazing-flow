@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { useLeads } from "./useLeads";
 import type { Lead } from "./leadsService";
 import {
@@ -102,7 +103,7 @@ function LeadRow({
           <Input
             type="date"
             aria-label={`Follow-up date for ${lead.company}`}
-            value={lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : ""}
+            value={lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : ""}
             onChange={(e) => onFollowUp(e.target.value)}
             className={cn(
               "h-8 w-[150px] text-xs",
@@ -210,7 +211,7 @@ export function LeadsSection({ businessProfileId, context }: Props) {
         phone: form.phone || null,
         website: form.website.trim() || null,
         notes: form.notes || null,
-        nextFollowUpAt: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : null,
+        nextFollowUpAt: form.nextFollowUpAt ? dateInputToEndOfDayIso(form.nextFollowUpAt) : null,
         source: "manual",
       });
       setForm({ ...EMPTY_FORM });
@@ -381,7 +382,7 @@ export function LeadsSection({ businessProfileId, context }: Props) {
                 onFollowUp={(value) =>
                   void updateLead({
                     id: lead.id,
-                    patch: { nextFollowUpAt: value ? new Date(value).toISOString() : null },
+                    patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
                   })
                 }
                 onDelete={() => void deleteLead(lead.id)}

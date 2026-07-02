@@ -86,7 +86,7 @@ export function SmartDailyBrief({
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
   const { unreadDms, isLoading: dmsLoading } = useUnreadDmCount();
   const marketingRoas = useCachedMarketingRoas();
-  const { leads } = useLeads(businessProfileId);
+  const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
 
   const brief = useMemo(() => {
     const nowMs = Date.now();
@@ -111,7 +111,8 @@ export function SmartDailyBrief({
 
   // Avoid flashing "all caught up" before the first data lands.
   const isInitialLoading =
-    (connectionsLoading || tasksLoading || recsLoading || dmsLoading) && brief.allClear;
+    (connectionsLoading || tasksLoading || recsLoading || dmsLoading || leadsLoading) &&
+    brief.allClear;
 
   return (
     <section

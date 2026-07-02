@@ -7,7 +7,9 @@ import type { AccountPlatform } from "./accounts";
  * - failed:  last sync produced an error (see lastSyncError).
  * - disconnected: legacy/manual disconnect state; hidden from active connection UI.
  * - pending: OAuth in flight, not yet completed.
- * - missing: expected by catalog but no row exists (computed client-side, never stored).
+ * - missing: row exists but its credentials/token record is gone. Treated
+ *   like `expired` everywhere (daily brief, home tiles, connection cards):
+ *   the user action is a re-auth.
  */
 export type ConnectionHealth =
   | "healthy"

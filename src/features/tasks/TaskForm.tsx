@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { dateInputToEndOfDayIso } from "@/lib/localDate";
 import {
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_ORDER,
@@ -45,7 +46,10 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         title: trimmed,
         description: description.trim() || null,
         priority,
-        dueAt: dueAt || null,
+        // A deadline picked as "July 2" means "by the end of July 2" in the
+        // user's timezone — not UTC midnight (which reads as overdue for
+        // most of the due day east of UTC).
+        dueAt: dueAt ? dateInputToEndOfDayIso(dueAt) : null,
       });
       setTitle("");
       setDescription("");

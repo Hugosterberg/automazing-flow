@@ -51,7 +51,10 @@ export function statusFromConnection(connection: Connection): ConnectionStatus {
     case "pending":
       return "syncing";
     case "missing":
-      return "not_connected";
+      // A row exists but its credentials are gone — the fix is a re-auth,
+      // same as "expired". Mapping this to connected/not_connected made the
+      // card disagree with the daily brief, which flags "missing" as critical.
+      return "reconnect_required";
     case "healthy":
     default:
       return "connected";
@@ -60,13 +63,19 @@ export function statusFromConnection(connection: Connection): ConnectionStatus {
 
 /**
  * Aggregate several connection rows (same integration, same business profile)
- * into a single status for a catalog card. Precedence follows severity: an
- * error on any linked account beats a healthy one.
+ * into a single status for a catalog card. Derived from the same per-row
+ * mapping as the details drawer (`statusFromConnection`) so the two surfaces
+ * can never disagree; precedence follows `CONNECTION_STATUS_ORDER` severity,
+ * so an error on any linked account beats a healthy one.
  */
 export function aggregateStatus(connections: Connection[]): ConnectionStatus {
   if (connections.length === 0) return "not_connected";
-  if (connections.some((c) => c.health === "failed")) return "error";
-  if (connections.some((c) => c.health === "expired")) return "reconnect_required";
-  if (connections.some((c) => c.health === "pending")) return "syncing";
-  return "connected";
+  let worst: ConnectionStatus = "not_connected";
+  for (const connection of connections) {
+    const status = statusFromConnection(connection);
+    if (CONNECTION_STATUS_ORDER.indexOf(status) < CONNECTION_STATUS_ORDER.indexOf(worst)) {
+      worst = status;
+    }
+  }
+  return worst;
 }

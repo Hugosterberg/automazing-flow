@@ -8,7 +8,7 @@ const LABELS: Record<ConnectionHealth, string> = {
   failed: "Sync error",
   disconnected: "Disconnected",
   pending: "Pending",
-  missing: "Not connected",
+  missing: "Re-auth needed",
 };
 
 const STYLES: Record<ConnectionHealth, string> = {
@@ -17,7 +17,7 @@ const STYLES: Record<ConnectionHealth, string> = {
   failed: "border-destructive/40 bg-destructive/10 text-destructive",
   disconnected: "border-warning/40 bg-warning/5 text-warning/90",
   pending: "border-info/40 bg-info/10 text-info",
-  missing: "border-border bg-muted/40 text-muted-foreground",
+  missing: "border-warning/40 bg-warning/10 text-warning",
 };
 
 function Icon({ health, className }: { health: ConnectionHealth; className?: string }) {

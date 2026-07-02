@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { m } from "framer-motion";
-import { CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { AlertTriangle, CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,6 +12,7 @@ import {
   useTasks,
   TaskForm,
   TaskBoard,
+  isTaskOverdue,
 } from "@/features/tasks";
 
 /**
@@ -21,6 +23,11 @@ export default function TasksPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
+
+  // `?view=overdue` deep links come from the sidebar badge, the home
+  // dashboard tile and the daily brief — honour them by filtering the board.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showOverdueOnly = searchParams.get("view") === "overdue";
 
   const {
     tasks,
@@ -34,6 +41,15 @@ export default function TasksPage() {
     deleteTask,
     isDeleting,
   } = useTasks(businessProfileId);
+
+  const overdueTasks = useMemo(() => tasks.filter((task) => isTaskOverdue(task)), [tasks]);
+  const visibleTasks = showOverdueOnly ? overdueTasks : tasks;
+
+  function clearOverdueFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: true });
+  }
 
   const stats = useMemo(() => {
     const todo = tasks.filter((task) => task.status !== "done" && task.status !== "in_progress" && task.status !== "archived").length;
@@ -84,6 +100,26 @@ export default function TasksPage() {
         />
       </m.div>
 
+      {showOverdueOnly ? (
+        <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/5 px-3 py-2">
+            <AlertTriangle className="h-4 w-4 text-warning" aria-hidden />
+            <p className="text-sm text-foreground">
+              Showing {overdueTasks.length === 1 ? "1 overdue task" : `${overdueTasks.length} overdue tasks`}.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2 text-xs"
+              onClick={clearOverdueFilter}
+            >
+              <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+              Show all tasks
+            </Button>
+          </div>
+        </m.div>
+      ) : null}
+
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
           <Card className="border-sky-500/20 bg-sky-500/5">
@@ -115,7 +151,7 @@ export default function TasksPage() {
           </Card>
         </div>
         <TaskBoard
-          tasks={tasks}
+          tasks={visibleTasks}
           isLoading={isLoading}
           onSetStatus={(id, status) => void setStatus({ id, status })}
           onDelete={(id) => void deleteTask(id)}
