@@ -488,20 +488,12 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     return raw.replace(/\/$/, "");
   }
 
-  function getGmailRedirectUri() {
-    return `${API_BASE_URL}/api/auth/google/callback`;
-  }
-
   function getCanvaClientId() {
     return String(process.env.CANVA_CLIENT_ID || "").trim();
   }
 
   function getCanvaClientSecret() {
     return String(process.env.CANVA_CLIENT_SECRET || "").trim();
-  }
-
-  function getCanvaRedirectUri() {
-    return `${API_BASE_URL}/api/auth/canva/callback`;
   }
 
   function canvaScope() {
@@ -609,6 +601,32 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       .trim();
     const proto = forwardedProto || req?.protocol || "https";
     return originOf(`${proto}://${host}`);
+  }
+
+  /**
+   * Public origin for OAuth redirect_uri values. When the user starts a
+   * connect flow on a custom domain (e.g. automazing.life), Google/Meta/etc.
+   * must see THAT host in redirect_uri — otherwise their consent screen says
+   * "signing in to automazing.vercel.app". Falls back to the configured
+   * API_BASE_URL for server-initiated flows without a browser request.
+   */
+  function oauthPublicBaseUrl(req?: unknown): string {
+    const own = req ? requestOwnOrigin(req as Parameters<typeof requestOwnOrigin>[0]) : null;
+    if (own) return own.replace(/\/$/, "");
+    return String(API_BASE_URL).replace(/\/$/, "");
+  }
+
+  function oauthCallbackUrl(req: unknown, callbackPath: string): string {
+    const path = callbackPath.startsWith("/") ? callbackPath : `/${callbackPath}`;
+    return `${oauthPublicBaseUrl(req)}${path}`;
+  }
+
+  function getGmailRedirectUri(req?: unknown) {
+    return oauthCallbackUrl(req, "/api/auth/google/callback");
+  }
+
+  function getCanvaRedirectUri(req?: unknown) {
+    return oauthCallbackUrl(req, "/api/auth/canva/callback");
   }
 
   function requestedAppBaseUrl(req): string | null {
@@ -731,7 +749,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       oauthReturnPage: hubReturn || undefined,
     });
 
-    const redirectUri = `${API_BASE_URL}/api/auth/google_ads/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/google_ads/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -763,7 +781,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       oauthReturnPage: hubReturn || undefined,
     });
 
-    const redirectUri = `${API_BASE_URL}/api/auth/meta_business/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/meta_business/callback");
     const url = new URL(`https://www.facebook.com/${getMetaGraphVersion()}/dialog/oauth`);
     url.searchParams.set("client_id", appId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -912,7 +930,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           createdAt: Date.now(),
           oauthReturnPage: parseOauthReturnPage(req) || undefined,
         });
-        const redirectUrl = `${API_BASE_URL}/api/auth/zernio/instagram/callback?state=${state}`;
+        const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/instagram/callback?state=${state}`);
         const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/instagram`);
         connectUrl.searchParams.set("profileId", zernioProfileId);
         connectUrl.searchParams.set("redirect_url", redirectUrl);
@@ -956,7 +974,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/instagram/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/instagram/callback");
     const url = new URL(IG_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -1110,7 +1128,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           createdAt: Date.now(),
           oauthReturnPage: hubReturn || undefined,
         });
-        const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+        const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
         const authUrl = await getZernioConnectUrl({
           ZERNIO_API_BASE,
           zernioKey,
@@ -1258,7 +1276,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/google_ads/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/google_ads/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -1372,7 +1390,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     try {
       const graphVersion = getMetaGraphVersion();
-      const redirectUri = `${API_BASE_URL}/api/auth/meta_business/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/meta_business/callback");
       const tokenUrl = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
       tokenUrl.searchParams.set("client_id", appId);
       tokenUrl.searchParams.set("client_secret", appSecret);
@@ -1680,7 +1698,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/instagram/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/instagram/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -1767,7 +1785,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             createdAt: Date.now(),
             oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
-          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
           const authUrl = await getZernioConnectUrl({
             ZERNIO_API_BASE,
             zernioKey,
@@ -1808,7 +1826,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/tiktok/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/tiktok/callback");
     const url = new URL(TIKTOK_AUTH);
     url.searchParams.set("client_key", clientKey);
     url.searchParams.set("scope", "user.info.basic,video.list");
@@ -1842,7 +1860,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/tiktok/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/tiktok/callback");
       const body = new URLSearchParams({
         client_key: clientKey,
         client_secret: clientSecret,
@@ -1938,7 +1956,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/x/callback");
     const url = new URL(X_AUTH);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
@@ -1969,7 +1987,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(oauthRedirectTo(base, "x","oauth_error=invalid_pkce_state", pending.oauthReturnPage));
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/x/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/x/callback");
       const body = new URLSearchParams({
         grant_type: "authorization_code",
         code: String(code || ""),
@@ -2048,7 +2066,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/youtube/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/youtube/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -2084,7 +2102,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/youtube/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/youtube/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -2458,7 +2476,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             createdAt: Date.now(),
             oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
-          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
           const authUrl = await getZernioConnectUrl({
             ZERNIO_API_BASE,
             zernioKey,
@@ -2501,7 +2519,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/google-calendar/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/google-calendar/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -2542,7 +2560,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=google_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/google-calendar/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/google-calendar/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -2625,7 +2643,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             createdAt: Date.now(),
             oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
-          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
           const authUrl = await getZernioConnectUrl({
             ZERNIO_API_BASE,
             zernioKey,
@@ -2665,7 +2683,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/outlook-calendar/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/outlook-calendar/callback");
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(OUTLOOK_CALENDAR_SCOPES)}&state=${state}&response_mode=query`;
     res.redirect(url);
   });
@@ -2692,7 +2710,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=outlook_calendar_not_configured", pending.oauthReturnPage));
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/outlook-calendar/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/outlook-calendar/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -2778,7 +2796,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             createdAt: Date.now(),
             oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
-          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
           const authUrl = await getZernioConnectUrl({
             ZERNIO_API_BASE,
             zernioKey,
@@ -2818,7 +2836,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/google-reviews/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/google-reviews/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -2863,7 +2881,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/google-reviews/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/google-reviews/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -3018,7 +3036,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
           createdAt: Date.now(),
           oauthReturnPage: returnPage,
         });
-        const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+        const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
         const authUrl = await getZernioConnectUrl({
           ZERNIO_API_BASE,
           zernioKey,
@@ -3060,7 +3078,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/google_business/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -3101,7 +3119,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=google_business_not_configured", pending.oauthReturnPage));
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/google_business/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/google_business/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -3235,7 +3253,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
             createdAt: Date.now(),
             oauthReturnPage: parseOauthReturnPage(req) || undefined,
           });
-          const redirectUrl = `${API_BASE_URL}/api/auth/zernio/platform/callback?state=${state}`;
+          const redirectUrl = oauthCallbackUrl(req, `/api/auth/zernio/platform/callback?state=${state}`);
           const authUrl = await getZernioConnectUrl({
             ZERNIO_API_BASE,
             zernioKey,
@@ -3370,7 +3388,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     const state = generateState();
-    const redirectUri = getGmailRedirectUri();
+    const redirectUri = getGmailRedirectUri(req);
     await oauthPendingStore.set(state, {
       platform: "gmail",
       userId,
@@ -3425,7 +3443,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/google_drive/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/google_drive/callback");
     const url = new URL(GOOGLE_AUTH);
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", redirectUri);
@@ -3536,7 +3554,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
 
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/google_drive/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/google_drive/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -3723,7 +3741,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       );
     }
     try {
-      const redirectUri = typeof pending.redirectUri === "string" ? pending.redirectUri : getGmailRedirectUri();
+      const redirectUri = typeof pending.redirectUri === "string" ? pending.redirectUri : getGmailRedirectUri(req);
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -3829,7 +3847,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       createdAt: Date.now(),
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
-    const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
+    const redirectUri = oauthCallbackUrl(req, "/api/auth/outlook/callback");
     const scope = "offline_access openid profile email User.Read Mail.Read Mail.Send";
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_mode=query`;
     res.redirect(url);
@@ -3856,7 +3874,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       return res.redirect(buildPendingMessagesUrl(pending, { oauth_error: "outlook_not_configured" }));
     }
     try {
-      const redirectUri = `${API_BASE_URL}/api/auth/outlook/callback`;
+      const redirectUri = oauthCallbackUrl(req, "/api/auth/outlook/callback");
       const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -3939,7 +3957,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
 
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
-    const redirectUri = getCanvaRedirectUri();
+    const redirectUri = getCanvaRedirectUri(req);
     await oauthPendingStore.set(state, {
       platform: "canva",
       userId,
@@ -4013,7 +4031,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         clientSecret,
         code: String(code),
         codeVerifier: String(pending.codeVerifier),
-        redirectUri: typeof pending.redirectUri === "string" ? pending.redirectUri : getCanvaRedirectUri(),
+        redirectUri: typeof pending.redirectUri === "string" ? pending.redirectUri : getCanvaRedirectUri(req),
       });
       if (tokenResult.ok === false) {
         return res.redirect(

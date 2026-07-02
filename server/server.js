@@ -100,6 +100,32 @@ function parseOriginIsLoopback(origin) {
 }
 
 /**
+ * First non-loopback https origin in CORS_ORIGINS that is not a *.vercel.app
+ * alias. Used on Vercel production when BASE_URL/API_BASE_URL were never set
+ * to the custom domain — otherwise OAuth redirect_uri defaults to the Vercel
+ * hostname and Google shows "signing in to automazing.vercel.app".
+ */
+function customDomainFromCorsOrigins() {
+  const origins = String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const raw of origins) {
+    try {
+      const parsed = new URL(raw.includes("://") ? raw : `https://${raw}`);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") continue;
+      if (parseOriginIsLoopback(parsed.origin)) continue;
+      const host = parsed.hostname.toLowerCase();
+      if (host.endsWith(".vercel.app")) continue;
+      return parsed.origin.replace(/\/$/, "");
+    } catch {
+      // skip malformed entries
+    }
+  }
+  return "";
+}
+
+/**
  * https://… origin of this deployment (no trailing slash).
  *
  * Production deployments return the stable project alias
@@ -145,6 +171,10 @@ function resolveApiBaseUrl() {
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
     return explicitBase.replace(/\/$/, "");
   }
+  if (onVercel && String(process.env.VERCEL_ENV || "").trim() === "production") {
+    const custom = customDomainFromCorsOrigins();
+    if (custom) return custom;
+  }
   if (onVercel && deployed) {
     return deployed;
   }
@@ -159,6 +189,10 @@ function resolveBaseUrl(apiBaseResolved) {
 
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
     return explicitBase.replace(/\/$/, "");
+  }
+  if (onVercel && String(process.env.VERCEL_ENV || "").trim() === "production") {
+    const custom = customDomainFromCorsOrigins();
+    if (custom) return custom;
   }
   if (onVercel && deployed) {
     return deployed;

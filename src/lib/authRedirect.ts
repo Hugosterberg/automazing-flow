@@ -243,10 +243,26 @@ export function buildCanonicalAppOriginUrl(input: AppOriginCanonicalizeInput): s
     input.vercelProductionOrigin || "",
   ]);
   if (!canonicalOrigin || canonicalOrigin === input.windowOrigin) return null;
-  if (!isSameVercelAppOrigin(input.windowOrigin, canonicalOrigin)) return null;
+  if (isSameVercelAppOrigin(input.windowOrigin, canonicalOrigin)) {
+    const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
+    return `${canonicalOrigin}${pathname}${input.search || ""}${input.hash || ""}`;
+  }
 
-  const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
-  return `${canonicalOrigin}${pathname}${input.search || ""}${input.hash || ""}`;
+  // Production alias → custom domain (e.g. automazing.vercel.app → automazing.life)
+  // when VITE_SITE_URL / VITE_APP_URL point at the real domain.
+  const windowUrl = parseUrlSafe(input.windowOrigin);
+  const canonicalUrl = parseUrlSafe(canonicalOrigin);
+  if (
+    windowUrl &&
+    canonicalUrl &&
+    windowUrl.hostname.toLowerCase().endsWith(".vercel.app") &&
+    !canonicalUrl.hostname.toLowerCase().endsWith(".vercel.app")
+  ) {
+    const pathname = input.pathname && input.pathname.startsWith("/") ? input.pathname : "/";
+    return `${canonicalOrigin}${pathname}${input.search || ""}${input.hash || ""}`;
+  }
+
+  return null;
 }
 
 export function redirectMismatchedAppOriginToCanonicalOrigin(): boolean {

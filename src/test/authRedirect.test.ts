@@ -99,6 +99,20 @@ describe("buildOAuthRedirectUrl", () => {
         })
       ).toBeNull();
     });
+
+    it("moves browsing from a Vercel alias to the configured custom domain", () => {
+      expect(
+        buildCanonicalAppOriginUrl({
+          prod: true,
+          siteUrl: "https://automazing.life",
+          appUrl: "",
+          vercelProductionOrigin: "https://automazing.vercel.app",
+          windowOrigin: "https://automazing.vercel.app",
+          pathname: "/messages",
+          search: "",
+        })
+      ).toBe("https://automazing.life/messages");
+    });
   });
 
   it("production falls back to site URL when window origin is loopback", () => {
