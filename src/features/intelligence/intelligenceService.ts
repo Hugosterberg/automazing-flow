@@ -299,3 +299,48 @@ export async function runDesignAssist(options: {
     "Design assist failed."
   );
 }
+
+export interface McpSourceAssessment {
+  sourceId: string;
+  platform: string;
+  providerLabel: string;
+  lens: string;
+  status: "success" | "skipped" | "error";
+  skipReason?: "not_connected" | "missing_credential" | "auth_expired" | "forbidden" | "unknown_platform";
+  message?: string;
+  tool?: string;
+  query?: string;
+  text?: string;
+}
+
+export interface MultiSourceAssessmentResponse {
+  subject: string;
+  kind: "domain" | "company";
+  sources: McpSourceAssessment[];
+  summary: { total: number; success: number; skipped: number; error: number };
+  fetchedAt: string;
+}
+
+export async function fetchMultiSourceAssessment(options: {
+  businessProfileId: string | null;
+  subject: string;
+}): Promise<MultiSourceAssessmentResponse> {
+  const res = await fetchWithTimeout(
+    apiUrl("/api/intelligence/multi-source-assessment"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_profile_id: options.businessProfileId || undefined,
+        subject: options.subject,
+      }),
+    },
+    120_000
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(apiErrorMessage(payload, "Multi-source comparison failed."));
+  }
+  return payload as MultiSourceAssessmentResponse;
+}

@@ -13,15 +13,16 @@ import {
   mcpFeaturesForTab,
   type McpHubTabId,
 } from "./mcpFeatureConfig";
+import { McpMultiSourceCompare } from "./McpMultiSourceCompare";
 
-const QUERY_TABS = MCP_HUB_TABS.filter((t) => t.id !== "overview");
+const QUERY_TABS = MCP_HUB_TABS.filter((t) => t.id !== "overview" && t.id !== "compare");
 
 /**
  * Unified hub: one tab per MCP category, one input box per feature.
  * Covers all 16 MCP providers (some share a fallback input).
  */
 export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: string | null }) {
-  const [tab, setTab] = useState<McpHubTabId>("overview");
+  const [tab, setTab] = useState<McpHubTabId>("compare");
 
   const featureCount = MCP_FEATURE_DEFINITIONS.length;
   const platformCount = MCP_PLATFORMS_WITH_UI.length;
@@ -75,6 +76,10 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
               Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs.
             </p>
             <McpProviderStatusList businessProfileId={businessProfileId} />
+          </TabsContent>
+
+          <TabsContent value="compare" className="mt-0">
+            <McpMultiSourceCompare businessProfileId={businessProfileId} />
           </TabsContent>
 
           {tabContent.map((hubTab) => (

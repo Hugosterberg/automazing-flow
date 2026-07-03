@@ -19,6 +19,8 @@
  *   POST /api/intelligence/crm-query            — Day.ai
  *   POST /api/intelligence/context-query        — Era
  *   POST /api/intelligence/design-assist        — Canva MCP
+ *   POST /api/intelligence/multi-source-assessment — parallel domain/company
+ *        assessment across all connected MCP lenses (Ahrefs, GoDaddy, Exa, …)
  *
  * Both resolve the tenant's own connected accounts via mcpAccess — no global
  * keys, no cross-tenant reads. Tool names differ per vendor, so tools are
@@ -30,12 +32,12 @@ import {
   listToolsForStored,
   callToolForStored,
   pickTool,
-  type StoredMcpAccount,
 } from "../lib/mcpAccess.ts";
 import { MCP_FEATURE_PLATFORMS } from "../lib/mcpCatalog.ts";
+import { argNameForTool, runMcpQuery, trimMcpText } from "../lib/mcpQuery.ts";
+import { runMultiSourceAssessment } from "../lib/mcpMultiSource.ts";
 import { assessMcpAccount, buildMcpProvidersReadiness, findReadyMcpAccount } from "../lib/mcpReadiness.ts";
 import { readRequestBusinessProfileId } from "../lib/profileScope.ts";
-import type { McpToolDescriptor } from "../lib/mcpClient.ts";
 
 interface TokenStoreLike {
   set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
@@ -53,79 +55,11 @@ interface IntelligenceRouteDeps {
 }
 
 /**
- * The first inputSchema property whose name matches a candidate (in order).
- * Falls back to the first required property so we can still fill something.
- */
-function argNameForTool(tool: McpToolDescriptor, candidates: string[]): string | null {
-  const properties =
-    tool.inputSchema && typeof tool.inputSchema === "object"
-      ? ((tool.inputSchema as Record<string, unknown>).properties as Record<string, unknown> | undefined)
-      : undefined;
-  const names = properties ? Object.keys(properties) : [];
-  for (const candidate of candidates) {
-    const hit = names.find((n) => n.toLowerCase() === candidate);
-    if (hit) return hit;
-  }
-  const required = (tool.inputSchema as Record<string, unknown> | undefined)?.required;
-  if (Array.isArray(required) && typeof required[0] === "string") return required[0];
-  return names[0] ?? null;
-}
-
-/** Cap MCP text passed back to the UI — dashboards need a summary, not a dump. */
-function trimText(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max)}…` : text;
-}
-
-/**
  * Per-instance response cache. Serverless instances are short-lived, so this
  * is a best-effort cost saver (LunarCrush rate limits), not a datastore.
  */
 const pulseCache = new Map<string, { at: number; payload: Record<string, unknown> }>();
 const PULSE_CACHE_MS = 15 * 60 * 1000;
-
-async function runMcpQuery(options: {
-  tokenStore: TokenStoreLike;
-  account: StoredMcpAccount;
-  toolPatterns: RegExp[];
-  argCandidates: string[];
-  query: string;
-  maxChars?: number;
-}): Promise<
-  | { ok: true; tool: string; text: string; provider: string }
-  | { ok: false; status: number; error: string }
-> {
-  const toolsRes = await listToolsForStored(options.tokenStore, options.account);
-  if (toolsRes.ok === false) {
-    return { ok: false, status: 502, error: toolsRes.message };
-  }
-  const tool = pickTool(toolsRes.tools, options.toolPatterns);
-  if (!tool) {
-    return { ok: false, status: 502, error: "The connected provider exposes no matching tool." };
-  }
-  const argName = argNameForTool(tool, options.argCandidates);
-  const callRes = await callToolForStored(
-    options.tokenStore,
-    options.account,
-    tool.name,
-    argName ? { [argName]: options.query } : {}
-  );
-  if (callRes.ok === false) {
-    return { ok: false, status: 502, error: callRes.message };
-  }
-  if (callRes.isError) {
-    return {
-      ok: false,
-      status: 502,
-      error: trimText(callRes.text, 500) || "Provider returned an error.",
-    };
-  }
-  return {
-    ok: true,
-    provider: String(options.account.platform || ""),
-    tool: tool.name,
-    text: trimText(callRes.text, options.maxChars ?? 20_000),
-  };
-}
 
 async function handleAuthenticatedMcpQuery(
   req: { body?: Record<string, unknown>; query?: Record<string, unknown> },
@@ -260,7 +194,7 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
         return res.json({
           available: false,
           reason: "provider_error",
-          message: callRes.ok === false ? callRes.message : trimText(callRes.text, 300),
+          message: callRes.ok === false ? callRes.message : trimMcpText(callRes.text, 300),
         });
       }
 
@@ -268,7 +202,7 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
         available: true,
         topic,
         tool: tool.name,
-        text: trimText(callRes.text, 4_000),
+        text: trimMcpText(callRes.text, 4_000),
         fetchedAt: new Date().toISOString(),
       };
       pulseCache.set(cacheKey, { at: Date.now(), payload });
@@ -626,5 +560,29 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       logTag: "design-assist",
       failMessage: "Design assist failed.",
     });
+  });
+
+  app.post("/api/intelligence/multi-source-assessment", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const businessProfileId = readRequestBusinessProfileId(req);
+    const subject = String(req.body?.subject || req.body?.domain || req.body?.company || "").trim();
+
+    try {
+      const result = await runMultiSourceAssessment({
+        tokenStore,
+        businessProfileId,
+        userId,
+        getStoredAccountAccess: (stored, uid) => getStoredAccountAccess(stored, uid),
+        subjectInput: subject,
+      });
+      if ("error" in result) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      return res.json(result);
+    } catch (err) {
+      console.error("[intelligence] multi-source-assessment failed:", err);
+      return res.status(500).json({ error: "Multi-source assessment failed." });
+    }
   });
 }

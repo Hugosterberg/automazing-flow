@@ -32,20 +32,20 @@ const KEYED_AUTH: Record<KeyedMcpPlatform, McpAuthKind> = {
 
 const FEATURE_USAGE: Record<string, string[]> = {
   lunarcrush: ["Market pulse (home dashboard)"],
-  exa: ["Lead research (Sales)", "Doc search (Connections)"],
-  sprouts: ["Lead research (Sales, fallback)"],
-  ahrefs: ["SEO overview (Marketing)"],
-  supermetrics_mcp: ["Marketing data queries (Marketing)"],
-  windsor: ["Marketing data queries (Marketing, fallback)"],
+  exa: ["Lead research (Sales)", "Doc search (Connections)", "Multi-source compare (Intelligence)"],
+  sprouts: ["Lead research (Sales, fallback)", "Multi-source compare (Intelligence)"],
+  ahrefs: ["SEO overview (Marketing)", "Multi-source compare (Intelligence)"],
+  supermetrics_mcp: ["Marketing data queries (Marketing)", "Multi-source compare (Intelligence)"],
+  windsor: ["Marketing data queries (Marketing, fallback)", "Multi-source compare (Intelligence)"],
   twilio_mcp: ["Developer doc search (Connections)"],
-  peec: ["Competitive research (Marketing)"],
+  peec: ["Competitive research (Marketing)", "Multi-source compare (Intelligence)"],
   dayai: ["CRM assistant (Customers)"],
   superhuman_mcp: ["Mail search (Messages)"],
-  era: ["Context tools (Connections)"],
+  era: ["Context tools (Connections)", "Multi-source compare (Intelligence)"],
   canva_mcp: ["Design automation (Content)"],
   gamma: ["Deck generation (Content)"],
   shopify_mcp: ["Storefront catalog (Ecommerce)"],
-  godaddy: ["Domain lookup (Connections)"],
+  godaddy: ["Domain lookup (Connections)", "Multi-source compare (Intelligence)"],
   klarity: ["Architecture docs (Connections)"],
 };
 
@@ -100,4 +100,14 @@ export const MCP_FEATURE_PLATFORMS = {
   crmQuery: ["dayai"],
   contextQuery: ["era"],
   designAssist: ["canva_mcp"],
+  multiSourceCompare: [
+    "ahrefs",
+    "godaddy",
+    "peec",
+    "exa",
+    "sprouts",
+    "supermetrics_mcp",
+    "windsor",
+    "era",
+  ],
 } as const;

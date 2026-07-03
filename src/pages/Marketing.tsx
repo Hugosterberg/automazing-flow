@@ -28,7 +28,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
 import { MarketingCampaigns, MarketingPerformance, InventoryAdsAlert } from "@/features/marketing";
-import { MarketingIntelligencePanel } from "@/features/intelligence";
+import { MarketingIntelligencePanel, McpMultiSourceCompare } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks";
@@ -327,6 +327,10 @@ export default function MarketingPage() {
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.048 }}>
+        <McpMultiSourceCompare businessProfileId={businessProfileId} />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.049 }}>
         <MarketingIntelligencePanel businessProfileId={businessProfileId} />
       </m.div>
 

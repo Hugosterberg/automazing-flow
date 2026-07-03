@@ -23,6 +23,7 @@ import {
 
 export type McpHubTabId =
   | "overview"
+  | "compare"
   | "research"
   | "marketing"
   | "content"
@@ -51,6 +52,11 @@ export interface McpFeatureDefinition {
 
 export const MCP_HUB_TABS: McpHubTab[] = [
   { id: "overview", label: "Status", description: "Connection and credential readiness for all MCP providers." },
+  {
+    id: "compare",
+    label: "Compare",
+    description: "Run the same domain or company against every connected MCP lens and compare judgments side by side.",
+  },
   { id: "research", label: "Research", description: "Market pulse, lead research, and competitive intelligence." },
   { id: "marketing", label: "Marketing", description: "SEO and marketing data queries." },
   { id: "content", label: "Content", description: "Decks and design assistance." },
