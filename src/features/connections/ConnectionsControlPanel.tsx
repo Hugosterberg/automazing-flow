@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -25,6 +25,7 @@ import {
 import type { Connection } from "@/types/connection";
 import { aggregateStatus, CONNECTION_STATUS_LABELS, type ConnectionStatus } from "./connectionStatus";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { cn } from "@/lib/utils";
 import type { AccountPlatform } from "@/types/accounts";
 
 export type HealthIssueCategory = "cron" | "connection" | "mcp" | "automation";
@@ -140,37 +141,52 @@ function IssueRow({ issue }: { issue: HealthIssue }) {
 export function ConnectionsControlPanel({
   businessProfileId,
   connections,
+  onRefreshConnections,
 }: {
   businessProfileId: string | null;
   connections: Connection[];
+  /** Re-fetch integration rows when the health panel refresh button is used. */
+  onRefreshConnections?: () => void | Promise<unknown>;
 }) {
   const runs = useAutomationRuns(businessProfileId);
   const { providers, isLoading: mcpLoading, refetch: refetchMcp } = useMcpProvidersStatus(businessProfileId);
   const [logLoading, setLogLoading] = useState(false);
   const [failedLog, setFailedLog] = useState<AutoReplyLogEntry[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const loadFailedLog = useCallback(async () => {
     if (!businessProfileId) {
       setFailedLog([]);
       return;
     }
-    let ignore = false;
     setLogLoading(true);
-    void fetchAutoReplyLog(businessProfileId, 30)
-      .then(({ entries }) => {
-        if (ignore) return;
-        setFailedLog(entries.filter((e) => e.status === "failed").slice(0, 8));
-      })
-      .catch(() => {
-        if (!ignore) setFailedLog([]);
-      })
-      .finally(() => {
-        if (!ignore) setLogLoading(false);
-      });
-    return () => {
-      ignore = true;
-    };
+    try {
+      const { entries } = await fetchAutoReplyLog(businessProfileId, 30);
+      setFailedLog(entries.filter((e) => e.status === "failed").slice(0, 8));
+    } catch {
+      setFailedLog([]);
+    } finally {
+      setLogLoading(false);
+    }
   }, [businessProfileId]);
+
+  useEffect(() => {
+    void loadFailedLog();
+  }, [loadFailedLog]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchMcp(),
+        runs.refetch(),
+        loadFailedLog(),
+        onRefreshConnections ? Promise.resolve(onRefreshConnections()) : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const issues = useMemo(() => {
     const list: HealthIssue[] = [];
@@ -212,7 +228,7 @@ export function ConnectionsControlPanel({
     return list.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
   }, [runs.loading, runs.error, runs.byKey, connections, providers, failedLog]);
 
-  const loading = runs.loading || mcpLoading || logLoading;
+  const loading = runs.loading || mcpLoading || logLoading || refreshing;
   const errorCount = issues.filter((i) => i.severity === "error").length;
   const warningCount = issues.filter((i) => i.severity === "warning").length;
 
@@ -235,9 +251,10 @@ export function ConnectionsControlPanel({
             variant="outline"
             size="sm"
             className="gap-1.5 shrink-0"
-            onClick={() => void refetchMcp()}
+            disabled={refreshing}
+            onClick={() => void handleRefresh()}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>

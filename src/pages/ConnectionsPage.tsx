@@ -360,10 +360,10 @@ export default function ConnectionsPage() {
                 downloadCsv(csv, `anslutningar-${new Date().toISOString().slice(0, 10)}.csv`);
               }}
               disabled={connections.length === 0}
-              title="Exportera till CSV"
+              title="Export to CSV"
             >
               <Download className="h-3.5 w-3.5" />
-              Exportera
+              Export
             </Button>
             <Button
               type="button"
@@ -378,7 +378,7 @@ export default function ConnectionsPage() {
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              Kontrollera
+              Reconcile
             </Button>
           </div>
         }
@@ -462,7 +462,11 @@ export default function ConnectionsPage() {
         </TabsList>
 
         <TabsContent value="health" className="mt-4 space-y-4">
-          <ConnectionsControlPanel businessProfileId={businessProfileId} connections={connections} />
+          <ConnectionsControlPanel
+            businessProfileId={businessProfileId}
+            connections={connections}
+            onRefreshConnections={() => refetch()}
+          />
         </TabsContent>
 
         <TabsContent value="mcp" className="mt-4 space-y-4">
@@ -514,7 +518,7 @@ export default function ConnectionsPage() {
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">
-            <strong>{selectedIds.size}</strong> vald{selectedIds.size > 1 ? "a" : ""}
+            <strong>{selectedIds.size}</strong> selected
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -524,7 +528,7 @@ export default function ConnectionsPage() {
               className="h-7 text-xs"
             >
               <X className="h-3 w-3 mr-1" />
-              Avmarkera
+              Clear selection
             </Button>
             <Button
               variant="destructive"
@@ -538,7 +542,7 @@ export default function ConnectionsPage() {
               ) : (
                 <Unplug className="h-3 w-3 mr-1" />
               )}
-              Koppla ifrån
+              Disconnect
             </Button>
           </div>
         </div>

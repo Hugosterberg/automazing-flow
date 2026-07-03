@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   fetchAutomationRuns,
   type AutomationRunStatus,
@@ -10,6 +10,8 @@ export interface AutomationRunsState {
   loading: boolean;
   /** Human-readable error message when the fetch failed, else null. */
   error: string | null;
+  /** Reload run status from the server. */
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -27,8 +29,7 @@ export function useAutomationRuns(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const refetch = useCallback(async () => {
     if (!businessProfileId) {
       setByKey({});
       setLoading(false);
@@ -37,25 +38,22 @@ export function useAutomationRuns(
     }
     setLoading(true);
     setError(null);
-    fetchAutomationRuns(businessProfileId)
-      .then((payload) => {
-        if (cancelled) return;
-        const next: Record<string, AutomationRunStatus> = {};
-        for (const run of payload.runs) next[run.key] = run;
-        setByKey(next);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setByKey({});
-        setError(err instanceof Error ? err.message : "Kunde inte hämta körstatus.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const payload = await fetchAutomationRuns(businessProfileId);
+      const next: Record<string, AutomationRunStatus> = {};
+      for (const run of payload.runs) next[run.key] = run;
+      setByKey(next);
+    } catch (err) {
+      setByKey({});
+      setError(err instanceof Error ? err.message : "Could not load automation run status.");
+    } finally {
+      setLoading(false);
+    }
   }, [businessProfileId]);
 
-  return { byKey, loading, error };
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { byKey, loading, error, refetch };
 }

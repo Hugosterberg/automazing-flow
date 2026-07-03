@@ -36,7 +36,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Titel krävs.");
+      setError("Title is required.");
       return;
     }
     setError(null);
@@ -56,7 +56,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
       setPriority("medium");
       setDueAt("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte skapa uppgiften.");
+      setError(err instanceof Error ? err.message : "Could not create task.");
     } finally {
       setSubmitting(false);
     }
@@ -71,13 +71,13 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     >
       <div className="space-y-1.5">
         <Label htmlFor="task-title" className="text-xs">
-          Titel
+          Title
         </Label>
         <Input
           id="task-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Vad behöver göras?"
+          placeholder="What needs to be done?"
           disabled={busy}
           autoComplete="off"
         />
@@ -85,14 +85,14 @@ export function TaskForm({ onSubmit, disabled }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="task-description" className="text-xs">
-          Beskrivning{" "}
-          <span className="text-muted-foreground">(valfritt)</span>
+          Description{" "}
+          <span className="text-muted-foreground">(optional)</span>
         </Label>
         <Textarea
           id="task-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Lägg till kontext eller acceptanskriterier…"
+          placeholder="Add context or acceptance criteria…"
           rows={2}
           disabled={busy}
         />
@@ -101,7 +101,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="task-priority" className="text-xs">
-            Prioritet
+            Priority
           </Label>
           <Select
             value={priority}
@@ -124,8 +124,8 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         <div className="space-y-1.5">
           <Label htmlFor="task-due" className="text-xs flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />
-            Deadline{" "}
-            <span className="text-muted-foreground">(valfritt)</span>
+            Due date{" "}
+            <span className="text-muted-foreground">(optional)</span>
           </Label>
           <Input
             id="task-due"
@@ -143,7 +143,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
           ) : (
             <Plus className="h-3.5 w-3.5" />
           )}
-          Lägg till
+          Add task
         </Button>
 
         {error ? (

@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Layers,
   CalendarDays,
+  Loader2,
 } from "lucide-react";
 import {
   format,
@@ -91,6 +92,10 @@ function sortByTime(events: CalendarEvent[]): CalendarEvent[] {
     if (!b.time) return -1;
     return a.time.localeCompare(b.time);
   });
+}
+
+function isExternalEvent(ev: CalendarEvent & { source?: string; readOnly?: boolean }): boolean {
+  return ev.source === "external" || Boolean(ev.readOnly);
 }
 
 type ViewMode = "day" | "week" | "month";
@@ -396,6 +401,12 @@ export default function CalendarPage() {
 
         <Card className="rounded-xl min-h-[400px] flex flex-col w-full">
           <CardContent className="flex-1 p-6 overflow-auto">
+            {providerLoading && activeCalendarAccount ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Loading connected calendar events…
+              </div>
+            ) : null}
             {viewMode === "day" && (
               <div className="max-w-md">
                 <h2 className="text-lg font-semibold mb-4">
@@ -418,10 +429,15 @@ export default function CalendarPage() {
                           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium">{ev.title}</p>
-                          {ev.time && (
-                            <p className="text-xs text-muted-foreground">{ev.time}</p>
-                          )}
+                          <p className="font-medium truncate">{ev.title}</p>
+                          <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
+                            {ev.time ? <span>{ev.time}</span> : null}
+                            {isExternalEvent(ev) ? (
+                              <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                                External
+                              </span>
+                            ) : null}
+                          </p>
                         </div>
                         {!ev.readOnly && (
                           <Button
@@ -471,6 +487,9 @@ export default function CalendarPage() {
                               <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
                             )}
                             <span className="truncate flex-1">{ev.title}</span>
+                            {isExternalEvent(ev) ? (
+                              <span className="shrink-0 text-[9px] uppercase text-muted-foreground">Ext</span>
+                            ) : null}
                             {!ev.readOnly && (
                               <Button
                                 variant="ghost"
@@ -525,8 +544,10 @@ export default function CalendarPage() {
                         {format(day, "d")}
                       </span>
                       {dayEvents.length > 0 && (
-                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground">
-                          {dayEvents.length} event{dayEvents.length > 1 ? "s" : ""}
+                        <div className="absolute bottom-1 left-1 right-1 px-0.5 text-center text-[9px] text-muted-foreground truncate">
+                          {dayEvents.length === 1
+                            ? dayEvents[0].title
+                            : `${dayEvents.length} events`}
                         </div>
                       )}
                     </div>
@@ -549,9 +570,16 @@ export default function CalendarPage() {
                   className="shrink-0 w-44 p-3 rounded-lg border border-border/50 bg-muted/20"
                 >
                   <p className="font-medium text-sm truncate">{ev.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(parseISO(ev.date), "EEE d MMM", { locale: enUS })}
-                    {ev.time && ` · ${ev.time}`}
+                  <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span>
+                      {format(parseISO(ev.date), "EEE d MMM", { locale: enUS })}
+                      {ev.time && ` · ${ev.time}`}
+                    </span>
+                    {isExternalEvent(ev) ? (
+                      <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                        External
+                      </span>
+                    ) : null}
                   </p>
                 </div>
               ))}
