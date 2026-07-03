@@ -15,6 +15,7 @@ import { sendEmail, isEmailConfigured } from "../lib/email.ts";
 import { buildMarketingAlert } from "../lib/marketingAlert.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
 import { logActivity } from "../lib/activityLog.ts";
+import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { buildWeeklyReport } from "../lib/weeklyReport.ts";
 
 /**
@@ -77,6 +78,69 @@ function isAuthorisedCron(req) {
 }
 
 /**
+ * Distil a handler's JSON envelope into a compact, machine-readable result
+ * summary for `automation_runs.result`: keep the scalar count fields each job
+ * already reports (sent / skipped / failed / written / …) and drop the large
+ * per-tenant arrays (`summary`, `summaries`) plus the `ok`/`error` envelope.
+ */
+function summariseCronResult(body) {
+  if (!body || typeof body !== "object") return {};
+  const out = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (key === "ok" || key === "error") continue;
+    if (
+      typeof value === "number" ||
+      typeof value === "string" ||
+      typeof value === "boolean"
+    ) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * Wrap a cron handler so every real execution appends one `automation_runs`
+ * row (fire-and-forget). We intercept the handler's own `res.json` envelope so
+ * the large handlers below stay untouched and we record exactly the summary
+ * each one already returns.
+ *
+ * Not recorded: rejected calls that never did work — a failed auth guard (401)
+ * or an unconfigured-dependency no-op (503). Everything that actually executed
+ * (200 success, or a 5xx failure mid-run) is recorded globally, because each
+ * Vercel cron is a single sweep across every tenant.
+ */
+function withRunRecording(automationKey, supabaseAdmin, handler) {
+  return async (req, res) => {
+    const startedAt = new Date().toISOString();
+    const sendJson = res.json.bind(res);
+    let recorded = false;
+    res.json = (body) => {
+      if (!recorded) {
+        recorded = true;
+        const httpStatus = Number(res.statusCode) || 200;
+        if (httpStatus !== 401 && httpStatus !== 503) {
+          const ok = httpStatus < 400 && !(body && body.error);
+          void recordAutomationRun(supabaseAdmin, {
+            automationKey,
+            businessProfileId: null,
+            status: ok ? "ok" : "failed",
+            startedAt,
+            finishedAt: new Date().toISOString(),
+            result: summariseCronResult(body),
+            errorMessage: ok
+              ? null
+              : String((body && body.error) || "").slice(0, 300) || null,
+          });
+        }
+      }
+      return sendJson(body);
+    };
+    return handler(req, res);
+  };
+}
+
+/**
  * @param {import("express").Express} app
  * @param {{
  *   oauthPendingStore: { deleteExpired?: () => Promise<{ removed: number }> };
@@ -88,7 +152,7 @@ function isAuthorisedCron(req) {
 export function registerCronRoutes(app, deps) {
   const { oauthPendingStore, supabaseAdmin, zernio, secretResolver, tokenStore } = deps;
 
-  app.get("/api/cron/cleanup-oauth-pending", async (req, res) => {
+  app.get("/api/cron/cleanup-oauth-pending", withRunRecording("cleanup-oauth-pending", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -101,7 +165,7 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] cleanup-oauth-pending:", e?.message || e);
       return res.status(500).json({ error: "cleanup_failed" });
     }
-  });
+  }));
 
   /**
    * Walks every active business_profile and re-runs the heuristic AI
@@ -113,7 +177,7 @@ export function registerCronRoutes(app, deps) {
    * Per-tenant failures are isolated — one bad bp cannot abort the run.
    * The response summarises what happened so cron logs are inspectable.
    */
-  app.get("/api/cron/refresh-ai-recommendations", async (req, res) => {
+  app.get("/api/cron/refresh-ai-recommendations", withRunRecording("refresh-ai-recommendations", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -192,7 +256,7 @@ export function registerCronRoutes(app, deps) {
       );
       return res.status(500).json({ error: "refresh_failed" });
     }
-  });
+  }));
 
   /**
    * Auto-reply automation sweep: for every business_profile with
@@ -201,7 +265,7 @@ export function registerCronRoutes(app, deps) {
    * Idempotent via auto_reply_log — safe to trigger as often as you like
    * (Vercel Cron on Pro, or any external scheduler with the CRON_SECRET).
    */
-  app.get("/api/cron/auto-reply", async (req, res) => {
+  app.get("/api/cron/auto-reply", withRunRecording("auto-reply", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -239,7 +303,7 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] auto-reply unexpected:", e?.message || e);
       return res.status(500).json({ error: "auto_reply_failed" });
     }
-  });
+  }));
 
   /**
    * Daily digest: emails each active business profile its morning brief
@@ -248,7 +312,7 @@ export function registerCronRoutes(app, deps) {
    * configured (RESEND_API_KEY). All-clear profiles are skipped — we only mail
    * when there's something to act on, so the inbox stays signal.
    */
-  app.get("/api/cron/daily-digest", async (req, res) => {
+  app.get("/api/cron/daily-digest", withRunRecording("daily-digest", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -416,7 +480,7 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] daily-digest unexpected:", e?.message || e);
       return res.status(500).json({ error: "daily_digest_failed" });
     }
-  });
+  }));
 
   /**
    * Marketing watchdog: per business profile, recomputes blended marketing
@@ -425,7 +489,7 @@ export function registerCronRoutes(app, deps) {
    * is out of stock. Reuses the exact same gathering as the Marketing page, so
    * the alert and the dashboard never disagree. No-ops without email config.
    */
-  app.get("/api/cron/marketing-alerts", async (req, res) => {
+  app.get("/api/cron/marketing-alerts", withRunRecording("marketing-alerts", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -572,7 +636,7 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] marketing-alerts unexpected:", e?.message || e);
       return res.status(500).json({ error: "marketing_alerts_failed" });
     }
-  });
+  }));
 
   /**
    * Daily marketing snapshot: for every business profile with ad/store accounts,
@@ -580,7 +644,7 @@ export function registerCronRoutes(app, deps) {
    * This is what powers the week-over-week trend on the Marketing page. Runs for
    * all such profiles (not just alert opt-ins) so the history is continuous.
    */
-  app.get("/api/cron/marketing-snapshot", async (req, res) => {
+  app.get("/api/cron/marketing-snapshot", withRunRecording("marketing-snapshot", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -663,14 +727,14 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] marketing-snapshot unexpected:", e?.message || e);
       return res.status(500).json({ error: "marketing_snapshot_failed" });
     }
-  });
+  }));
 
   /**
    * Weekly performance report: a Monday recap (marketing trend, leads won/new,
    * follow-ups due, tasks completed) emailed to profiles opted into the daily
    * digest. No-ops without email config / opted-in profiles.
    */
-  app.get("/api/cron/weekly-report", async (req, res) => {
+  app.get("/api/cron/weekly-report", withRunRecording("weekly-report", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -813,5 +877,5 @@ export function registerCronRoutes(app, deps) {
       console.error("[cron] weekly-report unexpected:", e?.message || e);
       return res.status(500).json({ error: "weekly_report_failed" });
     }
-  });
+  }));
 }

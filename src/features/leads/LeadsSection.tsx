@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { useLeads } from "./useLeads";
 import type { Lead } from "./leadsService";
+import { LeadResearchDialog, type LeadResearchTarget } from "@/features/intelligence";
 import {
   LEAD_STATUS_LABELS,
   LEAD_STATUS_ORDER,
@@ -66,11 +67,13 @@ function LeadRow({
   onStatus,
   onFollowUp,
   onDelete,
+  onResearch,
 }: {
   lead: Lead;
   onStatus: (status: LeadStatus) => void;
   onFollowUp: (value: string) => void;
   onDelete: () => void;
+  onResearch: () => void;
 }) {
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
@@ -112,6 +115,16 @@ function LeadRow({
             )}
           />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={onResearch}
+          title={`Research ${lead.company} via your connected research provider`}
+          aria-label={`Research ${lead.company}`}
+        >
+          <Search className="h-3.5 w-3.5" />
+        </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -154,6 +167,7 @@ export function LeadsSection({ businessProfileId, context }: Props) {
     URL.revokeObjectURL(url);
   }
   const [addOpen, setAddOpen] = useState(false);
+  const [researchTarget, setResearchTarget] = useState<LeadResearchTarget | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<LeadSuggestion[]>([]);
@@ -386,11 +400,26 @@ export function LeadsSection({ businessProfileId, context }: Props) {
                   })
                 }
                 onDelete={() => void deleteLead(lead.id)}
+                onResearch={() =>
+                  setResearchTarget({
+                    company: lead.company,
+                    name: lead.contactName ?? undefined,
+                    website: lead.website ?? undefined,
+                  })
+                }
               />
             ))}
           </div>
         )}
       </CardContent>
+
+      <LeadResearchDialog
+        businessProfileId={businessProfileId}
+        target={researchTarget}
+        onOpenChange={(open) => {
+          if (!open) setResearchTarget(null);
+        }}
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>

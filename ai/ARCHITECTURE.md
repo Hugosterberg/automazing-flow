@@ -62,6 +62,31 @@ and exposes an API the web app consumes. Standing guidance when/if this starts:
 4. **Separate repo or `/services/ingest/`** — either works; pick separate repo
    if its deploy cadence differs from the web app.
 
+## Remote MCP integrations (added 2026-07-02)
+
+automazing consumes remote MCP servers as tenant-scoped data providers:
+
+- **Protocol client:** `server/lib/mcpClient.ts` (JSON-RPC over Streamable
+  HTTP, initialize/tools-list/tools-call, SSE-or-JSON parsing).
+- **Provider directories:** `server/providers/mcpOauth.ts` (OAuth + PKCE +
+  dynamic client registration: Day.ai, Windsor, Era, Ahrefs, Canva MCP,
+  Superhuman, Supermetrics) and `mcpDirectory.ts` (API-key/shop/keyless:
+  Exa, Klarity, LunarCrush, Peec, Sprouts, Gamma, GoDaddy, Shopify
+  Storefront, Twilio Docs). Adding a provider = one descriptor.
+- **Account plumbing:** `server/routes/mcpRoutes.ts` (connect + per-account
+  tools/call), OAuth flows in `oauthRoutes.ts` under `/api/auth/mcp/:platform`.
+- **Tenant access layer:** `server/lib/mcpAccess.ts` — find a profile's
+  connected provider, transparent OAuth refresh, tool picking by pattern.
+  **Product features must go through this layer**, never raw fetches.
+- **Feature routes:** `server/routes/intelligenceRoutes.ts` — market pulse
+  (LunarCrush → home dashboard) and lead research (Exa/Sprouts → Sales).
+  Frontend feature: `src/features/intelligence/`.
+- Catalog area "Intelligence & MCP" on the Connections page; platforms are
+  `IntelligencePlatform` in `src/types/accounts.ts`.
+- Deliberately NOT added: Google Drive/Gmail MCP endpoints — the REST
+  integrations already cover them with the same tokens; revisit only when the
+  AI layer needs tool-style access.
+
 ## Possible next platform layer: Claude Managed Agents (CMA)
 
 For "AI employee" style workers (scheduled research, digests, repo work), CMA

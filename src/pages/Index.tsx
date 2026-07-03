@@ -47,6 +47,7 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
+import { MarketPulseCard } from "@/features/intelligence";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
   useTasks,
@@ -345,6 +346,10 @@ export default function Index() {
       <ProfileList />
 
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
+
+      {/* Crypto/market sentiment via the tenant's LunarCrush MCP account.
+          Business-only and self-hiding when no provider is connected. */}
+      {mode === "business" ? <MarketPulseCard businessProfileId={homeBusinessProfileId} /> : null}
 
       <section aria-label="Today" className="space-y-2">
         <div className="flex items-baseline justify-between">

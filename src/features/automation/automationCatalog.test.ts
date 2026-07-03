@@ -6,6 +6,7 @@ import {
   catalogEntriesForTopic,
 } from "./automationCatalog";
 import { navItems, topNavItems } from "@/components/navConfig";
+import { AUTOMATION_SCHEDULES } from "../../../server/lib/automationSchedules";
 
 describe("automationCatalog", () => {
   it("has unique entry ids", () => {
@@ -38,6 +39,15 @@ describe("automationCatalog", () => {
     for (const entry of automationCatalog) {
       if (entry.outputHref) {
         expect(knownUrls.has(entry.outputHref)).toBe(true);
+      }
+    }
+  });
+
+  it("every cronKey maps to a real server automation schedule", () => {
+    const scheduleKeys = new Set(AUTOMATION_SCHEDULES.map((s) => s.key));
+    for (const entry of automationCatalog) {
+      if (entry.cronKey) {
+        expect(scheduleKeys.has(entry.cronKey)).toBe(true);
       }
     }
   });

@@ -16,6 +16,12 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
   kind, per-mode nav/catalog) + Automations page gathering all automation
   toggles in one place.
 - Home dashboard: Smart Daily Brief, Today tiles, business health score.
+- **Remote MCP layer** (2026-07-02): 16 providers connectable (OAuth + keyed),
+  tenant-scoped tool access (`mcpAccess`), Market pulse on the dashboard
+  (LunarCrush), lead research in Sales (Exa/Sprouts).
+- **First CMA agent live**: `bai-repo-engineer` passed its outcome rubric on
+  run 1 (Automations run-status feature; patch in
+  `c:\Code\launch-your-agent\my-agent\outputs\`, ready to review/apply).
 
 ## v1 — Trust the automation (make what exists visibly reliable)
 

@@ -16,6 +16,8 @@ import {
 import type { AutoReplyDeps } from "../automation/autoReply.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
+import { recordAutomationRun } from "../lib/automationRunLog.ts";
+import { AUTOMATION_SCHEDULES, nextRunIso } from "../lib/automationSchedules.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
 type SupabaseAdminLike = { from: (table: string) => any };
@@ -30,6 +32,17 @@ interface AutomationRoutesDeps {
 
 const SETTINGS_COLUMNS =
   "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,daily_digest_enabled,marketing_alerts_enabled,notification_email,updated_at";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface AutomationRunView {
+  status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  result: Record<string, unknown>;
+  errorMessage: string | null;
+}
 
 function canManageAutomation(role: unknown): boolean {
   return role === "owner" || role === "admin" || role === "editor";
@@ -142,6 +155,70 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
     }
   });
 
+  /**
+   * Run-status feed for the Automations page: per scheduled automation, the
+   * latest run (status + timing + short result summary) and the next scheduled
+   * run time derived from its cron expression in vercel.json.
+   *
+   * Reads both the shared global cron runs (business_profile_id IS NULL) and
+   * any run scoped to this business profile (e.g. a manual "run now"), so the
+   * page shows whichever ran most recently. A job that has never run returns a
+   * null lastRun — the client renders a quiet "no runs yet", not an error.
+   */
+  app.get("/api/automation/runs", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const now = new Date();
+    const scoped = UUID_RE.test(businessProfileId);
+    // business_profile_id is a validated membership id (or a well-formed UUID),
+    // so it is safe to fold into the PostgREST or-filter.
+    const orFilter = scoped
+      ? `business_profile_id.is.null,business_profile_id.eq.${businessProfileId}`
+      : "business_profile_id.is.null";
+
+    try {
+      const runs = await Promise.all(
+        AUTOMATION_SCHEDULES.map(async (schedule) => {
+          const nextRunAt = nextRunIso(schedule.key, now);
+          let lastRun: AutomationRunView | null = null;
+
+          if (supabaseAdmin) {
+            const { data, error } = await supabaseAdmin
+              .from("automation_runs")
+              .select("status,started_at,finished_at,result,error_message")
+              .eq("automation_key", schedule.key)
+              .or(orFilter)
+              .order("finished_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (error) {
+              console.warn(
+                `[automation] runs select failed (${schedule.key}):`,
+                error.message
+              );
+            } else if (data) {
+              lastRun = {
+                status: String(data.status),
+                startedAt: data.started_at ?? null,
+                finishedAt: data.finished_at ?? null,
+                result: (data.result as Record<string, unknown>) ?? {},
+                errorMessage: data.error_message ?? null,
+              };
+            }
+          }
+
+          return { key: schedule.key, cron: schedule.cron, nextRunAt, lastRun };
+        })
+      );
+      return res.json({ runs });
+    } catch (e) {
+      console.error(
+        "[automation] runs load unexpected:",
+        e instanceof Error ? e.message : e
+      );
+      return res.status(500).json({ error: "automation_runs_load_failed" });
+    }
+  });
+
   // Human-in-the-loop send: ship a logged draft (optionally edited) through
   // Zernio and flip its log row to 'sent'. Only 'drafted' DM rows qualify, so
   // a draft can never be sent twice.
@@ -221,6 +298,7 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
     }
 
     const businessProfileId = String(req.businessProfileId || "").trim();
+    const startedAt = new Date().toISOString();
     try {
       const [{ data: profileRow, error: profileError }, { data: settingsRow, error: settingsError }] =
         await Promise.all([
@@ -264,9 +342,33 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
         },
         settings
       );
+      // Per-tenant run record so the Automations page can show this manual run
+      // for the active profile (the cron sweep records global rows instead).
+      void recordAutomationRun(supabaseAdmin, {
+        automationKey: "auto-reply",
+        businessProfileId,
+        status: "ok",
+        startedAt,
+        result: {
+          trigger: "manual",
+          scanned: summary.scanned,
+          drafted: summary.drafted,
+          sent: summary.sent,
+          failed: summary.failed,
+          skipped: summary.skipped,
+        },
+      });
       return res.json({ ok: true, summary });
     } catch (e) {
       console.error("[automation] manual run failed:", e instanceof Error ? e.message : e);
+      void recordAutomationRun(supabaseAdmin, {
+        automationKey: "auto-reply",
+        businessProfileId,
+        status: "failed",
+        startedAt,
+        errorMessage: e instanceof Error ? e.message : String(e),
+        result: { trigger: "manual" },
+      });
       return res.status(500).json({ error: "automation_run_failed" });
     }
   });

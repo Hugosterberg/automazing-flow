@@ -10,10 +10,13 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   AutomationPanel,
   AutomatedUpdatesCard,
+  AutomationRunStatus,
   AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   catalogEntriesForTopic,
+  useAutomationRuns,
   type AutomationCatalogEntry,
+  type AutomationRunsState,
   type AutomationTopic,
 } from "@/features/automation";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
@@ -26,9 +29,11 @@ import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 function ScheduleList({
   entries,
   prefetchFor,
+  runs,
 }: {
   entries: AutomationCatalogEntry[];
   prefetchFor: (path: string) => void;
+  runs: AutomationRunsState;
 }) {
   if (entries.length === 0) return null;
   return (
@@ -56,6 +61,13 @@ function ScheduleList({
                 Se resultatet
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
+            ) : null}
+            {entry.cronKey ? (
+              <AutomationRunStatus
+                run={runs.byKey[entry.cronKey]}
+                loading={runs.loading}
+                error={runs.error}
+              />
             ) : null}
           </CardContent>
         </Card>
@@ -98,6 +110,7 @@ export default function AutomationsPage() {
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
   const { mode } = useWorkspaceMode();
   const prefetchFor = useRoutePrefetch();
+  const runs = useAutomationRuns(businessProfileId);
 
   return (
     <m.div {...pageFadeUp} className="space-y-8 max-w-5xl w-full mx-auto">
@@ -136,6 +149,7 @@ export default function AutomationsPage() {
               includeBusinessOnly: mode === "business",
             })}
             prefetchFor={prefetchFor}
+            runs={runs}
           />
         </m.section>
       ))}

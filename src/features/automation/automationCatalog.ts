@@ -64,6 +64,13 @@ export interface AutomationCatalogEntry {
   outputHref?: string;
   /** Hidden in the private workspace (company-oriented automations). */
   businessOnly?: boolean;
+  /**
+   * Cron identifier this entry maps to (the `/api/cron/<key>` path segment and
+   * `automation_runs.automation_key`). Present only for scheduled jobs, so the
+   * Automations page can show their last/next run. Omit for on-demand-only
+   * automations.
+   */
+  cronKey?: string;
 }
 
 export const automationCatalog: AutomationCatalogEntry[] = [
@@ -76,6 +83,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cadence: "Var 15:e minut",
     icon: Bot,
     outputHref: "/messages",
+    cronKey: "auto-reply",
   },
   {
     id: "daily-digest",
@@ -84,6 +92,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     description: "Morgonmejl varje vardag med det som behöver göras.",
     cadence: "Vardagsmorgnar",
     icon: Mail,
+    cronKey: "daily-digest",
   },
   {
     id: "weekly-report",
@@ -92,6 +101,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     description: "Måndagsmejl som summerar förra veckan.",
     cadence: "Måndagsmorgnar",
     icon: Mail,
+    cronKey: "weekly-report",
   },
   {
     id: "marketing-alerts",
@@ -103,6 +113,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: BarChart3,
     outputHref: "/marketing",
     businessOnly: true,
+    cronKey: "marketing-alerts",
   },
   {
     id: "ai-recommendations-refresh",
@@ -113,6 +124,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cadence: "Dagligen",
     icon: Sparkles,
     outputHref: "/ai-recommendations",
+    cronKey: "refresh-ai-recommendations",
   },
   {
     id: "marketing-snapshot",
@@ -124,6 +136,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: BarChart3,
     outputHref: "/marketing",
     businessOnly: true,
+    cronKey: "marketing-snapshot",
   },
 ];
 

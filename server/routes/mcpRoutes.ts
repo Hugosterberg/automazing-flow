@@ -149,7 +149,7 @@ export function registerMcpRoutes(app, deps: McpRoutesDeps) {
     const descriptor = KEYED_MCP_DIRECTORY[platform];
     const profileId = String(req.body?.profileId || "").trim() || null;
     const isShopDomain = descriptor.keyPlacement.type === "shop_domain";
-    let apiKey = String(req.body?.apiKey || "").trim();
+    const apiKey = String(req.body?.apiKey || "").trim();
     let shopDomain: string | null = null;
     if (isShopDomain) {
       shopDomain = normalizeShopifyShopDomain(String(req.body?.shopDomain || req.body?.apiKey || ""));

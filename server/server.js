@@ -40,6 +40,7 @@ import { registerAiRoutes } from "./routes/aiRoutes.ts";
 import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoutes.ts";
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
 import { registerMcpRoutes } from "./routes/mcpRoutes.ts";
+import { registerIntelligenceRoutes } from "./routes/intelligenceRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
 import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
@@ -474,6 +475,12 @@ registerOAuthRoutes(app, {
 });
 
 registerMcpRoutes(app, {
+  tokenStore,
+  getSessionUserId,
+  getStoredAccountAccess,
+});
+
+registerIntelligenceRoutes(app, {
   tokenStore,
   getSessionUserId,
   getStoredAccountAccess,

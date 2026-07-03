@@ -2,6 +2,16 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-02 — MCP providers are config, features go through mcpAccess — **Active**
+
+Remote MCP servers are described by descriptors (mcpOauth/mcpDirectory), not
+bespoke modules; product features consume them via `server/lib/mcpAccess.ts`
+(tenant lookup, token refresh, pattern-based tool picking) — never raw fetch.
+Dashboard features fail QUIET (hide when not connected); user actions fail
+LOUD (explicit errors with the connect path). Vendor tool names are matched by
+pattern + inputSchema, never hardcoded. Google Drive/Gmail MCP endpoints were
+deliberately skipped — the REST integrations already cover them.
+
 ## 2026-07-02 — Workspace mode is derived, never stored — **Active**
 
 Private/Business is computed from the active profile's `kind` instead of being

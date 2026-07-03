@@ -41,6 +41,26 @@ export interface AutoReplyRunSummary {
   errors: string[];
 }
 
+/** One automation's last recorded run (null = it has never run). */
+export interface AutomationLastRun {
+  status: "ok" | "failed";
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** Short result summary the job reported (e.g. { sent, skipped, failed }). */
+  result: Record<string, unknown>;
+  errorMessage: string | null;
+}
+
+/** Run status for one scheduled automation (keyed by its cron key). */
+export interface AutomationRunStatus {
+  key: string;
+  /** Cron expression mirroring vercel.json. */
+  cron: string;
+  /** ISO timestamp of the next scheduled run (null if unknown/unschedulable). */
+  nextRunAt: string | null;
+  lastRun: AutomationLastRun | null;
+}
+
 async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T> {
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -97,6 +117,18 @@ export async function sendAutomationDraft(
     body: JSON.stringify({ business_profile_id: businessProfileId, logId, ...(message ? { message } : {}) }),
   });
   return parseOrThrow(res, "Could not send the draft.");
+}
+
+export async function fetchAutomationRuns(
+  businessProfileId: string
+): Promise<{ runs: AutomationRunStatus[] }> {
+  const res = await fetchWithTimeout(
+    apiUrl(
+      `/api/automation/runs?business_profile_id=${encodeURIComponent(businessProfileId)}`
+    ),
+    { credentials: "include" }
+  );
+  return parseOrThrow(res, "Could not load automation run status.");
 }
 
 export async function runAutomationNow(
