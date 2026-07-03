@@ -11,6 +11,7 @@ import {
   Sun,
   UserPlus,
   X,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,10 @@ import { useConnections } from "@/features/connections/useConnections";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
 import { useCachedMarketingRoas } from "@/features/marketing";
+import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
+import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
+import { useReviewReplyState } from "@/features/reviews";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { dismissBriefItem, getDismissedBriefIds } from "./dailyBriefDismiss";
 import { useUnreadDmCount } from "./useUnreadDmCount";
@@ -32,6 +36,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   lead: UserPlus,
   task: ListChecks,
   recommendation: Sparkles,
+  review: Star,
 };
 
 const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {
@@ -102,8 +107,18 @@ export function SmartDailyBrief({
   const { tasks, isLoading: tasksLoading } = useTasks(businessProfileId);
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
   const { unreadDms, isLoading: dmsLoading } = useUnreadDmCount();
-  const marketingRoas = useCachedMarketingRoas();
+  const cachedRoas = useCachedMarketingRoas();
+  const { trend: marketingTrend } = useMarketingTrend();
+  const { inventoryAlert, performance } = useMarketingCampaigns();
+  const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
   const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
+
+  const marketingRoas =
+    performance?.roas ?? marketingTrend?.current?.roas ?? cachedRoas ?? null;
+  const marketingTrendDown =
+    marketingRoas == null || marketingRoas >= 1 ? marketingTrend?.direction === "down" : false;
+  const inventoryAlertCount =
+    inventoryAlert != null ? inventoryAlert.lowStock + inventoryAlert.outOfStock : 0;
 
   const brief = useMemo(() => {
     const nowMs = Date.now();
@@ -116,7 +131,10 @@ export function SmartDailyBrief({
         .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
         .map((c) => ({ label: platformLabel(c.platform), health: c.health })),
       unreadDms,
-      underwaterRoas: marketingRoas,
+      underwaterRoas: marketingRoas != null && marketingRoas < 1 ? marketingRoas : null,
+      marketingTrendDown,
+      reviewsNeedingReply,
+      inventoryAlertCount,
       leadsToFollowUp,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
@@ -124,7 +142,7 @@ export function SmartDailyBrief({
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
     });
-  }, [connections, tasks, recommendations, unreadDms, marketingRoas, leads]);
+  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads]);
 
   const visibleItems = useMemo(
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),

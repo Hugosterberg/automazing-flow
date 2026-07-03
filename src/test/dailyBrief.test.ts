@@ -72,6 +72,22 @@ describe("buildDailyBrief", () => {
     expect(buildDailyBrief({ ...empty, leadsToFollowUp: 0 }).allClear).toBe(true);
   });
 
+  it("surfaces reviews needing reply and inventory alerts", () => {
+    const reviews = buildDailyBrief({ ...empty, reviewsNeedingReply: 2 });
+    expect(reviews.items[0].kind).toBe("review");
+    expect(reviews.items[0].to).toBe("/reviews?filter=needs_reply");
+
+    const stock = buildDailyBrief({ ...empty, inventoryAlertCount: 3 });
+    expect(stock.items[0].kind).toBe("marketing");
+    expect(stock.items[0].title).toMatch(/low on stock/i);
+  });
+
+  it("nudges when ad ROAS trend is down without being underwater", () => {
+    const brief = buildDailyBrief({ ...empty, marketingTrendDown: true, underwaterRoas: 1.2 });
+    expect(brief.items[0].kind).toBe("marketing");
+    expect(brief.items[0].title).toMatch(/dipped/i);
+  });
+
   it("warns when marketing ROAS drops below 1× but stays quiet otherwise", () => {
     const underwater = buildDailyBrief({ ...empty, underwaterRoas: 0.7 });
     expect(underwater.items[0].kind).toBe("marketing");

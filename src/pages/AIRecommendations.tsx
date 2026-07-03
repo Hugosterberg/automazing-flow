@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { m } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
@@ -60,6 +60,17 @@ export default function AIRecommendationsPage() {
   } = useAiRecommendations(businessProfileId);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const markedSeenRef = useRef(false);
+
+  useEffect(() => {
+    if (markedSeenRef.current || isLoading || !businessProfileId) return;
+    const fresh = recommendations.filter((r) => r.status === "new");
+    if (fresh.length === 0) return;
+    markedSeenRef.current = true;
+    void Promise.all(
+      fresh.map((r) => transition({ id: r.id, status: "seen" }).catch(() => undefined))
+    );
+  }, [isLoading, recommendations, businessProfileId, transition]);
 
   /**
    * Accept → mark row as accepted → if the row carries a safe

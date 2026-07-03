@@ -14,6 +14,7 @@ import {
   HeartPulse,
   Star,
   MessageSquare,
+  UserPlus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,8 @@ import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
 import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
+import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
+import { useReviewReplyState } from "@/features/reviews";
 import { MarketPulseCard } from "@/features/intelligence";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
@@ -184,6 +187,15 @@ export default function Index() {
   const { tasks } = useTasks(homeBusinessProfileId);
   const { recommendations } = useAiRecommendations(homeBusinessProfileId);
   const { unreadDms } = useUnreadDmCount();
+  const { leads } = useLeads(homeBusinessProfileId);
+  const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(homeBusinessProfileId);
+
+  const leadsToFollowUp = useMemo(() => {
+    const nowMs = Date.now();
+    return leads.filter(
+      (l) => isLeadOpen(l.status) && (isFollowUpOverdue(l.nextFollowUpAt, nowMs) || isFollowUpDueToday(l.nextFollowUpAt, nowMs))
+    ).length;
+  }, [leads]);
 
   // Split open tasks by urgency so the home tile can surface the most
   // actionable bucket first (overdue → due-today → open). Without this the
@@ -269,8 +281,11 @@ export default function Index() {
         overdueTasks: overdueTasks.length,
         dueTodayTasks: dueTodayTasks.length,
         activeRecommendations: activeRecs.length,
+        unreadMessages: unreadDms,
+        leadsToFollowUp,
+        reviewsNeedingReply,
       }),
-    [connectionIssues.length, overdueTasks.length, dueTodayTasks.length, activeRecs.length]
+    [connectionIssues.length, overdueTasks.length, dueTodayTasks.length, activeRecs.length, unreadDms, leadsToFollowUp, reviewsNeedingReply]
   );
 
   const profileSummary = useMemo(() => {
@@ -399,6 +414,28 @@ export default function Index() {
             tone={unreadDms > 0 ? "info" : "default"}
             onPrefetch={prefetchFor}
           />
+          {mode === "business" ? (
+            <TodayTile
+              title="Leads to follow up"
+              value={leadsToFollowUp}
+              hint={leadsToFollowUp === 0 ? "Pipeline is on track" : "Due today or overdue"}
+              icon={UserPlus}
+              to="/sales?view=followups"
+              tone={leadsToFollowUp > 0 ? "warning" : "default"}
+              onPrefetch={prefetchFor}
+            />
+          ) : null}
+          {reviewsNeedingReply > 0 ? (
+            <TodayTile
+              title="Reviews to reply"
+              value={reviewsNeedingReply}
+              hint="Customer feedback waiting"
+              icon={Star}
+              to="/reviews?filter=needs_reply"
+              tone="warning"
+              onPrefetch={prefetchFor}
+            />
+          ) : null}
           <TodayTile
             title="Active AI recommendations"
             value={activeRecs.length}

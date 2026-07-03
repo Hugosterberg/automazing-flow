@@ -10,5 +10,6 @@ export {
   isFollowUpOverdue,
   isFollowUpDueToday,
   compareLeads,
+  suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
 export { fetchLeadSuggestions, enrichLeadFromWebsite, type LeadSuggestion } from "./leadSuggestionsClient";

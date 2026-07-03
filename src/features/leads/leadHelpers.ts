@@ -41,6 +41,16 @@ export interface LeadSortable {
   createdAt: string;
 }
 
+/** Suggest a follow-up date when the user moves a lead forward in the pipeline. */
+export function suggestedFollowUpIsoForStatus(status: LeadStatus, fromMs: number = Date.now()): string | null {
+  if (status === "won" || status === "lost") return null;
+  const days = status === "new" ? 2 : status === "contacted" ? 3 : status === "qualified" ? 7 : 3;
+  const d = new Date(fromMs);
+  d.setDate(d.getDate() + days);
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
+}
+
 /**
  * Sort leads so the most action-worthy float up: open leads before closed,
  * then by soonest follow-up (leads with a follow-up date before those without),

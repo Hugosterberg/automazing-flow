@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Sparkles, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useReviewReplyState } from "@/features/reviews";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
@@ -112,13 +114,20 @@ export default function ReviewsPage() {
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("reviews");
+  const [searchParams] = useSearchParams();
+  const { repliedIds, markReplied, syncPendingCount } = useReviewReplyState(
+    activeBusinessProfileId ?? activeProfileId
+  );
 
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [draftBusy, setDraftBusy] = useState<Record<string, boolean>>({});
   const [sendBusy, setSendBusy] = useState<Record<string, boolean>>({});
-  const [repliedIds, setRepliedIds] = useState<Record<string, boolean>>({});
   const [ratingFilter, setRatingFilter] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
-  const [replyFilter, setReplyFilter] = useState<"all" | "needs_reply">("all");
+  const [replyFilter, setReplyFilter] = useState<"all" | "needs_reply">(() =>
+    searchParams.get("filter") === "needs_reply" ? "needs_reply" : "all"
+  );
+  const autoDraftStarted = useRef(false);
+  const defaultedReplyFilter = useRef(false);
 
   const {
     scopedAccounts: reviewAccounts,
@@ -169,10 +178,25 @@ export default function ReviewsPage() {
       list = list.filter((r) => r.rating === stars);
     }
     if (replyFilter === "needs_reply") {
-      list = list.filter((r) => !repliedIds[r.id]);
+      list = list.filter((r) => !repliedIds.has(r.id));
     }
     return list;
   }, [reviews, ratingFilter, replyFilter, repliedIds]);
+
+  useEffect(() => {
+    if (reviews.length === 0) return;
+    syncPendingCount(reviews.map((r) => r.id));
+  }, [reviews, syncPendingCount]);
+
+  useEffect(() => {
+    if (defaultedReplyFilter.current || loading) return;
+    const pending = reviews.filter((r) => !repliedIds.has(r.id)).length;
+    if (pending > 0 && replyFilter === "all" && searchParams.get("filter") !== "needs_reply") {
+      setReplyFilter("needs_reply");
+    }
+    defaultedReplyFilter.current = true;
+  }, [loading, reviews, repliedIds, replyFilter, searchParams]);
+
   const placeInfo = useMemo<PlaceInfo | null>(() => {
     if (data?.googleBusiness) {
       const gbp = data.googleBusiness;
@@ -233,6 +257,14 @@ export default function ReviewsPage() {
     }
   }
 
+  useEffect(() => {
+    if (autoDraftStarted.current || loading || reviews.length === 0) return;
+    const next = reviews.find((r) => !repliedIds.has(r.id));
+    if (!next) return;
+    autoDraftStarted.current = true;
+    void draftReply(next);
+  }, [loading, reviews, repliedIds]);
+
   async function sendReply(reviewId: string) {
     const message = (replyText[reviewId] || "").trim();
     if (!activeAccount || !message) return;
@@ -253,7 +285,7 @@ export default function ReviewsPage() {
       if (!res.ok) {
         throw new Error(displayString(payload?.message) || displayString(payload?.error) || "Could not send reply");
       }
-      setRepliedIds((cur) => ({ ...cur, [reviewId]: true }));
+      markReplied(reviewId);
       toast({ title: "Reply posted", description: "Your reply was sent via Zernio." });
     } catch (e) {
       toast({
@@ -552,7 +584,7 @@ export default function ReviewsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{r.text || "No text"}</p>
 
-                  {repliedIds[r.id] ? (
+                  {repliedIds.has(r.id) ? (
                     <p className="mt-3 text-xs text-emerald-600 inline-flex items-center gap-1">
                       <Send className="h-3.5 w-3.5" /> Reply posted
                     </p>

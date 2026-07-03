@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -26,6 +27,7 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
+import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 
 interface UnifiedMessage {
   id: string;
@@ -162,7 +164,10 @@ export default function MessagesPage() {
   const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [inboxSearch, setInboxSearch] = useState("");
+  const defaultedUnread = useRef(false);
+  const autoDraftForId = useRef<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [replyDraft, setReplyDraft] = useState("");
   const [draftBusy, setDraftBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
@@ -317,6 +322,22 @@ export default function MessagesPage() {
     setSendBusy(false);
   }, [selectedMessage?.id]);
 
+  useEffect(() => {
+    if (defaultedUnread.current || loading) return;
+    const unread = messages.filter((m) => m.isUnread).length;
+    if (unread > 0) setUnreadOnly(true);
+    defaultedUnread.current = true;
+  }, [loading, messages]);
+
+  useEffect(() => {
+    if (!selectedMessage || draftBusy || sendBusy || replySent) return;
+    if (autoDraftForId.current === selectedMessage.id) return;
+    const text = (selectedMessage.body || selectedMessage.snippet || "").trim();
+    if (!text) return;
+    autoDraftForId.current = selectedMessage.id;
+    void draftReply();
+  }, [selectedMessage?.id, draftBusy, sendBusy, replySent]);
+
   async function draftReply() {
     if (!selectedMessage) return;
     setDraftBusy(true);
@@ -374,6 +395,7 @@ export default function MessagesPage() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
       setReplySent(true);
+      void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
       toast({
         title: "Reply sent",
         description:

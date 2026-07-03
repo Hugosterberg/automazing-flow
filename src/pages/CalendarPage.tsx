@@ -55,6 +55,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
+import { useLeads, isLeadOpen, isFollowUpDueToday, isFollowUpOverdue } from "@/features/leads";
+import { isoToLocalDateInputValue } from "@/lib/localDate";
 import { useAccountData } from "@/hooks/useAccountData";
 import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -175,6 +178,53 @@ export default function CalendarPage() {
     [providerData]
   );
   const allEvents = useMemo(() => [...localEvents, ...externalEvents], [localEvents, externalEvents]);
+
+  const businessProfileId = activeBusinessProfileId ?? activeProfileId ?? null;
+  const { tasks } = useTasks(businessProfileId);
+  const { leads } = useLeads(businessProfileId);
+
+  const smartSuggestions = useMemo(() => {
+    const nowMs = Date.now();
+    const existingTitles = new Set(allEvents.map((e) => e.title.toLowerCase()));
+    const out: Array<{ id: string; title: string; date: string; source: string }> = [];
+
+    for (const task of tasks.filter(isTaskOpen)) {
+      if (!isTaskDueToday(task, nowMs) && !isTaskOverdue(task, nowMs)) continue;
+      const title = `Task: ${task.title}`;
+      if (existingTitles.has(title.toLowerCase())) continue;
+      out.push({
+        id: `task-${task.id}`,
+        title,
+        date: task.due_at ? isoToLocalDateInputValue(task.due_at) : format(new Date(), "yyyy-MM-dd"),
+        source: "task",
+      });
+    }
+    for (const lead of leads.filter((l) => isLeadOpen(l.status))) {
+      if (!isFollowUpDueToday(lead.nextFollowUpAt, nowMs) && !isFollowUpOverdue(lead.nextFollowUpAt, nowMs)) continue;
+      const title = `Follow up: ${lead.company}`;
+      if (existingTitles.has(title.toLowerCase())) continue;
+      out.push({
+        id: `lead-${lead.id}`,
+        title,
+        date: lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : format(new Date(), "yyyy-MM-dd"),
+        source: "lead",
+      });
+    }
+    return out.slice(0, 6);
+  }, [allEvents, tasks, leads]);
+
+  function addSuggestionToCalendar(suggestion: { title: string; date: string }) {
+    eventsDoc.save([
+      ...events,
+      {
+        id: crypto.randomUUID(),
+        title: suggestion.title,
+        date: suggestion.date,
+        isAutomated: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  }
 
   const eventsOnDate = (date: Date) =>
     allEvents.filter((e) => isSameDay(parseISO(e.date), date));
@@ -607,6 +657,32 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
       </div>
+
+      {smartSuggestions.length > 0 && (
+        <Card className="rounded-xl border-dashed">
+          <CardContent className="py-4 space-y-3">
+            <h2 className="text-sm font-semibold">Suggested for your calendar</h2>
+            <p className="text-xs text-muted-foreground">
+              Pulled automatically from tasks and lead follow-ups due today or overdue.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {smartSuggestions.map((s) => (
+                <Button
+                  key={s.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto py-1.5 text-xs"
+                  onClick={() => addSuggestionToCalendar(s)}
+                >
+                  + {s.title}
+                  <span className="ml-1.5 text-muted-foreground tabular-nums">{s.date}</span>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {upcomingEvents.length > 0 && (
         <Card className="rounded-xl">

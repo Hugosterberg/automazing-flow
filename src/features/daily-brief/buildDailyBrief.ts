@@ -10,7 +10,7 @@
  * DMs, pending reviews, …) plug in by adding another block here.
  */
 
-export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation";
+export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation" | "review";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -43,6 +43,12 @@ export interface DailyBriefInput {
   unreadDms?: number;
   /** Blended marketing ROAS (revenue ÷ ad spend) when it has dropped below 1×. */
   underwaterRoas?: number | null;
+  /** ROAS week-over-week trend from nightly marketing snapshots. */
+  marketingTrendDown?: boolean;
+  /** Reviews awaiting a reply (synced from Reviews page). */
+  reviewsNeedingReply?: number;
+  /** Low-stock or out-of-stock variants while ads are running. */
+  inventoryAlertCount?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
   overdueTasks: Array<{ title: string }>;
@@ -130,6 +136,42 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       to: "/marketing",
       count: 1,
     });
+  } else if (input.marketingTrendDown) {
+    items.push({
+      id: "marketing-trend",
+      kind: "marketing",
+      severity: "info",
+      title: "Ad ROAS dipped this week",
+      description: "Week-over-week return on ad spend is down — check what's changed on Marketing.",
+      to: "/marketing",
+      count: 1,
+    });
+  }
+
+  const inventoryAlertCount = Math.max(0, Math.trunc(input.inventoryAlertCount ?? 0));
+  if (inventoryAlertCount > 0) {
+    items.push({
+      id: "marketing-inventory",
+      kind: "marketing",
+      severity: "warning",
+      title: `${inventoryAlertCount} ${inventoryAlertCount === 1 ? "product is" : "products are"} low on stock`,
+      description: "Active ad campaigns may be pointing at items that need restocking.",
+      to: "/marketing",
+      count: inventoryAlertCount,
+    });
+  }
+
+  const reviewsNeedingReply = Math.max(0, Math.trunc(input.reviewsNeedingReply ?? 0));
+  if (reviewsNeedingReply > 0) {
+    items.push({
+      id: "reviews-reply",
+      kind: "review",
+      severity: "warning",
+      title: `${reviewsNeedingReply} ${reviewsNeedingReply === 1 ? "review needs" : "reviews need"} a reply`,
+      description: "Respond to recent customer feedback while it's still fresh.",
+      to: "/reviews?filter=needs_reply",
+      count: reviewsNeedingReply,
+    });
   }
 
   if (input.overdueTasks.length > 0) {
@@ -175,11 +217,15 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
 
   const hasUnderwaterRoas =
     underwaterRoas != null && Number.isFinite(underwaterRoas) && underwaterRoas < 1 ? 1 : 0;
+  const hasTrendDown = input.marketingTrendDown ? 1 : 0;
   const actionCount =
     input.connectionIssues.length +
     unreadDms +
     leadsToFollowUp +
     hasUnderwaterRoas +
+    hasTrendDown +
+    inventoryAlertCount +
+    reviewsNeedingReply +
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,9 @@ import {
   compareLeads,
   isFollowUpDueToday,
   isFollowUpOverdue,
+  isLeadOpen,
   type LeadStatus,
+  suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
@@ -263,7 +265,9 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
         phone: form.phone || null,
         website: form.website.trim() || null,
         notes: form.notes || null,
-        nextFollowUpAt: form.nextFollowUpAt ? dateInputToEndOfDayIso(form.nextFollowUpAt) : null,
+        nextFollowUpAt: form.nextFollowUpAt
+          ? dateInputToEndOfDayIso(form.nextFollowUpAt)
+          : suggestedFollowUpIsoForStatus("new"),
         source: "manual",
       });
       setForm({ ...EMPTY_FORM });
@@ -293,6 +297,29 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
       toast.error(e instanceof Error ? e.message : "Couldn't load suggestions.");
     } finally {
       setSuggesting(false);
+    }
+  }
+
+  const autoSuggestedRef = useRef(false);
+  useEffect(() => {
+    if (autoSuggestedRef.current || isLoading || leads.length > 0 || !businessProfileId) return;
+    autoSuggestedRef.current = true;
+    void getSuggestions();
+  }, [isLoading, leads.length, businessProfileId]);
+
+  async function handleStatusChange(lead: Lead, status: LeadStatus) {
+    const patch: Parameters<typeof updateLead>[0]["patch"] = { status };
+    if (isLeadOpen(status) && !lead.nextFollowUpAt) {
+      const suggested = suggestedFollowUpIsoForStatus(status);
+      if (suggested) patch.nextFollowUpAt = suggested;
+    }
+    try {
+      await updateLead({ id: lead.id, patch });
+      if (patch.nextFollowUpAt) {
+        toast.message("Follow-up date set automatically.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update lead.");
     }
   }
 
@@ -430,7 +457,7 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
               <LeadRow
                 key={lead.id}
                 lead={lead}
-                onStatus={(status) => void updateLead({ id: lead.id, patch: { status } })}
+                onStatus={(status) => void handleStatusChange(lead, status)}
                 onFollowUp={(value) =>
                   void updateLead({
                     id: lead.id,

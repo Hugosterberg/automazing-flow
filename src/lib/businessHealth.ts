@@ -18,6 +18,9 @@ export interface BusinessHealthInput {
   overdueTasks: number;
   dueTodayTasks: number;
   activeRecommendations: number;
+  unreadMessages?: number;
+  leadsToFollowUp?: number;
+  reviewsNeedingReply?: number;
 }
 
 export type BusinessHealthTone = "success" | "info" | "warning";
@@ -42,10 +45,22 @@ export function computeBusinessHealth(input: BusinessHealthInput): BusinessHealt
   const overduePenalty = clampDeduction(input.overdueTasks, 8, 32);
   const dueTodayPenalty = clampDeduction(input.dueTodayTasks, 2, 8);
   const recommendationPenalty = clampDeduction(input.activeRecommendations, 1.5, 9);
+  const unreadPenalty = clampDeduction(input.unreadMessages ?? 0, 3, 12);
+  const leadsPenalty = clampDeduction(input.leadsToFollowUp ?? 0, 4, 16);
+  const reviewsPenalty = clampDeduction(input.reviewsNeedingReply ?? 0, 3, 9);
 
   const score = Math.max(
     0,
-    Math.round(100 - connectionPenalty - overduePenalty - dueTodayPenalty - recommendationPenalty)
+    Math.round(
+      100 -
+        connectionPenalty -
+        overduePenalty -
+        dueTodayPenalty -
+        recommendationPenalty -
+        unreadPenalty -
+        leadsPenalty -
+        reviewsPenalty
+    )
   );
 
   // Reasons ordered by severity of their penalty so the hint always points
@@ -78,6 +93,27 @@ export function computeBusinessHealth(input: BusinessHealthInput): BusinessHealt
         input.activeRecommendations === 1
           ? "1 open AI recommendation"
           : `${input.activeRecommendations} open AI recommendations`,
+    },
+    {
+      penalty: unreadPenalty,
+      text:
+        (input.unreadMessages ?? 0) === 1
+          ? "1 unread message"
+          : `${input.unreadMessages ?? 0} unread messages`,
+    },
+    {
+      penalty: leadsPenalty,
+      text:
+        (input.leadsToFollowUp ?? 0) === 1
+          ? "1 lead to follow up"
+          : `${input.leadsToFollowUp ?? 0} leads to follow up`,
+    },
+    {
+      penalty: reviewsPenalty,
+      text:
+        (input.reviewsNeedingReply ?? 0) === 1
+          ? "1 review needs a reply"
+          : `${input.reviewsNeedingReply ?? 0} reviews need replies`,
     },
   ];
   const topReason =
