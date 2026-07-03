@@ -9,7 +9,7 @@ explains *what we are building and why*.
 **Company level:** automazing is a BAI Digital product. The company brain —
 vision, playbook (feature loop, PR flow), portfolio of all projects and where
 each repo lives, agent roles — is the repo
-[bai-digital/ai](https://github.com/bai-digital/ai) (local checkout:
+[bai-digital-office/ai](https://github.com/bai-digital-office/ai) (local checkout:
 `c:\Code\bai-digital\ai`). Read its PLAYBOOK.md before large work.
 
 ## Contents
