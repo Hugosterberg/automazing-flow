@@ -15,6 +15,29 @@ export type CalendarPlatform = "google_calendar" | "outlook_calendar";
 export type ReviewsPlatform = "google_reviews" | "tripadvisor";
 export type ContentPlatform = "google_drive" | "canva";
 export type MarketingPlatform = "google_ads" | "meta_business";
+/**
+ * Remote MCP data providers (see server/providers/mcpOauth.ts + mcpDirectory.ts).
+ * OAuth: dayai, windsor, era, ahrefs, canva_mcp, superhuman_mcp, supermetrics_mcp.
+ * API key / shop / keyless: exa, klarity, lunarcrush, peec, sprouts, gamma,
+ * godaddy, shopify_mcp, twilio_mcp.
+ */
+export type IntelligencePlatform =
+  | "dayai"
+  | "windsor"
+  | "era"
+  | "ahrefs"
+  | "canva_mcp"
+  | "superhuman_mcp"
+  | "supermetrics_mcp"
+  | "exa"
+  | "klarity"
+  | "lunarcrush"
+  | "peec"
+  | "sprouts"
+  | "gamma"
+  | "godaddy"
+  | "shopify_mcp"
+  | "twilio_mcp";
 
 export type AccountPlatform =
   | SocialPlatform
@@ -23,7 +46,8 @@ export type AccountPlatform =
   | CalendarPlatform
   | ReviewsPlatform
   | ContentPlatform
-  | MarketingPlatform;
+  | MarketingPlatform
+  | IntelligencePlatform;
 
 export interface Profile {
   id: string;

@@ -23,6 +23,22 @@ const PLATFORM_LABELS: Record<string, string> = {
   outlook_calendar: "Outlook Calendar",
   google_drive: "Google Drive",
   canva: "Canva",
+  dayai: "Day.ai",
+  windsor: "Windsor.ai",
+  era: "Era",
+  ahrefs: "Ahrefs",
+  canva_mcp: "Canva MCP",
+  superhuman_mcp: "Superhuman Mail MCP",
+  supermetrics_mcp: "Supermetrics MCP",
+  exa: "Exa",
+  klarity: "Klarity Architect",
+  lunarcrush: "LunarCrush",
+  peec: "Peec AI",
+  sprouts: "Sprouts",
+  gamma: "Gamma",
+  godaddy: "GoDaddy Domains",
+  shopify_mcp: "Shopify Storefront MCP",
+  twilio_mcp: "Twilio Docs MCP",
 };
 
 export function platformLabel(platform: string | null | undefined): string {

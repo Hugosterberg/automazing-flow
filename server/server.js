@@ -39,6 +39,7 @@ import { registerAccountRoutes } from "./routes/accountRoutes.ts";
 import { registerAiRoutes } from "./routes/aiRoutes.ts";
 import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoutes.ts";
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
+import { registerMcpRoutes } from "./routes/mcpRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
 import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
@@ -125,6 +126,36 @@ function customDomainFromCorsOrigins() {
   return "";
 }
 
+/** SITE_URL / VITE_SITE_URL when set to a non-Vercel production domain. */
+function customDomainFromSiteEnv() {
+  for (const key of ["SITE_URL", "VITE_SITE_URL", "VITE_APP_URL"]) {
+    const raw = String(process.env[key] || "").trim();
+    if (!raw) continue;
+    try {
+      const parsed = new URL(raw.includes("://") ? raw : `https://${raw}`);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") continue;
+      if (parseOriginIsLoopback(parsed.origin)) continue;
+      if (parsed.hostname.toLowerCase().endsWith(".vercel.app")) continue;
+      return parsed.origin.replace(/\/$/, "");
+    } catch {
+      // skip malformed entries
+    }
+  }
+  return "";
+}
+
+function customPublicOrigin() {
+  return customDomainFromCorsOrigins() || customDomainFromSiteEnv();
+}
+
+function originHostIsVercelApp(origin) {
+  try {
+    return new URL(origin).hostname.toLowerCase().endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 /**
  * https://… origin of this deployment (no trailing slash).
  *
@@ -164,15 +195,23 @@ function resolveApiBaseUrl() {
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
   const deployed = vercelDeploymentOrigin();
+  const custom = customPublicOrigin();
 
   if (explicitApi && !parseOriginIsLoopback(explicitApi)) {
-    return explicitApi.replace(/\/$/, "");
+    const normalized = explicitApi.replace(/\/$/, "");
+    if (onVercel && custom && originHostIsVercelApp(normalized)) {
+      return custom;
+    }
+    return normalized;
   }
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
-    return explicitBase.replace(/\/$/, "");
+    const normalized = explicitBase.replace(/\/$/, "");
+    if (onVercel && custom && originHostIsVercelApp(normalized)) {
+      return custom;
+    }
+    return normalized;
   }
   if (onVercel && String(process.env.VERCEL_ENV || "").trim() === "production") {
-    const custom = customDomainFromCorsOrigins();
     if (custom) return custom;
   }
   if (onVercel && deployed) {
@@ -186,12 +225,16 @@ function resolveBaseUrl(apiBaseResolved) {
   const explicitBase = String(process.env.BASE_URL || "").trim();
   const onVercel = process.env.VERCEL === "1";
   const deployed = vercelDeploymentOrigin();
+  const custom = customPublicOrigin();
 
   if (explicitBase && !parseOriginIsLoopback(explicitBase)) {
-    return explicitBase.replace(/\/$/, "");
+    const normalized = explicitBase.replace(/\/$/, "");
+    if (onVercel && custom && originHostIsVercelApp(normalized)) {
+      return custom;
+    }
+    return normalized;
   }
   if (onVercel && String(process.env.VERCEL_ENV || "").trim() === "production") {
-    const custom = customDomainFromCorsOrigins();
     if (custom) return custom;
   }
   if (onVercel && deployed) {
@@ -428,6 +471,12 @@ registerOAuthRoutes(app, {
   tokenStore,
   getSessionUserId,
   secretResolver,
+});
+
+registerMcpRoutes(app, {
+  tokenStore,
+  getSessionUserId,
+  getStoredAccountAccess,
 });
 
 registerConnectionsRoutes(app, {

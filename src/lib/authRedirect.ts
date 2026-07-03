@@ -233,7 +233,8 @@ export function buildCanonicalAppOriginUrl(input: AppOriginCanonicalizeInput): s
   if (!input.prod) return null;
 
   const params = new URLSearchParams(input.search || "");
-  for (const key of [...AUTH_CALLBACK_PARAMS, ...OAUTH_CALLBACK_PARAMS]) {
+  // Supabase PKCE callbacks must stay on the origin where sign-in started.
+  for (const key of AUTH_CALLBACK_PARAMS) {
     if (params.has(key)) return null;
   }
 

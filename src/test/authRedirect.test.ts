@@ -97,7 +97,21 @@ describe("buildOAuthRedirectUrl", () => {
           pathname: "/connections",
           search: "?oauth_success=1&platform=instagram",
         })
-      ).toBeNull();
+      ).toBe("https://automazing.vercel.app/connections?oauth_success=1&platform=instagram");
+    });
+
+    it("moves integration OAuth returns from a deployment host to the custom domain", () => {
+      expect(
+        buildCanonicalAppOriginUrl({
+          prod: true,
+          siteUrl: "https://automazing.life",
+          appUrl: "",
+          vercelProductionOrigin: "https://automazing.vercel.app",
+          windowOrigin: "https://automazing-hugosterbergs-projects.vercel.app",
+          pathname: "/content",
+          search: "?oauth_success=1&platform=google_drive",
+        })
+      ).toBe("https://automazing.life/content?oauth_success=1&platform=google_drive");
     });
 
     it("moves browsing from a Vercel alias to the configured custom domain", () => {

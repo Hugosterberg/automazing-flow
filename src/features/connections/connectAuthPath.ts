@@ -1,4 +1,5 @@
 import type { AccountPlatform } from "@/types/accounts";
+import { MCP_KEYED_PLATFORMS, MCP_OAUTH_PLATFORMS, getMcpProviderMeta } from "./mcpProviders";
 
 /**
  * Maps a catalog platform to the server-side OAuth start path.
@@ -52,7 +53,13 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   // Content
   google_drive: { authPath: "google_drive" },
   canva: { authPath: "canva" },
-};
+  ...Object.fromEntries(
+    MCP_OAUTH_PLATFORMS.map((platform) => [platform, { authPath: `mcp/${platform}` }])
+  ),
+  ...Object.fromEntries(
+    MCP_KEYED_PLATFORMS.map((platform) => [platform, { authPath: `mcp/${platform}`, manual: true }])
+  ),
+} as Record<AccountPlatform, ConnectStartConfig>;
 
 const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
   instagram: [
@@ -98,7 +105,28 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
   ],
   google_drive: [{ id: "official", label: "Google official", isDefault: true }],
   canva: [{ id: "official", label: "Canva Connect", isDefault: true }],
-};
+  ...Object.fromEntries(
+    MCP_OAUTH_PLATFORMS.map((platform) => [
+      platform,
+      [{ id: "official", label: "OAuth MCP", isDefault: true }],
+    ])
+  ),
+  ...Object.fromEntries(
+    MCP_KEYED_PLATFORMS.map((platform) => {
+      const meta = getMcpProviderMeta(platform);
+      return [
+        platform,
+        [
+          {
+            id: "manual" as const,
+            label: meta?.auth === "keyless" ? "One-click connect" : "Connect with credentials",
+            isDefault: true,
+          },
+        ],
+      ];
+    })
+  ),
+} as Record<AccountPlatform, ConnectionPathOption[]>;
 
 export function getConnectConfig(platform: AccountPlatform): ConnectStartConfig | null {
   return CONFIG[platform] ?? null;

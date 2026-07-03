@@ -2,9 +2,26 @@ import type { AccountPlatform } from "@/types/accounts";
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
 /** Logical product areas (matches main nav groupings). */
-export type AppArea = "social" | "marketing" | "ecommerce" | "messages" | "calendar" | "reviews" | "content";
+export type AppArea =
+  | "social"
+  | "marketing"
+  | "ecommerce"
+  | "messages"
+  | "calendar"
+  | "reviews"
+  | "content"
+  | "intelligence";
 
-export const AREA_ORDER: AppArea[] = ["social", "marketing", "ecommerce", "messages", "calendar", "reviews", "content"];
+export const AREA_ORDER: AppArea[] = [
+  "social",
+  "marketing",
+  "ecommerce",
+  "messages",
+  "calendar",
+  "reviews",
+  "content",
+  "intelligence",
+];
 
 /**
  * Areas that make sense in the private workspace. Mirrors the nav's mode
@@ -26,6 +43,7 @@ export const AREA_LABELS: Record<AppArea, string> = {
   calendar: "Calendar",
   reviews: "Reviews",
   content: "Content library",
+  intelligence: "Intelligence & MCP",
 };
 
 export type ConnectionCatalogEntry = {
@@ -227,6 +245,157 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     serverNeeds:
       "CANVA_CLIENT_ID + CANVA_CLIENT_SECRET from a Canva Connect integration. CANVA_ACCESS_TOKEN is still supported as a legacy fallback.",
   },
+  // --- Remote MCP data providers (OAuth or API-key / shop-domain connect) ---
+  {
+    platform: "dayai",
+    label: "Day.ai",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "OAuth MCP — CRM and assistant tools for your workspace.",
+    serverNeeds: "Optional env override: DAYAI_CLIENT_ID + DAYAI_CLIENT_SECRET. Otherwise dynamic client registration.",
+  },
+  {
+    platform: "windsor",
+    label: "Windsor.ai",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "OAuth MCP — marketing data connectors via Windsor.",
+    serverNeeds: "Optional: WINDSOR_CLIENT_ID + WINDSOR_CLIENT_SECRET.",
+  },
+  {
+    platform: "era",
+    label: "Era",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "OAuth MCP — Era context and forge tools.",
+    serverNeeds: "Optional: ERA_CLIENT_ID + ERA_CLIENT_SECRET.",
+  },
+  {
+    platform: "ahrefs",
+    label: "Ahrefs",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "OAuth MCP — SEO data and site tools (apiv3-mcp scope).",
+    serverNeeds: "Optional: AHREFS_CLIENT_ID + AHREFS_CLIENT_SECRET.",
+  },
+  {
+    platform: "canva_mcp",
+    label: "Canva MCP",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "OAuth MCP — broader Canva automation tools (separate from Canva Connect export).",
+    serverNeeds: "Optional: CANVA_MCP_CLIENT_ID + CANVA_MCP_CLIENT_SECRET.",
+  },
+  {
+    platform: "superhuman_mcp",
+    label: "Superhuman Mail",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps:
+      "OAuth MCP — search and act on Superhuman Mail via Ask AI. Requires Business/Enterprise with Ask AI enabled.",
+    serverNeeds:
+      "Optional: SUPERHUMAN_MCP_CLIENT_ID + SUPERHUMAN_MCP_CLIENT_SECRET. Otherwise dynamic client registration.",
+  },
+  {
+    platform: "supermetrics_mcp",
+    label: "Supermetrics",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps:
+      "OAuth MCP — marketing data connectors and query tools via Supermetrics. See supermetrics.com/docs/product-api-oauth.",
+    serverNeeds:
+      "Optional: SUPERMETRICS_MCP_CLIENT_ID + SUPERMETRICS_MCP_CLIENT_SECRET. Otherwise dynamic client registration.",
+  },
+  {
+    platform: "exa",
+    label: "Exa",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste your Exa API key — web search MCP.",
+    serverNeeds: "Exa API key from dashboard.exa.ai.",
+  },
+  {
+    platform: "klarity",
+    label: "Klarity Architect",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste your Klarity API token.",
+    serverNeeds: "Klarity Architect API access token.",
+  },
+  {
+    platform: "lunarcrush",
+    label: "LunarCrush",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste your LunarCrush API key — social/crypto sentiment MCP.",
+    serverNeeds: "LunarCrush API key.",
+  },
+  {
+    platform: "peec",
+    label: "Peec AI",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste your Peec AI API key.",
+    serverNeeds: "Peec AI API key from app.peec.ai settings.",
+  },
+  {
+    platform: "sprouts",
+    label: "Sprouts Data Intelligence",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Optional API key — server accepts keyless connects.",
+    serverNeeds: "Optional Sprouts API key.",
+  },
+  {
+    platform: "gamma",
+    label: "Gamma",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste your Gamma API key — deck/content MCP.",
+    serverNeeds: "Gamma API key from Account settings.",
+  },
+  {
+    platform: "godaddy",
+    label: "GoDaddy Domains",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps: "Paste GoDaddy API credentials as KEY:SECRET (optional for read-only).",
+    serverNeeds: "GoDaddy developer API key (sso-key format).",
+  },
+  {
+    platform: "shopify_mcp",
+    label: "Shopify Storefront MCP",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps:
+      "Enter your shop's .myshopify.com domain. Each store exposes public catalog/cart MCP at /api/mcp — see setup.shopify.com/mcp.",
+    serverNeeds: "No server credentials — storefront tools are public per shop domain.",
+  },
+  {
+    platform: "twilio_mcp",
+    label: "Twilio Docs MCP",
+    area: "intelligence",
+    pageHref: "/connections",
+    pageName: "Connections",
+    connectSteps:
+      "One-click connect — semantic search over Twilio API docs and specs. No Twilio account or API key required.",
+    serverNeeds: "No credentials — hosted at mcp.twilio.com/docs.",
+  },
 ];
 
 const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {
@@ -237,6 +406,7 @@ const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {
   calendar: [],
   reviews: [],
   content: [],
+  intelligence: [],
 };
 
 for (const row of CONNECTION_CATALOG) {

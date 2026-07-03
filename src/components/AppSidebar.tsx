@@ -1,4 +1,4 @@
-import { Users, Zap, MoreHorizontal, Trash2 } from "lucide-react";
+import { Bot, Users, Zap, MoreHorizontal, Trash2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
@@ -86,6 +86,10 @@ import {
 import { profilesLabelForMode, useWorkspaceMode } from "@/features/workspace-mode";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
+function GenericMcpIcon(props: { className?: string }) {
+  return <Bot className={props.className} aria-hidden />;
+}
+
 const platformIcons: Record<AccountPlatform, (props: { className?: string }) => JSX.Element> = {
   instagram: InstagramIcon,
   tiktok: TikTokIcon,
@@ -106,6 +110,22 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   tripadvisor: TripadvisorIcon,
   google_ads: GoogleBusinessIcon,
   meta_business: FacebookIcon,
+  dayai: GenericMcpIcon,
+  windsor: GenericMcpIcon,
+  era: GenericMcpIcon,
+  ahrefs: GenericMcpIcon,
+  canva_mcp: CanvaIcon,
+  superhuman_mcp: GmailIcon,
+  supermetrics_mcp: GenericMcpIcon,
+  exa: GenericMcpIcon,
+  klarity: GenericMcpIcon,
+  lunarcrush: GenericMcpIcon,
+  peec: GenericMcpIcon,
+  sprouts: GenericMcpIcon,
+  gamma: GenericMcpIcon,
+  godaddy: GenericMcpIcon,
+  shopify_mcp: ShopifyIcon,
+  twilio_mcp: GenericMcpIcon,
 };
 
 function getAccountsForCategory(accounts: ConnectedAccount[], platforms: AccountPlatform[]) {

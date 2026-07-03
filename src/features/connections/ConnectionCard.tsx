@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,15 @@ import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { aggregateStatus } from "./connectionStatus";
 import { buildConnectUrl } from "./zernioClient";
 import { getConnectConfig, getConnectionPathOptions } from "./connectAuthPath";
+import {
+  buildMcpOAuthConnectUrl,
+  getMcpProviderMeta,
+  isMcpPlatform,
+  mcpManualConnectUrl,
+} from "./mcpProviders";
+import type { IntelligencePlatform } from "@/types/accounts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiErrorMessage } from "@/lib/apiError";
 import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
 import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 
@@ -76,6 +86,11 @@ export function ConnectionCard({
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopifyShop, setShopifyShop] = useState("");
   const [shopifyShopError, setShopifyShopError] = useState<string | null>(null);
+  const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
+  const [mcpCredential, setMcpCredential] = useState("");
+  const [mcpCredentialError, setMcpCredentialError] = useState<string | null>(null);
+  const [mcpConnecting, setMcpConnecting] = useState(false);
+  const mcpMeta = getMcpProviderMeta(entry.platform);
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
     [activeConnections, entry.platform]
@@ -115,6 +130,62 @@ export function ConnectionCard({
     setShopifyShop("");
     setShopifyShopError(null);
     startConnect(undefined, { shop });
+  }
+
+  function startMcpConnect() {
+    if (!mcpMeta) return;
+    if (mcpMeta.auth === "oauth") {
+      window.location.href = buildMcpOAuthConnectUrl(entry.platform as IntelligencePlatform, businessProfileId);
+      return;
+    }
+    if (mcpMeta.auth === "keyless") {
+      void submitMcpManualConnect({ keyless: true });
+      return;
+    }
+    setMcpCredential("");
+    setMcpCredentialError(null);
+    setMcpDialogOpen(true);
+  }
+
+  async function submitMcpManualConnect(options?: { keyless?: boolean }) {
+    if (!mcpMeta) return;
+    const trimmed = mcpCredential.trim();
+    if (mcpMeta.auth === "shop_domain") {
+      const shop = normalizeShopifyShopDomain(trimmed);
+      if (!shop) {
+        setMcpCredentialError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
+        return;
+      }
+    } else if (!options?.keyless && !trimmed && entry.platform !== "sprouts") {
+      setMcpCredentialError("Credential krävs.");
+      return;
+    }
+    setMcpConnecting(true);
+    setMcpCredentialError(null);
+    try {
+      const body =
+        mcpMeta.auth === "shop_domain"
+          ? { shopDomain: normalizeShopifyShopDomain(trimmed), profileId: businessProfileId }
+          : { apiKey: trimmed, profileId: businessProfileId };
+      const res = await fetchWithTimeout(mcpManualConnectUrl(entry.platform as IntelligencePlatform), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(payload, `Could not connect ${entry.label}.`));
+      }
+      setMcpDialogOpen(false);
+      setMcpCredential("");
+      toast.success(`${entry.label} connected`);
+      window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
+    } catch (err) {
+      setMcpCredentialError(err instanceof Error ? err.message : "Kunde inte ansluta.");
+    } finally {
+      setMcpConnecting(false);
+    }
   }
 
   const lastSync = useMemo(() => {
@@ -268,7 +339,7 @@ export function ConnectionCard({
         ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1">
-          {connectConfig && !connectConfig.manual ? (
+          {connectConfig && (!connectConfig.manual || isMcpPlatform(entry.platform)) ? (
             entry.platform === "google_ads" ||
             entry.platform === "google_business" ||
             entry.platform === "tripadvisor" ? (
@@ -301,14 +372,23 @@ export function ConnectionCard({
                 variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
                 className="gap-1.5"
                 onClick={() => {
+                  if (isMcpPlatform(entry.platform)) {
+                    startMcpConnect();
+                    return;
+                  }
                   if (entry.platform === "shopify") {
                     startShopifyConnect();
                     return;
                   }
                   startConnect();
                 }}
+                disabled={mcpConnecting && mcpMeta?.auth === "keyless"}
               >
-                <PrimaryIcon className="h-3.5 w-3.5" />
+                {mcpConnecting && mcpMeta?.auth === "keyless" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PrimaryIcon className="h-3.5 w-3.5" />
+                )}
                 {primaryLabel}
               </Button>
             )
@@ -395,6 +475,47 @@ export function ConnectionCard({
           </Button>
           <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
             Continue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={mcpDialogOpen} onOpenChange={setMcpDialogOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Connect {entry.label}</DialogTitle>
+          <DialogDescription>{entry.connectSteps}</DialogDescription>
+        </DialogHeader>
+        {mcpMeta?.auth === "shop_domain" ? <ShopifyConnectGuide /> : null}
+        <div className="space-y-2">
+          <Label htmlFor={`mcp-credential-${entry.platform}`}>{mcpMeta?.credentialLabel ?? "Credential"}</Label>
+          <Input
+            id={`mcp-credential-${entry.platform}`}
+            type={mcpMeta?.auth === "api_key" ? "password" : "text"}
+            value={mcpCredential}
+            onChange={(event) => {
+              setMcpCredential(event.target.value);
+              setMcpCredentialError(null);
+            }}
+            onKeyDown={(event) => event.key === "Enter" && void submitMcpManualConnect()}
+            placeholder={mcpMeta?.credentialPlaceholder}
+            aria-invalid={Boolean(mcpCredentialError)}
+            autoFocus
+          />
+          {mcpCredentialError ? <p className="text-xs text-destructive">{mcpCredentialError}</p> : null}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setMcpDialogOpen(false)} disabled={mcpConnecting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void submitMcpManualConnect()}
+            disabled={
+              mcpConnecting ||
+              (mcpMeta?.auth === "shop_domain" && !mcpCredential.trim()) ||
+              (mcpMeta?.auth === "api_key" && entry.platform !== "sprouts" && !mcpCredential.trim())
+            }
+          >
+            {mcpConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
           </Button>
         </DialogFooter>
       </DialogContent>
