@@ -15,7 +15,6 @@ import {
   MapPin,
   ExternalLink,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,7 @@ import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { PublishComposer } from "@/features/content/PublishComposer";
+import { SocialAutomationPanel } from "@/features/social/SocialAutomationPanel";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -1452,6 +1452,8 @@ export default function SocialMedia() {
           }}
         />
       </m.div>
+
+      <SocialAutomationPanel />
 
       {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
         <div className="flex items-center gap-2">
