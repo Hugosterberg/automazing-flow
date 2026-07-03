@@ -29,6 +29,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/market-pulse-snapshot",
+      "schedule": "15 5 * * *"
+    },
+    {
       "path": "/api/cron/weekly-report",
       "schedule": "30 7 * * 1"
     }

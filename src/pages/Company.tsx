@@ -1,11 +1,14 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { m } from "framer-motion";
-import { Building2 } from "lucide-react";
+import { AlertTriangle, Building2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
 import { AutomatedUpdatesCard } from "@/features/automation";
+import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { platformLabel } from "@/lib/platformLabels";
 import { SystemHealthCard } from "@/features/diagnostics";
 import { pageFadeUp } from "@/lib/motion";
@@ -20,6 +23,27 @@ const HEALTH_TONE: Record<string, string> = {
   disconnected: "text-muted-foreground",
 };
 
+function safeWebsiteUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const withProtocol = /^https?:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`;
+    const parsed = new URL(withProtocol);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function websiteHostname(url: string | null) {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex flex-col gap-0.5 py-2 border-b border-border/60 last:border-0 sm:flex-row sm:items-baseline sm:justify-between">
@@ -31,8 +55,11 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 
 export default function CompanyPage() {
   const activeBpId = useActiveBusinessProfileIdOptional();
+  const businessProfileId = activeBpId ?? null;
   const { profiles } = useBusinessProfiles();
   const profile = useMemo(() => profiles.find((p) => p.id === activeBpId) ?? null, [profiles, activeBpId]);
+  const websiteUrl = safeWebsiteUrl(profile?.website);
+  const hostname = websiteHostname(websiteUrl);
   const { connections } = useConnections(activeBpId);
 
   const activeConnections = useMemo(
@@ -72,6 +99,33 @@ export default function CompanyPage() {
             )}
           </CardContent>
         </Card>
+      </m.div>
+
+      {/* External MCP intelligence */}
+      <m.div {...pageFadeUp} transition={{ delay: 0.05 }} className="space-y-4">
+        {!profile?.website ? (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Ingen webbplats registrerad</AlertTitle>
+            <AlertDescription>
+              Lägg till webbplatsens URL på{" "}
+              <Link to="/connections" className="font-medium underline underline-offset-2 hover:text-foreground">
+                Connections
+              </Link>{" "}
+              för att hämta extern intelligens om företaget.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <McpMultiSourceCompare
+          businessProfileId={businessProfileId}
+          initialSubject={hostname || profile?.company || ""}
+        />
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.company}
+          title="External intelligence"
+          description="Domain lookup, SEO overview, and competitive research for this company via connected MCP providers."
+        />
       </m.div>
 
       {/* Connected sources */}

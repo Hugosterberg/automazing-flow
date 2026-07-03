@@ -27,14 +27,10 @@
  * picked by pattern and arguments are shaped from the tool's own inputSchema.
  */
 
-import {
-  findMcpAccountForProfile,
-  listToolsForStored,
-  callToolForStored,
-  pickTool,
-} from "../lib/mcpAccess.ts";
+import { fetchMarketPulseLive, DEFAULT_MARKET_PULSE_TOPIC } from "../lib/marketPulseFetch.ts";
+import { findMcpAccountForProfile } from "../lib/mcpAccess.ts";
 import { MCP_FEATURE_PLATFORMS } from "../lib/mcpCatalog.ts";
-import { argNameForTool, runMcpQuery, trimMcpText } from "../lib/mcpQuery.ts";
+import { runMcpQuery } from "../lib/mcpQuery.ts";
 import { runMultiSourceAssessment } from "../lib/mcpMultiSource.ts";
 import { assessMcpAccount, buildMcpProvidersReadiness, findReadyMcpAccount } from "../lib/mcpReadiness.ts";
 import { readRequestBusinessProfileId } from "../lib/profileScope.ts";
@@ -52,6 +48,7 @@ interface IntelligenceRouteDeps {
     stored: Record<string, unknown> | null | undefined,
     userId: string
   ) => { allowed: boolean; migrate: boolean; reason: string };
+  supabaseAdmin?: { from: (table: string) => unknown } | null;
 }
 
 /**
@@ -109,7 +106,7 @@ async function handleAuthenticatedMcpQuery(
 }
 
 export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
-  const { tokenStore, getSessionUserId, getStoredAccountAccess } = deps;
+  const { tokenStore, getSessionUserId, getStoredAccountAccess, supabaseAdmin } = deps;
 
   app.get("/api/intelligence/providers", async (req, res) => {
     const userId = getSessionUserId(req);
@@ -133,15 +130,55 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     const userId = getSessionUserId(req);
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
     const businessProfileId = readRequestBusinessProfileId(req);
-    const topic = String(req.query.topic || "bitcoin").trim().toLowerCase() || "bitcoin";
+    const topic =
+      String(req.query.topic || DEFAULT_MARKET_PULSE_TOPIC)
+        .trim()
+        .toLowerCase() || DEFAULT_MARKET_PULSE_TOPIC;
+    const preferLive = String(req.query.live || "") === "1";
 
-    const cacheKey = `${businessProfileId || "global"}:${topic}`;
+    const cacheKey = `${businessProfileId || "global"}:${topic}:${preferLive ? "live" : "auto"}`;
     const cached = pulseCache.get(cacheKey);
     if (cached && Date.now() - cached.at < PULSE_CACHE_MS) {
       return res.json(cached.payload);
     }
 
     try {
+      if (!preferLive && supabaseAdmin && businessProfileId) {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: row, error } = await (supabaseAdmin as {
+          from: (t: string) => {
+            select: (c: string) => {
+              eq: (a: string, v: string) => {
+                eq: (b: string, v: string) => {
+                  eq: (c: string, v: string) => {
+                    maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+                  };
+                };
+              };
+            };
+          };
+        })
+          .from("intelligence_pulse_snapshots")
+          .select("topic,tool,text,provider,fetched_at")
+          .eq("business_profile_id", businessProfileId)
+          .eq("snapshot_date", today)
+          .eq("topic", topic)
+          .maybeSingle();
+        if (!error && row?.text) {
+          const payload = {
+            available: true,
+            topic: String(row.topic || topic),
+            tool: String(row.tool || ""),
+            text: String(row.text || ""),
+            provider: row.provider ? String(row.provider) : undefined,
+            fetchedAt: row.fetched_at ? String(row.fetched_at) : new Date().toISOString(),
+            source: "snapshot",
+          };
+          pulseCache.set(cacheKey, { at: Date.now(), payload });
+          return res.json(payload);
+        }
+      }
+
       const ready = await findReadyMcpAccount({
         tokenStore,
         businessProfileId,
@@ -169,41 +206,25 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
           message: ready.error,
         });
       }
-      const account = ready.account;
-      const access = getStoredAccountAccess(account, userId);
+
+      const access = getStoredAccountAccess(ready.account, userId);
       if (!access.allowed) {
         return res.json({ available: false, reason: "not_connected" });
       }
 
-      const toolsRes = await listToolsForStored(tokenStore, account);
-      if (toolsRes.ok === false) {
-        return res.json({ available: false, reason: "provider_error", message: toolsRes.message });
-      }
-      const tool = pickTool(toolsRes.tools, [/^topic$/i, /topic/i, /^coin/i, /sentiment/i, /search/i]);
-      if (!tool) {
-        return res.json({ available: false, reason: "no_matching_tool" });
-      }
-      const argName = argNameForTool(tool, ["topic", "symbol", "coin", "query", "q"]);
-      const callRes = await callToolForStored(
-        tokenStore,
-        account,
-        tool.name,
-        argName ? { [argName]: topic } : {}
-      );
-      if (callRes.ok === false || callRes.isError) {
-        return res.json({
-          available: false,
-          reason: "provider_error",
-          message: callRes.ok === false ? callRes.message : trimMcpText(callRes.text, 300),
-        });
+      const live = await fetchMarketPulseLive({ tokenStore, businessProfileId, topic });
+      if (!live.available) {
+        return res.json(live);
       }
 
       const payload = {
         available: true,
-        topic,
-        tool: tool.name,
-        text: trimMcpText(callRes.text, 4_000),
-        fetchedAt: new Date().toISOString(),
+        topic: live.topic,
+        tool: live.tool,
+        text: live.text,
+        provider: live.provider,
+        fetchedAt: live.fetchedAt,
+        source: "live",
       };
       pulseCache.set(cacheKey, { at: Date.now(), payload });
       return res.json(payload);

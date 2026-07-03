@@ -36,6 +36,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -735,6 +736,15 @@ export default function SocialMedia() {
         title="Social Media"
         description="Automate and manage your social media"
       />
+
+      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.social}
+          title="MCP design assist"
+          description="Creative briefs and design direction via Canva MCP for social content."
+        />
+      </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
         <ContentIdeasCard

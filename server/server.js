@@ -484,6 +484,7 @@ registerIntelligenceRoutes(app, {
   tokenStore,
   getSessionUserId,
   getStoredAccountAccess,
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerConnectionsRoutes(app, {

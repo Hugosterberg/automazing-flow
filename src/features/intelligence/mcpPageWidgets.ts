@@ -15,7 +15,9 @@ export const MCP_PAGE_FEATURE_IDS: Record<string, string[]> = {
   ecommerce: ["shop-catalog"],
   customers: ["crm-query"],
   messages: ["mail-search"],
-  automations: ["doc-search", "context-query"],
+  automations: ["doc-search", "context-query", "architecture-docs"],
   "ai-recommendations": ["context-query"],
   home: ["market-pulse"],
+  company: ["domain-lookup", "seo-overview", "competitive-research"],
+  social: ["design-assist"],
 };

@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { BarChart3, Bot, Mail, MessageSquare, Sparkles } from "lucide-react";
+import { BarChart3, Bot, Mail, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
 
 /**
  * Catalog of everything the app runs automatically, grouped by topic.
@@ -137,6 +137,17 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     outputHref: "/marketing",
     businessOnly: true,
     cronKey: "marketing-snapshot",
+  },
+  {
+    id: "market-pulse-snapshot",
+    topic: "insights",
+    title: "Market pulse-snapshot",
+    description:
+      "Hämtar LunarCrush-sentiment varje natt så startsidan laddar direkt utan live MCP-anrop.",
+    cadence: "Dagligen",
+    icon: TrendingUp,
+    businessOnly: true,
+    cronKey: "market-pulse-snapshot",
   },
 ];
 

@@ -53,14 +53,17 @@ export interface MarketPulse {
   tool?: string;
   text?: string;
   fetchedAt?: string;
+  source?: "live" | "snapshot";
 }
 
 export async function fetchMarketPulse(
   businessProfileId: string | null,
-  topic = "bitcoin"
+  topic = "bitcoin",
+  options?: { live?: boolean }
 ): Promise<MarketPulse> {
   const params = new URLSearchParams({ topic });
   if (businessProfileId) params.set("business_profile_id", businessProfileId);
+  if (options?.live) params.set("live", "1");
   const res = await fetchWithTimeout(apiUrl(`/api/intelligence/pulse?${params}`), {
     credentials: "include",
   });

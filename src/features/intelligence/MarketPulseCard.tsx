@@ -17,7 +17,7 @@ import { useMarketPulse } from "./useMarketPulse";
  */
 export function MarketPulseCard({ businessProfileId }: { businessProfileId: string | null }) {
   const [topic, setTopic] = useState("bitcoin");
-  const { pulse, isLoading, refetch } = useMarketPulse(businessProfileId, topic);
+  const { pulse, isLoading, refetchLive } = useMarketPulse(businessProfileId, topic);
   const [open, setOpen] = useState(false);
 
   const topicControls = (
@@ -27,9 +27,9 @@ export function MarketPulseCard({ businessProfileId }: { businessProfileId: stri
         onChange={(e) => setTopic(e.target.value)}
         placeholder="Topic e.g. bitcoin"
         className="max-w-[180px] h-8 text-xs"
-        onKeyDown={(e) => e.key === "Enter" && void refetch()}
+        onKeyDown={(e) => e.key === "Enter" && void refetchLive()}
       />
-      <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => void refetch()}>
+      <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => void refetchLive()}>
         Refresh pulse
       </Button>
     </div>
@@ -85,6 +85,7 @@ export function MarketPulseCard({ businessProfileId }: { businessProfileId: stri
           {pulse.fetchedAt ? (
             <span className="text-[11px] text-muted-foreground shrink-0">
               {formatRelativeTime(pulse.fetchedAt)}
+              {pulse.source === "snapshot" ? " · nightly" : null}
             </span>
           ) : null}
         </div>
