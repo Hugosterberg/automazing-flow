@@ -1,6 +1,9 @@
 export { MarketPulseCard } from "./MarketPulseCard";
-export { McpProvidersPanel, McpReadinessHint } from "./McpProvidersPanel";
+export { McpProvidersPanel } from "./McpProvidersPanel";
+export { McpReadinessHint } from "./McpReadinessHint";
 export { McpQueryBox } from "./McpQueryBox";
+export { McpIntelligenceHub } from "./McpIntelligenceHub";
+export { McpProviderStatusList } from "./McpProviderStatusList";
 export { MarketingIntelligencePanel } from "./MarketingIntelligencePanel";
 export { useMarketPulse, MARKET_PULSE_KEY } from "./useMarketPulse";
 export { useMcpProvidersStatus, mcpStatusLabel, MCP_PROVIDERS_KEY } from "./useMcpProvidersStatus";

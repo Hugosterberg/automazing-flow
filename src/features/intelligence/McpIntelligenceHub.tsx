@@ -1,0 +1,102 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Bot, PlugZap } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { McpQueryBox } from "./McpQueryBox";
+import { McpProviderStatusList } from "./McpProviderStatusList";
+import {
+  MCP_FEATURE_DEFINITIONS,
+  MCP_HUB_TABS,
+  MCP_PLATFORMS_WITH_UI,
+  mcpFeaturesForTab,
+  type McpHubTabId,
+} from "./mcpFeatureConfig";
+
+const QUERY_TABS = MCP_HUB_TABS.filter((t) => t.id !== "overview");
+
+/**
+ * Unified hub: one tab per MCP category, one input box per feature.
+ * Covers all 16 MCP providers (some share a fallback input).
+ */
+export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: string | null }) {
+  const [tab, setTab] = useState<McpHubTabId>("overview");
+
+  const featureCount = MCP_FEATURE_DEFINITIONS.length;
+  const platformCount = MCP_PLATFORMS_WITH_UI.length;
+
+  const tabContent = useMemo(
+    () =>
+      QUERY_TABS.map((hubTab) => ({
+        ...hubTab,
+        features: mcpFeaturesForTab(hubTab.id as Exclude<McpHubTabId, "overview">),
+      })),
+    []
+  );
+
+  return (
+    <Card className="border-border/80">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4 text-muted-foreground" aria-hidden />
+              MCP Intelligence
+            </CardTitle>
+            <CardDescription className="text-xs mt-1">
+              {featureCount} query tools across {platformCount} providers. Each input shows credential status before you run a call.
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
+            <Link to="/connections">
+              <PlugZap className="h-3.5 w-3.5" aria-hidden />
+              Connect providers
+            </Link>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as McpHubTabId)}>
+          <TabsList className="flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0 mb-4">
+            {MCP_HUB_TABS.map((hubTab) => (
+              <TabsTrigger
+                key={hubTab.id}
+                value={hubTab.id}
+                className="text-xs data-[state=active]:bg-muted"
+              >
+                {hubTab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-0 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs.
+            </p>
+            <McpProviderStatusList businessProfileId={businessProfileId} />
+          </TabsContent>
+
+          {tabContent.map((hubTab) => (
+            <TabsContent key={hubTab.id} value={hubTab.id} className="mt-0 space-y-4">
+              <p className="text-xs text-muted-foreground">{hubTab.description}</p>
+              {hubTab.features.map((feature) => (
+                <McpQueryBox
+                  key={feature.id}
+                  businessProfileId={businessProfileId}
+                  platforms={feature.platforms}
+                  title={`${feature.title} (${feature.providerLabels})`}
+                  description={feature.description}
+                  placeholder={feature.placeholder}
+                  buttonLabel={feature.buttonLabel}
+                  multiline={feature.multiline}
+                  onQuery={(input) => feature.run(businessProfileId, input)}
+                />
+              ))}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+}

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { McpReadinessHint } from "./McpProvidersPanel";
+import { McpReadinessHint } from "./McpReadinessHint";
 import { useMcpProvidersStatus } from "./useMcpProvidersStatus";
 import type { McpProviderReadiness } from "./intelligenceService";
 

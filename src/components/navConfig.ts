@@ -16,6 +16,7 @@ import {
   Globe2,
   Building2,
   Zap,
+  Bot,
 } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import type { AccountPlatform } from "@/types/accounts";
@@ -77,6 +78,14 @@ export const topNavItems: TopNavItem[] = [
     title: "Connections",
     url: "/connections",
     icon: PlugZap,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "intelligence",
+    title: "MCP Intelligence",
+    url: "/intelligence",
+    icon: Bot,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
   },
