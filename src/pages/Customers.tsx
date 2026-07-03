@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
 import { useProfileDocument } from "@/features/profile-documents";
 import { CustomerInsightsCard } from "@/features/customers/CustomerInsightsCard";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { McpQueryBox, runCrmQuery } from "@/features/intelligence";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -100,6 +102,8 @@ async function parseCustomerFile(
 
 export default function CustomersPage() {
   const { activeProfileId } = useAccounts();
+  const activeBp = useActiveBusinessProfileIdOptional();
+  const businessProfileId = activeBp ?? activeProfileId ?? null;
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -177,6 +181,31 @@ export default function CustomersPage() {
         title="Customers"
         description="Upload a CSV file to view your full customer base in one table."
       />
+
+      <m.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.04 }}
+      >
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">CRM assistant (Day.ai MCP)</CardTitle>
+            <CardDescription className="text-xs">
+              Ask questions about customers and deals when Day.ai is connected via OAuth.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <McpQueryBox
+              businessProfileId={businessProfileId}
+              platforms={["dayai"]}
+              title="CRM query"
+              placeholder="e.g. open deals over 50k this quarter"
+              buttonLabel="Ask CRM"
+              onQuery={(q) => runCrmQuery({ businessProfileId, query: q })}
+            />
+          </CardContent>
+        </Card>
+      </m.div>
 
       <m.div
         initial={{ opacity: 0, y: 14 }}

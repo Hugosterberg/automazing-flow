@@ -28,6 +28,7 @@ import {
 } from "@/features/connections";
 import { ConnectionsGrid } from "@/features/connections/ConnectionsGrid";
 import { ConnectionDetailsDrawer } from "@/features/connections/ConnectionDetailsDrawer";
+import { McpProvidersPanel, useMcpProvidersStatus } from "@/features/intelligence";
 import {
   CONNECTION_STATUS_LABELS,
   CONNECTION_STATUS_ORDER,
@@ -88,6 +89,8 @@ export default function ConnectionsPage() {
     isResyncing,
     resyncingId,
   } = useConnections(businessProfileId);
+
+  const { byPlatform: mcpReadinessByPlatform } = useMcpProvidersStatus(businessProfileId);
 
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   useTokenExpiryNotifier(connections);
@@ -497,7 +500,9 @@ export default function ConnectionsPage() {
           ))}
         </div>
       ) : (
-        <ConnectionsGrid
+        <>
+          <McpProvidersPanel businessProfileId={businessProfileId} />
+          <ConnectionsGrid
           businessProfileId={businessProfileId}
           connections={connections}
           onDisconnect={(id) => void disconnect(id)}
@@ -512,7 +517,9 @@ export default function ConnectionsPage() {
           onToggleSelect={toggleSelect}
           manuallyConnectedPlatforms={manuallyConnectedPlatforms}
           onManualConnectionChange={handleManualConnectionChange}
+          mcpReadinessByPlatform={mcpReadinessByPlatform}
         />
+        </>
       )}
 
       <ConnectionDetailsDrawer

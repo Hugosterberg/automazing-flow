@@ -2,6 +2,7 @@ import { AREA_LABELS, areaOrderForMode, getCatalogByArea } from "@/lib/connectio
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
+import type { McpProviderReadiness } from "@/features/intelligence/intelligenceService";
 import { ConnectionCard } from "./ConnectionCard";
 import { aggregateStatus, type ConnectionStatus } from "./connectionStatus";
 
@@ -21,6 +22,7 @@ interface Props {
   onToggleSelect?: (id: string) => void;
   manuallyConnectedPlatforms?: Set<AccountPlatform>;
   onManualConnectionChange?: (platform: AccountPlatform, connected: boolean) => void;
+  mcpReadinessByPlatform?: Map<string, McpProviderReadiness>;
 }
 
 /**
@@ -43,6 +45,7 @@ export function ConnectionsGrid({
   onToggleSelect,
   manuallyConnectedPlatforms = new Set<AccountPlatform>(),
   onManualConnectionChange,
+  mcpReadinessByPlatform,
 }: Props) {
   const { mode } = useWorkspaceMode();
   const byArea = getCatalogByArea();
@@ -109,6 +112,7 @@ export function ConnectionsGrid({
                   entry={entry}
                   activeConnections={connections}
                   businessProfileId={businessProfileId}
+                  mcpReadiness={mcpReadinessByPlatform?.get(entry.platform) ?? null}
                   onDisconnect={onDisconnect}
                   isDisconnecting={isDisconnecting}
                   onResync={onResync}

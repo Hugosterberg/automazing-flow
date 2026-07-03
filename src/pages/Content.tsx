@@ -22,6 +22,7 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { accountDataUrl } from "@/lib/accountDataUrl";
+import { McpQueryBox, generateDeck, runDesignAssist } from "@/features/intelligence";
 
 type DriveBrowserItem = {
   id: string;
@@ -565,6 +566,35 @@ export default function ContentPage() {
       />
 
       <SectionConnectionStatus area="content" className="mt-0" />
+
+      <Card className="border-border/80">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">MCP content tools</CardTitle>
+          <CardDescription className="text-xs">
+            Generate decks (Gamma) or design briefs (Canva MCP). Connect providers under Connections if status shows a missing key.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-0">
+          <McpQueryBox
+            businessProfileId={createBusinessProfileId}
+            platforms={["gamma"]}
+            title="Deck generation (Gamma)"
+            placeholder="e.g. Q3 marketing results for stakeholders"
+            buttonLabel="Generate"
+            multiline
+            onQuery={(prompt) => generateDeck({ businessProfileId: createBusinessProfileId, prompt })}
+          />
+          <McpQueryBox
+            businessProfileId={createBusinessProfileId}
+            platforms={["canva_mcp"]}
+            title="Design assist (Canva MCP)"
+            placeholder="e.g. Instagram carousel for product launch"
+            buttonLabel="Assist"
+            multiline
+            onQuery={(prompt) => runDesignAssist({ businessProfileId: createBusinessProfileId, prompt })}
+          />
+        </CardContent>
+      </Card>
 
       <div className="flex items-center gap-1 border-b border-border">
         <button

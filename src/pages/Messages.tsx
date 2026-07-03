@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { McpQueryBox, searchMail } from "@/features/intelligence";
 
 interface UnifiedMessage {
   id: string;
@@ -145,6 +147,8 @@ export default function MessagesPage() {
   const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, activeProfileId, addAccountFromOAuth, setSelectedAccountId } = useAccounts();
+  const activeBp = useActiveBusinessProfileIdOptional();
+  const businessProfileId = activeBp ?? activeProfileId ?? null;
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<UnifiedMessage | null>(null);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
@@ -464,6 +468,22 @@ export default function MessagesPage() {
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="messages" />
+      </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.02 }}>
+        <Card className="border-border/80">
+          <CardContent className="pt-4 pb-4">
+            <McpQueryBox
+              businessProfileId={businessProfileId}
+              platforms={["superhuman_mcp"]}
+              title="Mail search (Superhuman MCP)"
+              description="Search connected mail via Superhuman when OAuth is configured."
+              placeholder="e.g. invoices from Acme last week"
+              buttonLabel="Search mail"
+              onQuery={(q) => searchMail({ businessProfileId, query: q })}
+            />
+          </CardContent>
+        </Card>
       </m.div>
 
       {authMode === "local" && (

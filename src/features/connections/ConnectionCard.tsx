@@ -43,11 +43,15 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
 import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
+import { useAccounts } from "@/context/AccountsContext";
+import { McpReadinessHint } from "@/features/intelligence/McpProvidersPanel";
+import type { McpProviderReadiness } from "@/features/intelligence/intelligenceService";
 
 interface Props {
   entry: ConnectionCatalogEntry;
   activeConnections: Connection[];
   businessProfileId: string;
+  mcpReadiness?: McpProviderReadiness | null;
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
   onResync?: (connectionId: string) => void;
@@ -72,6 +76,7 @@ export function ConnectionCard({
   entry,
   activeConnections,
   businessProfileId,
+  mcpReadiness,
   onDisconnect,
   isDisconnecting,
   onResync,
@@ -90,6 +95,7 @@ export function ConnectionCard({
   const [mcpCredential, setMcpCredential] = useState("");
   const [mcpCredentialError, setMcpCredentialError] = useState<string | null>(null);
   const [mcpConnecting, setMcpConnecting] = useState(false);
+  const { addAccountFromOAuth } = useAccounts();
   const mcpMeta = getMcpProviderMeta(entry.platform);
   const rows = useMemo(
     () => activeConnections.filter((c) => c.platform === entry.platform),
@@ -180,6 +186,15 @@ export function ConnectionCard({
       setMcpDialogOpen(false);
       setMcpCredential("");
       toast.success(`${entry.label} connected`);
+      if (payload.account_id && payload.platform) {
+        addAccountFromOAuth(
+          String(payload.account_id),
+          payload.platform as IntelligencePlatform,
+          String(payload.username || entry.label),
+          payload.profile_id ? String(payload.profile_id) : businessProfileId,
+          { displayName: entry.label, profileUrl: entry.pageHref }
+        );
+      }
       window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
     } catch (err) {
       setMcpCredentialError(err instanceof Error ? err.message : "Kunde inte ansluta.");
@@ -237,6 +252,9 @@ export function ConnectionCard({
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
+        {isMcpPlatform(entry.platform) && mcpReadiness ? (
+          <McpReadinessHint readiness={mcpReadiness} />
+        ) : null}
         {entry.platform === "canva" && manuallyConnected ? (
           <div className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-xs text-success">
             Ready for Canva exports on this business profile.
