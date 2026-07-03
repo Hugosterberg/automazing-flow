@@ -3,6 +3,8 @@
 ## Project overview
 This project is a web application for social media automation, content creation, publishing, digital marketing workflows, and analytics.
 
+Business and product context (vision, architecture, roadmap, decision log) lives in [ai/](./ai/README.md) — read it before making product decisions, and keep it updated as part of a feature's definition of done.
+
 The repository already contains working code and an existing structure. Preserve the current architecture unless there is a strong reason to change it.
 
 ## Product focus
