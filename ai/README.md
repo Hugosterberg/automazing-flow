@@ -10,7 +10,7 @@ explains *what we are building and why*.
 vision, playbook (feature loop, PR flow), portfolio of all projects and where
 each repo lives, agent roles — is the repo
 [bai-digital-office/ai](https://github.com/bai-digital-office/ai) (local checkout:
-`c:\Code\bai-digital\ai`). Read its PLAYBOOK.md before large work.
+`c:\Code\bai-digital-office\ai`). Read its PLAYBOOK.md before large work.
 
 ## Contents
 
