@@ -47,6 +47,7 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
+import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
 import { MarketPulseCard } from "@/features/intelligence";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
@@ -182,6 +183,7 @@ export default function Index() {
 
   const { tasks } = useTasks(homeBusinessProfileId);
   const { recommendations } = useAiRecommendations(homeBusinessProfileId);
+  const { unreadDms } = useUnreadDmCount();
 
   // Split open tasks by urgency so the home tile can surface the most
   // actionable bucket first (overdue → due-today → open). Without this the
@@ -365,7 +367,7 @@ export default function Index() {
         <div
           className={cn(
             "grid grid-cols-1 gap-3",
-            mode === "business" ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+            mode === "business" ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
           )}
         >
           {mode === "business" ? (
@@ -386,6 +388,15 @@ export default function Index() {
             icon={ListChecks}
             to={tasksTile.to}
             tone={tasksTile.tone}
+            onPrefetch={prefetchFor}
+          />
+          <TodayTile
+            title="Unread messages"
+            value={unreadDms}
+            hint={unreadDms === 0 ? "Inbox is clear" : "Replies waiting in Messages"}
+            icon={MessageSquare}
+            to="/messages"
+            tone={unreadDms > 0 ? "info" : "default"}
             onPrefetch={prefetchFor}
           />
           <TodayTile

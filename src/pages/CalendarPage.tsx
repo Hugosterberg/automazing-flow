@@ -9,6 +9,7 @@ import {
   Layers,
   CalendarDays,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import {
   format,
@@ -32,6 +33,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOAuthProfileId } from "@/lib/oauthProfile";
@@ -122,9 +124,11 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [formDate, setFormDate] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formTime, setFormTime] = useState("");
+  const [formDescription, setFormDescription] = useState("");
   const [formAutomated, setFormAutomated] = useState(false);
 
   const {
@@ -175,35 +179,68 @@ export default function CalendarPage() {
   const eventsOnDate = (date: Date) =>
     allEvents.filter((e) => isSameDay(parseISO(e.date), date));
 
-  const addEvent = () => {
+  const saveEvent = () => {
     if (!formTitle.trim() || !formDate) return;
-    eventsDoc.save([
-      ...events,
-      {
-        id: crypto.randomUUID(),
-        title: formTitle.trim(),
-        date: formDate,
-        time: formTime.trim() || undefined,
-        isAutomated: formAutomated,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    setFormTitle("");
-    setFormTime("");
-    setFormAutomated(false);
-    setFormDate(format(new Date(), "yyyy-MM-dd"));
+    const payload = {
+      title: formTitle.trim(),
+      date: formDate,
+      time: formTime.trim() || undefined,
+      description: formDescription.trim() || undefined,
+      isAutomated: formAutomated,
+    };
+    if (editingEventId) {
+      eventsDoc.save(
+        events.map((e) =>
+          e.id === editingEventId
+            ? { ...e, ...payload }
+            : e
+        )
+      );
+    } else {
+      eventsDoc.save([
+        ...events,
+        {
+          id: crypto.randomUUID(),
+          ...payload,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }
+    resetForm();
     setDialogOpen(false);
   };
+
+  function resetForm() {
+    setFormTitle("");
+    setFormTime("");
+    setFormDescription("");
+    setFormAutomated(false);
+    setEditingEventId(null);
+    setFormDate(format(new Date(), "yyyy-MM-dd"));
+  }
 
   const removeEvent = (id: string) => {
     eventsDoc.save(events.filter((e) => e.id !== id));
   };
 
   const openDialog = () => {
+    setEditingEventId(null);
     setFormDate(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
     setFormTitle("");
     setFormTime("");
+    setFormDescription("");
     setFormAutomated(false);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (ev: CalendarEvent) => {
+    if (ev.readOnly || ev.source === "external") return;
+    setEditingEventId(ev.id);
+    setFormDate(ev.date);
+    setFormTitle(ev.title);
+    setFormTime(ev.time ?? "");
+    setFormDescription(ev.description ?? "");
+    setFormAutomated(ev.isAutomated);
     setDialogOpen(true);
   };
 
@@ -440,14 +477,26 @@ export default function CalendarPage() {
                           </p>
                         </div>
                         {!ev.readOnly && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                            onClick={() => removeEvent(ev.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditDialog(ev)}
+                              aria-label="Edit event"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => removeEvent(ev.id)}
+                              aria-label="Delete event"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </li>
                     ))}
@@ -588,12 +637,18 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="rounded-xl">
           <DialogHeader>
-            <DialogTitle>Add activity</DialogTitle>
+            <DialogTitle>{editingEventId ? "Edit activity" : "Add activity"}</DialogTitle>
             <DialogDescription>
-              Add an activity or automated task to the calendar
+              {editingEventId ? "Update this calendar entry." : "Add an activity or automated task to the calendar"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -624,6 +679,16 @@ export default function CalendarPage() {
                 onChange={(e) => setFormTime(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="cal-description">Description (optional)</Label>
+              <Textarea
+                id="cal-description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                rows={2}
+                placeholder="Notes or agenda"
+              />
+            </div>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
                 <Label htmlFor="cal-auto" className="font-medium">
@@ -644,8 +709,8 @@ export default function CalendarPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={addEvent} disabled={!formTitle.trim()}>
-              Add
+            <Button onClick={saveEvent} disabled={!formTitle.trim()}>
+              {editingEventId ? "Save" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
 } from "./leadHelpers";
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
+import { LeadEditDialog } from "./LeadEditDialog";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -73,6 +74,7 @@ function LeadRow({
   onDelete,
   onResearch,
   onAddToPipeline,
+  onEdit,
 }: {
   lead: Lead;
   onStatus: (status: LeadStatus) => void;
@@ -80,6 +82,7 @@ function LeadRow({
   onDelete: () => void;
   onResearch: () => void;
   onAddToPipeline?: () => void;
+  onEdit?: () => void;
 }) {
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
@@ -143,6 +146,18 @@ function LeadRow({
             <Target className="h-3.5 w-3.5" />
           </Button>
         ) : null}
+        {onEdit ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={onEdit}
+            title={`Edit ${lead.company}`}
+            aria-label={`Edit ${lead.company}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -185,6 +200,8 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
     URL.revokeObjectURL(url);
   }
   const [addOpen, setAddOpen] = useState(false);
+  const [editLead, setEditLead] = useState<Lead | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [researchTarget, setResearchTarget] = useState<LeadResearchTarget | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -429,6 +446,10 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
                   })
                 }
                 onAddToPipeline={onAddToPipeline ? () => onAddToPipeline(lead) : undefined}
+                onEdit={() => {
+                  setEditLead(lead);
+                  setEditOpen(true);
+                }}
               />
             ))}
           </div>
@@ -440,6 +461,16 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
         target={researchTarget}
         onOpenChange={(open) => {
           if (!open) setResearchTarget(null);
+        }}
+      />
+
+      <LeadEditDialog
+        lead={editLead}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSave={async (id, patch) => {
+          await updateLead({ id, patch });
+          toast.success("Lead updated.");
         }}
       />
 

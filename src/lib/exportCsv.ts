@@ -92,3 +92,29 @@ export function customersToCsv(columns: string[], rows: Record<string, string>[]
   });
   return toCsv(csvRows);
 }
+
+export function shopifyOrdersToCsv(
+  orders: {
+    name: string;
+    customer: string | null;
+    email: string;
+    lineItemCount: number;
+    status: string;
+    fulfillment: string;
+    total: number;
+    currency: string;
+    createdAt: string;
+  }[]
+): string {
+  const rows: CsvRow[] = orders.map((o) => ({
+    Order: o.name,
+    Customer: o.customer || o.email || "",
+    Items: o.lineItemCount,
+    Payment: o.status,
+    Fulfillment: o.fulfillment || "unfulfilled",
+    Total: o.total,
+    Currency: o.currency,
+    Date: o.createdAt ? o.createdAt.slice(0, 10) : "",
+  }));
+  return toCsv(rows);
+}

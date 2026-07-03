@@ -1,7 +1,8 @@
 import { m } from "framer-motion";
-import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send } from "lucide-react";
+import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -160,6 +161,7 @@ export default function MessagesPage() {
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
   const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [inboxSearch, setInboxSearch] = useState("");
   const { toast } = useToast();
   const [replyDraft, setReplyDraft] = useState("");
   const [draftBusy, setDraftBusy] = useState(false);
@@ -423,13 +425,26 @@ export default function MessagesPage() {
   }, [summaryPayload]);
 
   const hasAnyMailConnected = mailAccounts.length > 0;
-  const filteredMessages = useMemo(
-    () =>
-      messages
-        .filter((msg) => messageMatchesTab(msg, activeTab))
-        .filter((msg) => !unreadOnly || msg.isUnread),
-    [activeTab, messages, unreadOnly]
-  );
+  const filteredMessages = useMemo(() => {
+    const q = inboxSearch.trim().toLowerCase();
+    return messages
+      .filter((msg) => messageMatchesTab(msg, activeTab))
+      .filter((msg) => !unreadOnly || msg.isUnread)
+      .filter((msg) => {
+        if (!q) return true;
+        const haystack = [
+          msg.subject,
+          msg.from.name,
+          msg.from.email,
+          msg.snippet,
+          msg.body,
+          msg.accountLabel,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+  }, [activeTab, messages, unreadOnly, inboxSearch]);
   const tabCounts = useMemo(
     () =>
       MESSAGE_TABS.reduce(
@@ -605,7 +620,17 @@ export default function MessagesPage() {
             );
           })}
           </TabsList>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search inbox…"
+                value={inboxSearch}
+                onChange={(e) => setInboxSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
             <Switch
               id="messages-unread-only"
               checked={unreadOnly}

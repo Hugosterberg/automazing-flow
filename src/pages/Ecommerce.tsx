@@ -19,6 +19,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   Boxes,
+  Download,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,6 +34,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ChartContainer,
   ChartTooltip,
@@ -75,6 +83,7 @@ import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { accountDataUrl } from "@/lib/accountDataUrl";
+import { downloadCsv, shopifyOrdersToCsv } from "@/lib/exportCsv";
 
 function sortOrgAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "shopify" ? 0 : p === "notion" ? 1 : 9);
@@ -327,6 +336,8 @@ export default function Ecommerce() {
   const [notionSaving, setNotionSaving] = useState(false);
   const [notionWriteMessage, setNotionWriteMessage] = useState<string | null>(null);
   const [notionOpen, setNotionOpen] = useState(false);
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState<string>("all");
+  const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState<string>("all");
 
   function handleConnect() {
     setShopDomain("");
@@ -360,6 +371,38 @@ export default function Ecommerce() {
   );
   const shopifyData = isShopifyData(data) ? data : null;
   const notionData = isNotionData(data) ? data : null;
+
+  const filteredOrders = useMemo(() => {
+    if (!shopifyData) return [];
+    return shopifyData.orders.filter((order) => {
+      if (orderPaymentFilter !== "all" && order.status !== orderPaymentFilter) return false;
+      if (orderFulfillmentFilter !== "all") {
+        const fulfillment = order.fulfillment || "unfulfilled";
+        if (fulfillment !== orderFulfillmentFilter) return false;
+      }
+      return true;
+    });
+  }, [shopifyData, orderPaymentFilter, orderFulfillmentFilter]);
+
+  const orderPaymentOptions = useMemo(() => {
+    if (!shopifyData) return [];
+    return Array.from(new Set(shopifyData.orders.map((o) => o.status).filter(Boolean)));
+  }, [shopifyData]);
+
+  const orderFulfillmentOptions = useMemo(() => {
+    if (!shopifyData) return [];
+    return Array.from(
+      new Set(shopifyData.orders.map((o) => o.fulfillment || "unfulfilled").filter(Boolean))
+    );
+  }, [shopifyData]);
+
+  function exportOrders() {
+    if (filteredOrders.length === 0) return;
+    downloadCsv(
+      shopifyOrdersToCsv(filteredOrders),
+      `shopify-orders-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  }
 
   // Product catalogue (DB-backed, scoped to the active business profile).
   const productProfileId = activeBusinessProfileId;
@@ -1088,23 +1131,60 @@ export default function Ecommerce() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.45 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <ShoppingCart className="h-5 w-5" />
                     Recent orders
                   </CardTitle>
-                  <CardDescription>Latest {shopifyData.orders.length} of {shopifyData.stats.ordersCount.toLocaleString("en-US")} total orders</CardDescription>
+                  <CardDescription>
+                    {filteredOrders.length} shown · {shopifyData.orders.length} loaded
+                  </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <a href={shopifyData.adminLinks.orders} target="_blank" rel="noreferrer" className="text-muted-foreground">
-                    <ArrowUpRight className="h-4 w-4" />
-                  </a>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={orderPaymentFilter} onValueChange={setOrderPaymentFilter}>
+                    <SelectTrigger className="h-8 w-[130px] text-xs">
+                      <SelectValue placeholder="Payment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All payments</SelectItem>
+                      {orderPaymentOptions.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={orderFulfillmentFilter} onValueChange={setOrderFulfillmentFilter}>
+                    <SelectTrigger className="h-8 w-[130px] text-xs">
+                      <SelectValue placeholder="Fulfillment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All fulfillment</SelectItem>
+                      {orderFulfillmentOptions.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" onClick={exportOrders} disabled={filteredOrders.length === 0}>
+                    <Download className="h-4 w-4 mr-1.5" />
+                    Export CSV
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={shopifyData.adminLinks.orders} target="_blank" rel="noreferrer" className="text-muted-foreground">
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
+                {filteredOrders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No orders match these filters.</p>
+                ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground text-xs">
@@ -1118,7 +1198,7 @@ export default function Ecommerce() {
                     </tr>
                   </thead>
                   <tbody>
-                    {shopifyData.orders.map((order, i) => (
+                    {filteredOrders.map((order, i) => (
                       <m.tr
                         key={order.id}
                         {...fadeUp}
@@ -1150,6 +1230,7 @@ export default function Ecommerce() {
                     ))}
                   </tbody>
                 </table>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -16,8 +16,23 @@ import {
   TaskEditDialog,
   isTaskOverdue,
 } from "@/features/tasks";
-
 import type { TaskRow, TaskPriority } from "@/features/tasks/tasksService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type ModuleFilter = "all" | "general" | "campaign" | "pipeline";
+
+function matchesModuleFilter(module: string | null | undefined, filter: ModuleFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "pipeline") return module === "pipeline";
+  if (filter === "campaign") return module === "campaign";
+  return !module || module === "tasks";
+}
 
 /**
  * /tasks — tenant-scoped kanban board. Tasks are intentionally kept in three
@@ -32,6 +47,7 @@ export default function TasksPage() {
   // dashboard tile and the daily brief — honour them by filtering the board.
   const [searchParams, setSearchParams] = useSearchParams();
   const showOverdueOnly = searchParams.get("view") === "overdue";
+  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("general");
 
   const {
     tasks,
@@ -52,7 +68,15 @@ export default function TasksPage() {
   const [editOpen, setEditOpen] = useState(false);
 
   const overdueTasks = useMemo(() => tasks.filter((task) => isTaskOverdue(task)), [tasks]);
-  const visibleTasks = showOverdueOnly ? overdueTasks : tasks;
+  const moduleFilteredTasks = useMemo(
+    () => tasks.filter((t) => matchesModuleFilter(t.module, moduleFilter)),
+    [tasks, moduleFilter]
+  );
+  const visibleTasks = useMemo(() => {
+    const base = showOverdueOnly ? overdueTasks : moduleFilteredTasks;
+    if (!showOverdueOnly) return base;
+    return base.filter((t) => matchesModuleFilter(t.module, moduleFilter));
+  }, [showOverdueOnly, overdueTasks, moduleFilteredTasks, moduleFilter]);
 
   function clearOverdueFilter() {
     const next = new URLSearchParams(searchParams);
@@ -95,11 +119,12 @@ export default function TasksPage() {
   }
 
   const stats = useMemo(() => {
-    const todo = tasks.filter((task) => task.status !== "done" && task.status !== "in_progress" && task.status !== "archived").length;
-    const inProgress = tasks.filter((task) => task.status === "in_progress").length;
-    const done = tasks.filter((task) => task.status === "done").length;
+    const scoped = moduleFilteredTasks;
+    const todo = scoped.filter((task) => task.status !== "done" && task.status !== "in_progress" && task.status !== "archived").length;
+    const inProgress = scoped.filter((task) => task.status === "in_progress").length;
+    const done = scoped.filter((task) => task.status === "done").length;
     return { todo, inProgress, done };
-  }, [tasks]);
+  }, [moduleFilteredTasks]);
 
   if (!businessProfileId) {
     return (
@@ -119,13 +144,25 @@ export default function TasksPage() {
         title="Tasks"
         description="Create tasks in To-do, drag them into In progress, and finish them in Done."
         actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-            className="text-muted-foreground"
-          >
+          <>
+            <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as ModuleFilter)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General</SelectItem>
+                <SelectItem value="campaign">Campaign</SelectItem>
+                <SelectItem value="pipeline">Pipeline</SelectItem>
+                <SelectItem value="all">All modules</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="text-muted-foreground"
+            >
             {isFetching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -133,6 +170,7 @@ export default function TasksPage() {
             )}
             <span className="ml-1.5 hidden sm:inline">Refresh</span>
           </Button>
+          </>
         }
       />
 

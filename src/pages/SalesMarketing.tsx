@@ -10,6 +10,7 @@ import {
   Target,
   Trash2,
   Trophy,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +40,7 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/featu
 import { LeadsSection, useLeads, isLeadOpen, type Lead } from "@/features/leads";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
-import { useTasks } from "@/features/tasks";
+import { useTasks, TaskEditDialog } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { useProfileDocument } from "@/features/profile-documents";
 import { pageFadeUp } from "@/lib/motion";
@@ -78,10 +79,11 @@ function normalizeGoal(goal: GoalItem): GoalItem {
   return { ...goal, title: defaultGoal.title, unit: defaultGoal.unit };
 }
 
-function PipelineCard({ task, onMove, onDelete, isDeleting }: {
+function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
   task: TaskRow;
   onMove: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
+  onEdit?: (task: TaskRow) => void;
   isDeleting: boolean;
 }) {
   const nextStageMap: Partial<Record<TaskStatus, TaskStatus>> = {
@@ -95,15 +97,27 @@ function PipelineCard({ task, onMove, onDelete, isDeleting }: {
     <div className="group rounded-lg border border-border bg-card px-3 py-2.5 space-y-2 hover:border-primary/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug flex-1">{task.title}</p>
-        <button
-          type="button"
-          onClick={() => onDelete(task.id)}
-          disabled={isDeleting}
-          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0"
-          aria-label="Delete"
-        >
-          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={() => onEdit(task)}
+              className="text-muted-foreground hover:text-foreground transition-opacity shrink-0 p-1"
+              aria-label="Edit deal"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onDelete(task.id)}
+            disabled={isDeleting}
+            className="text-muted-foreground hover:text-destructive transition-opacity shrink-0 p-1"
+            aria-label="Delete"
+          >
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
       {task.description && (
         <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
@@ -211,7 +225,7 @@ export default function SalesMarketingPage() {
     location: activeProfile?.location ?? undefined,
   };
 
-  const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
+  const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting, isUpdating } = useTasks(businessProfileId);
 
   // Pipeline tasks = module starts with "pipeline"
   const pipelineTasks = useMemo(
@@ -252,6 +266,8 @@ export default function SalesMarketingPage() {
   const [pipelinePriority, setPipelinePriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [pipelineDue, setPipelineDue] = useState("");
   const [pipelineAdding, setPipelineAdding] = useState(false);
+  const [editTask, setEditTask] = useState<TaskRow | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Deep link from the command palette: /sales?new=lead opens the add-lead
   // dialog directly. Param is consumed so refresh doesn't re-open it.
@@ -405,6 +421,10 @@ export default function SalesMarketingPage() {
                         task={task}
                         onMove={moveTask}
                         onDelete={(id) => void deleteTask(id)}
+                        onEdit={(t) => {
+                          setEditTask(t);
+                          setEditOpen(true);
+                        }}
                         isDeleting={isDeleting}
                       />
                     ))}
@@ -477,6 +497,14 @@ export default function SalesMarketingPage() {
         </DialogContent>
       </Dialog>
 
+      <TaskEditDialog
+        task={editTask}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSave={async (id, patch) => {
+          await updateTask({ id, patch });
+        }}
+      />
     </div>
   );
 }

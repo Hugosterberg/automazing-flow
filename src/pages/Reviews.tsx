@@ -118,6 +118,7 @@ export default function ReviewsPage() {
   const [sendBusy, setSendBusy] = useState<Record<string, boolean>>({});
   const [repliedIds, setRepliedIds] = useState<Record<string, boolean>>({});
   const [ratingFilter, setRatingFilter] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
+  const [replyFilter, setReplyFilter] = useState<"all" | "needs_reply">("all");
 
   const {
     scopedAccounts: reviewAccounts,
@@ -162,10 +163,16 @@ export default function ReviewsPage() {
     [data]
   );
   const filteredReviews = useMemo(() => {
-    if (ratingFilter === "all") return reviews;
-    const stars = Number(ratingFilter);
-    return reviews.filter((r) => r.rating === stars);
-  }, [reviews, ratingFilter]);
+    let list = reviews;
+    if (ratingFilter !== "all") {
+      const stars = Number(ratingFilter);
+      list = list.filter((r) => r.rating === stars);
+    }
+    if (replyFilter === "needs_reply") {
+      list = list.filter((r) => !repliedIds[r.id]);
+    }
+    return list;
+  }, [reviews, ratingFilter, replyFilter, repliedIds]);
   const placeInfo = useMemo<PlaceInfo | null>(() => {
     if (data?.googleBusiness) {
       const gbp = data.googleBusiness;
@@ -511,6 +518,15 @@ export default function ReviewsPage() {
                         {n} star{n === 1 ? "" : "s"}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as typeof replyFilter)}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="All reviews" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All reviews</SelectItem>
+                    <SelectItem value="needs_reply">Needs reply</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

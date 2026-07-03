@@ -1,5 +1,6 @@
 export { useLeads, LEADS_KEY } from "./useLeads";
 export { LeadsSection } from "./LeadsSection";
+export { LeadEditDialog } from "./LeadEditDialog";
 export type { Lead, LeadInput } from "./leadsService";
 export {
   type LeadStatus,
