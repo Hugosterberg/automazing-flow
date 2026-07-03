@@ -44,7 +44,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
-import { McpQueryBox, queryShopCatalog } from "@/features/intelligence";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
@@ -630,29 +630,12 @@ export default function Ecommerce() {
       {tab === "products" && (
         <div className="space-y-8">
           <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-            <Card className="border-border/80">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Shopify catalog (MCP)</CardTitle>
-                <CardDescription className="text-xs">
-                  Query your connected Shopify store via MCP. Requires shop domain at connect time.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <McpQueryBox
-                  businessProfileId={activeBusinessProfileId ?? activeProfileId}
-                  platforms={["shopify_mcp"]}
-                  title="Product search"
-                  placeholder="e.g. best sellers tagged summer"
-                  buttonLabel="Search catalog"
-                  onQuery={(q) =>
-                    queryShopCatalog({
-                      businessProfileId: activeBusinessProfileId ?? activeProfileId,
-                      query: q,
-                    })
-                  }
-                />
-              </CardContent>
-            </Card>
+            <McpFeatureSection
+              businessProfileId={activeBusinessProfileId ?? activeProfileId}
+              featureIds={MCP_PAGE_FEATURE_IDS.ecommerce}
+              title="Shopify catalog (MCP)"
+              description="Query your connected Shopify store via MCP. Requires shop domain at connect time."
+            />
           </m.div>
           <m.div {...fadeUp} transition={{ duration: 0.35 }}>
             <AlibabaImportCard

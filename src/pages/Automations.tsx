@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp } from "@/lib/motion";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   AutomationPanel,
@@ -119,6 +120,15 @@ export default function AutomationsPage() {
         title="Automationer"
         description="Allt som körs automatiskt åt dig — samlat per ämne, med inställningar och schema på samma ställe."
       />
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.automations}
+          title="MCP developer tools"
+          description="Documentation search and Era context queries for automation workflows."
+        />
+      </m.div>
 
       {AUTOMATION_TOPIC_ORDER.map((topic, index) => (
         <m.section

@@ -7,7 +7,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useProfileDocument } from "@/features/profile-documents";
 import { CustomerInsightsCard } from "@/features/customers/CustomerInsightsCard";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
-import { McpQueryBox, runCrmQuery } from "@/features/intelligence";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -187,24 +187,12 @@ export default function CustomersPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.04 }}
       >
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">CRM assistant (Day.ai MCP)</CardTitle>
-            <CardDescription className="text-xs">
-              Ask questions about customers and deals when Day.ai is connected via OAuth.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <McpQueryBox
-              businessProfileId={businessProfileId}
-              platforms={["dayai"]}
-              title="CRM query"
-              placeholder="e.g. open deals over 50k this quarter"
-              buttonLabel="Ask CRM"
-              onQuery={(q) => runCrmQuery({ businessProfileId, query: q })}
-            />
-          </CardContent>
-        </Card>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.customers}
+          title="CRM assistant (Day.ai MCP)"
+          description="Ask questions about customers and deals when Day.ai is connected via OAuth."
+        />
       </m.div>
 
       <m.div

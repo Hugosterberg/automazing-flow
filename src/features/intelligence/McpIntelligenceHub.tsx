@@ -14,8 +14,12 @@ import {
   type McpHubTabId,
 } from "./mcpFeatureConfig";
 import { McpMultiSourceCompare } from "./McpMultiSourceCompare";
+import { McpDataCatalog } from "./McpDataCatalog";
+import { McpToolsExplorer } from "./McpToolsExplorer";
 
-const QUERY_TABS = MCP_HUB_TABS.filter((t) => t.id !== "overview" && t.id !== "compare");
+const QUERY_TABS = MCP_HUB_TABS.filter(
+  (t) => !["overview", "compare", "catalog", "tools"].includes(t.id)
+);
 
 /**
  * Unified hub: one tab per MCP category, one input box per feature.
@@ -50,7 +54,7 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
-            <Link to="/connections">
+            <Link to="/connections?tab=mcp">
               <PlugZap className="h-3.5 w-3.5" aria-hidden />
               Connect providers
             </Link>
@@ -71,15 +75,24 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
             ))}
           </TabsList>
 
-          <TabsContent value="overview" className="mt-0 space-y-3">
+          <TabsContent value="overview" className="mt-0 space-y-4">
             <p className="text-xs text-muted-foreground">
               Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs.
             </p>
             <McpProviderStatusList businessProfileId={businessProfileId} />
+            <McpDataCatalog businessProfileId={businessProfileId} />
           </TabsContent>
 
           <TabsContent value="compare" className="mt-0">
             <McpMultiSourceCompare businessProfileId={businessProfileId} />
+          </TabsContent>
+
+          <TabsContent value="catalog" className="mt-0">
+            <McpDataCatalog businessProfileId={businessProfileId} />
+          </TabsContent>
+
+          <TabsContent value="tools" className="mt-0">
+            <McpToolsExplorer businessProfileId={businessProfileId} />
           </TabsContent>
 
           {tabContent.map((hubTab) => (

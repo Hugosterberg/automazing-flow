@@ -32,6 +32,7 @@ import {
   type AiRecommendationKind,
   type AiRecommendationRow,
 } from "@/features/ai-recommendations";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 type TabValue = "active" | "accepted" | "dismissed";
 
@@ -221,6 +222,15 @@ export default function AIRecommendationsPage() {
           </>
         }
       />
+
+      <m.div {...pageFadeUp} transition={{ duration: 0.25 }}>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
+          title="MCP context"
+          description="Pull live context from Era MCP to enrich recommendations."
+        />
+      </m.div>
 
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>

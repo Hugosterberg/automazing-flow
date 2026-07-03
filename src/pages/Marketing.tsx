@@ -28,7 +28,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
 import { MarketingCampaigns, MarketingPerformance, InventoryAdsAlert } from "@/features/marketing";
-import { MarketingIntelligencePanel, McpMultiSourceCompare } from "@/features/intelligence";
+import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks";
@@ -331,7 +331,12 @@ export default function MarketingPage() {
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.049 }}>
-        <MarketingIntelligencePanel businessProfileId={businessProfileId} />
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.marketing}
+          title="MCP intelligence"
+          description="SEO, marketing data, and competitive research via connected MCP providers."
+        />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.05 }}>

@@ -36,6 +36,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { LeadsSection, useLeads, isLeadOpen } from "@/features/leads";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -316,6 +317,15 @@ export default function SalesMarketingPage() {
       {/* Leads — register + follow up, with AI outreach suggestions */}
       <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
         <LeadsSection businessProfileId={businessProfileId} context={leadsContext} />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.sales}
+          title="MCP lead research"
+          description="Company research and competitive intelligence from Exa, Sprouts, and Peec AI."
+        />
       </m.div>
 
       {/* Pipeline kanban */}

@@ -15,5 +15,5 @@ export function useMarketPulse(businessProfileId: string | null, topic = "bitcoi
     staleTime: 15 * 60 * 1000,
     retry: false,
   });
-  return { pulse: query.data ?? null, isLoading: query.isLoading };
+  return { pulse: query.data ?? null, isLoading: query.isLoading, refetch: query.refetch };
 }

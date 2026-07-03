@@ -3,6 +3,7 @@ import { ChevronDown, KeyRound, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { useMarketPulse } from "./useMarketPulse";
@@ -15,8 +16,24 @@ import { useMarketPulse } from "./useMarketPulse";
  * compact setup card instead of hiding silently.
  */
 export function MarketPulseCard({ businessProfileId }: { businessProfileId: string | null }) {
-  const { pulse, isLoading } = useMarketPulse(businessProfileId);
+  const [topic, setTopic] = useState("bitcoin");
+  const { pulse, isLoading, refetch } = useMarketPulse(businessProfileId, topic);
   const [open, setOpen] = useState(false);
+
+  const topicControls = (
+    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/60 w-full">
+      <Input
+        value={topic}
+        onChange={(e) => setTopic(e.target.value)}
+        placeholder="Topic e.g. bitcoin"
+        className="max-w-[180px] h-8 text-xs"
+        onKeyDown={(e) => e.key === "Enter" && void refetch()}
+      />
+      <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => void refetch()}>
+        Refresh pulse
+      </Button>
+    </div>
+  );
 
   if (isLoading || !pulse) return null;
 
@@ -43,9 +60,10 @@ export function MarketPulseCard({ businessProfileId }: { businessProfileId: stri
             </div>
           </div>
           <Button asChild size="sm" variant="outline">
-            <Link to="/connections">Connect LunarCrush</Link>
+            <Link to="/connections?tab=mcp">Connect LunarCrush</Link>
           </Button>
         </CardContent>
+        <CardContent className="pt-0 px-4 pb-4">{topicControls}</CardContent>
       </Card>
     );
   }
@@ -84,6 +102,7 @@ export function MarketPulseCard({ businessProfileId }: { businessProfileId: stri
             </CollapsibleContent>
           </Collapsible>
         ) : null}
+        {topicControls}
       </CardContent>
     </Card>
   );

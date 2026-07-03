@@ -22,7 +22,7 @@ import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
-import { McpQueryBox, searchMail } from "@/features/intelligence";
+import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 interface UnifiedMessage {
   id: string;
@@ -471,19 +471,12 @@ export default function MessagesPage() {
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.02 }}>
-        <Card className="border-border/80">
-          <CardContent className="pt-4 pb-4">
-            <McpQueryBox
-              businessProfileId={businessProfileId}
-              platforms={["superhuman_mcp"]}
-              title="Mail search (Superhuman MCP)"
-              description="Search connected mail via Superhuman when OAuth is configured."
-              placeholder="e.g. invoices from Acme last week"
-              buttonLabel="Search mail"
-              onQuery={(q) => searchMail({ businessProfileId, query: q })}
-            />
-          </CardContent>
-        </Card>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.messages}
+          title="Mail search"
+          description="Search connected mail via Superhuman when OAuth is configured."
+        />
       </m.div>
 
       {authMode === "local" && (

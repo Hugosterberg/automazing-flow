@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, KeyRound, Loader2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,11 +82,21 @@ function SourceAssessmentCard({ source }: { source: McpSourceAssessment }) {
  * Paste a domain or company name — fetches all connected MCP lenses in parallel
  * and shows each provider's judgment side by side with clear source labels.
  */
-export function McpMultiSourceCompare({ businessProfileId }: { businessProfileId: string | null }) {
-  const [subject, setSubject] = useState("");
+export function McpMultiSourceCompare({
+  businessProfileId,
+  initialSubject = "",
+}: {
+  businessProfileId: string | null;
+  initialSubject?: string;
+}) {
+  const [subject, setSubject] = useState(initialSubject);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MultiSourceAssessmentResponse | null>(null);
+
+  useEffect(() => {
+    if (initialSubject) setSubject(initialSubject);
+  }, [initialSubject]);
 
   async function runCompare() {
     const value = subject.trim();

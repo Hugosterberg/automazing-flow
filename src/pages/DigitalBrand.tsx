@@ -23,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { apiUrl } from "@/lib/apiBase";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -522,7 +524,9 @@ function RecommendationCard({ recommendation }: { recommendation: BrandRecommend
 }
 
 export default function DigitalBrandPage() {
-  const { activeProfile, accounts } = useAccounts();
+  const activeBp = useActiveBusinessProfileIdOptional();
+  const { activeProfile, accounts, activeProfileId } = useAccounts();
+  const businessProfileId = activeBp ?? activeProfileId ?? null;
   const websiteUrl = safeWebsiteUrl(activeProfile?.website);
   const hostname = websiteHostname(websiteUrl);
   const connectedPlatforms = useMemo(() => new Set(accounts.map((account) => account.platform)), [accounts]);
@@ -607,6 +611,16 @@ export default function DigitalBrandPage() {
           <AlertDescription>{auditError}</AlertDescription>
         </Alert>
       ) : null}
+
+      <m.div {...pageFadeUp} className="space-y-4">
+        <McpMultiSourceCompare businessProfileId={businessProfileId} initialSubject={hostname ?? ""} />
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS["digital-brand"]}
+          title="MCP brand data"
+          description="SEO overview and domain lookup for your registered website."
+        />
+      </m.div>
 
       {websiteUrl ? (
         <m.div {...pageFadeUp} className="grid gap-3 md:grid-cols-[1.4fr_1fr]">

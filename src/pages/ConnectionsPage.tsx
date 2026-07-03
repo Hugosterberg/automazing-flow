@@ -32,7 +32,7 @@ import {
 } from "@/features/connections";
 import { ConnectionsGrid } from "@/features/connections/ConnectionsGrid";
 import { ConnectionDetailsDrawer } from "@/features/connections/ConnectionDetailsDrawer";
-import { McpProviderStatusList, useMcpProvidersStatus } from "@/features/intelligence";
+import { McpProviderStatusList, McpDataCatalog, McpToolsExplorer, useMcpProvidersStatus } from "@/features/intelligence";
 import { useAutomationRuns } from "@/features/automation/useAutomationRuns";
 import {
   CONNECTION_STATUS_LABELS,
@@ -486,6 +486,8 @@ export default function ConnectionsPage() {
               <McpProviderStatusList businessProfileId={businessProfileId} />
             </CardContent>
           </Card>
+          <McpDataCatalog businessProfileId={businessProfileId} />
+          <McpToolsExplorer businessProfileId={businessProfileId} />
           {!isLoading ? (
             <ConnectionsGrid
               businessProfileId={businessProfileId}
