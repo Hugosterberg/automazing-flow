@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
+import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Bot, Activity } from "lucide-react";
 import { connectionsToCsv, downloadCsv } from "@/lib/exportCsv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,15 +20,20 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useTokenExpiryNotifier } from "@/hooks/useTokenExpiryNotifier";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
   useConnections,
   reconcileConnections,
   useAutoReconcile,
   buildConnectUrl,
+  ConnectionsControlPanel,
+  useConnectionsHealthIssueCount,
 } from "@/features/connections";
 import { ConnectionsGrid } from "@/features/connections/ConnectionsGrid";
 import { ConnectionDetailsDrawer } from "@/features/connections/ConnectionDetailsDrawer";
-import { McpProvidersPanel, useMcpProvidersStatus } from "@/features/intelligence";
+import { McpProviderStatusList, useMcpProvidersStatus } from "@/features/intelligence";
+import { useAutomationRuns } from "@/features/automation/useAutomationRuns";
 import {
   CONNECTION_STATUS_LABELS,
   CONNECTION_STATUS_ORDER,
@@ -42,6 +47,13 @@ import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
+
+type ConnectionsTab = "integrations" | "mcp" | "health";
+
+function parseConnectionsTab(value: string | null): ConnectionsTab {
+  if (value === "mcp" || value === "health") return value;
+  return "integrations";
+}
 
 function normalizeWebsiteUrl(value: string): string {
   const trimmed = value.trim();
@@ -90,7 +102,23 @@ export default function ConnectionsPage() {
     resyncingId,
   } = useConnections(businessProfileId);
 
-  const { byPlatform: mcpReadinessByPlatform } = useMcpProvidersStatus(businessProfileId);
+  const { byPlatform: mcpReadinessByPlatform, providers: mcpProviders } = useMcpProvidersStatus(businessProfileId);
+  const automationRuns = useAutomationRuns(businessProfileId);
+  const healthIssueCount = useConnectionsHealthIssueCount(
+    businessProfileId,
+    connections,
+    mcpProviders,
+    automationRuns
+  );
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseConnectionsTab(searchParams.get("tab"));
+  const setActiveTab = useCallback(
+    (tab: ConnectionsTab) => {
+      setSearchParams(tab === "integrations" ? {} : { tab }, { replace: true });
+    },
+    [setSearchParams]
+  );
 
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   useTokenExpiryNotifier(connections);
@@ -413,6 +441,74 @@ export default function ConnectionsPage() {
         </CardContent>
       </Card>
 
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ConnectionsTab)}>
+        <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border rounded-none w-full">
+          <TabsTrigger value="integrations" className="text-xs data-[state=active]:bg-muted rounded-b-none">
+            Integrations
+          </TabsTrigger>
+          <TabsTrigger value="mcp" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
+            <Bot className="h-3.5 w-3.5" aria-hidden />
+            MCP
+          </TabsTrigger>
+          <TabsTrigger value="health" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
+            <Activity className="h-3.5 w-3.5" aria-hidden />
+            Health
+            {healthIssueCount > 0 ? (
+              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                {healthIssueCount}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="health" className="mt-4 space-y-4">
+          <ConnectionsControlPanel businessProfileId={businessProfileId} connections={connections} />
+        </TabsContent>
+
+        <TabsContent value="mcp" className="mt-4 space-y-4">
+          <Card className="border-border/80">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  All 16 MCP data providers — connect here, run multi-source compare and queries on{" "}
+                  <Link to="/intelligence" className="text-primary hover:underline">
+                    MCP Intelligence
+                  </Link>
+                  .
+                </p>
+                <Button variant="outline" size="sm" className="shrink-0 gap-1.5" asChild>
+                  <Link to="/intelligence">
+                    Open MCP Intelligence
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
+              <McpProviderStatusList businessProfileId={businessProfileId} />
+            </CardContent>
+          </Card>
+          {!isLoading ? (
+            <ConnectionsGrid
+              businessProfileId={businessProfileId}
+              connections={connections}
+              onDisconnect={(id) => void disconnect(id)}
+              isDisconnecting={isDisconnecting}
+              onResync={(id) => void resync(id)}
+              isResyncing={isResyncing}
+              resyncingId={resyncingId}
+              onViewDetails={(c) => setDetailsId(c.id)}
+              statusFilter={effectiveFilter}
+              searchQuery={searchQuery}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              manuallyConnectedPlatforms={manuallyConnectedPlatforms}
+              onManualConnectionChange={handleManualConnectionChange}
+              mcpReadinessByPlatform={mcpReadinessByPlatform}
+              areasFilter={["intelligence"]}
+            />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4 space-y-4">
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">
@@ -500,9 +596,7 @@ export default function ConnectionsPage() {
           ))}
         </div>
       ) : (
-        <>
-          <McpProvidersPanel businessProfileId={businessProfileId} />
-          <ConnectionsGrid
+        <ConnectionsGrid
           businessProfileId={businessProfileId}
           connections={connections}
           onDisconnect={(id) => void disconnect(id)}
@@ -518,9 +612,11 @@ export default function ConnectionsPage() {
           manuallyConnectedPlatforms={manuallyConnectedPlatforms}
           onManualConnectionChange={handleManualConnectionChange}
           mcpReadinessByPlatform={mcpReadinessByPlatform}
+          areasExclude={["intelligence"]}
         />
-        </>
       )}
+        </TabsContent>
+      </Tabs>
 
       <ConnectionDetailsDrawer
         connection={detailsConnection}

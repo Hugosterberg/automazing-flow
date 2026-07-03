@@ -44,7 +44,7 @@ import { apiErrorMessage } from "@/lib/apiError";
 import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
 import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 import { useAccounts } from "@/context/AccountsContext";
-import { McpReadinessHint } from "@/features/intelligence/McpProvidersPanel";
+import { McpReadinessHint } from "@/features/intelligence/McpReadinessHint";
 import type { McpProviderReadiness } from "@/features/intelligence/intelligenceService";
 
 interface Props {

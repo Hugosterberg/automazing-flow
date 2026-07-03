@@ -1,4 +1,4 @@
-import { AREA_LABELS, areaOrderForMode, getCatalogByArea } from "@/lib/connectionCatalog";
+import { AREA_LABELS, areaOrderForMode, getCatalogByArea, type AppArea } from "@/lib/connectionCatalog";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
@@ -23,6 +23,10 @@ interface Props {
   manuallyConnectedPlatforms?: Set<AccountPlatform>;
   onManualConnectionChange?: (platform: AccountPlatform, connected: boolean) => void;
   mcpReadinessByPlatform?: Map<string, McpProviderReadiness>;
+  /** When set, only render these catalog areas (e.g. intelligence MCP tab). */
+  areasFilter?: AppArea[];
+  /** When set, hide these catalog areas (e.g. intelligence on integrations tab). */
+  areasExclude?: AppArea[];
 }
 
 /**
@@ -46,10 +50,16 @@ export function ConnectionsGrid({
   manuallyConnectedPlatforms = new Set<AccountPlatform>(),
   onManualConnectionChange,
   mcpReadinessByPlatform,
+  areasFilter,
+  areasExclude,
 }: Props) {
   const { mode } = useWorkspaceMode();
   const byArea = getCatalogByArea();
-  const areaOrder = areaOrderForMode(mode);
+  const areaOrder = areaOrderForMode(mode).filter((area) => {
+    if (areasFilter?.length && !areasFilter.includes(area)) return false;
+    if (areasExclude?.includes(area)) return false;
+    return true;
+  });
   const query = searchQuery.trim().toLowerCase();
 
   function entryStatus(platform: AccountPlatform): ConnectionStatus {
