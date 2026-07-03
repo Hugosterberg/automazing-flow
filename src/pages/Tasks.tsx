@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { m } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -49,6 +50,22 @@ export default function TasksPage() {
     const next = new URLSearchParams(searchParams);
     next.delete("view");
     setSearchParams(next, { replace: true });
+  }
+
+  async function handleSetStatus(id: string, status: Parameters<typeof setStatus>[0]["status"]) {
+    try {
+      await setStatus({ id, status });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update task.");
+    }
+  }
+
+  async function handleDeleteTask(id: string) {
+    try {
+      await deleteTask(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete task.");
+    }
   }
 
   const stats = useMemo(() => {
@@ -153,8 +170,8 @@ export default function TasksPage() {
         <TaskBoard
           tasks={visibleTasks}
           isLoading={isLoading}
-          onSetStatus={(id, status) => void setStatus({ id, status })}
-          onDelete={(id) => void deleteTask(id)}
+          onSetStatus={(id, status) => void handleSetStatus(id, status)}
+          onDelete={(id) => void handleDeleteTask(id)}
           isMutating={isSettingStatus}
           isDeleting={isDeleting}
         />

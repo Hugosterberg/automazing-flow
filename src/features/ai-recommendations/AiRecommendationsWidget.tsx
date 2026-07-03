@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAiRecommendations } from "./useAiRecommendations";
@@ -111,11 +111,14 @@ export function AiRecommendationsWidget({
             {isLoading ? (
               <p className="text-xs text-muted-foreground">Loading…</p>
             ) : activeCount === 0 ? (
-              <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
-                <Check className="h-3 w-3 text-success" />
-                All caught up
+              <p className="text-xs text-muted-foreground">
+                No active suggestions yet.{" "}
+                <Link to="/ai-recommendations" className="text-primary hover:underline">
+                  Generate recommendations
+                </Link>
                 {lastUpdatedRelative ? (
                   <span className="text-muted-foreground/80">
+                    {" "}
                     · checked {lastUpdatedRelative}
                   </span>
                 ) : null}

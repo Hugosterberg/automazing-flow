@@ -3,6 +3,7 @@ import { m } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tabs,
@@ -50,6 +51,7 @@ export default function AIRecommendationsPage() {
     recommendations,
     isLoading,
     isFetching,
+    error,
     refetch,
     transition,
     isTransitioning,
@@ -223,6 +225,19 @@ export default function AIRecommendationsPage() {
         }
       />
 
+      {error ? (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-destructive">
+              {error instanceof Error ? error.message : "Could not load recommendations."}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <m.div {...pageFadeUp} transition={{ duration: 0.25 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
@@ -287,6 +302,8 @@ export default function AIRecommendationsPage() {
                 <RecommendationsEmpty
                   tab={value}
                   hasKindFilter={kindFilter !== "all"}
+                  onGenerate={value === "active" ? () => void handleGenerate() : undefined}
+                  isGenerating={isGenerating}
                 />
               ) : (
                 <div className="space-y-3">
@@ -320,9 +337,13 @@ export default function AIRecommendationsPage() {
 function RecommendationsEmpty({
   tab,
   hasKindFilter,
+  onGenerate,
+  isGenerating,
 }: {
   tab: TabValue;
   hasKindFilter: boolean;
+  onGenerate?: () => void;
+  isGenerating?: boolean;
 }) {
   if (hasKindFilter) {
     return (
@@ -340,7 +361,19 @@ function RecommendationsEmpty({
         <EmptyState
           icon={Sparkles}
           title="No active recommendations"
-          description="New suggestions will appear here as the AI pipeline analyses your data."
+          description="Run Generate to analyse your connections, tasks, and content for fresh suggestions."
+          action={
+            onGenerate ? (
+              <Button size="sm" onClick={onGenerate} disabled={isGenerating}>
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" aria-hidden />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-1.5" aria-hidden />
+                )}
+                Generate
+              </Button>
+            ) : undefined
+          }
         />
       );
     case "accepted":

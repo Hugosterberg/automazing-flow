@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -193,6 +194,14 @@ export default function SalesMarketingPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfileId } = useAccounts();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showFollowUpsOnly = searchParams.get("view") === "followups";
+
+  function clearFollowUpsFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: true });
+  }
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((p) => p.id === businessProfileId);
   const leadsContext = {
@@ -245,7 +254,6 @@ export default function SalesMarketingPage() {
 
   // Deep link from the command palette: /sales?new=lead opens the add-lead
   // dialog directly. Param is consumed so refresh doesn't re-open it.
-  const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get("new") !== "lead") return;
     setPipelineOpen(true);
@@ -315,8 +323,24 @@ export default function SalesMarketingPage() {
       </m.div>
 
       {/* Leads — register + follow up, with AI outreach suggestions */}
+      {showFollowUpsOnly ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.038 }}>
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
+                <span>Showing leads with follow-ups due today or overdue.</span>
+              </div>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFollowUpsFilter}>
+                <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                Show all leads
+              </Button>
+            </CardContent>
+          </Card>
+        </m.div>
+      ) : null}
       <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
-        <LeadsSection businessProfileId={businessProfileId} context={leadsContext} />
+        <LeadsSection businessProfileId={businessProfileId} context={leadsContext} followUpsOnly={showFollowUpsOnly} />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>

@@ -60,6 +60,8 @@ interface Props {
   businessProfileId: string | null;
   /** Business context used to seed AI outreach suggestions. */
   context?: { businessName?: string; description?: string; location?: string; sampleCustomers?: string[] };
+  /** When true, only leads with follow-up due today or overdue are shown. */
+  followUpsOnly?: boolean;
 }
 
 function LeadRow({
@@ -133,7 +135,7 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context }: Props) {
+export function LeadsSection({ businessProfileId, context, followUpsOnly = false }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,12 +205,15 @@ export function LeadsSection({ businessProfileId, context }: Props) {
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortedLeads.filter((l) => {
+      if (followUpsOnly && !isFollowUpOverdue(l.nextFollowUpAt) && !isFollowUpDueToday(l.nextFollowUpAt)) {
+        return false;
+      }
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (!q) return true;
       return [l.company, l.contactName, l.email].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [sortedLeads, search, statusFilter]);
-  const showToolbar = leads.length > 4;
+  }, [sortedLeads, search, statusFilter, followUpsOnly]);
+  const showToolbar = leads.length > 4 || followUpsOnly;
   const openCount = leads.filter((l) => l.status !== "won" && l.status !== "lost").length;
   const followUpDue = leads.filter(
     (l) => isFollowUpOverdue(l.nextFollowUpAt) || isFollowUpDueToday(l.nextFollowUpAt),

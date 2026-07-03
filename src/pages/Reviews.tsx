@@ -306,11 +306,38 @@ export default function ReviewsPage() {
       {error && activeAccount && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4 flex items-center justify-between">
+            <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-destructive">{error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => void refresh()}>
+                  Retry
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+                  Dismiss
+                </Button>
+              </div>
             </CardContent>
           </Card>
+        </m.div>
+      )}
+
+      {loading && activeAccount && (
+        <m.div {...fadeUp} transition={{ duration: 0.3 }} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[1, 2].map((i) => (
+              <Card key={i} className="bg-card border-border">
+                <CardContent className="p-5 space-y-2">
+                  <div className="h-5 w-5 rounded bg-muted animate-pulse" />
+                  <div className="h-8 w-16 rounded bg-muted animate-pulse" />
+                  <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Loading reviews…
+          </div>
         </m.div>
       )}
 
@@ -429,6 +456,22 @@ export default function ReviewsPage() {
               ) : null}
             </CardContent>
           </Card>
+        </m.div>
+      )}
+
+      {!loading && activeAccount && reviews.length === 0 && (
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+          <EmptyState
+            icon={MessageSquare}
+            title="No reviews yet"
+            description="This account returned no reviews. Try Refresh or check the provider connection."
+            action={
+              <Button variant="outline" size="sm" onClick={() => void refresh()}>
+                <RefreshCw className="h-4 w-4 mr-1.5" aria-hidden />
+                Refresh
+              </Button>
+            }
+          />
         </m.div>
       )}
 

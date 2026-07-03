@@ -86,7 +86,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       description: critical
         ? `${labels} stopped syncing — reconnect to keep data flowing.`
         : `${labels} could use a quick re-sync.`,
-      to: "/connections",
+      to: "/connections?tab=health",
       count: n,
     });
   }
@@ -114,7 +114,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       title: `${leadsToFollowUp} ${leadsToFollowUp === 1 ? "lead" : "leads"} to follow up`,
       description:
         leadsToFollowUp === 1 ? "A follow-up is due — don't let it go cold." : "Follow-ups are due — keep deals moving.",
-      to: "/sales",
+      to: "/sales?view=followups",
       count: leadsToFollowUp,
     });
   }
@@ -125,8 +125,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-roas",
       kind: "marketing",
       severity: "warning",
-      title: `Annonser går back (ROAS ${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(underwaterRoas)}×)`,
-      description: "Intäkterna är lägre än annonsspenden senaste 7 dagarna.",
+      title: `Ads are underwater (ROAS ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(underwaterRoas)}×)`,
+      description: "Revenue is below ad spend over the last 7 days — review campaigns on Marketing.",
       to: "/marketing",
       count: 1,
     });

@@ -67,7 +67,7 @@ describe("buildDailyBrief", () => {
     expect(brief.items[0].kind).toBe("lead");
     expect(brief.items[0].severity).toBe("warning");
     expect(brief.items[0].title).toBe("3 leads to follow up");
-    expect(brief.items[0].to).toBe("/sales");
+    expect(brief.items[0].to).toBe("/sales?view=followups");
     expect(brief.actionCount).toBe(3);
     expect(buildDailyBrief({ ...empty, leadsToFollowUp: 0 }).allClear).toBe(true);
   });
@@ -76,7 +76,7 @@ describe("buildDailyBrief", () => {
     const underwater = buildDailyBrief({ ...empty, underwaterRoas: 0.7 });
     expect(underwater.items[0].kind).toBe("marketing");
     expect(underwater.items[0].severity).toBe("warning");
-    expect(underwater.items[0].title).toMatch(/går back/i);
+    expect(underwater.items[0].title).toMatch(/underwater/i);
     expect(underwater.actionCount).toBe(1);
 
     expect(buildDailyBrief({ ...empty, underwaterRoas: 1.5 }).allClear).toBe(true);
