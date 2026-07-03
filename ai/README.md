@@ -6,6 +6,12 @@ before making product decisions. Engineering rules live in the repo-root
 [AGENTS.md](../AGENTS.md) — that file governs *how* to write code; this folder
 explains *what we are building and why*.
 
+**Company level:** automazing is a BAI Digital product. The company brain —
+vision, playbook (feature loop, PR flow), portfolio of all projects and where
+each repo lives, agent roles — is the repo
+[bai-digital/ai](https://github.com/bai-digital/ai) (local checkout:
+`c:\Code\bai-digital\ai`). Read its PLAYBOOK.md before large work.
+
 ## Contents
 
 | File | What it holds | Update when |
