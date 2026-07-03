@@ -28,7 +28,7 @@ export function toCsv(rows: CsvRow[]): string {
 }
 
 export function downloadCsv(content: string, filename: string) {
-  const bom = "﻿"; // UTF-8 BOM so Excel reads Swedish chars correctly
+  const bom = "\uFEFF"; // UTF-8 BOM so Excel reads Swedish chars correctly
   const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -81,4 +81,14 @@ export function connectionsToCsv(connections: {
     Fel: c.lastSyncError ?? "",
   }));
   return toCsv(rows);
+}
+
+export function customersToCsv(columns: string[], rows: Record<string, string>[]): string {
+  if (columns.length === 0 || rows.length === 0) return "";
+  const csvRows: CsvRow[] = rows.map((row) => {
+    const out: CsvRow = {};
+    for (const col of columns) out[col] = row[col] ?? "";
+    return out;
+  });
+  return toCsv(csvRows);
 }

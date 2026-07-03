@@ -17,6 +17,8 @@ interface Props {
   onViewDetails?: (connection: Connection) => void;
   /** When set, only catalog entries whose aggregate status matches are rendered. */
   statusFilter?: ConnectionStatus | null;
+  /** When true, show only error and reconnect_required integrations. */
+  needsAttentionOnly?: boolean;
   searchQuery?: string;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -44,6 +46,7 @@ export function ConnectionsGrid({
   resyncingId,
   onViewDetails,
   statusFilter,
+  needsAttentionOnly,
   searchQuery = "",
   selectedIds,
   onToggleSelect,
@@ -79,7 +82,12 @@ export function ConnectionsGrid({
         const entries = byArea[area];
         if (!entries.length) return null;
 
-        let visible = statusFilter
+        let visible = needsAttentionOnly
+          ? entries.filter((e) => {
+              const s = entryStatus(e.platform);
+              return s === "error" || s === "reconnect_required";
+            })
+          : statusFilter
           ? entries.filter((e) => entryStatus(e.platform) === statusFilter)
           : entries;
 

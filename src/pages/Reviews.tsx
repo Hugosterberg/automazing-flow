@@ -2,6 +2,13 @@ import { useMemo, useState } from "react";
 import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Sparkles, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +117,7 @@ export default function ReviewsPage() {
   const [draftBusy, setDraftBusy] = useState<Record<string, boolean>>({});
   const [sendBusy, setSendBusy] = useState<Record<string, boolean>>({});
   const [repliedIds, setRepliedIds] = useState<Record<string, boolean>>({});
+  const [ratingFilter, setRatingFilter] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
 
   const {
     scopedAccounts: reviewAccounts,
@@ -153,6 +161,11 @@ export default function ReviewsPage() {
       })),
     [data]
   );
+  const filteredReviews = useMemo(() => {
+    if (ratingFilter === "all") return reviews;
+    const stars = Number(ratingFilter);
+    return reviews.filter((r) => r.rating === stars);
+  }, [reviews, ratingFilter]);
   const placeInfo = useMemo<PlaceInfo | null>(() => {
     if (data?.googleBusiness) {
       const gbp = data.googleBusiness;
@@ -479,11 +492,34 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-lg">Recent reviews</CardTitle>
-              <CardDescription>Latest customer feedback from the connected source.</CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Recent reviews</CardTitle>
+                  <CardDescription>
+                    Latest customer feedback from the connected source.
+                    {ratingFilter !== "all" ? ` · ${filteredReviews.length} at ${ratingFilter} stars` : ""}
+                  </CardDescription>
+                </div>
+                <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as typeof ratingFilter)}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="All ratings" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All ratings</SelectItem>
+                    {[5, 4, 3, 2, 1].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} star{n === 1 ? "" : "s"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent className="space-y-2">
-              {reviews.map((r) => (
+              {filteredReviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No reviews match this rating filter.</p>
+              ) : (
+              filteredReviews.map((r) => (
                 <div key={r.id} className="rounded-lg border border-border p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -542,7 +578,7 @@ export default function ReviewsPage() {
                     </div>
                   )}
                 </div>
-              ))}
+              )))}
             </CardContent>
           </Card>
         </m.div>

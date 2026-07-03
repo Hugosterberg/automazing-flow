@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { McpReadinessHint } from "./McpReadinessHint";
@@ -58,6 +58,18 @@ export function McpQueryBox({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<McpQueryResult | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyResult() {
+    if (!result?.text) return;
+    try {
+      await navigator.clipboard.writeText(result.text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function run() {
     const q = query.trim();
@@ -117,9 +129,17 @@ export function McpQueryBox({
       ) : null}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
       {result ? (
-        <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted/30 p-2 text-xs text-muted-foreground font-sans">
-          {result.text}
-        </pre>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-end gap-1">
+            <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void copyResult()}>
+              {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted/30 p-2 text-xs text-muted-foreground font-sans">
+            {result.text}
+          </pre>
+        </div>
       ) : null}
     </div>
   );

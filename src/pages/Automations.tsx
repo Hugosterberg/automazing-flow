@@ -1,7 +1,9 @@
 import { m } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock, Zap } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Clock, RefreshCw, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp } from "@/lib/motion";
 import { useAccounts } from "@/context/AccountsContext";
@@ -112,6 +114,16 @@ export default function AutomationsPage() {
   const { mode } = useWorkspaceMode();
   const prefetchFor = useRoutePrefetch();
   const runs = useAutomationRuns(businessProfileId);
+  const [runsRefreshing, setRunsRefreshing] = useState(false);
+
+  async function refreshRuns() {
+    setRunsRefreshing(true);
+    try {
+      await runs.refetch();
+    } finally {
+      setRunsRefreshing(false);
+    }
+  }
 
   return (
     <m.div {...pageFadeUp} className="space-y-8 max-w-5xl w-full mx-auto">
@@ -119,6 +131,22 @@ export default function AutomationsPage() {
         icon={Zap}
         title="Automationer"
         description="Allt som körs automatiskt åt dig — samlat per ämne, med inställningar och schema på samma ställe."
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void refreshRuns()}
+            disabled={runsRefreshing || runs.loading}
+            className="text-muted-foreground"
+          >
+            {runsRefreshing || runs.loading ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-1.5 hidden sm:inline">Refresh status</span>
+          </Button>
+        }
       />
 
       <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>

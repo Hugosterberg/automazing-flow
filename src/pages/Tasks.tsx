@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { m } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, X } from "lucide-react";
@@ -13,8 +13,11 @@ import {
   useTasks,
   TaskForm,
   TaskBoard,
+  TaskEditDialog,
   isTaskOverdue,
 } from "@/features/tasks";
+
+import type { TaskRow, TaskPriority } from "@/features/tasks/tasksService";
 
 /**
  * /tasks — tenant-scoped kanban board. Tasks are intentionally kept in three
@@ -41,7 +44,12 @@ export default function TasksPage() {
     isSettingStatus,
     deleteTask,
     isDeleting,
+    updateTask,
+    isUpdating,
   } = useTasks(businessProfileId);
+
+  const [editTask, setEditTask] = useState<TaskRow | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const overdueTasks = useMemo(() => tasks.filter((task) => isTaskOverdue(task)), [tasks]);
   const visibleTasks = showOverdueOnly ? overdueTasks : tasks;
@@ -65,6 +73,24 @@ export default function TasksPage() {
       await deleteTask(id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not delete task.");
+    }
+  }
+
+  function openEdit(task: TaskRow) {
+    setEditTask(task);
+    setEditOpen(true);
+  }
+
+  async function handleSaveEdit(
+    id: string,
+    patch: { title: string; description: string | null; priority: TaskPriority; dueAt: string | null }
+  ) {
+    try {
+      await updateTask({ id, patch });
+      toast.success("Task updated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save task.");
+      throw err;
     }
   }
 
@@ -172,10 +198,18 @@ export default function TasksPage() {
           isLoading={isLoading}
           onSetStatus={(id, status) => void handleSetStatus(id, status)}
           onDelete={(id) => void handleDeleteTask(id)}
-          isMutating={isSettingStatus}
+          onEdit={openEdit}
+          isMutating={isSettingStatus || isUpdating}
           isDeleting={isDeleting}
         />
       </m.div>
+
+      <TaskEditDialog
+        task={editTask}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }

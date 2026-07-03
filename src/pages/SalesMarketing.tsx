@@ -36,7 +36,8 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
-import { LeadsSection, useLeads, isLeadOpen } from "@/features/leads";
+import { LeadsSection, useLeads, isLeadOpen, type Lead } from "@/features/leads";
+import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
@@ -274,7 +275,7 @@ export default function SalesMarketingPage() {
         module: "pipeline",
         // End of the chosen day in local time — a bare date string would be
         // parsed as UTC midnight and flag the lead overdue all day.
-        dueAt: pipelineDue ? new Date(`${pipelineDue}T23:59:59`).toISOString() : null,
+        dueAt: pipelineDue ? dateInputToEndOfDayIso(pipelineDue) : null,
       });
       setPipelineOpen(false);
       setPipelineTitle("");
@@ -283,6 +284,16 @@ export default function SalesMarketingPage() {
     } finally {
       setPipelineAdding(false);
     }
+  }
+
+  function openPipelineFromLead(lead: Lead) {
+    setPipelineTitle(lead.company);
+    const contact = [lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ");
+    const desc = [contact, lead.notes?.trim()].filter(Boolean).join("\n");
+    setPipelineDesc(desc);
+    setPipelinePriority("medium");
+    setPipelineDue(lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : "");
+    setPipelineOpen(true);
   }
 
   async function moveTask(id: string, status: TaskStatus) {
@@ -340,7 +351,12 @@ export default function SalesMarketingPage() {
         </m.div>
       ) : null}
       <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
-        <LeadsSection businessProfileId={businessProfileId} context={leadsContext} followUpsOnly={showFollowUpsOnly} />
+        <LeadsSection
+          businessProfileId={businessProfileId}
+          context={leadsContext}
+          followUpsOnly={showFollowUpsOnly}
+          onAddToPipeline={openPipelineFromLead}
+        />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>

@@ -13,6 +13,7 @@ interface Props {
   rec: AiRecommendationRow;
   onAccept?: (id: string) => void;
   onDismiss?: (id: string) => void;
+  onMarkSeen?: (id: string) => void;
   isBusy?: boolean;
 }
 
@@ -45,6 +46,7 @@ export function AiRecommendationCard({
   rec,
   onAccept,
   onDismiss,
+  onMarkSeen,
   isBusy,
 }: Props) {
   const resolved = rec.status === "accepted" || rec.status === "dismissed";
@@ -85,6 +87,11 @@ export function AiRecommendationCard({
                 Dismissed
               </Badge>
             ) : null}
+            {rec.status === "new" ? (
+              <Badge className="text-[11px] bg-primary/15 text-primary border-primary/40">
+                New
+              </Badge>
+            ) : null}
           </div>
           <h3 className="text-sm font-semibold break-words">{rec.title}</h3>
         </div>
@@ -111,8 +118,20 @@ export function AiRecommendationCard({
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {createdAgo ? `Created ${createdAgo}` : null}
         </span>
-        {!resolved && (onAccept || onDismiss) ? (
+        {!resolved && (onAccept || onDismiss || onMarkSeen) ? (
           <div className="flex items-center gap-1.5">
+            {rec.status === "new" && onMarkSeen ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => onMarkSeen(rec.id)}
+                disabled={isBusy}
+              >
+                Mark seen
+              </Button>
+            ) : null}
             {onDismiss ? (
               <Button
                 type="button"

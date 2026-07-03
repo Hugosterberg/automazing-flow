@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -17,7 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
 import { apiUrl } from "@/lib/apiBase";
-import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2 } from "lucide-react";
+import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -261,6 +262,7 @@ export default function ContentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [driveSearch, setDriveSearch] = useState("");
   const driveRequestIdRef = useRef(0);
 
   // Auto-select first account if nothing chosen
@@ -322,10 +324,15 @@ export default function ContentPage() {
 
   // Backend always puts the relevant items in `items` — view=shared-with-me puts shared in items too
   const activeItems = providerData?.items || [];
-  const folderItems = activeItems.filter((item) => item.kind === "folder");
-  const imageItems = activeItems.filter((item) => item.kind === "image");
-  const videoItems = activeItems.filter((item) => item.kind === "video");
-  const otherItems = activeItems.filter((item) => item.kind === "other");
+  const driveQuery = driveSearch.trim().toLowerCase();
+  const filteredActiveItems = useMemo(() => {
+    if (!driveQuery) return activeItems;
+    return activeItems.filter((item) => item.name.toLowerCase().includes(driveQuery));
+  }, [activeItems, driveQuery]);
+  const folderItems = filteredActiveItems.filter((item) => item.kind === "folder");
+  const imageItems = filteredActiveItems.filter((item) => item.kind === "image");
+  const videoItems = filteredActiveItems.filter((item) => item.kind === "video");
+  const otherItems = filteredActiveItems.filter((item) => item.kind === "other");
 
   const PREVIEW_COUNT = 4;
   const [imagesExpanded, setImagesExpanded] = useState(false);
@@ -762,6 +769,16 @@ export default function ContentPage() {
         </Card>
       ) : (
         <div className="space-y-6">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search files by name…"
+              value={driveSearch}
+              onChange={(e) => setDriveSearch(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
           {folderItems.length > 0 && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -845,11 +862,13 @@ export default function ContentPage() {
             </div>
           )}
 
-          {activeItems.length === 0 && !loading && (
+          {filteredActiveItems.length === 0 && !loading && (
             <Card className="bg-card border-border border-dashed">
               <CardContent className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {driveView === "shared-with-me"
+                  {driveQuery
+                    ? `No files matching "${driveSearch.trim()}".`
+                    : driveView === "shared-with-me"
                     ? "No files shared with you."
                     : providerData?.currentFolderName
                     ? `No files in "${providerData.currentFolderName}".`

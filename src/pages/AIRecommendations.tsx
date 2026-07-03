@@ -94,6 +94,18 @@ export default function AIRecommendationsPage() {
     }
   }
 
+  async function handleMarkSeen(id: string) {
+    try {
+      await transition({ id, status: "seen" });
+    } catch (err) {
+      toast({
+        title: "Could not update recommendation",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function handleGenerate() {
     try {
       const result = await generate();
@@ -319,6 +331,11 @@ export default function AIRecommendationsPage() {
                       onDismiss={
                         value === "active"
                           ? (id) => void handleDismiss(id)
+                          : undefined
+                      }
+                      onMarkSeen={
+                        value === "active"
+                          ? (id) => void handleMarkSeen(id)
                           : undefined
                       }
                       isBusy={isTransitioning}

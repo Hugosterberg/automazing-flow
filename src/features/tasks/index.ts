@@ -18,6 +18,7 @@ export type {
 } from "./tasksService";
 export { useTasks, TASKS_KEY } from "./useTasks";
 export { TaskForm } from "./TaskForm";
+export { TaskEditDialog } from "./TaskEditDialog";
 export { TaskList } from "./TaskList";
 export { TaskBoard } from "./TaskBoard";
 export { isTaskOpen, isTaskOverdue, isTaskDueToday } from "./taskFilters";

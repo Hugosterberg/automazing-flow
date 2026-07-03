@@ -17,6 +17,8 @@ import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -157,6 +159,7 @@ export default function MessagesPage() {
   const [zernioNote, setZernioNote] = useState<string | null>(null);
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
   const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const { toast } = useToast();
   const [replyDraft, setReplyDraft] = useState("");
   const [draftBusy, setDraftBusy] = useState(false);
@@ -421,8 +424,11 @@ export default function MessagesPage() {
 
   const hasAnyMailConnected = mailAccounts.length > 0;
   const filteredMessages = useMemo(
-    () => messages.filter((msg) => messageMatchesTab(msg, activeTab)),
-    [activeTab, messages]
+    () =>
+      messages
+        .filter((msg) => messageMatchesTab(msg, activeTab))
+        .filter((msg) => !unreadOnly || msg.isUnread),
+    [activeTab, messages, unreadOnly]
   );
   const tabCounts = useMemo(
     () =>
@@ -577,7 +583,8 @@ export default function MessagesPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MessageChannelTab)}>
-        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card/70 p-1">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList className="h-auto flex-1 justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card/70 p-1">
           {MESSAGE_TABS.map((tab) => {
             const counts = tabCounts[tab.value] || { total: 0, unread: 0 };
             return (
@@ -597,7 +604,18 @@ export default function MessagesPage() {
               </TabsTrigger>
             );
           })}
-        </TabsList>
+          </TabsList>
+          <div className="flex items-center gap-2 shrink-0">
+            <Switch
+              id="messages-unread-only"
+              checked={unreadOnly}
+              onCheckedChange={setUnreadOnly}
+            />
+            <Label htmlFor="messages-unread-only" className="text-xs text-muted-foreground cursor-pointer">
+              Unread only
+            </Label>
+          </div>
+        </div>
 
         {MESSAGE_TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-4">

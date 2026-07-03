@@ -1,6 +1,6 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { m } from "framer-motion";
-import { Users, Upload, Search, Trash2 } from "lucide-react";
+import { Users, Upload, Search, Trash2, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
@@ -8,6 +8,7 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { CustomerInsightsCard } from "@/features/customers/CustomerInsightsCard";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
+import { customersToCsv, downloadCsv } from "@/lib/exportCsv";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -174,6 +175,15 @@ export default function CustomersPage() {
     );
   }, [rows, columns, search]);
 
+  function exportCustomers() {
+    if (rows.length === 0) return;
+    const exportRows = search.trim() ? filteredRows : rows;
+    downloadCsv(
+      customersToCsv(columns, exportRows),
+      `customers-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-6xl">
       <PageHeader
@@ -263,6 +273,10 @@ export default function CustomersPage() {
                   className="pl-9"
                 />
               </div>
+              <Button variant="outline" size="sm" onClick={exportCustomers} disabled={rows.length === 0}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </CardHeader>
           <CardContent>

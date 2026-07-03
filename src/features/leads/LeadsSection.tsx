@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,8 @@ interface Props {
   context?: { businessName?: string; description?: string; location?: string; sampleCustomers?: string[] };
   /** When true, only leads with follow-up due today or overdue are shown. */
   followUpsOnly?: boolean;
+  /** Opens the sales pipeline dialog prefilled from this lead. */
+  onAddToPipeline?: (lead: Lead) => void;
 }
 
 function LeadRow({
@@ -70,12 +72,14 @@ function LeadRow({
   onFollowUp,
   onDelete,
   onResearch,
+  onAddToPipeline,
 }: {
   lead: Lead;
   onStatus: (status: LeadStatus) => void;
   onFollowUp: (value: string) => void;
   onDelete: () => void;
   onResearch: () => void;
+  onAddToPipeline?: () => void;
 }) {
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
@@ -127,6 +131,18 @@ function LeadRow({
         >
           <Search className="h-3.5 w-3.5" />
         </Button>
+        {onAddToPipeline ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={onAddToPipeline}
+            title={`Add ${lead.company} to pipeline`}
+            aria-label={`Add ${lead.company} to pipeline`}
+          >
+            <Target className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -135,7 +151,7 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, followUpsOnly = false }: Props) {
+export function LeadsSection({ businessProfileId, context, followUpsOnly = false, onAddToPipeline }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -412,6 +428,7 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
                     website: lead.website ?? undefined,
                   })
                 }
+                onAddToPipeline={onAddToPipeline ? () => onAddToPipeline(lead) : undefined}
               />
             ))}
           </div>

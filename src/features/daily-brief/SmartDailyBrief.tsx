@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -10,7 +10,9 @@ import {
   Sparkles,
   Sun,
   UserPlus,
+  X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
@@ -20,6 +22,7 @@ import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/
 import { useCachedMarketingRoas } from "@/features/marketing";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
+import { dismissBriefItem, getDismissedBriefIds } from "./dailyBriefDismiss";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
 const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string }>> = {
@@ -40,31 +43,44 @@ const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {
 function BriefRow({
   item,
   onPrefetch,
+  onDismiss,
 }: {
   item: BriefItem;
   onPrefetch?: (to: string) => void;
+  onDismiss?: (id: string) => void;
 }) {
   const Icon = KIND_ICON[item.kind];
   const styles = SEVERITY_STYLES[item.severity];
   return (
-    <Link
-      to={item.to}
-      onPointerEnter={() => onPrefetch?.(item.to)}
-      onFocus={() => onPrefetch?.(item.to)}
-      className={cn(
-        "group flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors",
-        "hover:border-primary/40 hover:bg-accent/40"
-      )}
-    >
-      <div className={cn("rounded-md p-2 shrink-0", styles.chip)}>
-        <Icon className={cn("h-4 w-4", styles.icon)} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
-      </div>
-      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
-    </Link>
+    <div className="group relative flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors hover:border-primary/40 hover:bg-accent/40">
+      <Link
+        to={item.to}
+        onPointerEnter={() => onPrefetch?.(item.to)}
+        onFocus={() => onPrefetch?.(item.to)}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
+        <div className={cn("rounded-md p-2 shrink-0", styles.chip)}>
+          <Icon className={cn("h-4 w-4", styles.icon)} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
+        </div>
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+      </Link>
+      {onDismiss ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Dismiss for today"
+          onClick={() => onDismiss(item.id)}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -81,6 +97,7 @@ export function SmartDailyBrief({
   businessProfileId: string | null | undefined;
 }) {
   const prefetchFor = useRoutePrefetch();
+  const [dismissedIds, setDismissedIds] = useState(() => getDismissedBriefIds());
   const { connections, isLoading: connectionsLoading } = useConnections(businessProfileId);
   const { tasks, isLoading: tasksLoading } = useTasks(businessProfileId);
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
@@ -109,6 +126,18 @@ export function SmartDailyBrief({
     });
   }, [connections, tasks, recommendations, unreadDms, marketingRoas, leads]);
 
+  const visibleItems = useMemo(
+    () => brief.items.filter((item) => !dismissedIds.has(item.id)),
+    [brief.items, dismissedIds]
+  );
+  const visibleActionCount = visibleItems.reduce((sum, item) => sum + item.count, 0);
+  const visibleAllClear = visibleItems.length === 0;
+
+  function handleDismiss(id: string) {
+    dismissBriefItem(id);
+    setDismissedIds((prev) => new Set([...prev, id]));
+  }
+
   // Avoid flashing "all caught up" before the first data lands.
   const isInitialLoading =
     (connectionsLoading || tasksLoading || recsLoading || dmsLoading || leadsLoading) &&
@@ -123,10 +152,10 @@ export function SmartDailyBrief({
         <div
           className={cn(
             "rounded-lg p-2 shrink-0",
-            brief.allClear ? "bg-success/10" : "bg-primary/10"
+            visibleAllClear ? "bg-success/10" : "bg-primary/10"
           )}
         >
-          {brief.allClear ? (
+          {visibleAllClear ? (
             <Sun className="h-5 w-5 text-success" aria-hidden />
           ) : (
             <Sparkles className="h-5 w-5 text-primary" aria-hidden />
@@ -135,12 +164,16 @@ export function SmartDailyBrief({
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-foreground">Today's brief</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isInitialLoading ? "Putting together your brief…" : brief.subline}
+            {isInitialLoading
+              ? "Putting together your brief…"
+              : visibleAllClear
+              ? "You're all caught up for now."
+              : brief.subline}
           </p>
         </div>
-        {!brief.allClear && !isInitialLoading ? (
+        {!visibleAllClear && !isInitialLoading ? (
           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular-nums shrink-0">
-            {brief.actionCount}
+            {visibleActionCount}
           </span>
         ) : null}
       </div>
@@ -150,16 +183,16 @@ export function SmartDailyBrief({
           <div className="h-14 rounded-lg bg-muted/40 animate-pulse" />
           <div className="h-14 rounded-lg bg-muted/30 animate-pulse" />
         </div>
-      ) : brief.allClear ? (
+      ) : visibleAllClear ? (
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3 text-sm text-muted-foreground">
           <CheckCircle2 className="h-4 w-4 text-success shrink-0" aria-hidden />
           <span>Connections are healthy, tasks are under control, and there's nothing new to review.</span>
         </div>
       ) : (
         <ul className="mt-4 space-y-2">
-          {brief.items.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item.id}>
-              <BriefRow item={item} onPrefetch={prefetchFor} />
+              <BriefRow item={item} onPrefetch={prefetchFor} onDismiss={handleDismiss} />
             </li>
           ))}
         </ul>

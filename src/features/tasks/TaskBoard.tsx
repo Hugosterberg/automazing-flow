@@ -1,5 +1,5 @@
 import { useMemo, useState, type DragEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, GripVertical, Loader2, PlayCircle, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, GripVertical, Loader2, Pencil, PlayCircle, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ interface Props {
   isLoading?: boolean;
   onSetStatus: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
+  onEdit?: (task: TaskRow) => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }
@@ -90,12 +91,14 @@ function TaskCard({
   task,
   onSetStatus,
   onDelete,
+  onEdit,
   isMutating,
   isDeleting,
 }: {
   task: TaskRow;
   onSetStatus: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
+  onEdit?: (task: TaskRow) => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }) {
@@ -167,6 +170,19 @@ function TaskCard({
               {createdAgo ? `Created ${createdAgo}` : "Created"}
             </p>
             <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+              {onEdit ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-muted-foreground"
+                  onClick={() => onEdit(task)}
+                  disabled={isMutating}
+                  aria-label="Edit task"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
               {task.status !== "open" ? (
                 <Button
                   type="button"
@@ -222,7 +238,7 @@ function TaskCard({
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -309,6 +325,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, isMutating,
                     task={task}
                     onSetStatus={onSetStatus}
                     onDelete={onDelete}
+                    onEdit={onEdit}
                     isMutating={isMutating}
                     isDeleting={isDeleting}
                   />

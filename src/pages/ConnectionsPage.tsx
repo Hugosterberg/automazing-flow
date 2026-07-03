@@ -49,6 +49,7 @@ import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 
 type ConnectionsTab = "integrations" | "mcp" | "health";
+type StatusFilterValue = ConnectionStatus | "all" | "needs_attention";
 
 function parseConnectionsTab(value: string | null): ConnectionsTab {
   if (value === "mcp" || value === "health") return value;
@@ -129,7 +130,9 @@ export default function ConnectionsPage() {
     updated?: number;
   }>({ loading: false });
 
-  const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(() =>
+    searchParams.get("filter") === "attention" ? "needs_attention" : "all"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDisconnecting, setIsBulkDisconnecting] = useState(false);
@@ -328,7 +331,9 @@ export default function ConnectionsPage() {
     (platform) => !connections.some((connection) => connection.platform === platform)
   ).length;
   const activeCount = connections.length + manualOnlyCount;
-  const effectiveFilter = statusFilter === "all" ? null : statusFilter;
+  const effectiveFilter =
+    statusFilter === "all" || statusFilter === "needs_attention" ? null : statusFilter;
+  const needsAttentionOnly = statusFilter === "needs_attention";
 
   const summary = isLoading
     ? "Loading connections…"
@@ -503,6 +508,7 @@ export default function ConnectionsPage() {
               resyncingId={resyncingId}
               onViewDetails={(c) => setDetailsId(c.id)}
               statusFilter={effectiveFilter}
+              needsAttentionOnly={needsAttentionOnly}
               searchQuery={searchQuery}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
@@ -561,13 +567,14 @@ export default function ConnectionsPage() {
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as ConnectionStatus | "all")}
+          onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
         >
           <SelectTrigger className="h-8 w-[180px] text-xs">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="needs_attention">Needs attention</SelectItem>
             {CONNECTION_STATUS_ORDER.map((s) => (
               <SelectItem key={s} value={s}>
                 {CONNECTION_STATUS_LABELS[s]}
@@ -612,6 +619,7 @@ export default function ConnectionsPage() {
           resyncingId={resyncingId}
           onViewDetails={(c) => setDetailsId(c.id)}
           statusFilter={effectiveFilter}
+          needsAttentionOnly={needsAttentionOnly}
           searchQuery={searchQuery}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
