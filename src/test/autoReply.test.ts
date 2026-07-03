@@ -249,7 +249,7 @@ describe("automationSettingsRowToDomain", () => {
       language: "Swedish",
       instructions: "Never mention prices.",
     });
-    expect(settings).toEqual({
+    expect(settings).toMatchObject({
       dmAutoReplyEnabled: true,
       dmAutoReplyMode: "draft",
       tone: "friendly",
@@ -259,6 +259,7 @@ describe("automationSettingsRowToDomain", () => {
       marketingAlertsEnabled: false,
       notificationEmail: "",
     });
+    expect(settings.jobSchedules["auto-reply"].enabled).toBe(true);
   });
 
   it("maps the notification preferences", () => {

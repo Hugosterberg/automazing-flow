@@ -5,6 +5,14 @@
   "framework": null,
   "crons": [
     {
+      "path": "/api/cron/lead-reminder",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/task-reminder",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/cleanup-oauth-pending",
       "schedule": "0 4 * * *"
     },

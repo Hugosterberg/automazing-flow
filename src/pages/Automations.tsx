@@ -10,71 +10,103 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useWorkspaceMode } from "@/features/workspace-mode";
+import { formatScheduleSummarySv } from "@/lib/profileJobSchedule";
 import {
   AutomationPanel,
   AutomatedUpdatesCard,
   AutomationRunStatus,
+  AutomationScheduleEditor,
   AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   catalogEntriesForTopic,
   useAutomationRuns,
+  useAutomationSchedules,
   type AutomationCatalogEntry,
   type AutomationRunsState,
   type AutomationTopic,
 } from "@/features/automation";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 
-/**
- * Compact "what runs, when, and where the result lands" cards for one topic.
- * Complements the settings cards: schedules mirror `vercel.json` via the
- * automation catalog, and the output link jumps to the page fed by the job.
- */
 function ScheduleList({
   entries,
   prefetchFor,
   runs,
+  businessProfileId,
 }: {
   entries: AutomationCatalogEntry[];
   prefetchFor: (path: string) => void;
   runs: AutomationRunsState;
+  businessProfileId: string | null;
 }) {
+  const schedules = useAutomationSchedules(businessProfileId);
+
   if (entries.length === 0) return null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {entries.map((entry) => (
-        <Card key={entry.id} className="border-border bg-card">
-          <CardContent className="p-4 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <entry.icon className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              <p className="text-sm font-medium text-foreground min-w-0 truncate">{entry.title}</p>
-              <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
-                <Clock className="h-3 w-3" aria-hidden />
-                {entry.cadence}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">{entry.description}</p>
-            {entry.outputHref ? (
-              <Link
-                to={entry.outputHref}
-                onPointerEnter={() => prefetchFor(entry.outputHref!)}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                Se resultatet
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            ) : null}
-            {entry.cronKey ? (
-              <AutomationRunStatus
-                run={runs.byKey[entry.cronKey]}
-                loading={runs.loading}
-                error={runs.error}
-              />
-            ) : null}
-          </CardContent>
-        </Card>
-      ))}
+      {entries.map((entry) => {
+        const cronKey = entry.cronKey;
+        const schedule = cronKey ? schedules.scheduleFor(cronKey) : null;
+        return (
+          <Card key={entry.id} className="border-border bg-card">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <entry.icon className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                <p className="text-sm font-medium text-foreground min-w-0 truncate">{entry.title}</p>
+                {schedule ? (
+                  <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground max-w-[45%] truncate">
+                    <Clock className="h-3 w-3 shrink-0" aria-hidden />
+                    <span className="truncate">
+                      {schedule.enabled ? formatScheduleSummarySv(schedule) : "Av"}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <Clock className="h-3 w-3" aria-hidden />
+                    {entry.cadence}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{entry.description}</p>
+              {entry.outputHref ? (
+                <Link
+                  to={entry.outputHref}
+                  onPointerEnter={() => prefetchFor(entry.outputHref!)}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Se resultatet
+                  <ArrowRight className="h-3 w-3" aria-hidden />
+                </Link>
+              ) : null}
+              {cronKey ? (
+                <AutomationRunStatus
+                  run={runs.byKey[cronKey]}
+                  loading={runs.loading}
+                  error={runs.error}
+                />
+              ) : null}
+              {cronKey && businessProfileId ? (
+                schedules.loading ? (
+                  <p className="text-xs text-muted-foreground">Laddar schema…</p>
+                ) : (
+                  <AutomationScheduleEditor
+                    cronKey={cronKey}
+                    schedule={schedules.scheduleFor(cronKey)}
+                    disabled={!businessProfileId}
+                    saving={schedules.savingKey === cronKey}
+                    dirty={schedules.isDirty(cronKey)}
+                    onChange={(next) => schedules.patchSchedule(cronKey, next)}
+                    onSave={() => void schedules.saveSchedule(cronKey)}
+                  />
+                )
+              ) : !businessProfileId ? (
+                <p className="text-xs text-muted-foreground">Välj profil för att ställa in schema.</p>
+              ) : null}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -94,19 +126,6 @@ function TopicHeading({ topic }: { topic: AutomationTopic }) {
   );
 }
 
-/**
- * /automations — the single home for everything the app does automatically,
- * grouped by topic so each manual chore has one obvious place:
- *
- *   Meddelanden & inbox   → DM auto-reply (settings + audit log)
- *   Rapporter & utskick   → digest / weekly report / marketing alert emails
- *   AI & insikter         → recommendation refresh, marketing snapshots
- *
- * Settings live next to the schedule description, so "what runs, when, and
- * where the result lands" is answered on one page. The same settings cards
- * are reused on the Company page — everything edits the same
- * `automation_settings` row per profile.
- */
 export default function AutomationsPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
@@ -130,7 +149,7 @@ export default function AutomationsPage() {
       <PageHeader
         icon={Zap}
         title="Automationer"
-        description="Allt som körs automatiskt åt dig — samlat per ämne, med inställningar och schema på samma ställe."
+        description="Allt som körs automatiskt åt dig — välj dagar, antal körningar per dag och körningstider för varje automation."
         actions={
           <Button
             variant="ghost"
@@ -188,6 +207,7 @@ export default function AutomationsPage() {
             })}
             prefetchFor={prefetchFor}
             runs={runs}
+            businessProfileId={businessProfileId}
           />
         </m.section>
       ))}

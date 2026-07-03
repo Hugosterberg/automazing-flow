@@ -9,7 +9,7 @@
 
 import crypto from "crypto";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
-import { runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
+import { automationSettingsRowToDomain, runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
 import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
 import { buildMarketingAlert } from "../lib/marketingAlert.ts";
@@ -18,6 +18,8 @@ import { logActivity } from "../lib/activityLog.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { buildWeeklyReport } from "../lib/weeklyReport.ts";
 import { fetchMarketPulseForCron, DEFAULT_MARKET_PULSE_TOPIC } from "../lib/marketPulseFetch.ts";
+import { shouldRunProfileJob } from "../lib/profileJobSchedule.ts";
+import { buildLeadReminder, buildTaskReminder } from "../lib/reminderEmails.ts";
 
 /**
  * Resolve where a profile's notifications go: the explicit notification email
@@ -51,6 +53,27 @@ function platformLabel(platform) {
   };
   const key = String(platform || "").toLowerCase();
   return map[key] || (key ? key.replace(/_/g, " ") : "Connection");
+}
+
+/** True when this profile's stored schedule says the job should run now. */
+function isProfileJobDueNow(settingsRow, cronKey, now = new Date()) {
+  const settings = automationSettingsRowToDomain(settingsRow);
+  return shouldRunProfileJob(cronKey, settings.jobSchedules, undefined, now);
+}
+
+/** Load all automation_settings rows keyed by business_profile_id. */
+async function loadAllAutomationSettings(supabaseAdmin) {
+  const { data, error } = await supabaseAdmin.from("automation_settings").select("*");
+  if (error) {
+    console.warn("[cron] automation_settings load failed:", error.message);
+    return new Map();
+  }
+  const map = new Map();
+  for (const row of Array.isArray(data) ? data : []) {
+    const id = String(row?.business_profile_id || "").trim();
+    if (id) map.set(id, row);
+  }
+  return map;
 }
 
 /** Constant-time string comparison that never short-circuits on length. */
@@ -203,14 +226,21 @@ export function registerCronRoutes(app, deps) {
       }
 
       const profiles = Array.isArray(data) ? data : [];
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const now = new Date();
       const summary = [];
       let totalCreated = 0;
       let totalExpired = 0;
       let failedTenants = 0;
+      let skippedForSchedule = 0;
 
       for (const row of profiles) {
         const businessProfileId = String(row?.id || "").trim();
         if (!businessProfileId) continue;
+        if (!isProfileJobDueNow(settingsByProfile.get(businessProfileId), "refresh-ai-recommendations", now)) {
+          skippedForSchedule += 1;
+          continue;
+        }
         try {
           const result = await generateAiRecommendations(supabaseAdmin, {
             businessProfileId,
@@ -239,7 +269,7 @@ export function registerCronRoutes(app, deps) {
       }
 
       console.log(
-        `[cron] refresh-ai-recommendations: scanned=${profiles.length} created=${totalCreated} expired=${totalExpired} failedTenants=${failedTenants}`
+        `[cron] refresh-ai-recommendations: scanned=${profiles.length} created=${totalCreated} expired=${totalExpired} failedTenants=${failedTenants} skippedForSchedule=${skippedForSchedule}`
       );
 
       return res.json({
@@ -248,6 +278,7 @@ export function registerCronRoutes(app, deps) {
         created: totalCreated,
         expired: totalExpired,
         failedTenants,
+        skippedForSchedule,
         summary,
       });
     } catch (e) {
@@ -291,12 +322,13 @@ export function registerCronRoutes(app, deps) {
         { drafted: 0, sent: 0, failed: 0 }
       );
       console.log(
-        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed} skippedForTime=${result.skippedForTime}`
+        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed} skippedForTime=${result.skippedForTime} skippedForSchedule=${result.skippedForSchedule}`
       );
       return res.json({
         ok: true,
         profiles: result.profiles,
         skippedForTime: result.skippedForTime,
+        skippedForSchedule: result.skippedForSchedule,
         ...totals,
         summaries: result.summaries,
       });
@@ -332,7 +364,7 @@ export function registerCronRoutes(app, deps) {
       // Only profiles that opted in on the Company/Updates page.
       const { data: optedIn, error: settingsError } = await supabaseAdmin
         .from("automation_settings")
-        .select("business_profile_id,notification_email")
+        .select("business_profile_id,notification_email,job_schedules,daily_digest_enabled")
         .eq("daily_digest_enabled", true);
       if (settingsError) {
         console.error("[cron] daily-digest settings select failed:", settingsError.message);
@@ -341,7 +373,7 @@ export function registerCronRoutes(app, deps) {
       const optedInEmails = new Map(
         (Array.isArray(optedIn) ? optedIn : []).map((r) => [
           String(r.business_profile_id),
-          String(r.notification_email || ""),
+          { email: String(r.notification_email || ""), row: r },
         ]),
       );
       if (optedInEmails.size === 0) {
@@ -361,8 +393,10 @@ export function registerCronRoutes(app, deps) {
       let sent = 0;
       let skippedEmpty = 0;
       let skippedNoRecipient = 0;
+      let skippedForSchedule = 0;
       let failed = 0;
       let deferred = 0;
+      const cronNow = new Date();
 
       for (const profile of Array.isArray(profiles) ? profiles : []) {
         if (Date.now() - startedAt > timeBudgetMs) {
@@ -371,7 +405,11 @@ export function registerCronRoutes(app, deps) {
         }
         const businessProfileId = String(profile?.id || "").trim();
         if (!businessProfileId) continue;
-
+        const settingsEntry = optedInEmails.get(businessProfileId);
+        if (!settingsEntry || !isProfileJobDueNow(settingsEntry.row, "daily-digest", cronNow)) {
+          skippedForSchedule += 1;
+          continue;
+        }
         try {
           // Connection issues (anything not healthy/pending and still active).
           const { data: accounts } = await supabaseAdmin
@@ -449,7 +487,7 @@ export function registerCronRoutes(app, deps) {
           const recipient = await resolveRecipientEmail(
             supabaseAdmin,
             profile,
-            optedInEmails.get(businessProfileId),
+            settingsEntry.email,
           );
           if (!recipient) {
             skippedNoRecipient += 1;
@@ -474,9 +512,9 @@ export function registerCronRoutes(app, deps) {
       }
 
       console.log(
-        `[cron] daily-digest: profiles=${(profiles || []).length} sent=${sent} emptyAllClear=${skippedEmpty} noRecipient=${skippedNoRecipient} failed=${failed} deferred=${deferred}`,
+        `[cron] daily-digest: profiles=${(profiles || []).length} sent=${sent} emptyAllClear=${skippedEmpty} noRecipient=${skippedNoRecipient} skippedForSchedule=${skippedForSchedule} failed=${failed} deferred=${deferred}`,
       );
-      return res.json({ ok: true, sent, skippedEmpty, skippedNoRecipient, failed, deferred });
+      return res.json({ ok: true, sent, skippedEmpty, skippedNoRecipient, skippedForSchedule, failed, deferred });
     } catch (e) {
       console.error("[cron] daily-digest unexpected:", e?.message || e);
       return res.status(500).json({ error: "daily_digest_failed" });
@@ -509,7 +547,7 @@ export function registerCronRoutes(app, deps) {
       // Only profiles that opted into marketing alerts on the Company page.
       const { data: optedIn, error: settingsError } = await supabaseAdmin
         .from("automation_settings")
-        .select("business_profile_id,notification_email")
+        .select("business_profile_id,notification_email,job_schedules,marketing_alerts_enabled")
         .eq("marketing_alerts_enabled", true);
       if (settingsError) {
         console.error("[cron] marketing-alerts settings select failed:", settingsError.message);
@@ -518,7 +556,7 @@ export function registerCronRoutes(app, deps) {
       const optedInEmails = new Map(
         (Array.isArray(optedIn) ? optedIn : []).map((r) => [
           String(r.business_profile_id),
-          String(r.notification_email || ""),
+          { email: String(r.notification_email || ""), row: r },
         ]),
       );
       if (optedInEmails.size === 0) {
@@ -545,12 +583,19 @@ export function registerCronRoutes(app, deps) {
       let sent = 0;
       let noAlert = 0;
       let skippedNoRecipient = 0;
+      let skippedForSchedule = 0;
       let failed = 0;
       let deferred = 0;
+      const cronNow = new Date();
 
       for (const [profileId, accounts] of byProfile) {
         if (Date.now() - startedAt > timeBudgetMs) {
           deferred += 1;
+          continue;
+        }
+        const settingsEntry = optedInEmails.get(profileId);
+        if (!settingsEntry || !isProfileJobDueNow(settingsEntry.row, "marketing-alerts", cronNow)) {
+          skippedForSchedule += 1;
           continue;
         }
         // Need at least one ad platform for a campaign/ROAS signal.
@@ -584,7 +629,7 @@ export function registerCronRoutes(app, deps) {
             skippedNoRecipient += 1;
             continue;
           }
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, optedInEmails.get(profileId));
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, settingsEntry.email);
           if (!recipient) {
             skippedNoRecipient += 1;
             continue;
@@ -630,9 +675,9 @@ export function registerCronRoutes(app, deps) {
       }
 
       console.log(
-        `[cron] marketing-alerts: profiles=${byProfile.size} sent=${sent} noAlert=${noAlert} noRecipient=${skippedNoRecipient} failed=${failed} deferred=${deferred}`,
+        `[cron] marketing-alerts: profiles=${byProfile.size} sent=${sent} noAlert=${noAlert} noRecipient=${skippedNoRecipient} skippedForSchedule=${skippedForSchedule} failed=${failed} deferred=${deferred}`,
       );
-      return res.json({ ok: true, sent, noAlert, skippedNoRecipient, failed, deferred });
+      return res.json({ ok: true, sent, noAlert, skippedNoRecipient, skippedForSchedule, failed, deferred });
     } catch (e) {
       console.error("[cron] marketing-alerts unexpected:", e?.message || e);
       return res.status(500).json({ error: "marketing_alerts_failed" });
@@ -674,13 +719,20 @@ export function registerCronRoutes(app, deps) {
 
       const graphVersion = readMetaGraphVersion();
       const googleAdsConfig = readGoogleAdsConfig();
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const cronNow = new Date();
       let written = 0;
       let skipped = 0;
+      let skippedForSchedule = 0;
       let deferred = 0;
 
       for (const [profileId, accounts] of byProfile) {
         if (Date.now() - startedAt > timeBudgetMs) {
           deferred += 1;
+          continue;
+        }
+        if (!isProfileJobDueNow(settingsByProfile.get(profileId), "marketing-snapshot", cronNow)) {
+          skippedForSchedule += 1;
           continue;
         }
         // Need an ad platform or a store to have anything to snapshot.
@@ -722,8 +774,8 @@ export function registerCronRoutes(app, deps) {
         }
       }
 
-      console.log(`[cron] marketing-snapshot: profiles=${byProfile.size} written=${written} skipped=${skipped} deferred=${deferred}`);
-      return res.json({ ok: true, written, skipped, deferred });
+      console.log(`[cron] marketing-snapshot: profiles=${byProfile.size} written=${written} skipped=${skipped} skippedForSchedule=${skippedForSchedule} deferred=${deferred}`);
+      return res.json({ ok: true, written, skipped, skippedForSchedule, deferred });
     } catch (e) {
       console.error("[cron] marketing-snapshot unexpected:", e?.message || e);
       return res.status(500).json({ error: "marketing_snapshot_failed" });
@@ -758,11 +810,18 @@ export function registerCronRoutes(app, deps) {
 
       let written = 0;
       let skipped = 0;
+      let skippedForSchedule = 0;
       let deferred = 0;
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const cronNow = new Date();
 
       for (const profileId of profileIds) {
         if (Date.now() - startedAt > timeBudgetMs) {
           deferred += 1;
+          continue;
+        }
+        if (!isProfileJobDueNow(settingsByProfile.get(profileId), "market-pulse-snapshot", cronNow)) {
+          skippedForSchedule += 1;
           continue;
         }
         try {
@@ -803,9 +862,9 @@ export function registerCronRoutes(app, deps) {
       }
 
       console.log(
-        `[cron] market-pulse-snapshot: profiles=${profileIds.size} written=${written} skipped=${skipped} deferred=${deferred}`,
+        `[cron] market-pulse-snapshot: profiles=${profileIds.size} written=${written} skipped=${skipped} skippedForSchedule=${skippedForSchedule} deferred=${deferred}`,
       );
-      return res.json({ ok: true, written, skipped, deferred });
+      return res.json({ ok: true, written, skipped, skippedForSchedule, deferred });
     } catch (e) {
       console.error("[cron] market-pulse-snapshot unexpected:", e?.message || e);
       return res.status(500).json({ error: "market_pulse_snapshot_failed" });
@@ -837,17 +896,16 @@ export function registerCronRoutes(app, deps) {
     const timeBudgetMs = 50_000;
 
     try {
-      const { data: optedIn, error: settingsError } = await supabaseAdmin
-        .from("automation_settings")
-        .select("business_profile_id,notification_email")
-        .eq("daily_digest_enabled", true);
-      if (settingsError) {
-        console.error("[cron] weekly-report settings select failed:", settingsError.message);
-        return res.status(500).json({ error: "settings_load_failed" });
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const optedInEmails = new Map();
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["weekly-report"]?.enabled) continue;
+        optedInEmails.set(bpId, {
+          email: settings.notificationEmail,
+          row,
+        });
       }
-      const optedInEmails = new Map(
-        (Array.isArray(optedIn) ? optedIn : []).map((r) => [String(r.business_profile_id), String(r.notification_email || "")]),
-      );
       if (optedInEmails.size === 0) {
         return res.json({ ok: true, sent: 0, note: "no_profiles_opted_in" });
       }
@@ -861,8 +919,10 @@ export function registerCronRoutes(app, deps) {
       let sent = 0;
       let skippedEmpty = 0;
       let skippedNoRecipient = 0;
+      let skippedForSchedule = 0;
       let failed = 0;
       let deferred = 0;
+      const cronNow = new Date();
 
       for (const profile of Array.isArray(profiles) ? profiles : []) {
         if (Date.now() - startedAt > timeBudgetMs) {
@@ -870,6 +930,11 @@ export function registerCronRoutes(app, deps) {
           continue;
         }
         const bpId = String(profile?.id || "");
+        const settingsEntry = optedInEmails.get(bpId);
+        if (!settingsEntry || !isProfileJobDueNow(settingsEntry.row, "weekly-report", cronNow)) {
+          skippedForSchedule += 1;
+          continue;
+        }
         try {
           // Leads won/new this week + open follow-ups due.
           const { data: wonRows } = await supabaseAdmin
@@ -940,7 +1005,7 @@ export function registerCronRoutes(app, deps) {
             skippedEmpty += 1;
             continue;
           }
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, optedInEmails.get(bpId));
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, settingsEntry.email);
           if (!recipient) {
             skippedNoRecipient += 1;
             continue;
@@ -954,11 +1019,198 @@ export function registerCronRoutes(app, deps) {
         }
       }
 
-      console.log(`[cron] weekly-report: sent=${sent} emptyQuiet=${skippedEmpty} noRecipient=${skippedNoRecipient} failed=${failed} deferred=${deferred}`);
-      return res.json({ ok: true, sent, skippedEmpty, skippedNoRecipient, failed, deferred });
+      console.log(`[cron] weekly-report: sent=${sent} emptyQuiet=${skippedEmpty} noRecipient=${skippedNoRecipient} skippedForSchedule=${skippedForSchedule} failed=${failed} deferred=${deferred}`);
+      return res.json({ ok: true, sent, skippedEmpty, skippedNoRecipient, skippedForSchedule, failed, deferred });
     } catch (e) {
       console.error("[cron] weekly-report unexpected:", e?.message || e);
       return res.status(500).json({ error: "weekly_report_failed" });
+    }
+  }));
+
+  /**
+   * Lead follow-up reminder: emails when open leads have overdue or due-today
+   * follow-ups. Opt-in via job_schedules.lead-reminder.enabled.
+   */
+  app.get("/api/cron/lead-reminder", withRunRecording("lead-reminder", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+    const endOfToday = new Date(cronNow);
+    endOfToday.setHours(23, 59, 59, 999);
+    const startOfToday = new Date(cronNow);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["lead-reminder"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "lead-reminder", cronNow)) continue;
+        eligible.push({ bpId, email: settings.notificationEmail, row });
+      }
+      if (eligible.length === 0) {
+        return res.json({ ok: true, sent: 0, note: "no_profiles_due" });
+      }
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+      let sent = 0;
+      let skippedEmpty = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        if (!profile) continue;
+        try {
+          const { data: leadRows } = await supabaseAdmin
+            .from("leads")
+            .select("name,status,next_follow_up_at")
+            .eq("business_profile_id", entry.bpId)
+            .in("status", ["new", "contacted", "qualified"])
+            .not("next_follow_up_at", "is", null)
+            .lte("next_follow_up_at", endOfToday.toISOString());
+          const overdue = [];
+          const dueToday = [];
+          for (const l of Array.isArray(leadRows) ? leadRows : []) {
+            if (!l?.next_follow_up_at) continue;
+            const due = new Date(l.next_follow_up_at);
+            const item = { name: String(l.name || "Lead"), status: String(l.status || "") };
+            if (due < startOfToday) overdue.push(item);
+            else dueToday.push(item);
+          }
+          const mail = buildLeadReminder({
+            businessName: String(profile.name || "Your business"),
+            appUrl: appUrl || undefined,
+            overdue,
+            dueToday,
+          });
+          if (!mail.hasContent) {
+            skippedEmpty += 1;
+            continue;
+          }
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          if (!recipient) continue;
+          const result = await sendEmail({ to: recipient, subject: mail.subject, html: mail.html, text: mail.text });
+          if (result.ok) sent += 1;
+          else failed += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`[cron] lead-reminder bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
+        }
+      }
+      return res.json({ ok: true, sent, skippedEmpty, failed, deferred });
+    } catch (e) {
+      console.error("[cron] lead-reminder unexpected:", e?.message || e);
+      return res.status(500).json({ error: "lead_reminder_failed" });
+    }
+  }));
+
+  /**
+   * Task due reminder: emails overdue and due-today open tasks.
+   */
+  app.get("/api/cron/task-reminder", withRunRecording("task-reminder", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+    const endOfToday = new Date(cronNow);
+    endOfToday.setHours(23, 59, 59, 999);
+    const startOfToday = new Date(cronNow);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["task-reminder"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "task-reminder", cronNow)) continue;
+        eligible.push({ bpId, email: settings.notificationEmail, row });
+      }
+      if (eligible.length === 0) {
+        return res.json({ ok: true, sent: 0, note: "no_profiles_due" });
+      }
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+      let sent = 0;
+      let skippedEmpty = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        if (!profile) continue;
+        try {
+          const { data: taskRows } = await supabaseAdmin
+            .from("tasks")
+            .select("title,due_at")
+            .eq("business_profile_id", entry.bpId)
+            .in("status", ["open", "in_progress", "blocked"])
+            .not("due_at", "is", null)
+            .lte("due_at", endOfToday.toISOString());
+          const overdue = [];
+          const dueToday = [];
+          for (const t of Array.isArray(taskRows) ? taskRows : []) {
+            if (!t?.due_at) continue;
+            const due = new Date(t.due_at);
+            const item = { title: String(t.title || "Task") };
+            if (due < startOfToday) overdue.push(item);
+            else dueToday.push(item);
+          }
+          const mail = buildTaskReminder({
+            businessName: String(profile.name || "Your business"),
+            appUrl: appUrl || undefined,
+            overdue,
+            dueToday,
+          });
+          if (!mail.hasContent) {
+            skippedEmpty += 1;
+            continue;
+          }
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          if (!recipient) continue;
+          const result = await sendEmail({ to: recipient, subject: mail.subject, html: mail.html, text: mail.text });
+          if (result.ok) sent += 1;
+          else failed += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`[cron] task-reminder bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
+        }
+      }
+      return res.json({ ok: true, sent, skippedEmpty, failed, deferred });
+    } catch (e) {
+      console.error("[cron] task-reminder unexpected:", e?.message || e);
+      return res.status(500).json({ error: "task_reminder_failed" });
     }
   }));
 }

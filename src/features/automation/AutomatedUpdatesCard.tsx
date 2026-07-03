@@ -87,7 +87,8 @@ export function AutomatedUpdatesCard({
           Automatiska uppdateringar
         </CardTitle>
         <CardDescription>
-          Välj vart uppdateringar mejlas och vilka som skickas. Allt är av tills du slår på det.
+          Välj vart uppdateringar mejlas. Schema (dagar och körningstider) ställer du in på respektive
+          automationskort nedan.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

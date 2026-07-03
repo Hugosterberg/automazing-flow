@@ -20,6 +20,8 @@ export interface AutomationSchedule {
 }
 
 export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
+  { key: "lead-reminder", cron: "0 * * * *", perTenant: true },
+  { key: "task-reminder", cron: "0 * * * *", perTenant: true },
   { key: "cleanup-oauth-pending", cron: "0 4 * * *", perTenant: false },
   { key: "refresh-ai-recommendations", cron: "0 5 * * *", perTenant: true },
   { key: "auto-reply", cron: "*/15 * * * *", perTenant: true },

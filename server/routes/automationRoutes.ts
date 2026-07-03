@@ -18,6 +18,12 @@ import { describeZernioFailure, type ZernioModule } from "../providers/zernioMod
 import type { SecretResolver } from "../lib/secretResolver.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { AUTOMATION_SCHEDULES, nextRunIso } from "../lib/automationSchedules.ts";
+import {
+  computeNextProfileRun,
+  jobSchedulesToJson,
+  parseJobSchedulesJson,
+  type JobSchedulesMap,
+} from "../lib/profileJobSchedule.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
 type SupabaseAdminLike = { from: (table: string) => any };
@@ -31,7 +37,7 @@ interface AutomationRoutesDeps {
 }
 
 const SETTINGS_COLUMNS =
-  "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,daily_digest_enabled,marketing_alerts_enabled,notification_email,updated_at";
+  "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,daily_digest_enabled,marketing_alerts_enabled,notification_email,job_schedules,updated_at";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,6 +48,30 @@ interface AutomationRunView {
   finishedAt: string | null;
   result: Record<string, unknown>;
   errorMessage: string | null;
+}
+
+function syncLegacyFlagsFromSchedules(jobSchedules: JobSchedulesMap) {
+  return {
+    dm_auto_reply_enabled: Boolean(jobSchedules["auto-reply"]?.enabled),
+    daily_digest_enabled: Boolean(jobSchedules["daily-digest"]?.enabled),
+    marketing_alerts_enabled: Boolean(jobSchedules["marketing-alerts"]?.enabled),
+  };
+}
+
+function mergeJobSchedules(
+  existing: JobSchedulesMap,
+  patch: unknown
+): JobSchedulesMap {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return existing;
+  const next = { ...existing };
+  for (const [key, raw] of Object.entries(patch as Record<string, unknown>)) {
+    if (!next[key]) continue;
+    next[key] = {
+      ...next[key],
+      ...(raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}),
+    } as JobSchedulesMap[string];
+  }
+  return parseJobSchedulesJson(jobSchedulesToJson(next));
 }
 
 function canManageAutomation(role: unknown): boolean {
@@ -93,23 +123,55 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
       dailyDigestEnabled?: boolean;
       marketingAlertsEnabled?: boolean;
       notificationEmail?: string;
+      jobSchedules?: unknown;
     };
 
+    const { data: existingRow } = await supabaseAdmin
+      .from("automation_settings")
+      .select("*")
+      .eq("business_profile_id", businessProfileId)
+      .maybeSingle();
+    const existingSettings = automationSettingsRowToDomain(existingRow);
+
+    let jobSchedules = existingSettings.jobSchedules;
+    if (body.jobSchedules != null) {
+      jobSchedules = mergeJobSchedules(jobSchedules, body.jobSchedules);
+    } else {
+      jobSchedules = {
+        ...jobSchedules,
+        "auto-reply": {
+          ...jobSchedules["auto-reply"],
+          enabled: body.dmAutoReplyEnabled ?? jobSchedules["auto-reply"]?.enabled ?? false,
+        },
+        "daily-digest": {
+          ...jobSchedules["daily-digest"],
+          enabled: body.dailyDigestEnabled ?? jobSchedules["daily-digest"]?.enabled ?? false,
+        },
+        "weekly-report": {
+          ...jobSchedules["weekly-report"],
+          enabled: body.dailyDigestEnabled ?? jobSchedules["weekly-report"]?.enabled ?? false,
+        },
+        "marketing-alerts": {
+          ...jobSchedules["marketing-alerts"],
+          enabled: body.marketingAlertsEnabled ?? jobSchedules["marketing-alerts"]?.enabled ?? false,
+        },
+      };
+    }
+
+    const legacyFlags = syncLegacyFlagsFromSchedules(jobSchedules);
     const mode = body.dmAutoReplyMode === "send" ? "send" : "draft";
-    // A notification email is optional; when provided it must look like one.
-    const rawEmail = String(body.notificationEmail ?? "").trim().slice(0, 254);
+    const rawEmail = String(body.notificationEmail ?? existingSettings.notificationEmail ?? "").trim().slice(0, 254);
     const notificationEmail = rawEmail && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawEmail) ? rawEmail : "";
     const row = {
       business_profile_id: businessProfileId,
-      dm_auto_reply_enabled: Boolean(body.dmAutoReplyEnabled),
+      ...legacyFlags,
       dm_auto_reply_mode: mode,
-      tone: String(body.tone ?? DEFAULT_AUTOMATION_SETTINGS.tone).trim() || DEFAULT_AUTOMATION_SETTINGS.tone,
+      tone: String(body.tone ?? existingSettings.tone).trim() || DEFAULT_AUTOMATION_SETTINGS.tone,
       language:
-        String(body.language ?? DEFAULT_AUTOMATION_SETTINGS.language).trim() || DEFAULT_AUTOMATION_SETTINGS.language,
-      instructions: String(body.instructions ?? "").slice(0, 2000),
-      daily_digest_enabled: Boolean(body.dailyDigestEnabled),
-      marketing_alerts_enabled: Boolean(body.marketingAlertsEnabled),
+        String(body.language ?? existingSettings.language).trim() || DEFAULT_AUTOMATION_SETTINGS.language,
+      instructions: String(body.instructions ?? existingSettings.instructions).slice(0, 2000),
       notification_email: notificationEmail || null,
+      job_schedules: jobSchedulesToJson(jobSchedules),
       updated_by: getSessionUserId(req),
       updated_at: new Date().toISOString(),
     };
@@ -176,9 +238,24 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
       : "business_profile_id.is.null";
 
     try {
+      let profileSchedules: JobSchedulesMap | null = null;
+      if (supabaseAdmin && scoped) {
+        const { data: settingsRow } = await supabaseAdmin
+          .from("automation_settings")
+          .select("*")
+          .eq("business_profile_id", businessProfileId)
+          .maybeSingle();
+        profileSchedules = automationSettingsRowToDomain(settingsRow).jobSchedules;
+      }
+
       const runs = await Promise.all(
         AUTOMATION_SCHEDULES.map(async (schedule) => {
-          const nextRunAt = nextRunIso(schedule.key, now);
+          const profileSchedule = profileSchedules?.[schedule.key];
+          const profileNext = profileSchedule
+            ? computeNextProfileRun(profileSchedule, now)
+            : null;
+          const nextRunAt =
+            profileNext?.toISOString() ?? nextRunIso(schedule.key, now);
           let lastRun: AutomationRunView | null = null;
 
           if (supabaseAdmin) {

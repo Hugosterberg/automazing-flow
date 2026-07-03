@@ -17,6 +17,11 @@
  */
 
 import { generateReplyDraft } from "../ai/replyDraft.ts";
+import {
+  parseJobSchedulesJson,
+  shouldRunProfileJob,
+  type JobSchedulesMap,
+} from "../lib/profileJobSchedule.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import {
@@ -43,6 +48,8 @@ export interface AutomationSettings {
   marketingAlertsEnabled: boolean;
   /** Where automated updates are emailed; empty = fall back to profile/owner email. */
   notificationEmail: string;
+  /** Per-automation schedules keyed by cron automation_key. */
+  jobSchedules: JobSchedulesMap;
 }
 
 export const DEFAULT_AUTOMATION_SETTINGS: AutomationSettings = {
@@ -54,19 +61,27 @@ export const DEFAULT_AUTOMATION_SETTINGS: AutomationSettings = {
   dailyDigestEnabled: false,
   marketingAlertsEnabled: false,
   notificationEmail: "",
+  jobSchedules: parseJobSchedulesJson(null),
 };
 
 export function automationSettingsRowToDomain(row: Record<string, unknown> | null | undefined): AutomationSettings {
-  if (!row) return { ...DEFAULT_AUTOMATION_SETTINGS };
-  return {
+  if (!row) return { ...DEFAULT_AUTOMATION_SETTINGS, jobSchedules: parseJobSchedulesJson(null) };
+  const legacy = {
     dmAutoReplyEnabled: Boolean(row.dm_auto_reply_enabled),
+    dailyDigestEnabled: Boolean(row.daily_digest_enabled),
+    marketingAlertsEnabled: Boolean(row.marketing_alerts_enabled),
+  };
+  const jobSchedules = parseJobSchedulesJson(row.job_schedules, legacy);
+  return {
+    dmAutoReplyEnabled: jobSchedules["auto-reply"]?.enabled ?? legacy.dmAutoReplyEnabled,
     dmAutoReplyMode: row.dm_auto_reply_mode === "send" ? "send" : "draft",
     tone: String(row.tone || DEFAULT_AUTOMATION_SETTINGS.tone),
     language: String(row.language || DEFAULT_AUTOMATION_SETTINGS.language),
     instructions: String(row.instructions || ""),
-    dailyDigestEnabled: Boolean(row.daily_digest_enabled),
-    marketingAlertsEnabled: Boolean(row.marketing_alerts_enabled),
+    dailyDigestEnabled: jobSchedules["daily-digest"]?.enabled ?? legacy.dailyDigestEnabled,
+    marketingAlertsEnabled: jobSchedules["marketing-alerts"]?.enabled ?? legacy.marketingAlertsEnabled,
     notificationEmail: String(row.notification_email || ""),
+    jobSchedules,
   };
 }
 
@@ -346,19 +361,22 @@ export async function runAutoReplyForProfile(
 export async function runAutoReplyForAllProfiles(
   deps: AutoReplyDeps,
   options?: { timeBudgetMs?: number }
-): Promise<{ profiles: number; skippedForTime: number; summaries: AutoReplyRunSummary[] }> {
+): Promise<{ profiles: number; skippedForTime: number; skippedForSchedule: number; summaries: AutoReplyRunSummary[] }> {
   const startedAt = Date.now();
+  const now = new Date();
   const timeBudgetMs = Math.max(5_000, options?.timeBudgetMs ?? 50_000);
   const { data: settingsRows, error: settingsError } = await deps.supabaseAdmin
     .from("automation_settings")
-    .select("business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions")
+    .select(
+      "business_profile_id,dm_auto_reply_enabled,dm_auto_reply_mode,tone,language,instructions,daily_digest_enabled,marketing_alerts_enabled,job_schedules"
+    )
     .eq("dm_auto_reply_enabled", true);
   if (settingsError) {
     throw new Error(`automation_settings select failed: ${settingsError.message}`);
   }
 
   const rows = (settingsRows || []) as Array<Record<string, unknown>>;
-  if (rows.length === 0) return { profiles: 0, skippedForTime: 0, summaries: [] };
+  if (rows.length === 0) return { profiles: 0, skippedForTime: 0, skippedForSchedule: 0, summaries: [] };
 
   const profileIds = rows.map((r) => String(r.business_profile_id || "")).filter(Boolean);
   const { data: profileRows, error: profileError } = await deps.supabaseAdmin
@@ -374,10 +392,16 @@ export async function runAutoReplyForAllProfiles(
 
   const summaries: AutoReplyRunSummary[] = [];
   let skippedForTime = 0;
+  let skippedForSchedule = 0;
   for (const settingsRow of rows) {
     const businessProfileId = String(settingsRow.business_profile_id || "");
     const profileRow = profileById.get(businessProfileId);
     if (!profileRow) continue;
+    const settings = automationSettingsRowToDomain(settingsRow);
+    if (!shouldRunProfileJob("auto-reply", settings.jobSchedules, undefined, now)) {
+      skippedForSchedule += 1;
+      continue;
+    }
     if (Date.now() - startedAt > timeBudgetMs) {
       skippedForTime += 1;
       continue;
@@ -390,7 +414,7 @@ export async function runAutoReplyForAllProfiles(
           name: String(profileRow.name || ""),
           zernioProfileId: profileRow.zernio_profile_id ? String(profileRow.zernio_profile_id) : null,
         },
-        automationSettingsRowToDomain(settingsRow)
+        settings
       );
       summaries.push(summary);
     } catch (e) {
@@ -412,5 +436,5 @@ export async function runAutoReplyForAllProfiles(
       `[auto-reply] time budget ${timeBudgetMs}ms exhausted — ${skippedForTime} profile(s) deferred to the next run`
     );
   }
-  return { profiles: rows.length, skippedForTime, summaries };
+  return { profiles: rows.length, skippedForTime, skippedForSchedule, summaries };
 }

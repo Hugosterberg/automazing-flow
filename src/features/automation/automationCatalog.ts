@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { BarChart3, Bot, Mail, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
+import { BarChart3, Bot, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
 
 /**
  * Catalog of everything the app runs automatically, grouped by topic.
@@ -80,7 +80,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "Auto-svar på DM:s",
     description:
       "Läser olästa konversationer och skriver svar — som utkast eller skickar direkt.",
-    cadence: "Var 15:e minut",
+    cadence: "Konfigurerbart schema",
     icon: Bot,
     outputHref: "/messages",
     cronKey: "auto-reply",
@@ -90,7 +90,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "reports",
     title: "Daglig översikt",
     description: "Morgonmejl varje vardag med det som behöver göras.",
-    cadence: "Vardagsmorgnar",
+    cadence: "Konfigurerbart schema",
     icon: Mail,
     cronKey: "daily-digest",
   },
@@ -99,9 +99,29 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "reports",
     title: "Veckorapport",
     description: "Måndagsmejl som summerar förra veckan.",
-    cadence: "Måndagsmorgnar",
+    cadence: "Konfigurerbart schema",
     icon: Mail,
     cronKey: "weekly-report",
+  },
+  {
+    id: "lead-reminder",
+    topic: "reports",
+    title: "Lead-påminnelse",
+    description: "Mejl när leads behöver uppföljning idag eller är försenade.",
+    cadence: "Konfigurerbart schema",
+    icon: Users,
+    outputHref: "/sales",
+    cronKey: "lead-reminder",
+  },
+  {
+    id: "task-reminder",
+    topic: "reports",
+    title: "Uppgiftspåminnelse",
+    description: "Mejl med försenade och dagens uppgifter.",
+    cadence: "Konfigurerbart schema",
+    icon: ClipboardList,
+    outputHref: "/tasks",
+    cronKey: "task-reminder",
   },
   {
     id: "marketing-alerts",
@@ -109,7 +129,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "Marknadsförings-larm",
     description:
       "Mejl när ROAS går under 1× eller annonser körs mot tomma hyllor.",
-    cadence: "Vardagsmorgnar",
+    cadence: "Konfigurerbart schema",
     icon: BarChart3,
     outputHref: "/marketing",
     businessOnly: true,
@@ -121,7 +141,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "AI-rekommendationer",
     description:
       "Uppdaterar rekommendationerna utifrån connections, tasks och innehåll.",
-    cadence: "Dagligen",
+    cadence: "Konfigurerbart schema",
     icon: Sparkles,
     outputHref: "/ai-recommendations",
     cronKey: "refresh-ai-recommendations",
@@ -132,7 +152,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "Marknadsförings-snapshot",
     description:
       "Sparar dagens annons-KPI:er så veckotrenden på Marketing-sidan alltid är komplett.",
-    cadence: "Varje natt",
+    cadence: "Konfigurerbart schema",
     icon: BarChart3,
     outputHref: "/marketing",
     businessOnly: true,
@@ -144,7 +164,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "Market pulse-snapshot",
     description:
       "Hämtar LunarCrush-sentiment varje natt så startsidan laddar direkt utan live MCP-anrop.",
-    cadence: "Dagligen",
+    cadence: "Konfigurerbart schema",
     icon: TrendingUp,
     businessOnly: true,
     cronKey: "market-pulse-snapshot",

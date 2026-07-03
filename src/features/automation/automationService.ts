@@ -5,6 +5,7 @@
 
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import type { JobSchedulesMap } from "@/lib/profileJobSchedule";
 
 export interface AutomationSettings {
   dmAutoReplyEnabled: boolean;
@@ -16,6 +17,7 @@ export interface AutomationSettings {
   marketingAlertsEnabled: boolean;
   /** Where automated updates are emailed; empty = fall back to profile/owner email. */
   notificationEmail: string;
+  jobSchedules: JobSchedulesMap;
 }
 
 export interface AutoReplyLogEntry {
@@ -81,7 +83,7 @@ export async function fetchAutomationSettings(
 
 export async function saveAutomationSettings(
   businessProfileId: string,
-  settings: AutomationSettings
+  settings: Partial<AutomationSettings> & { jobSchedules?: JobSchedulesMap }
 ): Promise<{ ok: boolean; settings: AutomationSettings }> {
   const res = await fetchWithTimeout(apiUrl("/api/automation/settings"), {
     method: "PUT",
