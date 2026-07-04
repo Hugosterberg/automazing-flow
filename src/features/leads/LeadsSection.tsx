@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil } from "lucide-react";
+import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,8 @@ import {
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
 import { LeadEditDialog } from "./LeadEditDialog";
+import { OutreachDraftDialog, type OutreachDraftTarget } from "@/features/outreach";
+import type { OutreachDraftInput } from "@/features/outreach";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -64,6 +66,8 @@ interface Props {
   businessProfileId: string | null;
   /** Business context used to seed AI outreach suggestions. */
   context?: { businessName?: string; description?: string; location?: string; sampleCustomers?: string[] };
+  /** Seller profile for personalized outreach drafts. */
+  sellerContext?: Omit<OutreachDraftInput, "business_profile_id" | "channel" | keyof OutreachDraftTarget>;
   /** When true, only leads with follow-up due today or overdue are shown. */
   followUpsOnly?: boolean;
   /** Opens the sales pipeline dialog prefilled from this lead. */
@@ -78,6 +82,7 @@ function LeadRow({
   onResearch,
   onAddToPipeline,
   onEdit,
+  onDraftOutreach,
 }: {
   lead: Lead;
   onStatus: (status: LeadStatus) => void;
@@ -86,6 +91,7 @@ function LeadRow({
   onResearch: () => void;
   onAddToPipeline?: () => void;
   onEdit?: () => void;
+  onDraftOutreach?: () => void;
 }) {
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
@@ -147,6 +153,18 @@ function LeadRow({
         >
           <Search className="h-3.5 w-3.5" />
         </Button>
+        {onDraftOutreach ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={onDraftOutreach}
+            title={`Draft outreach to ${lead.company}`}
+            aria-label={`Draft outreach to ${lead.company}`}
+          >
+            <Mail className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         {onAddToPipeline ? (
           <Button
             variant="ghost"
@@ -179,10 +197,12 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, followUpsOnly = false, onAddToPipeline }: Props) {
+export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draftTarget, setDraftTarget] = useState<OutreachDraftTarget | null>(null);
+  const [draftOpen, setDraftOpen] = useState(false);
 
   async function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -488,6 +508,20 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
                   setEditLead(lead);
                   setEditOpen(true);
                 }}
+                onDraftOutreach={
+                  sellerContext
+                    ? () => {
+                        setDraftTarget({
+                          prospectCompany: lead.company,
+                          prospectContact: lead.contactName ?? undefined,
+                          prospectEmail: lead.email ?? undefined,
+                          prospectWebsite: lead.website ?? undefined,
+                          prospectNotes: lead.notes ?? undefined,
+                        });
+                        setDraftOpen(true);
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -511,6 +545,16 @@ export function LeadsSection({ businessProfileId, context, followUpsOnly = false
           toast.success("Lead updated.");
         }}
       />
+
+      {sellerContext ? (
+        <OutreachDraftDialog
+          open={draftOpen}
+          onOpenChange={setDraftOpen}
+          businessProfileId={businessProfileId}
+          sellerContext={sellerContext}
+          target={draftTarget}
+        />
+      ) : null}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>

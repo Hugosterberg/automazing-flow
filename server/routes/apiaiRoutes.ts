@@ -13,6 +13,8 @@ import type { SecretResolver } from "../lib/secretResolver.ts";
 import { accountInBusinessProfile } from "../lib/profileScope.ts";
 import {
   checkApiaiHealth,
+  estimateApiaiCost,
+  fetchApiaiBalance,
   imageFieldNamesForTool,
   listTools,
   makeApiaiUrl,
@@ -306,6 +308,231 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
         message: isTimeout
           ? "apiai.me did not finish before the server timeout. Try a lighter tool or run long video/pipeline jobs in apiai.me."
           : message,
+      });
+    }
+  });
+
+  app.get("/api/apiai/balance", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+    try {
+      const balance = await fetchApiaiBalance(apiKey);
+      return res.json({ balance });
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_balance_failed",
+        message: error instanceof Error ? error.message : "Could not fetch apiai.me balance.",
+      });
+    }
+  });
+
+  app.post("/api/apiai/estimate", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+
+    const body = (req.body ?? {}) as {
+      toolSlug?: string;
+      toolEndpoint?: string;
+      params?: Record<string, unknown>;
+    };
+    const toolSlug = String(body.toolSlug || "").trim();
+    const toolEndpoint = String(body.toolEndpoint || "").trim();
+    if (!toolSlug && !toolEndpoint) return res.status(400).json({ error: "toolSlug is required" });
+
+    try {
+      const tools = await listTools(apiKey);
+      const tool =
+        tools.find((candidate) => candidate.slug === toolSlug) ??
+        (toolEndpoint ? tools.find((candidate) => candidate.endpoint === toolEndpoint) : null) ??
+        ({
+          slug: toolSlug || toolEndpoint.split("/").pop() || "custom",
+          endpoint: toolEndpoint || `/api/process/${toolSlug}`,
+        } as ApiaiTool);
+
+      const estimate = await estimateApiaiCost(apiKey, tool, body.params || {});
+      return res.json(estimate);
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_estimate_failed",
+        message: error instanceof Error ? error.message : "Could not estimate apiai.me cost.",
+      });
+    }
+  });
+
+  app.get("/api/apiai/batch", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+    try {
+      const upstream = await fetch(makeApiaiUrl("/api/v1/batch"), {
+        headers: { "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+      });
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({
+          error: "apiai_batch_list_failed",
+          message: await parseApiaiError(upstream),
+        });
+      }
+      const body = await upstream.json().catch(() => []);
+      const jobs = Array.isArray(body) ? body : Array.isArray(body?.jobs) ? body.jobs : [];
+      return res.json({ jobs });
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_batch_list_failed",
+        message: error instanceof Error ? error.message : "Could not list apiai.me batch jobs.",
+      });
+    }
+  });
+
+  app.get("/api/apiai/batch/:id", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+    const batchId = String(req.params.id || "").trim();
+    if (!batchId) return res.status(400).json({ error: "batch_id_required" });
+    try {
+      const upstream = await fetch(makeApiaiUrl(`/api/v1/batch/${encodeURIComponent(batchId)}`), {
+        headers: { "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+      });
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({
+          error: "apiai_batch_get_failed",
+          message: await parseApiaiError(upstream),
+        });
+      }
+      return res.json(await upstream.json().catch(() => ({})));
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_batch_get_failed",
+        message: error instanceof Error ? error.message : "Could not fetch apiai.me batch job.",
+      });
+    }
+  });
+
+  app.get("/api/apiai/batch/:id/download", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+    const batchId = String(req.params.id || "").trim();
+    if (!batchId) return res.status(400).json({ error: "batch_id_required" });
+    try {
+      const upstream = await fetch(makeApiaiUrl(`/api/v1/batch/${encodeURIComponent(batchId)}/download`), {
+        headers: { "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+      });
+      if (!upstream.ok || !upstream.body) {
+        return res.status(upstream.status).json({
+          error: "apiai_batch_download_failed",
+          message: await parseApiaiError(upstream),
+        });
+      }
+      res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/zip");
+      const disposition = upstream.headers.get("content-disposition");
+      if (disposition) res.setHeader("Content-Disposition", disposition);
+      return res.send(Buffer.from(await upstream.arrayBuffer()));
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_batch_download_failed",
+        message: error instanceof Error ? error.message : "Could not download apiai.me batch results.",
+      });
+    }
+  });
+
+  app.post("/api/apiai/batch", requireMembership, async (req, res) => {
+    const userId = auth.getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+
+    const body = (req.body ?? {}) as {
+      workflow?: string;
+      params?: Record<string, unknown>;
+      assets?: SelectedAssetInput[];
+    };
+    const workflow = String(body.workflow || "").trim();
+    if (!workflow) return res.status(400).json({ error: "workflow is required" });
+
+    const assets = Array.isArray(body.assets) ? body.assets.filter((asset) => asset.kind === "image") : [];
+    if (assets.length === 0) {
+      return res.status(400).json({
+        error: "apiai_batch_requires_images",
+        message: "Select at least one image in Content before starting a batch job.",
+      });
+    }
+
+    try {
+      const form = new FormData();
+      form.append("workflow", workflow);
+      for (const [key, value] of Object.entries(body.params || {})) {
+        const trimmedKey = String(key || "").trim();
+        if (!trimmedKey || value == null || value === "") continue;
+        form.append(trimmedKey, typeof value === "string" ? value : JSON.stringify(value));
+      }
+      for (const asset of assets) {
+        await appendDriveAsset({
+          form,
+          fieldName: "images",
+          asset,
+          userId,
+          businessProfileId,
+          tokenStore,
+          auth,
+        });
+      }
+
+      const upstream = await fetch(makeApiaiUrl("/api/v1/batch"), {
+        method: "POST",
+        headers: { "X-API-Key": apiKey },
+        body: form,
+        signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+      });
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({
+          error: "apiai_batch_create_failed",
+          message: await parseApiaiError(upstream),
+        });
+      }
+      return res.status(upstream.status).json(await upstream.json().catch(() => ({})));
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_batch_create_failed",
+        message: error instanceof Error ? error.message : "Could not create apiai.me batch job.",
       });
     }
   });

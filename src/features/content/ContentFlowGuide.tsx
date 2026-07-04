@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 type ContentFlowStep = "browse" | "create" | "publish";
 
 const STEPS: { id: ContentFlowStep; label: string; hint: string; icon: typeof FolderOpen }[] = [
-  { id: "browse", label: "1. Pick media", hint: "Select images or videos from Google Drive.", icon: FolderOpen },
-  { id: "create", label: "2. Create", hint: "Transform with apiai.me (optional).", icon: Wand2 },
-  { id: "publish", label: "3. Post or save", hint: "Publish now, schedule, or save a draft.", icon: Send },
+  { id: "browse", label: "1. Pick media", hint: "Mark images or videos from Google Drive.", icon: FolderOpen },
+  { id: "create", label: "2. Create", hint: "Generate or transform — saved automatically in History.", icon: Wand2 },
+  { id: "publish", label: "3. Post or save", hint: "Caption, safety check, then publish, schedule, or draft.", icon: Send },
 ];
 
 export function ContentFlowGuide({

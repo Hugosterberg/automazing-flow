@@ -19,11 +19,17 @@ import { apiUrl } from "@/lib/apiBase";
 import {
   listApiaiTools,
   runApiaiTool,
+  estimateApiaiTool,
+  type ApiaiCostEstimate,
   type ApiaiParam,
   type ApiaiRunResult,
   type ApiaiTool,
 } from "./apiaiClient";
 import { ImageAssetPicker } from "./ImageAssetPicker";
+import { ContentAiImageCard } from "./ContentAiImageCard";
+import { ApiaiStatusBar } from "./ApiaiStatusBar";
+import { ApiaiBatchPanel } from "./ApiaiBatchPanel";
+import { insightFromApiaiResult, type PublishReadiness } from "./apiaiResultInsights";
 import {
   APIAI_DOCUMENTED_IMAGE_ACTIONS,
   findToolForAction,
@@ -83,20 +89,28 @@ export function CreateTab({
   businessProfileId,
   selectedAssets,
   availableAssets = [],
+  captionHint = "",
+  canvaConnected = false,
   onToggleAssetSelection,
   onOpenBrowse,
   onBeforeRequest,
+  onRecordGenerated,
   onSaveResultToSelection,
   onContinueToPublish,
+  onPublishReadinessChange,
 }: {
   businessProfileId: string | null;
   selectedAssets: SelectedContentAsset[];
   availableAssets?: SelectedContentAsset[];
+  captionHint?: string;
+  canvaConnected?: boolean;
   onToggleAssetSelection?: (asset: SelectedContentAsset, selected: boolean) => void;
   onOpenBrowse: () => void;
   onBeforeRequest?: () => Promise<void>;
-  onSaveResultToSelection?: (asset: SelectedContentAsset) => void;
+  onRecordGenerated?: (asset: SelectedContentAsset, meta?: { toolName?: string }) => void;
+  onSaveResultToSelection?: (asset: SelectedContentAsset, meta?: { toolName?: string }) => void;
   onContinueToPublish?: () => void;
+  onPublishReadinessChange?: (readiness: PublishReadiness | null) => void;
 }) {
   const [tools, setTools] = useState<ApiaiTool[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState("");
@@ -109,6 +123,10 @@ export function CreateTab({
   const [runError, setRunError] = useState<string | null>(null);
   const [result, setResult] = useState<ApiaiRunResult | null>(null);
   const [toolOverride, setToolOverride] = useState<ApiaiTool | null>(null);
+  const [costEstimate, setCostEstimate] = useState<ApiaiCostEstimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const [publishInsight, setPublishInsight] = useState<PublishReadiness | null>(null);
+  const [createMode, setCreateMode] = useState<"generate" | "transform" | "batch">("generate");
 
   const selectedTool = useMemo(
     () =>
@@ -139,6 +157,10 @@ export function CreateTab({
     if (!selectedTool) return selectedAssets.filter((asset) => asset.kind === "image");
     return selectedAssets.filter((asset) => toolAcceptsVideo(selectedTool) || asset.kind === "image");
   }, [selectedAssets, selectedTool]);
+  const batchImageAssets = useMemo(
+    () => selectedAssets.filter((asset) => asset.kind === "image"),
+    [selectedAssets]
+  );
 
   const excludedAssets = selectedAssets.filter((asset) => !usableAssets.includes(asset));
   const needsImage = toolNeedsImage(selectedTool);
@@ -177,15 +199,30 @@ export function CreateTab({
     setParamValues(defaults);
     setResult(null);
     setRunError(null);
-  }, [selectedTool, editableParams]);
+    setCostEstimate(null);
+    setPublishInsight(null);
+    onPublishReadinessChange?.(null);
+  }, [selectedTool, editableParams, onPublishReadinessChange]);
 
-  async function handleRun() {
-    if (!businessProfileId || !selectedTool) return;
-    if (needsImage && usableAssets.length === 0) {
+  async function runWithTool(
+    tool: ApiaiTool,
+    input?: { prompt?: string; outputFilename?: string; assets?: SelectedContentAsset[] }
+  ) {
+    if (!businessProfileId) return;
+
+    const runPrompt = input?.prompt ?? prompt;
+    const runOutputFilename = input?.outputFilename ?? outputFilename;
+    const assetsForTool =
+      input?.assets ??
+      selectedAssets.filter((asset) => toolAcceptsVideo(tool) || asset.kind === "image");
+    const needsImageForTool = toolNeedsImage(tool);
+    const requiresPromptForTool = toolRequiresPrompt(tool);
+
+    if (needsImageForTool && assetsForTool.length === 0) {
       setRunError("This tool needs an image. Select one or more images in Browse first.");
       return;
     }
-    if (requiresPrompt && !prompt.trim()) {
+    if (requiresPromptForTool && !runPrompt.trim()) {
       setRunError("This tool requires a prompt.");
       return;
     }
@@ -195,16 +232,34 @@ export function CreateTab({
     setResult(null);
     try {
       await onBeforeRequest?.();
-      const maxAssets = Math.max(1, Number(selectedTool.maxImages || 1));
+      const maxAssets = Math.max(1, Number(tool.maxImages || 1));
       const nextResult = await runApiaiTool({
         businessProfileId,
-        tool: selectedTool,
-        prompt,
+        tool,
+        prompt: runPrompt,
         params: paramValues,
-        assets: usableAssets.slice(0, maxAssets),
-        outputFilename,
+        assets: assetsForTool.slice(0, maxAssets),
+        outputFilename: runOutputFilename,
       });
       setResult(nextResult);
+      const insight = insightFromApiaiResult(nextResult, tool);
+      setPublishInsight(insight);
+      onPublishReadinessChange?.(insight);
+      if (nextResult.resultType === "binary" && nextResult.contentType.startsWith("image/") && onRecordGenerated) {
+        const url = resultMediaUrl(nextResult);
+        if (url) {
+          onRecordGenerated({
+            id: `apiai-${Date.now()}`,
+            name: nextResult.filename,
+            mimeType: nextResult.contentType,
+            kind: "image",
+            thumbnailUrl: url,
+            previewUrl: url,
+            sourceAccountId: "apiai",
+            sourceAccountName: "apiai.me",
+          }, { toolName: tool.name });
+        }
+      }
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "apiai.me generation failed.");
     } finally {
@@ -212,13 +267,53 @@ export function CreateTab({
     }
   }
 
+  async function handleRun() {
+    if (!selectedTool) return;
+    await runWithTool(selectedTool);
+  }
+
+  async function handleEstimate() {
+    if (!businessProfileId || !selectedTool) return;
+    setEstimating(true);
+    setRunError(null);
+    try {
+      await onBeforeRequest?.();
+      const estimate = await estimateApiaiTool({
+        businessProfileId,
+        tool: selectedTool,
+        params: paramValues,
+      });
+      setCostEstimate(estimate);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Could not estimate cost.");
+    } finally {
+      setEstimating(false);
+    }
+  }
+
   function applyQuickAction(action: ApiaiDocumentedImageAction, tool: ApiaiTool | null) {
     if (!tool) return;
+    setCreateMode("transform");
     setToolOverride(tool);
     setSelectedToolKey(`${tool.type}:${tool.slug}`);
     setOutputFilename((current) => current || action.defaultOutputFilename);
-    if (action.promptPlaceholder) {
-      setPrompt((current) => current || action.promptPlaceholder || "");
+    const nextPrompt = action.promptPlaceholder || "";
+    if (nextPrompt) {
+      setPrompt((current) => current || nextPrompt);
+    }
+
+    const canRunInstantly =
+      batchImageAssets.length > 0 &&
+      action.requiresImage !== false &&
+      !toolRequiresPrompt(tool) &&
+      !action.requiresPrompt;
+
+    if (canRunInstantly) {
+      void runWithTool(tool, {
+        prompt: nextPrompt,
+        outputFilename: action.defaultOutputFilename,
+        assets: batchImageAssets,
+      });
     }
   }
 
@@ -241,7 +336,7 @@ export function CreateTab({
       previewUrl: url,
       sourceAccountId: "apiai",
       sourceAccountName: "apiai.me",
-    });
+    }, { toolName: selectedTool?.name });
   }
 
   const resultUrl = result ? resultMediaUrl(result) : null;
@@ -256,6 +351,51 @@ export function CreateTab({
 
   return (
     <div className="space-y-4">
+      <ApiaiStatusBar businessProfileId={businessProfileId} />
+
+      <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/20 p-1">
+        {(
+          [
+            { id: "generate", label: "Generate" },
+            { id: "transform", label: "Transform" },
+            { id: "batch", label: "Batch" },
+          ] as const
+        ).map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setCreateMode(mode.id)}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              createMode === mode.id
+                ? "bg-background text-foreground shadow-sm font-medium"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {mode.label}
+          </button>
+        ))}
+      </div>
+
+      {createMode === "generate" ? (
+        <ContentAiImageCard
+          businessProfileId={businessProfileId}
+          captionHint={captionHint}
+          canvaConnected={canvaConnected}
+          onGenerated={(asset) => onRecordGenerated?.(asset)}
+          onContinueToPublish={onContinueToPublish}
+        />
+      ) : null}
+
+      {createMode === "batch" ? (
+        <ApiaiBatchPanel
+          businessProfileId={businessProfileId}
+          imageAssets={batchImageAssets}
+          onBeforeRequest={onBeforeRequest}
+        />
+      ) : null}
+
+      {createMode === "transform" ? (
+      <>
       <Card className="bg-card border-border">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -297,7 +437,7 @@ export function CreateTab({
                 <div>
                   <Label>Quick actions from apiai.me docs</Label>
                   <p className="text-xs text-muted-foreground">
-                    These shortcuts map the documented image request patterns to the tools exposed by your apiai.me account.
+                    Click a shortcut to run it instantly when images are selected, or configure it below.
                   </p>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible">
@@ -478,6 +618,24 @@ export function CreateTab({
                 {running ? "Creating…" : "Run selected tool"}
               </Button>
 
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => void handleEstimate()}
+                disabled={!selectedTool || estimating || !businessProfileId}
+              >
+                {estimating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Estimate cost
+              </Button>
+              {costEstimate?.estimate != null ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Estimated cost: ${costEstimate.estimate.toFixed(3)}
+                  {costEstimate.max != null ? ` (max $${costEstimate.max.toFixed(2)})` : ""}
+                  {costEstimate.note ? ` — ${costEstimate.note}` : ""}
+                </p>
+              ) : null}
+
               {runError ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -534,15 +692,26 @@ export function CreateTab({
                 </div>
               </>
             ) : (
-              <pre className="max-h-[420px] overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs">
-                {JSON.stringify(result.data, null, 2)}
-              </pre>
+              <>
+                {publishInsight ? (
+                  <Alert variant={publishInsight.severity === "block" ? "destructive" : "default"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>{publishInsight.label}</AlertTitle>
+                    {publishInsight.detail ? <AlertDescription>{publishInsight.detail}</AlertDescription> : null}
+                  </Alert>
+                ) : null}
+                <pre className="max-h-[420px] overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs">
+                  {JSON.stringify(result.data, null, 2)}
+                </pre>
+              </>
             )}
             {result.headers?.requestId ? (
               <p className="text-[11px] text-muted-foreground">Request ID: {result.headers.requestId}</p>
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+      </>
       ) : null}
     </div>
   );

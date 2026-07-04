@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, ExternalLink, Globe2, Loader2, Mail, Plus, Sparkles } from "lucide-react";
+import { Copy, ExternalLink, Globe2, Loader2, Mail, MessageSquare, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ type BrandDiscoverySectionProps = {
   location?: string;
   notes?: string;
   onAddAsLead?: (item: BrandDiscoverySuggestion) => void | Promise<void>;
+  onDraftOutreach?: (item: BrandDiscoverySuggestion) => void;
 };
 
 function openSuggestion(item: BrandDiscoverySuggestion) {
@@ -39,6 +40,7 @@ export function BrandDiscoverySection({
   location,
   notes,
   onAddAsLead,
+  onDraftOutreach,
 }: BrandDiscoverySectionProps) {
   const [mode, setMode] = useState<BrandDiscoveryMode>("websites");
   const [websites, setWebsites] = useState<BrandDiscoverySuggestion[]>([]);
@@ -109,13 +111,7 @@ export function BrandDiscoverySection({
       <CardContent className="space-y-4">
         <Tabs
           value={mode}
-          onValueChange={(value) => {
-            const next = value === "emails" ? "emails" : "websites";
-            setMode(next);
-            if ((next === "websites" ? websites : emails).length === 0) {
-              void loadSuggestions(next);
-            }
-          }}
+          onValueChange={(value) => setMode(value === "emails" ? "emails" : "websites")}
         >
           <TabsList>
             <TabsTrigger value="websites" className="gap-1.5">
@@ -135,6 +131,7 @@ export function BrandDiscoverySection({
               onOpen={openSuggestion}
               onCopy={copyValue}
               onAddAsLead={onAddAsLead}
+              onDraftOutreach={onDraftOutreach}
             />
           </TabsContent>
 
@@ -145,6 +142,7 @@ export function BrandDiscoverySection({
               onOpen={openSuggestion}
               onCopy={copyValue}
               onAddAsLead={onAddAsLead}
+              onDraftOutreach={onDraftOutreach}
             />
           </TabsContent>
         </Tabs>
@@ -166,12 +164,14 @@ function SuggestionList({
   onOpen,
   onCopy,
   onAddAsLead,
+  onDraftOutreach,
 }: {
   items: BrandDiscoverySuggestion[];
   emptyText: string;
   onOpen: (item: BrandDiscoverySuggestion) => void;
   onCopy: (value: string) => void;
   onAddAsLead?: (item: BrandDiscoverySuggestion) => void | Promise<void>;
+  onDraftOutreach?: (item: BrandDiscoverySuggestion) => void;
 }) {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyText}</p>;
@@ -199,6 +199,12 @@ function SuggestionList({
               {item.reason ? <p className="text-xs leading-relaxed text-muted-foreground">{item.reason}</p> : null}
             </div>
             <div className="flex shrink-0 gap-1">
+              {onDraftOutreach ? (
+                <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => onDraftOutreach(item)} title="Draft outreach">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span className="sr-only">Draft outreach</span>
+                </Button>
+              ) : null}
               {onAddAsLead ? (
                 <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => void onAddAsLead(item)}>
                   <Plus className="h-3.5 w-3.5" />

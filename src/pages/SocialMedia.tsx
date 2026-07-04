@@ -25,6 +25,7 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/featu
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { absoluteMediaUrl, publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
+import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
 import {
   SocialAutomationPanel,
   ScheduledPostsList,
@@ -38,6 +39,7 @@ import {
   type SocialMediaApiResponse,
 } from "@/features/social";
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -57,8 +59,7 @@ import {
   WhatsAppIcon,
 } from "@/components/platform-icons";
 import type { ConnectedAccount, SocialPlatform } from "@/types/accounts";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { exportCanvaImage, generateSocialImage, normalizeCanvaDesignId } from "@/features/content/contentMediaClient";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
@@ -157,69 +158,6 @@ async function runAIAnalysis(
   });
   if (!res.ok) throw new Error("Analysis failed");
   return res.json();
-}
-
-async function generateImageVariants(): Promise<string[]> {
-  await new Promise((r) => setTimeout(r, 2500));
-  return [
-    "https://picsum.photos/seed/v1/400/400",
-    "https://picsum.photos/seed/v2/400/400",
-    "https://picsum.photos/seed/v3/400/400",
-    "https://picsum.photos/seed/v4/400/400",
-  ];
-}
-
-async function generateSocialImage(payload: {
-  prompt: string;
-  caption: string;
-  businessProfileId: string | null;
-}): Promise<{ url: string; previewUrl?: string; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/image/generate"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: payload.prompt,
-      caption: payload.caption,
-      business_profile_id: payload.businessProfileId,
-    }),
-  }, 70_000);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not generate image"));
-  return data;
-}
-
-async function exportCanvaImage(payload: {
-  designId: string;
-  businessProfileId: string | null;
-}): Promise<{ url: string; canvaUrl?: string; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/canva/export"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      designId: payload.designId,
-      format: "png",
-      business_profile_id: payload.businessProfileId,
-    }),
-  }, 60_000);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not export Canva design"));
-  return data;
-}
-
-function normalizeCanvaDesignId(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  try {
-    const url = new URL(trimmed);
-    const parts = url.pathname.split("/").filter(Boolean);
-    const designIndex = parts.findIndex((part) => part === "design");
-    if (designIndex >= 0 && parts[designIndex + 1]) return parts[designIndex + 1];
-  } catch {
-    // Plain design id, not a URL.
-  }
-  return trimmed.replace(/^design:/i, "").trim();
 }
 
 export default function SocialMedia() {
@@ -401,6 +339,7 @@ export default function SocialMedia() {
       return v.length ? v : undefined;
     },
   }).data;
+  const { record } = useGeneratedContentHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvaInputRef = useRef<HTMLInputElement>(null);
 
@@ -509,18 +448,6 @@ export default function SocialMedia() {
     e.target.value = "";
   }
 
-  async function handleGenerateVariants() {
-    if (!uploadedImage) return;
-    setGeneratingVariants(true);
-    setVariants([]);
-    try {
-      const urls = await generateImageVariants();
-      setVariants(urls);
-    } finally {
-      setGeneratingVariants(false);
-    }
-  }
-
   async function handleGenerateSocialImage() {
     const prompt = imagePrompt.trim() || postContent.trim();
     if (!prompt) {
@@ -539,6 +466,15 @@ export default function SocialMedia() {
       setGeneratedMediaUrl(result.url);
       setVariants([result.previewUrl || result.url]);
       setImageSource("openai");
+      record({
+        name: "ai-generated.png",
+        mimeType: "image/png",
+        kind: "image",
+        mediaUrl: result.url,
+        thumbnailUrl: result.previewUrl || result.url,
+        source: "openai",
+        sourceLabel: "OpenAI",
+      });
     } catch (error) {
       setImageWorkflowError(error instanceof Error ? error.message : "Could not generate image");
     } finally {
@@ -563,6 +499,15 @@ export default function SocialMedia() {
       setGeneratedMediaUrl(result.url);
       setVariants([result.url]);
       setImageSource("canva");
+      record({
+        name: "canva-export.png",
+        mimeType: "image/png",
+        kind: "image",
+        mediaUrl: result.url,
+        thumbnailUrl: result.url,
+        source: "canva",
+        sourceLabel: "Canva",
+      });
     } catch (error) {
       setImageWorkflowError(error instanceof Error ? error.message : "Could not export Canva design");
     } finally {
@@ -864,7 +809,15 @@ export default function SocialMedia() {
               Create post image
             </CardTitle>
             <CardDescription>
-              Generate an image with AI or export a Canva design, then publish it with your post.
+              Generate an image with AI or export a Canva design, then publish it with your post. For batch tools and apiai.me transforms, use{" "}
+              <Link to="/content?tab=create" className="text-primary hover:underline">
+                Content → Create
+              </Link>
+              . All generations are saved under{" "}
+              <Link to="/content?tab=history" className="text-primary hover:underline">
+                Content → History
+              </Link>
+              .
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

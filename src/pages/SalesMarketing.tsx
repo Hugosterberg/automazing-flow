@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { m } from "framer-motion";
 import {
@@ -41,13 +41,14 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/featu
 import { LeadsSection, useLeads, isLeadOpen, type Lead } from "@/features/leads";
 import { BrandDiscoverySection } from "@/features/brand-discovery";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
-import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
+import { OutreachContentCard, OutreachDraftDialog, type OutreachDraftTarget } from "@/features/outreach";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks, TaskEditDialog } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { useProfileDocument } from "@/features/profile-documents";
 import { pageFadeUp } from "@/lib/motion";
+import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { cn } from "@/lib/utils";
 
 // Pipeline stages - mapped to task statuses
@@ -210,6 +211,7 @@ function GoalCard({ goal, onUpdate }: {
 }
 
 export default function SalesMarketingPage() {
+  const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfileId } = useAccounts();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
@@ -236,11 +238,12 @@ export default function SalesMarketingPage() {
     location: activeProfile?.location,
     notes: activeProfile?.notes,
   };
-  const contentIdeasContext = {
-    businessName: activeProfile?.name,
-    description: activeProfile?.notes ?? undefined,
-    audience: activeProfile?.location ? `Customers in ${activeProfile.location}` : undefined,
-  };
+
+  function handoffContentIdea(text: string) {
+    stashContentCaption(text);
+    navigate("/content?tab=publish");
+    toast.success("Idea ready in Content — post or save");
+  }
 
   const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting, isUpdating } = useTasks(businessProfileId);
 
@@ -285,6 +288,8 @@ export default function SalesMarketingPage() {
   const [pipelineAdding, setPipelineAdding] = useState(false);
   const [editTask, setEditTask] = useState<TaskRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [outreachDraftOpen, setOutreachDraftOpen] = useState(false);
+  const [outreachDraftTarget, setOutreachDraftTarget] = useState<OutreachDraftTarget | null>(null);
 
   // Deep link from the command palette: /sales?new=lead opens the add-lead
   // dialog directly. Param is consumed so refresh doesn't re-open it.
@@ -387,6 +392,7 @@ export default function SalesMarketingPage() {
         <LeadsSection
           businessProfileId={businessProfileId}
           context={leadsContext}
+          sellerContext={marketingContext}
           followUpsOnly={showFollowUpsOnly}
           onAddToPipeline={openPipelineFromLead}
         />
@@ -411,6 +417,15 @@ export default function SalesMarketingPage() {
               toast.error(error instanceof Error ? error.message : "Couldn't add the lead.");
             }
           }}
+          onDraftOutreach={(item) => {
+            setOutreachDraftTarget({
+              prospectCompany: item.label,
+              prospectEmail: item.kind === "email" ? item.value : undefined,
+              prospectWebsite: item.kind === "website" ? item.value : undefined,
+              prospectReason: item.reason,
+            });
+            setOutreachDraftOpen(true);
+          }}
         />
       </m.div>
 
@@ -419,8 +434,25 @@ export default function SalesMarketingPage() {
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.044 }}>
-        <ContentIdeasCard businessProfileId={businessProfileId} context={contentIdeasContext} />
+        <OutreachContentCard
+          businessProfileId={businessProfileId}
+          context={{
+            ...marketingContext,
+            description: marketingContext.notes,
+            targetAudience: activeProfile?.location ? `Buyers in ${activeProfile.location}` : undefined,
+            idealCustomer: leadsContext.description,
+          }}
+          onUseIdea={handoffContentIdea}
+        />
       </m.div>
+
+      <OutreachDraftDialog
+        open={outreachDraftOpen}
+        onOpenChange={setOutreachDraftOpen}
+        businessProfileId={businessProfileId}
+        sellerContext={marketingContext}
+        target={outreachDraftTarget}
+      />
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
         <McpFeatureSection
@@ -440,7 +472,7 @@ export default function SalesMarketingPage() {
           </div>
           <Button size="sm" className="gap-1.5" onClick={() => setPipelineOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            New lead
+            Add to pipeline
           </Button>
         </div>
 
@@ -504,7 +536,7 @@ export default function SalesMarketingPage() {
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add new lead</DialogTitle>
+            <DialogTitle>Add to pipeline</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">

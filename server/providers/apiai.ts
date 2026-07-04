@@ -279,3 +279,52 @@ export async function checkApiaiHealth(apiKey: string | null | undefined): Promi
     error: null,
   };
 }
+
+export async function fetchApiaiBalance(apiKey: string): Promise<number> {
+  const res = await fetch(makeApiaiUrl("/api/v1/account/balance"), {
+    headers: { "X-API-Key": apiKey },
+    signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(await parseApiaiError(res));
+  const body = await res.json().catch(() => ({}));
+  const balance = typeof body?.balance === "number" ? body.balance : Number(body?.balance);
+  if (!Number.isFinite(balance)) throw new Error("apiai_balance_invalid");
+  return balance;
+}
+
+export type ApiaiCostEstimate = {
+  slug?: string;
+  kind?: string;
+  estimate?: number;
+  min?: number;
+  max?: number;
+  reconciled?: boolean;
+  note?: string;
+};
+
+function estimateSlugFromTool(tool: Pick<ApiaiTool, "slug" | "endpoint">): string {
+  const endpoint = String(tool.endpoint || "").trim();
+  const processMatch = endpoint.match(/\/process\/([^/?]+)/i);
+  if (processMatch?.[1]) return processMatch[1];
+  return String(tool.slug || "").trim();
+}
+
+export async function estimateApiaiCost(
+  apiKey: string,
+  tool: Pick<ApiaiTool, "slug" | "endpoint">,
+  params: Record<string, unknown> = {}
+): Promise<ApiaiCostEstimate> {
+  const slug = estimateSlugFromTool(tool);
+  if (!slug) throw new Error("Could not determine tool slug for estimate.");
+  const res = await fetch(makeApiaiUrl(`/api/v1/process/${encodeURIComponent(slug)}/estimate`), {
+    method: "POST",
+    headers: {
+      "X-API-Key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ params }),
+    signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(await parseApiaiError(res));
+  return (await res.json().catch(() => ({}))) as ApiaiCostEstimate;
+}

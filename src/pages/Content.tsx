@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,19 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
 import { ContentFlowGuide } from "@/features/content/ContentFlowGuide";
+import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
+import { ContentIdeasHub } from "@/features/content/ContentIdeasHub";
+import { GeneratedHistoryPanel } from "@/features/content/GeneratedHistoryPanel";
+import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
+import { PublishSafetyPanel } from "@/features/content/PublishSafetyPanel";
+import { publishBlockReason, type PublishReadiness } from "@/features/content/apiaiResultInsights";
 import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import { apiUrl } from "@/lib/apiBase";
-import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
+import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
+import { Film, FolderOpen, History, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
@@ -233,17 +240,32 @@ function MediaSection({
 
 export default function ContentPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
   const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, addAccountFromOAuth, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
+  const { profiles } = useBusinessProfiles();
+  const activeProfile = profiles.find((profile) => profile.id === (activeBusinessProfileId ?? activeProfileId));
+  const contentIdeasContext = {
+    businessName: activeProfile?.name,
+    description: activeProfile?.notes ?? undefined,
+    audience: activeProfile?.location ? `Customers in ${activeProfile.location}` : undefined,
+  };
+  const canvaConnected = useMemo(
+    () => accounts.some((account) => account.platform === "canva" && !account.disconnectedAt),
+    [accounts]
+  );
   const selectedAccountId = getSelectedAccountId("content");
   const [isConnecting, setIsConnecting] = useState(false);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
-  const [contentTab, setContentTab] = useState<"browse" | "create" | "publish">("browse");
+  const [contentTab, setContentTab] = useState<"browse" | "create" | "history" | "publish">("browse");
+  const [publishReadiness, setPublishReadiness] = useState<PublishReadiness | null>(null);
+  const { history: generatedHistory, recordAsset, remove: removeGenerated, clear: clearGenerated, isLoading: historyLoading } =
+    useGeneratedContentHistory();
   const [popupOauthError, setPopupOauthError] = useState<OAuthErrorDetails | null>(null);
   // Selected content assets persist per business profile in the DB (synced
   // across devices and live across pages via React Query), migrating any
@@ -376,6 +398,31 @@ export default function ContentPage() {
   const [publishCaption, setPublishCaption] = useState("");
   const combinedOauthError = popupOauthError || oauthErrorDetails;
   const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId;
+  const publishBlockedReason = publishBlockReason(publishReadiness);
+
+  const goToTab = useCallback(
+    (tab: "browse" | "create" | "history" | "publish") => {
+      setContentTab(tab);
+      setSearchParams({ tab }, { replace: true });
+    },
+    [setSearchParams]
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "browse" || tab === "create" || tab === "history" || tab === "publish") {
+      setContentTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const pending = consumeContentCaption();
+    if (!pending) return;
+    setPublishCaption(pending);
+    setContentTab("publish");
+    setSearchParams({ tab: "publish" }, { replace: true });
+    toast.success("Idea added — ready to post or save");
+  }, [setSearchParams]);
 
   useEffect(() => {
     setCurrentFolderId(null);
@@ -547,6 +594,16 @@ export default function ContentPage() {
     selectionDoc.save(next);
   }
 
+  function recordGeneratedAsset(asset: SelectedContentAsset, options?: { toolName?: string }) {
+    recordAsset(asset, options);
+  }
+
+  function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
+    saveAssetSelection(asset, true);
+    recordAsset(asset, options);
+    toast.success("Saved to selection and history");
+  }
+
   function toggleAsset(file: DriveBrowserItem, checked: boolean) {
     const asset = assetFromDriveFile(file);
     if (!asset) return;
@@ -618,13 +675,30 @@ export default function ContentPage() {
       <ContentFlowGuide
         active={contentTab}
         selectionCount={selectedAssets.length}
-        onGo={setContentTab}
+        onGo={goToTab}
+      />
+
+      <ContentIdeasHub
+        businessProfileId={createBusinessProfileId}
+        socialContext={contentIdeasContext}
+        outreachContext={{
+          businessName: contentIdeasContext.businessName,
+          description: contentIdeasContext.description,
+          location: activeProfile?.location,
+          targetAudience: contentIdeasContext.audience,
+          idealCustomer: contentIdeasContext.description,
+        }}
+        onUseIdea={(text) => {
+          setPublishCaption(text);
+          goToTab("publish");
+          toast.success("Idea added — ready to post or save");
+        }}
       />
 
       <div className="flex items-center gap-1 border-b border-border">
         <button
           type="button"
-          onClick={() => setContentTab("browse")}
+          onClick={() => goToTab("browse")}
           className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
             contentTab === "browse"
               ? "border-primary text-foreground font-medium"
@@ -636,7 +710,7 @@ export default function ContentPage() {
         </button>
         <button
           type="button"
-          onClick={() => setContentTab("create")}
+          onClick={() => goToTab("create")}
           className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
             contentTab === "create"
               ? "border-primary text-foreground font-medium"
@@ -648,7 +722,22 @@ export default function ContentPage() {
         </button>
         <button
           type="button"
-          onClick={() => setContentTab("publish")}
+          onClick={() => goToTab("history")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            contentTab === "history"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <History className="h-3.5 w-3.5" />
+          History
+          {generatedHistory.length > 0 ? (
+            <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{generatedHistory.length}</span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          onClick={() => goToTab("publish")}
           className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
             contentTab === "publish"
               ? "border-primary text-foreground font-medium"
@@ -676,14 +765,33 @@ export default function ContentPage() {
           businessProfileId={createBusinessProfileId}
           selectedAssets={selectedAssets}
           availableAssets={imageItems.map((file) => assetFromDriveFile(file)).filter((asset): asset is SelectedContentAsset => Boolean(asset))}
+          captionHint={publishCaption}
+          canvaConnected={canvaConnected}
           onToggleAssetSelection={saveAssetSelection}
-          onOpenBrowse={() => setContentTab("browse")}
+          onOpenBrowse={() => goToTab("browse")}
           onBeforeRequest={ensureBackendSession}
-          onSaveResultToSelection={(asset) => {
-            saveAssetSelection(asset, true);
-            toast.success("Saved to selection — ready to post");
+          onRecordGenerated={(asset, meta) => recordGeneratedAsset(asset, meta)}
+          onSaveResultToSelection={(asset, meta) => {
+            saveGeneratedToSelection(asset, meta);
           }}
-          onContinueToPublish={() => setContentTab("publish")}
+          onContinueToPublish={() => goToTab("publish")}
+          onPublishReadinessChange={setPublishReadiness}
+        />
+      ) : null}
+
+      {contentTab === "history" ? (
+        <GeneratedHistoryPanel
+          items={generatedHistory}
+          loading={historyLoading}
+          onAddToSelection={(asset) => {
+            saveAssetSelection(asset, true);
+            toast.success("Added to selection");
+          }}
+          onRemove={removeGenerated}
+          onClear={() => {
+            clearGenerated();
+            toast.message("History cleared");
+          }}
         />
       ) : null}
 
@@ -693,16 +801,29 @@ export default function ContentPage() {
             <Card className="border-dashed">
               <CardContent className="py-8 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">Select at least one image or video in Browse first.</p>
-                <Button variant="outline" size="sm" onClick={() => setContentTab("browse")}>
+                <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
                   Go to Browse
                 </Button>
               </CardContent>
             </Card>
           ) : null}
+          <PublishSafetyPanel
+            businessProfileId={createBusinessProfileId}
+            imageAssets={selectedImages}
+            readiness={publishReadiness}
+            onReadinessChange={setPublishReadiness}
+            onBeforeRequest={ensureBackendSession}
+          />
           <PublishComposer
             initialCaption={publishCaption}
             mediaUrls={publishMediaUrls}
             onCaptionChange={setPublishCaption}
+            publishBlockedReason={publishBlockedReason}
+            publishWarning={
+              publishReadiness && !publishReadiness.ok && publishReadiness.severity === "warn"
+                ? publishReadiness.detail || publishReadiness.label
+                : null
+            }
           />
         </div>
       ) : null}
@@ -817,7 +938,10 @@ export default function ContentPage() {
           <div className="text-sm text-muted-foreground">
             {selectedImages.length} image{selectedImages.length === 1 ? "" : "s"} and {selectedVideos.length} video{selectedVideos.length === 1 ? "" : "s"} selected.
           </div>
-          <Button variant="outline" onClick={() => setContentTab("publish")} disabled={selectedAssets.length === 0}>
+          <Button variant="default" onClick={() => goToTab("create")} disabled={selectedAssets.length === 0}>
+            Create with AI
+          </Button>
+          <Button variant="outline" onClick={() => goToTab("publish")} disabled={selectedAssets.length === 0}>
             Post or save
           </Button>
           <Button variant="outline" onClick={() => navigate("/social-media")} disabled={selectedAssets.length === 0}>
@@ -961,6 +1085,12 @@ export default function ContentPage() {
       )}
         </>
       ) : null}
+
+      <ContentNextStepBar
+        active={contentTab === "history" ? "browse" : contentTab}
+        selectionCount={selectedAssets.length}
+        onGo={goToTab}
+      />
     </div>
   );
 }

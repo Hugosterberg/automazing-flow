@@ -34,6 +34,8 @@ export function PublishComposer({
   onCaptionChange,
   editingPost = null,
   onEditingPostChange,
+  publishBlockedReason = null,
+  publishWarning = null,
 }: {
   initialCaption?: string;
   mediaUrls?: string[];
@@ -42,6 +44,8 @@ export function PublishComposer({
   /** Load an existing pipeline post (draft/scheduled) into the composer. */
   editingPost?: ScheduledPost | null;
   onEditingPostChange?: (post: ScheduledPost | null) => void;
+  publishBlockedReason?: string | null;
+  publishWarning?: string | null;
 }) {
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
@@ -258,6 +262,16 @@ export function PublishComposer({
           <p className="text-xs text-muted-foreground">No media attached — add images in Browse or Create first.</p>
         )}
 
+        {publishBlockedReason ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Publishing blocked: {publishBlockedReason}
+          </div>
+        ) : publishWarning ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+            Review before publishing: {publishWarning}
+          </div>
+        ) : null}
+
         {postable.length > 0 ? (
           <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Accounts</Label>
@@ -340,7 +354,13 @@ export function PublishComposer({
             </Button>
             <Button
               onClick={() => (mode === "now" ? void publishNow() : schedulePost())}
-              disabled={busy || postable.length === 0 || selectedIds.length === 0 || !caption.trim()}
+              disabled={
+                busy ||
+                postable.length === 0 ||
+                selectedIds.length === 0 ||
+                !caption.trim() ||
+                Boolean(publishBlockedReason)
+              }
             >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               {mode === "now" ? "Publish" : "Schedule"}{resolvedMediaUrls.length > 0 ? " with media" : ""}

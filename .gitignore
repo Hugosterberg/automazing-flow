@@ -19,6 +19,7 @@ dist-ssr
 
 # Lokalt token-cache (innehåller OAuth-tokens – ska inte committas)
 server/tokens.json
+data/generated-media/
 
 # Editor directories and files
 .vscode/*

@@ -32,6 +32,19 @@ import {
   parseSalesPlaybookItems,
   type SalesPlaybookContext,
 } from "../ai/salesMarketingPlaybook.ts";
+import {
+  buildOutreachDraftPrompt,
+  heuristicOutreachDraft,
+  normalizeOutreachChannel,
+  parseOutreachDraft,
+  type OutreachDraftContext,
+} from "../ai/outreachDraft.ts";
+import {
+  buildOutreachContentPrompt,
+  heuristicOutreachContentIdeas,
+  parseOutreachContentIdeas,
+  type OutreachContentContext,
+} from "../ai/outreachContent.ts";
 import { fetchSiteMeta } from "../lib/siteMeta.ts";
 import { readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
 
@@ -56,6 +69,18 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
     "sales:marketing-playbook",
     (req) => getSessionUserId(req),
     18,
+    60_000
+  );
+  const limitOutreachDraft = rateLimitMiddleware(
+    "sales:outreach-draft",
+    (req) => getSessionUserId(req),
+    20,
+    60_000
+  );
+  const limitOutreachContent = rateLimitMiddleware(
+    "sales:outreach-content-ideas",
+    (req) => getSessionUserId(req),
+    12,
     60_000
   );
 
@@ -323,6 +348,144 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
         source: "heuristic",
         mode,
       });
+    }
+  });
+
+  app.post("/api/sales/outreach-draft", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitOutreachDraft(req, res)) return;
+
+    const body = (req.body ?? {}) as OutreachDraftContext & {
+      business_profile_id?: string;
+      channel?: string;
+    };
+    const channel = normalizeOutreachChannel(body.channel);
+    const ctx: OutreachDraftContext = {
+      businessName: String(body.businessName || "").slice(0, 200),
+      company: String(body.company || "").slice(0, 200),
+      website: String(body.website || "").slice(0, 500),
+      email: String(body.email || "").slice(0, 200),
+      location: String(body.location || "").slice(0, 200),
+      notes: String(body.notes || "").slice(0, 1000),
+      offering: String(body.offering || "").slice(0, 500),
+      industry: String(body.industry || "").slice(0, 200),
+      prospectCompany: String(body.prospectCompany || "").slice(0, 200),
+      prospectContact: String(body.prospectContact || "").slice(0, 200),
+      prospectEmail: String(body.prospectEmail || "").slice(0, 200),
+      prospectWebsite: String(body.prospectWebsite || "").slice(0, 500),
+      prospectNotes: String(body.prospectNotes || "").slice(0, 1000),
+      prospectReason: String(body.prospectReason || "").slice(0, 500),
+    };
+
+    const openaiKey = String(
+      (deps.secretResolver
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
+
+    if (!openaiKey) {
+      return res.json({ draft: heuristicOutreachDraft(ctx, channel), source: "heuristic", channel });
+    }
+
+    try {
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: buildOutreachDraftPrompt(ctx, channel) }],
+          temperature: 0.6,
+          max_tokens: 1400,
+          response_format: { type: "json_object" },
+        }),
+        signal: AbortSignal.timeout(25_000),
+      });
+
+      if (!aiRes.ok) {
+        const detail = (await aiRes.text().catch(() => "")).slice(0, 300);
+        console.warn("[sales/outreach-draft] OpenAI failed:", aiRes.status, detail);
+        return res.json({ draft: heuristicOutreachDraft(ctx, channel), source: "heuristic", channel });
+      }
+
+      const aiData = await aiRes.json().catch(() => ({}));
+      const content = aiData?.choices?.[0]?.message?.content ?? "{}";
+      const draft = parseOutreachDraft(content);
+      if (!draft) {
+        return res.json({ draft: heuristicOutreachDraft(ctx, channel), source: "heuristic", channel });
+      }
+
+      return res.json({ draft, source: "ai", channel });
+    } catch (error) {
+      console.warn(
+        "[sales/outreach-draft] Falling back to heuristic:",
+        error instanceof Error ? error.message : error
+      );
+      return res.json({ draft: heuristicOutreachDraft(ctx, channel), source: "heuristic", channel });
+    }
+  });
+
+  app.post("/api/sales/outreach-content-ideas", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitOutreachContent(req, res)) return;
+
+    const body = (req.body ?? {}) as OutreachContentContext & { business_profile_id?: string };
+    const ctx: OutreachContentContext = {
+      businessName: String(body.businessName || "").slice(0, 200),
+      company: String(body.company || "").slice(0, 200),
+      description: String(body.description || body.notes || "").slice(0, 1000),
+      offering: String(body.offering || "").slice(0, 500),
+      location: String(body.location || "").slice(0, 200),
+      industry: String(body.industry || "").slice(0, 200),
+      targetAudience: String(body.targetAudience || "").slice(0, 200),
+      idealCustomer: String(body.idealCustomer || "").slice(0, 300),
+    };
+
+    const openaiKey = String(
+      (deps.secretResolver
+        ? await deps.secretResolver.resolve(readRequestBodyBusinessProfileId(req), "OPENAI_API_KEY")
+        : process.env.OPENAI_API_KEY) || ""
+    ).trim();
+
+    if (!openaiKey) {
+      return res.json({ ideas: heuristicOutreachContentIdeas(ctx), source: "heuristic" });
+    }
+
+    try {
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: buildOutreachContentPrompt(ctx) }],
+          temperature: 0.65,
+          max_tokens: 1200,
+          response_format: { type: "json_object" },
+        }),
+        signal: AbortSignal.timeout(22_000),
+      });
+
+      if (!aiRes.ok) {
+        const detail = (await aiRes.text().catch(() => "")).slice(0, 300);
+        console.warn("[sales/outreach-content-ideas] OpenAI failed:", aiRes.status, detail);
+        return res.json({ ideas: heuristicOutreachContentIdeas(ctx), source: "heuristic" });
+      }
+
+      const aiData = await aiRes.json().catch(() => ({}));
+      const content = aiData?.choices?.[0]?.message?.content ?? "{}";
+      const ideas = parseOutreachContentIdeas(content);
+      if (ideas.length === 0) {
+        return res.json({ ideas: heuristicOutreachContentIdeas(ctx), source: "heuristic" });
+      }
+
+      return res.json({ ideas, source: "ai" });
+    } catch (error) {
+      console.warn(
+        "[sales/outreach-content-ideas] Falling back to heuristic:",
+        error instanceof Error ? error.message : error
+      );
+      return res.json({ ideas: heuristicOutreachContentIdeas(ctx), source: "heuristic" });
     }
   });
 }

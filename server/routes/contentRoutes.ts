@@ -124,7 +124,7 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     const item = readGeneratedMedia(id);
     if (!item) return res.status(404).json({ error: "media_not_found" });
     res.setHeader("Content-Type", item.contentType);
-    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
     return res.send(item.buffer);
   });
 

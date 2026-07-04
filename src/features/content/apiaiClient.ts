@@ -130,3 +130,103 @@ export async function runApiaiTool(input: {
   if (!res.ok) throw new Error(await readError(res));
   return (await res.json()) as ApiaiRunResult;
 }
+
+export type ApiaiCostEstimate = {
+  slug?: string;
+  kind?: string;
+  estimate?: number;
+  min?: number;
+  max?: number;
+  reconciled?: boolean;
+  note?: string;
+};
+
+export async function estimateApiaiTool(input: {
+  businessProfileId: string;
+  tool: ApiaiTool;
+  params?: Record<string, string>;
+}): Promise<ApiaiCostEstimate> {
+  const res = await fetchWithTimeout(apiUrl("/api/apiai/estimate"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      business_profile_id: input.businessProfileId,
+      toolSlug: input.tool.slug,
+      toolEndpoint: input.tool.endpoint,
+      params: input.params ?? {},
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as ApiaiCostEstimate;
+}
+
+export async function fetchApiaiBalance(businessProfileId: string): Promise<number | null> {
+  const params = new URLSearchParams({ business_profile_id: businessProfileId });
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/balance?${params.toString()}`), {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const body = await res.json().catch(() => ({}));
+  return typeof body?.balance === "number" ? body.balance : null;
+}
+
+export type ApiaiBatchSummary = {
+  id: number;
+  status?: string;
+  workflow?: string;
+  total_items?: number;
+  completed_items?: number;
+  created_at?: string;
+};
+
+export type ApiaiBatchJob = ApiaiBatchSummary & {
+  items?: Array<Record<string, unknown>>;
+  estimated_cost?: number;
+};
+
+export async function createApiaiBatch(input: {
+  businessProfileId: string;
+  workflow: string;
+  assets: SelectedContentAsset[];
+  params?: Record<string, string>;
+}): Promise<ApiaiBatchJob> {
+  const res = await fetchWithTimeout(apiUrl("/api/apiai/batch"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      business_profile_id: input.businessProfileId,
+      workflow: input.workflow,
+      params: input.params ?? {},
+      assets: input.assets.map((asset) => ({
+        id: asset.id,
+        name: asset.name,
+        mimeType: asset.mimeType,
+        kind: asset.kind,
+        sourceAccountId: asset.sourceAccountId,
+      })),
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as ApiaiBatchJob;
+}
+
+export async function listApiaiBatches(businessProfileId: string): Promise<ApiaiBatchSummary[]> {
+  const params = new URLSearchParams({ business_profile_id: businessProfileId });
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/batch?${params.toString()}`), {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const body = await res.json().catch(() => ({}));
+  return Array.isArray(body?.jobs) ? body.jobs : [];
+}
+
+export async function getApiaiBatch(businessProfileId: string, batchId: number): Promise<ApiaiBatchJob> {
+  const params = new URLSearchParams({ business_profile_id: businessProfileId });
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/batch/${batchId}?${params.toString()}`), {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as ApiaiBatchJob;
+}
