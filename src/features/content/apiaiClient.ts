@@ -47,7 +47,8 @@ export type ApiaiRunResult =
       resultType: "binary";
       contentType: string;
       filename: string;
-      dataUrl: string;
+      mediaUrl?: string;
+      dataUrl?: string;
       size: number;
       headers?: ApiaiRunHeaders;
     };
@@ -113,6 +114,7 @@ export async function runApiaiTool(input: {
       business_profile_id: input.businessProfileId,
       toolSlug: input.tool.slug,
       toolType: input.tool.type,
+      toolEndpoint: input.tool.endpoint,
       prompt: input.prompt,
       params: input.params,
       assets: input.assets.map((asset) => ({

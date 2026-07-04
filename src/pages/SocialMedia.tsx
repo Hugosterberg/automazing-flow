@@ -24,6 +24,7 @@ import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { PublishComposer } from "@/features/content/PublishComposer";
+import { absoluteMediaUrl, publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import {
   SocialAutomationPanel,
   ScheduledPostsList,
@@ -428,9 +429,22 @@ export default function SocialMedia() {
 
   useEffect(() => {
     if (!uploadedImage && selectedContentImages.length > 0) {
-      setUploadedImage(selectedContentImages[0].previewUrl || selectedContentImages[0].thumbnailUrl);
+      const url = absoluteMediaUrl(selectedContentImages[0].previewUrl || selectedContentImages[0].thumbnailUrl);
+      if (url) setUploadedImage(url);
     }
   }, [uploadedImage, selectedContentImages]);
+
+  const composerMediaUrls = useMemo(() => {
+    if (generatedMediaUrl) {
+      const abs = absoluteMediaUrl(generatedMediaUrl);
+      return abs ? [abs] : [];
+    }
+    if (uploadedImage) {
+      const abs = absoluteMediaUrl(uploadedImage);
+      if (abs && !abs.startsWith("blob:")) return [abs];
+    }
+    return publishMediaUrlsFromAssets(selectedContent);
+  }, [generatedMediaUrl, uploadedImage, selectedContent]);
 
   useEffect(() => {
     setRecentPosts([]);
@@ -965,7 +979,7 @@ export default function SocialMedia() {
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
         <PublishComposer
           initialCaption={postContent}
-          mediaUrls={generatedMediaUrl ? [generatedMediaUrl] : []}
+          mediaUrls={composerMediaUrls}
           onCaptionChange={setPostContent}
           editingPost={editingPost}
           onEditingPostChange={setEditingPost}

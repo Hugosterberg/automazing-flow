@@ -90,9 +90,12 @@ export function normalizeFlow(raw: Record<string, unknown>): ApiaiTool | null {
   };
 }
 
-/** Turn an apiai endpoint (`/api/workflows`, `workflows`, …) into a full URL. */
+/** Turn an apiai endpoint (`/api/workflows`, `/api/v1/process/x`, …) into a full URL. */
 export function makeApiaiUrl(endpoint: string): string {
-  const clean = endpoint.startsWith("/api/") ? endpoint.slice(4) : endpoint;
+  const trimmed = endpoint.trim();
+  if (trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.startsWith("/api/v1/")) return `${APIAI_BASE_URL}${trimmed.slice(4)}`;
+  const clean = trimmed.startsWith("/api/") ? trimmed.slice(4) : trimmed;
   return `${APIAI_BASE_URL}${clean.startsWith("/") ? clean : `/${clean}`}`;
 }
 
@@ -124,17 +127,28 @@ async function fetchApiaiJson(apiKey: string, endpoint: string): Promise<unknown
 }
 
 export async function listTools(apiKey: string): Promise<ApiaiTool[]> {
-  const [workflowRows, flowRows] = await Promise.all([
+  const [workflowRows, flowRows, v1WorkflowRows] = await Promise.all([
     fetchApiaiJson(apiKey, "/api/workflows"),
     fetchApiaiJson(apiKey, "/api/flows").catch(() => []),
+    fetchApiaiJson(apiKey, "/api/v1/workflows").catch(() => []),
   ]);
-  const workflows = workflowRows
+  const mergedWorkflowRows = [...workflowRows, ...v1WorkflowRows];
+  const workflows = mergedWorkflowRows
     .map((row) => normalizeWorkflow(row as Record<string, unknown>))
     .filter((tool): tool is ApiaiTool => Boolean(tool));
   const flows = flowRows
     .map((row) => normalizeFlow(row as Record<string, unknown>))
     .filter((tool): tool is ApiaiTool => Boolean(tool));
-  return [...workflows, ...flows];
+
+  const seen = new Set<string>();
+  const out: ApiaiTool[] = [];
+  for (const tool of [...workflows, ...flows]) {
+    const key = `${tool.type}:${tool.endpoint}:${tool.slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(tool);
+  }
+  return out;
 }
 
 export function imageFieldNamesForTool(tool: ApiaiTool): string[] {

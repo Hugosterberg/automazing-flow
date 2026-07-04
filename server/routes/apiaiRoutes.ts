@@ -19,7 +19,9 @@ import {
   parseApiaiError,
   requiresImage,
   APIAI_TIMEOUT_MS,
+  type ApiaiTool,
 } from "../providers/apiai.ts";
+import { publicMediaUrl, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
 
 const APIAI_KEY = "APIAI_API_KEY";
 const MAX_INPUT_BYTES = 12 * 1024 * 1024;
@@ -170,6 +172,7 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
     const body = (req.body ?? {}) as {
       toolSlug?: string;
       toolType?: string;
+      toolEndpoint?: string;
       prompt?: string;
       params?: Record<string, unknown>;
       assets?: SelectedAssetInput[];
@@ -177,11 +180,28 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
     };
     const toolSlug = String(body.toolSlug || "").trim();
     const toolType = String(body.toolType || "").trim();
-    if (!toolSlug) return res.status(400).json({ error: "toolSlug is required" });
+    const toolEndpoint = String(body.toolEndpoint || "").trim();
+    if (!toolSlug && !toolEndpoint) return res.status(400).json({ error: "toolSlug is required" });
 
     try {
       const tools = await listTools(apiKey);
-      const tool = tools.find((candidate) => candidate.slug === toolSlug && (!toolType || candidate.type === toolType));
+      let tool =
+        tools.find((candidate) => candidate.slug === toolSlug && (!toolType || candidate.type === toolType)) ??
+        (toolEndpoint ? tools.find((candidate) => candidate.endpoint === toolEndpoint) : null);
+
+      if (!tool && toolEndpoint) {
+        tool = {
+          slug: toolSlug || toolEndpoint.split("/").pop() || "custom",
+          name: toolSlug || "Custom tool",
+          endpoint: toolEndpoint,
+          type: (toolType as ApiaiTool["type"]) || (toolEndpoint.includes("/flow/") ? "flow" : toolEndpoint.includes("/pipeline/") ? "pipeline" : "workflow"),
+          acceptedInputs: ["image", "prompt"],
+          requiredInputs: ["image"],
+          outputTypes: [],
+          params: [],
+        };
+      }
+
       if (!tool) return res.status(404).json({ error: "apiai_tool_not_found" });
 
       const imageFieldNames = imageFieldNamesForTool(tool);
@@ -267,11 +287,13 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
       const disposition = upstream.headers.get("content-disposition") || "";
       const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
       const filename = filenameMatch?.[1] || `${tool.slug}.${contentType.split("/")[1] || "bin"}`;
+      const mediaId = storeGeneratedMedia(buffer, contentType);
+      const mediaUrl = publicMediaUrl(req, mediaId);
       return res.json({
         resultType: "binary",
         contentType,
         filename,
-        dataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
+        mediaUrl,
         size: buffer.byteLength,
         headers,
       });

@@ -14,6 +14,7 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { platformLabel } from "@/lib/platformLabels";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useScheduledPosts, type ScheduledPost } from "@/features/social";
+import { absoluteMediaUrl } from "@/features/content/contentPublishMedia";
 
 /** Platforms we can publish to via Zernio. */
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
@@ -64,6 +65,13 @@ export function PublishComposer({
   const [done, setDone] = useState(false);
 
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
+  const resolvedMediaUrls = useMemo(
+    () =>
+      mediaUrls
+        .map((url) => absoluteMediaUrl(url))
+        .filter((url): url is string => Boolean(url) && !url.startsWith("blob:")),
+    [mediaUrls]
+  );
 
   useEffect(() => {
     setCaption(initialCaption);
@@ -107,7 +115,7 @@ export function PublishComposer({
       platforms: platformsOf(selectedIds),
       status,
       scheduledFor: scheduledForIso,
-      mediaUrls,
+      mediaUrls: resolvedMediaUrls,
       createdAt: editingPost?.createdAt ?? now,
       updatedAt: now,
     };
@@ -162,7 +170,7 @@ export function PublishComposer({
           content: caption.trim(),
           publishNow: true,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          mediaUrls,
+          mediaUrls: resolvedMediaUrls,
         }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -226,9 +234,29 @@ export function PublishComposer({
             onCaptionChange?.(next);
             setDone(false);
           }}
-          placeholder="What do you want to post?"
+          placeholder="Write your caption here…"
           className="min-h-[90px]"
         />
+
+        {resolvedMediaUrls.length > 0 ? (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Attached media ({resolvedMediaUrls.length})</Label>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {resolvedMediaUrls.map((url) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt=""
+                  className="h-20 w-20 shrink-0 rounded-lg border border-border object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No media attached — add images in Browse or Create first.</p>
+        )}
 
         {postable.length > 0 ? (
           <div className="space-y-2">
@@ -291,7 +319,7 @@ export function PublishComposer({
               />
             </div>
           )}
-          {mode === "schedule" && mediaUrls.length > 0 ? (
+          {mode === "schedule" && resolvedMediaUrls.length > 0 ? (
             <p className="basis-full text-xs text-muted-foreground">
               AI and Canva media links are temporary. Schedule media posts within 20 hours, or regenerate the media closer to publish time.
             </p>
@@ -315,7 +343,7 @@ export function PublishComposer({
               disabled={busy || postable.length === 0 || selectedIds.length === 0 || !caption.trim()}
             >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              {mode === "now" ? "Publish" : "Schedule"}{mediaUrls.length > 0 ? " with media" : ""}
+              {mode === "now" ? "Publish" : "Schedule"}{resolvedMediaUrls.length > 0 ? " with media" : ""}
             </Button>
           </div>
         </div>

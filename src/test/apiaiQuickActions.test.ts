@@ -36,4 +36,11 @@ describe("apiai quick actions", () => {
     const pipeline = tool({ slug: "logo-digitalize", name: "Logo Digitalize", type: "pipeline" });
     expect(findToolForAction(action!, [workflow, pipeline])?.slug).toBe("logo-digitalize");
   });
+
+  it("creates a synthetic tool for documented direct endpoints", () => {
+    const action = APIAI_DOCUMENTED_IMAGE_ACTIONS.find((item) => item.id === "remove-background");
+    const synthetic = findToolForAction(action!, []);
+    expect(synthetic?.endpoint).toBe("/api/process/remove-bg");
+    expect(synthetic?.slug).toBe("remove-background");
+  });
 });

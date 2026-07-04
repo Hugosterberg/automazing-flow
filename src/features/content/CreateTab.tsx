@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Download, Image as ImageIcon, Loader2, RefreshCw, Wand2 } from "lucide-react";
+import { AlertCircle, Download, Loader2, RefreshCw, Send, Wand2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
+import { apiUrl } from "@/lib/apiBase";
 import {
   listApiaiTools,
   runApiaiTool,
@@ -22,7 +23,13 @@ import {
   type ApiaiRunResult,
   type ApiaiTool,
 } from "./apiaiClient";
-import { APIAI_DOCUMENTED_IMAGE_ACTIONS, findToolForAction, type ApiaiDocumentedImageAction } from "./apiaiQuickActions";
+import { ImageAssetPicker } from "./ImageAssetPicker";
+import {
+  APIAI_DOCUMENTED_IMAGE_ACTIONS,
+  findToolForAction,
+  groupToolsByType,
+  type ApiaiDocumentedImageAction,
+} from "./apiaiQuickActions";
 
 function paramKey(param: ApiaiParam): string {
   return String(param.expose_name || param.name || "").trim();
@@ -79,6 +86,8 @@ export function CreateTab({
   onToggleAssetSelection,
   onOpenBrowse,
   onBeforeRequest,
+  onSaveResultToSelection,
+  onContinueToPublish,
 }: {
   businessProfileId: string | null;
   selectedAssets: SelectedContentAsset[];
@@ -86,6 +95,8 @@ export function CreateTab({
   onToggleAssetSelection?: (asset: SelectedContentAsset, selected: boolean) => void;
   onOpenBrowse: () => void;
   onBeforeRequest?: () => Promise<void>;
+  onSaveResultToSelection?: (asset: SelectedContentAsset) => void;
+  onContinueToPublish?: () => void;
 }) {
   const [tools, setTools] = useState<ApiaiTool[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState("");
@@ -97,10 +108,14 @@ export function CreateTab({
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [result, setResult] = useState<ApiaiRunResult | null>(null);
+  const [toolOverride, setToolOverride] = useState<ApiaiTool | null>(null);
 
   const selectedTool = useMemo(
-    () => tools.find((tool) => `${tool.type}:${tool.slug}` === selectedToolKey) ?? null,
-    [tools, selectedToolKey]
+    () =>
+      toolOverride ??
+      tools.find((tool) => `${tool.type}:${tool.slug}` === selectedToolKey) ??
+      null,
+    [tools, selectedToolKey, toolOverride]
   );
   const quickActions = useMemo(
     () =>
@@ -110,6 +125,7 @@ export function CreateTab({
       })),
     [tools]
   );
+  const groupedTools = useMemo(() => groupToolsByType(tools), [tools]);
 
   const editableParams = useMemo(
     () =>
@@ -125,14 +141,6 @@ export function CreateTab({
   }, [selectedAssets, selectedTool]);
 
   const excludedAssets = selectedAssets.filter((asset) => !usableAssets.includes(asset));
-  const selectedAssetKeys = useMemo(
-    () => new Set(selectedAssets.map((asset) => `${asset.sourceAccountId}:${asset.id}`)),
-    [selectedAssets]
-  );
-  const availableImageAssets = useMemo(
-    () => availableAssets.filter((asset) => asset.kind === "image"),
-    [availableAssets]
-  );
   const needsImage = toolNeedsImage(selectedTool);
   const supportsPrompt = toolSupportsPrompt(selectedTool);
   const requiresPrompt = toolRequiresPrompt(selectedTool);
@@ -206,12 +214,37 @@ export function CreateTab({
 
   function applyQuickAction(action: ApiaiDocumentedImageAction, tool: ApiaiTool | null) {
     if (!tool) return;
+    setToolOverride(tool);
     setSelectedToolKey(`${tool.type}:${tool.slug}`);
     setOutputFilename((current) => current || action.defaultOutputFilename);
     if (action.promptPlaceholder) {
       setPrompt((current) => current || action.promptPlaceholder || "");
     }
   }
+
+  function resultMediaUrl(run: ApiaiRunResult): string | null {
+    if (run.resultType !== "binary") return null;
+    if (run.mediaUrl) return run.mediaUrl.startsWith("http") ? run.mediaUrl : apiUrl(run.mediaUrl);
+    return run.dataUrl ?? null;
+  }
+
+  function saveResultToSelection() {
+    if (!result || result.resultType !== "binary" || !onSaveResultToSelection) return;
+    const url = resultMediaUrl(result);
+    if (!url) return;
+    onSaveResultToSelection({
+      id: `apiai-${Date.now()}`,
+      name: result.filename,
+      mimeType: result.contentType,
+      kind: "image",
+      thumbnailUrl: url,
+      previewUrl: url,
+      sourceAccountId: "apiai",
+      sourceAccountName: "apiai.me",
+    });
+  }
+
+  const resultUrl = result ? resultMediaUrl(result) : null;
 
   const canRun = Boolean(
     businessProfileId &&
@@ -267,14 +300,14 @@ export function CreateTab({
                     These shortcuts map the documented image request patterns to the tools exposed by your apiai.me account.
                   </p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible">
                   {quickActions.map(({ action, tool }) => (
                     <button
                       key={action.id}
                       type="button"
                       disabled={!tool}
                       onClick={() => applyQuickAction(action, tool)}
-                      className={`rounded-lg border p-3 text-left transition-colors ${
+                      className={`min-w-[180px] shrink-0 rounded-lg border p-3 text-left transition-colors sm:min-w-0 ${
                         tool
                           ? "border-border bg-muted/20 hover:border-primary/50 hover:bg-accent/40"
                           : "border-dashed border-border/70 bg-muted/10 opacity-70"
@@ -282,13 +315,12 @@ export function CreateTab({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium">{action.title}</span>
-                        <Badge variant={tool ? "secondary" : "outline"}>{tool ? tool.type : "not found"}</Badge>
+                        <Badge variant={tool ? "secondary" : "outline"}>{tool ? tool.type : "n/a"}</Badge>
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{action.description}</p>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        Docs: <code>{action.docsEndpoint}</code>
+                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{action.description}</p>
+                      <p className="mt-2 text-[10px] text-muted-foreground truncate">
+                        <code>{tool?.endpoint || action.directEndpoint || action.docsEndpoint}</code>
                       </p>
-                      {tool ? <p className="mt-1 text-[11px] text-primary">Uses: {tool.name}</p> : null}
                     </button>
                   ))}
                 </div>
@@ -296,16 +328,27 @@ export function CreateTab({
 
               <div className="space-y-2">
                 <Label>Tool or pipeline</Label>
-                <Select value={selectedToolKey} onValueChange={setSelectedToolKey} disabled={loadingTools || tools.length === 0}>
+                <Select
+                  value={selectedToolKey}
+                  onValueChange={(value) => {
+                    setToolOverride(null);
+                    setSelectedToolKey(value);
+                  }}
+                  disabled={loadingTools || tools.length === 0}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={loadingTools ? "Loading apiai.me tools…" : "Choose a tool"} />
                   </SelectTrigger>
-                  <SelectContent>
-                    {tools.map((tool) => (
-                      <SelectItem key={`${tool.type}:${tool.slug}`} value={`${tool.type}:${tool.slug}`}>
-                        {tool.name} · {tool.type}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="max-h-72">
+                    {(["workflow", "pipeline", "flow"] as const).map((type) =>
+                      groupedTools[type].length > 0 ? (
+                        groupedTools[type].map((tool) => (
+                          <SelectItem key={`${tool.type}:${tool.slug}`} value={`${tool.type}:${tool.slug}`}>
+                            [{type}] {tool.name}
+                          </SelectItem>
+                        ))
+                      ) : null
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -402,80 +445,33 @@ export function CreateTab({
             <div className="space-y-3">
               <Card className="bg-muted/20 border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Selected input</CardTitle>
+                  <CardTitle className="text-sm">Input images</CardTitle>
                   <CardDescription>
-                    {selectedAssets.length === 0
-                      ? "No media selected yet."
-                      : `${usableAssets.length} usable asset${usableAssets.length === 1 ? "" : "s"} for this tool.`}
+                    {usableAssets.length === 0
+                      ? "Select one or more images to send to apiai.me."
+                      : `${usableAssets.length} usable for this tool.`}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {availableImageAssets.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Choose a Google Drive image from the current folder.</p>
-                      <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                        {availableImageAssets.map((asset) => {
-                          const key = `${asset.sourceAccountId}:${asset.id}`;
-                          const checked = selectedAssetKeys.has(key);
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              aria-pressed={checked}
-                              onClick={() => onToggleAssetSelection?.(asset, !checked)}
-                              className={`overflow-hidden rounded-lg border text-left transition-colors ${
-                                checked ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent/40"
-                              }`}
-                            >
-                              <div className="aspect-square bg-secondary/40">
-                                {asset.thumbnailUrl ? (
-                                  <img src={asset.thumbnailUrl} alt={asset.name} className="h-full w-full object-cover" loading="lazy" />
-                                ) : (
-                                  <div className="flex h-full items-center justify-center">
-                                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="p-2">
-                                <p className="truncate text-[11px] font-medium">{asset.name}</p>
-                                <p className="text-[10px] text-muted-foreground">{checked ? "Selected" : "Click to select"}</p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={onOpenBrowse}>
-                      Select media in Browse
-                    </Button>
-                  )}
-
-                  {selectedAssets.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {usableAssets.map((asset) => (
-                        <div key={`${asset.sourceAccountId}:${asset.id}`} className="flex items-center gap-2 text-xs">
-                          <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{asset.name}</span>
-                          <Badge variant="outline" className="ml-auto shrink-0">
-                            {asset.kind}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  {selectedTool?.maxImages && usableAssets.length > selectedTool.maxImages ? (
-                    <p className="text-[11px] text-muted-foreground">
-                      This tool accepts {selectedTool.maxImages} image{selectedTool.maxImages === 1 ? "" : "s"}; the first selected assets will be used.
-                    </p>
-                  ) : null}
-                  {excludedAssets.length > 0 ? (
-                    <p className="text-[11px] text-muted-foreground">
-                      {excludedAssets.length} selected video asset{excludedAssets.length === 1 ? "" : "s"} excluded because this tool accepts images only.
-                    </p>
-                  ) : null}
+                <CardContent>
+                  <ImageAssetPicker
+                    selectedAssets={selectedAssets}
+                    folderAssets={availableAssets}
+                    onToggle={(asset, selected) => onToggleAssetSelection?.(asset, selected)}
+                    onOpenBrowse={onOpenBrowse}
+                  />
                 </CardContent>
               </Card>
+
+              {selectedTool?.maxImages && usableAssets.length > selectedTool.maxImages ? (
+                <p className="text-[11px] text-muted-foreground">
+                  This tool accepts {selectedTool.maxImages} image{selectedTool.maxImages === 1 ? "" : "s"}; the first selected assets will be used.
+                </p>
+              ) : null}
+              {excludedAssets.length > 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  {excludedAssets.length} selected video asset{excludedAssets.length === 1 ? "" : "s"} excluded because this tool accepts images only.
+                </p>
+              ) : null}
 
               <Button className="w-full" onClick={() => void handleRun()} disabled={!canRun}>
                 {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
@@ -508,19 +504,34 @@ export function CreateTab({
           <CardContent className="space-y-3">
             {result.resultType === "binary" ? (
               <>
-                {result.contentType.startsWith("image/") ? (
-                  <img src={result.dataUrl} alt="Generated content" className="max-h-[520px] rounded-lg border border-border object-contain" />
-                ) : result.contentType.startsWith("video/") ? (
-                  <video src={result.dataUrl} controls className="max-h-[520px] rounded-lg border border-border" />
+                {result.contentType.startsWith("image/") && resultUrl ? (
+                  <img src={resultUrl} alt="Generated content" className="max-h-[520px] rounded-lg border border-border object-contain" />
+                ) : result.contentType.startsWith("video/") && resultUrl ? (
+                  <video src={resultUrl} controls className="max-h-[520px] rounded-lg border border-border" />
                 ) : (
                   <p className="text-sm text-muted-foreground">Binary result: {result.contentType}</p>
                 )}
-                <Button asChild variant="outline">
-                  <a href={result.dataUrl} download={result.filename}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download {result.filename}
-                  </a>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {resultUrl ? (
+                    <Button asChild variant="outline">
+                      <a href={resultUrl} download={result.filename}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download {result.filename}
+                      </a>
+                    </Button>
+                  ) : null}
+                  {onSaveResultToSelection && result.contentType.startsWith("image/") ? (
+                    <Button type="button" variant="secondary" onClick={saveResultToSelection}>
+                      Save to selection
+                    </Button>
+                  ) : null}
+                  {onContinueToPublish ? (
+                    <Button type="button" onClick={onContinueToPublish}>
+                      <Send className="h-4 w-4 mr-2" />
+                      Continue to post
+                    </Button>
+                  ) : null}
+                </div>
               </>
             ) : (
               <pre className="max-h-[420px] overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs">

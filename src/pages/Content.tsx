@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +18,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
+import { ContentFlowGuide } from "@/features/content/ContentFlowGuide";
+import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import { apiUrl } from "@/lib/apiBase";
-import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search } from "lucide-react";
+import { Film, FolderOpen, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -112,6 +115,7 @@ function MediaTile({
             alt={file.name}
             className="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
             onError={() => setImgFailed(true)}
           />
         ) : file.kind === "video" ? (
@@ -147,6 +151,9 @@ function MediaTile({
   );
 }
 
+const GRID_BATCH_SIZE = 12;
+const GRID_INITIAL = 8;
+
 function MediaSection({
   title,
   icon,
@@ -166,8 +173,14 @@ function MediaSection({
   selectedIds: Set<string>;
   onToggleAsset: (file: DriveBrowserItem, checked: boolean) => void;
 }) {
-  const visible = expanded ? files : files.slice(0, previewCount);
-  const hidden = files.length - previewCount;
+  const [visibleCount, setVisibleCount] = useState(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
+
+  useEffect(() => {
+    setVisibleCount(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
+  }, [expanded, files.length, previewCount]);
+
+  const visible = files.slice(0, visibleCount);
+  const hidden = files.length - visible.length;
 
   return (
     <div className="space-y-3">
@@ -186,15 +199,34 @@ function MediaSection({
           />
         ))}
       </div>
-      {files.length > previewCount && (
+      {hidden > 0 ? (
         <button
+          type="button"
+          onClick={() => {
+            if (expanded && visibleCount >= files.length) {
+              onToggleExpand();
+              return;
+            }
+            if (!expanded) onToggleExpand();
+            setVisibleCount((count) => Math.min(files.length, count + GRID_BATCH_SIZE));
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded && visibleCount >= files.length ? "rotate-180" : ""}`} />
+          {expanded && visibleCount >= files.length
+            ? "Show less"
+            : `Show ${Math.min(hidden, GRID_BATCH_SIZE)} more ${title.toLowerCase()}`}
+        </button>
+      ) : expanded ? (
+        <button
+          type="button"
           onClick={onToggleExpand}
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          {expanded ? "Show less" : `Show ${hidden} more ${title.toLowerCase()}`}
+          <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+          Show less
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -211,7 +243,7 @@ export default function ContentPage() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
-  const [contentTab, setContentTab] = useState<"browse" | "create">("browse");
+  const [contentTab, setContentTab] = useState<"browse" | "create" | "publish">("browse");
   const [popupOauthError, setPopupOauthError] = useState<OAuthErrorDetails | null>(null);
   // Selected content assets persist per business profile in the DB (synced
   // across devices and live across pages via React Query), migrating any
@@ -340,6 +372,8 @@ export default function ContentPage() {
   const selectedIds = useMemo(() => new Set(selectedAssets.map((asset) => asset.id)), [selectedAssets]);
   const selectedImages = selectedAssets.filter((asset) => asset.kind === "image");
   const selectedVideos = selectedAssets.filter((asset) => asset.kind === "video");
+  const publishMediaUrls = useMemo(() => publishMediaUrlsFromAssets(selectedAssets), [selectedAssets]);
+  const [publishCaption, setPublishCaption] = useState("");
   const combinedOauthError = popupOauthError || oauthErrorDetails;
   const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId;
 
@@ -539,7 +573,7 @@ export default function ContentPage() {
       <PageHeader
         icon={FolderOpen}
         title="Content"
-        description="Browse Drive media, select assets, and create new content with apiai.me."
+        description="Pick media from Drive, create with apiai.me, then publish or save a draft — all in one flow."
         actions={
           <>
             <Button
@@ -581,6 +615,12 @@ export default function ContentPage() {
         description="Generate decks (Gamma) or design briefs (Canva MCP). Connect providers under Connections → MCP if status shows a missing key."
       />
 
+      <ContentFlowGuide
+        active={contentTab}
+        selectionCount={selectedAssets.length}
+        onGo={setContentTab}
+      />
+
       <div className="flex items-center gap-1 border-b border-border">
         <button
           type="button"
@@ -606,7 +646,30 @@ export default function ContentPage() {
           <Wand2 className="h-3.5 w-3.5" />
           Create
         </button>
+        <button
+          type="button"
+          onClick={() => setContentTab("publish")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            contentTab === "publish"
+              ? "border-primary text-foreground font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Send className="h-3.5 w-3.5" />
+          Post or save
+        </button>
       </div>
+
+      {combinedOauthError ? (
+        <OAuthErrorAlert
+          details={combinedOauthError}
+          message={formatOAuthErrorMessage(combinedOauthError, OAUTH_MESSAGES, "Content connect failed")}
+          onDismiss={() => {
+            setPopupOauthError(null);
+            clearOauthError();
+          }}
+        />
+      ) : null}
 
       {contentTab === "create" ? (
         <CreateTab
@@ -616,23 +679,37 @@ export default function ContentPage() {
           onToggleAssetSelection={saveAssetSelection}
           onOpenBrowse={() => setContentTab("browse")}
           onBeforeRequest={ensureBackendSession}
-        />
-      ) : (
-        <>
-      <PublishComposer />
-
-      {combinedOauthError && (
-        <OAuthErrorAlert
-          details={combinedOauthError}
-          message={formatOAuthErrorMessage(combinedOauthError, OAUTH_MESSAGES, "Content connect failed")}
-          onDismiss={() => {
-            setPopupOauthError(null);
-            clearOauthError();
+          onSaveResultToSelection={(asset) => {
+            saveAssetSelection(asset, true);
+            toast.success("Saved to selection — ready to post");
           }}
+          onContinueToPublish={() => setContentTab("publish")}
         />
-      )}
+      ) : null}
 
-      {error && (
+      {contentTab === "publish" ? (
+        <div className="space-y-4">
+          {selectedAssets.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">Select at least one image or video in Browse first.</p>
+                <Button variant="outline" size="sm" onClick={() => setContentTab("browse")}>
+                  Go to Browse
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+          <PublishComposer
+            initialCaption={publishCaption}
+            mediaUrls={publishMediaUrls}
+            onCaptionChange={setPublishCaption}
+          />
+        </div>
+      ) : null}
+
+      {contentTab === "browse" ? (
+        <>
+      {error ? (
         <Card className="bg-destructive/10 border-destructive/30">
           <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
             <p className="text-sm text-destructive">{error}</p>
@@ -740,8 +817,11 @@ export default function ContentPage() {
           <div className="text-sm text-muted-foreground">
             {selectedImages.length} image{selectedImages.length === 1 ? "" : "s"} and {selectedVideos.length} video{selectedVideos.length === 1 ? "" : "s"} selected.
           </div>
+          <Button variant="outline" onClick={() => setContentTab("publish")} disabled={selectedAssets.length === 0}>
+            Post or save
+          </Button>
           <Button variant="outline" onClick={() => navigate("/social-media")} disabled={selectedAssets.length === 0}>
-            Use in Social Media
+            Open Social Media
           </Button>
           <Button variant="ghost" onClick={handleClearSelection} disabled={selectedAssets.length === 0}>
             Clear selection
@@ -880,7 +960,7 @@ export default function ContentPage() {
         </div>
       )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

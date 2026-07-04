@@ -35,6 +35,9 @@ describe("makeApiaiUrl", () => {
     expect(makeApiaiUrl("workflows")).toBe("https://apiai.me/api/workflows");
     expect(makeApiaiUrl("/flow/x")).toBe("https://apiai.me/api/flow/x");
   });
+  it("handles /api/v1 endpoints", () => {
+    expect(makeApiaiUrl("/api/v1/process/remove-bg")).toBe("https://apiai.me/api/v1/process/remove-bg");
+  });
 });
 
 describe("normalizeWorkflow", () => {

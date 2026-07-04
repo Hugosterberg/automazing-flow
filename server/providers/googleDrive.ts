@@ -117,8 +117,6 @@ function mapDriveFile(
   const thumbnailUrl =
     kind === "folder" || kind === "other"
       ? ""
-      : kind === "image"
-      ? driveFileProxyUrl(accountId, effectiveId, "content", profileId)
       : driveFileProxyUrl(accountId, effectiveId, "thumbnail", profileId);
 
   return {

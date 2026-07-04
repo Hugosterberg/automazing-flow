@@ -10,43 +10,138 @@ export type ApiaiDocumentedImageAction = {
   matchSlugs: string[];
   matchNames: string[];
   toolTypes?: ApiaiTool["type"][];
+  /** When true, allow running via the documented endpoint even if the tool is not listed. */
+  directEndpoint?: string;
+  requiresImage?: boolean;
+  requiresPrompt?: boolean;
 };
 
 export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   {
     id: "remove-background",
     title: "Remove background",
-    description: "Uses the documented image-editing pattern: POST image to an apiai.me processing endpoint.",
+    description: "Strip the background from a product or portrait image.",
     docsEndpoint: "/api/process/remove-bg",
+    directEndpoint: "/api/process/remove-bg",
     defaultOutputFilename: "background-removed",
     matchSlugs: ["remove-bg", "remove-background", "background-removal", "background-remover", "bg-remove"],
     matchNames: ["remove background", "background remover", "background removal", "remove bg", "bg remove"],
+    requiresImage: true,
   },
   {
     id: "enhance-image",
-    title: "Enhance / upscale image",
-    description: "Runs an image enhancement workflow when your apiai.me account exposes one.",
+    title: "Enhance / upscale",
+    description: "Improve sharpness, lighting and clarity for marketing assets.",
     docsEndpoint: "/api/process/your-tool-slug",
     defaultOutputFilename: "enhanced-image",
     promptPlaceholder: "Improve quality, lighting, and product clarity while preserving the original subject.",
     matchSlugs: ["enhance", "image-enhance", "enhance-image", "upscale", "image-upscale", "upscaler"],
     matchNames: ["enhance", "image enhance", "upscale", "upscaler", "improve quality"],
+    requiresImage: true,
+  },
+  {
+    id: "greyscale",
+    title: "Greyscale",
+    description: "Convert an image to greyscale via apiai.me process API.",
+    docsEndpoint: "/api/process/greyscale",
+    directEndpoint: "/api/process/greyscale",
+    defaultOutputFilename: "greyscale",
+    matchSlugs: ["greyscale", "grayscale", "black-and-white", "bw"],
+    matchNames: ["greyscale", "grayscale", "black and white"],
+    requiresImage: true,
   },
   {
     id: "product-pipeline",
-    title: "Run image pipeline",
-    description: "Uses apiai.me's documented pipeline pattern for multi-step image transformations.",
+    title: "Image pipeline",
+    description: "Multi-step transformations (logo digitalize, campaign assets, etc.).",
     docsEndpoint: "/api/pipeline/{slug} or /api/flow/{slug}",
     defaultOutputFilename: "pipeline-result",
     promptPlaceholder: "Create a clean, ready-to-publish marketing asset from this image.",
     matchSlugs: ["product", "product-image", "logo-digitalize", "image-pipeline", "campaign-asset"],
     matchNames: ["product", "logo digitalize", "pipeline", "campaign asset", "marketing asset"],
     toolTypes: ["pipeline", "flow"],
+    requiresImage: true,
+  },
+  {
+    id: "quality-gate",
+    title: "Quality gate",
+    description: "Score image quality before publishing to ads or social.",
+    docsEndpoint: "/api/quality-gate",
+    directEndpoint: "/api/quality-gate",
+    defaultOutputFilename: "quality-report",
+    matchSlugs: ["quality-gate", "quality", "qa"],
+    matchNames: ["quality gate", "quality check", "qa"],
+    requiresImage: true,
+  },
+  {
+    id: "moderation",
+    title: "Moderation check",
+    description: "Check whether an image is safe to publish.",
+    docsEndpoint: "/api/moderation/check-image",
+    directEndpoint: "/api/moderation/check-image",
+    defaultOutputFilename: "moderation-result",
+    matchSlugs: ["moderation", "check-image", "safe-content"],
+    matchNames: ["moderation", "check image", "safe content"],
+    requiresImage: true,
+  },
+  {
+    id: "resize-crop",
+    title: "Resize / crop",
+    description: "Fit images to ad or social formats.",
+    docsEndpoint: "/api/process/resize",
+    defaultOutputFilename: "resized",
+    matchSlugs: ["resize", "crop", "smart-crop", "fit", "aspect"],
+    matchNames: ["resize", "crop", "smart crop", "aspect ratio"],
+    requiresImage: true,
+  },
+  {
+    id: "shadow-reflection",
+    title: "Shadow & reflection",
+    description: "Add product shadows or reflections for e-commerce visuals.",
+    docsEndpoint: "/api/process/product-shadow",
+    defaultOutputFilename: "product-shadow",
+    matchSlugs: ["shadow", "reflection", "product-shadow", "drop-shadow"],
+    matchNames: ["shadow", "reflection", "product shadow"],
+    requiresImage: true,
   },
 ];
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[_-]+/g, " ").trim();
+}
+
+export function resolveDocsEndpoint(action: ApiaiDocumentedImageAction, tool?: ApiaiTool | null): string {
+  if (tool?.endpoint) return tool.endpoint;
+  if (action.directEndpoint) return action.directEndpoint;
+  const slug = action.matchSlugs[0] || "your-tool-slug";
+  if (action.docsEndpoint.includes("{slug}")) {
+    if (tool?.type === "flow") return `/api/flow/${encodeURIComponent(slug)}`;
+    return `/api/pipeline/${encodeURIComponent(slug)}`;
+  }
+  if (action.docsEndpoint.includes("your-tool-slug")) {
+    return `/api/process/${encodeURIComponent(slug)}`;
+  }
+  return action.docsEndpoint.split(" ")[0] || action.docsEndpoint;
+}
+
+export function syntheticToolFromAction(
+  action: ApiaiDocumentedImageAction,
+  endpoint: string
+): ApiaiTool {
+  const needsImage = action.requiresImage !== false;
+  return {
+    slug: action.id,
+    name: action.title,
+    description: action.description,
+    endpoint,
+    type: endpoint.includes("/flow/") ? "flow" : endpoint.includes("/pipeline/") ? "pipeline" : "workflow",
+    acceptedInputs: needsImage ? ["image", "prompt"] : ["prompt"],
+    requiredInputs: needsImage ? ["image"] : [],
+    outputTypes: endpoint.includes("moderation") || endpoint.includes("quality-gate") ? ["json"] : ["image"],
+    params: [],
+    supportsPrompt: Boolean(action.promptPlaceholder) || !needsImage,
+    maxImages: 1,
+  };
 }
 
 export function findToolForAction(
@@ -57,13 +152,24 @@ export function findToolForAction(
   const normalizedSlugs = new Set(action.matchSlugs.map(normalize));
   const normalizedNames = action.matchNames.map(normalize);
 
-  return (
+  const matched =
     tools.find((tool) => {
       if (allowedTypes && !allowedTypes.has(tool.type)) return false;
       const slug = normalize(tool.slug);
       const name = normalize(tool.name);
       if (normalizedSlugs.has(slug)) return true;
       return normalizedNames.some((needle) => name.includes(needle) || slug.includes(needle));
-    }) ?? null
-  );
+    }) ?? null;
+
+  if (matched) return matched;
+  if (!action.directEndpoint && !action.docsEndpoint.includes("your-tool-slug")) return null;
+  return syntheticToolFromAction(action, resolveDocsEndpoint(action));
+}
+
+export function groupToolsByType(tools: ApiaiTool[]): Record<ApiaiTool["type"], ApiaiTool[]> {
+  return {
+    workflow: tools.filter((t) => t.type === "workflow"),
+    pipeline: tools.filter((t) => t.type === "pipeline"),
+    flow: tools.filter((t) => t.type === "flow"),
+  };
 }

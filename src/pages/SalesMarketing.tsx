@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { m } from "framer-motion";
 import {
   ChevronRight,
@@ -38,6 +39,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { LeadsSection, useLeads, isLeadOpen, type Lead } from "@/features/leads";
+import { BrandDiscoverySection } from "@/features/brand-discovery";
+import { SalesPlaybookSection } from "@/features/sales-playbook";
+import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks, TaskEditDialog } from "@/features/tasks";
@@ -224,6 +228,19 @@ export default function SalesMarketingPage() {
     description: activeProfile?.notes ?? undefined,
     location: activeProfile?.location ?? undefined,
   };
+  const marketingContext = {
+    businessName: activeProfile?.name,
+    company: activeProfile?.company,
+    website: activeProfile?.website,
+    email: activeProfile?.email,
+    location: activeProfile?.location,
+    notes: activeProfile?.notes,
+  };
+  const contentIdeasContext = {
+    businessName: activeProfile?.name,
+    description: activeProfile?.notes ?? undefined,
+    audience: activeProfile?.location ? `Customers in ${activeProfile.location}` : undefined,
+  };
 
   const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting, isUpdating } = useTasks(businessProfileId);
 
@@ -317,7 +334,7 @@ export default function SalesMarketingPage() {
   }
 
   // KPIs are driven by the real leads pipeline (not pipeline-tagged tasks).
-  const { leads } = useLeads(businessProfileId);
+  const { leads, createLead } = useLeads(businessProfileId);
   const activeLeads = leads.filter((l) => isLeadOpen(l.status)).length;
   const wonLeads = leads.filter((l) => l.status === "won").length;
   const lostLeads = leads.filter((l) => l.status === "lost").length;
@@ -373,6 +390,36 @@ export default function SalesMarketingPage() {
           followUpsOnly={showFollowUpsOnly}
           onAddToPipeline={openPipelineFromLead}
         />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.042 }}>
+        <BrandDiscoverySection
+          businessProfileId={businessProfileId}
+          {...marketingContext}
+          onAddAsLead={async (item) => {
+            try {
+              await createLead({
+                company: item.label,
+                email: item.kind === "email" ? item.value : null,
+                website: item.kind === "website" ? item.value : null,
+                notes: item.reason || null,
+                source: "outreach-discovery",
+                status: "new",
+              });
+              toast.success("Added to leads");
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Couldn't add the lead.");
+            }
+          }}
+        />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.043 }}>
+        <SalesPlaybookSection businessProfileId={businessProfileId} {...marketingContext} />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.044 }}>
+        <ContentIdeasCard businessProfileId={businessProfileId} context={contentIdeasContext} />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>

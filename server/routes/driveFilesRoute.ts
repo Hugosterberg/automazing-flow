@@ -6,6 +6,8 @@
  * headers so the <video> element can seek.
  */
 
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { fetchGoogleDriveFileResponse } from "../providers/googleDrive.ts";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
@@ -83,6 +85,12 @@ export function registerDriveFilesRoute(app, deps: DriveFilesRouteDeps) {
       // instead of re-proxying the same bytes on every render.
       res.setHeader("Cache-Control", "private, max-age=3600");
       res.status(upstream.status);
+
+      if (upstream.body && typeof Readable.fromWeb === "function") {
+        const nodeStream = Readable.fromWeb(upstream.body as import("stream/web").ReadableStream);
+        await pipeline(nodeStream, res);
+        return;
+      }
 
       return res.end(Buffer.from(await upstream.arrayBuffer()));
     } catch (err) {

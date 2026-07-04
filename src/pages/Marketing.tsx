@@ -25,15 +25,18 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
 import {
   MarketingCampaigns,
   MarketingPerformance,
   InventoryAdsAlert,
   CampaignFollowUp,
+  MarketingPathsHub,
   type FollowUpCampaign,
 } from "@/features/marketing";
+import { SalesPlaybookSection } from "@/features/sales-playbook";
+import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
@@ -60,6 +63,13 @@ const CAMPAIGN_CHANNELS = [
   { value: "google_pmax", label: "Google Performance Max" },
   { value: "google_display", label: "Google Display" },
   { value: "meta_social", label: "Meta Facebook/Instagram" },
+  { value: "social_organic", label: "Organisk social" },
+  { value: "email_newsletter", label: "E-post / nyhetsbrev" },
+  { value: "seo_content", label: "SEO & innehåll" },
+  { value: "influencer", label: "Influencer / UGC" },
+  { value: "marketplace", label: "Marknadsplats / e-handel" },
+  { value: "pr_events", label: "PR / event" },
+  { value: "referral", label: "Referral / partners" },
   { value: "cross_channel", label: "Cross-channel" },
 ] as const;
 
@@ -111,6 +121,21 @@ export default function MarketingPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts } = useAccounts();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const { profiles } = useBusinessProfiles();
+  const activeProfile = profiles.find((p) => p.id === businessProfileId);
+  const marketingContext = {
+    businessName: activeProfile?.name,
+    company: activeProfile?.company,
+    website: activeProfile?.website,
+    email: activeProfile?.email,
+    location: activeProfile?.location,
+    notes: activeProfile?.notes,
+  };
+  const contentIdeasContext = {
+    businessName: activeProfile?.name,
+    description: activeProfile?.notes ?? undefined,
+    audience: activeProfile?.location ? `Customers in ${activeProfile.location}` : undefined,
+  };
   const { tasks, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
 
   const campaignTasks = useMemo(
@@ -258,10 +283,26 @@ export default function MarketingPage() {
       <PageHeader
         icon={Megaphone}
         title="Marketing"
-        description="Kampanjer, annonskanaler och marknadsföringsflöden."
+        description="Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap."
       />
 
       <m.div {...pageFadeUp}>
+        <MarketingPathsHub />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.02 }} id="marketing-ideas" className="space-y-4">
+        <SalesPlaybookSection
+          businessProfileId={businessProfileId}
+          {...marketingContext}
+          modes={["channels", "campaigns", "promotions"]}
+          defaultMode="channels"
+          title="Marketing ideas"
+          description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
+        />
+        <ContentIdeasCard businessProfileId={businessProfileId} context={contentIdeasContext} />
+      </m.div>
+
+      <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
         <SectionConnectionStatus area="marketing" />
       </m.div>
 
@@ -294,7 +335,14 @@ export default function MarketingPage() {
         </m.div>
       ) : null}
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.04 }} className="grid gap-3 sm:grid-cols-2">
+      <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="space-y-3 scroll-mt-24" id="paid-ads">
+        <div>
+          <h2 className="text-sm font-semibold">Paid advertising</h2>
+          <p className="text-xs text-muted-foreground">
+            Connect Google Ads and Meta to track spend, ROAS and live campaigns.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
         {MARKETING_PLATFORMS.map((item) => {
           const connected = accounts.some((account) => account.platform === item.platform);
           return (
@@ -341,7 +389,8 @@ export default function MarketingPage() {
             </Card>
           );
         })}
-      </m.div>
+        </div>
+      </m.section>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
         <InventoryAdsAlert />
