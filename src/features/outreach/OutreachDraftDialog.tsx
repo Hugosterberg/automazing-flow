@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Copy, ExternalLink, Loader2, Mail, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,6 +120,13 @@ export function OutreachDraftDialog({
             Personalized cold email, LinkedIn message, and follow-up for this potential customer.
           </DialogDescription>
         </DialogHeader>
+
+        {!businessProfileId ? (
+          <Alert variant="destructive">
+            <AlertTitle>No active profile</AlertTitle>
+            <AlertDescription>Select a business profile before generating outreach drafts.</AlertDescription>
+          </Alert>
+        ) : null}
 
         <Tabs
           value={channel}

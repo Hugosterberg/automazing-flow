@@ -598,6 +598,7 @@ export default function ContentPage() {
 
   function recordGeneratedAsset(asset: SelectedContentAsset, options?: { toolName?: string }) {
     recordAsset(asset, options);
+    toast.message("Saved to History");
   }
 
   function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
@@ -837,30 +838,31 @@ export default function ContentPage() {
       {activeAccount && (
         <div className="space-y-3">
           {/* View tabs */}
-          <div className="flex items-center gap-1 border-b border-border">
-            <button
-              onClick={() => { setDriveView("my-drive"); setCurrentFolderId(null); setFolderStack([]); }}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-                driveView === "my-drive"
-                  ? "border-primary text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <HardDrive className="h-3.5 w-3.5" />
-              My Drive
-            </button>
-            <button
-              onClick={() => { setDriveView("shared-with-me"); setCurrentFolderId(null); setFolderStack([]); }}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-                driveView === "shared-with-me"
-                  ? "border-primary text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              Shared with me
-            </button>
-          </div>
+          <Tabs
+            value={driveView}
+            onValueChange={(value) => {
+              setDriveView(value === "shared-with-me" ? "shared-with-me" : "my-drive");
+              setCurrentFolderId(null);
+              setFolderStack([]);
+            }}
+          >
+            <TabsList className="h-auto rounded-none border-b border-border bg-transparent p-0">
+              <TabsTrigger
+                value="my-drive"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+              >
+                <HardDrive className="h-3.5 w-3.5" />
+                My Drive
+              </TabsTrigger>
+              <TabsTrigger
+                value="shared-with-me"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+              >
+                <Users className="h-3.5 w-3.5" />
+                Shared with me
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           {/* Breadcrumb with back arrow */}
           {folderStack.length > 0 && (
             <div className="flex items-center gap-1.5 text-sm min-w-0">

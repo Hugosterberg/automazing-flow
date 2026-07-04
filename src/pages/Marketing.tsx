@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Layers, Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,13 +36,11 @@ import {
   type FollowUpCampaign,
 } from "@/features/marketing";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
-import { OutreachContentCard } from "@/features/outreach";
 import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
-import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 
@@ -118,7 +116,6 @@ function dueAtFromDate(date: string) {
 }
 
 export default function MarketingPage() {
-  const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts } = useAccounts();
@@ -134,10 +131,6 @@ export default function MarketingPage() {
     notes: activeProfile?.notes,
   };
 
-  function handoffContentIdea(text: string) {
-    stashContentCaption(text);
-    navigate("/content?tab=publish");
-  }
   const { tasks, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
 
   const campaignTasks = useMemo(
@@ -301,15 +294,22 @@ export default function MarketingPage() {
           title="Marketing ideas"
           description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
         />
-        <OutreachContentCard
-          businessProfileId={businessProfileId}
-          context={{
-            ...marketingContext,
-            description: marketingContext.notes,
-            targetAudience: activeProfile?.location ? `Kunder i ${activeProfile.location}` : undefined,
-          }}
-          onUseIdea={handoffContentIdea}
-        />
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Megaphone className="h-4 w-4 text-primary" />
+              Content that attracts customers
+            </CardTitle>
+            <CardDescription>
+              Post ideas that warm up potential buyers live in Content — social posts and outreach angles in one place.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/content">Open Content ideas →</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
