@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Plus,
   Clock,
@@ -10,6 +11,7 @@ import {
   CalendarDays,
   Loader2,
   Pencil,
+  Send,
 } from "lucide-react";
 import {
   format,
@@ -64,6 +66,8 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useProfileDocument } from "@/features/profile-documents";
 import { accountDataUrl } from "@/lib/accountDataUrl";
+import { useScheduledPosts, SCHEDULED_POST_STATUS_LABELS, type ScheduledPost } from "@/features/social";
+import { platformLabel } from "@/lib/platformLabels";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -104,6 +108,17 @@ function isExternalEvent(ev: CalendarEvent & { source?: string; readOnly?: boole
 }
 
 type ViewMode = "day" | "week" | "month";
+
+/** Calendar row: a normal event, or a social post carried along for its dialog. */
+type CalendarItem = CalendarEvent & { post?: ScheduledPost };
+
+function localTimeOfIso(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 type CalendarProviderData = {
   source?: string;
   events?: CalendarEvent[];
@@ -133,6 +148,11 @@ export default function CalendarPage() {
   const [formTime, setFormTime] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formAutomated, setFormAutomated] = useState(false);
+  // Social-post reschedule dialog (scheduled posts from the publishing pipeline).
+  const scheduledPosts = useScheduledPosts();
+  const [postDialog, setPostDialog] = useState<ScheduledPost | null>(null);
+  const [postFormDate, setPostFormDate] = useState("");
+  const [postFormTime, setPostFormTime] = useState("");
 
   const {
     activeAccount: activeCalendarAccount,
@@ -177,7 +197,47 @@ export default function CalendarPage() {
       })),
     [providerData]
   );
-  const allEvents = useMemo(() => [...localEvents, ...externalEvents], [localEvents, externalEvents]);
+  // Pipeline posts with a time appear as calendar items with platform badges.
+  const socialEvents = useMemo<CalendarItem[]>(
+    () =>
+      scheduledPosts.posts
+        .filter((p) => p.scheduledFor)
+        .map((p) => ({
+          id: `post_${p.id}`,
+          title: p.caption.trim() || "Socialt inlägg",
+          date: isoToLocalDateInputValue(p.scheduledFor as string),
+          time: localTimeOfIso(p.scheduledFor as string),
+          isAutomated: true,
+          createdAt: p.createdAt,
+          source: "social" as const,
+          readOnly: true,
+          post: p,
+        })),
+    [scheduledPosts.posts]
+  );
+  const allEvents = useMemo<CalendarItem[]>(
+    () => [...localEvents, ...externalEvents, ...socialEvents],
+    [localEvents, externalEvents, socialEvents]
+  );
+
+  const openPostDialog = (post: ScheduledPost) => {
+    setPostDialog(post);
+    if (post.scheduledFor) {
+      setPostFormDate(isoToLocalDateInputValue(post.scheduledFor));
+      setPostFormTime(localTimeOfIso(post.scheduledFor));
+    } else {
+      setPostFormDate(format(new Date(), "yyyy-MM-dd"));
+      setPostFormTime("09:00");
+    }
+  };
+
+  const savePostReschedule = () => {
+    if (!postDialog || !postFormDate) return;
+    const next = new Date(`${postFormDate}T${postFormTime || "09:00"}`);
+    if (Number.isNaN(next.getTime())) return;
+    scheduledPosts.reschedule(postDialog.id, next.toISOString());
+    setPostDialog(null);
+  };
 
   const businessProfileId = activeBusinessProfileId ?? activeProfileId ?? null;
   const { tasks } = useTasks(businessProfileId);
@@ -505,12 +565,18 @@ export default function CalendarPage() {
                   </p>
                 ) : (
                   <ul className="space-y-2">
-                    {sortByTime(eventsOnDate(currentDate)).map((ev) => (
+                    {sortByTime(eventsOnDate(currentDate)).map((ev: CalendarItem) => (
                       <li
                         key={ev.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted group"
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted group",
+                          ev.source === "social" && "cursor-pointer"
+                        )}
+                        onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                       >
-                        {ev.isAutomated ? (
+                        {ev.source === "social" ? (
+                          <Send className="h-4 w-4 text-primary shrink-0" />
+                        ) : ev.isAutomated ? (
                           <Zap className="h-4 w-4 text-primary shrink-0" />
                         ) : (
                           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -519,7 +585,18 @@ export default function CalendarPage() {
                           <p className="font-medium truncate">{ev.title}</p>
                           <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
                             {ev.time ? <span>{ev.time}</span> : null}
-                            {isExternalEvent(ev) ? (
+                            {ev.source === "social" && ev.post ? (
+                              <>
+                                {ev.post.platforms.map((p) => (
+                                  <span key={p} className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                                    {platformLabel(p)}
+                                  </span>
+                                ))}
+                                <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                                  {SCHEDULED_POST_STATUS_LABELS[ev.post.status]}
+                                </span>
+                              </>
+                            ) : isExternalEvent(ev) ? (
                               <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
                                 External
                               </span>
@@ -575,18 +652,29 @@ export default function CalendarPage() {
                         <p className="text-sm font-semibold">{format(day, "d")}</p>
                       </div>
                       <ul className="space-y-1">
-                        {sortByTime(dayEvents).map((ev) => (
+                        {sortByTime(dayEvents).map((ev: CalendarItem) => (
                           <li
                             key={ev.id}
-                            className="group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs"
+                            className={cn(
+                              "group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs",
+                              ev.source === "social" && "cursor-pointer"
+                            )}
+                            onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                           >
-                            {ev.isAutomated ? (
+                            {ev.source === "social" ? (
+                              <Send className="h-3 w-3 text-primary shrink-0" />
+                            ) : ev.isAutomated ? (
                               <Zap className="h-3 w-3 text-primary shrink-0" />
                             ) : (
                               <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
                             )}
                             <span className="truncate flex-1">{ev.title}</span>
-                            {isExternalEvent(ev) ? (
+                            {ev.source === "social" && ev.post ? (
+                              <span className="shrink-0 text-[9px] uppercase text-primary">
+                                {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
+                                {ev.post.platforms.length > 1 ? ` +${ev.post.platforms.length - 1}` : ""}
+                              </span>
+                            ) : isExternalEvent(ev) ? (
                               <span className="shrink-0 text-[9px] uppercase text-muted-foreground">Ext</span>
                             ) : null}
                             {!ev.readOnly && (
@@ -689,10 +777,14 @@ export default function CalendarPage() {
           <CardContent className="py-4">
             <h2 className="text-sm font-semibold mb-3">Upcoming events</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {upcomingEvents.map((ev) => (
+              {upcomingEvents.map((ev: CalendarItem) => (
                 <div
                   key={ev.id}
-                  className="shrink-0 w-44 p-3 rounded-lg border border-border/50 bg-muted/20"
+                  className={cn(
+                    "shrink-0 w-44 p-3 rounded-lg border border-border/50 bg-muted/20",
+                    ev.source === "social" && "cursor-pointer hover:bg-muted/40"
+                  )}
+                  onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                 >
                   <p className="font-medium text-sm truncate">{ev.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5">
@@ -700,7 +792,11 @@ export default function CalendarPage() {
                       {format(parseISO(ev.date), "EEE d MMM", { locale: enUS })}
                       {ev.time && ` · ${ev.time}`}
                     </span>
-                    {isExternalEvent(ev) ? (
+                    {ev.source === "social" && ev.post ? (
+                      <span className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                        {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
+                      </span>
+                    ) : isExternalEvent(ev) ? (
                       <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
                         External
                       </span>
@@ -788,6 +884,63 @@ export default function CalendarPage() {
             <Button onClick={saveEvent} disabled={!formTitle.trim()}>
               {editingEventId ? "Save" : "Add"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={postDialog != null} onOpenChange={(open) => { if (!open) setPostDialog(null); }}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Scheduled post</DialogTitle>
+            <DialogDescription>
+              {postDialog
+                ? postDialog.status === "published"
+                  ? "This post is already published."
+                  : "Move the publish time, or open the post in the composer to edit it."
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {postDialog ? (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                <p className="text-sm whitespace-pre-line line-clamp-5">{postDialog.caption || "(tomt inlägg)"}</p>
+                <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  {postDialog.platforms.map((p) => (
+                    <span key={p} className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                      {platformLabel(p)}
+                    </span>
+                  ))}
+                  <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                    {SCHEDULED_POST_STATUS_LABELS[postDialog.status]}
+                  </span>
+                  {postDialog.error ? <span className="text-destructive">{postDialog.error}</span> : null}
+                </p>
+              </div>
+              {postDialog.status !== "published" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="post-date">Date</Label>
+                    <Input id="post-date" type="date" value={postFormDate} onChange={(e) => setPostFormDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="post-time">Time</Label>
+                    <Input id="post-time" type="time" value={postFormTime} onChange={(e) => setPostFormTime(e.target.value)} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2">
+            {postDialog ? (
+              <Button variant="outline" asChild>
+                <Link to={`/social-media?post=${postDialog.id}`}>Open in composer</Link>
+              </Button>
+            ) : null}
+            {postDialog && postDialog.status !== "published" ? (
+              <Button onClick={savePostReschedule} disabled={!postFormDate}>
+                Save new time
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>

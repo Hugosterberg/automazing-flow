@@ -1,18 +1,11 @@
 import { m } from "framer-motion";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import {
-  Users,
-  FileText,
   Sparkles,
-  Heart,
-  Eye,
   ImagePlus,
   Loader2,
-  BarChart3,
   Film,
   FolderOpen,
-  Star,
-  MapPin,
   ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,7 +24,18 @@ import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { PublishComposer } from "@/features/content/PublishComposer";
-import { SocialAutomationPanel } from "@/features/social/SocialAutomationPanel";
+import {
+  SocialAutomationPanel,
+  ScheduledPostsList,
+  useScheduledPosts,
+  GoogleBusinessCard,
+  SocialVideoDraftCard,
+  SocialStatsSection,
+  SocialOverviewCard,
+  type ScheduledPost,
+  type SocialMediaApiPost,
+  type SocialMediaApiResponse,
+} from "@/features/social";
 import { apiUrl } from "@/lib/apiBase";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -90,79 +94,6 @@ function sortSocialPageAccounts(a: ConnectedAccount, b: ConnectedAccount): numbe
   if (ra !== rb) return ra - rb;
   return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
 }
-
-const defaultStats = [
-  { label: "Followers", value: "–", change: "", icon: Users, key: "followers" },
-  { label: "Following", value: "–", change: "", icon: Users, key: "following" },
-  { label: "Posts", value: "–", change: "", icon: FileText, key: "media" },
-  { label: "Engagement", value: "–", change: "", icon: Heart, key: "engagement" },
-];
-
-
-type SocialMediaApiPost = {
-  id: string;
-  caption: string;
-  picture: string;
-  permalink: string;
-  mediaType: string;
-  likeCount: number;
-  commentCount: number;
-  viewCount?: number;
-  createdTime: string;
-};
-
-type GoogleBusinessPanel = {
-  source: "zernio" | "official";
-  title?: string;
-  phone?: string;
-  website?: string;
-  addressLines: string[];
-  primaryCategory?: string;
-  averageRating?: number;
-  reviewCount?: number;
-  reviews: Array<{
-    id: string;
-    author: string;
-    rating?: number;
-    text: string;
-    createdAt: string;
-    url?: string;
-  }>;
-};
-
-type SocialMediaApiResponse = {
-  source?: string;
-  stats?: {
-    followersCount?: number;
-    followingCount?: number;
-    mediaCount?: number;
-    accountType?: string;
-    totalLikes?: number;
-    totalComments?: number;
-    totalViews?: number;
-    avgLikes?: number;
-    avgComments?: number;
-    avgViews?: number;
-    engagementRate?: number;
-    updatedAt?: string;
-    zernioNote?: string;
-    averageRating?: number;
-    reviewCount?: number;
-  };
-  profile?: {
-    displayName?: string;
-    username?: string;
-    media_count?: number;
-    followers_count?: number;
-    follows_count?: number;
-    account_type?: string;
-    stats?: SocialMediaApiResponse["stats"];
-  };
-  media?: SocialMediaApiPost[];
-  googleBusiness?: GoogleBusinessPanel;
-  reviews?: GoogleBusinessPanel["reviews"];
-  zernioExtra?: Record<string, unknown>;
-};
 
 /** Maps old error codes to current Zernio names */
 const OAUTH_ERROR_ALIASES: Record<string, string> = {
@@ -290,38 +221,12 @@ function normalizeCanvaDesignId(value: string): string {
   return trimmed.replace(/^design:/i, "").trim();
 }
 
-type VideoDraftResult = {
-  title: string;
-  hook: string;
-  concept: string;
-  shots: string[];
-  caption: string;
-  cta: string;
-};
-
-async function generateVideoDraft(payload: {
-  asset: Pick<SelectedContentAsset, "id" | "name" | "mimeType" | "kind" | "webViewLink">;
-  prompt: string;
-  platform: string;
-  objective: string;
-}): Promise<{ draft: VideoDraftResult; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/video-draft"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(apiErrorMessage(payload, "Could not generate video draft"));
-  }
-  return res.json();
-}
-
 export default function SocialMedia() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
+  const [editingPost, setEditingPost] = useState<ScheduledPost | null>(null);
+  const { posts: pipelinePosts } = useScheduledPosts();
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId, showOverview, updateAccountAnalysis, updateAccountStats } =
     useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
@@ -347,10 +252,7 @@ export default function SocialMedia() {
   const [activeSocialTab, setActiveSocialTab] = useState<SocialPlatform>("instagram");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ about: string; writes: string; perception: string } | null>(null);
-  const [recentPosts, setRecentPosts] = useState<{
-    id: string; caption: string; picture: string; permalink: string;
-    mediaType: string; likeCount: number; commentCount: number; viewCount?: number; createdTime: string;
-  }[]>([]);
+  const [recentPosts, setRecentPosts] = useState<SocialMediaApiPost[]>([]);
 
   const accountsRef = useRef(accounts);
   useEffect(() => {
@@ -491,14 +393,6 @@ export default function SocialMedia() {
   const [imageSource, setImageSource] = useState<"openai" | "canva" | null>(null);
   const [canvaDesignId, setCanvaDesignId] = useState("");
   const [exportingCanva, setExportingCanva] = useState(false);
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const [videoPrompt, setVideoPrompt] = useState("");
-  const [videoPlatform, setVideoPlatform] = useState("Instagram Reels");
-  const [videoObjective, setVideoObjective] = useState("Create a short social media video");
-  const [generatingVideoDraft, setGeneratingVideoDraft] = useState(false);
-  const [videoDraftSource, setVideoDraftSource] = useState<string | null>(null);
-  const [videoDraft, setVideoDraft] = useState<VideoDraftResult | null>(null);
-  const [videoDraftError, setVideoDraftError] = useState<string | null>(null);
   // Read the shared content selection from the DB (synced across devices/pages).
   const selectedContent = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
     legacyRead: () => {
@@ -539,19 +433,23 @@ export default function SocialMedia() {
   }, [uploadedImage, selectedContentImages]);
 
   useEffect(() => {
-    if (!selectedVideoId && selectedContentVideos.length > 0) {
-      setSelectedVideoId(selectedContentVideos[0].id);
-    }
-    if (selectedVideoId && !selectedContentVideos.some((asset) => asset.id === selectedVideoId)) {
-      setSelectedVideoId(selectedContentVideos[0]?.id || null);
-    }
-  }, [selectedContentVideos, selectedVideoId]);
-
-  useEffect(() => {
     setRecentPosts([]);
     setAnalysisResult(null);
     setAnalyzing(false);
   }, [selectedAccountId]);
+
+  // Deep link from the Calendar: /social-media?post=<id> opens that pipeline
+  // post in the composer. The param is consumed so refresh doesn't re-open it.
+  useEffect(() => {
+    const postId = searchParams.get("post");
+    if (!postId) return;
+    const post = pipelinePosts.find((p) => p.id === postId);
+    if (!post) return;
+    setEditingPost(post);
+    const next = new URLSearchParams(searchParams);
+    next.delete("post");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, pipelinePosts]);
 
   useEffect(() => {
     if (searchParams.get("create") !== "canva") return;
@@ -582,48 +480,6 @@ export default function SocialMedia() {
       setSelectedAccountId("social-media", null);
     }
   }, [selectedAccountId, socialAccounts, setSelectedAccountId]);
-
-  const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
-
-  const overviewData = useMemo(() => {
-    const summary = socialAccounts.reduce(
-      (acc, a) => {
-        acc.connected += 1;
-        if (typeof a.stats?.followersCount === "number") { acc.followers += a.stats.followersCount; acc.hasFollowers = true; }
-        if (typeof a.stats?.mediaCount === "number") { acc.posts += a.stats.mediaCount; acc.hasPosts = true; }
-        if (typeof a.stats?.engagementRate === "number") { acc.engagementSum += a.stats.engagementRate; acc.engagementCount += 1; }
-        if (typeof a.stats?.totalLikes === "number") { acc.totalLikes += a.stats.totalLikes; acc.hasTotalLikes = true; }
-        if (typeof a.stats?.totalComments === "number") { acc.totalComments += a.stats.totalComments; acc.hasTotalComments = true; }
-        if (typeof a.stats?.avgLikes === "number") { acc.avgLikesSum += a.stats.avgLikes; acc.avgLikesCount += 1; }
-        if (typeof a.stats?.avgComments === "number") { acc.avgCommentsSum += a.stats.avgComments; acc.avgCommentsCount += 1; }
-        if (typeof a.stats?.updatedAt === "string") {
-          const ts = Date.parse(a.stats.updatedAt);
-          if (!Number.isNaN(ts) && ts > acc.lastUpdatedTs) { acc.lastUpdatedTs = ts; acc.lastUpdatedIso = a.stats.updatedAt; }
-        }
-        return acc;
-      },
-      { connected: 0, followers: 0, posts: 0, engagementSum: 0, engagementCount: 0, hasFollowers: false, hasPosts: false, totalLikes: 0, totalComments: 0, avgLikesSum: 0, avgLikesCount: 0, avgCommentsSum: 0, avgCommentsCount: 0, hasTotalLikes: false, hasTotalComments: false, lastUpdatedTs: 0, lastUpdatedIso: null as string | null }
-    );
-
-    const byPlatform = socialAccounts.reduce<Record<string, { accounts: number; followers: number; posts: number }>>(
-      (acc, a) => {
-        const entry = acc[a.platform] ?? { accounts: 0, followers: 0, posts: 0 };
-        entry.accounts += 1;
-        if (typeof a.stats?.followersCount === "number") entry.followers += a.stats.followersCount;
-        if (typeof a.stats?.mediaCount === "number") entry.posts += a.stats.mediaCount;
-        acc[a.platform] = entry;
-        return acc;
-      },
-      {}
-    );
-
-    return {
-      ...summary,
-      avgLikes: summary.avgLikesCount > 0 ? summary.avgLikesSum / summary.avgLikesCount : null,
-      avgComments: summary.avgCommentsCount > 0 ? summary.avgCommentsSum / summary.avgCommentsCount : null,
-      byPlatform: Object.entries(byPlatform).sort((a, b) => a[0].localeCompare(b[0])),
-    };
-  }, [socialAccounts]);
 
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
 
@@ -697,36 +553,6 @@ export default function SocialMedia() {
       setImageWorkflowError(error instanceof Error ? error.message : "Could not export Canva design");
     } finally {
       setExportingCanva(false);
-    }
-  }
-
-  const selectedVideoAsset =
-    selectedContentVideos.find((asset) => asset.id === selectedVideoId) ?? selectedContentVideos[0] ?? null;
-
-  async function handleGenerateVideoDraft() {
-    if (!selectedVideoAsset) return;
-    setGeneratingVideoDraft(true);
-    setVideoDraft(null);
-    setVideoDraftError(null);
-    try {
-      const result = await generateVideoDraft({
-        asset: {
-          id: selectedVideoAsset.id,
-          name: selectedVideoAsset.name,
-          mimeType: selectedVideoAsset.mimeType,
-          kind: selectedVideoAsset.kind,
-          webViewLink: selectedVideoAsset.webViewLink,
-        },
-        prompt: videoPrompt,
-        platform: videoPlatform,
-        objective: videoObjective,
-      });
-      setVideoDraft(result.draft);
-      setVideoDraftSource(result.source);
-    } catch (error) {
-      setVideoDraftError(error instanceof Error ? error.message : "Could not generate video draft");
-    } finally {
-      setGeneratingVideoDraft(false);
     }
   }
 
@@ -859,80 +685,7 @@ export default function SocialMedia() {
 
       {!selectedAccount && showOverview && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Total overview</span>
-          </div>
-          <Card className="bg-card border-border">
-            <CardContent className="py-5 px-6">
-              <p className="text-xs text-muted-foreground mb-4">
-                Aggregated social media metrics for all connected accounts in this profile.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Connected accounts</p>
-                  <p className="font-semibold">{numberFmt.format(overviewData.connected)}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Total followers</p>
-                  <p className="font-semibold">{overviewData.hasFollowers ? numberFmt.format(overviewData.followers) : "–"}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Total posts/templates</p>
-                  <p className="font-semibold">{overviewData.hasPosts ? numberFmt.format(overviewData.posts) : "–"}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Average engagement rate</p>
-                  <p className="font-semibold">
-                    {overviewData.engagementCount > 0 ? `${(overviewData.engagementSum / overviewData.engagementCount).toFixed(1)}%` : "–"}
-                  </p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Total likes</p>
-                  <p className="font-semibold">{overviewData.hasTotalLikes ? numberFmt.format(overviewData.totalLikes) : "–"}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Total comments</p>
-                  <p className="font-semibold">{overviewData.hasTotalComments ? numberFmt.format(overviewData.totalComments) : "–"}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Average likes/account</p>
-                  <p className="font-semibold">{overviewData.avgLikes != null ? overviewData.avgLikes.toFixed(1) : "–"}</p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Average comments/account</p>
-                  <p className="font-semibold">{overviewData.avgComments != null ? overviewData.avgComments.toFixed(1) : "–"}</p>
-                </div>
-              </div>
-
-              <div className="rounded-md border border-border mt-4">
-                <div className="px-3 py-2 border-b border-border">
-                  <p className="text-xs font-medium text-muted-foreground">Breakdown by platform</p>
-                </div>
-                <div className="px-3 py-2 space-y-2">
-                  {overviewData.byPlatform.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No connected social accounts yet.</p>
-                  ) : (
-                    overviewData.byPlatform.map(([platform, values]) => (
-                      <div key={platform} className="flex items-center justify-between text-xs">
-                        <span className="capitalize">{platform.replace("_", " ")}</span>
-                        <span className="text-muted-foreground">
-                          {values.accounts} acc · {numberFmt.format(values.followers)} followers · {numberFmt.format(values.posts)} posts
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground mt-3">
-                Last update:{" "}
-                {overviewData.lastUpdatedIso
-                  ? new Date(overviewData.lastUpdatedIso).toLocaleString("sv-SE")
-                  : "No stats timestamp available"}
-              </p>
-            </CardContent>
-          </Card>
+          <SocialOverviewCard accounts={socialAccounts} />
         </m.div>
       )}
 
@@ -1005,90 +758,7 @@ export default function SocialMedia() {
         socialData &&
         dataAccountId === selectedAccountId && (
           <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.12 }}>
-            <Card className="bg-card border-border glow-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <GoogleBusinessIcon className="h-5 w-5" />
-                  Google Business Profile
-                </CardTitle>
-                <CardDescription>
-                  {socialData.googleBusiness?.source === "official"
-                    ? "Data from Google Business Profile APIs."
-                    : "Data from your linked Zernio account (location + reviews when available)."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {statsLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                    Loading profile…
-                  </div>
-                ) : socialData.googleBusiness ? (
-                  <>
-                    <div className="space-y-2 text-sm">
-                      {socialData.googleBusiness.title ? (
-                        <p className="font-medium text-foreground">{socialData.googleBusiness.title}</p>
-                      ) : null}
-                      {socialData.googleBusiness.primaryCategory ? (
-                        <p className="text-muted-foreground">{socialData.googleBusiness.primaryCategory}</p>
-                      ) : null}
-                      {socialData.googleBusiness.addressLines.length > 0 ? (
-                        <p className="flex gap-2 text-muted-foreground">
-                          <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                          <span>{socialData.googleBusiness.addressLines.join(", ")}</span>
-                        </p>
-                      ) : null}
-                      {socialData.googleBusiness.phone ? (
-                        <p className="text-muted-foreground">{socialData.googleBusiness.phone}</p>
-                      ) : null}
-                      {socialData.googleBusiness.website ? (
-                        <a
-                          href={
-                            socialData.googleBusiness.website.startsWith("http")
-                              ? socialData.googleBusiness.website
-                              : `https://${socialData.googleBusiness.website}`
-                          }
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          {socialData.googleBusiness.website.replace(/^https?:\/\//, "")}
-                        </a>
-                      ) : null}
-                    </div>
-                    {socialData.googleBusiness.reviews.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Recent reviews
-                        </p>
-                        <ul className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                          {socialData.googleBusiness.reviews.map((r) => (
-                            <li key={r.id} className="rounded-md border border-border/80 p-3 text-sm">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <span className="font-medium">{r.author}</span>
-                                {r.rating != null && r.rating > 0 ? (
-                                  <span className="text-xs text-muted-foreground">{r.rating.toFixed(1)} ★</span>
-                                ) : null}
-                              </div>
-                              {r.text ? <p className="text-muted-foreground leading-relaxed">{r.text}</p> : null}
-                              {r.createdAt ? (
-                                <p className="text-[11px] text-muted-foreground/80 mt-1">{r.createdAt}</p>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No location or review details returned yet. For Zernio, confirm GBP add-ons; for the official API,
-                    reconnect under Connect more → Google Business via Official API.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <GoogleBusinessCard panel={socialData.googleBusiness} loading={statsLoading} />
           </m.div>
         )}
 
@@ -1169,155 +839,7 @@ export default function SocialMedia() {
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
-        <Card className="bg-card border-border glow-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Film className="h-5 w-5" />
-              AI Video Draft
-            </CardTitle>
-            <CardDescription>
-              Choose a selected Google Drive video and generate a reusable short-form video concept, shot list, and caption.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedContentVideos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No selected Google Drive videos yet. Mark one in the Content tab to generate a video draft here.
-              </p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Source video</p>
-                    <div className="space-y-2">
-                      {selectedContentVideos.map((asset) => (
-                        <button
-                          key={asset.id}
-                          type="button"
-                          onClick={() => setSelectedVideoId(asset.id)}
-                          className={`w-full text-left rounded-lg border p-3 transition-colors ${
-                            selectedVideoAsset?.id === asset.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border bg-secondary/20 hover:bg-secondary/40"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-md overflow-hidden bg-secondary/60 flex items-center justify-center shrink-0">
-                              <ImageWithFallback
-                                src={asset.thumbnailUrl}
-                                alt={asset.name}
-                                className="w-full h-full object-cover"
-                                fallback={<Film className="h-5 w-5 text-muted-foreground" />}
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{asset.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{asset.mimeType || "video/*"}</p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="video-platform">Platform</Label>
-                        <Input
-                          id="video-platform"
-                          value={videoPlatform}
-                          onChange={(e) => setVideoPlatform(e.target.value)}
-                          placeholder="Instagram Reels"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="video-objective">Objective</Label>
-                        <Input
-                          id="video-objective"
-                          value={videoObjective}
-                          onChange={(e) => setVideoObjective(e.target.value)}
-                          placeholder="Create a short product teaser"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="video-prompt">Extra direction</Label>
-                      <Textarea
-                        id="video-prompt"
-                        value={videoPrompt}
-                        onChange={(e) => setVideoPrompt(e.target.value)}
-                        placeholder="Hook angle, target audience, CTA, brand tone, or key points to highlight."
-                        className="bg-secondary border-border min-h-[96px] resize-none"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button onClick={() => void handleGenerateVideoDraft()} disabled={!selectedVideoAsset || generatingVideoDraft}>
-                        {generatingVideoDraft ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Film className="h-4 w-4 mr-2" />
-                        )}
-                        {generatingVideoDraft ? "Generating..." : "Generate video draft"}
-                      </Button>
-                      {selectedVideoAsset?.webViewLink && (
-                        <Button variant="outline" asChild>
-                          <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">Open source video</a>
-                        </Button>
-                      )}
-                    </div>
-                    {videoDraftError && (
-                      <p className="text-sm text-destructive">{videoDraftError}</p>
-                    )}
-                  </div>
-                </div>
-
-                {videoDraft && (
-                  <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-4">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-                        {videoDraftSource === "openai" ? "AI-generated" : "Fallback draft"}
-                      </span>
-                      <span>Built from {selectedVideoAsset?.name}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Title</p>
-                      <p className="text-sm">{videoDraft.title}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hook</p>
-                      <p className="text-sm">{videoDraft.hook}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Concept</p>
-                      <p className="text-sm">{videoDraft.concept}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Shot list</p>
-                      <div className="space-y-2">
-                        {videoDraft.shots.map((shot, index) => (
-                          <div key={`${shot}-${index}`} className="rounded-md border border-border/70 bg-background/80 p-3">
-                            <p className="text-sm">{shot}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Caption</p>
-                        <p className="text-sm">{videoDraft.caption}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">CTA</p>
-                        <p className="text-sm">{videoDraft.cta}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <SocialVideoDraftCard videos={selectedContentVideos} />
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.18 }}>
@@ -1445,6 +967,8 @@ export default function SocialMedia() {
           initialCaption={postContent}
           mediaUrls={generatedMediaUrl ? [generatedMediaUrl] : []}
           onCaptionChange={setPostContent}
+          editingPost={editingPost}
+          onEditingPostChange={setEditingPost}
           onPublished={() => {
             setGeneratedMediaUrl(null);
             setVariants([]);
@@ -1453,249 +977,18 @@ export default function SocialMedia() {
         />
       </m.div>
 
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.22 }}>
+        <ScheduledPostsList onEdit={setEditingPost} />
+      </m.div>
+
       <SocialAutomationPanel />
 
-      {selectedAccount && (selectedAccount.isOAuth || selectedAccount.isZernio) && (
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={statsLoading}
-            onClick={() => void refreshStats()}
-            className="text-muted-foreground"
-          >
-            {statsLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                Loading...
-              </>
-            ) : (
-              "Refresh stats"
-            )}
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Showing data for {selectedAccount.username}
-          </span>
-        </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(        selectedAccount?.stats
-          ? (() => {
-              const s = selectedAccount.stats;
-              const isGbp = selectedAccount.platform === "google_business";
-              if (isGbp) {
-                return [
-                  {
-                    ...defaultStats[0],
-                    key: "gbp-rating",
-                    label: "Avg. rating",
-                    value: s.averageRating != null ? s.averageRating.toFixed(1) : "–",
-                    change: "",
-                    icon: Star,
-                  },
-                  {
-                    ...defaultStats[1],
-                    key: "gbp-reviews",
-                    label: "Reviews",
-                    value: s.reviewCount != null ? s.reviewCount.toLocaleString("en-US") : "–",
-                    change: "",
-                    icon: FileText,
-                  },
-                  {
-                    ...defaultStats[2],
-                    key: "gbp-posts",
-                    label: "Posts",
-                    value: "–",
-                  },
-                  {
-                    ...defaultStats[3],
-                    key: "gbp-engagement",
-                    label: "Engagement",
-                    value: "–",
-                  },
-                ];
-              }
-              const isX = selectedAccount.platform === "x";
-              const isWhatsApp = selectedAccount.platform === "whatsapp";
-              const isInstagram = selectedAccount.platform === "instagram";
-
-              const avgLikesStat =
-                isInstagram && s.avgViews != null
-                  ? { key: "avg-views", label: "Avg. views", value: s.avgViews.toLocaleString("en-US"), change: "", icon: Eye }
-                  : s.avgLikes != null
-                  ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
-                  : s.followingCount != null
-                    ? { ...defaultStats[1], value: s.followingCount.toLocaleString("en-US") }
-                    : { ...defaultStats[1], value: "–" };
-
-              const engagementStat =
-                s.engagementRate != null
-                  ? { ...defaultStats[3], value: s.engagementRate.toFixed(1) + "%", change: "" }
-                  : defaultStats[3];
-
-              return [
-                {
-                  ...defaultStats[0],
-                  value: s.followersCount != null ? s.followersCount.toLocaleString("en-US") : "–",
-                },
-                avgLikesStat,
-                {
-                  ...defaultStats[2],
-                  label: isX ? "Tweets" : isWhatsApp ? "Templates" : "Posts",
-                  value: s.mediaCount != null ? s.mediaCount.toLocaleString("en-US") : "–",
-                },
-                engagementStat,
-              ];
-            })()
-          : defaultStats
-        ).map((stat, i) => (
-          <m.div key={stat.key} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
-            <Card className="bg-card border-border glow-border hover:glow-sm transition-shadow duration-300">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <stat.icon className="h-5 w-5 text-muted-foreground" />
-                  {statsLoading && selectedAccountId && i < 3 ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                  ) : (
-                    stat.change && <span className="text-xs text-green-400 font-medium">{stat.change}</span>
-                  )}
-                </div>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </CardContent>
-            </Card>
-          </m.div>
-        ))}
-      </div>
-
-      {selectedAccount?.stats?.zernioNote && (
-        <m.div {...fadeUp} transition={{ duration: 0.3, delay: 0.12 }}>
-          <p className="text-xs text-muted-foreground border border-border/60 rounded-lg px-3 py-2.5 bg-muted/30 leading-relaxed">
-            {selectedAccount.stats.zernioNote}
-          </p>
-        </m.div>
-      )}
-
-      {recentPosts.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
-          <Card className="bg-card border-border glow-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Eye className="h-5 w-5" />
-                {selectedAccount?.platform === "whatsapp" ? "WhatsApp templates" : "Recent posts"}
-              </CardTitle>
-              <CardDescription>
-                {selectedAccount?.platform === "whatsapp"
-                  ? "Approved templates from your WhatsApp Business account (via Zernio)"
-                  : selectedAccount?.platform === "instagram"
-                    ? "Views, likes and comments per post"
-                    : "Likes and comments per post"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Image grid for visual platforms (Instagram etc.) */}
-              {recentPosts[0]?.picture ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {recentPosts.map((post) => (
-                    <a
-                      key={post.id}
-                      href={post.permalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:glow-sm transition-shadow"
-                    >
-                      <ImageWithFallback
-                        src={post.picture}
-                        alt={post.caption.slice(0, 40)}
-                        className="w-full h-full object-cover"
-                        fallback={
-                          <div className="w-full h-full flex items-center justify-center bg-secondary/40">
-                            <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        }
-                      />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                        <div className="flex items-center gap-1 text-white text-xs font-semibold">
-                          <Heart className="h-3.5 w-3.5 fill-white" />
-                          {post.likeCount}
-                        </div>
-                        {selectedAccount?.platform === "instagram" && (
-                          <div className="flex items-center gap-1 text-white text-xs">
-                            <Eye className="h-3.5 w-3.5" />
-                            {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1 text-white text-xs">
-                          <FileText className="h-3.5 w-3.5" />
-                          {post.commentCount}
-                        </div>
-                      </div>
-                      <div className="absolute bottom-1 left-1 flex gap-1">
-                        <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                          <Heart className="h-2.5 w-2.5 fill-white" />{post.likeCount}
-                        </span>
-                        {selectedAccount?.platform === "instagram" && (
-                          <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                            <Eye className="h-2.5 w-2.5" />{post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
-                          </span>
-                        )}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                /* Text list for text-based platforms (X/Twitter) */
-                <div className="space-y-2">
-                  {recentPosts.map((post) => {
-                    const inner = (
-                      <>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground leading-relaxed line-clamp-2">{post.caption}</p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground pt-0.5">
-                          <span className="flex items-center gap-1">
-                            <Heart className="h-3.5 w-3.5" />
-                            {post.likeCount}
-                          </span>
-                          {selectedAccount?.platform === "instagram" && (
-                            <span className="flex items-center gap-1">
-                              <Eye className="h-3.5 w-3.5" />
-                              {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-3.5 w-3.5" />
-                            {post.commentCount}
-                          </span>
-                        </div>
-                      </>
-                    );
-                    return post.permalink ? (
-                      <a
-                        key={post.id}
-                        href={post.permalink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/40 transition-colors group"
-                      >
-                        {inner}
-                      </a>
-                    ) : (
-                      <div
-                        key={post.id}
-                        className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20"
-                      >
-                        {inner}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
+      <SocialStatsSection
+        account={selectedAccount}
+        loading={statsLoading}
+        onRefresh={() => void refreshStats()}
+        posts={recentPosts}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>

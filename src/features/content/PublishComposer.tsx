@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Send, CalendarClock, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, CalendarClock, CheckCircle2, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,26 +13,40 @@ import type { AccountPlatform } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { platformLabel } from "@/lib/platformLabels";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useScheduledPosts, type ScheduledPost } from "@/features/social";
 
 /** Platforms we can publish to via Zernio. */
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
 
+/** ISO timestamp → value for `<input type="datetime-local">` (local time). */
+function isoToLocalDateTimeInput(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export function PublishComposer({
   initialCaption = "",
   mediaUrls = [],
   onPublished,
   onCaptionChange,
+  editingPost = null,
+  onEditingPostChange,
 }: {
   initialCaption?: string;
   mediaUrls?: string[];
   onPublished?: () => void;
   onCaptionChange?: (caption: string) => void;
+  /** Load an existing pipeline post (draft/scheduled) into the composer. */
+  editingPost?: ScheduledPost | null;
+  onEditingPostChange?: (post: ScheduledPost | null) => void;
 }) {
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBusinessProfileId ?? activeProfileId;
+  const scheduledPosts = useScheduledPosts();
 
   const postable = useMemo(
     () =>
@@ -55,16 +69,87 @@ export function PublishComposer({
     setCaption(initialCaption);
   }, [initialCaption]);
 
-  async function publish() {
+  // Load an existing draft/scheduled post into the form when edit is requested.
+  useEffect(() => {
+    if (!editingPost) return;
+    setCaption(editingPost.caption);
+    onCaptionChange?.(editingPost.caption);
+    setSelected(Object.fromEntries(editingPost.accountIds.map((id) => [id, true])));
+    setMode(editingPost.scheduledFor ? "schedule" : "now");
+    setScheduledFor(editingPost.scheduledFor ? isoToLocalDateTimeInput(editingPost.scheduledFor) : "");
+    setDone(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the edited post changes
+  }, [editingPost?.id]);
+
+  function platformsOf(ids: string[]): string[] {
+    const set = new Set<string>();
+    for (const id of ids) {
+      const account = accounts.find((a) => a.id === id);
+      if (account) set.add(account.platform);
+    }
+    return [...set];
+  }
+
+  function resetForm() {
+    setCaption("");
+    onCaptionChange?.("");
+    setSelected({});
+    setScheduledFor("");
+    onEditingPostChange?.(null);
+  }
+
+  function buildPost(status: ScheduledPost["status"], scheduledForIso: string | null): ScheduledPost {
+    const now = new Date().toISOString();
+    return {
+      id: editingPost?.id ?? crypto.randomUUID(),
+      caption: caption.trim(),
+      accountIds: selectedIds,
+      platforms: platformsOf(selectedIds),
+      status,
+      scheduledFor: scheduledForIso,
+      mediaUrls,
+      createdAt: editingPost?.createdAt ?? now,
+      updatedAt: now,
+    };
+  }
+
+  /** Save the current form as a draft — no accounts or time required yet. */
+  function saveDraft() {
+    if (!caption.trim()) return;
+    const iso = scheduledFor ? new Date(scheduledFor).toISOString() : null;
+    scheduledPosts.upsert(buildPost("draft", iso));
+    resetForm();
+    toast({ title: "Utkast sparat", description: "Hittas i pipelinen nedan och i kalendern om det har en tid." });
+  }
+
+  /** Queue the post locally; the server sweep publishes it when the time comes. */
+  function schedulePost() {
+    if (selectedIds.length === 0 || !caption.trim()) return;
+    if (!scheduledFor) {
+      toast({ title: "Pick a date and time", variant: "destructive" });
+      return;
+    }
+    const atMs = new Date(scheduledFor).getTime();
+    if (!Number.isFinite(atMs) || atMs < Date.now() - 60_000) {
+      toast({ title: "Scheduled time must be in the future", variant: "destructive" });
+      return;
+    }
+    scheduledPosts.upsert(buildPost("scheduled", new Date(atMs).toISOString()));
+    setDone(true);
+    resetForm();
+    onPublished?.();
+    toast({
+      title: "Scheduled",
+      description: "Publiceras automatiskt på vald tid. Flytta eller redigera från kalendern tills dess.",
+    });
+  }
+
+  async function publishNow() {
     if (!businessProfileId) {
       toast({ title: "Select a business profile first", variant: "destructive" });
       return;
     }
     if (selectedIds.length === 0 || !caption.trim()) return;
-    if (mode === "schedule" && !scheduledFor) {
-      toast({ title: "Pick a date and time", variant: "destructive" });
-      return;
-    }
     setBusy(true);
     try {
       const res = await fetchWithTimeout(apiUrl("/api/content/publish"), {
@@ -75,21 +160,19 @@ export function PublishComposer({
           accountIds: selectedIds,
           business_profile_id: businessProfileId,
           content: caption.trim(),
-          publishNow: mode === "now",
-          scheduledFor: mode === "schedule" ? new Date(scheduledFor).toISOString() : undefined,
+          publishNow: true,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           mediaUrls,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not publish");
+      scheduledPosts.upsert(buildPost("published", new Date().toISOString()));
       setDone(true);
-      setCaption("");
-      onCaptionChange?.("");
-      setSelected({});
+      resetForm();
       onPublished?.();
       toast({
-        title: mode === "now" ? "Published" : "Scheduled",
+        title: "Published",
         description: `${payload?.published ?? selectedIds.length} account(s) via Zernio.`,
       });
     } catch (e) {
@@ -110,7 +193,9 @@ export function PublishComposer({
           <Send className="h-4 w-4 text-muted-foreground" />
           Publish or schedule a post
         </CardTitle>
-        <CardDescription>Write a caption, pick accounts, and publish now or schedule — sent via Zernio.</CardDescription>
+        <CardDescription>
+          Utkast → Schemalagd → Publicerad: spara som utkast, schemalägg för automatisk publicering, eller publicera direkt via Zernio.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {postable.length === 0 ? (
@@ -118,6 +203,17 @@ export function PublishComposer({
             Connect a Zernio-backed social account to publish or schedule posts from here.
             <Button variant="link" size="sm" className="h-auto px-1 py-0 text-sm" asChild>
               <Link to="/connections">Manage connections</Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {editingPost ? (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              Redigerar {editingPost.status === "draft" ? "utkast" : "schemalagt inlägg"} — spara igen för att uppdatera.
+            </span>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={resetForm}>
+              Avbryt
             </Button>
           </div>
         ) : null}
@@ -207,7 +303,15 @@ export function PublishComposer({
               </span>
             )}
             <Button
-              onClick={() => void publish()}
+              variant="outline"
+              onClick={saveDraft}
+              disabled={busy || !caption.trim()}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Spara utkast
+            </Button>
+            <Button
+              onClick={() => (mode === "now" ? void publishNow() : schedulePost())}
               disabled={busy || postable.length === 0 || selectedIds.length === 0 || !caption.trim()}
             >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}

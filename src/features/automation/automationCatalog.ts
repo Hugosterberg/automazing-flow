@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { BarChart3, Bot, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
 
 /**
  * Catalog of everything the app runs automatically, grouped by topic.
@@ -13,7 +13,7 @@ import { BarChart3, Bot, ClipboardList, Mail, MessageSquare, Sparkles, TrendingU
  * Keep cadence labels in sync with `vercel.json` when schedules change.
  */
 
-export type AutomationTopic = "messages" | "reports" | "insights";
+export type AutomationTopic = "messages" | "content" | "reports" | "insights";
 
 export interface AutomationTopicInfo {
   id: AutomationTopic;
@@ -24,6 +24,7 @@ export interface AutomationTopicInfo {
 
 export const AUTOMATION_TOPIC_ORDER: AutomationTopic[] = [
   "messages",
+  "content",
   "reports",
   "insights",
 ];
@@ -35,6 +36,13 @@ export const AUTOMATION_TOPICS: Record<AutomationTopic, AutomationTopicInfo> = {
     description:
       "Automatik som hanterar inkommande konversationer så du slipper svara på allt manuellt.",
     icon: MessageSquare,
+  },
+  content: {
+    id: "content",
+    title: "Innehåll & publicering",
+    description:
+      "Automatik som publicerar schemalagt innehåll på rätt tid utan att du behöver trycka på knappen.",
+    icon: CalendarClock,
   },
   reports: {
     id: "reports",
@@ -84,6 +92,17 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: Bot,
     outputHref: "/messages",
     cronKey: "auto-reply",
+  },
+  {
+    id: "publish-scheduled-posts",
+    topic: "content",
+    title: "Publicera schemalagda inlägg",
+    description:
+      "Sveper var 15:e minut och publicerar sociala inlägg vars schemalagda tid har passerat.",
+    cadence: "Var 15:e minut",
+    icon: CalendarClock,
+    outputHref: "/social-media",
+    cronKey: "publish-scheduled-posts",
   },
   {
     id: "daily-digest",
