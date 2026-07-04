@@ -30,6 +30,7 @@ import {
   ConnectionsControlPanel,
   useConnectionsHealthIssueCount,
 } from "@/features/connections";
+import { connectionTestToastMessage } from "@/features/connections/connectionFixHints";
 import { ConnectionsGrid } from "@/features/connections/ConnectionsGrid";
 import { ConnectionDetailsDrawer } from "@/features/connections/ConnectionDetailsDrawer";
 import { McpProviderStatusList, McpDataCatalog, McpToolsExplorer, useMcpProvidersStatus } from "@/features/intelligence";
@@ -269,10 +270,20 @@ export default function ConnectionsPage() {
 
   async function handleDrawerResync(connection: Connection) {
     try {
-      await resync(connection.id);
+      const result = await resync(connection.id);
       void refetch();
-    } catch {
-      // Surface via React Query error state
+      const toastMsg = connectionTestToastMessage(result);
+      toast({
+        title: toastMsg.title,
+        description: toastMsg.description,
+        variant: toastMsg.variant,
+      });
+    } catch (err) {
+      toast({
+        title: "Connection test failed",
+        description: err instanceof Error ? err.message : "Could not test the connection.",
+        variant: "destructive",
+      });
     }
   }
 

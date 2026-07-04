@@ -12,8 +12,18 @@ export function McpReadinessHint({ readiness }: { readiness?: McpProviderReadine
     <div className={`rounded-md border px-3 py-2 text-xs ${tone}`}>
       <span className="font-medium">{mcpStatusLabel(readiness.status)}</span>
       {readiness.message ? ` — ${readiness.message}` : null}
-      {readiness.status === "not_connected" && readiness.auth === "api_key" ? (
-        <span> ({readiness.credentialHint})</span>
+      {readiness.status === "not_connected" ? (
+        <p className="mt-1 text-[11px] leading-snug">
+          {readiness.auth === "oauth"
+            ? "Fix: connect via OAuth under Connections → MCP tab."
+            : readiness.auth === "shop_domain"
+              ? "Fix: connect and enter your .myshopify.com shop domain."
+              : `Fix: add ${readiness.credentialHint} under Connections → MCP.`}
+        </p>
+      ) : readiness.status === "auth_expired" || readiness.status === "missing_credential" ? (
+        <p className="mt-1 text-[11px] leading-snug">
+          Fix: reconnect {readiness.label} under Connections → MCP and verify credentials.
+        </p>
       ) : null}
     </div>
   );

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, Info, Layers, Link2, Loader2, RefreshCw, Square, Trash2 } from "lucide-react";
+import { CheckSquare2, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ import type { Connection } from "@/types/connection";
 import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { aggregateStatus } from "./connectionStatus";
+import { connectionFixHint, connectionTestToastMessage } from "./connectionFixHints";
+import type { ConnectionTestResult } from "./useConnections";
 import { buildConnectUrl } from "./zernioClient";
 import { getConnectConfig, getConnectionPathOptions } from "./connectAuthPath";
 import {
@@ -54,7 +56,7 @@ interface Props {
   mcpReadiness?: McpProviderReadiness | null;
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
-  onResync?: (connectionId: string) => void;
+  onResync?: (connectionId: string) => Promise<ConnectionTestResult | void>;
   isResyncing?: boolean;
   resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
@@ -217,6 +219,24 @@ export function ConnectionCard({
     [active]
   );
 
+  async function handleTestConnection(connectionId: string) {
+    if (!onResync) return;
+    try {
+      const result = await onResync(connectionId);
+      if (!result) return;
+      const toastMsg = connectionTestToastMessage(result);
+      if (result.health === "healthy") {
+        toast.success(toastMsg.title, { description: toastMsg.description });
+      } else {
+        toast.error(toastMsg.title, { description: toastMsg.description });
+      }
+    } catch (err) {
+      toast.error("Connection test failed", {
+        description: err instanceof Error ? err.message : "Could not test the connection.",
+      });
+    }
+  }
+
   const primaryLabel = active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add / reconnect";
   const PrimaryIcon = active.length === 0 ? Link2 : RefreshCw;
   const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
@@ -291,6 +311,11 @@ export function ConnectionCard({
                       ? formatRelativeTime(c.connectedAt) ?? c.connectedAt.slice(0, 10)
                       : ""}
                   </p>
+                  {c.health !== "healthy" ? (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 leading-snug">
+                      {connectionFixHint(c, entry)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <ConnectionHealthBadge health={c.health} />
@@ -310,18 +335,19 @@ export function ConnectionCard({
                     <Button
                       type="button"
                       size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => onResync(c.id)}
+                      variant="outline"
+                      className="h-7 px-2 text-[11px] gap-1"
+                      onClick={() => void handleTestConnection(c.id)}
                       disabled={isResyncing}
-                      aria-label={`Resync ${c.displayName || c.username}`}
-                      title="Check connection status"
+                      aria-label={`Test connection for ${c.displayName || c.username}`}
+                      title="Test connection"
                     >
                       {isResyncing && resyncingId === c.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <RefreshCw className="h-3 w-3" />
+                        <PlugZap className="h-3 w-3" />
                       )}
+                      Test
                     </Button>
                   ) : null}
                   <Button

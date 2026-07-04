@@ -1,8 +1,10 @@
-import { AlertCircle, CheckCircle2, KeyRound, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, PlugZap, RefreshCw, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useMcpProvidersStatus, mcpStatusLabel } from "./useMcpProvidersStatus";
-import type { McpProviderReadiness } from "./intelligenceService";
+import { fetchMcpProvidersStatus, type McpProviderReadiness } from "./intelligenceService";
 
 function StatusIcon({ status }: { status: McpProviderReadiness["status"] }) {
   if (status === "ready") return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />;
@@ -23,12 +25,56 @@ function statusBadgeVariant(
   return "outline";
 }
 
+function mcpFixHint(provider: McpProviderReadiness): string | null {
+  if (provider.status === "ready") return null;
+  if (provider.message) return provider.message;
+  if (provider.status === "not_connected") {
+    if (provider.auth === "oauth") return "Connect via OAuth under Connections → MCP.";
+    if (provider.auth === "api_key") return `Add credential: ${provider.credentialHint}`;
+    if (provider.auth === "shop_domain") return "Connect and enter your .myshopify.com shop domain.";
+    return "Connect this provider under Connections → MCP.";
+  }
+  return provider.credentialHint || "Fix credentials under Connections → MCP.";
+}
+
 /** Read-only list of all MCP providers and readiness — shared by Connections and Intelligence hub. */
 export function McpProviderStatusList({ businessProfileId }: { businessProfileId: string | null }) {
   const { providers, isLoading, refetch } = useMcpProvidersStatus(businessProfileId);
+  const [testingPlatform, setTestingPlatform] = useState<string | null>(null);
   const needsAttention = providers.filter(
     (p) => p.status === "missing_credential" || p.status === "auth_expired" || p.status === "error"
   );
+
+  async function testProvider(platform: string) {
+    setTestingPlatform(platform);
+    try {
+      const result = await fetchMcpProvidersStatus(businessProfileId, { probe: true, platform });
+      const provider = result.providers.find((p) => p.platform === platform);
+      if (!provider) {
+        toast.error("Provider not found");
+        return;
+      }
+      if (provider.status === "ready") {
+        toast.success(`${provider.label} OK`, {
+          description:
+            provider.toolCount != null
+              ? `Live probe succeeded (${provider.toolCount} tools available).`
+              : "Credentials verified.",
+        });
+      } else {
+        toast.error(`${provider.label} needs attention`, {
+          description: mcpFixHint(provider) ?? "Fix credentials under Connections.",
+        });
+      }
+      void refetch();
+    } catch (err) {
+      toast.error("Provider test failed", {
+        description: err instanceof Error ? err.message : "Could not probe the provider.",
+      });
+    } finally {
+      setTestingPlatform(null);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -60,7 +106,7 @@ export function McpProviderStatusList({ businessProfileId }: { businessProfileId
             key={p.platform}
             className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border/60 px-3 py-2 text-sm"
           >
-            <div className="min-w-0 space-y-0.5">
+            <div className="min-w-0 space-y-0.5 flex-1">
               <div className="flex items-center gap-2 font-medium">
                 <StatusIcon status={p.status} />
                 {p.label}
@@ -68,14 +114,30 @@ export function McpProviderStatusList({ businessProfileId }: { businessProfileId
               {p.usedBy.length > 0 ? (
                 <p className="text-[11px] text-muted-foreground">Used by: {p.usedBy.join(" · ")}</p>
               ) : null}
-              {p.message && p.status !== "ready" ? (
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">{p.message}</p>
-              ) : null}
-              {p.status === "not_connected" && p.auth === "api_key" ? (
-                <p className="text-[11px] text-muted-foreground">Requires: {p.credentialHint}</p>
+              {mcpFixHint(p) && p.status !== "ready" ? (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">{mcpFixHint(p)}</p>
               ) : null}
             </div>
-            <Badge variant={statusBadgeVariant(p.status)}>{mcpStatusLabel(p.status)}</Badge>
+            <div className="flex items-center gap-2 shrink-0">
+              {p.status !== "not_connected" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1"
+                  disabled={testingPlatform === p.platform}
+                  onClick={() => void testProvider(p.platform)}
+                >
+                  {testingPlatform === p.platform ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <PlugZap className="h-3 w-3" />
+                  )}
+                  Test
+                </Button>
+              ) : null}
+              <Badge variant={statusBadgeVariant(p.status)}>{mcpStatusLabel(p.status)}</Badge>
+            </div>
           </li>
         ))}
       </ul>
