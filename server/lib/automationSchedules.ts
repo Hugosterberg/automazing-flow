@@ -29,6 +29,7 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "sales-outreach-auto", cron: "0 8 * * 1-5", perTenant: true },
   { key: "content-pipeline", cron: "0 10 * * *", perTenant: true },
   { key: "cart-recovery", cron: "0 11 * * *", perTenant: true },
+  { key: "review-reply-auto", cron: "30 9 * * *", perTenant: true },
   { key: "daily-digest", cron: "0 6 * * 1-5", perTenant: true },
   { key: "marketing-alerts", cron: "0 7 * * 1-5", perTenant: true },
   { key: "marketing-snapshot", cron: "0 3 * * *", perTenant: true },

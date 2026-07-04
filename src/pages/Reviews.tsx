@@ -26,7 +26,7 @@ import { apiUrl } from "@/lib/apiBase";
 import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
-import { useReviewReplyState } from "@/features/reviews";
+import { useReviewReplyState, ReviewReplyQueueSection } from "@/features/reviews";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 
@@ -332,6 +332,13 @@ export default function ReviewsPage() {
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="reviews" />
       </m.div>
+
+      <ReviewReplyQueueSection
+        onUseDraft={(item) => {
+          setReplyText((cur) => ({ ...cur, [item.reviewId]: item.draft }));
+          toast({ title: "Draft applied", description: `Reply for ${item.author} is ready to edit and send.` });
+        }}
+      />
 
       {oauthErrorDetails && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>

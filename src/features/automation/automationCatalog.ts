@@ -140,6 +140,18 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cronKey: "cart-recovery",
   },
   {
+    id: "review-reply-auto",
+    topic: "messages",
+    title: "Automatiska review-svar",
+    description:
+      "Skapar utkast till svar på nya recensioner — du godkänner och skickar på Reviews.",
+    cadence: "Konfigurerbart schema",
+    icon: MessageSquare,
+    outputHref: "/reviews",
+    businessOnly: true,
+    cronKey: "review-reply-auto",
+  },
+  {
     id: "daily-digest",
     topic: "reports",
     title: "Daglig översikt",

@@ -34,7 +34,18 @@ describe("flowAutomationJobs", () => {
     expect(map["sales-outreach-auto"].enabled).toBe(false);
     expect(map["content-pipeline"].enabled).toBe(false);
     expect(map["cart-recovery"].enabled).toBe(false);
+    expect(map["review-reply-auto"].enabled).toBe(false);
     expect(map["publish-scheduled-posts"].enabled).toBe(true);
+  });
+
+  it("counts pending review reply drafts", async () => {
+    const { countPendingReviewReplyDrafts } = await import("../../server/lib/flowAutomationJobs");
+    expect(
+      countPendingReviewReplyDrafts([
+        { id: "1", reviewId: "r1", accountId: "a", author: "Ann", reviewText: "Great", draft: "Thanks!", status: "draft", createdAt: "" },
+        { id: "2", reviewId: "r2", accountId: "a", author: "Bob", reviewText: "Ok", draft: "Thanks", status: "sent", createdAt: "" },
+      ])
+    ).toBe(1);
   });
 
   it("skips content pipeline when no workflows enabled and queue empty", async () => {

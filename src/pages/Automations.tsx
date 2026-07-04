@@ -17,6 +17,7 @@ import {
   AutomatedUpdatesCard,
   AutomationRunStatus,
   AutomationScheduleEditor,
+  FlowAutomationStatusCard,
   AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   catalogEntriesForTopic,
@@ -190,6 +191,12 @@ export default function AutomationsPage() {
           </Button>
         }
       />
+
+      {businessProfileId ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.015 }}>
+          <FlowAutomationStatusCard businessProfileId={businessProfileId} />
+        </m.div>
+      ) : null}
 
       <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
         <McpFeatureSection

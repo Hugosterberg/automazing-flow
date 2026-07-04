@@ -5,6 +5,8 @@
 
 import crypto from "node:crypto";
 import { heuristicOutreachDraft } from "../ai/outreachDraft.ts";
+import { generateReplyDraft } from "../ai/replyDraft.ts";
+import type { ZernioModule } from "../providers/zernioModule.ts";
 import { fetchShopifyAbandonedCheckouts } from "../providers/shopify.ts";
 import {
   loadProfileDocument,
@@ -22,6 +24,19 @@ export const OUTREACH_QUEUE_DOC_KEY = "outreach-queue";
 export const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
 export const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
 export const CART_RECOVERY_SENT_DOC_KEY = "cart-recovery-sent";
+export const REVIEW_REPLY_QUEUE_DOC_KEY = "review-reply-queue";
+
+export interface ReviewReplyQueueItem {
+  id: string;
+  reviewId: string;
+  accountId: string;
+  author: string;
+  rating?: number;
+  reviewText: string;
+  draft: string;
+  status: "draft" | "sent";
+  createdAt: string;
+}
 
 export interface OutreachQueueItem {
   id: string;
@@ -389,4 +404,159 @@ export function countPendingOutreachDrafts(data: unknown): number {
 export function mergeOutreachQueueDoc(existing: ProfileDocumentRow | null, items: OutreachQueueItem[]): unknown {
   const queue = parseOutreachQueue(existing?.data);
   return [...items, ...queue].slice(0, 50);
+}
+
+function parseReviewReplyQueue(data: unknown): ReviewReplyQueueItem[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (e): e is ReviewReplyQueueItem =>
+      Boolean(e) &&
+      typeof e === "object" &&
+      typeof (e as ReviewReplyQueueItem).id === "string" &&
+      typeof (e as ReviewReplyQueueItem).reviewId === "string"
+  );
+}
+
+function parseRepliedIds(data: unknown): Set<string> {
+  if (!data || typeof data !== "object") return new Set();
+  const raw = data as Record<string, unknown>;
+  if (!Array.isArray(raw.repliedIds)) return new Set();
+  return new Set(raw.repliedIds.map((id) => String(id)).filter(Boolean));
+}
+
+function extractReviewsFromZernioPayload(payload: unknown): Array<{
+  id: string;
+  author: string;
+  rating?: number;
+  text: string;
+}> {
+  if (!payload || typeof payload !== "object") return [];
+  const root = payload as Record<string, unknown>;
+  const list =
+    (Array.isArray(root.reviews) ? root.reviews : null) ??
+    (root.data && typeof root.data === "object" && Array.isArray((root.data as Record<string, unknown>).reviews)
+      ? ((root.data as Record<string, unknown>).reviews as unknown[])
+      : null) ??
+    (Array.isArray(root.data) ? root.data : []);
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((raw, i) => {
+      const r = raw as Record<string, unknown>;
+      const reviewer = r.reviewer && typeof r.reviewer === "object" ? (r.reviewer as Record<string, unknown>) : {};
+      return {
+        id: String(r.id || r.reviewId || r.name || i),
+        author: String(r.authorName || r.author || reviewer.displayName || reviewer.name || "Anonymous"),
+        rating: r.rating != null ? Number(r.rating) : r.starRating != null ? Number(r.starRating) : undefined,
+        text: String(r.comment || r.text || r.content || "").trim(),
+      };
+    })
+    .filter((r) => r.text.length > 0);
+}
+
+export function countPendingReviewReplyDrafts(data: unknown): number {
+  return parseReviewReplyQueue(data).filter((q) => q.status === "draft").length;
+}
+
+/** Auto-draft public review replies into review-reply-queue (never auto-posts). */
+export async function runReviewReplyAuto(deps: {
+  supabaseAdmin: SupabaseAdminLike;
+  tokenStore: TokenStoreLike;
+  zernio: ZernioModule;
+  businessProfileId: string;
+  profile: BusinessProfileRow;
+  openaiKey?: string | null;
+  notifyEmail?: string;
+  appUrl?: string;
+}): Promise<{ drafted: number; notified: boolean }> {
+  const { supabaseAdmin, tokenStore, zernio, businessProfileId, profile, openaiKey, notifyEmail, appUrl } = deps;
+
+  const { data: accountRows } = await supabaseAdmin
+    .from("connected_accounts")
+    .select("id,platform,disconnected_at")
+    .eq("business_profile_id", businessProfileId)
+    .in("platform", ["google_reviews", "tripadvisor"])
+    .is("disconnected_at", null);
+  const accounts = Array.isArray(accountRows) ? accountRows : [];
+  if (accounts.length === 0) return { drafted: 0, notified: false };
+
+  const repliedDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "review-replies");
+  const repliedIds = parseRepliedIds(repliedDoc?.data);
+  const queueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, REVIEW_REPLY_QUEUE_DOC_KEY);
+  const queue = parseReviewReplyQueue(queueDoc?.data);
+  const queuedReviewIds = new Set(queue.filter((q) => q.status === "draft").map((q) => q.reviewId));
+
+  const newItems: ReviewReplyQueueItem[] = [];
+  const businessName = String(profile.name || "Our business");
+
+  for (const row of accounts) {
+    if (newItems.length >= 3) break;
+    const accountId = String(row?.id || "");
+    if (!accountId) continue;
+    const stored = await tokenStore.get(accountId);
+    const zernioAccountId = String(stored?.zernioAccountId || stored?.lateAccountId || "").trim();
+    if (!zernioAccountId) continue;
+
+    const reviewsResult = await zernio.listReviews(zernioAccountId, {
+      candidates: ["generic", "account_nested", "google_business", "tripadvisor"],
+    });
+    if (!reviewsResult.ok) continue;
+
+    const reviews = extractReviewsFromZernioPayload(reviewsResult.data);
+    for (const review of reviews) {
+      if (newItems.length >= 3) break;
+      if (repliedIds.has(review.id) || queuedReviewIds.has(review.id)) continue;
+
+      const { draft } = await generateReplyDraft(
+        {
+          kind: "review",
+          text: review.text,
+          authorName: review.author,
+          rating: review.rating,
+          businessName,
+        },
+        openaiKey
+      );
+
+      newItems.push({
+        id: crypto.randomUUID(),
+        reviewId: review.id,
+        accountId,
+        author: review.author,
+        rating: review.rating,
+        reviewText: review.text,
+        draft,
+        status: "draft",
+        createdAt: new Date().toISOString(),
+      });
+      queuedReviewIds.add(review.id);
+    }
+  }
+
+  if (newItems.length === 0) return { drafted: 0, notified: false };
+
+  const nextQueue = [...newItems, ...queue].slice(0, 50);
+  await saveProfileDocument(supabaseAdmin, businessProfileId, REVIEW_REPLY_QUEUE_DOC_KEY, nextQueue);
+
+  const pendingCount = nextQueue.filter((q) => q.status === "draft").length;
+  await saveProfileDocument(supabaseAdmin, businessProfileId, "review-replies", {
+    repliedIds: [...repliedIds],
+    pendingCount,
+    updatedAt: new Date().toISOString(),
+  });
+
+  let notified = false;
+  if (notifyEmail && newItems.length > 0) {
+    const reviewsUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/reviews` : "/reviews";
+    const result = await sendEmail({
+      to: notifyEmail,
+      subject: `${businessName}: ${newItems.length} review repl${newItems.length === 1 ? "y" : "ies"} ready`,
+      html:
+        `<p>${newItems.length} automated review repl${newItems.length === 1 ? "y is" : "ies are"} ready for your approval.</p>` +
+        `<p><a href="${reviewsUrl}">Review and send on Reviews</a></p>`,
+      text: `${newItems.length} review reply draft(s) ready. Open Reviews: ${reviewsUrl}`,
+    });
+    notified = result.ok;
+  }
+
+  return { drafted: newItems.length, notified };
 }

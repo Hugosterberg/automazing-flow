@@ -44,7 +44,7 @@ import { SalesPlaybookSection } from "@/features/sales-playbook";
 import { SalesActionHub } from "@/features/sales/SalesActionHub";
 import { useMarketingCampaigns } from "@/features/marketing";
 import { formatMoney } from "@/features/marketing/format";
-import { OutreachContentCard, OutreachDraftDialog, type OutreachDraftTarget } from "@/features/outreach";
+import { OutreachContentCard, OutreachDraftDialog, OutreachQueueSection, type OutreachDraftTarget } from "@/features/outreach";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks, TaskEditDialog } from "@/features/tasks";
@@ -220,8 +220,9 @@ export default function SalesMarketingPage() {
   const businessProfileId = activeBp ?? activeProfileId ?? null;
   const [searchParams, setSearchParams] = useSearchParams();
   const showFollowUpsOnly = searchParams.get("view") === "followups";
+  const showOutreachQueue = searchParams.get("view") === "outreach-queue";
 
-  function clearFollowUpsFilter() {
+  function clearViewFilter() {
     const next = new URLSearchParams(searchParams);
     next.delete("view");
     setSearchParams(next, { replace: true });
@@ -471,6 +472,23 @@ export default function SalesMarketingPage() {
         />
       </m.div>
 
+      {(showOutreachQueue || !showFollowUpsOnly) && (
+        <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
+          {showOutreachQueue ? (
+            <Card className="border-info/30 bg-info/5 mb-3">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+                <p className="text-sm">Visar automatiska outreach-utkast i kön.</p>
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
+                  <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                  Visa hela Sales
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+          <OutreachQueueSection businessProfileId={businessProfileId} compact={!showOutreachQueue} />
+        </m.div>
+      )}
+
       {/* Leads — register + follow up, with AI outreach suggestions */}
       {showFollowUpsOnly ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.038 }}>
@@ -480,7 +498,7 @@ export default function SalesMarketingPage() {
                 <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
                 <span>Showing leads with follow-ups due today or overdue.</span>
               </div>
-              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFollowUpsFilter}>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                 <X className="h-3.5 w-3.5 mr-1" aria-hidden />
                 Show all leads
               </Button>

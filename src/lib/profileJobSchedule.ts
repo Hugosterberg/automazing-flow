@@ -138,6 +138,13 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "11:00",
     enabled: false,
   },
+  "review-reply-auto": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "09:30",
+    endTime: "09:30",
+    enabled: false,
+  },
 };
 
 export function expandRunTimes(schedule: ProfileJobSchedule): string[] {
