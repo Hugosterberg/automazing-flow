@@ -21,6 +21,7 @@ import {
   listApiaiTools,
   runApiaiTool,
   estimateApiaiTool,
+  type ApiaiBatchIngestItem,
   type ApiaiCostEstimate,
   type ApiaiParam,
   type ApiaiRunResult,
@@ -99,6 +100,8 @@ export function CreateTab({
   onSaveResultToSelection,
   onContinueToPublish,
   onPublishReadinessChange,
+  onBatchIngested,
+  onOpenHistory,
 }: {
   businessProfileId: string | null;
   selectedAssets: SelectedContentAsset[];
@@ -112,6 +115,11 @@ export function CreateTab({
   onSaveResultToSelection?: (asset: SelectedContentAsset, meta?: { toolName?: string }) => void;
   onContinueToPublish?: () => void;
   onPublishReadinessChange?: (readiness: PublishReadiness | null) => void;
+  onBatchIngested?: (
+    items: ApiaiBatchIngestItem[],
+    meta: { batchId: number; workflow?: string; addToSelection: boolean }
+  ) => void;
+  onOpenHistory?: () => void;
 }) {
   const [tools, setTools] = useState<ApiaiTool[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState("");
@@ -397,6 +405,8 @@ export function CreateTab({
           imageAssets={batchImageAssets}
           onBeforeRequest={onBeforeRequest}
           onOpenBrowse={onOpenBrowse}
+          onOpenHistory={onOpenHistory}
+          onBatchIngested={onBatchIngested}
         />
       ) : null}
 

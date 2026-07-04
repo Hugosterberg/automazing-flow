@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
+import type { ApiaiBatchIngestItem } from "@/features/content/apiaiClient";
 import { ContentFlowGuide } from "@/features/content/ContentFlowGuide";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
 import { ContentIdeasHub } from "@/features/content/ContentIdeasHub";
@@ -606,6 +607,26 @@ export default function ContentPage() {
     toast.success("Saved to selection and history");
   }
 
+  function handleBatchIngested(
+    items: ApiaiBatchIngestItem[],
+    meta: { batchId: number; workflow?: string; addToSelection: boolean }
+  ) {
+    items.forEach((item, index) => {
+      const asset: SelectedContentAsset = {
+        id: `apiai-batch-${meta.batchId}-${index}`,
+        name: item.filename,
+        mimeType: item.contentType,
+        kind: item.kind === "video" ? "video" : "image",
+        thumbnailUrl: item.mediaUrl,
+        previewUrl: item.mediaUrl,
+        sourceAccountId: "apiai",
+        sourceAccountName: "apiai.me",
+      };
+      recordAsset(asset, { toolName: meta.workflow || `batch #${meta.batchId}` });
+      if (meta.addToSelection) saveAssetSelection(asset, true);
+    });
+  }
+
   function toggleAsset(file: DriveBrowserItem, checked: boolean) {
     const asset = assetFromDriveFile(file);
     if (!asset) return;
@@ -675,7 +696,7 @@ export default function ContentPage() {
       />
 
       <ContentFlowGuide
-        active={contentTab}
+        active={contentTab === "history" ? "create" : contentTab}
         selectionCount={selectedAssets.length}
         onGo={goToTab}
       />
@@ -760,6 +781,8 @@ export default function ContentPage() {
           }}
           onContinueToPublish={() => goToTab("publish")}
           onPublishReadinessChange={setPublishReadiness}
+          onBatchIngested={handleBatchIngested}
+          onOpenHistory={() => goToTab("history")}
         />
       ) : null}
 
@@ -832,7 +855,7 @@ export default function ContentPage() {
             <Button variant="ghost" size="sm" onClick={() => void refresh()}>Retry</Button>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {activeAccount && (
         <div className="space-y-3">

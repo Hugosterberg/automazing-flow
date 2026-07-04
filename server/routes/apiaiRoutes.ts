@@ -24,6 +24,7 @@ import {
   type ApiaiTool,
 } from "../providers/apiai.ts";
 import { publicMediaUrl, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
+import { extractZipEntries } from "../lib/zipExtract.ts";
 
 const APIAI_KEY = "APIAI_API_KEY";
 const MAX_INPUT_BYTES = 12 * 1024 * 1024;
@@ -463,6 +464,60 @@ export function registerApiaiRoutes(app, deps: ApiaiRoutesDeps) {
       return res.status(502).json({
         error: "apiai_batch_download_failed",
         message: error instanceof Error ? error.message : "Could not download apiai.me batch results.",
+      });
+    }
+  });
+
+  app.post("/api/apiai/batch/:id/ingest", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const apiKey = await resolveApiaiKey(secretResolver, businessProfileId);
+    if (!apiKey) {
+      return res.status(400).json({
+        error: "apiai_not_configured",
+        message: "Add APIAI_API_KEY in Preferences -> API keys or as a server environment variable.",
+      });
+    }
+    const batchId = String(req.params.id || "").trim();
+    if (!batchId) return res.status(400).json({ error: "batch_id_required" });
+    try {
+      const upstream = await fetch(makeApiaiUrl(`/api/v1/batch/${encodeURIComponent(batchId)}/download`), {
+        headers: { "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(APIAI_TIMEOUT_MS),
+      });
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({
+          error: "apiai_batch_ingest_failed",
+          message: await parseApiaiError(upstream),
+        });
+      }
+      const zipBuffer = Buffer.from(await upstream.arrayBuffer());
+      const { entries, skipped } = extractZipEntries(zipBuffer);
+      if (entries.length === 0) {
+        return res.status(422).json({
+          error: "no_media_in_batch",
+          message: "No image files found in the batch ZIP.",
+          skipped,
+        });
+      }
+      const items = entries.map((entry) => {
+        const id = storeGeneratedMedia(entry.data, entry.contentType);
+        return {
+          filename: entry.name,
+          contentType: entry.contentType,
+          mediaUrl: publicMediaUrl(req, id),
+          kind: entry.contentType.startsWith("video/") ? "video" : "image",
+          size: entry.data.length,
+        };
+      });
+      return res.json({
+        batchId: Number(batchId),
+        items,
+        skipped,
+      });
+    } catch (error) {
+      return res.status(502).json({
+        error: "apiai_batch_ingest_failed",
+        message: error instanceof Error ? error.message : "Could not ingest apiai.me batch results.",
       });
     }
   });

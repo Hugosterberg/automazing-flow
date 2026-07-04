@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, FolderOpen, Layers, Loader2, RefreshCw } from "lucide-react";
+import { Download, FolderOpen, History, Layers, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
@@ -11,7 +12,9 @@ import { apiUrl } from "@/lib/apiBase";
 import {
   createApiaiBatch,
   getApiaiBatch,
+  ingestApiaiBatch,
   listApiaiBatches,
+  type ApiaiBatchIngestItem,
   type ApiaiBatchJob,
   type ApiaiBatchSummary,
 } from "./apiaiClient";
@@ -24,19 +27,29 @@ export function ApiaiBatchPanel({
   imageAssets,
   onBeforeRequest,
   onOpenBrowse,
+  onOpenHistory,
+  onBatchIngested,
 }: {
   businessProfileId: string | null;
   imageAssets: SelectedContentAsset[];
   onBeforeRequest?: () => Promise<void>;
   onOpenBrowse?: () => void;
+  onOpenHistory?: () => void;
+  onBatchIngested?: (
+    items: ApiaiBatchIngestItem[],
+    meta: { batchId: number; workflow?: string; addToSelection: boolean }
+  ) => void;
 }) {
   const [workflow, setWorkflow] = useState("remove-bg");
   const [creating, setCreating] = useState(false);
+  const [ingesting, setIngesting] = useState(false);
+  const [addToSelection, setAddToSelection] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<ApiaiBatchSummary[]>([]);
   const [activeJob, setActiveJob] = useState<ApiaiBatchJob | null>(null);
   const [loadingJobs, setLoadingJobs] = useState(false);
-  const completedToastRef = useRef<number | null>(null);
+  const [importedCount, setImportedCount] = useState<number | null>(null);
+  const ingestedRef = useRef<number | null>(null);
 
   async function refreshJobs() {
     if (!businessProfileId) return;
@@ -61,6 +74,8 @@ export function ApiaiBatchPanel({
     if (!businessProfileId || imageAssets.length === 0) return;
     setCreating(true);
     setError(null);
+    setImportedCount(null);
+    ingestedRef.current = null;
     try {
       await onBeforeRequest?.();
       const created = await createApiaiBatch({
@@ -87,15 +102,43 @@ export function ApiaiBatchPanel({
     }
   }
 
+  async function ingestCompletedJob(job: ApiaiBatchJob) {
+    if (!businessProfileId || ingestedRef.current === job.id) return;
+    ingestedRef.current = job.id;
+    setIngesting(true);
+    setError(null);
+    try {
+      await onBeforeRequest?.();
+      const result = await ingestApiaiBatch(businessProfileId, job.id);
+      onBatchIngested?.(result.items, {
+        batchId: job.id,
+        workflow: job.workflow,
+        addToSelection,
+      });
+      setImportedCount(result.items.length);
+      toast.success(
+        `${result.items.length} image${result.items.length === 1 ? "" : "s"} saved to History${
+          addToSelection ? " and selection" : ""
+        }`
+      );
+    } catch (e) {
+      ingestedRef.current = null;
+      setError(e instanceof Error ? e.message : "Could not import batch results");
+      toast.error(e instanceof Error ? e.message : "Could not import batch results");
+    } finally {
+      setIngesting(false);
+    }
+  }
+
   useEffect(() => {
     if (!activeJob?.id || !businessProfileId) return;
-    if (isBatchTerminal(String(activeJob.status || ""))) {
-      if (isBatchComplete(String(activeJob.status || "")) && completedToastRef.current !== activeJob.id) {
-        completedToastRef.current = activeJob.id;
-        toast.success("Batch complete — download the ZIP and add images from Browse or History.");
+    if (isBatchComplete(String(activeJob.status || ""))) {
+      if (ingestedRef.current !== activeJob.id && !ingesting) {
+        void ingestCompletedJob(activeJob);
       }
       return;
     }
+    if (isBatchTerminal(String(activeJob.status || ""))) return;
 
     const timer = window.setInterval(() => {
       void refreshActiveJob(activeJob.id);
@@ -103,7 +146,7 @@ export function ApiaiBatchPanel({
 
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeJob?.id, activeJob?.status, businessProfileId]);
+  }, [activeJob?.id, activeJob?.status, businessProfileId, addToSelection]);
 
   return (
     <Card className="bg-muted/10 border-border">
@@ -115,7 +158,7 @@ export function ApiaiBatchPanel({
               Batch process images
             </CardTitle>
             <CardDescription>
-              Run the same apiai.me workflow on all selected images (e.g. remove-bg, greyscale).
+              Run the same apiai.me workflow on all selected images — results import to History automatically.
             </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={() => void refreshJobs()} disabled={loadingJobs}>
@@ -139,6 +182,17 @@ export function ApiaiBatchPanel({
           </div>
         ) : null}
 
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="batch-add-selection"
+            checked={addToSelection}
+            onCheckedChange={(checked) => setAddToSelection(checked === true)}
+          />
+          <Label htmlFor="batch-add-selection" className="text-xs font-normal cursor-pointer">
+            Add imported images to selection
+          </Label>
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="space-y-1">
             <Label htmlFor="apiai-batch-workflow">Workflow slug</Label>
@@ -155,7 +209,7 @@ export function ApiaiBatchPanel({
           <Button
             className="self-end"
             onClick={() => void handleCreate()}
-            disabled={creating || !businessProfileId || imageAssets.length === 0 || !workflow.trim()}
+            disabled={creating || ingesting || !businessProfileId || imageAssets.length === 0 || !workflow.trim()}
           >
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Start batch
@@ -172,16 +226,45 @@ export function ApiaiBatchPanel({
               {activeJob.total_items != null ? (
                 <span className="text-xs text-muted-foreground">{activeJob.completed_items ?? 0}/{activeJob.total_items} done</span>
               ) : null}
+              {ingesting ? (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Importing…
+                </span>
+              ) : null}
+              {importedCount != null ? (
+                <span className="text-xs text-primary">{importedCount} in History</span>
+              ) : null}
               <Button variant="ghost" size="sm" className="h-7 px-2 ml-auto" onClick={() => void refreshActiveJob(activeJob.id)}>
                 Refresh
               </Button>
-              {String(activeJob.status || "").toLowerCase().includes("complete") ? (
-                <Button asChild variant="outline" size="sm" className="h-7">
-                  <a href={apiUrl(`/api/apiai/batch/${activeJob.id}/download?business_profile_id=${encodeURIComponent(businessProfileId || "")}`)}>
-                    <Download className="h-3.5 w-3.5 mr-1" />
-                    Download ZIP
-                  </a>
-                </Button>
+              {isBatchComplete(String(activeJob.status || "")) ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    disabled={ingesting}
+                    onClick={() => {
+                      ingestedRef.current = null;
+                      void ingestCompletedJob(activeJob);
+                    }}
+                  >
+                    Re-import
+                  </Button>
+                  {onOpenHistory ? (
+                    <Button variant="outline" size="sm" className="h-7" onClick={onOpenHistory}>
+                      <History className="h-3.5 w-3.5 mr-1" />
+                      History
+                    </Button>
+                  ) : null}
+                  <Button asChild variant="outline" size="sm" className="h-7">
+                    <a href={apiUrl(`/api/apiai/batch/${activeJob.id}/download?business_profile_id=${encodeURIComponent(businessProfileId || "")}`)}>
+                      <Download className="h-3.5 w-3.5 mr-1" />
+                      ZIP
+                    </a>
+                  </Button>
+                </>
               ) : null}
             </div>
           </div>
@@ -194,7 +277,11 @@ export function ApiaiBatchPanel({
               <button
                 key={job.id}
                 type="button"
-                onClick={() => void refreshActiveJob(job.id)}
+                onClick={() => {
+                  setImportedCount(null);
+                  ingestedRef.current = null;
+                  void refreshActiveJob(job.id);
+                }}
                 className="w-full flex items-center justify-between rounded-md border border-border/70 px-2.5 py-1.5 text-left text-xs hover:bg-accent/40"
               >
                 <span>#{job.id} · {job.workflow || "workflow"}</span>

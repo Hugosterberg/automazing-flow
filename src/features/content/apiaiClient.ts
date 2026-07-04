@@ -230,3 +230,24 @@ export async function getApiaiBatch(businessProfileId: string, batchId: number):
   if (!res.ok) throw new Error(await readError(res));
   return (await res.json()) as ApiaiBatchJob;
 }
+
+export type ApiaiBatchIngestItem = {
+  filename: string;
+  contentType: string;
+  mediaUrl: string;
+  kind: "image" | "video";
+  size: number;
+};
+
+export async function ingestApiaiBatch(
+  businessProfileId: string,
+  batchId: number
+): Promise<{ batchId: number; items: ApiaiBatchIngestItem[]; skipped: number }> {
+  const params = new URLSearchParams({ business_profile_id: businessProfileId });
+  const res = await fetchWithTimeout(apiUrl(`/api/apiai/batch/${batchId}/ingest?${params.toString()}`), {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as { batchId: number; items: ApiaiBatchIngestItem[]; skipped: number };
+}

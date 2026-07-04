@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Copy, Loader2, Megaphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { fetchOutreachContentIdeas, type OutreachContentIdea, type OutreachContentInput } from "./outreachClient";
 
 function ideaText(idea: OutreachContentIdea) {
@@ -20,9 +21,16 @@ export function OutreachContentCard({
   context: Omit<OutreachContentInput, "business_profile_id">;
   onUseIdea?: (text: string) => void;
 }) {
+  const navigate = useNavigate();
   const [ideas, setIdeas] = useState<OutreachContentIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState("");
+
+  function openInContent(text: string) {
+    stashContentCaption(text);
+    navigate("/content?tab=publish");
+    toast.success("Idea ready in Content — post or save");
+  }
 
   async function generate() {
     setLoading(true);
@@ -99,8 +107,13 @@ export function OutreachContentCard({
                     Use
                   </Button>
                 ) : (
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" asChild>
-                    <Link to="/content?tab=publish">Create →</Link>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => openInContent(ideaText(idea))}
+                  >
+                    Create →
                   </Button>
                 )}
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void navigator.clipboard.writeText(ideaText(idea)).then(() => toast.success("Copied"))}>
