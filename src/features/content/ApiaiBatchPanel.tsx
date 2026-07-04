@@ -19,6 +19,7 @@ import {
   type ApiaiBatchSummary,
 } from "./apiaiClient";
 import { batchStatusLabel, isBatchComplete, isBatchTerminal } from "./apiaiBatchUtils";
+import { readLastBatchWorkflow, writeLastBatchWorkflow } from "./contentAutomationPrefs";
 
 export { batchStatusLabel } from "./apiaiBatchUtils";
 
@@ -40,7 +41,7 @@ export function ApiaiBatchPanel({
     meta: { batchId: number; workflow?: string; addToSelection: boolean }
   ) => void;
 }) {
-  const [workflow, setWorkflow] = useState("remove-bg");
+  const [workflow, setWorkflow] = useState(() => readLastBatchWorkflow());
   const [creating, setCreating] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const [addToSelection, setAddToSelection] = useState(true);
@@ -199,7 +200,11 @@ export function ApiaiBatchPanel({
             <Input
               id="apiai-batch-workflow"
               value={workflow}
-              onChange={(event) => setWorkflow(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setWorkflow(next);
+                writeLastBatchWorkflow(next);
+              }}
               placeholder="remove-bg or flow:my-pipeline"
             />
             <p className="text-[11px] text-muted-foreground">

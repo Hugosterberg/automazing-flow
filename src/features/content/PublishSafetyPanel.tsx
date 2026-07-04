@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { SelectedContentAsset } from "@/lib/contentSelection";
 import { runContentSafetyCheck } from "./contentSafetyCheck";
 import type { PublishReadiness } from "./apiaiResultInsights";
+import { assetFingerprint } from "./contentAutomationPrefs";
 
 export function PublishSafetyPanel({
   businessProfileId,
@@ -13,34 +14,49 @@ export function PublishSafetyPanel({
   readiness,
   onReadinessChange,
   onBeforeRequest,
+  autoRunModeration = false,
 }: {
   businessProfileId: string | null;
   imageAssets: SelectedContentAsset[];
   readiness: PublishReadiness | null;
   onReadinessChange: (readiness: PublishReadiness | null) => void;
   onBeforeRequest?: () => Promise<void>;
+  /** Runs moderation automatically when the selected images change. */
+  autoRunModeration?: boolean;
 }) {
   const [busy, setBusy] = useState<"moderation" | "quality-gate" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lastAutoFingerprintRef = useRef("");
 
-  async function runCheck(kind: "moderation" | "quality-gate") {
-    if (!businessProfileId) return;
-    setBusy(kind);
-    setError(null);
-    try {
-      await onBeforeRequest?.();
-      const result = await runContentSafetyCheck({
-        businessProfileId,
-        assets: imageAssets,
-        kind,
-      });
-      onReadinessChange(result.readiness);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Safety check failed.");
-    } finally {
-      setBusy(null);
-    }
-  }
+  const runCheck = useCallback(
+    async (kind: "moderation" | "quality-gate") => {
+      if (!businessProfileId) return;
+      setBusy(kind);
+      setError(null);
+      try {
+        await onBeforeRequest?.();
+        const result = await runContentSafetyCheck({
+          businessProfileId,
+          assets: imageAssets,
+          kind,
+        });
+        onReadinessChange(result.readiness);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Safety check failed.");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [businessProfileId, imageAssets, onBeforeRequest, onReadinessChange]
+  );
+
+  useEffect(() => {
+    if (!autoRunModeration || !businessProfileId || imageAssets.length === 0) return;
+    const fingerprint = assetFingerprint(imageAssets);
+    if (!fingerprint || fingerprint === lastAutoFingerprintRef.current) return;
+    lastAutoFingerprintRef.current = fingerprint;
+    void runCheck("moderation");
+  }, [autoRunModeration, businessProfileId, imageAssets, runCheck]);
 
   return (
     <Card className="border-border bg-muted/10">
@@ -48,9 +64,12 @@ export function PublishSafetyPanel({
         <CardTitle className="text-sm flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
           Pre-publish checks
+          {autoRunModeration ? (
+            <span className="text-[10px] font-normal text-muted-foreground">· auto moderation</span>
+          ) : null}
         </CardTitle>
         <CardDescription>
-          Run apiai.me moderation or quality checks on your first selected image before you publish.
+          Moderation runs automatically when your media changes. Run a quality check before you publish if you want extra confidence.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -63,7 +82,7 @@ export function PublishSafetyPanel({
             onClick={() => void runCheck("moderation")}
           >
             {busy === "moderation" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-            Moderation check
+            Re-run moderation
           </Button>
           <Button
             type="button"
@@ -81,6 +100,13 @@ export function PublishSafetyPanel({
             </Button>
           ) : null}
         </div>
+
+        {busy && autoRunModeration ? (
+          <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Checking content…
+          </p>
+        ) : null}
 
         {readiness ? (
           <Alert variant={readiness.severity === "block" ? "destructive" : "default"}>

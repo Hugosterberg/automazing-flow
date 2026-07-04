@@ -864,6 +864,7 @@ export default function SocialMedia() {
               readiness={publishReadiness}
               onReadinessChange={setPublishReadiness}
               onBeforeRequest={ensureBackendSession}
+              autoRunModeration
             />
           </div>
         ) : null}
@@ -871,6 +872,7 @@ export default function SocialMedia() {
           initialCaption={postContent}
           mediaUrls={composerMediaUrls}
           onCaptionChange={setPostContent}
+          autoSelectAccounts
           editingPost={editingPost}
           onEditingPostChange={setEditingPost}
           publishBlockedReason={publishBlockedReason}

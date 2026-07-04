@@ -26,9 +26,10 @@ import { useGeneratedContentHistory } from "@/features/content/useGeneratedConte
 import { PublishSafetyPanel } from "@/features/content/PublishSafetyPanel";
 import { publishBlockReason, type PublishReadiness } from "@/features/content/apiaiResultInsights";
 import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
+import { uploadContentMedia } from "@/features/content/contentMediaClient";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
-import { Film, FolderOpen, History, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
+import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
@@ -394,6 +395,8 @@ export default function ContentPage() {
   const PREVIEW_COUNT = 4;
   const [imagesExpanded, setImagesExpanded] = useState(false);
   const [videosExpanded, setVideosExpanded] = useState(false);
+  const [uploadingBrowse, setUploadingBrowse] = useState(false);
+  const browseUploadRef = useRef<HTMLInputElement>(null);
   const selectedIds = useMemo(() => new Set(selectedAssets.map((asset) => asset.id)), [selectedAssets]);
   const selectedImages = selectedAssets.filter((asset) => asset.kind === "image");
   const selectedVideos = selectedAssets.filter((asset) => asset.kind === "video");
@@ -625,6 +628,44 @@ export default function ContentPage() {
       recordAsset(asset, { toolName: meta.workflow || `batch #${meta.batchId}` });
       if (meta.addToSelection) saveAssetSelection(asset, true);
     });
+    if (meta.addToSelection && items.length > 0) {
+      goToTab("publish");
+    }
+  }
+
+  async function handleBrowseUploadFiles(fileList: FileList | null) {
+    if (!fileList?.length || !createBusinessProfileId) return;
+    setUploadingBrowse(true);
+    try {
+      await ensureBackendSession();
+      let added = 0;
+      for (const file of Array.from(fileList)) {
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue;
+        const uploaded = await uploadContentMedia({ file, businessProfileId: createBusinessProfileId });
+        const asset: SelectedContentAsset = {
+          id: `upload-${Date.now()}-${added}`,
+          name: uploaded.filename,
+          mimeType: uploaded.contentType,
+          kind: file.type.startsWith("video/") ? "video" : "image",
+          thumbnailUrl: uploaded.url,
+          previewUrl: uploaded.url,
+          sourceAccountId: "upload",
+          sourceAccountName: "Upload",
+        };
+        saveGeneratedToSelection(asset, { toolName: "Upload" });
+        added += 1;
+      }
+      if (added > 0) {
+        toast.success(`${added} file${added === 1 ? "" : "s"} uploaded — ready to post`);
+      } else {
+        toast.message("No image or video files selected");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingBrowse(false);
+      if (browseUploadRef.current) browseUploadRef.current.value = "";
+    }
   }
 
   function toggleAsset(file: DriveBrowserItem, checked: boolean) {
@@ -831,11 +872,13 @@ export default function ContentPage() {
             readiness={publishReadiness}
             onReadinessChange={setPublishReadiness}
             onBeforeRequest={ensureBackendSession}
+            autoRunModeration
           />
           <PublishComposer
             initialCaption={publishCaption}
             mediaUrls={publishMediaUrls}
             onCaptionChange={setPublishCaption}
+            autoSelectAccounts
             publishBlockedReason={publishBlockedReason}
             publishWarning={
               publishReadiness && !publishReadiness.ok && publishReadiness.severity === "warn"
@@ -992,15 +1035,39 @@ export default function ContentPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search files by name…"
-              value={driveSearch}
-              onChange={(e) => setDriveSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative max-w-sm flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search files by name…"
+                value={driveSearch}
+                onChange={(e) => setDriveSearch(e.target.value)}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+            <input
+              ref={browseUploadRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={(event) => void handleBrowseUploadFiles(event.target.files)}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploadingBrowse || !createBusinessProfileId}
+              onClick={() => browseUploadRef.current?.click()}
+            >
+              {uploadingBrowse ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <ImagePlus className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Upload files
+            </Button>
           </div>
           {folderItems.length > 0 && (
             <div className="space-y-3">

@@ -24,6 +24,8 @@ export function ContentAiImageCard({
   onGenerated,
   onSaveToSelection,
   onContinueToPublish,
+  autoSaveToSelection = false,
+  autoContinueToPublish = false,
 }: {
   businessProfileId: string | null;
   captionHint?: string;
@@ -39,6 +41,10 @@ export function ContentAiImageCard({
   onGenerated: (asset: SelectedContentAsset) => void;
   onSaveToSelection?: (asset: SelectedContentAsset) => void;
   onContinueToPublish?: () => void;
+  /** Save to History and selection immediately after generate/export. */
+  autoSaveToSelection?: boolean;
+  /** Jump to Post or save when autoSaveToSelection completes. */
+  autoContinueToPublish?: boolean;
 }) {
   const [prompt, setPrompt] = useState("");
   const [canvaDesignId, setCanvaDesignId] = useState("");
@@ -47,6 +53,16 @@ export function ContentAiImageCard({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [lastAsset, setLastAsset] = useState<SelectedContentAsset | null>(null);
   const promptId = embedded ? "social-ai-prompt" : "content-ai-prompt";
+
+  function finishWithAsset(asset: SelectedContentAsset) {
+    setLastAsset(asset);
+    if (autoSaveToSelection && onSaveToSelection) {
+      onSaveToSelection(asset);
+      if (autoContinueToPublish) onContinueToPublish?.();
+    } else {
+      onGenerated(asset);
+    }
+  }
 
   async function handleGenerate() {
     const text = prompt.trim() || captionHint.trim();
@@ -74,8 +90,7 @@ export function ContentAiImageCard({
         sourceAccountId: "openai",
         sourceAccountName: "OpenAI",
       };
-      setLastAsset(asset);
-      onGenerated(asset);
+      finishWithAsset(asset);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate image");
     } finally {
@@ -104,8 +119,7 @@ export function ContentAiImageCard({
         sourceAccountId: "canva",
         sourceAccountName: "Canva",
       };
-      setLastAsset(asset);
-      onGenerated(asset);
+      finishWithAsset(asset);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not export Canva design");
     } finally {

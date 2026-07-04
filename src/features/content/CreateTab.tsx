@@ -102,6 +102,7 @@ export function CreateTab({
   onPublishReadinessChange,
   onBatchIngested,
   onOpenHistory,
+  autoAddResultsToSelection = true,
 }: {
   businessProfileId: string | null;
   selectedAssets: SelectedContentAsset[];
@@ -120,6 +121,7 @@ export function CreateTab({
     meta: { batchId: number; workflow?: string; addToSelection: boolean }
   ) => void;
   onOpenHistory?: () => void;
+  autoAddResultsToSelection?: boolean;
 }) {
   const [tools, setTools] = useState<ApiaiTool[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState("");
@@ -254,10 +256,10 @@ export function CreateTab({
       const insight = insightFromApiaiResult(nextResult, tool);
       setPublishInsight(insight);
       onPublishReadinessChange?.(insight);
-      if (nextResult.resultType === "binary" && nextResult.contentType.startsWith("image/") && onRecordGenerated) {
+      if (nextResult.resultType === "binary" && nextResult.contentType.startsWith("image/")) {
         const url = resultMediaUrl(nextResult);
         if (url) {
-          onRecordGenerated({
+          const asset: SelectedContentAsset = {
             id: `apiai-${Date.now()}`,
             name: nextResult.filename,
             mimeType: nextResult.contentType,
@@ -266,7 +268,15 @@ export function CreateTab({
             previewUrl: url,
             sourceAccountId: "apiai",
             sourceAccountName: "apiai.me",
-          }, { toolName: tool.name });
+          };
+          if (autoAddResultsToSelection && onSaveResultToSelection) {
+            onSaveResultToSelection(asset, { toolName: tool.name });
+            if (insight?.severity !== "block") {
+              onContinueToPublish?.();
+            }
+          } else if (onRecordGenerated) {
+            onRecordGenerated(asset, { toolName: tool.name });
+          }
         }
       }
     } catch (error) {
@@ -390,6 +400,8 @@ export function CreateTab({
           businessProfileId={businessProfileId}
           captionHint={captionHint}
           canvaConnected={canvaConnected}
+          autoSaveToSelection
+          autoContinueToPublish
           onGenerated={(asset) => {
             onRecordGenerated?.(asset);
             toast.message("Saved to History");

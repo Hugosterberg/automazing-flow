@@ -36,6 +36,7 @@ export function PublishComposer({
   onEditingPostChange,
   publishBlockedReason = null,
   publishWarning = null,
+  autoSelectAccounts = true,
 }: {
   initialCaption?: string;
   mediaUrls?: string[];
@@ -46,6 +47,8 @@ export function PublishComposer({
   onEditingPostChange?: (post: ScheduledPost | null) => void;
   publishBlockedReason?: string | null;
   publishWarning?: string | null;
+  /** Pre-select all publishable accounts when the composer opens. */
+  autoSelectAccounts?: boolean;
 }) {
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
@@ -82,6 +85,14 @@ export function PublishComposer({
   useEffect(() => {
     setCaption(initialCaption);
   }, [initialCaption]);
+
+  useEffect(() => {
+    if (!autoSelectAccounts || editingPost || postable.length === 0) return;
+    setSelected((current) => {
+      if (Object.values(current).some(Boolean)) return current;
+      return Object.fromEntries(postable.map((account) => [account.id, true]));
+    });
+  }, [autoSelectAccounts, editingPost, postable]);
 
   // Load an existing draft/scheduled post into the form when edit is requested.
   useEffect(() => {
