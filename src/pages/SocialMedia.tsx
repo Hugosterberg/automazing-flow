@@ -59,6 +59,7 @@ import {
 } from "@/components/platform-icons";
 import type { ConnectedAccount, SocialPlatform } from "@/types/accounts";
 import { ContentAiImageCard } from "@/features/content/ContentAiImageCard";
+import { uploadContentMedia } from "@/features/content/contentMediaClient";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 
 const platformIcons: Record<SocialPlatform, typeof InstagramIcon> = {
@@ -472,15 +473,34 @@ export default function SocialMedia() {
 
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setUploadedImage(url);
-      setGeneratedMediaUrl(null);
-      setImageSource(null);
-    }
     e.target.value = "";
+    if (!file) return;
+
+    const blobUrl = URL.createObjectURL(file);
+    setUploadedImage(blobUrl);
+    setGeneratedMediaUrl(null);
+    setImageSource(null);
+
+    try {
+      const uploaded = await uploadContentMedia({ file, businessProfileId });
+      setGeneratedMediaUrl(uploaded.url);
+      setUploadedImage(uploaded.url);
+      setImageSource(null);
+      record({
+        name: uploaded.filename,
+        mimeType: uploaded.contentType,
+        kind: "image",
+        mediaUrl: uploaded.url,
+        thumbnailUrl: uploaded.url,
+        source: "upload",
+        sourceLabel: "Upload",
+      });
+      toast.success("Upload saved — ready to publish");
+    } catch (error) {
+      toast.message("Preview only — upload failed. Generate with AI or pick from Content instead.");
+    }
   }
 
   function handleGeneratedImage(asset: SelectedContentAsset) {

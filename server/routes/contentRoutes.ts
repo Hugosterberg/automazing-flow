@@ -128,6 +128,60 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     return res.send(item.buffer);
   });
 
+  app.post("/api/content/media/upload", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+
+    const body = (req.body ?? {}) as {
+      dataBase64?: string;
+      contentType?: string;
+      filename?: string;
+    };
+    const raw = String(body.dataBase64 || "").trim();
+    if (!raw) {
+      return res.status(400).json({ error: "dataBase64 is required" });
+    }
+
+    const contentType = String(body.contentType || "image/png").trim();
+    if (!contentType.startsWith("image/")) {
+      return res.status(400).json({
+        error: "invalid_content_type",
+        message: "Only image uploads are supported.",
+      });
+    }
+
+    const base64 = raw.includes(",") ? raw.split(",").pop() || "" : raw;
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(base64, "base64");
+    } catch {
+      return res.status(400).json({ error: "invalid_base64" });
+    }
+    const maxUploadBytes = 12 * 1024 * 1024;
+    if (!buffer.length || buffer.length > maxUploadBytes) {
+      return res.status(413).json({
+        error: "upload_too_large",
+        message: "Image must be smaller than 12 MB.",
+      });
+    }
+
+    const id = storeGeneratedMedia(buffer, contentType);
+    const url = publicMediaUrl(req, id);
+    return res.json({
+      ok: true,
+      url,
+      filename: String(body.filename || id),
+      contentType,
+      source: "upload",
+    });
+  });
+
   app.post("/api/content/canva/export", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {

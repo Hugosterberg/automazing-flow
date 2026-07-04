@@ -181,7 +181,7 @@ export function ContentAiImageCard({
           ) : null}
           {embedded ? (
             <p className="text-xs text-muted-foreground">
-              Local uploads are preview-only. AI and Canva images publish automatically.
+              Local uploads are stored on the server and can be published with your post.
             </p>
           ) : null}
         </div>
