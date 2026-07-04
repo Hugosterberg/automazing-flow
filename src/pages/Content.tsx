@@ -598,7 +598,6 @@ export default function ContentPage() {
 
   function recordGeneratedAsset(asset: SelectedContentAsset, options?: { toolName?: string }) {
     recordAsset(asset, options);
-    toast.message("Saved to History");
   }
 
   function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {

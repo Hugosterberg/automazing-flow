@@ -522,6 +522,7 @@ export default function SocialMedia() {
         source: "openai",
         sourceLabel: "OpenAI",
       });
+      toast.message("Saved to History");
     } catch (error) {
       setImageWorkflowError(error instanceof Error ? error.message : "Could not generate image");
     } finally {
@@ -555,6 +556,7 @@ export default function SocialMedia() {
         source: "canva",
         sourceLabel: "Canva",
       });
+      toast.message("Saved to History");
     } catch (error) {
       setImageWorkflowError(error instanceof Error ? error.message : "Could not export Canva design");
     } finally {

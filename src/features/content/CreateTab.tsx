@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Download, Loader2, RefreshCw, Send, Wand2 } from "lucide-react";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -381,7 +382,10 @@ export function CreateTab({
           businessProfileId={businessProfileId}
           captionHint={captionHint}
           canvaConnected={canvaConnected}
-          onGenerated={(asset) => onRecordGenerated?.(asset)}
+          onGenerated={(asset) => {
+            onRecordGenerated?.(asset);
+            toast.message("Saved to History");
+          }}
           onSaveToSelection={(asset) => onSaveResultToSelection?.(asset)}
           onContinueToPublish={onContinueToPublish}
         />
