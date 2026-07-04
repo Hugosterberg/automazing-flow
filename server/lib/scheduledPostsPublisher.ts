@@ -34,6 +34,7 @@ export interface StoredScheduledPost {
   createdAt: string;
   updatedAt: string;
   error?: string;
+  retryCount?: number;
 }
 
 /** A post is due when it is scheduled and its time has passed. */
@@ -97,6 +98,36 @@ export interface PublishSweepResult {
   due: number;
   published: number;
   failed: number;
+  retried: number;
+}
+
+const RETRY_WINDOW_MS = 24 * 3600000;
+const MAX_PUBLISH_RETRIES = 1;
+
+/** Re-queue recently failed posts once (transient Zernio/network errors). */
+export function retryFailedScheduledPosts(
+  posts: StoredScheduledPost[],
+  nowMs: number
+): { posts: StoredScheduledPost[]; retried: number } {
+  let retried = 0;
+  const next = posts.map((post) => {
+    if (post.status !== "failed") return post;
+    const retries = post.retryCount ?? 0;
+    if (retries >= MAX_PUBLISH_RETRIES) return post;
+    const failedAt = Date.parse(post.updatedAt || post.createdAt);
+    if (!Number.isFinite(failedAt) || nowMs - failedAt > RETRY_WINDOW_MS) return post;
+    retried += 1;
+    const reschedule = new Date(nowMs + 15 * 60000).toISOString();
+    return {
+      ...post,
+      status: "scheduled" as const,
+      scheduledFor: reschedule,
+      retryCount: retries + 1,
+      error: undefined,
+      updatedAt: new Date(nowMs).toISOString(),
+    };
+  });
+  return { posts: next, retried };
 }
 
 /**
@@ -121,7 +152,7 @@ export async function publishDueScheduledPosts(deps: {
   if (error) throw new Error(`scheduled-posts load failed: ${error.message}`);
 
   const rows = Array.isArray(data) ? data : [];
-  const result: PublishSweepResult = { profiles: rows.length, due: 0, published: 0, failed: 0 };
+  const result: PublishSweepResult = { profiles: rows.length, due: 0, published: 0, failed: 0, retried: 0 };
 
   for (const rawRow of rows) {
     const row = rawRow as { id: string; business_profile_id: string; data: unknown };
@@ -129,7 +160,22 @@ export async function publishDueScheduledPosts(deps: {
     if (deps.shouldPublishForProfile && !deps.shouldPublishForProfile(businessProfileId)) {
       continue;
     }
-    const posts = parseScheduledPostsDoc(row.data);
+    let posts = parseScheduledPostsDoc(row.data);
+    const retryResult = retryFailedScheduledPosts(posts, nowMs);
+    if (retryResult.retried > 0) {
+      posts = retryResult.posts;
+      result.retried += retryResult.retried;
+      const { error: retryWriteError } = await deps.supabaseAdmin
+        .from("profile_documents")
+        .update({ data: posts })
+        .eq("id", String(row.id));
+      if (retryWriteError) {
+        console.warn(
+          `[cron] publish-scheduled-posts retry write-back failed bp=${row.business_profile_id}:`,
+          retryWriteError.message
+        );
+      }
+    }
     const due = posts.filter((p) => isPostDue(p, nowMs));
     if (due.length === 0) continue;
     result.due += due.length;

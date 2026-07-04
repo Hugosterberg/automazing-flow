@@ -1,6 +1,6 @@
 import { m } from "framer-motion";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
-import { BarChart3, CalendarDays, FileText, Heart, Sparkles, Target, Zap } from "lucide-react";
+import { BarChart3, CalendarDays, FileText, Heart, RefreshCw, Sparkles, Target, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,32 @@ const automationWorkflows: AutomationWorkflow[] = [
       "Lägg till relevanta hashtags per kanal",
     ],
     icon: Sparkles,
+  },
+  {
+    id: "content-gap-filler",
+    title: "Kalender-gap-fyllare",
+    summary: "Upptäcker tomma dagar i publiceringsschemat och fyller med AI-idéer automatiskt.",
+    cadence: "Var 2:a dag",
+    value: "Konsekvent närvaro",
+    steps: [
+      "Räkna schemalagda inlägg närmaste 72h",
+      "Generera idéer när färre än 2 inlägg väntar",
+      "Köa till content-pipeline",
+    ],
+    icon: CalendarDays,
+  },
+  {
+    id: "evergreen-repost",
+    title: "Evergreen-replay",
+    summary: "Återpublicerar ditt bästa äldre innehåll när veckan är tom — utan att du behöver gräva i arkivet.",
+    cadence: "Var 2:a vecka",
+    value: "Mer output, mindre arbete",
+    steps: [
+      "Hitta publicerat innehåll äldre än 30 dagar",
+      "Köa replay om inget väntar nästa vecka",
+      "Schemalägg med ny intro-rad",
+    ],
+    icon: RefreshCw,
   },
   {
     id: "engagement-followup",

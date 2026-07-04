@@ -98,7 +98,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "content",
     title: "Publicera schemalagda inlägg",
     description:
-      "Sveper var 15:e minut och publicerar sociala inlägg vars schemalagda tid har passerat.",
+      "Sveper var 15:e minut, försöker om misslyckade inlägg en gång, och publicerar det som är due.",
     cadence: "Konfigurerbart schema",
     icon: CalendarClock,
     outputHref: "/social-media",
@@ -109,7 +109,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "messages",
     title: "Automatisk outreach",
     description:
-      "Skapar utkast till uppföljningsmejl för leads vars follow-up är due — köas i Sales.",
+      "Skapar utkast till uppföljningsmejl för due leads och tysta leads (10+ dagar utan kontakt).",
     cadence: "Konfigurerbart schema",
     icon: Users,
     outputHref: "/sales",
@@ -121,7 +121,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "content",
     title: "Innehållspipeline",
     description:
-      "Flyttar köade inlägg till schemalagd publicering när content-flöden är aktiva.",
+      "Seedar repurpose/gap/evergreen-idéer och flyttar köade inlägg till schemalagd publicering.",
     cadence: "Konfigurerbart schema",
     icon: Sparkles,
     outputHref: "/social-media",
@@ -144,7 +144,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     topic: "messages",
     title: "Automatiska review-svar",
     description:
-      "Skapar utkast till svar på nya recensioner — du godkänner och skickar på Reviews.",
+      "Skapar utkast till svar på nya recensioner och skickar brådskande mejl vid ≤2★ — du godkänner på Reviews.",
     cadence: "Konfigurerbart schema",
     icon: MessageSquare,
     outputHref: "/reviews",

@@ -18,6 +18,7 @@ import {
   runContentPipeline,
   runReviewReplyAuto,
   runSalesOutreachAuto,
+  runStaleLeadOutreach,
 } from "../lib/flowAutomationJobs.ts";
 import { buildMarketingAlert, extractPoorCampaignsForAlert } from "../lib/marketingAlert.ts";
 import { buildCampaignSnapshotRows } from "../lib/marketingCampaignSnapshots.ts";
@@ -1481,6 +1482,15 @@ export function registerCronRoutes(app, deps) {
           });
           drafted += result.drafted;
           if (result.notified) notified += 1;
+          const stale = await runStaleLeadOutreach({
+            supabaseAdmin,
+            businessProfileId: entry.bpId,
+            profile,
+            notifyEmail: recipient || undefined,
+            appUrl: appUrl || undefined,
+          });
+          drafted += stale.drafted;
+          if (stale.notified) notified += 1;
         } catch (err) {
           failed += 1;
           console.warn(
@@ -1520,6 +1530,13 @@ export function registerCronRoutes(app, deps) {
         return res.json({ ok: true, scheduled: 0, note: "no_profiles_due" });
       }
 
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
       let scheduled = 0;
       let skipped = 0;
       let failed = 0;
@@ -1531,10 +1548,12 @@ export function registerCronRoutes(app, deps) {
           continue;
         }
         try {
+          const profile = profileById.get(entry.bpId);
           const result = await runContentPipeline({
             supabaseAdmin,
             businessProfileId: entry.bpId,
             schedules: entry.schedules,
+            businessName: profile?.name ? String(profile.name) : undefined,
           });
           scheduled += result.scheduled;
           skipped += result.skipped;
@@ -1686,6 +1705,7 @@ export function registerCronRoutes(app, deps) {
 
       let drafted = 0;
       let notified = 0;
+      let urgentAlerts = 0;
       let failed = 0;
       let deferred = 0;
 
@@ -1713,6 +1733,7 @@ export function registerCronRoutes(app, deps) {
           });
           drafted += result.drafted;
           if (result.notified) notified += 1;
+          urgentAlerts += result.urgentAlerts ?? 0;
         } catch (err) {
           failed += 1;
           console.warn(
@@ -1721,7 +1742,7 @@ export function registerCronRoutes(app, deps) {
           );
         }
       }
-      return res.json({ ok: true, drafted, notified, failed, deferred });
+      return res.json({ ok: true, drafted, notified, urgentAlerts, failed, deferred });
     } catch (e) {
       console.error("[cron] review-reply-auto unexpected:", e?.message || e);
       return res.status(500).json({ error: "review_reply_auto_failed" });

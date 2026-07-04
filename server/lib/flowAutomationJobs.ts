@@ -25,6 +25,7 @@ export const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
 export const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
 export const CART_RECOVERY_SENT_DOC_KEY = "cart-recovery-sent";
 export const REVIEW_REPLY_QUEUE_DOC_KEY = "review-reply-queue";
+export const NEGATIVE_REVIEW_ALERTS_DOC_KEY = "negative-review-alerts";
 
 export interface ReviewReplyQueueItem {
   id: string;
@@ -260,20 +261,120 @@ export async function runSalesOutreachAuto(deps: {
   return { drafted, notified };
 }
 
-/** Move queued content items into scheduled-posts for cron publishing. */
+const STALE_LEAD_DAYS = 10;
+
+/** Auto-draft win-back outreach for open leads gone quiet (no follow-up date). */
+export async function runStaleLeadOutreach(deps: {
+  supabaseAdmin: SupabaseAdminLike;
+  businessProfileId: string;
+  profile: BusinessProfileRow;
+  notifyEmail?: string;
+  appUrl?: string;
+  now?: Date;
+}): Promise<{ drafted: number; notified: boolean }> {
+  const { supabaseAdmin, businessProfileId, profile, notifyEmail, appUrl } = deps;
+  const nowMs = (deps.now ?? new Date()).getTime();
+
+  const { data: leadRows, error } = await supabaseAdmin
+    .from("leads")
+    .select("id,name,email,company,status,next_follow_up_at,updated_at,created_at")
+    .eq("business_profile_id", businessProfileId)
+    .in("status", ["new", "contacted", "qualified"])
+    .is("next_follow_up_at", null);
+  if (error) throw new Error(error.message);
+
+  const leads = (Array.isArray(leadRows) ? leadRows : []) as Array<
+    LeadRow & { updated_at?: string; created_at?: string }
+  >;
+  const staleLeads = leads.filter((lead) => {
+    const touched = Date.parse(String(lead.updated_at || lead.created_at || ""));
+    if (!Number.isFinite(touched)) return false;
+    return Math.floor((nowMs - touched) / 86400000) >= STALE_LEAD_DAYS;
+  });
+  if (staleLeads.length === 0) return { drafted: 0, notified: false };
+
+  const existingDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, OUTREACH_QUEUE_DOC_KEY);
+  const queue = parseOutreachQueue(existingDoc?.data);
+  const queuedLeadIds = new Set(queue.filter((q) => q.status === "draft").map((q) => q.leadId));
+
+  let drafted = 0;
+  const newItems: OutreachQueueItem[] = [];
+
+  for (const lead of staleLeads.slice(0, 5)) {
+    const leadId = String(lead.id || "");
+    if (!leadId || queuedLeadIds.has(leadId)) continue;
+    const touched = Date.parse(String(lead.updated_at || lead.created_at || ""));
+    const daysQuiet = Number.isFinite(touched) ? Math.floor((nowMs - touched) / 86400000) : STALE_LEAD_DAYS;
+
+    const draft = heuristicOutreachDraft(
+      {
+        businessName: String(profile.name || "Our team"),
+        prospectCompany: String(lead.company || lead.name || "prospect"),
+        prospectContact: String(lead.name || ""),
+        prospectEmail: lead.email ? String(lead.email) : undefined,
+        prospectReason: `no touch in ${daysQuiet} days — gentle re-engagement`,
+      },
+      "email"
+    );
+
+    newItems.push({
+      id: crypto.randomUUID(),
+      leadId,
+      leadName: String(lead.name || lead.company || "Lead"),
+      prospectEmail: lead.email ? String(lead.email) : undefined,
+      subject: draft.subject,
+      body: draft.body,
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    });
+    drafted += 1;
+  }
+
+  if (newItems.length === 0) return { drafted: 0, notified: false };
+
+  const nextQueue = [...newItems, ...queue].slice(0, 50);
+  await saveProfileDocument(supabaseAdmin, businessProfileId, OUTREACH_QUEUE_DOC_KEY, nextQueue);
+
+  let notified = false;
+  if (notifyEmail && drafted > 0) {
+    const salesUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/sales` : "/sales";
+    const result = await sendEmail({
+      to: notifyEmail,
+      subject: `${profile.name || "Your business"}: ${drafted} stale lead draft${drafted === 1 ? "" : "s"} ready`,
+      html:
+        `<p>${drafted} re-engagement draft${drafted === 1 ? "" : "s"} for quiet leads ${drafted === 1 ? "is" : "are"} ready in Sales.</p>` +
+        `<p><a href="${salesUrl}">Review drafts in Sales</a></p>`,
+      text: `${drafted} stale lead draft(s) ready. Open Sales: ${salesUrl}`,
+    });
+    notified = result.ok;
+  }
+
+  return { drafted, notified };
+}
 export async function runContentPipeline(deps: {
   supabaseAdmin: SupabaseAdminLike;
   businessProfileId: string;
   schedules: JobSchedulesMap;
-}): Promise<{ scheduled: number; skipped: number }> {
+  businessName?: string;
+}): Promise<{ scheduled: number; skipped: number; seeded?: number }> {
   const { supabaseAdmin, businessProfileId } = deps;
+
+  const { runContentCreativeSeed, buildOptimizedCaption } = await import("./contentCreativeJobs.ts");
+  await runContentCreativeSeed({
+    supabaseAdmin,
+    businessProfileId,
+    businessName: deps.businessName,
+  });
 
   const workflowsDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, SOCIAL_WORKFLOWS_DOC_KEY);
   const workflows = parseSocialWorkflows(workflowsDoc?.data);
+  const captionOptimizer = Boolean(workflows.enabled["caption-hashtag-optimizer"]);
   const pipelineEnabled =
     workflows.enabled["repurpose-weekly-hero"] ||
     workflows.enabled["caption-hashtag-optimizer"] ||
-    workflows.enabled["weekly-insight-digest"];
+    workflows.enabled["weekly-insight-digest"] ||
+    workflows.enabled["content-gap-filler"] ||
+    workflows.enabled["evergreen-repost"];
 
   const pipelineDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, CONTENT_PIPELINE_DOC_KEY);
   let queue = parseContentPipeline(pipelineDoc?.data);
@@ -296,7 +397,9 @@ export async function runContentPipeline(deps: {
     if (item.status !== "queued") return item;
     if (scheduled >= 5) return item;
 
-    const caption = heuristicCaption(item.title, item.captionHint);
+    const caption = captionOptimizer
+      ? buildOptimizedCaption(item.title, item.captionHint, item.platforms)
+      : heuristicCaption(item.title, item.captionHint);
     const post: StoredScheduledPost = {
       id: crypto.randomUUID(),
       caption,
@@ -467,7 +570,7 @@ export async function runReviewReplyAuto(deps: {
   openaiKey?: string | null;
   notifyEmail?: string;
   appUrl?: string;
-}): Promise<{ drafted: number; notified: boolean }> {
+}): Promise<{ drafted: number; notified: boolean; urgentAlerts: number }> {
   const { supabaseAdmin, tokenStore, zernio, businessProfileId, profile, openaiKey, notifyEmail, appUrl } = deps;
 
   const { data: accountRows } = await supabaseAdmin
@@ -477,19 +580,22 @@ export async function runReviewReplyAuto(deps: {
     .in("platform", ["google_reviews", "tripadvisor"])
     .is("disconnected_at", null);
   const accounts = Array.isArray(accountRows) ? accountRows : [];
-  if (accounts.length === 0) return { drafted: 0, notified: false };
+  if (accounts.length === 0) return { drafted: 0, notified: false, urgentAlerts: 0 };
 
   const repliedDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "review-replies");
   const repliedIds = parseRepliedIds(repliedDoc?.data);
   const queueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, REVIEW_REPLY_QUEUE_DOC_KEY);
   const queue = parseReviewReplyQueue(queueDoc?.data);
   const queuedReviewIds = new Set(queue.filter((q) => q.status === "draft").map((q) => q.reviewId));
+  const alertDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, NEGATIVE_REVIEW_ALERTS_DOC_KEY);
+  const alertedIds = parseRepliedIds(alertDoc?.data);
 
   const newItems: ReviewReplyQueueItem[] = [];
   const businessName = String(profile.name || "Our business");
+  let urgentAlerts = 0;
+  const newUrgent: Array<{ author: string; rating?: number; text: string }> = [];
 
   for (const row of accounts) {
-    if (newItems.length >= 3) break;
     const accountId = String(row?.id || "");
     if (!accountId) continue;
     const stored = await tokenStore.get(accountId);
@@ -502,6 +608,19 @@ export async function runReviewReplyAuto(deps: {
     if (!reviewsResult.ok) continue;
 
     const reviews = extractReviewsFromZernioPayload(reviewsResult.data);
+    for (const review of reviews) {
+      const rating = review.rating != null ? Number(review.rating) : undefined;
+      if (
+        rating != null &&
+        rating <= 2 &&
+        !alertedIds.has(review.id) &&
+        !repliedIds.has(review.id)
+      ) {
+        newUrgent.push({ author: review.author, rating, text: review.text.slice(0, 200) });
+        alertedIds.add(review.id);
+      }
+    }
+
     for (const review of reviews) {
       if (newItems.length >= 3) break;
       if (repliedIds.has(review.id) || queuedReviewIds.has(review.id)) continue;
@@ -532,7 +651,28 @@ export async function runReviewReplyAuto(deps: {
     }
   }
 
-  if (newItems.length === 0) return { drafted: 0, notified: false };
+  if (newUrgent.length > 0 && notifyEmail) {
+    const reviewsUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/reviews` : "/reviews";
+    const lines = newUrgent
+      .map((r) => `• ${r.rating ?? "?"}★ from ${r.author}: "${r.text}"`)
+      .join("\n");
+    const alertResult = await sendEmail({
+      to: notifyEmail,
+      subject: `⚠ ${businessName}: ${newUrgent.length} urgent review${newUrgent.length === 1 ? "" : "s"} (≤2★)`,
+      html:
+        `<p><strong>${newUrgent.length} low-star review${newUrgent.length === 1 ? "" : "s"} need immediate attention.</strong></p>` +
+        `<pre style="white-space:pre-wrap;font-family:sans-serif">${lines.replace(/</g, "&lt;")}</pre>` +
+        `<p><a href="${reviewsUrl}">Open Reviews</a></p>`,
+      text: `${newUrgent.length} urgent review(s):\n${lines}\nOpen Reviews: ${reviewsUrl}`,
+    });
+    if (alertResult.ok) urgentAlerts = newUrgent.length;
+    await saveProfileDocument(supabaseAdmin, businessProfileId, NEGATIVE_REVIEW_ALERTS_DOC_KEY, {
+      repliedIds: [...alertedIds],
+      lastAlertAt: new Date().toISOString(),
+    });
+  }
+
+  if (newItems.length === 0) return { drafted: 0, notified: false, urgentAlerts };
 
   const nextQueue = [...newItems, ...queue].slice(0, 50);
   await saveProfileDocument(supabaseAdmin, businessProfileId, REVIEW_REPLY_QUEUE_DOC_KEY, nextQueue);
@@ -558,5 +698,5 @@ export async function runReviewReplyAuto(deps: {
     notified = result.ok;
   }
 
-  return { drafted: newItems.length, notified };
+  return { drafted: newItems.length, notified, urgentAlerts };
 }
