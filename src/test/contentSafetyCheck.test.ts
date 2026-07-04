@@ -8,4 +8,11 @@ describe("contentSafetyCheck setup", () => {
     const tool = findToolForAction(action!, []);
     expect(tool?.endpoint).toContain("moderation");
   });
+
+  it("resolves quality-gate synthetic tool without listed tools", () => {
+    const action = APIAI_DOCUMENTED_IMAGE_ACTIONS.find((item) => item.id === "quality-gate");
+    expect(action).toBeTruthy();
+    const tool = findToolForAction(action!, []);
+    expect(tool?.endpoint).toContain("quality-gate");
+  });
 });

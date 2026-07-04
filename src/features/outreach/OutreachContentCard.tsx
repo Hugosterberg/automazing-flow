@@ -60,6 +60,17 @@ export function OutreachContentCard({
           </Button>
         </div>
       </CardHeader>
+      {ideas.length === 0 ? (
+        <CardContent className="pt-0">
+          <p className="text-xs text-muted-foreground">
+            More post workflows — captions, media, and safety checks — live in{" "}
+            <Link to="/content" className="text-primary hover:underline">
+              Content
+            </Link>
+            .
+          </p>
+        </CardContent>
+      ) : null}
       {ideas.length > 0 ? (
         <CardContent className="space-y-2">
           {source === "heuristic" ? (

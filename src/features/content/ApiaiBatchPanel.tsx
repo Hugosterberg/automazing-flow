@@ -124,6 +124,9 @@ export function ApiaiBatchPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {!businessProfileId ? (
+          <p className="text-sm text-muted-foreground">Select a business profile to run batch jobs.</p>
+        ) : null}
         {imageAssets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">Select images in Browse first — batch runs on your current selection.</p>
