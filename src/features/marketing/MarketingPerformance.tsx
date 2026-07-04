@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import { useMarketingCampaigns, type MarketingPerformance as Performance } from "./useMarketingCampaigns";
 import { useMarketingTrend } from "./useMarketingTrend";
-import { formatMoney, formatNumber, formatRoas } from "./format";
+import { formatMoney, formatNumber, formatPct, formatRoas } from "./format";
+import { MarketingGradeBadge, portfolioGradeTone } from "./MarketingGradeBadge";
 
 function pct(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -114,7 +115,7 @@ function ChannelMix({ performance: p }: { performance: Performance }) {
 }
 
 export function MarketingPerformance() {
-  const { performance, connected, isLoading } = useMarketingCampaigns();
+  const { performance, connected, analytics, isLoading } = useMarketingCampaigns();
 
   if (isLoading && !performance) {
     return (
@@ -202,6 +203,54 @@ export function MarketingPerformance() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {analytics && analytics.portfolioGrade !== "—" ? (
+          <div
+            className={cn(
+              "flex flex-wrap items-start justify-between gap-3 rounded-xl border px-4 py-3",
+              portfolioGradeTone(analytics.portfolioGrade) === "good"
+                ? "border-success/30 bg-success/5"
+                : portfolioGradeTone(analytics.portfolioGrade) === "bad"
+                  ? "border-destructive/30 bg-destructive/5"
+                  : "border-border bg-muted/20",
+            )}
+          >
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Marknadsföringsbetyg · senaste {p.windowDays} dagar</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <MarketingGradeBadge
+                  grade={analytics.portfolioGrade}
+                  label={analytics.portfolioLabel}
+                  score={analytics.portfolioScore}
+                  size="lg"
+                  showScore
+                />
+                <span className="text-sm font-medium text-foreground">{analytics.portfolioLabel}</span>
+              </div>
+              {analytics.portfolioReasons.length > 0 ? (
+                <ul className="text-[11px] text-muted-foreground space-y-0.5 mt-1">
+                  {analytics.portfolioReasons.map((reason) => (
+                    <li key={reason}>· {reason}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div className="text-right text-[11px] text-muted-foreground tabular-nums">
+              <p>
+                {analytics.campaignsGood} bra · {analytics.campaignsOk} godkända ·{" "}
+                <span className={analytics.campaignsPoor > 0 ? "text-destructive font-medium" : ""}>
+                  {analytics.campaignsPoor} svaga
+                </span>
+              </p>
+              {analytics.platformScores.meta_business ? (
+                <p>Meta {analytics.platformScores.meta_business.grade} · Google{" "}
+                  {analytics.platformScores.google_ads?.grade ?? "—"}</p>
+              ) : analytics.platformScores.google_ads ? (
+                <p>Google {analytics.platformScores.google_ads.grade}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricTile
             label="ROAS"
@@ -247,6 +296,51 @@ export function MarketingPerformance() {
             }
           />
         </div>
+
+        {analytics && (analytics.blendedCtr != null || analytics.blendedCpc != null) ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <MetricTile
+              label="CTR (snitt)"
+              value={formatPct(analytics.blendedCtr)}
+              formula={
+                analytics.blendedCtr != null ? (
+                  <>
+                    {formatNumber(analytics.totalClicks)} klick ÷ {formatNumber(analytics.totalImpressions)} visningar
+                  </>
+                ) : (
+                  "Kräver impressions från Meta/Google"
+                )
+              }
+            />
+            <MetricTile
+              label="CPC (snitt)"
+              value={formatMoney(analytics.blendedCpc, p.adSpendCurrency)}
+              formula={
+                analytics.blendedCpc != null ? (
+                  <>
+                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalClicks)} klick
+                  </>
+                ) : (
+                  "Kräver klickdata"
+                )
+              }
+            />
+            <MetricTile
+              label="CPM (snitt)"
+              value={formatMoney(analytics.blendedCpm, p.adSpendCurrency)}
+              formula={
+                analytics.blendedCpm != null ? (
+                  <>
+                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalImpressions)} visningar ×
+                    1000
+                  </>
+                ) : (
+                  "Kräver impressions"
+                )
+              }
+            />
+          </div>
+        ) : null}
 
         <TrendStrip />
 

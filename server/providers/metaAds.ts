@@ -7,6 +7,28 @@
  * merge Meta and Google Ads campaigns into one list.
  */
 
+export type MarketingGrade = "A" | "B" | "C" | "D" | "F" | "—";
+export type MarketingVerdict = "good" | "ok" | "poor" | "unknown";
+
+export interface CampaignMetrics {
+  spend: number | null;
+  clicks: number | null;
+  impressions: number | null;
+  conversionValue: number | null;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  roas: number | null;
+}
+
+export interface CampaignScore {
+  score: number;
+  grade: MarketingGrade;
+  label: string;
+  verdict: MarketingVerdict;
+  reasons: string[];
+}
+
 export interface AdCampaign {
   id: string;
   name: string;
@@ -24,6 +46,9 @@ export interface AdCampaign {
   conversionValue7d?: number;
   /** Platform-attributed ROAS (conversion value ÷ spend) over 7 days. */
   roas7d?: number;
+  /** Derived metrics and grade — attached by marketingAnalytics. */
+  metrics?: CampaignMetrics;
+  score?: CampaignScore;
 }
 
 export interface AdAccountCampaigns {

@@ -15,6 +15,11 @@ import {
   type AdPlatform,
   type MarketingPerformance,
 } from "./marketingPerformance.ts";
+import {
+  computeMarketingAnalytics,
+  enrichPlatformsWithScores,
+  type MarketingAnalytics,
+} from "./marketingAnalytics.ts";
 
 export const PERFORMANCE_WINDOW_DAYS = 7;
 
@@ -37,6 +42,7 @@ export interface MarketingData {
   connected: { meta_business: boolean; google_ads: boolean; shopify: boolean };
   performance: MarketingPerformance;
   inventoryAlert: InventoryAdsAlert | null;
+  analytics: MarketingAnalytics | null;
 }
 
 export interface GatherMarketingOptions {
@@ -114,5 +120,8 @@ export async function gatherMarketingData(
       ? { activeCampaigns, ...stockSummary }
       : null;
 
-  return { platforms, connected, performance, inventoryAlert };
+  const scoredPlatforms = enrichPlatformsWithScores(platforms);
+  const analytics = computeMarketingAnalytics(scoredPlatforms, performance);
+
+  return { platforms: scoredPlatforms, connected, performance, inventoryAlert, analytics };
 }

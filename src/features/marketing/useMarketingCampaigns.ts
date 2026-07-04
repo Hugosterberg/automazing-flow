@@ -17,6 +17,58 @@ export interface AdCampaign {
   clicks7d?: number;
   conversionValue7d?: number;
   roas7d?: number;
+  metrics?: CampaignMetrics;
+  score?: CampaignScore;
+}
+
+export type MarketingGrade = "A" | "B" | "C" | "D" | "F" | "—";
+export type MarketingVerdict = "good" | "ok" | "poor" | "unknown";
+
+export interface CampaignMetrics {
+  spend: number | null;
+  clicks: number | null;
+  impressions: number | null;
+  conversionValue: number | null;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  roas: number | null;
+}
+
+export interface CampaignScore {
+  score: number;
+  grade: MarketingGrade;
+  label: string;
+  verdict: MarketingVerdict;
+  reasons: string[];
+}
+
+export interface PlatformScoreSummary {
+  score: number;
+  grade: MarketingGrade;
+  label: string;
+  verdict: MarketingVerdict;
+  campaignCount: number;
+  spend: number;
+}
+
+export interface MarketingAnalytics {
+  portfolioScore: number | null;
+  portfolioGrade: MarketingGrade;
+  portfolioLabel: string;
+  portfolioVerdict: MarketingVerdict;
+  portfolioReasons: string[];
+  blendedCtr: number | null;
+  blendedCpc: number | null;
+  blendedCpm: number | null;
+  totalClicks: number;
+  totalImpressions: number;
+  totalConversionValue: number;
+  campaignsScored: number;
+  campaignsGood: number;
+  campaignsOk: number;
+  campaignsPoor: number;
+  platformScores: Partial<Record<"meta_business" | "google_ads", PlatformScoreSummary>>;
 }
 
 export interface AdAccountCampaigns {
@@ -54,6 +106,7 @@ export interface MarketingCampaignsResponse {
   connected: { meta_business: boolean; google_ads: boolean; shopify: boolean };
   performance?: MarketingPerformance;
   inventoryAlert?: InventoryAdsAlert | null;
+  analytics?: MarketingAnalytics | null;
 }
 
 export const MARKETING_CAMPAIGNS_KEY = ["marketing-campaigns"] as const;
@@ -94,6 +147,7 @@ export function useMarketingCampaigns() {
     connected: query.data?.connected ?? { meta_business: false, google_ads: false, shopify: false },
     performance: query.data?.performance,
     inventoryAlert: query.data?.inventoryAlert ?? null,
+    analytics: query.data?.analytics ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

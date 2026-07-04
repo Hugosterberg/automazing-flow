@@ -21,3 +21,9 @@ export function formatRoas(roas: number | null | undefined): string {
   if (roas == null || !Number.isFinite(roas)) return "—";
   return `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(roas)}×`;
 }
+
+/** CTR/CVR as "1,24%" (two decimals). Input is 0–1 fraction. */
+export function formatPct(rate: number | null | undefined): string {
+  if (rate == null || !Number.isFinite(rate)) return "—";
+  return `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(rate * 100)}%`;
+}

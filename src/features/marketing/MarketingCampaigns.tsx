@@ -7,7 +7,8 @@ import {
   type AdAccountCampaigns,
   type AdCampaign,
 } from "./useMarketingCampaigns";
-import { formatMoney, formatNumber as formatCount } from "./format";
+import { formatMoney, formatNumber as formatCount, formatPct, formatRoas } from "./format";
+import { MarketingGradeBadge, MarketingVerdictDot } from "./MarketingGradeBadge";
 
 const PLATFORM_LABEL: Record<AdAccountCampaigns["platform"], string> = {
   meta_business: "Meta",
@@ -29,17 +30,15 @@ function isRunning(status: string): boolean {
 function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: string }) {
   const budget = campaign.dailyBudget ?? campaign.lifetimeBudget;
   const budgetLabel = campaign.dailyBudget != null ? "/dag" : campaign.lifetimeBudget != null ? " totalt" : "";
+  const metrics = campaign.metrics;
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "inline-block h-2 w-2 rounded-full shrink-0",
-              isRunning(campaign.status) ? "bg-success" : "bg-muted-foreground/50"
-            )}
-            aria-hidden
-          />
+          <MarketingVerdictDot verdict={campaign.score?.verdict ?? "unknown"} />
+          {campaign.score ? (
+            <MarketingGradeBadge grade={campaign.score.grade} label={campaign.score.label} score={campaign.score.score} />
+          ) : null}
           <p className="text-sm font-medium text-foreground truncate">{campaign.name}</p>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -47,27 +46,32 @@ function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: 
             isRunning(campaign.status) ? "Aktiv" : campaign.status.toLowerCase(),
             prettyObjective(campaign.objective),
             budget != null ? `${formatMoney(budget, currency)}${budgetLabel}` : null,
+            metrics?.ctr != null ? `CTR ${formatPct(metrics.ctr)}` : null,
+            metrics?.cpc != null ? `CPC ${formatMoney(metrics.cpc, currency)}` : null,
           ]
             .filter(Boolean)
             .join(" · ")}
         </p>
+        {campaign.score?.reasons[0] ? (
+          <p className="text-[11px] text-muted-foreground/90 mt-0.5 truncate">{campaign.score.reasons[0]}</p>
+        ) : null}
       </div>
       <div className="text-right shrink-0">
         <p className="text-sm font-semibold tabular-nums text-foreground">
           {formatMoney(campaign.spend7d, currency)}
         </p>
-        {campaign.roas7d != null ? (
+        {campaign.roas7d != null || metrics?.roas != null ? (
           <p
             className={cn(
               "text-[11px] font-medium tabular-nums",
-              campaign.roas7d >= 1 ? "text-success" : "text-warning"
+              (metrics?.roas ?? campaign.roas7d)! >= 1 ? "text-success" : "text-warning"
             )}
             title={`ROAS = försäljning ${formatMoney(campaign.conversionValue7d, currency)} ÷ spend ${formatMoney(
               campaign.spend7d,
               currency
             )}`}
           >
-            ROAS {new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(campaign.roas7d)}×
+            ROAS {formatRoas(metrics?.roas ?? campaign.roas7d)}
           </p>
         ) : (
           <p className="text-[11px] text-muted-foreground">
@@ -77,6 +81,15 @@ function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: 
       </div>
     </div>
   );
+}
+
+function sortCampaigns(campaigns: AdCampaign[]): AdCampaign[] {
+  return [...campaigns].sort((a, b) => {
+    const scoreA = a.score?.score ?? -1;
+    const scoreB = b.score?.score ?? -1;
+    if (scoreA !== scoreB) return scoreA - scoreB;
+    return (b.spend7d ?? 0) - (a.spend7d ?? 0);
+  });
 }
 
 function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
@@ -96,7 +109,7 @@ function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
       </div>
       {group.campaigns.length > 0 ? (
         <div className="space-y-2">
-          {group.campaigns.map((campaign) => (
+          {sortCampaigns(group.campaigns).map((campaign) => (
             <CampaignRow key={campaign.id} campaign={campaign} currency={group.currency} />
           ))}
         </div>
@@ -116,7 +129,7 @@ function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
  * of the way for users who only do organic marketing.
  */
 export function MarketingCampaigns() {
-  const { platforms, connected, isLoading, refetch } = useMarketingCampaigns();
+  const { platforms, connected, analytics, isLoading, refetch } = useMarketingCampaigns();
   const anyConnected = connected.meta_business || connected.google_ads;
 
   if (!isLoading && !anyConnected && platforms.length === 0) {
@@ -132,7 +145,9 @@ export function MarketingCampaigns() {
               <BarChart3 className="h-4 w-4 text-primary" />
               Aktiva kampanjer
             </CardTitle>
-            <CardDescription>Pågående annonsering och spend från Meta &amp; Google Ads.</CardDescription>
+            <CardDescription>
+              Pågående annonsering, spend och betyg (A–F) från Meta &amp; Google Ads.
+            </CardDescription>
           </div>
           <Button
             size="sm"
@@ -147,6 +162,12 @@ export function MarketingCampaigns() {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {analytics && analytics.campaignsPoor > 0 ? (
+          <p className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+            {analytics.campaignsPoor} kampanj{analytics.campaignsPoor === 1 ? "" : "er"} behöver åtgärd — sorterade
+            svagast först.
+          </p>
+        ) : null}
         {isLoading && platforms.length === 0 ? (
           <div className="space-y-2" aria-hidden>
             <div className="h-16 rounded-lg bg-muted/40 animate-pulse" />

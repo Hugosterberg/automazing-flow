@@ -138,15 +138,19 @@ export default function MarketingPage() {
   };
 
   const { tasks, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
-  const { connected, performance } = useMarketingCampaigns();
+  const { connected, performance, analytics } = useMarketingCampaigns();
 
   const pathStatus = useMemo(() => {
     const status: Record<string, string> = {};
     if (connected.shopify) status.ecommerce = "Shopify connected";
-    if (performance?.roas != null) status["paid-ads"] = `ROAS ${formatRoas(performance.roas)}`;
+    if (analytics?.portfolioGrade && analytics.portfolioGrade !== "—") {
+      status["paid-ads"] = `Betyg ${analytics.portfolioGrade} · ${analytics.portfolioLabel}`;
+    } else if (performance?.roas != null) {
+      status["paid-ads"] = `ROAS ${formatRoas(performance.roas)}`;
+    }
     if (connected.meta_business || connected.google_ads) status.social = "Ads connected";
     return status;
-  }, [connected, performance?.roas]);
+  }, [connected, performance?.roas, analytics?.portfolioGrade, analytics?.portfolioLabel]);
 
   const campaignTasks = useMemo(
     () => tasks.filter((t) => t.module === "campaign" && t.status !== "archived"),

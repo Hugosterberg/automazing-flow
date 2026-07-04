@@ -1,3 +1,4 @@
+export { MarketingGradeBadge, MarketingVerdictDot, portfolioGradeTone } from "./MarketingGradeBadge";
 export { MarketingSetupCard } from "./MarketingSetupCard";
 export { MarketingCampaigns } from "./MarketingCampaigns";
 export { CampaignFollowUp, type FollowUpCampaign } from "./CampaignFollowUp";
@@ -15,4 +16,7 @@ export {
   type AdAccountCampaigns,
   type MarketingCampaignsResponse,
   type MarketingPerformance as MarketingPerformanceData,
+  type MarketingAnalytics,
+  type MarketingGrade,
+  type CampaignScore,
 } from "./useMarketingCampaigns";
