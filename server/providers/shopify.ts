@@ -335,6 +335,15 @@ export async function fetchShopifyAccountData(accessToken: string, shop: string 
     fulfillment: o.fulfillment_status || "unfulfilled",
     createdAt: o.created_at,
     lineItemCount: (o.line_items || []).length,
+    // Trimmed line items so the client can expand an order without another
+    // round-trip. Capped to keep the payload bounded on large orders.
+    lineItems: (o.line_items || []).slice(0, 20).map((item) => ({
+      id: item.id ?? null,
+      title: item.title || "Unnamed item",
+      variantTitle: item.variant_title || null,
+      quantity: toNumber(item.quantity),
+      price: toNumber(item.price),
+    })),
   }));
 
   const formattedCustomers = topCustomers

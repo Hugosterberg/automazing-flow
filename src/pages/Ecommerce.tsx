@@ -57,7 +57,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -109,6 +109,14 @@ interface ShopifyStats {
   currency: string;
 }
 
+interface ShopifyOrderLineItem {
+  id: number | string | null;
+  title: string;
+  variantTitle: string | null;
+  quantity: number;
+  price: number;
+}
+
 interface ShopifyOrder {
   id: number | string;
   name: string;
@@ -122,6 +130,8 @@ interface ShopifyOrder {
   fulfillment: string;
   createdAt: string;
   lineItemCount: number;
+  /** Optional: older cached payloads may not include expanded line items. */
+  lineItems?: ShopifyOrderLineItem[];
 }
 
 interface TopProduct {
@@ -293,6 +303,34 @@ const revenueChartConfig: ChartConfig = {
   },
 };
 
+/** Unfulfilled orders older than this are flagged in the action strip. */
+const STALE_UNFULFILLED_DAYS = 2;
+
+interface PersistedOrderFilters {
+  payment: string;
+  fulfillment: string;
+}
+
+function orderFiltersStorageKey(profileKey: string | null): string {
+  return `automazing-ecommerce-order-filters:${profileKey || "default"}`;
+}
+
+function readPersistedOrderFilters(profileKey: string | null): PersistedOrderFilters {
+  try {
+    const raw = localStorage.getItem(orderFiltersStorageKey(profileKey));
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<PersistedOrderFilters>;
+      return {
+        payment: typeof parsed.payment === "string" ? parsed.payment : "all",
+        fulfillment: typeof parsed.fulfillment === "string" ? parsed.fulfillment : "all",
+      };
+    }
+  } catch {
+    /* corrupt/blocked storage — fall through to defaults */
+  }
+  return { payment: "all", fulfillment: "all" };
+}
+
 export default function Ecommerce() {
   const { authMode } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
@@ -336,8 +374,38 @@ export default function Ecommerce() {
   const [notionSaving, setNotionSaving] = useState(false);
   const [notionWriteMessage, setNotionWriteMessage] = useState<string | null>(null);
   const [notionOpen, setNotionOpen] = useState(false);
-  const [orderPaymentFilter, setOrderPaymentFilter] = useState<string>("all");
-  const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState<string>("all");
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState<string>(
+    () => readPersistedOrderFilters(activeBusinessProfileId ?? activeProfileId).payment
+  );
+  const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState<string>(
+    () => readPersistedOrderFilters(activeBusinessProfileId ?? activeProfileId).fulfillment
+  );
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  // Persist the chosen order filters per profile so they survive reloads.
+  // The hydrated-key guard prevents a profile switch from overwriting the new
+  // profile's stored filters with the previous profile's values.
+  const filterProfileKey = activeBusinessProfileId ?? activeProfileId;
+  const hydratedFilterKeyRef = useRef<string | null>(filterProfileKey);
+  useEffect(() => {
+    if (hydratedFilterKeyRef.current !== filterProfileKey) {
+      const stored = readPersistedOrderFilters(filterProfileKey);
+      setOrderPaymentFilter(stored.payment);
+      setOrderFulfillmentFilter(stored.fulfillment);
+      hydratedFilterKeyRef.current = filterProfileKey;
+    }
+  }, [filterProfileKey]);
+  useEffect(() => {
+    if (hydratedFilterKeyRef.current !== filterProfileKey) return;
+    try {
+      localStorage.setItem(
+        orderFiltersStorageKey(filterProfileKey),
+        JSON.stringify({ payment: orderPaymentFilter, fulfillment: orderFulfillmentFilter })
+      );
+    } catch {
+      /* storage unavailable — filters just won't persist */
+    }
+  }, [filterProfileKey, orderPaymentFilter, orderFulfillmentFilter]);
 
   function handleConnect() {
     setShopDomain("");
@@ -394,6 +462,28 @@ export default function Ecommerce() {
     return Array.from(
       new Set(shopifyData.orders.map((o) => o.fulfillment || "unfulfilled").filter(Boolean))
     );
+  }, [shopifyData]);
+
+  /**
+   * "Action needed" signals derived from the loaded Shopify window: unfulfilled
+   * orders that have sat for a while, unpaid orders, and low-stock variants.
+   * Each entry can apply the matching order filter so the user lands directly
+   * on the rows that need work.
+   */
+  const actionNeeded = useMemo(() => {
+    if (!shopifyData) return null;
+    const staleCutoffMs = Date.now() - STALE_UNFULFILLED_DAYS * 86400000;
+    const staleUnfulfilled = shopifyData.orders.filter((order) => {
+      const fulfillment = order.fulfillment || "unfulfilled";
+      if (fulfillment === "fulfilled" || fulfillment === "restocked") return false;
+      const createdMs = Date.parse(order.createdAt);
+      return Number.isFinite(createdMs) && createdMs <= staleCutoffMs;
+    }).length;
+    const pendingPayments = shopifyData.orders.filter(
+      (order) => order.status === "pending" || order.status === "partially_paid"
+    ).length;
+    const lowStock = shopifyData.stats.lowStockCount;
+    return { staleUnfulfilled, pendingPayments, lowStock, total: staleUnfulfilled + pendingPayments + lowStock };
   }, [shopifyData]);
 
   function exportOrders() {
@@ -828,6 +918,67 @@ export default function Ecommerce() {
         </div>
       )}
 
+      {/* Action needed strip */}
+      {!loading && shopifyData && actionNeeded && (
+        <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
+          {actionNeeded.total === 0 ? (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-4 py-2.5 text-sm text-muted-foreground">
+              <Package className="h-4 w-4 text-emerald-500 shrink-0" aria-hidden />
+              <span>Allt under kontroll — inga ordrar eller lagernivåer behöver åtgärdas just nu.</span>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
+                <p className="text-sm font-medium text-foreground">
+                  {actionNeeded.total} {actionNeeded.total === 1 ? "sak behöver" : "saker behöver"} åtgärdas
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {actionNeeded.staleUnfulfilled > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderPaymentFilter("all");
+                      setOrderFulfillmentFilter("unfulfilled");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition-colors"
+                  >
+                    <Package className="h-3 w-3" aria-hidden />
+                    {actionNeeded.staleUnfulfilled} ej skickade &gt;{STALE_UNFULFILLED_DAYS} dagar
+                  </button>
+                )}
+                {actionNeeded.pendingPayments > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderPaymentFilter("pending");
+                      setOrderFulfillmentFilter("all");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/20 transition-colors"
+                  >
+                    <Receipt className="h-3 w-3" aria-hidden />
+                    {actionNeeded.pendingPayments} väntande betalningar
+                  </button>
+                )}
+                {actionNeeded.lowStock > 0 && (
+                  <a
+                    href={shopifyData.adminLinks.products}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+                  >
+                    <Box className="h-3 w-3" aria-hidden />
+                    {actionNeeded.lowStock} varianter med lågt lager
+                    <ArrowUpRight className="h-3 w-3" aria-hidden />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </m.div>
+      )}
+
       {/* Stats cards */}
       {!loading && statCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1198,36 +1349,87 @@ export default function Ecommerce() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order, i) => (
-                      <m.tr
-                        key={order.id}
-                        {...fadeUp}
-                        transition={{ duration: 0.3, delay: i * 0.03 }}
-                        className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="px-5 py-3 font-medium">{order.name}</td>
-                        <td className="px-3 py-3 text-muted-foreground truncate max-w-[140px]">
-                          {order.customer || order.email || "—"}
-                        </td>
-                        <td className="px-3 py-3 text-muted-foreground">{order.lineItemCount}</td>
-                        <td className="px-3 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[order.status] ?? "bg-muted text-muted-foreground"}`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${fulfillmentColors[order.fulfillment] ?? "bg-muted text-muted-foreground"}`}>
-                            {order.fulfillment || "unfulfilled"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-right font-medium">
-                          {formatCurrency(order.total, order.currency)}
-                        </td>
-                        <td className="px-5 py-3 text-right text-muted-foreground text-xs">
-                          {formatDate(order.createdAt)}
-                        </td>
-                      </m.tr>
-                    ))}
+                    {filteredOrders.map((order, i) => {
+                      const orderId = String(order.id);
+                      const isExpanded = expandedOrderId === orderId;
+                      const lineItems = order.lineItems ?? [];
+                      return (
+                        <Fragment key={order.id}>
+                          <m.tr
+                            {...fadeUp}
+                            transition={{ duration: 0.3, delay: i * 0.03 }}
+                            onClick={() => setExpandedOrderId(isExpanded ? null : orderId)}
+                            className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                            aria-expanded={isExpanded}
+                          >
+                            <td className="px-5 py-3 font-medium">
+                              <span className="inline-flex items-center gap-1.5">
+                                <ChevronDown
+                                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`}
+                                  aria-hidden
+                                />
+                                {order.name}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground truncate max-w-[140px]">
+                              {order.customer || order.email || "—"}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">{order.lineItemCount}</td>
+                            <td className="px-3 py-3">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[order.status] ?? "bg-muted text-muted-foreground"}`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${fulfillmentColors[order.fulfillment] ?? "bg-muted text-muted-foreground"}`}>
+                                {order.fulfillment || "unfulfilled"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right font-medium">
+                              {formatCurrency(order.total, order.currency)}
+                            </td>
+                            <td className="px-5 py-3 text-right text-muted-foreground text-xs">
+                              {formatDate(order.createdAt)}
+                            </td>
+                          </m.tr>
+                          {isExpanded ? (
+                            <tr className="border-b border-border/50 last:border-0 bg-muted/20">
+                              <td colSpan={7} className="px-5 py-3">
+                                {lineItems.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    Radinformation saknas för den här ordern — uppdatera sidan för att hämta den.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {lineItems.map((item, itemIndex) => (
+                                      <div
+                                        key={item.id ?? `${orderId}-item-${itemIndex}`}
+                                        className="flex items-center justify-between gap-3 text-xs"
+                                      >
+                                        <span className="min-w-0 truncate text-foreground">
+                                          {item.title}
+                                          {item.variantTitle ? (
+                                            <span className="text-muted-foreground"> · {item.variantTitle}</span>
+                                          ) : null}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                                          {item.quantity} × {formatCurrencyDetailed(item.price, order.currency)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {order.lineItemCount > lineItems.length ? (
+                                      <p className="text-[11px] text-muted-foreground/70">
+                                        +{order.lineItemCount - lineItems.length} fler rader — se ordern i Shopify admin.
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
                 )}
