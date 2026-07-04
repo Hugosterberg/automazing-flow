@@ -1,4 +1,5 @@
 export { MarketingCampaigns } from "./MarketingCampaigns";
+export { CampaignFollowUp, type FollowUpCampaign } from "./CampaignFollowUp";
 export { MarketingPerformance } from "./MarketingPerformance";
 export { InventoryAdsAlert } from "./InventoryAdsAlert";
 export { useMarketingTrend, MARKETING_TREND_KEY } from "./useMarketingTrend";

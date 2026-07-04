@@ -27,7 +27,13 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
-import { MarketingCampaigns, MarketingPerformance, InventoryAdsAlert } from "@/features/marketing";
+import {
+  MarketingCampaigns,
+  MarketingPerformance,
+  InventoryAdsAlert,
+  CampaignFollowUp,
+  type FollowUpCampaign,
+} from "@/features/marketing";
 import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
@@ -110,6 +116,21 @@ export default function MarketingPage() {
   const campaignTasks = useMemo(
     () => tasks.filter((t) => t.module === "campaign" && t.status !== "archived"),
     [tasks]
+  );
+
+  const activeCampaigns = useMemo<FollowUpCampaign[]>(
+    () =>
+      campaignTasks
+        .filter((t) => t.status === "in_progress")
+        .map((t) => ({
+          id: t.id,
+          title: t.title || "Namnlös kampanj",
+          startDate: campaignField(t.description, "Start"),
+          endDate: campaignField(t.description, "Slut"),
+          budget: campaignField(t.description, "Budget"),
+          channel: campaignField(t.description, "Kanal"),
+        })),
+    [campaignTasks]
   );
 
   const [campaignOpen, setCampaignOpen] = useState(false);
@@ -346,6 +367,12 @@ export default function MarketingPage() {
       <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
         <MarketingCampaigns />
       </m.div>
+
+      {activeCampaigns.length > 0 ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.07 }}>
+          <CampaignFollowUp campaigns={activeCampaigns} />
+        </m.div>
+      ) : null}
 
       <m.section {...pageFadeUp} transition={{ delay: 0.08 }}>
         <div className="flex items-center justify-between mb-3">

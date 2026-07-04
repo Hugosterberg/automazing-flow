@@ -6,10 +6,12 @@ export {
   type LeadStatus,
   LEAD_STATUS_ORDER,
   LEAD_STATUS_LABELS,
+  STALE_LEAD_DAYS,
   isLeadOpen,
   isFollowUpOverdue,
   isFollowUpDueToday,
   compareLeads,
+  leadStaleDays,
   suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
 export { fetchLeadSuggestions, enrichLeadFromWebsite, type LeadSuggestion } from "./leadSuggestionsClient";

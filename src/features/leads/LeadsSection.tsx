@@ -34,6 +34,7 @@ import {
   isFollowUpDueToday,
   isFollowUpOverdue,
   isLeadOpen,
+  leadStaleDays,
   type LeadStatus,
   suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
@@ -88,12 +89,22 @@ function LeadRow({
 }) {
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
+  const staleDays = leadStaleDays(lead);
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />
           <p className="text-sm font-medium text-foreground truncate">{lead.company}</p>
+          {staleDays != null ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
+              title={`No activity for ${staleDays} days and no follow-up planned — reach out or set a date.`}
+            >
+              <CalendarClock className="h-2.5 w-2.5" aria-hidden />
+              Stale · {staleDays}d
+            </span>
+          ) : null}
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {[lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ") ||
