@@ -31,6 +31,7 @@ import { PublishSafetyPanel } from "@/features/content/PublishSafetyPanel";
 import { publishBlockReason, type PublishReadiness } from "@/features/content/apiaiResultInsights";
 import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import { uploadContentMedia } from "@/features/content/contentMediaClient";
+import { enqueueContentPipelineItems } from "@/features/content/contentPipelineQueue";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
 import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send, BookmarkCheck } from "lucide-react";
@@ -667,6 +668,23 @@ export default function ContentPage() {
       recordAsset(asset, { toolName: meta.workflow || `batch #${meta.batchId}` });
       if (meta.addToSelection) saveAssetSelection(asset, true);
     });
+    if (items.length > 0 && createBusinessProfileId) {
+      void enqueueContentPipelineItems(
+        createBusinessProfileId,
+        items.map((item, index) => ({
+          title: item.filename || `Batch ${meta.batchId} #${index + 1}`,
+          captionHint: meta.workflow ? `Workflow: ${meta.workflow}` : undefined,
+          accountIds: [],
+          platforms: [],
+          mediaUrls: [item.mediaUrl],
+          scheduledFor: "",
+        }))
+      ).then((count) => {
+        if (count > 0) {
+          toast.message(`${count} item${count === 1 ? "" : "s"} queued for content pipeline`);
+        }
+      });
+    }
     if (meta.addToSelection && items.length > 0) {
       goToTab("publish");
     }

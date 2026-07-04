@@ -145,6 +145,27 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "09:30",
     enabled: false,
   },
+  "marketing-actions": {
+    days: [1, 2, 3, 4, 5],
+    timesPerDay: 1,
+    startTime: "07:30",
+    endTime: "07:30",
+    enabled: false,
+  },
+  "weekly-insight-digest": {
+    days: [1],
+    timesPerDay: 1,
+    startTime: "08:30",
+    endTime: "08:30",
+    enabled: false,
+  },
+  "engagement-followup": {
+    days: [1, 2, 3, 4, 5],
+    timesPerDay: 2,
+    startTime: "09:00",
+    endTime: "17:00",
+    enabled: false,
+  },
 };
 
 export function expandRunTimes(schedule: ProfileJobSchedule): string[] {

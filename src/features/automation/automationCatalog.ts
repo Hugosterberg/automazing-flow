@@ -152,6 +152,40 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cronKey: "review-reply-auto",
   },
   {
+    id: "marketing-actions",
+    topic: "insights",
+    title: "Marknadsförings-åtgärder",
+    description:
+      "Pausar automatiskt Meta-kampanjer med betyg F/poor enligt analytics (Google flaggas för manuell review).",
+    cadence: "Konfigurerbart schema",
+    icon: BarChart3,
+    outputHref: "/marketing",
+    businessOnly: true,
+    cronKey: "marketing-actions",
+  },
+  {
+    id: "weekly-insight-digest",
+    topic: "reports",
+    title: "Veckovis insiktsrapport",
+    description:
+      "Måndagsmejl med ROAS-trend, publicerade inlägg och content-tips när social-flödet är aktivt.",
+    cadence: "Konfigurerbart schema",
+    icon: Mail,
+    outputHref: "/social-media",
+    cronKey: "weekly-insight-digest",
+  },
+  {
+    id: "engagement-followup",
+    topic: "messages",
+    title: "Engagement-följdflöde",
+    description:
+      "Mejlar när olästa DM:s hopar sig så du inte missar köpintention eller frågor.",
+    cadence: "Konfigurerbart schema",
+    icon: MessageSquare,
+    outputHref: "/messages",
+    cronKey: "engagement-followup",
+  },
+  {
     id: "daily-digest",
     topic: "reports",
     title: "Daglig översikt",

@@ -23,6 +23,8 @@ import { buildMarketingAlert, extractPoorCampaignsForAlert } from "../lib/market
 import { buildCampaignSnapshotRows } from "../lib/marketingCampaignSnapshots.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
 import { portfolioScoreDeltaFromSnapshots } from "../lib/marketingSnapshotTrend.ts";
+import { runMarketingActions } from "../lib/marketingCampaignActions.ts";
+import { runEngagementFollowup, runWeeklyInsightDigest } from "../lib/engagementFollowup.ts";
 import { loadProfileDocument } from "../lib/profileDocumentStore.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
@@ -69,6 +71,9 @@ function automationTitleForKey(key) {
     "content-pipeline": "Innehållspipeline",
     "cart-recovery": "Kundvagnsåtervinning",
     "review-reply-auto": "Automatiska review-svar",
+    "marketing-actions": "Marknadsförings-åtgärder",
+    "weekly-insight-digest": "Veckovis insiktsrapport",
+    "engagement-followup": "Engagement-följdflöde",
   };
   return map[key] || key;
 }
@@ -92,6 +97,19 @@ async function loadFailedAutomationTitles(supabaseAdmin) {
     if (out.length >= 5) break;
   }
   return out;
+}
+
+/** True when a social automation workflow toggle is on in profile_documents. */
+async function isSocialWorkflowEnabled(supabaseAdmin, businessProfileId, workflowId) {
+  try {
+    const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, "social-workflows");
+    const raw = doc?.data;
+    if (!raw || typeof raw !== "object") return false;
+    const enabled = raw.enabled;
+    return Boolean(enabled && typeof enabled === "object" && enabled[workflowId]);
+  } catch {
+    return false;
+  }
 }
 
 /** Display label for a connection platform (digest copy). */
@@ -1707,6 +1725,210 @@ export function registerCronRoutes(app, deps) {
     } catch (e) {
       console.error("[cron] review-reply-auto unexpected:", e?.message || e);
       return res.status(500).json({ error: "review_reply_auto_failed" });
+    }
+  }));
+
+  app.get("/api/cron/marketing-actions", withRunRecording("marketing-actions", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin || !tokenStore) return res.status(503).json({ error: "dependencies_not_configured" });
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", paused: 0 });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["marketing-actions"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "marketing-actions", cronNow)) continue;
+        eligible.push({ bpId, email: settings.notificationEmail });
+      }
+      if (eligible.length === 0) return res.json({ ok: true, paused: 0, note: "no_profiles_due" });
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
+      let paused = 0;
+      let recommended = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        if (!profile) continue;
+        const { data: metaAccounts } = await supabaseAdmin
+          .from("connected_accounts")
+          .select("id")
+          .eq("business_profile_id", entry.bpId)
+          .eq("platform", "meta_business")
+          .is("disconnected_at", null);
+        const metaAccountIds = (Array.isArray(metaAccounts) ? metaAccounts : []).map((r) => String(r.id));
+        if (metaAccountIds.length === 0) continue;
+        try {
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          const result = await runMarketingActions({
+            supabaseAdmin,
+            tokenStore,
+            businessProfileId: entry.bpId,
+            profileName: String(profile.name || "Your business"),
+            metaAccountIds,
+            notifyEmail: recipient || undefined,
+            appUrl: appUrl || undefined,
+          });
+          paused += result.paused;
+          recommended += result.recommended;
+          failed += result.failed;
+        } catch (err) {
+          failed += 1;
+          console.warn(`[cron] marketing-actions bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
+        }
+      }
+      return res.json({ ok: true, paused, recommended, failed, deferred });
+    } catch (e) {
+      console.error("[cron] marketing-actions unexpected:", e?.message || e);
+      return res.status(500).json({ error: "marketing_actions_failed" });
+    }
+  }));
+
+  app.get("/api/cron/weekly-insight-digest", withRunRecording("weekly-insight-digest", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["weekly-insight-digest"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "weekly-insight-digest", cronNow)) continue;
+        if (!(await isSocialWorkflowEnabled(supabaseAdmin, bpId, "weekly-insight-digest"))) continue;
+        eligible.push({ bpId, email: settings.notificationEmail });
+      }
+      if (eligible.length === 0) return res.json({ ok: true, sent: 0, note: "no_profiles_due" });
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
+      let sent = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        if (!profile) continue;
+        try {
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          if (!recipient) continue;
+          const result = await runWeeklyInsightDigest({
+            supabaseAdmin,
+            businessProfileId: entry.bpId,
+            profileName: String(profile.name || "Your business"),
+            notifyEmail: recipient,
+            appUrl: appUrl || undefined,
+          });
+          if (result.sent) sent += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`[cron] weekly-insight-digest bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
+        }
+      }
+      return res.json({ ok: true, sent, failed, deferred });
+    } catch (e) {
+      console.error("[cron] weekly-insight-digest unexpected:", e?.message || e);
+      return res.status(500).json({ error: "weekly_insight_digest_failed" });
+    }
+  }));
+
+  app.get("/api/cron/engagement-followup", withRunRecording("engagement-followup", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin || !zernio) return res.status(503).json({ error: "dependencies_not_configured" });
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["engagement-followup"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "engagement-followup", cronNow)) continue;
+        if (!(await isSocialWorkflowEnabled(supabaseAdmin, bpId, "engagement-followup"))) continue;
+        eligible.push({ bpId, email: settings.notificationEmail });
+      }
+      if (eligible.length === 0) return res.json({ ok: true, emailed: 0, note: "no_profiles_due" });
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id,zernio_profile_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
+      let emailed = 0;
+      let unreadTotal = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        const zernioProfileId = profile?.zernio_profile_id ? String(profile.zernio_profile_id) : "";
+        if (!profile || !zernioProfileId) continue;
+        try {
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          const result = await runEngagementFollowup({
+            supabaseAdmin,
+            zernio,
+            businessProfileId: entry.bpId,
+            profileName: String(profile.name || "Your business"),
+            zernioProfileId,
+            notifyEmail: recipient || undefined,
+            appUrl: appUrl || undefined,
+          });
+          unreadTotal += result.unread;
+          if (result.emailed) emailed += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`[cron] engagement-followup bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
+        }
+      }
+      return res.json({ ok: true, emailed, unreadTotal, failed, deferred });
+    } catch (e) {
+      console.error("[cron] engagement-followup unexpected:", e?.message || e);
+      return res.status(500).json({ error: "engagement_followup_failed" });
     }
   }));
 }
