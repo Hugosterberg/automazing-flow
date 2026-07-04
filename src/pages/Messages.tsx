@@ -1,5 +1,5 @@
 import { m } from "framer-motion";
-import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send, Search } from "lucide-react";
+import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send, Search, CheckCheck, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
+import { ReplyTemplatePicker } from "@/features/reply-templates";
+import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 
 interface UnifiedMessage {
@@ -78,6 +80,22 @@ function formatDate(raw: string): string {
 function senderInitial(name: string): string {
   return (name || "?").charAt(0).toUpperCase();
 }
+
+/** Compact "how long has this waited" label for unanswered messages. */
+function formatWaitTime(raw: string): string | null {
+  if (!raw) return null;
+  const ms = Date.now() - Date.parse(raw);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+/** Cap for the persisted handled-ids list so the document stays bounded. */
+const MAX_HANDLED_IDS = 500;
 
 const COLORS = [
   "bg-blue-500", "bg-purple-500", "bg-green-500", "bg-orange-500",
@@ -172,6 +190,28 @@ export default function MessagesPage() {
   const [draftBusy, setDraftBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
   const [replySent, setReplySent] = useState(false);
+
+  // "Handled" is app-level triage (the providers don't expose mark-as-read):
+  // handled ids stop counting as unanswered in this inbox. Persisted per
+  // profile so the state follows the user across devices.
+  const handledDoc = useProfileDocument<string[]>("messages-handled", []);
+  const handledIds = useMemo(
+    () => new Set(Array.isArray(handledDoc.data) ? handledDoc.data : []),
+    [handledDoc.data]
+  );
+  const markHandled = useCallback(
+    (ids: string[]) => {
+      const fresh = ids.filter((id) => !handledIds.has(id));
+      if (fresh.length === 0) return;
+      const next = [...(Array.isArray(handledDoc.data) ? handledDoc.data : []), ...fresh];
+      handledDoc.save(next.slice(-MAX_HANDLED_IDS));
+    },
+    [handledDoc, handledIds]
+  );
+  const isUnanswered = useCallback(
+    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
+    [handledIds]
+  );
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
@@ -324,10 +364,10 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (defaultedUnread.current || loading) return;
-    const unread = messages.filter((m) => m.isUnread).length;
+    const unread = messages.filter(isUnanswered).length;
     if (unread > 0) setUnreadOnly(true);
     defaultedUnread.current = true;
-  }, [loading, messages]);
+  }, [loading, messages, isUnanswered]);
 
   useEffect(() => {
     if (!selectedMessage || draftBusy || sendBusy || replySent) return;
@@ -395,6 +435,7 @@ export default function MessagesPage() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
       setReplySent(true);
+      markHandled([selectedMessage.id]);
       void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
       toast({
         title: "Reply sent",
@@ -449,9 +490,9 @@ export default function MessagesPage() {
   const hasAnyMailConnected = mailAccounts.length > 0;
   const filteredMessages = useMemo(() => {
     const q = inboxSearch.trim().toLowerCase();
-    return messages
+    const rows = messages
       .filter((msg) => messageMatchesTab(msg, activeTab))
-      .filter((msg) => !unreadOnly || msg.isUnread)
+      .filter((msg) => !unreadOnly || isUnanswered(msg))
       .filter((msg) => {
         if (!q) return true;
         const haystack = [
@@ -466,7 +507,21 @@ export default function MessagesPage() {
           .toLowerCase();
         return haystack.includes(q);
       });
-  }, [activeTab, messages, unreadOnly, inboxSearch]);
+    // Unanswered messages first (longest wait on top), answered/read below
+    // (newest first) — the inbox reads top-to-bottom as a work queue.
+    return rows.sort((a, b) => {
+      const aOpen = isUnanswered(a);
+      const bOpen = isUnanswered(b);
+      if (aOpen !== bOpen) return aOpen ? -1 : 1;
+      const aDate = Date.parse(a.date) || 0;
+      const bDate = Date.parse(b.date) || 0;
+      return aOpen ? aDate - bDate : bDate - aDate;
+    });
+  }, [activeTab, messages, unreadOnly, inboxSearch, isUnanswered]);
+  const unansweredVisible = useMemo(
+    () => filteredMessages.filter(isUnanswered),
+    [filteredMessages, isUnanswered]
+  );
   const tabCounts = useMemo(
     () =>
       MESSAGE_TABS.reduce(
@@ -474,13 +529,13 @@ export default function MessagesPage() {
           const rows = messages.filter((msg) => messageMatchesTab(msg, tab.value));
           acc[tab.value] = {
             total: rows.length,
-            unread: rows.filter((msg) => msg.isUnread).length,
+            unread: rows.filter(isUnanswered).length,
           };
           return acc;
         },
         {} as Record<MessageChannelTab, { total: number; unread: number }>
       ),
-    [messages]
+    [messages, isUnanswered]
   );
   const activeEmptyCopy = emptyCopyForTab(activeTab);
   const showZernioNote = activeTab !== "mail" && Boolean(zernioNote);
@@ -661,6 +716,17 @@ export default function MessagesPage() {
             <Label htmlFor="messages-unread-only" className="text-xs text-muted-foreground cursor-pointer">
               Unread only
             </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => markHandled(unansweredVisible.map((msg) => msg.id))}
+              disabled={unansweredVisible.length === 0}
+              title="Mark every unanswered message in this view as handled"
+            >
+              <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
+              Mark handled ({unansweredVisible.length})
+            </Button>
           </div>
         </div>
 
@@ -691,9 +757,12 @@ export default function MessagesPage() {
 
             {!loading && filteredMessages.length > 0 && (
               <div className="space-y-2">
-                {filteredMessages.map((msg, i) => (
+                {filteredMessages.map((msg, i) => {
+                  const open = isUnanswered(msg);
+                  const waited = open ? formatWaitTime(msg.date) : null;
+                  return (
                   <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
-                    <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${msg.isUnread ? "border-l-2 border-l-primary" : ""}`}>
+                    <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${open ? "border-l-2 border-l-primary" : ""}`}>
                       <CardContent
                         className="p-4 flex items-start gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                         role="button"
@@ -722,12 +791,21 @@ export default function MessagesPage() {
                               ) : null}
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              {msg.isUnread && <Circle className="h-2 w-2 fill-primary text-primary" />}
+                              {waited ? (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning tabular-nums"
+                                  title="Waiting for a reply"
+                                >
+                                  <Clock className="h-2.5 w-2.5" aria-hidden />
+                                  {waited}
+                                </span>
+                              ) : null}
+                              {open && <Circle className="h-2 w-2 fill-primary text-primary" />}
                               <span className="text-xs text-muted-foreground">{formatDate(msg.date)}</span>
                             </div>
                           </div>
 
-                          <span className={`text-sm block truncate ${msg.isUnread ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+                          <span className={`text-sm block truncate ${open ? "font-semibold" : "font-medium text-muted-foreground"}`}>
                             {msg.subject}
                           </span>
 
@@ -746,7 +824,8 @@ export default function MessagesPage() {
                       </CardContent>
                     </Card>
                   </m.div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -826,6 +905,11 @@ export default function MessagesPage() {
                       {draftBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                       AI draft
                     </Button>
+                    <ReplyTemplatePicker
+                      onInsert={setReplyDraft}
+                      recipientName={selectedMessage.from.name}
+                      disabled={sendBusy}
+                    />
                     <Button size="sm" onClick={() => void sendReply()} disabled={sendBusy || !replyDraft.trim()}>
                       {sendBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                       Send reply
