@@ -5,6 +5,9 @@ export interface MarketingSnapshot {
   orders: number | null;
   roas: number | null;
   currency: string | null;
+  portfolioScore: number | null;
+  portfolioGrade: string | null;
+  campaignsPoor: number | null;
 }
 
 export interface MarketingTrend {
@@ -14,7 +17,9 @@ export interface MarketingTrend {
   roasChangePct: number | null;
   spendChangePct: number | null;
   revenueChangePct: number | null;
+  portfolioScoreDelta: number | null;
   direction: "up" | "down" | "flat" | null;
+  scoreDirection: "up" | "down" | "flat" | null;
 }
 
 function changePct(current: number | null, previous: number | null): number | null {
@@ -39,7 +44,9 @@ export function computeMarketingTrend(snapshots: MarketingSnapshot[]): Marketing
     roasChangePct: null,
     spendChangePct: null,
     revenueChangePct: null,
+    portfolioScoreDelta: null,
     direction: null,
+    scoreDirection: null,
   };
   const sorted = [...snapshots]
     .filter((s) => s && s.snapshotDate)
@@ -67,6 +74,19 @@ export function computeMarketingTrend(snapshots: MarketingSnapshot[]): Marketing
   const direction =
     roasDelta == null ? null : roasDelta > 0.05 ? "up" : roasDelta < -0.05 ? "down" : "flat";
 
+  const portfolioScoreDelta =
+    current.portfolioScore != null && previous.portfolioScore != null
+      ? current.portfolioScore - previous.portfolioScore
+      : null;
+  const scoreDirection =
+    portfolioScoreDelta == null
+      ? null
+      : portfolioScoreDelta >= 8
+        ? "up"
+        : portfolioScoreDelta <= -8
+          ? "down"
+          : "flat";
+
   return {
     current,
     previous,
@@ -74,6 +94,8 @@ export function computeMarketingTrend(snapshots: MarketingSnapshot[]): Marketing
     roasChangePct: changePct(current.roas, previous.roas),
     spendChangePct: changePct(current.adSpend, previous.adSpend),
     revenueChangePct: changePct(current.revenue, previous.revenue),
+    portfolioScoreDelta,
     direction,
+    scoreDirection,
   };
 }

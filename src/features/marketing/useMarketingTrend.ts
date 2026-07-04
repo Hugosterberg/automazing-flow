@@ -24,7 +24,7 @@ export function useMarketingTrend(): { trend: MarketingTrend | null; isLoading: 
       if (!supabase || !businessProfileId) return computeMarketingTrend([]);
       const { data, error } = await (supabase as unknown as SnapshotsClient)
         .from("marketing_snapshots")
-        .select("snapshot_date, ad_spend, revenue, orders, roas, currency")
+        .select("snapshot_date, ad_spend, revenue, orders, roas, currency, portfolio_score, portfolio_grade, campaigns_poor")
         .eq("business_profile_id", businessProfileId)
         .order("snapshot_date", { ascending: false })
         .limit(30);
@@ -36,6 +36,9 @@ export function useMarketingTrend(): { trend: MarketingTrend | null; isLoading: 
         orders: r.orders == null ? null : Number(r.orders),
         roas: r.roas == null ? null : Number(r.roas),
         currency: (r.currency as string | null) ?? null,
+        portfolioScore: r.portfolio_score == null ? null : Number(r.portfolio_score),
+        portfolioGrade: (r.portfolio_grade as string | null) ?? null,
+        campaignsPoor: r.campaigns_poor == null ? null : Number(r.campaigns_poor),
       }));
       return computeMarketingTrend(snapshots);
     },

@@ -12,8 +12,10 @@ import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { automationSettingsRowToDomain, runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
 import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
-import { buildMarketingAlert } from "../lib/marketingAlert.ts";
+import { buildMarketingAlert, extractPoorCampaignsForAlert } from "../lib/marketingAlert.ts";
+import { buildCampaignSnapshotRows } from "../lib/marketingCampaignSnapshots.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
+import { portfolioScoreDeltaFromSnapshots } from "../lib/marketingSnapshotTrend.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { buildWeeklyReport } from "../lib/weeklyReport.ts";
@@ -633,6 +635,21 @@ export function registerCronRoutes(app, deps) {
 
         try {
           const data = await gatherMarketingData(accounts, { graphVersion, googleAdsConfig });
+
+          const { data: priorSnaps } = await supabaseAdmin
+            .from("marketing_snapshots")
+            .select("snapshot_date, portfolio_score")
+            .eq("business_profile_id", profileId)
+            .order("snapshot_date", { ascending: false })
+            .limit(14);
+          const portfolioScoreDelta = portfolioScoreDeltaFromSnapshots(
+            (Array.isArray(priorSnaps) ? priorSnaps : []).map((r) => ({
+              snapshotDate: String(r.snapshot_date || ""),
+              portfolioScore: r.portfolio_score == null ? null : Number(r.portfolio_score),
+            })),
+          );
+
+          const poorCampaigns = extractPoorCampaignsForAlert(data.platforms);
           const alert = buildMarketingAlert({
             businessName: "Your business",
             appUrl: appUrl || undefined,
@@ -640,6 +657,12 @@ export function registerCronRoutes(app, deps) {
             roas: data.performance.roas,
             adSpend: data.performance.adSpend,
             revenue: data.performance.revenue,
+            portfolioGrade: data.analytics?.portfolioGrade ?? null,
+            portfolioScore: data.analytics?.portfolioScore ?? null,
+            portfolioScoreDelta,
+            campaignsPoor: data.analytics?.campaignsPoor ?? 0,
+            poorCampaigns,
+            recommendations: data.analytics?.recommendations ?? [],
             inventory: data.inventoryAlert,
           });
           if (!alert.hasAlert) {
@@ -670,6 +693,12 @@ export function registerCronRoutes(app, deps) {
             roas: data.performance.roas,
             adSpend: data.performance.adSpend,
             revenue: data.performance.revenue,
+            portfolioGrade: data.analytics?.portfolioGrade ?? null,
+            portfolioScore: data.analytics?.portfolioScore ?? null,
+            portfolioScoreDelta,
+            campaignsPoor: data.analytics?.campaignsPoor ?? 0,
+            poorCampaigns,
+            recommendations: data.analytics?.recommendations ?? [],
             inventory: data.inventoryAlert,
           });
           const result = await sendEmail({
@@ -783,6 +812,9 @@ export function registerCronRoutes(app, deps) {
               orders: p.orders,
               roas: p.roas,
               currency: p.adSpendCurrency || p.revenueCurrency,
+              portfolio_score: data.analytics?.portfolioScore ?? null,
+              portfolio_grade: data.analytics?.portfolioGrade ?? null,
+              campaigns_poor: data.analytics?.campaignsPoor ?? null,
             },
             { onConflict: "business_profile_id,snapshot_date" },
           );
@@ -791,6 +823,20 @@ export function registerCronRoutes(app, deps) {
             console.warn(`[cron] marketing-snapshot upsert failed profile=${profileId}:`, error.message);
           } else {
             written += 1;
+          }
+
+          const campaignRows = buildCampaignSnapshotRows(profileId, today, data.platforms);
+          if (campaignRows.length > 0) {
+            const { error: campErr } = await supabaseAdmin.from("marketing_campaign_snapshots").upsert(
+              campaignRows,
+              { onConflict: "business_profile_id,snapshot_date,platform,campaign_id" },
+            );
+            if (campErr) {
+              console.warn(
+                `[cron] marketing-snapshot campaign rows failed profile=${profileId}:`,
+                campErr.message,
+              );
+            }
           }
         } catch (err) {
           skipped += 1;

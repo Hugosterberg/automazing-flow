@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { computeMarketingTrend, type MarketingSnapshot } from "../features/marketing/marketingTrend";
 
-function snap(date: string, roas: number, adSpend: number, revenue: number): MarketingSnapshot {
-  return { snapshotDate: date, roas, adSpend, revenue, orders: null, currency: "SEK" };
+function snap(date: string, roas: number, adSpend: number, revenue: number, portfolioScore?: number): MarketingSnapshot {
+  return {
+    snapshotDate: date,
+    roas,
+    adSpend,
+    revenue,
+    orders: null,
+    currency: "SEK",
+    portfolioScore: portfolioScore ?? null,
+    portfolioGrade: null,
+    campaignsPoor: null,
+  };
 }
 
 describe("computeMarketingTrend", () => {
@@ -39,5 +49,14 @@ describe("computeMarketingTrend", () => {
     const t = computeMarketingTrend([snap("2026-06-15", 0.8, 2000, 1600), snap("2026-06-08", 2.0, 1000, 2000)]);
     expect(t.direction).toBe("down");
     expect(t.roasDelta).toBeCloseTo(-1.2);
+  });
+
+  it("tracks portfolio score delta", () => {
+    const t = computeMarketingTrend([
+      snap("2026-06-15", 2.0, 1000, 2000, 80),
+      snap("2026-06-08", 2.0, 1000, 2000, 65),
+    ]);
+    expect(t.portfolioScoreDelta).toBe(15);
+    expect(t.scoreDirection).toBe("up");
   });
 });

@@ -15,22 +15,56 @@ function pct(value: number | null): string {
   return `${rounded > 0 ? "+" : ""}${rounded}%`;
 }
 
-/** Week-over-week trend strip, shown once there's a baseline ~7 days back. */
+/** Week-over-week trend strip from daily snapshots. */
 function TrendStrip() {
   const { trend } = useMarketingTrend();
-  if (!trend || !trend.previous || trend.roasDelta == null) return null;
-  const Icon = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
-  const tone =
-    trend.direction === "up" ? "text-success" : trend.direction === "down" ? "text-destructive" : "text-muted-foreground";
-  const delta = `${trend.roasDelta > 0 ? "+" : ""}${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(trend.roasDelta)}×`;
+  if (!trend || !trend.previous) return null;
+  if (trend.roasDelta == null && trend.portfolioScoreDelta == null) return null;
+
+  const RoasIcon =
+    trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
+  const roasTone =
+    trend.direction === "up"
+      ? "text-success"
+      : trend.direction === "down"
+        ? "text-destructive"
+        : "text-muted-foreground";
+  const roasDelta =
+    trend.roasDelta != null
+      ? `${trend.roasDelta > 0 ? "+" : ""}${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(trend.roasDelta)}×`
+      : null;
+
+  const ScoreIcon =
+    trend.scoreDirection === "up"
+      ? TrendingUp
+      : trend.scoreDirection === "down"
+        ? TrendingDown
+        : Minus;
+  const scoreTone =
+    trend.scoreDirection === "up"
+      ? "text-success"
+      : trend.scoreDirection === "down"
+        ? "text-destructive"
+        : "text-muted-foreground";
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-      <span className={cn("inline-flex items-center gap-1 font-medium", tone)}>
-        <Icon className="h-3.5 w-3.5" aria-hidden />
-        ROAS {delta} vs last week
-      </span>
+      {roasDelta ? (
+        <span className={cn("inline-flex items-center gap-1 font-medium", roasTone)}>
+          <RoasIcon className="h-3.5 w-3.5" aria-hidden />
+          ROAS {roasDelta} vs förra veckan
+        </span>
+      ) : null}
+      {trend.portfolioScoreDelta != null ? (
+        <span className={cn("inline-flex items-center gap-1 font-medium", scoreTone)}>
+          <ScoreIcon className="h-3.5 w-3.5" aria-hidden />
+          Betyg {trend.portfolioScoreDelta > 0 ? "+" : ""}
+          {Math.round(trend.portfolioScoreDelta)} p
+          {trend.current?.portfolioGrade ? ` (nu ${trend.current.portfolioGrade})` : ""}
+        </span>
+      ) : null}
       <span>Spend {pct(trend.spendChangePct)}</span>
-      <span>Revenue {pct(trend.revenueChangePct)}</span>
+      <span>Intäkter {pct(trend.revenueChangePct)}</span>
     </div>
   );
 }

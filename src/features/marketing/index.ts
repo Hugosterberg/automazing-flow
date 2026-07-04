@@ -9,7 +9,10 @@ export { InventoryAdsAlert } from "./InventoryAdsAlert";
 export { MarketingPathsHub } from "./MarketingPathsHub";
 export { MARKETING_PATHS, MARKETING_PATH_GROUPS, type MarketingPath } from "./marketingPaths";
 export { useMarketingTrend, MARKETING_TREND_KEY } from "./useMarketingTrend";
+export { useMarketingCampaignTrends, MARKETING_CAMPAIGN_TREND_KEY, campaignTrendKey } from "./useMarketingCampaignTrends";
 export { computeMarketingTrend, type MarketingSnapshot, type MarketingTrend } from "./marketingTrend";
+export { computeCampaignTrends, type CampaignSnapshot, type CampaignTrend } from "./campaignTrend";
+export { CampaignTrendBadge } from "./CampaignTrendBadge";
 export {
   useMarketingCampaigns,
   useCachedMarketingRoas,

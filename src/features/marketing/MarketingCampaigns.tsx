@@ -7,9 +7,12 @@ import {
   type AdAccountCampaigns,
   type AdCampaign,
 } from "./useMarketingCampaigns";
+import type { CampaignTrend } from "./campaignTrend";
 import { formatMoney, formatNumber as formatCount, formatPct, formatRoas } from "./format";
 import { MarketingGradeBadge, MarketingVerdictDot } from "./MarketingGradeBadge";
 import { ScoreBreakdown } from "./ScoreBreakdown";
+import { CampaignTrendBadge } from "./CampaignTrendBadge";
+import { campaignTrendKey, useMarketingCampaignTrends } from "./useMarketingCampaignTrends";
 
 const PLATFORM_LABEL: Record<AdAccountCampaigns["platform"], string> = {
   meta_business: "Meta",
@@ -28,7 +31,15 @@ function isRunning(status: string): boolean {
   return s === "ACTIVE" || s === "ENABLED";
 }
 
-function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: string }) {
+function CampaignRow({
+  campaign,
+  currency,
+  trend,
+}: {
+  campaign: AdCampaign;
+  currency?: string;
+  trend?: CampaignTrend;
+}) {
   const budget = campaign.dailyBudget ?? campaign.lifetimeBudget;
   const budgetLabel = campaign.dailyBudget != null ? "/dag" : campaign.lifetimeBudget != null ? " totalt" : "";
   const metrics = campaign.metrics;
@@ -40,6 +51,7 @@ function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: 
           {campaign.score ? (
             <MarketingGradeBadge grade={campaign.score.grade} label={campaign.score.label} score={campaign.score.score} />
           ) : null}
+          <CampaignTrendBadge trend={trend} />
           <p className="text-sm font-medium text-foreground truncate">{campaign.name}</p>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -103,7 +115,13 @@ function sortCampaigns(campaigns: AdCampaign[]): AdCampaign[] {
   });
 }
 
-function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
+function PlatformGroup({
+  group,
+  trends,
+}: {
+  group: AdAccountCampaigns;
+  trends: ReturnType<typeof useMarketingCampaignTrends>["trends"];
+}) {
   const totalSpend = group.campaigns.reduce((sum, c) => sum + (c.spend7d ?? 0), 0);
   return (
     <div className="space-y-2">
@@ -121,7 +139,12 @@ function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
       {group.campaigns.length > 0 ? (
         <div className="space-y-2">
           {sortCampaigns(group.campaigns).map((campaign) => (
-            <CampaignRow key={campaign.id} campaign={campaign} currency={group.currency} />
+            <CampaignRow
+              key={campaign.id}
+              campaign={campaign}
+              currency={group.currency}
+              trend={trends.get(campaignTrendKey(group.platform, campaign.id))}
+            />
           ))}
         </div>
       ) : (
@@ -141,6 +164,7 @@ function PlatformGroup({ group }: { group: AdAccountCampaigns }) {
  */
 export function MarketingCampaigns() {
   const { platforms, connected, analytics, isLoading, refetch } = useMarketingCampaigns();
+  const { trends } = useMarketingCampaignTrends();
   const anyConnected = connected.meta_business || connected.google_ads;
 
   if (!isLoading && !anyConnected && platforms.length === 0) {
@@ -185,7 +209,9 @@ export function MarketingCampaigns() {
             <div className="h-16 rounded-lg bg-muted/30 animate-pulse" />
           </div>
         ) : (
-          platforms.map((group) => <PlatformGroup key={group.platform + group.accountName} group={group} />)
+          platforms.map((group) => (
+            <PlatformGroup key={group.platform + group.accountName} group={group} trends={trends} />
+          ))
         )}
       </CardContent>
     </Card>
