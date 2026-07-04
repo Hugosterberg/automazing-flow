@@ -41,8 +41,18 @@ import {
 import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
 import { LeadEditDialog } from "./LeadEditDialog";
-import { OutreachDraftDialog, type OutreachDraftTarget } from "@/features/outreach";
+import type { OutreachDraftTarget } from "@/features/outreach";
 import type { OutreachDraftInput } from "@/features/outreach";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: "text-info",
@@ -72,6 +82,8 @@ interface Props {
   followUpsOnly?: boolean;
   /** Opens the sales pipeline dialog prefilled from this lead. */
   onAddToPipeline?: (lead: Lead) => void;
+  /** Opens a shared outreach draft dialog (parent should mount OutreachDraftDialog). */
+  onDraftOutreach?: (target: OutreachDraftTarget) => void;
 }
 
 function LeadRow({
@@ -197,12 +209,11 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline }: Props) {
+export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [draftTarget, setDraftTarget] = useState<OutreachDraftTarget | null>(null);
-  const [draftOpen, setDraftOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
 
   async function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -489,13 +500,17 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
                 key={lead.id}
                 lead={lead}
                 onStatus={(status) => void handleStatusChange(lead, status)}
-                onFollowUp={(value) =>
-                  void updateLead({
-                    id: lead.id,
-                    patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
-                  })
-                }
-                onDelete={() => void deleteLead(lead.id)}
+                onFollowUp={async (value) => {
+                  try {
+                    await updateLead({
+                      id: lead.id,
+                      patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
+                    });
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Couldn't update follow-up date.");
+                  }
+                }}
+                onDelete={() => setLeadToDelete(lead)}
                 onResearch={() =>
                   setResearchTarget({
                     company: lead.company,
@@ -509,16 +524,15 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
                   setEditOpen(true);
                 }}
                 onDraftOutreach={
-                  sellerContext
+                  onDraftOutreach
                     ? () => {
-                        setDraftTarget({
+                        onDraftOutreach({
                           prospectCompany: lead.company,
                           prospectContact: lead.contactName ?? undefined,
                           prospectEmail: lead.email ?? undefined,
                           prospectWebsite: lead.website ?? undefined,
                           prospectNotes: lead.notes ?? undefined,
                         });
-                        setDraftOpen(true);
                       }
                     : undefined
                 }
@@ -546,15 +560,30 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
         }}
       />
 
-      {sellerContext ? (
-        <OutreachDraftDialog
-          open={draftOpen}
-          onOpenChange={setDraftOpen}
-          businessProfileId={businessProfileId}
-          sellerContext={sellerContext}
-          target={draftTarget}
-        />
-      ) : null}
+      <AlertDialog open={Boolean(leadToDelete)} onOpenChange={(open) => !open && setLeadToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove {leadToDelete?.company || "this lead"} from your CRM. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!leadToDelete) return;
+                void deleteLead(leadToDelete.id)
+                  .then(() => toast.success("Lead deleted"))
+                  .catch((error) => toast.error(error instanceof Error ? error.message : "Couldn't delete lead."));
+                setLeadToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>

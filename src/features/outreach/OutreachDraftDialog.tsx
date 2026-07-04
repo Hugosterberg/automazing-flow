@@ -70,6 +70,10 @@ export function OutreachDraftDialog({
   }, [open, target?.prospectCompany, target?.prospectEmail]);
 
   async function generate(nextChannel: OutreachChannel, options?: { force?: boolean }) {
+    if (!businessProfileId) {
+      toast.error("Select a business profile first.");
+      return;
+    }
     if (!options?.force && draftByChannel[nextChannel]) {
       setChannel(nextChannel);
       return;

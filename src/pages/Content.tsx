@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1087,8 +1086,9 @@ export default function ContentPage() {
       ) : null}
 
       <ContentNextStepBar
-        active={contentTab === "history" ? "browse" : contentTab}
+        active={contentTab}
         selectionCount={selectedAssets.length}
+        historyCount={generatedHistory.length}
         onGo={goToTab}
       />
     </div>

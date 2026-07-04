@@ -76,6 +76,8 @@ export function PublishComposer({
         .filter((url): url is string => Boolean(url) && !url.startsWith("blob:")),
     [mediaUrls]
   );
+  const hasBlobOnlyMedia =
+    mediaUrls.some((url) => url.startsWith("blob:")) && resolvedMediaUrls.length === 0;
 
   useEffect(() => {
     setCaption(initialCaption);
@@ -262,6 +264,12 @@ export function PublishComposer({
           <p className="text-xs text-muted-foreground">No media attached — add images in Browse or Create first.</p>
         )}
 
+        {hasBlobOnlyMedia ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+            Local file uploads cannot be published directly. Generate with AI, export from Canva, or pick media from Content or Google Drive.
+          </div>
+        ) : null}
+
         {publishBlockedReason ? (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             Publishing blocked: {publishBlockedReason}
@@ -359,7 +367,8 @@ export function PublishComposer({
                 postable.length === 0 ||
                 selectedIds.length === 0 ||
                 !caption.trim() ||
-                Boolean(publishBlockedReason)
+                Boolean(publishBlockedReason) ||
+                hasBlobOnlyMedia
               }
             >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ExternalLink, FolderPlus, Loader2, Send, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,14 @@ export function ContentAiImageCard({
   captionHint = "",
   canvaConnected = false,
   onGenerated,
+  onSaveToSelection,
   onContinueToPublish,
 }: {
   businessProfileId: string | null;
   captionHint?: string;
   canvaConnected?: boolean;
   onGenerated: (asset: SelectedContentAsset) => void;
+  onSaveToSelection?: (asset: SelectedContentAsset) => void;
   onContinueToPublish?: () => void;
 }) {
   const [prompt, setPrompt] = useState("");
@@ -26,6 +28,7 @@ export function ContentAiImageCard({
   const [busy, setBusy] = useState<"openai" | "canva" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [lastAsset, setLastAsset] = useState<SelectedContentAsset | null>(null);
 
   async function handleGenerate() {
     const text = prompt.trim() || captionHint.trim();
@@ -43,7 +46,7 @@ export function ContentAiImageCard({
       });
       const url = result.url;
       setPreviewUrl(result.previewUrl || url);
-      onGenerated({
+      const asset: SelectedContentAsset = {
         id: `openai-${Date.now()}`,
         name: "ai-generated.png",
         mimeType: "image/png",
@@ -52,8 +55,9 @@ export function ContentAiImageCard({
         previewUrl: url,
         sourceAccountId: "openai",
         sourceAccountName: "OpenAI",
-      });
-      onContinueToPublish?.();
+      };
+      setLastAsset(asset);
+      onGenerated(asset);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate image");
     } finally {
@@ -72,7 +76,7 @@ export function ContentAiImageCard({
     try {
       const result = await exportCanvaImage({ designId, businessProfileId });
       setPreviewUrl(result.url);
-      onGenerated({
+      const asset: SelectedContentAsset = {
         id: `canva-${Date.now()}`,
         name: "canva-export.png",
         mimeType: "image/png",
@@ -81,8 +85,9 @@ export function ContentAiImageCard({
         previewUrl: result.url,
         sourceAccountId: "canva",
         sourceAccountName: "Canva",
-      });
-      onContinueToPublish?.();
+      };
+      setLastAsset(asset);
+      onGenerated(asset);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not export Canva design");
     } finally {
@@ -98,7 +103,7 @@ export function ContentAiImageCard({
           Generate or import image
         </CardTitle>
         <CardDescription>
-          Create with OpenAI or export a Canva design — saved straight into your selection.
+          Create with OpenAI or export a Canva design — saved to History automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -141,6 +146,22 @@ export function ContentAiImageCard({
             )}
           </div>
         </div>
+        {lastAsset ? (
+          <div className="flex flex-wrap gap-2">
+            {onSaveToSelection ? (
+              <Button type="button" size="sm" variant="secondary" onClick={() => onSaveToSelection(lastAsset)}>
+                <FolderPlus className="h-3.5 w-3.5 mr-1.5" />
+                Save to selection
+              </Button>
+            ) : null}
+            {onContinueToPublish ? (
+              <Button type="button" size="sm" onClick={onContinueToPublish}>
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Continue to post
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </CardContent>
     </Card>

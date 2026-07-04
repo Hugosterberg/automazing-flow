@@ -395,6 +395,10 @@ export default function SalesMarketingPage() {
           sellerContext={marketingContext}
           followUpsOnly={showFollowUpsOnly}
           onAddToPipeline={openPipelineFromLead}
+          onDraftOutreach={(target) => {
+            setOutreachDraftTarget(target);
+            setOutreachDraftOpen(true);
+          }}
         />
       </m.div>
 

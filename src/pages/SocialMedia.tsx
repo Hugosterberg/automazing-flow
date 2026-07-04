@@ -24,6 +24,8 @@ import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
 import { PublishComposer } from "@/features/content/PublishComposer";
+import { PublishSafetyPanel } from "@/features/content/PublishSafetyPanel";
+import { publishBlockReason, type PublishReadiness } from "@/features/content/apiaiResultInsights";
 import { absoluteMediaUrl, publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
 import {
@@ -39,6 +41,7 @@ import {
   type SocialMediaApiResponse,
 } from "@/features/social";
 import { apiUrl } from "@/lib/apiBase";
+import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useAccountData } from "@/hooks/useAccountData";
 import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
@@ -312,7 +315,9 @@ export default function SocialMedia() {
             setAnalysisResult(result);
             updateAccountAnalysis(selectedAccountId, { ...result, analyzedAt: new Date().toISOString() });
           })
-          .catch(() => {})
+          .catch((err) => {
+            toast.error(err instanceof Error ? err.message : "Account analysis failed.");
+          })
           .finally(() => setAnalyzing(false));
       } else {
         setAnalysisResult({
@@ -332,6 +337,7 @@ export default function SocialMedia() {
   const [imageSource, setImageSource] = useState<"openai" | "canva" | null>(null);
   const [canvaDesignId, setCanvaDesignId] = useState("");
   const [exportingCanva, setExportingCanva] = useState(false);
+  const [publishReadiness, setPublishReadiness] = useState<PublishReadiness | null>(null);
   // Read the shared content selection from the DB (synced across devices/pages).
   const selectedContent = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
     legacyRead: () => {
@@ -384,6 +390,47 @@ export default function SocialMedia() {
     }
     return publishMediaUrlsFromAssets(selectedContent);
   }, [generatedMediaUrl, uploadedImage, selectedContent]);
+
+  const safetyImageAssets = useMemo(() => {
+    const assets = [...selectedContentImages];
+    if (generatedMediaUrl) {
+      const url = absoluteMediaUrl(generatedMediaUrl);
+      if (url && !url.startsWith("blob:")) {
+        assets.unshift({
+          id: "social-generated",
+          name: "generated.png",
+          mimeType: "image/png",
+          kind: "image",
+          thumbnailUrl: url,
+          previewUrl: url,
+          sourceAccountId: imageSource || "openai",
+          sourceAccountName: imageSource === "canva" ? "Canva" : "OpenAI",
+        });
+      }
+    }
+    return assets;
+  }, [selectedContentImages, generatedMediaUrl, imageSource]);
+
+  const publishBlockedReason = publishBlockReason(publishReadiness);
+
+  const ensureBackendSession = useCallback(async () => {
+    if (authMode === "local") {
+      await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch(() => {});
+      return;
+    }
+    if (authMode === "cloud" && session?.access_token) {
+      await fetchWithTimeout(apiUrl("/api/auth/session"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        credentials: "include",
+      }).catch(() => {});
+    }
+  }, [authMode, session?.access_token]);
 
   useEffect(() => {
     setRecentPosts([]);
@@ -634,9 +681,14 @@ export default function SocialMedia() {
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between gap-4">
               <p className="text-sm text-destructive">Could not load social stats: {error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)}>
-                Dismiss
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => void refreshStats()}>
+                  Retry
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+                  Dismiss
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </m.div>
@@ -930,16 +982,34 @@ export default function SocialMedia() {
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
+        {safetyImageAssets.length > 0 ? (
+          <div className="mb-4">
+            <PublishSafetyPanel
+              businessProfileId={businessProfileId}
+              imageAssets={safetyImageAssets}
+              readiness={publishReadiness}
+              onReadinessChange={setPublishReadiness}
+              onBeforeRequest={ensureBackendSession}
+            />
+          </div>
+        ) : null}
         <PublishComposer
           initialCaption={postContent}
           mediaUrls={composerMediaUrls}
           onCaptionChange={setPostContent}
           editingPost={editingPost}
           onEditingPostChange={setEditingPost}
+          publishBlockedReason={publishBlockedReason}
+          publishWarning={
+            publishReadiness && !publishReadiness.ok && publishReadiness.severity === "warn"
+              ? publishReadiness.detail || publishReadiness.label
+              : null
+          }
           onPublished={() => {
             setGeneratedMediaUrl(null);
             setVariants([]);
             setImageSource(null);
+            setPublishReadiness(null);
           }}
         />
       </m.div>

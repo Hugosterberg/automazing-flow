@@ -29,6 +29,30 @@ function sourceLabel(source: GeneratedContentItem["source"]) {
   return source;
 }
 
+function HistoryThumbnail({ item, src }: { item: GeneratedContentItem; src: string }) {
+  const [failed, setFailed] = useState(false);
+  const expired = isLikelyExpiredMedia(item);
+
+  if (failed || expired) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground p-2 text-center">
+        <ImageIcon className="h-8 w-8 opacity-60" />
+        <p className="text-[10px]">{expired ? "Preview expired" : "Preview unavailable"}</p>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={item.name}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function GeneratedHistoryPanel({
   items,
   loading,
@@ -111,12 +135,7 @@ export function GeneratedHistoryPanel({
             <Card key={item.id} className="overflow-hidden border-border">
               <div className="aspect-square bg-muted/30 relative">
                 {item.kind === "image" ? (
-                  <img
-                    src={thumbnailUrl}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
+                  <HistoryThumbnail item={item} src={thumbnailUrl} />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-8 w-8" />

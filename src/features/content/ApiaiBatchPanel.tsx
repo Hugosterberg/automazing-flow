@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Download, Layers, Loader2, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Download, FolderOpen, Layers, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +29,12 @@ export function ApiaiBatchPanel({
   businessProfileId,
   imageAssets,
   onBeforeRequest,
+  onOpenBrowse,
 }: {
   businessProfileId: string | null;
   imageAssets: SelectedContentAsset[];
   onBeforeRequest?: () => Promise<void>;
+  onOpenBrowse?: () => void;
 }) {
   const [workflow, setWorkflow] = useState("remove-bg");
   const [creating, setCreating] = useState(false);
@@ -39,6 +42,7 @@ export function ApiaiBatchPanel({
   const [jobs, setJobs] = useState<ApiaiBatchSummary[]>([]);
   const [activeJob, setActiveJob] = useState<ApiaiBatchJob | null>(null);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const completedToastRef = useRef<number | null>(null);
 
   async function refreshJobs() {
     if (!businessProfileId) return;
@@ -92,7 +96,13 @@ export function ApiaiBatchPanel({
   useEffect(() => {
     if (!activeJob?.id || !businessProfileId) return;
     const status = String(activeJob.status || "").toLowerCase();
-    if (status.includes("complete") || status.includes("cancel") || status.includes("fail")) return;
+    if (status.includes("complete") || status.includes("cancel") || status.includes("fail")) {
+      if (status.includes("complete") && completedToastRef.current !== activeJob.id) {
+        completedToastRef.current = activeJob.id;
+        toast.success("Batch complete — download the ZIP and add images from Browse or History.");
+      }
+      return;
+    }
 
     const timer = window.setInterval(() => {
       void refreshActiveJob(activeJob.id);
@@ -121,6 +131,18 @@ export function ApiaiBatchPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {imageAssets.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">
+            <p className="text-sm text-muted-foreground">Select images in Browse first — batch runs on your current selection.</p>
+            {onOpenBrowse ? (
+              <Button type="button" size="sm" variant="outline" onClick={onOpenBrowse}>
+                <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
+                Go to Browse
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="space-y-1">
             <Label htmlFor="apiai-batch-workflow">Workflow slug</Label>

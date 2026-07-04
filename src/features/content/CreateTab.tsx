@@ -382,6 +382,7 @@ export function CreateTab({
           captionHint={captionHint}
           canvaConnected={canvaConnected}
           onGenerated={(asset) => onRecordGenerated?.(asset)}
+          onSaveToSelection={(asset) => onSaveResultToSelection?.(asset)}
           onContinueToPublish={onContinueToPublish}
         />
       ) : null}
@@ -391,6 +392,7 @@ export function CreateTab({
           businessProfileId={businessProfileId}
           imageAssets={batchImageAssets}
           onBeforeRequest={onBeforeRequest}
+          onOpenBrowse={onOpenBrowse}
         />
       ) : null}
 
