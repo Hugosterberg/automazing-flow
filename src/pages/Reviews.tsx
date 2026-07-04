@@ -27,6 +27,7 @@ import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useReviewReplyState } from "@/features/reviews";
+import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
@@ -610,6 +611,11 @@ export default function ReviewsPage() {
                           )}
                           AI draft
                         </Button>
+                        <ReplyTemplatePicker
+                          onInsert={(text) => setReplyText((cur) => ({ ...cur, [r.id]: text }))}
+                          recipientName={r.author}
+                          disabled={sendBusy[r.id]}
+                        />
                         <Button
                           size="sm"
                           onClick={() => void sendReply(r.id)}
