@@ -110,6 +110,8 @@ export async function publishDueScheduledPosts(deps: {
   zernio: ZernioModule;
   tokenStore: TokenStoreLike;
   now?: Date;
+  /** When set, only publish for profiles that pass this check (opt-out via job_schedules). */
+  shouldPublishForProfile?: (businessProfileId: string) => boolean;
 }): Promise<PublishSweepResult> {
   const nowMs = (deps.now ?? new Date()).getTime();
   const { data, error } = await deps.supabaseAdmin
@@ -123,6 +125,10 @@ export async function publishDueScheduledPosts(deps: {
 
   for (const rawRow of rows) {
     const row = rawRow as { id: string; business_profile_id: string; data: unknown };
+    const businessProfileId = String(row.business_profile_id);
+    if (deps.shouldPublishForProfile && !deps.shouldPublishForProfile(businessProfileId)) {
+      continue;
+    }
     const posts = parseScheduledPostsDoc(row.data);
     const due = posts.filter((p) => isPostDue(p, nowMs));
     if (due.length === 0) continue;

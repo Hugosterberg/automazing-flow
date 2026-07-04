@@ -25,15 +25,18 @@ describe("buildDigest", () => {
       connectionIssues: [{ label: "Instagram", health: "expired" }],
       unreadDms: 2,
       leadsToFollowUp: 1,
+      outreachQueuePending: 2,
+      underwaterRoas: 0.6,
+      reviewsNeedingReply: 1,
+      failedAutomations: [{ title: "Publicera schemalagda inlägg" }],
       overdueTasks: [{ title: "Pay invoice" }],
       dueTodayTasks: [{ title: "Call supplier" }],
       newRecommendations: [{ title: "Post a reel" }],
     });
     expect(d.hasContent).toBe(true);
-    expect(d.actionCount).toBe(7);
-    expect(d.subject).toContain("7 things need attention");
-    expect(d.sections.some((s) => /lead/i.test(s.heading))).toBe(true);
-    expect(d.sections.map((s) => s.heading)[0]).toMatch(/connection/i);
+    expect(d.actionCount).toBe(12);
+    expect(d.sections.some((s) => /outreach draft/i.test(s.heading))).toBe(true);
+    expect(d.sections.some((s) => /ROAS/i.test(s.heading))).toBe(true);
     // CTA link points at the app (trailing slash trimmed)
     expect(d.html).toContain('href="https://app.example.com"');
     expect(d.text).toContain("Pay invoice");

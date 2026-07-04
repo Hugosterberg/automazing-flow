@@ -199,6 +199,49 @@ export async function fetchShopifyLowStock(
   }
 }
 
+export interface ShopifyAbandonedCheckout {
+  id: string;
+  email: string;
+  total: number;
+  currency: string;
+  recoveryUrl: string | null;
+  createdAt: string;
+}
+
+/** Open abandoned checkouts with email, for cart-recovery automation. */
+export async function fetchShopifyAbandonedCheckouts(
+  accessToken: string,
+  shop: string | undefined,
+  days = 7,
+  limit = 20
+): Promise<ShopifyAbandonedCheckout[]> {
+  if (!accessToken || !shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since = isoNDaysAgo(days);
+  const url =
+    `${apiBase}/checkouts.json?limit=${limit}&created_at_min=${encodeURIComponent(since)}&status=open`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { checkouts?: ShopifyCheckout[] };
+    return (body.checkouts || [])
+      .map((c) => ({
+        id: String(c.id),
+        email: String(c.email || "").trim(),
+        total: toNumber(c.total_price),
+        currency: String(c.currency || "USD"),
+        recoveryUrl: c.abandoned_checkout_url || null,
+        createdAt: String(c.created_at || ""),
+      }))
+      .filter((c) => c.total > 0 && c.email);
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchShopifyAccountData(accessToken: string, shop: string | undefined) {
   if (!shop) {
     return { error: "No shop domain stored for this account", status: 400 };

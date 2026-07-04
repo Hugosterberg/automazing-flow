@@ -51,6 +51,8 @@ export interface DailyBriefInput {
   inventoryAlertCount?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
+  /** Automated outreach drafts waiting for review in Sales. */
+  outreachQueuePending?: number;
   /** Scheduled automations whose most recent run failed. `title` is display-ready. */
   failedAutomations?: Array<{ title: string }>;
   overdueTasks: Array<{ title: string }>;
@@ -124,6 +126,19 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
         leadsToFollowUp === 1 ? "A follow-up is due — don't let it go cold." : "Follow-ups are due — keep deals moving.",
       to: "/sales?view=followups",
       count: leadsToFollowUp,
+    });
+  }
+
+  const outreachQueuePending = Math.max(0, Math.trunc(input.outreachQueuePending ?? 0));
+  if (outreachQueuePending > 0) {
+    items.push({
+      id: "outreach-queue",
+      kind: "lead",
+      severity: "info",
+      title: `${outreachQueuePending} outreach draft${outreachQueuePending === 1 ? "" : "s"} ready`,
+      description: "Automated follow-up copy is queued — review and send from Sales.",
+      to: "/sales?view=outreach-queue",
+      count: outreachQueuePending,
     });
   }
 
@@ -238,6 +253,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     input.connectionIssues.length +
     unreadDms +
     leadsToFollowUp +
+    outreachQueuePending +
     hasUnderwaterRoas +
     hasTrendDown +
     inventoryAlertCount +

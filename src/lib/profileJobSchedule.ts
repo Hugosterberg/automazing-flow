@@ -110,6 +110,34 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "05:00",
     enabled: true,
   },
+  "publish-scheduled-posts": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "00:00",
+    endTime: "23:59",
+    enabled: true,
+  },
+  "sales-outreach-auto": {
+    days: [1, 2, 3, 4, 5],
+    timesPerDay: 1,
+    startTime: "08:00",
+    endTime: "08:00",
+    enabled: false,
+  },
+  "content-pipeline": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "10:00",
+    endTime: "10:00",
+    enabled: false,
+  },
+  "cart-recovery": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "11:00",
+    endTime: "11:00",
+    enabled: false,
+  },
 };
 
 export function expandRunTimes(schedule: ProfileJobSchedule): string[] {

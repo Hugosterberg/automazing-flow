@@ -27,6 +27,7 @@ import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { useReviewReplyState } from "@/features/reviews";
 import { useAutomationRuns, automationTitleForCronKey } from "@/features/automation";
+import { useProfileDocument } from "@/features/profile-documents";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { dismissBriefItem, getDismissedBriefIds } from "./dailyBriefDismiss";
 import { useUnreadDmCount } from "./useUnreadDmCount";
@@ -116,6 +117,11 @@ export function SmartDailyBrief({
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
   const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
   const automationRuns = useAutomationRuns(businessProfileId ?? null);
+  const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
+  const outreachQueuePending = useMemo(
+    () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
+    [outreachDoc.data],
+  );
 
   const marketingRoas =
     performance?.roas ?? marketingTrend?.current?.roas ?? cachedRoas ?? null;
@@ -143,6 +149,7 @@ export function SmartDailyBrief({
       reviewsNeedingReply,
       inventoryAlertCount,
       leadsToFollowUp,
+      outreachQueuePending,
       failedAutomations,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
@@ -150,7 +157,7 @@ export function SmartDailyBrief({
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
     });
-  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads, automationRuns.byKey]);
+  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads, outreachQueuePending, automationRuns.byKey]);
 
   const visibleItems = useMemo(
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),

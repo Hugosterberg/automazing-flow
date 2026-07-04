@@ -16,6 +16,16 @@ export interface DigestInput {
   unreadDms?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
+  /** Outreach drafts waiting in the automated queue. */
+  outreachQueuePending?: number;
+  /** Blended ROAS below 1× over the last 7 days. */
+  underwaterRoas?: number | null;
+  /** ROAS week-over-week trend down from marketing snapshots. */
+  marketingTrendDown?: boolean;
+  /** Reviews awaiting a reply. */
+  reviewsNeedingReply?: number;
+  /** Scheduled automations whose last run failed. */
+  failedAutomations?: Array<{ title: string }>;
   overdueTasks: Array<{ title: string }>;
   dueTodayTasks: Array<{ title: string }>;
   newRecommendations: Array<{ title: string }>;
@@ -55,6 +65,13 @@ export function buildDigest(input: DigestInput): Digest {
   const sections: DigestSection[] = [];
   const unreadDms = Math.max(0, Math.trunc(input.unreadDms ?? 0));
   const leadsToFollowUp = Math.max(0, Math.trunc(input.leadsToFollowUp ?? 0));
+  const outreachQueuePending = Math.max(0, Math.trunc(input.outreachQueuePending ?? 0));
+  const reviewsNeedingReply = Math.max(0, Math.trunc(input.reviewsNeedingReply ?? 0));
+  const failedAutomations = input.failedAutomations ?? [];
+  const underwaterRoas = input.underwaterRoas;
+  const hasUnderwaterRoas =
+    underwaterRoas != null && Number.isFinite(underwaterRoas) && underwaterRoas < 1;
+  const hasTrendDown = Boolean(input.marketingTrendDown && !hasUnderwaterRoas);
 
   if (input.connectionIssues.length > 0) {
     sections.push({
@@ -74,6 +91,35 @@ export function buildDigest(input: DigestInput): Digest {
       items: ["A follow-up is due — keep deals moving in Sales."],
     });
   }
+  if (outreachQueuePending > 0) {
+    sections.push({
+      heading: `${outreachQueuePending} outreach draft(s) ready`,
+      items: ["Automated follow-up copy is queued — review and send from Sales."],
+    });
+  }
+  if (hasUnderwaterRoas) {
+    sections.push({
+      heading: `Ads underwater (ROAS ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(underwaterRoas!)}×)`,
+      items: ["Revenue is below ad spend — review campaigns on Marketing."],
+    });
+  } else if (hasTrendDown) {
+    sections.push({
+      heading: "Ad ROAS dipped this week",
+      items: ["Week-over-week return on ad spend is down — check Marketing."],
+    });
+  }
+  if (reviewsNeedingReply > 0) {
+    sections.push({
+      heading: `${reviewsNeedingReply} review(s) need a reply`,
+      items: ["Respond to recent customer feedback while it's still fresh."],
+    });
+  }
+  if (failedAutomations.length > 0) {
+    sections.push({
+      heading: `${failedAutomations.length} automation(s) failed`,
+      items: failedAutomations.slice(0, 5).map((a) => `${a.title} — review on Automations`),
+    });
+  }
   if (input.overdueTasks.length > 0) {
     sections.push({ heading: `${input.overdueTasks.length} task(s) overdue`, items: titles(input.overdueTasks) });
   }
@@ -91,6 +137,11 @@ export function buildDigest(input: DigestInput): Digest {
     input.connectionIssues.length +
     unreadDms +
     leadsToFollowUp +
+    outreachQueuePending +
+    (hasUnderwaterRoas ? 1 : 0) +
+    (hasTrendDown ? 1 : 0) +
+    reviewsNeedingReply +
+    failedAutomations.length +
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length;

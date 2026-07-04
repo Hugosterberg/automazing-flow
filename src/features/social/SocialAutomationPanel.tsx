@@ -2,15 +2,18 @@ import { m } from "framer-motion";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { BarChart3, CalendarDays, FileText, Heart, Sparkles, Target, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
+import { useProfileDocument } from "@/features/profile-documents";
+import { useScheduledPosts } from "@/features/social/useScheduledPosts";
 import type { CalendarEvent } from "@/types/calendar";
 
 const SOCIAL_AUTOMATIONS_STORAGE_KEY = "automazing-social-workflows";
+const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
 const CALENDAR_STORAGE_KEY = "automazing-calendar-events";
 
 interface AutomationWorkflow {
@@ -85,12 +88,14 @@ const pipelineStages = [
   { title: "4. Uppföljning", tasks: ["Engagemangssvar", "Lead-tagging", "Veckorapport"] },
 ];
 
-const initialAutomationState = automationWorkflows.reduce<Record<string, boolean>>((acc, workflow) => {
-  acc[workflow.id] = false;
-  return acc;
-}, {});
+type SocialWorkflowsDoc = {
+  enabled: Record<string, boolean>;
+  lastPipelineRunAt?: string;
+};
 
-function loadAutomationState(): Record<string, boolean> {
+const EMPTY_WORKFLOWS: SocialWorkflowsDoc = { enabled: {} };
+
+function loadLegacyAutomationState(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(SOCIAL_AUTOMATIONS_STORAGE_KEY);
     if (!raw) return {};
@@ -127,19 +132,37 @@ function buildAutomationEvents(activeWorkflows: AutomationWorkflow[]): CalendarE
 }
 
 export function SocialAutomationPanel() {
-  const [enabledAutomations, setEnabledAutomations] = useState<Record<string, boolean>>(() => ({
-    ...initialAutomationState,
-    ...loadAutomationState(),
-  }));
+  const workflowsDoc = useProfileDocument<SocialWorkflowsDoc>(SOCIAL_WORKFLOWS_DOC_KEY, EMPTY_WORKFLOWS, {
+    legacyRead: () => {
+      const legacy = loadLegacyAutomationState();
+      return Object.keys(legacy).length > 0 ? { enabled: legacy } : undefined;
+    },
+    legacyWrite: (_bp, value) => {
+      try {
+        localStorage.setItem(SOCIAL_AUTOMATIONS_STORAGE_KEY, JSON.stringify(value.enabled));
+      } catch {
+        /* ignore */
+      }
+    },
+  });
+
+  const { upsert } = useScheduledPosts();
+
+  const enabledAutomations = useMemo(() => {
+    const merged = { ...workflowsDoc.data.enabled };
+    for (const workflow of automationWorkflows) {
+      if (merged[workflow.id] == null) merged[workflow.id] = false;
+    }
+    return merged;
+  }, [workflowsDoc.data.enabled]);
 
   const activeAutomations = automationWorkflows.filter((workflow) => enabledAutomations[workflow.id]);
 
-  useEffect(() => {
-    localStorage.setItem(SOCIAL_AUTOMATIONS_STORAGE_KEY, JSON.stringify(enabledAutomations));
-  }, [enabledAutomations]);
-
   function handleToggleAutomation(workflowId: string, checked: boolean) {
-    setEnabledAutomations((prev) => ({ ...prev, [workflowId]: checked }));
+    workflowsDoc.save({
+      ...workflowsDoc.data,
+      enabled: { ...enabledAutomations, [workflowId]: checked },
+    });
   }
 
   function handleCreateAutomationWeekPlan() {
@@ -157,14 +180,33 @@ export function SocialAutomationPanel() {
       const existingEvents: CalendarEvent[] = Array.isArray(parsed) ? parsed : [];
       const newEvents = buildAutomationEvents(activeAutomations);
       localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify([...existingEvents, ...newEvents]));
+
+      const now = new Date();
+      activeAutomations.slice(0, 3).forEach((workflow, index) => {
+        const scheduled = new Date(now);
+        scheduled.setDate(now.getDate() + index + 1);
+        scheduled.setHours(10 + index, 0, 0, 0);
+        upsert({
+          id: crypto.randomUUID(),
+          caption: `[Auto] ${workflow.title} — ${workflow.summary}`,
+          accountIds: [],
+          platforms: [],
+          status: "draft",
+          scheduledFor: scheduled.toISOString(),
+          mediaUrls: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      });
+
       toast({
         title: "Veckoplan skapad",
-        description: `${newEvents.length} automatiserade aktiviteter lades till i kalendern.`,
+        description: `${newEvents.length} aktiviteter i kalendern och utkast i publiceringskön.`,
       });
     } catch {
       toast({
         title: "Kunde inte skapa veckoplan",
-        description: "Kontrollera lokal lagring och försök igen.",
+        description: "Kontrollera lagring och försök igen.",
       });
     }
   }
@@ -181,7 +223,7 @@ export function SocialAutomationPanel() {
                   Automationsflöden för social media
                 </CardTitle>
                 <CardDescription>
-                  Aktivera flöden för att automatisera content-produktion, distribution och uppföljning.
+                  Aktivera flöden — sparas i molnet och styr content-pipeline-cron.
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="w-fit">
@@ -234,7 +276,7 @@ export function SocialAutomationPanel() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Generera veckoplan till kalendern</p>
                 <p className="text-xs text-muted-foreground">
-                  Skapar automatiserade aktiviteter i kalendern baserat på aktiva flöden.
+                  Skapar kalenderaktiviteter och utkast i publiceringskön baserat på aktiva flöden.
                 </p>
               </div>
               <Button

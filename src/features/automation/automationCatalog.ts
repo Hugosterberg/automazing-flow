@@ -99,10 +99,45 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     title: "Publicera schemalagda inlägg",
     description:
       "Sveper var 15:e minut och publicerar sociala inlägg vars schemalagda tid har passerat.",
-    cadence: "Var 15:e minut",
+    cadence: "Konfigurerbart schema",
     icon: CalendarClock,
     outputHref: "/social-media",
     cronKey: "publish-scheduled-posts",
+  },
+  {
+    id: "sales-outreach-auto",
+    topic: "messages",
+    title: "Automatisk outreach",
+    description:
+      "Skapar utkast till uppföljningsmejl för leads vars follow-up är due — köas i Sales.",
+    cadence: "Konfigurerbart schema",
+    icon: Users,
+    outputHref: "/sales",
+    businessOnly: true,
+    cronKey: "sales-outreach-auto",
+  },
+  {
+    id: "content-pipeline",
+    topic: "content",
+    title: "Innehållspipeline",
+    description:
+      "Flyttar köade inlägg till schemalagd publicering när content-flöden är aktiva.",
+    cadence: "Konfigurerbart schema",
+    icon: Sparkles,
+    outputHref: "/social-media",
+    cronKey: "content-pipeline",
+  },
+  {
+    id: "cart-recovery",
+    topic: "reports",
+    title: "Kundvagnsåtervinning",
+    description:
+      "Skickar återvinningsmejl till kunder som lämnat varukorgen i Shopify (deduplicerat).",
+    cadence: "Konfigurerbart schema",
+    icon: Mail,
+    outputHref: "/ecommerce",
+    businessOnly: true,
+    cronKey: "cart-recovery",
   },
   {
     id: "daily-digest",

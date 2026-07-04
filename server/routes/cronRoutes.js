@@ -12,15 +12,22 @@ import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { automationSettingsRowToDomain, runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
 import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
+import {
+  countPendingOutreachDrafts,
+  runCartRecovery,
+  runContentPipeline,
+  runSalesOutreachAuto,
+} from "../lib/flowAutomationJobs.ts";
 import { buildMarketingAlert, extractPoorCampaignsForAlert } from "../lib/marketingAlert.ts";
 import { buildCampaignSnapshotRows } from "../lib/marketingCampaignSnapshots.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
 import { portfolioScoreDeltaFromSnapshots } from "../lib/marketingSnapshotTrend.ts";
+import { loadProfileDocument } from "../lib/profileDocumentStore.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { buildWeeklyReport } from "../lib/weeklyReport.ts";
 import { fetchMarketPulseForCron, DEFAULT_MARKET_PULSE_TOPIC } from "../lib/marketPulseFetch.ts";
-import { shouldRunProfileJob } from "../lib/profileJobSchedule.ts";
+import { isJobEnabledForProfile, shouldRunProfileJob } from "../lib/profileJobSchedule.ts";
 import { buildLeadReminder, buildTaskReminder } from "../lib/reminderEmails.ts";
 import { publishDueScheduledPosts } from "../lib/scheduledPostsPublisher.ts";
 
@@ -42,6 +49,47 @@ async function resolveRecipientEmail(supabaseAdmin, profile, overrideEmail) {
   } catch {
     return "";
   }
+}
+
+/** Human-readable automation title for digest copy (mirrors automationCatalog). */
+function automationTitleForKey(key) {
+  const map = {
+    "auto-reply": "Auto-svar på DM:s",
+    "publish-scheduled-posts": "Publicera schemalagda inlägg",
+    "daily-digest": "Daglig översikt",
+    "weekly-report": "Veckorapport",
+    "lead-reminder": "Lead-påminnelse",
+    "task-reminder": "Uppgiftspåminnelse",
+    "marketing-alerts": "Marknadsförings-larm",
+    "refresh-ai-recommendations": "AI-rekommendationer",
+    "marketing-snapshot": "Marknadsförings-snapshot",
+    "market-pulse-snapshot": "Market pulse-snapshot",
+    "sales-outreach-auto": "Automatisk outreach",
+    "content-pipeline": "Innehållspipeline",
+    "cart-recovery": "Kundvagnsåtervinning",
+  };
+  return map[key] || key;
+}
+
+/** Latest failed global cron runs for the daily brief. */
+async function loadFailedAutomationTitles(supabaseAdmin) {
+  const { data } = await supabaseAdmin
+    .from("automation_runs")
+    .select("automation_key,status,finished_at")
+    .is("business_profile_id", null)
+    .eq("status", "failed")
+    .order("finished_at", { ascending: false })
+    .limit(30);
+  const seen = new Set();
+  const out = [];
+  for (const row of Array.isArray(data) ? data : []) {
+    const key = String(row?.automation_key || "").trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ title: automationTitleForKey(key) });
+    if (out.length >= 5) break;
+  }
+  return out;
 }
 
 /** Display label for a connection platform (digest copy). */
@@ -356,7 +404,18 @@ export function registerCronRoutes(app, deps) {
       return res.status(503).json({ error: "dependencies_not_configured" });
     }
     try {
-      const result = await publishDueScheduledPosts({ supabaseAdmin, zernio, tokenStore });
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const result = await publishDueScheduledPosts({
+        supabaseAdmin,
+        zernio,
+        tokenStore,
+        shouldPublishForProfile: (businessProfileId) => {
+          const row = settingsByProfile.get(businessProfileId);
+          if (!row) return true;
+          const settings = automationSettingsRowToDomain(row);
+          return isJobEnabledForProfile("publish-scheduled-posts", settings.jobSchedules);
+        },
+      });
       console.log(
         `[cron] publish-scheduled-posts: profiles=${result.profiles} due=${result.due} published=${result.published} failed=${result.failed}`
       );
@@ -426,6 +485,7 @@ export function registerCronRoutes(app, deps) {
       let failed = 0;
       let deferred = 0;
       const cronNow = new Date();
+      const failedAutomations = await loadFailedAutomationTitles(supabaseAdmin);
 
       for (const profile of Array.isArray(profiles) ? profiles : []) {
         if (Date.now() - startedAt > timeBudgetMs) {
@@ -497,11 +557,66 @@ export function registerCronRoutes(app, deps) {
             /* leads table not available yet */
           }
 
+          let outreachQueuePending = 0;
+          try {
+            const outreachDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "outreach-queue");
+            outreachQueuePending = countPendingOutreachDrafts(outreachDoc?.data);
+          } catch {
+            /* profile_documents not available yet */
+          }
+
+          let reviewsNeedingReply = 0;
+          try {
+            const reviewDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "review-replies");
+            const raw = reviewDoc?.data;
+            if (raw && typeof raw === "object") {
+              const pending = Number((raw).pendingCount ?? 0);
+              const updatedAt = String((raw).updatedAt || "");
+              const age = updatedAt ? Date.now() - Date.parse(updatedAt) : Number.POSITIVE_INFINITY;
+              if (Number.isFinite(pending) && pending > 0 && Number.isFinite(age) && age < 48 * 60 * 60 * 1000) {
+                reviewsNeedingReply = Math.trunc(pending);
+              }
+            }
+          } catch {
+            /* review state optional */
+          }
+
+          let underwaterRoas = null;
+          let marketingTrendDown = false;
+          try {
+            const { data: snaps } = await supabaseAdmin
+              .from("marketing_snapshots")
+              .select("snapshot_date,roas,portfolio_score")
+              .eq("business_profile_id", businessProfileId)
+              .order("snapshot_date", { ascending: false })
+              .limit(14);
+            const rows = Array.isArray(snaps) ? snaps : [];
+            const latestRoas = rows[0]?.roas == null ? null : Number(rows[0].roas);
+            if (latestRoas != null && Number.isFinite(latestRoas) && latestRoas < 1) {
+              underwaterRoas = latestRoas;
+            } else {
+              const delta = portfolioScoreDeltaFromSnapshots(
+                rows.map((r) => ({
+                  snapshotDate: String(r.snapshot_date || ""),
+                  portfolioScore: r.portfolio_score == null ? null : Number(r.portfolio_score),
+                })),
+              );
+              marketingTrendDown = delta != null && delta <= -10;
+            }
+          } catch {
+            /* marketing snapshots optional */
+          }
+
           const digest = buildDigest({
             businessName: String(profile.name || "Your business"),
             appUrl: appUrl || undefined,
             connectionIssues,
             leadsToFollowUp,
+            outreachQueuePending,
+            underwaterRoas,
+            marketingTrendDown,
+            reviewsNeedingReply,
+            failedAutomations,
             overdueTasks,
             dueTodayTasks,
             newRecommendations,
@@ -1284,6 +1399,234 @@ export function registerCronRoutes(app, deps) {
     } catch (e) {
       console.error("[cron] task-reminder unexpected:", e?.message || e);
       return res.status(500).json({ error: "task_reminder_failed" });
+    }
+  }));
+
+  /**
+   * Sales outreach auto: drafts follow-up copy for due leads into outreach-queue.
+   */
+  app.get("/api/cron/sales-outreach-auto", withRunRecording("sales-outreach-auto", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+
+    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+    const endOfToday = new Date(cronNow);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["sales-outreach-auto"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "sales-outreach-auto", cronNow)) continue;
+        eligible.push({ bpId, email: settings.notificationEmail, schedules: settings.jobSchedules });
+      }
+      if (eligible.length === 0) {
+        return res.json({ ok: true, drafted: 0, note: "no_profiles_due" });
+      }
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
+      let drafted = 0;
+      let notified = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const profile = profileById.get(entry.bpId);
+        if (!profile) continue;
+        try {
+          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
+          const result = await runSalesOutreachAuto({
+            supabaseAdmin,
+            businessProfileId: entry.bpId,
+            profile,
+            schedules: entry.schedules,
+            endOfToday,
+            notifyEmail: recipient || undefined,
+            appUrl: appUrl || undefined,
+          });
+          drafted += result.drafted;
+          if (result.notified) notified += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(
+            `[cron] sales-outreach-auto bp=${entry.bpId} failed:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+      return res.json({ ok: true, drafted, notified, failed, deferred });
+    } catch (e) {
+      console.error("[cron] sales-outreach-auto unexpected:", e?.message || e);
+      return res.status(500).json({ error: "sales_outreach_auto_failed" });
+    }
+  }));
+
+  /**
+   * Content pipeline: moves queued content into scheduled-posts for publishing.
+   */
+  app.get("/api/cron/content-pipeline", withRunRecording("content-pipeline", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["content-pipeline"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "content-pipeline", cronNow)) continue;
+        eligible.push({ bpId, schedules: settings.jobSchedules });
+      }
+      if (eligible.length === 0) {
+        return res.json({ ok: true, scheduled: 0, note: "no_profiles_due" });
+      }
+
+      let scheduled = 0;
+      let skipped = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        try {
+          const result = await runContentPipeline({
+            supabaseAdmin,
+            businessProfileId: entry.bpId,
+            schedules: entry.schedules,
+          });
+          scheduled += result.scheduled;
+          skipped += result.skipped;
+        } catch (err) {
+          failed += 1;
+          console.warn(
+            `[cron] content-pipeline bp=${entry.bpId} failed:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+      return res.json({ ok: true, scheduled, skipped, failed, deferred });
+    } catch (e) {
+      console.error("[cron] content-pipeline unexpected:", e?.message || e);
+      return res.status(500).json({ error: "content_pipeline_failed" });
+    }
+  }));
+
+  /**
+   * Cart recovery: emails customers who abandoned Shopify checkouts (deduped).
+   */
+  app.get("/api/cron/cart-recovery", withRunRecording("cart-recovery", supabaseAdmin, async (req, res) => {
+    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!supabaseAdmin || !tokenStore) {
+      return res.status(503).json({ error: "dependencies_not_configured" });
+    }
+    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
+
+    const startedAt = Date.now();
+    const timeBudgetMs = 50_000;
+    const cronNow = new Date();
+
+    try {
+      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
+      const eligible = [];
+      for (const [bpId, row] of settingsByProfile) {
+        const settings = automationSettingsRowToDomain(row);
+        if (!settings.jobSchedules["cart-recovery"]?.enabled) continue;
+        if (!isProfileJobDueNow(row, "cart-recovery", cronNow)) continue;
+        eligible.push({ bpId });
+      }
+      if (eligible.length === 0) {
+        return res.json({ ok: true, emailed: 0, note: "no_profiles_due" });
+      }
+
+      const { data: accountRows } = await supabaseAdmin
+        .from("connected_accounts")
+        .select("id,business_profile_id,platform,disconnected_at")
+        .eq("platform", "shopify")
+        .is("disconnected_at", null)
+        .in("business_profile_id", eligible.map((e) => e.bpId));
+
+      const shopifyByProfile = new Map();
+      for (const row of Array.isArray(accountRows) ? accountRows : []) {
+        const bpId = String(row?.business_profile_id || "").trim();
+        if (bpId && !shopifyByProfile.has(bpId)) shopifyByProfile.set(bpId, String(row.id));
+      }
+
+      const { data: profiles } = await supabaseAdmin
+        .from("business_profiles")
+        .select("id,name,email,owner_user_id")
+        .eq("status", "active")
+        .in("id", eligible.map((e) => e.bpId));
+      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
+
+      let emailed = 0;
+      let skipped = 0;
+      let failed = 0;
+      let deferred = 0;
+
+      for (const entry of eligible) {
+        if (Date.now() - startedAt > timeBudgetMs) {
+          deferred += 1;
+          continue;
+        }
+        const accountId = shopifyByProfile.get(entry.bpId);
+        const profile = profileById.get(entry.bpId);
+        if (!accountId || !profile) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          const stored = await tokenStore.get(accountId);
+          const accessToken = String(stored?.accessToken || "").trim();
+          const shop = String(stored?.shop || "").trim();
+          if (!accessToken || !shop) {
+            skipped += 1;
+            continue;
+          }
+          const result = await runCartRecovery({
+            supabaseAdmin,
+            tokenStore,
+            businessProfileId: entry.bpId,
+            profile,
+            shopAccountId: accountId,
+            accessToken,
+            shop,
+          });
+          emailed += result.emailed;
+          skipped += result.skipped;
+        } catch (err) {
+          failed += 1;
+          console.warn(
+            `[cron] cart-recovery bp=${entry.bpId} failed:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+      return res.json({ ok: true, emailed, skipped, failed, deferred });
+    } catch (e) {
+      console.error("[cron] cart-recovery unexpected:", e?.message || e);
+      return res.status(500).json({ error: "cart_recovery_failed" });
     }
   }));
 }

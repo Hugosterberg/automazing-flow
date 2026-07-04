@@ -72,6 +72,13 @@ describe("buildDailyBrief", () => {
     expect(buildDailyBrief({ ...empty, leadsToFollowUp: 0 }).allClear).toBe(true);
   });
 
+  it("surfaces outreach queue drafts as info", () => {
+    const brief = buildDailyBrief({ ...empty, outreachQueuePending: 2 });
+    expect(brief.allClear).toBe(false);
+    expect(brief.items.some((i) => i.id === "outreach-queue")).toBe(true);
+    expect(brief.actionCount).toBe(2);
+  });
+
   it("surfaces reviews needing reply and inventory alerts", () => {
     const reviews = buildDailyBrief({ ...empty, reviewsNeedingReply: 2 });
     expect(reviews.items[0].kind).toBe("review");
