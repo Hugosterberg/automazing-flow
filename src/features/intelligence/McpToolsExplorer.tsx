@@ -94,7 +94,7 @@ export function McpToolsExplorer({ businessProfileId }: { businessProfileId: str
 
   async function runTool() {
     if (!active?.accountId || !selectedTool) return;
-    let args: Record<string, unknown> = {};
+    let args: Record<string, unknown>;
     try {
       args = JSON.parse(argsJson) as Record<string, unknown>;
     } catch {

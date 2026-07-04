@@ -31,3 +31,6 @@ server/tokens.json
 *.sln
 *.sw?
 .vercel
+
+# Claude agent worktrees (local scratch space)
+.claude/worktrees/
