@@ -4,8 +4,10 @@ import {
   CircleDashed,
   Clock,
   Loader2,
+  RotateCcw,
   XCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { AutomationRunStatus as AutomationRunStatusData } from "./automationService";
 
@@ -46,10 +48,15 @@ export function AutomationRunStatus({
   run,
   loading,
   error,
+  onRetry,
+  retrying,
 }: {
   run: AutomationRunStatusData | undefined;
   loading: boolean;
   error: string | null;
+  /** Retry the failed job; the button only shows when the last run failed. */
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   const nextRunRelative = run?.nextRunAt ? formatRelativeTime(run.nextRunAt) : null;
   const nextRunAbsolute = run?.nextRunAt
@@ -125,10 +132,29 @@ export function AutomationRunStatus({
     );
   }
 
+  const lastRunFailed = !loading && !error && run?.lastRun?.status === "failed";
+
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5 border-t border-border/60">
       {lastRunLine}
       {nextRunLine}
+      {lastRunFailed && onRetry ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-[11px] ml-auto"
+          onClick={onRetry}
+          disabled={retrying}
+        >
+          {retrying ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+          ) : (
+            <RotateCcw className="h-3 w-3" aria-hidden />
+          )}
+          <span className="ml-1">{retrying ? "Kör igen…" : "Kör igen"}</span>
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -10,7 +10,7 @@
  * DMs, pending reviews, …) plug in by adding another block here.
  */
 
-export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation" | "review";
+export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation" | "review" | "automation";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -51,6 +51,8 @@ export interface DailyBriefInput {
   inventoryAlertCount?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
+  /** Scheduled automations whose most recent run failed. `title` is display-ready. */
+  failedAutomations?: Array<{ title: string }>;
   overdueTasks: Array<{ title: string }>;
   dueTodayTasks: Array<{ title: string }>;
   newRecommendations: Array<{ title: string }>;
@@ -161,6 +163,20 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const failedAutomations = input.failedAutomations ?? [];
+  if (failedAutomations.length > 0) {
+    const n = failedAutomations.length;
+    items.push({
+      id: "automations-failed",
+      kind: "automation",
+      severity: "critical",
+      title: `${n} ${n === 1 ? "automation" : "automations"} failed on the last run`,
+      description: `${joinNames(failedAutomations.map((a) => a.title))} — review and retry on Automations.`,
+      to: "/automations",
+      count: n,
+    });
+  }
+
   const reviewsNeedingReply = Math.max(0, Math.trunc(input.reviewsNeedingReply ?? 0));
   if (reviewsNeedingReply > 0) {
     items.push({
@@ -226,6 +242,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     hasTrendDown +
     inventoryAlertCount +
     reviewsNeedingReply +
+    failedAutomations.length +
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length;

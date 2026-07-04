@@ -17,7 +17,7 @@ import type { AutoReplyDeps } from "../automation/autoReply.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
-import { AUTOMATION_SCHEDULES, nextRunIso } from "../lib/automationSchedules.ts";
+import { AUTOMATION_SCHEDULES, getSchedule, nextRunIso } from "../lib/automationSchedules.ts";
 import {
   computeNextProfileRun,
   jobSchedulesToJson,
@@ -34,6 +34,8 @@ interface AutomationRoutesDeps {
   zernio: ZernioModule;
   secretResolver: SecretResolver;
   getSessionUserId: (req: unknown) => string | null;
+  /** Base URL used for internal self-calls to the cron endpoints (retry). */
+  apiBaseUrl: string;
 }
 
 const SETTINGS_COLUMNS =
@@ -79,7 +81,7 @@ function canManageAutomation(role: unknown): boolean {
 }
 
 export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
-  const { requireMembership, supabaseAdmin, zernio, secretResolver, getSessionUserId } = deps;
+  const { requireMembership, supabaseAdmin, zernio, secretResolver, getSessionUserId, apiBaseUrl } = deps;
 
   app.get("/api/automation/settings", requireMembership, async (req, res) => {
     const businessProfileId = String(req.businessProfileId || "").trim();
@@ -366,8 +368,7 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
 
   // Manual trigger for the active profile — same engine the cron uses, so
   // users can test their settings without waiting for a schedule.
-  app.post("/api/automation/run", requireMembership, async (req, res) => {
-    if (!supabaseAdmin) {
+  app.post("/api/automation/run", requireMembership, async (req, res) => {    if (!supabaseAdmin) {
       return res.status(503).json({ error: "supabase_service_role_not_configured" });
     }
     if (!canManageAutomation(req.membershipRole)) {
@@ -447,6 +448,53 @@ export function registerAutomationRoutes(app, deps: AutomationRoutesDeps) {
         result: { trigger: "manual" },
       });
       return res.status(500).json({ error: "automation_run_failed" });
+    }
+  });
+
+  /**
+   * Retry a failed scheduled automation on demand. Reuses the cron handler via
+   * an internal self-call with the CRON_SECRET, so the retry runs exactly the
+   * same job logic and is recorded in automation_runs like any other run
+   * (result.retriedBy marks who asked for it in the response envelope).
+   */
+  app.post("/api/automation/retry", requireMembership, async (req, res) => {
+    if (!canManageAutomation(req.membershipRole)) {
+      return res.status(403).json({ error: "forbidden_role" });
+    }
+    const cronSecret = String(process.env.CRON_SECRET || "").trim();
+    if (!cronSecret) {
+      return res.status(503).json({
+        error: "cron_secret_not_configured",
+        message: "CRON_SECRET must be set for manual retries.",
+      });
+    }
+
+    const key = String((req.body ?? {}).key || "").trim();
+    const schedule = getSchedule(key);
+    if (!schedule) {
+      return res.status(400).json({ error: "unknown_automation_key" });
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/cron/${schedule.key}`, {
+        headers: { Authorization: `Bearer ${cronSecret}` },
+        signal: AbortSignal.timeout(120_000),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return res.status(502).json({
+          error: "automation_retry_failed",
+          message:
+            typeof payload?.error === "string" ? payload.error : `Retry returned ${response.status}.`,
+        });
+      }
+      console.log(
+        `[automation] manual retry of "${schedule.key}" by user ${getSessionUserId(req) ?? "unknown"}`
+      );
+      return res.json({ ok: true, key: schedule.key, result: payload });
+    } catch (e) {
+      console.error("[automation] retry failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "automation_retry_failed" });
     }
   });
 }

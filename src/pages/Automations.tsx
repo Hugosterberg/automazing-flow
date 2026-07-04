@@ -1,6 +1,7 @@
 import { m } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "sonner";
 import { ArrowRight, Clock, RefreshCw, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   catalogEntriesForTopic,
+  retryAutomation,
   useAutomationRuns,
   useAutomationSchedules,
   type AutomationCatalogEntry,
@@ -39,6 +41,21 @@ function ScheduleList({
   businessProfileId: string | null;
 }) {
   const schedules = useAutomationSchedules(businessProfileId);
+  const [retryingKey, setRetryingKey] = useState<string | null>(null);
+
+  async function handleRetry(cronKey: string, title: string) {
+    if (!businessProfileId || retryingKey) return;
+    setRetryingKey(cronKey);
+    try {
+      await retryAutomation(businessProfileId, cronKey);
+      toast.success(`"${title}" kördes om.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
+    } finally {
+      setRetryingKey(null);
+      void runs.refetch();
+    }
+  }
 
   if (entries.length === 0) return null;
   return (
@@ -84,6 +101,12 @@ function ScheduleList({
                   run={runs.byKey[cronKey]}
                   loading={runs.loading}
                   error={runs.error}
+                  onRetry={
+                    businessProfileId
+                      ? () => void handleRetry(cronKey, entry.title)
+                      : undefined
+                  }
+                  retrying={retryingKey === cronKey}
                 />
               ) : null}
               {cronKey && businessProfileId ? (
