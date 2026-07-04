@@ -884,7 +884,7 @@ export default function SocialMedia() {
               <div
                 role="button"
                 tabIndex={0}
-                aria-label="Ladda upp bild"
+                aria-label="Upload image"
                 onClick={() => fileInputRef.current?.click()}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {

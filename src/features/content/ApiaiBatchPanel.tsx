@@ -15,15 +15,9 @@ import {
   type ApiaiBatchJob,
   type ApiaiBatchSummary,
 } from "./apiaiClient";
+import { batchStatusLabel, isBatchComplete, isBatchTerminal } from "./apiaiBatchUtils";
 
-function batchStatusLabel(status: string): string {
-  const value = status.toLowerCase();
-  if (value.includes("complete")) return "Complete";
-  if (value.includes("run") || value.includes("process")) return "Running";
-  if (value.includes("cancel")) return "Cancelled";
-  if (value.includes("fail")) return "Failed";
-  return status;
-}
+export { batchStatusLabel } from "./apiaiBatchUtils";
 
 export function ApiaiBatchPanel({
   businessProfileId,
@@ -95,9 +89,8 @@ export function ApiaiBatchPanel({
 
   useEffect(() => {
     if (!activeJob?.id || !businessProfileId) return;
-    const status = String(activeJob.status || "").toLowerCase();
-    if (status.includes("complete") || status.includes("cancel") || status.includes("fail")) {
-      if (status.includes("complete") && completedToastRef.current !== activeJob.id) {
+    if (isBatchTerminal(String(activeJob.status || ""))) {
+      if (isBatchComplete(String(activeJob.status || "")) && completedToastRef.current !== activeJob.id) {
         completedToastRef.current = activeJob.id;
         toast.success("Batch complete — download the ZIP and add images from Browse or History.");
       }

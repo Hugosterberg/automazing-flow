@@ -5,7 +5,7 @@ type ContentFlowStep = "browse" | "create" | "publish";
 
 const STEPS: { id: ContentFlowStep; label: string; hint: string; icon: typeof FolderOpen }[] = [
   { id: "browse", label: "1. Pick media", hint: "Mark images or videos from Google Drive.", icon: FolderOpen },
-  { id: "create", label: "2. Create", hint: "Generate or transform — saved automatically in History.", icon: Wand2 },
+  { id: "create", label: "2. Create", hint: "Generate or transform — everything saves to History.", icon: Wand2 },
   { id: "publish", label: "3. Post or save", hint: "Caption, safety check, then publish, schedule, or draft.", icon: Send },
 ];
 

@@ -3,6 +3,7 @@ import {
   appendGeneratedContent,
   generatedItemToAsset,
   isLikelyExpiredMedia,
+  resolveThumbnailUrl,
 } from "@/features/content/generatedContentHistory";
 
 describe("generatedContentHistory", () => {
@@ -78,5 +79,18 @@ describe("generatedContentHistory", () => {
         createdAt: old,
       })
     ).toBe(true);
+  });
+
+  it("resolves relative thumbnail urls through download url", () => {
+    const [item] = appendGeneratedContent([], {
+      name: "test.png",
+      mimeType: "image/png",
+      kind: "image",
+      mediaUrl: "/api/content/media/x.png",
+      thumbnailUrl: "/api/content/media/x.png",
+      source: "apiai",
+      sourceLabel: "apiai.me",
+    });
+    expect(resolveThumbnailUrl(item!)).toContain("/api/content/media/x.png");
   });
 });

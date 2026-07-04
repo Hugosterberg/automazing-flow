@@ -28,6 +28,7 @@ import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMed
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
 import { Film, FolderOpen, History, Image as ImageIcon, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
@@ -277,6 +278,8 @@ export default function ContentPage() {
     legacyWrite: (_bpId, value) => saveSelectedContent(activeProfileId, value),
   });
   const selectedAssets = selectionDoc.data;
+  const accountsRef = useRef(accounts);
+  accountsRef.current = accounts;
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
@@ -447,7 +450,7 @@ export default function ContentPage() {
 
         const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
         if (backendAccounts.length === 0) return;
-        const existingAccountIds = new Set(accounts.map((account) => account.id));
+        const existingAccountIds = new Set(accountsRef.current.map((account) => account.id));
 
         for (const account of backendAccounts) {
           const accountId = String(account.account_id || "");
@@ -481,7 +484,7 @@ export default function ContentPage() {
     return () => {
       ignore = true;
     };
-  }, [accounts, activeBusinessProfileId, activeProfileId, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
+  }, [activeBusinessProfileId, activeProfileId, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
 
   useEffect(() => {
     function handleDriveOauthMessage(event: MessageEvent<DriveOAuthPopupMessage>) {
@@ -694,59 +697,41 @@ export default function ContentPage() {
         }}
       />
 
-      <div className="flex items-center gap-1 border-b border-border">
-        <button
-          type="button"
-          onClick={() => goToTab("browse")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            contentTab === "browse"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <HardDrive className="h-3.5 w-3.5" />
-          Browse
-        </button>
-        <button
-          type="button"
-          onClick={() => goToTab("create")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            contentTab === "create"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Wand2 className="h-3.5 w-3.5" />
-          Create
-        </button>
-        <button
-          type="button"
-          onClick={() => goToTab("history")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            contentTab === "history"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <History className="h-3.5 w-3.5" />
-          History
-          {generatedHistory.length > 0 ? (
-            <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{generatedHistory.length}</span>
-          ) : null}
-        </button>
-        <button
-          type="button"
-          onClick={() => goToTab("publish")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            contentTab === "publish"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Send className="h-3.5 w-3.5" />
-          Post or save
-        </button>
-      </div>
+      <Tabs value={contentTab} onValueChange={(value) => goToTab(value as typeof contentTab)}>
+        <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
+          <TabsTrigger
+            value="browse"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+          >
+            <HardDrive className="h-3.5 w-3.5" />
+            Browse
+          </TabsTrigger>
+          <TabsTrigger
+            value="create"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Create
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+          >
+            <History className="h-3.5 w-3.5" />
+            History
+            {generatedHistory.length > 0 ? (
+              <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{generatedHistory.length}</span>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger
+            value="publish"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Post or save
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {combinedOauthError ? (
         <OAuthErrorAlert
@@ -799,10 +784,21 @@ export default function ContentPage() {
           {selectedAssets.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">Select at least one image or video in Browse first.</p>
-                <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
-                  Go to Browse
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {generatedHistory.length > 0
+                    ? "Pick media from Browse, or add a saved generation from History."
+                    : "Select at least one image or video in Browse first."}
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
+                    Go to Browse
+                  </Button>
+                  {generatedHistory.length > 0 ? (
+                    <Button variant="outline" size="sm" onClick={() => goToTab("history")}>
+                      Open History
+                    </Button>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           ) : null}
