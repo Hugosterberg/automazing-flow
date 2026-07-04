@@ -9,6 +9,7 @@ export {
   AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   automationCatalog,
+  automationTitleForCronKey,
   catalogEntriesForTopic,
 } from "./automationCatalog";
 export type {
@@ -22,6 +23,7 @@ export {
   fetchAutoReplyLog,
   fetchAutomationRuns,
   runAutomationNow,
+  retryAutomation,
   sendAutomationDraft,
 } from "./automationService";
 export type {

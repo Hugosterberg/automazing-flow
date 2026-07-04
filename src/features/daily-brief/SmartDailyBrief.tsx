@@ -12,6 +12,7 @@ import {
   UserPlus,
   X,
   Star,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaign
 import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { useReviewReplyState } from "@/features/reviews";
+import { useAutomationRuns, automationTitleForCronKey } from "@/features/automation";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { dismissBriefItem, getDismissedBriefIds } from "./dailyBriefDismiss";
 import { useUnreadDmCount } from "./useUnreadDmCount";
@@ -37,6 +39,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   task: ListChecks,
   recommendation: Sparkles,
   review: Star,
+  automation: Zap,
 };
 
 const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {
@@ -112,6 +115,7 @@ export function SmartDailyBrief({
   const { inventoryAlert, performance } = useMarketingCampaigns();
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
   const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
+  const automationRuns = useAutomationRuns(businessProfileId ?? null);
 
   const marketingRoas =
     performance?.roas ?? marketingTrend?.current?.roas ?? cachedRoas ?? null;
@@ -126,6 +130,9 @@ export function SmartDailyBrief({
     const leadsToFollowUp = leads.filter(
       (l) => isLeadOpen(l.status) && (isFollowUpOverdue(l.nextFollowUpAt, nowMs) || isFollowUpDueToday(l.nextFollowUpAt, nowMs)),
     ).length;
+    const failedAutomations = Object.values(automationRuns.byKey)
+      .filter((run) => run.lastRun?.status === "failed")
+      .map((run) => ({ title: automationTitleForCronKey(run.key) }));
     return buildDailyBrief({
       connectionIssues: connections
         .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
@@ -136,13 +143,14 @@ export function SmartDailyBrief({
       reviewsNeedingReply,
       inventoryAlertCount,
       leadsToFollowUp,
+      failedAutomations,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
       newRecommendations: recommendations
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
     });
-  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads]);
+  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads, automationRuns.byKey]);
 
   const visibleItems = useMemo(
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),

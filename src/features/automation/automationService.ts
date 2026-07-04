@@ -144,3 +144,21 @@ export async function runAutomationNow(
   });
   return parseOrThrow(res, "Could not run the automation.");
 }
+
+/** Retry a failed scheduled automation (server re-runs the cron job on demand). */
+export async function retryAutomation(
+  businessProfileId: string,
+  key: string
+): Promise<{ ok: boolean; key: string }> {
+  const res = await fetchWithTimeout(
+    apiUrl("/api/automation/retry"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_profile_id: businessProfileId, key }),
+    },
+    150_000
+  );
+  return parseOrThrow(res, "Could not retry the automation.");
+}

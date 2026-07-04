@@ -23,6 +23,27 @@ export function isTaskOverdue(task: TaskRow, nowMs: number = Date.now()): boolea
 }
 
 /**
+ * Ordering for active board columns: overdue first (most overdue on top),
+ * then upcoming due dates soonest-first, then undated tasks newest-first.
+ * Keeps the most urgent work at the top of To-do / In progress without the
+ * user having to hunt for red badges.
+ */
+export function compareTasksByUrgency(a: TaskRow, b: TaskRow, nowMs: number = Date.now()): number {
+  const aOverdue = isTaskOverdue(a, nowMs);
+  const bOverdue = isTaskOverdue(b, nowMs);
+  if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+
+  const aDue = a.due_at ? Date.parse(a.due_at) : NaN;
+  const bDue = b.due_at ? Date.parse(b.due_at) : NaN;
+  const aHasDue = Number.isFinite(aDue);
+  const bHasDue = Number.isFinite(bDue);
+  if (aHasDue && bHasDue && aDue !== bDue) return aDue - bDue;
+  if (aHasDue !== bHasDue) return aHasDue ? -1 : 1;
+
+  return Date.parse(b.created_at) - Date.parse(a.created_at);
+}
+
+/**
  * True for open tasks whose due date is later today (after `nowMs` but
  * before end of the local calendar day). Overdue tasks are intentionally
  * excluded here so the two categories never overlap.

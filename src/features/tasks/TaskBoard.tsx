@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { isTaskOverdue } from "./taskFilters";
+import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
@@ -250,6 +250,11 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, isM
       const status = columnForTask(task);
       if (status) next[status].push(task);
     }
+    // Active lanes surface the most urgent work first; Done keeps insertion
+    // order (newest completions on top, matching the fetch order).
+    const nowMs = Date.now();
+    next.open.sort((a, b) => compareTasksByUrgency(a, b, nowMs));
+    next.in_progress.sort((a, b) => compareTasksByUrgency(a, b, nowMs));
     return next;
   }, [tasks]);
 

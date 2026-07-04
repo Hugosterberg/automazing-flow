@@ -181,3 +181,8 @@ export function catalogEntriesForTopic(
       entry.topic === topic && (includeBusinessOnly || !entry.businessOnly)
   );
 }
+
+/** Display title for a scheduled job's cron key, falling back to the raw key. */
+export function automationTitleForCronKey(cronKey: string): string {
+  return automationCatalog.find((entry) => entry.cronKey === cronKey)?.title ?? cronKey;
+}

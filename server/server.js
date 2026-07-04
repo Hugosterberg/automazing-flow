@@ -506,6 +506,7 @@ registerAutomationRoutes(app, {
   zernio: zernioModule,
   secretResolver,
   getSessionUserId,
+  apiBaseUrl: API_BASE_URL,
 });
 
 registerDriveFilesRoute(app, { auth, tokenStore });
