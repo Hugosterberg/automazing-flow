@@ -10,6 +10,7 @@ import { describeZernioFailure, type ZernioModule } from "../providers/zernioMod
 import { exportCanvaDesignImage, refreshCanvaAccessToken } from "../providers/canva.ts";
 import { publicMediaUrl, readGeneratedMedia, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
 import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
+import { ZERNIO_POST_PLATFORM } from "../lib/scheduledPostsPublisher.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -36,14 +37,6 @@ interface ContentRoutesDeps {
   };
 }
 
-/** Map our app platform to the Zernio post platform slug. */
-const ZERNIO_POST_PLATFORM: Record<string, string> = {
-  instagram: "instagram",
-  facebook: "facebook",
-  tiktok: "tiktok",
-  youtube: "youtube",
-  x: "twitter",
-};
 
 const EPHEMERAL_MEDIA_SCHEDULE_LIMIT_MS = 20 * 60 * 60 * 1000;
 

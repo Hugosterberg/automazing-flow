@@ -25,6 +25,7 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "cleanup-oauth-pending", cron: "0 4 * * *", perTenant: false },
   { key: "refresh-ai-recommendations", cron: "0 5 * * *", perTenant: true },
   { key: "auto-reply", cron: "*/15 * * * *", perTenant: true },
+  { key: "publish-scheduled-posts", cron: "*/15 * * * *", perTenant: true },
   { key: "daily-digest", cron: "0 6 * * 1-5", perTenant: true },
   { key: "marketing-alerts", cron: "0 7 * * 1-5", perTenant: true },
   { key: "marketing-snapshot", cron: "0 3 * * *", perTenant: true },
