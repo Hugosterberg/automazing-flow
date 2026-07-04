@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  STALE_LEAD_DAYS,
   compareLeads,
   isFollowUpDueToday,
   isFollowUpOverdue,
   isLeadOpen,
+  leadStaleDays,
 } from "../features/leads/leadHelpers";
 import {
   buildLeadSuggestionPrompt,
@@ -27,6 +29,29 @@ describe("lead helpers", () => {
     expect(isFollowUpDueToday("2026-06-15T08:00:00Z", NOW)).toBe(true);
     expect(isFollowUpDueToday("2026-06-16T08:00:00Z", NOW)).toBe(false);
     expect(isFollowUpOverdue(null, NOW)).toBe(false);
+  });
+
+  it("flags open leads without follow-up as stale after the threshold", () => {
+    const base = { nextFollowUpAt: null, createdAt: "2026-05-01T00:00:00Z" };
+    // Untouched for 20 days, no follow-up planned → stale with day count.
+    expect(leadStaleDays({ ...base, status: "contacted", updatedAt: "2026-05-26T12:00:00Z" }, NOW)).toBe(20);
+    // Touched recently → not stale.
+    expect(leadStaleDays({ ...base, status: "contacted", updatedAt: "2026-06-14T12:00:00Z" }, NOW)).toBeNull();
+    // Exactly at the threshold counts as stale.
+    const atThreshold = NOW - STALE_LEAD_DAYS * 86400000;
+    expect(
+      leadStaleDays({ ...base, status: "new", updatedAt: new Date(atThreshold).toISOString() }, NOW)
+    ).toBe(STALE_LEAD_DAYS);
+    // Closed leads and leads with a planned follow-up are never stale.
+    expect(leadStaleDays({ ...base, status: "won", updatedAt: "2026-05-01T00:00:00Z" }, NOW)).toBeNull();
+    expect(
+      leadStaleDays(
+        { status: "new", nextFollowUpAt: "2026-07-01T00:00:00Z", createdAt: base.createdAt, updatedAt: "2026-05-01T00:00:00Z" },
+        NOW
+      )
+    ).toBeNull();
+    // Missing updatedAt falls back to createdAt.
+    expect(leadStaleDays({ ...base, status: "new", updatedAt: "" }, NOW)).toBe(45);
   });
 
   it("sorts open leads with soonest follow-up first, closed last", () => {

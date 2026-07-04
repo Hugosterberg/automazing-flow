@@ -41,6 +41,27 @@ export interface LeadSortable {
   createdAt: string;
 }
 
+/** Open leads untouched for this many days (without a planned follow-up) are flagged as stale. */
+export const STALE_LEAD_DAYS = 10;
+
+/**
+ * Days since the lead was last touched, when it counts as stale: an open lead
+ * with no planned follow-up and no activity for STALE_LEAD_DAYS. Returns null
+ * for non-stale leads (closed, has a follow-up date, or recently updated) —
+ * leads with a follow-up date are already covered by the overdue logic.
+ */
+export function leadStaleDays(
+  lead: { status: LeadStatus; nextFollowUpAt: string | null; updatedAt: string; createdAt: string },
+  nowMs: number = Date.now()
+): number | null {
+  if (!isLeadOpen(lead.status)) return null;
+  if (lead.nextFollowUpAt) return null;
+  const touched = Date.parse(lead.updatedAt || lead.createdAt);
+  if (!Number.isFinite(touched)) return null;
+  const days = Math.floor((nowMs - touched) / 86400000);
+  return days >= STALE_LEAD_DAYS ? days : null;
+}
+
 /** Suggest a follow-up date when the user moves a lead forward in the pipeline. */
 export function suggestedFollowUpIsoForStatus(status: LeadStatus, fromMs: number = Date.now()): string | null {
   if (status === "won" || status === "lost") return null;
