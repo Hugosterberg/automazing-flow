@@ -1,12 +1,12 @@
-import { Check, Circle, Wand2, FolderOpen, Send } from "lucide-react";
+import { Check, Circle, BookmarkCheck, Wand2, FolderOpen, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-type ContentFlowStep = "browse" | "create" | "publish";
+import type { ContentFlowStep } from "./contentFlow";
 
 const STEPS: { id: ContentFlowStep; label: string; hint: string; icon: typeof FolderOpen }[] = [
   { id: "browse", label: "1. Pick media", hint: "Mark Drive files or upload from your computer.", icon: FolderOpen },
-  { id: "create", label: "2. Create", hint: "Generate or transform — auto-saved to History and selection.", icon: Wand2 },
-  { id: "publish", label: "3. Post or save", hint: "Moderation runs automatically; accounts pre-selected.", icon: Send },
+  { id: "selected", label: "2. Selected", hint: "Review your picks — add from History or Drive anytime.", icon: BookmarkCheck },
+  { id: "create", label: "3. Create", hint: "Generate or transform using your Selected media.", icon: Wand2 },
+  { id: "publish", label: "4. Post or save", hint: "Moderation runs automatically; accounts pre-selected.", icon: Send },
 ];
 
 export function ContentFlowGuide({
@@ -23,10 +23,15 @@ export function ContentFlowGuide({
   return (
     <div className="rounded-xl border border-border bg-muted/20 p-4">
       <p className="mb-3 text-sm font-medium text-foreground">How it works</p>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((step, index) => {
           const Icon = step.icon;
-          const done = step.id === "browse" ? selectionCount > 0 : index < activeIndex;
+          const done =
+            step.id === "browse"
+              ? selectionCount > 0
+              : step.id === "selected"
+                ? selectionCount > 0 && index < activeIndex
+                : index < activeIndex;
           const isActive = step.id === active;
           return (
             <button
@@ -51,8 +56,8 @@ export function ContentFlowGuide({
                 <span className="text-sm font-medium">{step.label}</span>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.hint}</p>
-              {step.id === "browse" && selectionCount > 0 ? (
-                <p className="mt-1 text-[11px] font-medium text-primary">{selectionCount} selected</p>
+              {step.id === "selected" && selectionCount > 0 ? (
+                <p className="mt-1 text-[11px] font-medium text-primary">{selectionCount} in Selected</p>
               ) : null}
             </button>
           );

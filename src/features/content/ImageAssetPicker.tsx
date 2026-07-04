@@ -74,6 +74,7 @@ export function ImageAssetPicker({
   folderAssets = [],
   onToggle,
   onOpenBrowse,
+  onOpenSelected,
   imagesOnly = true,
   maxVisibleSelected = 24,
 }: {
@@ -81,6 +82,7 @@ export function ImageAssetPicker({
   folderAssets?: SelectedContentAsset[];
   onToggle: (asset: SelectedContentAsset, selected: boolean) => void;
   onOpenBrowse?: () => void;
+  onOpenSelected?: () => void;
   imagesOnly?: boolean;
   maxVisibleSelected?: number;
 }) {
@@ -107,14 +109,21 @@ export function ImageAssetPicker({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-foreground">Selected for Create</p>
-          {onOpenBrowse ? (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onOpenBrowse}>
-              Browse Drive
-            </Button>
-          ) : null}
+          <div className="flex gap-1">
+            {onOpenSelected ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onOpenSelected}>
+                Open Selected
+              </Button>
+            ) : null}
+            {onOpenBrowse ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onOpenBrowse}>
+                Browse Drive
+              </Button>
+            ) : null}
+          </div>
         </div>
         {selectedImages.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No images selected. Pick from your selection below or browse Drive.</p>
+          <p className="text-xs text-muted-foreground">No images in Selected yet. Mark files in Browse or add from History.</p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {selectedImages.map((asset) => (
@@ -167,10 +176,19 @@ export function ImageAssetPicker({
             </Button>
           ) : null}
         </div>
-      ) : onOpenBrowse ? (
-        <Button type="button" variant="outline" size="sm" onClick={onOpenBrowse}>
-          Select media in Browse
-        </Button>
+      ) : onOpenSelected || onOpenBrowse ? (
+        <div className="flex flex-wrap gap-2">
+          {onOpenSelected ? (
+            <Button type="button" variant="outline" size="sm" onClick={onOpenSelected}>
+              Open Selected
+            </Button>
+          ) : null}
+          {onOpenBrowse ? (
+            <Button type="button" variant="outline" size="sm" onClick={onOpenBrowse}>
+              Browse Drive
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

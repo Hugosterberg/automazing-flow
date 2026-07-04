@@ -4,11 +4,8 @@ import {
   Sparkles,
   ImagePlus,
   Loader2,
-  Film,
-  FolderOpen,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Button } from "@/components/ui/button";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -40,7 +37,8 @@ import { apiUrl } from "@/lib/apiBase";
 import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useAccountData } from "@/hooks/useAccountData";
-import { loadSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
+import { loadSelectedContent, assetSelectionKey, saveSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -325,16 +323,18 @@ export default function SocialMedia() {
       }
     }
   }, [businessProfileId, socialData, dataAccountId, selectedAccountId, updateAccountAnalysis, updateAccountStats]);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
+  const [singleMediaUrl, setSingleMediaUrl] = useState<string | null>(null);
   const [imageSource, setImageSource] = useState<"openai" | "canva" | null>(null);
   const [publishReadiness, setPublishReadiness] = useState<PublishReadiness | null>(null);
-  const selectedContent = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
+  const selectionDoc = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
     legacyRead: () => {
       const v = loadSelectedContent(activeProfileId);
       return v.length ? v : undefined;
     },
-  }).data;
+    legacyWrite: (_bpId, value) => saveSelectedContent(activeProfileId, value),
+  });
+  const selectedContent = selectionDoc.data;
   const { record } = useGeneratedContentHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvaInputRef = useRef<HTMLInputElement>(null);
@@ -361,25 +361,38 @@ export default function SocialMedia() {
   const selectedContentImages = selectedContent.filter((asset) => asset.kind === "image");
   const selectedContentVideos = selectedContent.filter((asset) => asset.kind === "video");
 
+  function saveAssetSelection(asset: SelectedContentAsset, checked: boolean) {
+    const key = assetSelectionKey(asset);
+    const next = checked
+      ? [...selectedContent.filter((existing) => assetSelectionKey(existing) !== key), asset]
+      : selectedContent.filter((existing) => assetSelectionKey(existing) !== key);
+    selectionDoc.save(next);
+  }
 
-  useEffect(() => {
-    if (!uploadedImage && selectedContentImages.length > 0) {
-      const url = absoluteMediaUrl(selectedContentImages[0].previewUrl || selectedContentImages[0].thumbnailUrl);
-      if (url) setUploadedImage(url);
-    }
-  }, [uploadedImage, selectedContentImages]);
+  function removeFromSelected(asset: SelectedContentAsset) {
+    saveAssetSelection(asset, false);
+  }
+
+  function removeManyFromSelected(assets: SelectedContentAsset[]) {
+    const keys = new Set(assets.map((asset) => assetSelectionKey(asset)));
+    selectionDoc.save(selectedContent.filter((asset) => !keys.has(assetSelectionKey(asset))));
+  }
+
+  function reorderSelected(assets: SelectedContentAsset[]) {
+    selectionDoc.save(assets);
+  }
 
   const composerMediaUrls = useMemo(() => {
     if (generatedMediaUrl) {
       const abs = absoluteMediaUrl(generatedMediaUrl);
       return abs ? [abs] : [];
     }
-    if (uploadedImage) {
-      const abs = absoluteMediaUrl(uploadedImage);
-      if (abs && !abs.startsWith("blob:")) return [abs];
+    if (singleMediaUrl) {
+      const abs = absoluteMediaUrl(singleMediaUrl);
+      return abs && !abs.startsWith("blob:") ? [abs] : [];
     }
     return publishMediaUrlsFromAssets(selectedContent);
-  }, [generatedMediaUrl, uploadedImage, selectedContent]);
+  }, [generatedMediaUrl, singleMediaUrl, selectedContent]);
 
   const safetyImageAssets = useMemo(() => {
     const assets = [...selectedContentImages];
@@ -479,35 +492,47 @@ export default function SocialMedia() {
     if (!file) return;
 
     const blobUrl = URL.createObjectURL(file);
-    setUploadedImage(blobUrl);
+    setSingleMediaUrl(blobUrl);
     setGeneratedMediaUrl(null);
     setImageSource(null);
 
     try {
       const uploaded = await uploadContentMedia({ file, businessProfileId });
       setGeneratedMediaUrl(uploaded.url);
-      setUploadedImage(uploaded.url);
+      setSingleMediaUrl(uploaded.url);
       setImageSource(null);
+      const asset: SelectedContentAsset = {
+        id: `upload-${Date.now()}`,
+        name: uploaded.filename,
+        mimeType: uploaded.contentType,
+        kind: file.type.startsWith("video/") ? "video" : "image",
+        thumbnailUrl: uploaded.url,
+        previewUrl: uploaded.url,
+        sourceAccountId: "upload",
+        sourceAccountName: "Upload",
+      };
+      saveAssetSelection(asset, true);
       record({
         name: uploaded.filename,
         mimeType: uploaded.contentType,
-        kind: "image",
+        kind: asset.kind,
         mediaUrl: uploaded.url,
         thumbnailUrl: uploaded.url,
         source: "upload",
         sourceLabel: "Upload",
       });
-      toast.success("Upload saved — ready to publish");
-    } catch (error) {
+      toast.success("Upload saved to Selected — ready to publish");
+    } catch {
       toast.message("Preview only — upload failed. Generate with AI or pick from Content instead.");
     }
   }
 
   function handleGeneratedImage(asset: SelectedContentAsset) {
     const url = asset.previewUrl || asset.thumbnailUrl;
-    setUploadedImage(url);
+    setSingleMediaUrl(url);
     setGeneratedMediaUrl(url);
     setImageSource(asset.sourceAccountId === "canva" ? "canva" : "openai");
+    saveAssetSelection(asset, true);
     record({
       name: asset.name,
       mimeType: asset.mimeType,
@@ -517,7 +542,7 @@ export default function SocialMedia() {
       source: asset.sourceAccountId === "canva" ? "canva" : "openai",
       sourceLabel: asset.sourceAccountName,
     });
-    toast.message("Saved to History");
+    toast.message("Saved to History and Selected");
   }
 
   return (
@@ -732,80 +757,20 @@ export default function SocialMedia() {
         )}
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
-        <Card className="bg-card border-border glow-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FolderOpen className="h-5 w-5" />
-              Selected content from Google Drive
-            </CardTitle>
-            <CardDescription>
-              Mark files in the Content tab and use selected images or videos here.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedContent.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No Google Drive files marked yet. Open the Content tab and mark the media you want to use.
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <span>{selectedContentImages.length} image{selectedContentImages.length === 1 ? "" : "s"}</span>
-                  <span>{selectedContentVideos.length} video{selectedContentVideos.length === 1 ? "" : "s"}</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {selectedContent.map((asset) => (
-                    <div key={asset.id} className="rounded-lg border border-border overflow-hidden bg-secondary/20">
-                      <div className="aspect-square bg-secondary/50 flex items-center justify-center overflow-hidden">
-                        <ImageWithFallback
-                          src={asset.thumbnailUrl}
-                          alt={asset.name}
-                          className="w-full h-full object-cover"
-                          fallback={
-                            asset.kind === "video" ? (
-                              <Film className="h-6 w-6 text-muted-foreground" />
-                            ) : (
-                              <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="p-2 space-y-2">
-                        <p className="text-xs font-medium truncate">{asset.name}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {asset.kind === "image" && (asset.previewUrl || asset.thumbnailUrl) && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-[11px]"
-                              onClick={() => {
-                                setUploadedImage(asset.previewUrl || asset.thumbnailUrl);
-                                setGeneratedMediaUrl(null);
-                                setImageSource(null);
-                              }}
-                            >
-                              Use as source
-                            </Button>
-                          )}
-                          {asset.webViewLink && (
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" asChild>
-                              <a href={asset.webViewLink} target="_blank" rel="noopener noreferrer">Open</a>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {selectedContentVideos.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Video files can now be used to generate a video brief and caption draft below.
-                  </p>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <SelectedContentPanel
+          compact
+          selectedAssets={selectedContent}
+          onRemove={removeFromSelected}
+          onRemoveMany={removeManyFromSelected}
+          onClear={() => selectionDoc.save([])}
+          onReorder={reorderSelected}
+          onGoBrowse={() => {}}
+          onGoHistory={() => {}}
+          onCreate={() => {}}
+          onPublish={() => {
+            document.getElementById("social-publish-composer")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        />
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
@@ -820,13 +785,17 @@ export default function SocialMedia() {
               Create post image
             </CardTitle>
             <CardDescription>
-              Generate an image with AI or export a Canva design, then publish it with your post. For batch tools and apiai.me transforms, use{" "}
-              <Link to="/content?tab=create" className="text-primary hover:underline">
-                Content → Create
+              Generate an image with AI or export a Canva design, then publish it with your post. Manage media in{" "}
+              <Link to="/content?tab=selected" className="text-primary hover:underline">
+                Content → Selected
               </Link>
-              . All generations are saved under{" "}
+              , or use batch tools under{" "}
+              <Link to="/content?tab=create&mode=batch" className="text-primary hover:underline">
+                Content → Create → Batch
+              </Link>
+              . Generations save to{" "}
               <Link to="/content?tab=history" className="text-primary hover:underline">
-                Content → History
+                History
               </Link>
               .
             </CardDescription>
@@ -835,14 +804,14 @@ export default function SocialMedia() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               className="hidden"
               onChange={handleImageUpload}
             />
             <ContentAiImageCard
               embedded
               allowLocalUpload
-              localPreviewUrl={uploadedImage}
+              localPreviewUrl={singleMediaUrl}
               onLocalUploadClick={() => fileInputRef.current?.click()}
               canvaInputRef={canvaInputRef}
               showContentActions={false}
@@ -855,7 +824,7 @@ export default function SocialMedia() {
         </Card>
       </m.div>
 
-      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }} id="social-publish-composer">
         {safetyImageAssets.length > 0 ? (
           <div className="mb-4">
             <PublishSafetyPanel
@@ -883,6 +852,7 @@ export default function SocialMedia() {
           }
           onPublished={() => {
             setGeneratedMediaUrl(null);
+            setSingleMediaUrl(null);
             setImageSource(null);
             setPublishReadiness(null);
           }}

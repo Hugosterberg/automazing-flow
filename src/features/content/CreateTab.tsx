@@ -95,6 +95,7 @@ export function CreateTab({
   canvaConnected = false,
   onToggleAssetSelection,
   onOpenBrowse,
+  onOpenSelected,
   onBeforeRequest,
   onRecordGenerated,
   onSaveResultToSelection,
@@ -102,6 +103,7 @@ export function CreateTab({
   onPublishReadinessChange,
   onBatchIngested,
   onOpenHistory,
+  initialCreateMode,
   autoAddResultsToSelection = true,
 }: {
   businessProfileId: string | null;
@@ -111,6 +113,7 @@ export function CreateTab({
   canvaConnected?: boolean;
   onToggleAssetSelection?: (asset: SelectedContentAsset, selected: boolean) => void;
   onOpenBrowse: () => void;
+  onOpenSelected?: () => void;
   onBeforeRequest?: () => Promise<void>;
   onRecordGenerated?: (asset: SelectedContentAsset, meta?: { toolName?: string }) => void;
   onSaveResultToSelection?: (asset: SelectedContentAsset, meta?: { toolName?: string }) => void;
@@ -121,6 +124,7 @@ export function CreateTab({
     meta: { batchId: number; workflow?: string; addToSelection: boolean }
   ) => void;
   onOpenHistory?: () => void;
+  initialCreateMode?: "generate" | "transform" | "batch";
   autoAddResultsToSelection?: boolean;
 }) {
   const [tools, setTools] = useState<ApiaiTool[]>([]);
@@ -137,7 +141,31 @@ export function CreateTab({
   const [costEstimate, setCostEstimate] = useState<ApiaiCostEstimate | null>(null);
   const [estimating, setEstimating] = useState(false);
   const [publishInsight, setPublishInsight] = useState<PublishReadiness | null>(null);
-  const [createMode, setCreateMode] = useState<"generate" | "transform" | "batch">("generate");
+  const [createMode, setCreateMode] = useState<"generate" | "transform" | "batch">(
+    initialCreateMode ?? "generate"
+  );
+
+  useEffect(() => {
+    if (initialCreateMode) setCreateMode(initialCreateMode);
+  }, [initialCreateMode]);
+
+  const batchWorkflowOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { value: string; label: string }[] = [];
+    const add = (value: string, label: string) => {
+      const trimmed = value.trim();
+      if (!trimmed || seen.has(trimmed)) return;
+      seen.add(trimmed);
+      options.push({ value: trimmed, label });
+    };
+    add("remove-bg", "remove-bg");
+    for (const tool of tools) {
+      if (tool.type === "workflow") add(tool.slug, tool.name || tool.slug);
+      if (tool.type === "pipeline") add(tool.slug, tool.name || tool.slug);
+      if (tool.type === "flow") add(`flow:${tool.slug}`, tool.name || `flow:${tool.slug}`);
+    }
+    return options;
+  }, [tools]);
 
   const selectedTool = useMemo(
     () =>
@@ -415,8 +443,10 @@ export function CreateTab({
         <ApiaiBatchPanel
           businessProfileId={businessProfileId}
           imageAssets={batchImageAssets}
+          workflowOptions={batchWorkflowOptions}
           onBeforeRequest={onBeforeRequest}
           onOpenBrowse={onOpenBrowse}
+          onOpenSelected={onOpenSelected}
           onOpenHistory={onOpenHistory}
           onBatchIngested={onBatchIngested}
         />
@@ -626,6 +656,7 @@ export function CreateTab({
                     folderAssets={availableAssets}
                     onToggle={(asset, selected) => onToggleAssetSelection?.(asset, selected)}
                     onOpenBrowse={onOpenBrowse}
+                    onOpenSelected={onOpenSelected}
                   />
                 </CardContent>
               </Card>

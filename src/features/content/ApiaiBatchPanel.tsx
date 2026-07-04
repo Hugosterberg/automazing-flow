@@ -7,6 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
 import { apiUrl } from "@/lib/apiBase";
 import {
@@ -26,15 +33,19 @@ export { batchStatusLabel } from "./apiaiBatchUtils";
 export function ApiaiBatchPanel({
   businessProfileId,
   imageAssets,
+  workflowOptions = [],
   onBeforeRequest,
   onOpenBrowse,
+  onOpenSelected,
   onOpenHistory,
   onBatchIngested,
 }: {
   businessProfileId: string | null;
   imageAssets: SelectedContentAsset[];
+  workflowOptions?: { value: string; label: string }[];
   onBeforeRequest?: () => Promise<void>;
   onOpenBrowse?: () => void;
+  onOpenSelected?: () => void;
   onOpenHistory?: () => void;
   onBatchIngested?: (
     items: ApiaiBatchIngestItem[],
@@ -173,13 +184,41 @@ export function ApiaiBatchPanel({
         ) : null}
         {imageAssets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Select images in Browse first — batch runs on your current selection.</p>
-            {onOpenBrowse ? (
-              <Button type="button" size="sm" variant="outline" onClick={onOpenBrowse}>
-                <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                Go to Browse
-              </Button>
-            ) : null}
+            <p className="text-sm text-muted-foreground">Add images to Selected first — batch runs on your current picks.</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {onOpenSelected ? (
+                <Button type="button" size="sm" variant="default" onClick={onOpenSelected}>
+                  Open Selected
+                </Button>
+              ) : null}
+              {onOpenBrowse ? (
+                <Button type="button" size="sm" variant="outline" onClick={onOpenBrowse}>
+                  <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
+                  Browse Drive
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {imageAssets.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Input images ({imageAssets.length})</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {imageAssets.map((asset) => (
+                <div
+                  key={`${asset.sourceAccountId}:${asset.id}`}
+                  className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30"
+                >
+                  <img
+                    src={asset.thumbnailUrl || asset.previewUrl}
+                    alt={asset.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -190,26 +229,60 @@ export function ApiaiBatchPanel({
             onCheckedChange={(checked) => setAddToSelection(checked === true)}
           />
           <Label htmlFor="batch-add-selection" className="text-xs font-normal cursor-pointer">
-            Add imported images to selection
+            Add imported images to Selected
           </Label>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="space-y-1">
-            <Label htmlFor="apiai-batch-workflow">Workflow slug</Label>
+            <Label htmlFor="apiai-batch-workflow">Workflow</Label>
+            {workflowOptions.length > 0 ? (
+              <Select
+                value={workflow}
+                onValueChange={(value) => {
+                  setWorkflow(value);
+                  writeLastBatchWorkflow(value);
+                }}
+              >
+                <SelectTrigger id="apiai-batch-workflow">
+                  <SelectValue placeholder="Pick workflow" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflowOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="apiai-batch-workflow"
+                value={workflow}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setWorkflow(next);
+                  writeLastBatchWorkflow(next);
+                }}
+                placeholder="remove-bg or flow:my-pipeline"
+              />
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              {workflowOptions.length > 0
+                ? "Pick from your apiai.me tools, or type a custom slug below."
+                : "Use flow:slug for pipelines."}
+            </p>
             <Input
-              id="apiai-batch-workflow"
+              aria-label="Custom workflow slug"
               value={workflow}
               onChange={(event) => {
                 const next = event.target.value;
                 setWorkflow(next);
                 writeLastBatchWorkflow(next);
               }}
-              placeholder="remove-bg or flow:my-pipeline"
+              placeholder="Custom slug override"
+              className="h-8 text-xs"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Use <code>flow:slug</code> for your pipelines. {imageAssets.length} image{imageAssets.length === 1 ? "" : "s"} selected.
-            </p>
           </div>
           <Button
             className="self-end"

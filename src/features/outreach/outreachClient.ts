@@ -110,6 +110,15 @@ export function outreachDraftToMailto(draft: OutreachDraft, to?: string): string
   return `mailto:${recipient}${query ? `?${query}` : ""}`;
 }
 
+export function linkedInSearchUrl(target?: {
+  prospectContact?: string;
+  prospectCompany?: string;
+} | null): string | null {
+  const query = [target?.prospectContact, target?.prospectCompany].filter(Boolean).join(" ").trim();
+  if (!query) return null;
+  return `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}`;
+}
+
 export function outreachDraftText(draft: OutreachDraft, channel: OutreachChannel): string {
   if (channel === "linkedin" && draft.linkedinMessage) {
     return draft.linkedinMessage;

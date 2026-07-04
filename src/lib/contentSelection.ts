@@ -12,6 +12,10 @@ export type SelectedContentAsset = {
   sourceAccountName: string;
 };
 
+export function assetSelectionKey(asset: Pick<SelectedContentAsset, "sourceAccountId" | "id">): string {
+  return `${asset.sourceAccountId}:${asset.id}`;
+}
+
 const STORAGE_PREFIX = "automazing-content-selection";
 
 function storageKey(profileId?: string | null) {

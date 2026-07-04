@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchOutreachDraft,
+  linkedInSearchUrl,
   outreachDraftText,
   outreachDraftToMailto,
   type OutreachChannel,
@@ -36,6 +37,12 @@ function displayBody(draft: OutreachDraft, tab: OutreachChannel): string {
   return draft.body;
 }
 
+function ChannelBadge({ loading, ready }: { loading: boolean; ready: boolean }) {
+  if (loading) return <Loader2 className="h-3 w-3 animate-spin ml-1 inline" />;
+  if (ready) return <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[9px]">ready</Badge>;
+  return null;
+}
+
 export function OutreachDraftDialog({
   open,
   onOpenChange,
@@ -50,7 +57,7 @@ export function OutreachDraftDialog({
   target?: OutreachDraftTarget | null;
 }) {
   const [channel, setChannel] = useState<OutreachChannel>("email");
-  const [loadingChannel, setLoadingChannel] = useState<OutreachChannel | null>(null);
+  const [loadingChannels, setLoadingChannels] = useState<Set<OutreachChannel>>(() => new Set());
   const [sourceByChannel, setSourceByChannel] = useState<Partial<Record<OutreachChannel, string>>>({});
   const [draftByChannel, setDraftByChannel] = useState<Partial<Record<OutreachChannel, OutreachDraft>>>({});
   const autoStartedRef = useRef<string | null>(null);
@@ -59,28 +66,35 @@ export function OutreachDraftDialog({
     if (!open) {
       setDraftByChannel({});
       setSourceByChannel({});
-      setLoadingChannel(null);
+      setLoadingChannels(new Set());
       autoStartedRef.current = null;
       return;
     }
     const key = `${target?.prospectCompany || ""}:${target?.prospectEmail || ""}`;
     if (autoStartedRef.current === key) return;
     autoStartedRef.current = key;
-    void generate("email", { force: true });
+    void Promise.all([
+      generateChannel("email", { force: true, switchTab: false }),
+      generateChannel("linkedin", { force: true, switchTab: false }),
+      generateChannel("follow-up", { force: true, switchTab: false }),
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, target?.prospectCompany, target?.prospectEmail]);
 
-  async function generate(nextChannel: OutreachChannel, options?: { force?: boolean }) {
+  async function generateChannel(
+    nextChannel: OutreachChannel,
+    options?: { force?: boolean; switchTab?: boolean }
+  ) {
     if (!businessProfileId) {
       toast.error("Select a business profile first.");
       return;
     }
     if (!options?.force && draftByChannel[nextChannel]) {
-      setChannel(nextChannel);
+      if (options?.switchTab !== false) setChannel(nextChannel);
       return;
     }
-    setChannel(nextChannel);
-    setLoadingChannel(nextChannel);
+    if (options?.switchTab !== false) setChannel(nextChannel);
+    setLoadingChannels((current) => new Set(current).add(nextChannel));
     try {
       const result = await fetchOutreachDraft({
         business_profile_id: businessProfileId,
@@ -93,7 +107,11 @@ export function OutreachDraftDialog({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't generate outreach.");
     } finally {
-      setLoadingChannel(null);
+      setLoadingChannels((current) => {
+        const next = new Set(current);
+        next.delete(nextChannel);
+        return next;
+      });
     }
   }
 
@@ -107,6 +125,7 @@ export function OutreachDraftDialog({
   }
 
   const prospectLabel = target?.prospectCompany || "prospect";
+  const linkedInUrl = linkedInSearchUrl(target);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,7 +136,7 @@ export function OutreachDraftDialog({
             Outreach draft — {prospectLabel}
           </DialogTitle>
           <DialogDescription>
-            Personalized cold email, LinkedIn message, and follow-up for this potential customer.
+            All three channels generate automatically when you open this dialog.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,33 +150,43 @@ export function OutreachDraftDialog({
         <Tabs
           value={channel}
           onValueChange={(value) => {
-            void generate(value as OutreachChannel);
+            setChannel(value as OutreachChannel);
+            void generateChannel(value as OutreachChannel, { switchTab: false });
           }}
         >
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="email">Email</TabsTrigger>
-            <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
-            <TabsTrigger value="follow-up">Follow-up</TabsTrigger>
+            <TabsTrigger value="email" className="text-xs sm:text-sm">
+              Email
+              <ChannelBadge loading={loadingChannels.has("email")} ready={Boolean(draftByChannel.email)} />
+            </TabsTrigger>
+            <TabsTrigger value="linkedin" className="text-xs sm:text-sm">
+              LinkedIn
+              <ChannelBadge loading={loadingChannels.has("linkedin")} ready={Boolean(draftByChannel.linkedin)} />
+            </TabsTrigger>
+            <TabsTrigger value="follow-up" className="text-xs sm:text-sm">
+              Follow-up
+              <ChannelBadge loading={loadingChannels.has("follow-up")} ready={Boolean(draftByChannel["follow-up"])} />
+            </TabsTrigger>
           </TabsList>
           {(["email", "linkedin", "follow-up"] as const).map((tab) => {
             const draft = draftByChannel[tab];
-            const loading = loadingChannel === tab;
+            const loading = loadingChannels.has(tab);
             const source = sourceByChannel[tab];
             return (
               <TabsContent key={tab} value={tab} className="space-y-3 mt-3">
                 {!draft && !loading ? (
-                  <Button type="button" className="w-full" onClick={() => void generate(tab, { force: true })}>
+                  <Button type="button" className="w-full" onClick={() => void generateChannel(tab, { force: true })}>
                     <Sparkles className="h-4 w-4 mr-2" />
                     Generate {tab === "follow-up" ? "follow-up" : tab} draft
                   </Button>
                 ) : null}
-                {loading ? (
+                {loading && !draft ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Writing outreach copy…
                   </div>
                 ) : null}
-                {draft && !loading ? (
+                {draft ? (
                   <>
                     {source === "heuristic" ? (
                       <p className="text-[11px] text-muted-foreground">General template — add OpenAI key for tailored copy.</p>
@@ -168,17 +197,32 @@ export function OutreachDraftDialog({
                         <span className="font-medium">{draft.subject}</span>
                       </p>
                     ) : null}
-                    {tab === "follow-up" && draft.followUps.length > 1 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Showing first follow-up — full sequence included when you copy.
-                      </p>
+                    {tab !== "follow-up" ? (
+                      <pre className="whitespace-pre-wrap rounded-lg border border-border bg-muted/20 p-3 text-xs leading-relaxed">
+                        {displayBody(draft, tab)}
+                      </pre>
                     ) : null}
-                    <pre className="whitespace-pre-wrap rounded-lg border border-border bg-muted/20 p-3 text-xs leading-relaxed">
-                      {displayBody(draft, tab)}
-                    </pre>
-                    {tab === "email" && draft.followUps.length > 0 ? (
+                    {tab === "follow-up" && draft.followUps.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Follow-up sequence</p>
+                        {draft.followUps.map((fu, index) => (
+                          <div key={index} className="rounded-md border border-border/70 p-2.5 space-y-1">
+                            <Badge variant="outline" className="text-[10px]">
+                              Day {fu.day}
+                            </Badge>
+                            {fu.subject ? <p className="text-[11px] font-medium">{fu.subject}</p> : null}
+                            <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{fu.body}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    ) : tab === "follow-up" ? (
+                      <pre className="whitespace-pre-wrap rounded-lg border border-border bg-muted/20 p-3 text-xs leading-relaxed">
+                        {displayBody(draft, tab)}
+                      </pre>
+                    ) : null}
+                    {tab === "email" && draft.followUps.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Follow-up sequence (included in copy)</p>
                         {draft.followUps.map((fu, index) => (
                           <div key={index} className="rounded-md border border-border/70 p-2.5 space-y-1">
                             <Badge variant="outline" className="text-[10px]">
@@ -203,7 +247,15 @@ export function OutreachDraftDialog({
                           </a>
                         </Button>
                       ) : null}
-                      <Button type="button" size="sm" variant="ghost" onClick={() => void generate(tab, { force: true })}>
+                      {tab === "linkedin" && linkedInUrl ? (
+                        <Button type="button" size="sm" variant="outline" asChild>
+                          <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            Find on LinkedIn
+                          </a>
+                        </Button>
+                      ) : null}
+                      <Button type="button" size="sm" variant="ghost" onClick={() => void generateChannel(tab, { force: true })}>
                         Regenerate
                       </Button>
                     </div>

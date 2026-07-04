@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Download, FolderPlus, History, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,25 @@ import {
   resolveThumbnailUrl,
   type GeneratedContentItem,
 } from "./generatedContentHistory";
+import { assetSelectionKey } from "@/lib/contentSelection";
+
+type SourceFilter = "all" | GeneratedContentItem["source"];
 
 function sourceLabel(source: GeneratedContentItem["source"]) {
   if (source === "apiai") return "apiai.me";
   if (source === "openai") return "OpenAI";
   if (source === "canva") return "Canva";
+  if (source === "upload") return "Upload";
   return source;
 }
+
+const FILTER_OPTIONS: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "apiai", label: "apiai.me" },
+  { id: "openai", label: "OpenAI" },
+  { id: "canva", label: "Canva" },
+  { id: "upload", label: "Upload" },
+];
 
 function HistoryThumbnail({ item, src }: { item: GeneratedContentItem; src: string }) {
   const [failed, setFailed] = useState(false);
@@ -56,17 +68,34 @@ function HistoryThumbnail({ item, src }: { item: GeneratedContentItem; src: stri
 export function GeneratedHistoryPanel({
   items,
   loading,
+  selectedKeys,
   onAddToSelection,
+  onAddAllToSelection,
   onRemove,
   onClear,
 }: {
   items: GeneratedContentItem[];
   loading?: boolean;
+  selectedKeys?: Set<string>;
   onAddToSelection: (asset: ReturnType<typeof generatedItemToAsset>) => void;
+  onAddAllToSelection?: (assets: ReturnType<typeof generatedItemToAsset>[]) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+
+  const filteredItems = useMemo(() => {
+    if (sourceFilter === "all") return items;
+    return items.filter((item) => item.source === sourceFilter);
+  }, [items, sourceFilter]);
+
+  const notYetSelected = useMemo(() => {
+    if (!selectedKeys) return filteredItems;
+    return filteredItems.filter(
+      (item) => !selectedKeys.has(assetSelectionKey(generatedItemToAsset(item)))
+    );
+  }, [filteredItems, selectedKeys]);
 
   if (loading) {
     return (
@@ -85,7 +114,7 @@ export function GeneratedHistoryPanel({
         <CardContent className="py-10 text-center space-y-2">
           <History className="h-8 w-8 mx-auto text-muted-foreground/60" />
           <p className="text-sm text-muted-foreground">
-            Generated images and videos appear here automatically — download or add them to your selection anytime.
+            Generated images and videos appear here automatically — download or add them to Selected anytime.
           </p>
         </CardContent>
       </Card>
@@ -98,39 +127,70 @@ export function GeneratedHistoryPanel({
         <p className="text-sm text-muted-foreground">
           {items.length} saved generation{items.length === 1 ? "" : "s"} · stored for 30 days on the server
         </p>
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogTrigger asChild>
-            <Button type="button" variant="ghost" size="sm">
-              Clear history
+        <div className="flex flex-wrap gap-2">
+          {onAddAllToSelection && notYetSelected.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                onAddAllToSelection(notYetSelected.map((item) => generatedItemToAsset(item)))
+              }
+            >
+              <FolderPlus className="h-3.5 w-3.5 mr-1.5" />
+              Add all to Selected ({notYetSelected.length})
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear generation history?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This removes the list from your profile. Server files may remain until they expire.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  onClear();
-                  setConfirmOpen(false);
-                }}
-              >
-                Clear
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          ) : null}
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="ghost" size="sm">
+                Clear history
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear generation history?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes the list from your profile. Server files may remain until they expire.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    onClear();
+                    setConfirmOpen(false);
+                  }}
+                >
+                  Clear
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {FILTER_OPTIONS.map((option) => (
+          <Button
+            key={option.id}
+            type="button"
+            size="sm"
+            variant={sourceFilter === option.id ? "default" : "outline"}
+            className="h-7 text-xs"
+            onClick={() => setSourceFilter(option.id)}
+          >
+            {option.label}
+          </Button>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {items.map((item) => {
+        {filteredItems.map((item) => {
           const expired = isLikelyExpiredMedia(item);
           const downloadUrl = resolveDownloadUrl(item);
           const thumbnailUrl = resolveThumbnailUrl(item);
+          const alreadySelected = selectedKeys?.has(assetSelectionKey(generatedItemToAsset(item)));
           return (
             <Card key={item.id} className="overflow-hidden border-border">
               <div className="aspect-square bg-muted/30 relative">
@@ -164,10 +224,11 @@ export function GeneratedHistoryPanel({
                     size="sm"
                     variant="outline"
                     className="h-7 px-2 text-[11px]"
+                    disabled={alreadySelected}
                     onClick={() => onAddToSelection(generatedItemToAsset(item))}
                   >
                     <FolderPlus className="h-3 w-3 mr-1" />
-                    Select
+                    {alreadySelected ? "In Selected" : "Add to Selected"}
                   </Button>
                   <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[11px]">
                     <a href={downloadUrl} download={item.name} target="_blank" rel="noopener noreferrer">
@@ -191,6 +252,10 @@ export function GeneratedHistoryPanel({
           );
         })}
       </div>
+
+      {filteredItems.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">No items match this filter.</p>
+      ) : null}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { loadSelectedContent, saveSelectedContent, type SelectedContentAsset } from "@/lib/contentSelection";
+import { loadSelectedContent, saveSelectedContent, assetSelectionKey, type SelectedContentAsset } from "@/lib/contentSelection";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
@@ -20,6 +20,9 @@ import { CreateTab } from "@/features/content/CreateTab";
 import type { ApiaiBatchIngestItem } from "@/features/content/apiaiClient";
 import { ContentFlowGuide } from "@/features/content/ContentFlowGuide";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
+import { flowStepFromTab, isContentTab, type ContentTab } from "@/features/content/contentFlow";
+import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
+import { ContentUploadDropzone } from "@/features/content/ContentUploadDropzone";
 import { ContentIdeasHub } from "@/features/content/ContentIdeasHub";
 import { GeneratedHistoryPanel } from "@/features/content/GeneratedHistoryPanel";
 import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
@@ -29,7 +32,7 @@ import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMed
 import { uploadContentMedia } from "@/features/content/contentMediaClient";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
-import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send } from "lucide-react";
+import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send, BookmarkCheck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
@@ -107,7 +110,7 @@ function MediaTile({
       role="button"
       tabIndex={0}
       aria-pressed={checked}
-      aria-label={`${checked ? "Deselect" : "Select"} ${file.name}`}
+      aria-label={`${checked ? "Remove from Selected" : "Add to Selected"} ${file.name}`}
       className="group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       onClick={() => onToggle(!checked)}
       onKeyDown={(e) => {
@@ -171,6 +174,7 @@ function MediaSection({
   onToggleExpand,
   previewCount,
   selectedIds,
+  selectionKeyForFile,
   onToggleAsset,
 }: {
   title: string;
@@ -180,6 +184,7 @@ function MediaSection({
   onToggleExpand: () => void;
   previewCount: number;
   selectedIds: Set<string>;
+  selectionKeyForFile: (file: DriveBrowserItem) => string;
   onToggleAsset: (file: DriveBrowserItem, checked: boolean) => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
@@ -203,7 +208,7 @@ function MediaSection({
           <MediaTile
             key={file.id}
             file={file}
-            checked={selectedIds.has(file.id)}
+            checked={selectedIds.has(selectionKeyForFile(file))}
             onToggle={(checked) => onToggleAsset(file, checked)}
           />
         ))}
@@ -264,7 +269,7 @@ export default function ContentPage() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
-  const [contentTab, setContentTab] = useState<"browse" | "create" | "history" | "publish">("browse");
+  const [contentTab, setContentTab] = useState<ContentTab>("browse");
   const [publishReadiness, setPublishReadiness] = useState<PublishReadiness | null>(null);
   const { history: generatedHistory, recordAsset, remove: removeGenerated, clear: clearGenerated, isLoading: historyLoading } =
     useGeneratedContentHistory();
@@ -397,7 +402,10 @@ export default function ContentPage() {
   const [videosExpanded, setVideosExpanded] = useState(false);
   const [uploadingBrowse, setUploadingBrowse] = useState(false);
   const browseUploadRef = useRef<HTMLInputElement>(null);
-  const selectedIds = useMemo(() => new Set(selectedAssets.map((asset) => asset.id)), [selectedAssets]);
+  const selectedIds = useMemo(
+    () => new Set(selectedAssets.map((asset) => assetSelectionKey(asset))),
+    [selectedAssets]
+  );
   const selectedImages = selectedAssets.filter((asset) => asset.kind === "image");
   const selectedVideos = selectedAssets.filter((asset) => asset.kind === "video");
   const publishMediaUrls = useMemo(() => publishMediaUrlsFromAssets(selectedAssets), [selectedAssets]);
@@ -405,9 +413,14 @@ export default function ContentPage() {
   const combinedOauthError = popupOauthError || oauthErrorDetails;
   const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId;
   const publishBlockedReason = publishBlockReason(publishReadiness);
+  const initialCreateMode = useMemo(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "generate" || mode === "transform" || mode === "batch") return mode;
+    return undefined;
+  }, [searchParams]);
 
   const goToTab = useCallback(
-    (tab: "browse" | "create" | "history" | "publish") => {
+    (tab: ContentTab) => {
       setContentTab(tab);
       setSearchParams({ tab }, { replace: true });
     },
@@ -416,7 +429,7 @@ export default function ContentPage() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "browse" || tab === "create" || tab === "history" || tab === "publish") {
+    if (isContentTab(tab)) {
       setContentTab(tab);
     }
   }, [searchParams]);
@@ -586,16 +599,10 @@ export default function ContentPage() {
   }
 
   function saveAssetSelection(asset: SelectedContentAsset, checked: boolean) {
+    const key = assetSelectionKey(asset);
     const next: SelectedContentAsset[] = checked
-      ? [
-          ...selectedAssets.filter(
-            (existing) => `${existing.sourceAccountId}:${existing.id}` !== `${asset.sourceAccountId}:${asset.id}`
-          ),
-          asset,
-        ]
-      : selectedAssets.filter(
-          (existing) => `${existing.sourceAccountId}:${existing.id}` !== `${asset.sourceAccountId}:${asset.id}`
-        );
+      ? [...selectedAssets.filter((existing) => assetSelectionKey(existing) !== key), asset]
+      : selectedAssets.filter((existing) => assetSelectionKey(existing) !== key);
 
     selectionDoc.save(next);
   }
@@ -607,7 +614,7 @@ export default function ContentPage() {
   function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
     saveAssetSelection(asset, true);
     recordAsset(asset, options);
-    toast.success("Saved to selection and history");
+    toast.success("Added to Selected and History");
   }
 
   function handleBatchIngested(
@@ -656,7 +663,8 @@ export default function ContentPage() {
         added += 1;
       }
       if (added > 0) {
-        toast.success(`${added} file${added === 1 ? "" : "s"} uploaded — ready to post`);
+        toast.success(`${added} file${added === 1 ? "" : "s"} uploaded — added to Selected`);
+        goToTab("selected");
       } else {
         toast.message("No image or video files selected");
       }
@@ -672,6 +680,22 @@ export default function ContentPage() {
     const asset = assetFromDriveFile(file);
     if (!asset) return;
     saveAssetSelection(asset, checked);
+    if (checked) {
+      toast.message("Added to Selected");
+    }
+  }
+
+  function removeFromSelected(asset: SelectedContentAsset) {
+    saveAssetSelection(asset, false);
+  }
+
+  function removeManyFromSelected(assets: SelectedContentAsset[]) {
+    const keys = new Set(assets.map((asset) => assetSelectionKey(asset)));
+    selectionDoc.save(selectedAssets.filter((asset) => !keys.has(assetSelectionKey(asset))));
+  }
+
+  function reorderSelected(assets: SelectedContentAsset[]) {
+    selectionDoc.save(assets);
   }
 
   function navigateIntoFolder(folder: { id: string; name: string }) {
@@ -737,9 +761,9 @@ export default function ContentPage() {
       />
 
       <ContentFlowGuide
-        active={contentTab === "history" ? "create" : contentTab}
+        active={flowStepFromTab(contentTab)}
         selectionCount={selectedAssets.length}
-        onGo={goToTab}
+        onGo={(step) => goToTab(step)}
       />
 
       <ContentIdeasHub
@@ -767,6 +791,18 @@ export default function ContentPage() {
           >
             <HardDrive className="h-3.5 w-3.5" />
             Browse
+          </TabsTrigger>
+          <TabsTrigger
+            value="selected"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+          >
+            <BookmarkCheck className="h-3.5 w-3.5" />
+            Selected
+            {selectedAssets.length > 0 ? (
+              <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[10px] tabular-nums">
+                {selectedAssets.length}
+              </span>
+            ) : null}
           </TabsTrigger>
           <TabsTrigger
             value="create"
@@ -815,6 +851,7 @@ export default function ContentPage() {
           canvaConnected={canvaConnected}
           onToggleAssetSelection={saveAssetSelection}
           onOpenBrowse={() => goToTab("browse")}
+          onOpenSelected={() => goToTab("selected")}
           onBeforeRequest={ensureBackendSession}
           onRecordGenerated={(asset, meta) => recordGeneratedAsset(asset, meta)}
           onSaveResultToSelection={(asset, meta) => {
@@ -824,6 +861,29 @@ export default function ContentPage() {
           onPublishReadinessChange={setPublishReadiness}
           onBatchIngested={handleBatchIngested}
           onOpenHistory={() => goToTab("history")}
+          initialCreateMode={initialCreateMode}
+        />
+      ) : null}
+
+      {contentTab === "selected" ? (
+        <SelectedContentPanel
+          selectedAssets={selectedAssets}
+          historyItems={generatedHistory}
+          onRemove={removeFromSelected}
+          onRemoveMany={removeManyFromSelected}
+          onClear={handleClearSelection}
+          onReorder={reorderSelected}
+          onAddFromHistory={(asset) => {
+            saveAssetSelection(asset, true);
+            toast.success("Added to Selected");
+          }}
+          onUploadFiles={handleBrowseUploadFiles}
+          uploading={uploadingBrowse}
+          uploadDisabled={!createBusinessProfileId}
+          onGoBrowse={() => goToTab("browse")}
+          onGoHistory={() => goToTab("history")}
+          onCreate={() => goToTab("create")}
+          onPublish={() => goToTab("publish")}
         />
       ) : null}
 
@@ -831,9 +891,15 @@ export default function ContentPage() {
         <GeneratedHistoryPanel
           items={generatedHistory}
           loading={historyLoading}
+          selectedKeys={selectedIds}
           onAddToSelection={(asset) => {
             saveAssetSelection(asset, true);
-            toast.success("Added to selection");
+            toast.success("Added to Selected");
+          }}
+          onAddAllToSelection={(assets) => {
+            assets.forEach((asset) => saveAssetSelection(asset, true));
+            toast.success(`${assets.length} added to Selected`);
+            goToTab("selected");
           }}
           onRemove={removeGenerated}
           onClear={() => {
@@ -850,10 +916,13 @@ export default function ContentPage() {
               <CardContent className="py-8 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">
                   {generatedHistory.length > 0
-                    ? "Pick media from Browse, or add a saved generation from History."
-                    : "Select at least one image or video in Browse first."}
+                    ? "Add media from Browse or History to Selected, then post."
+                    : "Select at least one image or video in Browse or Selected first."}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => goToTab("selected")}>
+                    Open Selected
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
                     Go to Browse
                   </Button>
@@ -988,31 +1057,25 @@ export default function ContentPage() {
       )}
 
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base">Selected content</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Google Drive</CardTitle>
           <CardDescription>
-            {selectedAssets.length === 0
-              ? "No files marked yet."
-              : `${selectedAssets.length} file${selectedAssets.length === 1 ? "" : "s"} marked for creation.`}
+            Click images or videos to add them to Selected
+            {selectedAssets.length > 0 ? (
+              <>
+                {" "}
+                ·{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => goToTab("selected")}
+                >
+                  {selectedAssets.length} in Selected
+                </button>
+              </>
+            ) : null}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
-          <div className="text-sm text-muted-foreground">
-            {selectedImages.length} image{selectedImages.length === 1 ? "" : "s"} and {selectedVideos.length} video{selectedVideos.length === 1 ? "" : "s"} selected.
-          </div>
-          <Button variant="default" onClick={() => goToTab("create")} disabled={selectedAssets.length === 0}>
-            Create with AI
-          </Button>
-          <Button variant="outline" onClick={() => goToTab("publish")} disabled={selectedAssets.length === 0}>
-            Post or save
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/social-media")} disabled={selectedAssets.length === 0}>
-            Open Social Media
-          </Button>
-          <Button variant="ghost" onClick={handleClearSelection} disabled={selectedAssets.length === 0}>
-            Clear selection
-          </Button>
-        </CardContent>
       </Card>
 
       {driveAccounts.length === 0 ? (
@@ -1069,6 +1132,13 @@ export default function ContentPage() {
               Upload files
             </Button>
           </div>
+          <ContentUploadDropzone
+            onFiles={handleBrowseUploadFiles}
+            busy={uploadingBrowse}
+            disabled={!createBusinessProfileId}
+            className="py-6"
+            label="Or drop files here to upload to Selected"
+          />
           {folderItems.length > 0 && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -1106,6 +1176,9 @@ export default function ContentPage() {
                   onToggleExpand={() => setImagesExpanded((v) => !v)}
                   previewCount={PREVIEW_COUNT}
                   selectedIds={selectedIds}
+                  selectionKeyForFile={(file) =>
+                    assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
+                  }
                   onToggleAsset={toggleAsset}
                 />
               )}
@@ -1118,6 +1191,9 @@ export default function ContentPage() {
                   onToggleExpand={() => setVideosExpanded((v) => !v)}
                   previewCount={PREVIEW_COUNT}
                   selectedIds={selectedIds}
+                  selectionKeyForFile={(file) =>
+                    assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
+                  }
                   onToggleAsset={toggleAsset}
                 />
               )}
