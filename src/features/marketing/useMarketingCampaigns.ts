@@ -15,11 +15,28 @@ export interface AdCampaign {
   spend7d?: number;
   impressions7d?: number;
   clicks7d?: number;
+  reach7d?: number;
+  frequency7d?: number;
+  conversions7d?: number;
+  costPerConversion7d?: number;
+  conversionRate7d?: number;
+  searchImpressionShare?: number;
+  searchBudgetLostShare?: number;
+  searchRankLostShare?: number;
   conversionValue7d?: number;
   roas7d?: number;
   metrics?: CampaignMetrics;
   score?: CampaignScore;
 }
+
+export type AdChannel =
+  | "search"
+  | "shopping"
+  | "display"
+  | "video"
+  | "social"
+  | "performance_max"
+  | "unknown";
 
 export type MarketingGrade = "A" | "B" | "C" | "D" | "F" | "—";
 export type MarketingVerdict = "good" | "ok" | "poor" | "unknown";
@@ -28,11 +45,20 @@ export interface CampaignMetrics {
   spend: number | null;
   clicks: number | null;
   impressions: number | null;
+  reach: number | null;
+  frequency: number | null;
+  conversions: number | null;
+  conversionRate: number | null;
+  costPerConversion: number | null;
   conversionValue: number | null;
   ctr: number | null;
   cpc: number | null;
   cpm: number | null;
   roas: number | null;
+  channel: AdChannel;
+  searchImpressionShare: number | null;
+  searchBudgetLostShare: number | null;
+  searchRankLostShare: number | null;
 }
 
 export interface CampaignScore {
@@ -41,6 +67,27 @@ export interface CampaignScore {
   label: string;
   verdict: MarketingVerdict;
   reasons: string[];
+  breakdown: {
+    roas: number;
+    engagement: number;
+    conversions: number;
+    scale: number;
+    audience?: number;
+  };
+  actions: string[];
+}
+
+export type RecommendationSeverity = "critical" | "warning" | "opportunity";
+
+export interface MarketingRecommendation {
+  id: string;
+  severity: RecommendationSeverity;
+  title: string;
+  detail: string;
+  action: string;
+  campaignId?: string;
+  campaignName?: string;
+  platform?: "meta_business" | "google_ads";
 }
 
 export interface PlatformScoreSummary {
@@ -61,14 +108,18 @@ export interface MarketingAnalytics {
   blendedCtr: number | null;
   blendedCpc: number | null;
   blendedCpm: number | null;
+  blendedConversionRate: number | null;
+  blendedCostPerConversion: number | null;
   totalClicks: number;
   totalImpressions: number;
+  totalConversions: number;
   totalConversionValue: number;
   campaignsScored: number;
   campaignsGood: number;
   campaignsOk: number;
   campaignsPoor: number;
   platformScores: Partial<Record<"meta_business" | "google_ads", PlatformScoreSummary>>;
+  recommendations: MarketingRecommendation[];
 }
 
 export interface AdAccountCampaigns {

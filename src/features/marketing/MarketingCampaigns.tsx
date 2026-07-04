@@ -9,6 +9,7 @@ import {
 } from "./useMarketingCampaigns";
 import { formatMoney, formatNumber as formatCount, formatPct, formatRoas } from "./format";
 import { MarketingGradeBadge, MarketingVerdictDot } from "./MarketingGradeBadge";
+import { ScoreBreakdown } from "./ScoreBreakdown";
 
 const PLATFORM_LABEL: Record<AdAccountCampaigns["platform"], string> = {
   meta_business: "Meta",
@@ -48,12 +49,22 @@ function CampaignRow({ campaign, currency }: { campaign: AdCampaign; currency?: 
             budget != null ? `${formatMoney(budget, currency)}${budgetLabel}` : null,
             metrics?.ctr != null ? `CTR ${formatPct(metrics.ctr)}` : null,
             metrics?.cpc != null ? `CPC ${formatMoney(metrics.cpc, currency)}` : null,
+            metrics?.conversionRate != null ? `CVR ${formatPct(metrics.conversionRate)}` : null,
+            metrics?.frequency != null ? `freq ${metrics.frequency.toFixed(1)}` : null,
           ]
             .filter(Boolean)
             .join(" · ")}
         </p>
         {campaign.score?.reasons[0] ? (
           <p className="text-[11px] text-muted-foreground/90 mt-0.5 truncate">{campaign.score.reasons[0]}</p>
+        ) : null}
+        {campaign.score?.breakdown ? (
+          <div className="mt-1.5">
+            <ScoreBreakdown breakdown={campaign.score.breakdown} />
+          </div>
+        ) : null}
+        {campaign.score?.actions[0] ? (
+          <p className="text-[11px] text-primary/90 mt-1 truncate">→ {campaign.score.actions[0]}</p>
         ) : null}
       </div>
       <div className="text-right shrink-0">

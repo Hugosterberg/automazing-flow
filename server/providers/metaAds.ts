@@ -7,6 +7,8 @@
  * merge Meta and Google Ads campaigns into one list.
  */
 
+import type { AdChannel } from "../lib/marketingBenchmarks.ts";
+
 export type MarketingGrade = "A" | "B" | "C" | "D" | "F" | "—";
 export type MarketingVerdict = "good" | "ok" | "poor" | "unknown";
 
@@ -14,11 +16,20 @@ export interface CampaignMetrics {
   spend: number | null;
   clicks: number | null;
   impressions: number | null;
+  reach: number | null;
+  frequency: number | null;
+  conversions: number | null;
+  conversionRate: number | null;
+  costPerConversion: number | null;
   conversionValue: number | null;
   ctr: number | null;
   cpc: number | null;
   cpm: number | null;
   roas: number | null;
+  channel: AdChannel;
+  searchImpressionShare: number | null;
+  searchBudgetLostShare: number | null;
+  searchRankLostShare: number | null;
 }
 
 export interface CampaignScore {
@@ -27,6 +38,16 @@ export interface CampaignScore {
   label: string;
   verdict: MarketingVerdict;
   reasons: string[];
+  /** Sub-scores 0–100 shown in the UI breakdown. */
+  breakdown: {
+    roas: number;
+    engagement: number;
+    conversions: number;
+    scale: number;
+    audience?: number;
+  };
+  /** Concrete next steps for this campaign. */
+  actions: string[];
 }
 
 export interface AdCampaign {
@@ -42,6 +63,22 @@ export interface AdCampaign {
   spend7d?: number;
   impressions7d?: number;
   clicks7d?: number;
+  /** Unique people reached (Meta). */
+  reach7d?: number;
+  /** Avg impressions per person (Meta fatigue signal). */
+  frequency7d?: number;
+  /** Purchase/conversion count from platform reporting. */
+  conversions7d?: number;
+  /** Platform-reported cost per conversion/purchase. */
+  costPerConversion7d?: number;
+  /** Google: clicks → conversions rate (0–1). */
+  conversionRate7d?: number;
+  /** Google Search: share of eligible impressions won (0–1). */
+  searchImpressionShare?: number;
+  /** Google Search: IS lost due to budget (0–1). */
+  searchBudgetLostShare?: number;
+  /** Google Search: IS lost due to ad rank (0–1). */
+  searchRankLostShare?: number;
   /** Platform-attributed purchase value over the trailing 7 days. */
   conversionValue7d?: number;
   /** Platform-attributed ROAS (conversion value ÷ spend) over 7 days. */
@@ -98,6 +135,35 @@ function metaPurchaseRoas(row: Record<string, unknown>): number | undefined {
   if (!Array.isArray(roas) || roas.length === 0) return undefined;
   const n = Number((roas[0] as { value?: unknown })?.value);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function metaActionCount(row: Record<string, unknown>, pattern: RegExp): number | undefined {
+  const actions = row.actions;
+  if (!Array.isArray(actions)) return undefined;
+  let total = 0;
+  let found = false;
+  for (const entry of actions) {
+    const e = entry as { action_type?: string; value?: unknown };
+    if (!pattern.test(String(e?.action_type || ""))) continue;
+    const n = Number(e?.value);
+    if (Number.isFinite(n)) {
+      total += n;
+      found = true;
+    }
+  }
+  return found ? total : undefined;
+}
+
+function metaCostPerAction(row: Record<string, unknown>, pattern: RegExp): number | undefined {
+  const costs = row.cost_per_action_type;
+  if (!Array.isArray(costs)) return undefined;
+  for (const entry of costs) {
+    const e = entry as { action_type?: string; value?: unknown };
+    if (!pattern.test(String(e?.action_type || ""))) continue;
+    const n = Number(e?.value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
 }
 
 export async function fetchMetaActiveCampaigns(
@@ -165,7 +231,8 @@ export async function fetchMetaActiveCampaigns(
   try {
     const insightsUrl =
       `${graphBase}/${encodeURIComponent(adAccountId)}/insights` +
-      `?fields=campaign_id,spend,impressions,clicks,purchase_roas,action_values&level=campaign&date_preset=last_7d&limit=200` +
+      `?fields=campaign_id,spend,impressions,clicks,reach,frequency,purchase_roas,action_values,actions,cost_per_action_type` +
+      `&level=campaign&date_preset=last_7d&limit=200` +
       `&access_token=${encodeURIComponent(accessToken)}`;
     const res = await fetch(insightsUrl, {
       headers: { Accept: "application/json" },
@@ -183,9 +250,18 @@ export async function fetchMetaActiveCampaigns(
       const spend = Number(ins.spend);
       const impressions = Number(ins.impressions);
       const clicks = Number(ins.clicks);
+      const reach = Number(ins.reach);
+      const frequency = Number(ins.frequency);
       if (Number.isFinite(spend)) campaign.spend7d = spend;
       if (Number.isFinite(impressions)) campaign.impressions7d = impressions;
       if (Number.isFinite(clicks)) campaign.clicks7d = clicks;
+      if (Number.isFinite(reach)) campaign.reach7d = reach;
+      if (Number.isFinite(frequency)) campaign.frequency7d = frequency;
+
+      const purchases = metaActionCount(ins, /purchase/i);
+      if (purchases != null) campaign.conversions7d = purchases;
+      const costPerPurchase = metaCostPerAction(ins, /purchase/i);
+      if (costPerPurchase != null) campaign.costPerConversion7d = costPerPurchase;
 
       // Meta attributes purchases back to the campaign. Prefer the absolute
       // purchase value from action_values; fall back to purchase_roas × spend.

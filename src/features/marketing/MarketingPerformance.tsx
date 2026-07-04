@@ -7,6 +7,7 @@ import { useMarketingCampaigns, type MarketingPerformance as Performance } from 
 import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney, formatNumber, formatPct, formatRoas } from "./format";
 import { MarketingGradeBadge, portfolioGradeTone } from "./MarketingGradeBadge";
+import { MarketingRecommendations } from "./MarketingRecommendations";
 
 function pct(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -298,7 +299,7 @@ export function MarketingPerformance() {
         </div>
 
         {analytics && (analytics.blendedCtr != null || analytics.blendedCpc != null) ? (
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <MetricTile
               label="CTR (snitt)"
               value={formatPct(analytics.blendedCtr)}
@@ -339,7 +340,37 @@ export function MarketingPerformance() {
                 )
               }
             />
+            <MetricTile
+              label="Konverteringsgrad"
+              value={formatPct(analytics.blendedConversionRate)}
+              formula={
+                analytics.blendedConversionRate != null ? (
+                  <>
+                    {formatNumber(analytics.totalConversions)} konv. ÷ {formatNumber(analytics.totalClicks)} klick
+                  </>
+                ) : (
+                  "Kräver conversions från Meta/Google"
+                )
+              }
+            />
+            <MetricTile
+              label="Kostnad per konv."
+              value={formatMoney(analytics.blendedCostPerConversion, p.adSpendCurrency)}
+              formula={
+                analytics.blendedCostPerConversion != null ? (
+                  <>
+                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalConversions)} konv.
+                  </>
+                ) : (
+                  "Kräver konverteringsdata"
+                )
+              }
+            />
           </div>
+        ) : null}
+
+        {analytics?.recommendations?.length ? (
+          <MarketingRecommendations recommendations={analytics.recommendations} />
         ) : null}
 
         <TrendStrip />

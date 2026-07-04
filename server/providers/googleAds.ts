@@ -100,8 +100,11 @@ export async function fetchGoogleAdsActiveCampaigns(
   const query =
     "SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, " +
     "campaign_budget.amount_micros, customer.currency_code, metrics.cost_micros, " +
-    "metrics.impressions, metrics.clicks, metrics.conversions_value FROM campaign " +
-    "WHERE campaign.status = 'ENABLED' AND segments.date DURING LAST_7_DAYS";
+    "metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value, " +
+    "metrics.conversions_from_interactions_rate, metrics.cost_per_conversion, " +
+    "metrics.conversions_value_per_cost, metrics.search_impression_share, " +
+    "metrics.search_budget_lost_impression_share, metrics.search_rank_lost_impression_share " +
+    "FROM campaign WHERE campaign.status = 'ENABLED' AND segments.date DURING LAST_7_DAYS";
 
   let results: Array<Record<string, unknown>>;
   let currency: string | undefined;
@@ -125,6 +128,31 @@ export async function fetchGoogleAdsActiveCampaigns(
   }
 
   const MICROS = 1_000_000;
+
+  /** Weighted average helper for Google daily segmented rows. */
+  function blendShare(
+    current: { value: number; weight: number } | undefined,
+    next: number,
+    weight: number,
+  ): { value: number; weight: number } {
+    if (!Number.isFinite(next) || weight <= 0) return current ?? { value: 0, weight: 0 };
+    const base = current ?? { value: 0, weight: 0 };
+    const totalWeight = base.weight + weight;
+    return {
+      value: totalWeight > 0 ? (base.value * base.weight + next * weight) / totalWeight : next,
+      weight: totalWeight,
+    };
+  }
+
+  const shareById = new Map<
+    string,
+    {
+      budgetLost?: { value: number; weight: number };
+      rankLost?: { value: number; weight: number };
+      impressionShare?: { value: number; weight: number };
+    }
+  >();
+
   const byId = new Map<string, AdCampaign>();
   for (const row of results) {
     const campaign = (row.campaign || {}) as Record<string, unknown>;
@@ -143,23 +171,53 @@ export async function fetchGoogleAdsActiveCampaigns(
       spend7d: 0,
       impressions7d: 0,
       clicks7d: 0,
+      conversions7d: 0,
       conversionValue7d: 0,
     };
+    const dayImpressions = Number(metrics.impressions || 0);
     existing.spend7d = (existing.spend7d ?? 0) + Number(metrics.costMicros || 0) / MICROS;
-    existing.impressions7d = (existing.impressions7d ?? 0) + Number(metrics.impressions || 0);
+    existing.impressions7d = (existing.impressions7d ?? 0) + dayImpressions;
     existing.clicks7d = (existing.clicks7d ?? 0) + Number(metrics.clicks || 0);
+    existing.conversions7d = (existing.conversions7d ?? 0) + Number(metrics.conversions || 0);
     existing.conversionValue7d = (existing.conversionValue7d ?? 0) + Number(metrics.conversionsValue || 0);
+
+    const shares = shareById.get(id) ?? {};
+    const budgetLost = Number(metrics.searchBudgetLostImpressionShare);
+    const rankLost = Number(metrics.searchRankLostImpressionShare);
+    const impressionShare = Number(metrics.searchImpressionShare);
+    if (Number.isFinite(budgetLost)) {
+      shares.budgetLost = blendShare(shares.budgetLost, budgetLost, dayImpressions);
+    }
+    if (Number.isFinite(rankLost)) {
+      shares.rankLost = blendShare(shares.rankLost, rankLost, dayImpressions);
+    }
+    if (Number.isFinite(impressionShare)) {
+      shares.impressionShare = blendShare(shares.impressionShare, impressionShare, dayImpressions);
+    }
+    shareById.set(id, shares);
     byId.set(id, existing);
   }
 
-  // Derive per-campaign ROAS now that spend + conversion value are aggregated.
-  const campaigns = Array.from(byId.values()).map((c) => ({
-    ...c,
-    roas7d:
-      c.conversionValue7d != null && c.spend7d != null && c.spend7d > 0
-        ? c.conversionValue7d / c.spend7d
-        : undefined,
-  }));
+  // Derive per-campaign ROAS, conversion rate and search auction metrics.
+  const campaigns = Array.from(byId.entries()).map(([id, c]) => {
+    const shares = shareById.get(id);
+    const conversionRate =
+      c.clicks7d != null && c.clicks7d > 0 && c.conversions7d != null ? c.conversions7d / c.clicks7d : undefined;
+    const costPerConversion =
+      c.conversions7d != null && c.conversions7d > 0 && c.spend7d != null ? c.spend7d / c.conversions7d : undefined;
+    return {
+      ...c,
+      conversionRate7d: conversionRate,
+      costPerConversion7d: costPerConversion,
+      searchImpressionShare: shares?.impressionShare?.weight ? shares.impressionShare.value : undefined,
+      searchBudgetLostShare: shares?.budgetLost?.weight ? shares.budgetLost.value : undefined,
+      searchRankLostShare: shares?.rankLost?.weight ? shares.rankLost.value : undefined,
+      roas7d:
+        c.conversionValue7d != null && c.spend7d != null && c.spend7d > 0
+          ? c.conversionValue7d / c.spend7d
+          : undefined,
+    };
+  });
 
   return { ...base, currency, campaigns };
 }
