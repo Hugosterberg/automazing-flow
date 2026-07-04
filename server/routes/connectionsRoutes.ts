@@ -3,6 +3,7 @@ import { logActivity } from "../lib/activityLog.ts";
 import { recordSyncRun } from "../lib/syncRunLog.ts";
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
 import { probeOAuthConnection } from "../lib/tokenProbe.ts";
+import { connectionTestFeedback } from "../lib/connectionFixHints.ts";
 import { accountInBusinessProfile } from "../lib/profileScope.ts";
 
 /**
@@ -396,7 +397,19 @@ export function registerConnectionsRoutes(
         payload: { health: nextHealth, platform: row.platform },
       });
 
-      return res.json({ ok: true, health: nextHealth });
+      const feedback = connectionTestFeedback({
+        platform: String(row.platform || ""),
+        health: nextHealth,
+        lastSyncError: nextError,
+      });
+
+      return res.json({
+        ok: true,
+        health: nextHealth,
+        message: feedback.message,
+        fix: feedback.fix ?? null,
+        lastSyncError: nextError,
+      });
     }
   );
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckCircle2, Loader2, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, PlugZap, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -25,6 +25,8 @@ import type { Connection } from "@/types/connection";
 import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { statusFromConnection } from "./connectionStatus";
+import { connectionFixHint } from "./connectionFixHints";
+import { CONNECTION_CATALOG } from "@/lib/connectionCatalog";
 import { useSyncRuns, type SyncRunRow } from "./useSyncRuns";
 import { ActivityFeed, useActivityFeed } from "@/features/activity";
 
@@ -33,7 +35,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReconnect?: (connection: Connection) => void;
-  onResync?: (connection: Connection) => void;
+  onResync?: (connection: Connection) => Promise<import("./useConnections").ConnectionTestResult | void>;
   onDisconnect?: (connection: Connection) => void;
   isDisconnecting?: boolean;
 }
@@ -124,6 +126,8 @@ export function ConnectionDetailsDrawer({
   }
 
   const status = statusFromConnection(connection);
+  const catalogEntry = CONNECTION_CATALOG.find((e) => e.platform === connection.platform);
+  const fixHint = connectionFixHint(connection, catalogEntry);
   const connectedAgo = safeRelative(connection.connectedAt);
   const lastSyncAgo = safeRelative(connection.lastSyncedAt);
   const lastOkAgo = safeRelative(effectiveLastOk);
@@ -195,6 +199,11 @@ export function ConnectionDetailsDrawer({
                   </>
                 ) : null}
               </dl>
+              {fixHint && connection.health !== "healthy" ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 leading-relaxed">
+                  {fixHint}
+                </p>
+              ) : null}
             </section>
 
             <section className="space-y-2">
@@ -258,9 +267,10 @@ export function ConnectionDetailsDrawer({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => onResync(connection)}
+              onClick={() => void onResync(connection)}
             >
-              Resync
+              <PlugZap className="h-3.5 w-3.5" />
+              Test connection
             </Button>
           ) : null}
           {onDisconnect ? (

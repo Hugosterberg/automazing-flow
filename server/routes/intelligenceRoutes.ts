@@ -113,11 +113,13 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
     const businessProfileId = readRequestBusinessProfileId(req);
     const probe = String(req.query.probe || "") === "1";
+    const platform = String(req.query.platform || "").trim();
     try {
       const providers = await buildMcpProvidersReadiness({
         tokenStore,
         businessProfileId,
         probe,
+        platforms: platform ? [platform] : undefined,
       });
       return res.json({ providers, fetchedAt: new Date().toISOString() });
     } catch (err) {

@@ -30,11 +30,12 @@ export interface McpProvidersResponse {
 
 export async function fetchMcpProvidersStatus(
   businessProfileId: string | null,
-  options?: { probe?: boolean }
+  options?: { probe?: boolean; platform?: string }
 ): Promise<McpProvidersResponse> {
   const params = new URLSearchParams();
   if (businessProfileId) params.set("business_profile_id", businessProfileId);
   if (options?.probe) params.set("probe", "1");
+  if (options?.platform) params.set("platform", options.platform);
   const res = await fetchWithTimeout(apiUrl(`/api/intelligence/providers?${params}`), {
     credentials: "include",
   });

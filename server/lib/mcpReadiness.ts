@@ -112,12 +112,16 @@ export async function buildMcpProvidersReadiness(options: {
   tokenStore: TokenStoreLike;
   businessProfileId: string | null;
   probe?: boolean;
+  /** When set, only assess these platforms (used by per-provider Test buttons). */
+  platforms?: string[];
 }): Promise<McpProviderReadiness[]> {
-  const { tokenStore, businessProfileId, probe = false } = options;
+  const { tokenStore, businessProfileId, probe = false, platforms } = options;
   const rows = await tokenStore.entries();
   const results: McpProviderReadiness[] = [];
+  const platformFilter = platforms?.length ? new Set(platforms.map((p) => p.trim()).filter(Boolean)) : null;
 
   for (const entry of allMcpCatalogEntries()) {
+    if (platformFilter && !platformFilter.has(entry.platform)) continue;
     let account: StoredMcpAccount | null = null;
     for (const [accountId, stored] of rows) {
       if (!stored || String(stored.platform || "") !== entry.platform) continue;

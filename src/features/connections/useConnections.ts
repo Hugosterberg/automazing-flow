@@ -10,6 +10,14 @@ import { apiErrorMessage } from "@/lib/apiError";
 
 export const CONNECTIONS_KEY = ["connections"] as const;
 
+export interface ConnectionTestResult {
+  ok: boolean;
+  health: string;
+  message?: string;
+  fix?: string | null;
+  lastSyncError?: string | null;
+}
+
 /**
  * Tenant-scoped connections query. Business profile id is part of the query key,
  * so switching profiles naturally invalidates and re-fetches.
@@ -68,7 +76,7 @@ export function useConnections(businessProfileId: string | null | undefined) {
         const body = await res.json().catch(() => ({}));
         throw new Error(apiErrorMessage(body, `Couldn't resync the connection (${res.status}).`));
       }
-      return res.json() as Promise<{ health: string }>;
+      return res.json() as Promise<ConnectionTestResult>;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: CONNECTIONS_KEY });

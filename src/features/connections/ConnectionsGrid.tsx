@@ -11,7 +11,7 @@ interface Props {
   connections: Connection[];
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
-  onResync?: (connectionId: string) => void;
+  onResync?: (connectionId: string) => Promise<import("./useConnections").ConnectionTestResult | void>;
   isResyncing?: boolean;
   resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
