@@ -38,9 +38,12 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
-import { LeadsSection, useLeads, isLeadOpen, type Lead } from "@/features/leads";
+import { LeadsSection, useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
 import { BrandDiscoverySection } from "@/features/brand-discovery";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
+import { SalesActionHub } from "@/features/sales/SalesActionHub";
+import { useMarketingCampaigns } from "@/features/marketing";
+import { formatMoney } from "@/features/marketing/format";
 import { OutreachContentCard, OutreachDraftDialog, type OutreachDraftTarget } from "@/features/outreach";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -290,6 +293,8 @@ export default function SalesMarketingPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [outreachDraftOpen, setOutreachDraftOpen] = useState(false);
   const [outreachDraftTarget, setOutreachDraftTarget] = useState<OutreachDraftTarget | null>(null);
+  const [draftLeadId, setDraftLeadId] = useState<string | null>(null);
+  const { performance, connected: marketingConnected } = useMarketingCampaigns();
 
   // Deep link from the command palette: /sales?new=lead opens the add-lead
   // dialog directly. Param is consumed so refresh doesn't re-open it.
@@ -339,12 +344,87 @@ export default function SalesMarketingPage() {
   }
 
   // KPIs are driven by the real leads pipeline (not pipeline-tagged tasks).
-  const { leads, createLead } = useLeads(businessProfileId);
+  const { leads, createLead, updateLead } = useLeads(businessProfileId);
   const activeLeads = leads.filter((l) => isLeadOpen(l.status)).length;
   const wonLeads = leads.filter((l) => l.status === "won").length;
   const lostLeads = leads.filter((l) => l.status === "lost").length;
   const closedLeads = wonLeads + lostLeads;
   const conversionRate = closedLeads > 0 ? Math.round((wonLeads / closedLeads) * 100) : 0;
+
+  const dueLeadsList = useMemo(() => {
+    const nowMs = Date.now();
+    return leads.filter(
+      (l) =>
+        isLeadOpen(l.status) &&
+        (isFollowUpOverdue(l.nextFollowUpAt, nowMs) || isFollowUpDueToday(l.nextFollowUpAt, nowMs))
+    );
+  }, [leads]);
+
+  function leadToOutreachTarget(lead: Lead): OutreachDraftTarget {
+    return {
+      prospectCompany: lead.company,
+      prospectContact: lead.contactName || undefined,
+      prospectEmail: lead.email || undefined,
+      prospectWebsite: lead.website || undefined,
+      prospectNotes: lead.notes || undefined,
+    };
+  }
+
+  function openOutreachForLead(lead: Lead) {
+    setDraftLeadId(lead.id);
+    setOutreachDraftTarget(leadToOutreachTarget(lead));
+    setOutreachDraftOpen(true);
+  }
+
+  function startDueLeadDrafts() {
+    const lead = dueLeadsList[0];
+    if (!lead) return;
+    openOutreachForLead(lead);
+  }
+
+  async function markLeadContactedAndContinue() {
+    if (draftLeadId) {
+      try {
+        await updateLead({ id: draftLeadId, patch: { status: "contacted" } });
+      } catch {
+        toast.error("Could not update lead status.");
+      }
+    }
+    const idx = draftLeadId ? dueLeadsList.findIndex((l) => l.id === draftLeadId) : -1;
+    const next = idx >= 0 ? dueLeadsList[idx + 1] : null;
+    if (next) {
+      openOutreachForLead(next);
+      toast.message(`Next: ${next.company}`);
+    } else {
+      setOutreachDraftOpen(false);
+      setDraftLeadId(null);
+      setOutreachDraftTarget(null);
+    }
+  }
+
+  function syncGoalsFromShopify() {
+    if (!performance?.revenue && !performance?.orders) {
+      toast.message("Connect Shopify and wait for data on Marketing or E-commerce.");
+      return;
+    }
+    goalsDoc.save(
+      goals.map((g) => {
+        if (g.id === "g2" && performance.revenue != null) {
+          return { ...g, current: Math.round(performance.revenue) };
+        }
+        if (g.id === "g1" && performance.orders != null) {
+          return { ...g, current: performance.orders };
+        }
+        return g;
+      })
+    );
+    toast.success("Goals updated from Shopify (7-day window)");
+  }
+
+  const shopifyRevenueLabel =
+    performance?.revenue != null
+      ? formatMoney(performance.revenue, performance.revenueCurrency)
+      : null;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -371,6 +451,26 @@ export default function SalesMarketingPage() {
         ))}
       </m.div>
 
+      <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
+        <SalesActionHub
+          followUpCount={dueLeadsList.length}
+          activeLeads={activeLeads}
+          pipelineCount={pipelineTasks.length}
+          shopifyConnected={marketingConnected.shopify}
+          shopifyOrders={performance?.orders ?? null}
+          shopifyRevenueLabel={shopifyRevenueLabel}
+          onFollowUps={() => navigate("/sales?view=followups")}
+          onAddLead={() => setPipelineOpen(true)}
+          onDraftDueLeads={startDueLeadDrafts}
+          onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
+          onOpenContent={() => {
+            stashContentCaption("");
+            navigate("/content?tab=create");
+          }}
+          onSyncGoals={syncGoalsFromShopify}
+        />
+      </m.div>
+
       {/* Leads — register + follow up, with AI outreach suggestions */}
       {showFollowUpsOnly ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.038 }}>
@@ -388,7 +488,7 @@ export default function SalesMarketingPage() {
           </Card>
         </m.div>
       ) : null}
-      <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
+      <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
         <LeadsSection
           businessProfileId={businessProfileId}
           context={leadsContext}
@@ -397,12 +497,14 @@ export default function SalesMarketingPage() {
           onAddToPipeline={openPipelineFromLead}
           onDraftOutreach={(target) => {
             setOutreachDraftTarget(target);
+            setDraftLeadId(null);
             setOutreachDraftOpen(true);
           }}
+          onDraftDueLeads={startDueLeadDrafts}
         />
       </m.div>
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.042 }}>
+      <m.div {...pageFadeUp} transition={{ delay: 0.042 }} id="brand-discovery">
         <BrandDiscoverySection
           businessProfileId={businessProfileId}
           {...marketingContext}
@@ -434,7 +536,26 @@ export default function SalesMarketingPage() {
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.043 }}>
-        <SalesPlaybookSection businessProfileId={businessProfileId} {...marketingContext} />
+        <SalesPlaybookSection
+          businessProfileId={businessProfileId}
+          {...marketingContext}
+          onUseForOutreach={(item) => {
+            setDraftLeadId(null);
+            setOutreachDraftTarget({
+              prospectNotes: [item.title, item.body, item.detail].filter(Boolean).join("\n\n"),
+            });
+            setOutreachDraftOpen(true);
+          }}
+          onUseForCampaign={(item) => {
+            stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));
+            navigate("/marketing?new=campaign");
+            toast.success("Idea saved — finish your campaign plan");
+          }}
+          onUseForContent={(item) => {
+            handoffContentIdea([item.title, item.body].filter(Boolean).join("\n\n"));
+          }}
+          onOpenEcommerce={() => navigate("/ecommerce")}
+        />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.044 }}>
@@ -452,10 +573,17 @@ export default function SalesMarketingPage() {
 
       <OutreachDraftDialog
         open={outreachDraftOpen}
-        onOpenChange={setOutreachDraftOpen}
+        onOpenChange={(open) => {
+          setOutreachDraftOpen(open);
+          if (!open) {
+            setDraftLeadId(null);
+            setOutreachDraftTarget(null);
+          }
+        }}
         businessProfileId={businessProfileId}
         sellerContext={marketingContext}
         target={outreachDraftTarget}
+        onMarkContacted={draftLeadId ? () => void markLeadContactedAndContinue() : undefined}
       />
 
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
@@ -512,7 +640,25 @@ export default function SalesMarketingPage() {
                       />
                     ))}
                     {stageTasks.length === 0 && (
-                      <p className="text-[11px] text-muted-foreground/60 text-center pt-4">Empty</p>
+                      <div className="text-center pt-4 space-y-2 px-1">
+                        <p className="text-[11px] text-muted-foreground/60">No deals here yet</p>
+                        <div className="flex flex-col gap-1">
+                          <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPipelineOpen(true)}>
+                            Add deal
+                          </Button>
+                          {stage.status === "open" && activeLeads > 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-[11px]"
+                              onClick={() => document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth" })}
+                            >
+                              From leads
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -525,9 +671,16 @@ export default function SalesMarketingPage() {
 
       {/* Goals */}
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
-        <div className="mb-3">
-          <h2 className="text-sm font-semibold">Goals & KPIs</h2>
-          <p className="text-xs text-muted-foreground">Click "Edit" on a goal to update the current value.</p>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold">Goals & KPIs</h2>
+            <p className="text-xs text-muted-foreground">Click Edit on a goal, or sync from Shopify when connected.</p>
+          </div>
+          {marketingConnected.shopify ? (
+            <Button type="button" size="sm" variant="outline" onClick={syncGoalsFromShopify}>
+              Sync from Shopify
+            </Button>
+          ) : null}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {goals.map((goal) => (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Layers, Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,13 @@ import {
   InventoryAdsAlert,
   CampaignFollowUp,
   MarketingPathsHub,
+  MarketingSetupCard,
+  useMarketingCampaigns,
   type FollowUpCampaign,
 } from "@/features/marketing";
+import { formatRoas } from "@/features/marketing/format";
+import { stashContentCaption } from "@/lib/contentCaptionHandoff";
+import { toast } from "sonner";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
 import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
@@ -116,6 +121,7 @@ function dueAtFromDate(date: string) {
 }
 
 export default function MarketingPage() {
+  const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts } = useAccounts();
@@ -132,6 +138,15 @@ export default function MarketingPage() {
   };
 
   const { tasks, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
+  const { connected, performance } = useMarketingCampaigns();
+
+  const pathStatus = useMemo(() => {
+    const status: Record<string, string> = {};
+    if (connected.shopify) status.ecommerce = "Shopify connected";
+    if (performance?.roas != null) status["paid-ads"] = `ROAS ${formatRoas(performance.roas)}`;
+    if (connected.meta_business || connected.google_ads) status.social = "Ads connected";
+    return status;
+  }, [connected, performance?.roas]);
 
   const campaignTasks = useMemo(
     () => tasks.filter((t) => t.module === "campaign" && t.status !== "archived"),
@@ -282,7 +297,8 @@ export default function MarketingPage() {
       />
 
       <m.div {...pageFadeUp}>
-        <MarketingPathsHub />
+        <MarketingSetupCard />
+        <MarketingPathsHub pathStatus={pathStatus} />
       </m.div>
 
       <m.div {...pageFadeUp} transition={{ delay: 0.02 }} id="marketing-ideas" className="space-y-4">
@@ -293,6 +309,17 @@ export default function MarketingPage() {
           defaultMode="channels"
           title="Marketing ideas"
           description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
+          onUseForCampaign={(item) => {
+            stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));
+            openNewCampaign();
+            toast.success("Idea loaded into new campaign");
+          }}
+          onUseForContent={(item) => {
+            stashContentCaption([item.title, item.body].filter(Boolean).join("\n\n"));
+            navigate("/content?tab=create");
+            toast.success("Idea ready in Content");
+          }}
+          onOpenEcommerce={() => navigate("/ecommerce")}
         />
         <Card className="border-border">
           <CardHeader className="pb-3">
@@ -429,7 +456,14 @@ export default function MarketingPage() {
 
       {activeCampaigns.length > 0 ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.07 }}>
-          <CampaignFollowUp campaigns={activeCampaigns} />
+          <CampaignFollowUp
+            campaigns={activeCampaigns}
+            onUseCampaignCta={(cta, title) => {
+              stashContentCaption(`${title}: ${cta}`);
+              navigate("/content?tab=publish");
+              toast.success("Campaign CTA ready in Content");
+            }}
+          />
         </m.div>
       ) : null}
 

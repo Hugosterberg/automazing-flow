@@ -78,6 +78,10 @@ type SalesPlaybookSectionProps = {
   defaultMode?: SalesPlaybookMode;
   title?: string;
   description?: string;
+  onUseForOutreach?: (item: SalesPlaybookItem) => void;
+  onUseForCampaign?: (item: SalesPlaybookItem) => void;
+  onUseForContent?: (item: SalesPlaybookItem) => void;
+  onOpenEcommerce?: () => void;
 };
 
 function itemText(item: SalesPlaybookItem): string {
@@ -96,6 +100,10 @@ export function SalesPlaybookSection({
   defaultMode,
   title = "Sales & marketing playbook",
   description = "AI ideas to pitch, outreach, handle objections, run campaigns, pick channels and launch promotions.",
+  onUseForOutreach,
+  onUseForCampaign,
+  onUseForContent,
+  onOpenEcommerce,
 }: SalesPlaybookSectionProps) {
   const visibleModes = modes?.length
     ? ALL_PLAYBOOK_MODES.filter((m) => modes.includes(m.id))
@@ -188,8 +196,13 @@ export function SalesPlaybookSection({
               <p className="text-xs text-muted-foreground">{tab.description}</p>
               <PlaybookList
                 items={cache[tab.id] ?? []}
+                mode={tab.id}
                 emptyText={`Click "Generate ideas" for ${tab.label.toLowerCase()} tailored to your business.`}
                 onCopy={copyItem}
+                onUseForOutreach={onUseForOutreach}
+                onUseForCampaign={onUseForCampaign}
+                onUseForContent={onUseForContent}
+                onOpenEcommerce={onOpenEcommerce}
               />
             </TabsContent>
           ))}
@@ -209,12 +222,22 @@ export function SalesPlaybookSection({
 
 function PlaybookList({
   items,
+  mode,
   emptyText,
   onCopy,
+  onUseForOutreach,
+  onUseForCampaign,
+  onUseForContent,
+  onOpenEcommerce,
 }: {
   items: SalesPlaybookItem[];
+  mode: SalesPlaybookMode;
   emptyText: string;
   onCopy: (item: SalesPlaybookItem) => void;
+  onUseForOutreach?: (item: SalesPlaybookItem) => void;
+  onUseForCampaign?: (item: SalesPlaybookItem) => void;
+  onUseForContent?: (item: SalesPlaybookItem) => void;
+  onOpenEcommerce?: () => void;
 }) {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyText}</p>;
@@ -238,10 +261,32 @@ function PlaybookList({
               {item.body ? <p className="text-sm leading-relaxed text-foreground/90">{item.body}</p> : null}
               {item.detail ? <p className="text-xs leading-relaxed text-muted-foreground">{item.detail}</p> : null}
             </div>
-            <Button type="button" size="sm" variant="ghost" className="h-8 shrink-0 px-2" onClick={() => onCopy(item)}>
-              <Copy className="h-3.5 w-3.5" />
-              <span className="sr-only">Copy</span>
-            </Button>
+            <div className="flex flex-wrap gap-1 shrink-0">
+              {mode === "cold-outreach" && onUseForOutreach ? (
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForOutreach(item)}>
+                  Draft outreach
+                </Button>
+              ) : null}
+              {mode === "campaigns" && onUseForCampaign ? (
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForCampaign(item)}>
+                  Plan campaign
+                </Button>
+              ) : null}
+              {(mode === "pitch-angles" || mode === "channels") && onUseForContent ? (
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForContent(item)}>
+                  Use in Content
+                </Button>
+              ) : null}
+              {mode === "promotions" && onOpenEcommerce ? (
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={onOpenEcommerce}>
+                  Store promos
+                </Button>
+              ) : null}
+              <Button type="button" size="sm" variant="ghost" className="h-8 shrink-0 px-2" onClick={() => onCopy(item)}>
+                <Copy className="h-3.5 w-3.5" />
+                <span className="sr-only">Copy</span>
+              </Button>
+            </div>
           </div>
         </li>
       ))}

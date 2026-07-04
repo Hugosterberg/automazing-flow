@@ -49,12 +49,15 @@ export function OutreachDraftDialog({
   businessProfileId,
   sellerContext,
   target,
+  onMarkContacted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessProfileId: string | null;
   sellerContext: Omit<OutreachDraftInput, "business_profile_id" | "channel" | keyof OutreachDraftTarget>;
   target?: OutreachDraftTarget | null;
+  /** Called when user marks the lead as contacted after sending outreach. */
+  onMarkContacted?: () => void;
 }) {
   const [channel, setChannel] = useState<OutreachChannel>("email");
   const [loadingChannels, setLoadingChannels] = useState<Set<OutreachChannel>>(() => new Set());
@@ -258,6 +261,19 @@ export function OutreachDraftDialog({
                       <Button type="button" size="sm" variant="ghost" onClick={() => void generateChannel(tab, { force: true })}>
                         Regenerate
                       </Button>
+                      {onMarkContacted && tab === "email" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            onMarkContacted();
+                            toast.success("Lead marked as contacted");
+                          }}
+                        >
+                          Mark as contacted
+                        </Button>
+                      ) : null}
                     </div>
                   </>
                 ) : null}

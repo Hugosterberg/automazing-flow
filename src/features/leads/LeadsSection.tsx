@@ -84,6 +84,8 @@ interface Props {
   onAddToPipeline?: (lead: Lead) => void;
   /** Opens a shared outreach draft dialog (parent should mount OutreachDraftDialog). */
   onDraftOutreach?: (target: OutreachDraftTarget) => void;
+  /** Start drafting outreach for due follow-ups (parent queues leads). */
+  onDraftDueLeads?: () => void;
 }
 
 function LeadRow({
@@ -209,7 +211,7 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach }: Props) {
+export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach, onDraftDueLeads }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -422,6 +424,12 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
               {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
               Suggest companies
             </Button>
+            {followUpDue > 0 && onDraftDueLeads ? (
+              <Button size="sm" variant="default" onClick={onDraftDueLeads}>
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Draft due ({followUpDue})
+              </Button>
+            ) : null}
             <Button size="sm" onClick={() => setAddOpen(true)} disabled={!businessProfileId}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add lead

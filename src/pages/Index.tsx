@@ -15,6 +15,7 @@ import {
   Star,
   MessageSquare,
   UserPlus,
+  ShoppingBag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
+import { useMarketingCampaigns } from "@/features/marketing";
 
 /**
  * Today tile — one compact stat with a deep-link. Rendered in the home
@@ -189,6 +191,9 @@ export default function Index() {
   const { unreadDms } = useUnreadDmCount();
   const { leads } = useLeads(homeBusinessProfileId);
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(homeBusinessProfileId);
+  const { inventoryAlert } = useMarketingCampaigns();
+  const storeAttentionCount =
+    inventoryAlert != null ? inventoryAlert.lowStock + inventoryAlert.outOfStock : 0;
 
   const leadsToFollowUp = useMemo(() => {
     const nowMs = Date.now();
@@ -432,6 +437,21 @@ export default function Index() {
               hint="Customer feedback waiting"
               icon={Star}
               to="/reviews?filter=needs_reply"
+              tone="warning"
+              onPrefetch={prefetchFor}
+            />
+          ) : null}
+          {mode === "business" && storeAttentionCount > 0 ? (
+            <TodayTile
+              title="Store needs attention"
+              value={storeAttentionCount}
+              hint={
+                inventoryAlert?.outOfStock
+                  ? `${inventoryAlert.outOfStock} out of stock · check ads & inventory`
+                  : "Low stock — pause ads or restock"
+              }
+              icon={ShoppingBag}
+              to="/ecommerce"
               tone="warning"
               onPrefetch={prefetchFor}
             />

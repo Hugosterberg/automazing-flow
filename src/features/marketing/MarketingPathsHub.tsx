@@ -11,7 +11,7 @@ import {
 } from "./marketingPaths";
 import { cn } from "@/lib/utils";
 
-function PathCard({ path }: { path: MarketingPath }) {
+function PathCard({ path, statusLabel }: { path: MarketingPath; statusLabel?: string | null }) {
   const Icon = path.icon;
 
   return (
@@ -27,6 +27,11 @@ function PathCard({ path }: { path: MarketingPath }) {
               <Badge variant="outline" className="mt-1 text-[10px] capitalize">
                 {MARKETING_PATH_KIND_LABELS[path.kind]}
               </Badge>
+              {statusLabel ? (
+                <Badge variant="secondary" className="mt-1 ml-1 text-[10px]">
+                  {statusLabel}
+                </Badge>
+              ) : null}
             </div>
           </div>
         </div>
@@ -64,7 +69,11 @@ function PathCard({ path }: { path: MarketingPath }) {
  * Overview of every way to market the company and its products — grouped by
  * paid, organic, owned and partnership paths with links into the rest of the app.
  */
-export function MarketingPathsHub() {
+export function MarketingPathsHub({
+  pathStatus,
+}: {
+  pathStatus?: Partial<Record<string, string>>;
+}) {
   return (
     <Card className="border-border">
       <CardHeader className="pb-3">
@@ -88,7 +97,7 @@ export function MarketingPathsHub() {
               </div>
               <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3")}>
                 {paths.map((path) => (
-                  <PathCard key={path.id} path={path} />
+                  <PathCard key={path.id} path={path} statusLabel={pathStatus?.[path.id] ?? null} />
                 ))}
               </div>
             </section>

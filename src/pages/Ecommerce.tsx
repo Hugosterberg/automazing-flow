@@ -68,6 +68,8 @@ import type { ConnectedAccount } from "@/types/accounts";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
 import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
+import { AbandonedCheckoutRecoveryButton } from "@/features/ecommerce/AbandonedCheckoutRecoveryButton";
+import { useLeads } from "@/features/leads";
 import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 import { alibabaImportToInput } from "@/lib/productStore";
 import {
@@ -336,6 +338,8 @@ export default function Ecommerce() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
+  const productProfileId = activeBusinessProfileId ?? activeProfileId;
+  const { createLead } = useLeads(productProfileId);
   const selectedAccountId = getSelectedAccountId("ecommerce");
   const [initialOrganizationData] = useState<OrganizationData>(null);
   const {
@@ -495,7 +499,6 @@ export default function Ecommerce() {
   }
 
   // Product catalogue (DB-backed, scoped to the active business profile).
-  const productProfileId = activeBusinessProfileId;
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -1108,15 +1111,35 @@ export default function Ecommerce() {
                       key={customer.id}
                       className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{customer.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {customer.email || `${customer.ordersCount} orders`}
                         </p>
                       </div>
-                      <p className="text-sm font-semibold tabular-nums">
-                        {formatCurrency(customer.totalSpent, customer.currency || currency)}
-                      </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatCurrency(customer.totalSpent, customer.currency || currency)}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            void createLead({
+                              company: customer.name,
+                              contactName: customer.name,
+                              email: customer.email,
+                              source: "shopify-customer",
+                              status: "qualified",
+                              notes: `Lifetime spend: ${formatCurrency(customer.totalSpent, customer.currency || currency)} · ${customer.ordersCount} orders`,
+                            }).then(() => toast.success("Added to leads"));
+                          }}
+                        >
+                          Add lead
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -1164,6 +1187,13 @@ export default function Ecommerce() {
                         <p className="text-sm font-semibold tabular-nums">
                           {formatCurrency(checkout.total, checkout.currency)}
                         </p>
+                        <AbandonedCheckoutRecoveryButton
+                          businessProfileId={productProfileId}
+                          email={checkout.email}
+                          cartTotal={checkout.total}
+                          currency={checkout.currency}
+                          businessName={shopifyData.shop?.name}
+                        />
                         {checkout.recoveryUrl && (
                           <a
                             href={checkout.recoveryUrl}

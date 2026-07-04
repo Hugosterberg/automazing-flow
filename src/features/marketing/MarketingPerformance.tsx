@@ -1,4 +1,6 @@
-import { Gauge, Info, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Gauge, Info, Minus, Plug, TrendingDown, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useMarketingCampaigns, type MarketingPerformance as Performance } from "./useMarketingCampaigns";
@@ -112,16 +114,78 @@ function ChannelMix({ performance: p }: { performance: Performance }) {
 }
 
 export function MarketingPerformance() {
-  const { performance, isLoading } = useMarketingCampaigns();
+  const { performance, connected, isLoading } = useMarketingCampaigns();
 
-  // Render only once there's something to relate. Without ad spend AND without
-  // revenue there's no cross-source metric to show.
-  if (isLoading && !performance) return null;
-  if (!performance) return null;
+  if (isLoading && !performance) {
+    return (
+      <Card className="border-border border-dashed">
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">Loading marketing data…</CardContent>
+      </Card>
+    );
+  }
+
+  if (!performance) {
+    return (
+      <Card className="border-border border-dashed bg-muted/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Gauge className="h-4 w-4 text-primary" />
+            Marknadsföringsresultat
+          </CardTitle>
+          <CardDescription>Connect Shopify and at least one ad platform to see ROAS here.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {!connected.shopify ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/ecommerce">Connect Shopify</Link>
+            </Button>
+          ) : null}
+          {!connected.meta_business && !connected.google_ads ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/connections">Connect ads</Link>
+            </Button>
+          ) : null}
+          <Button asChild size="sm" variant="ghost">
+            <a href="#paid-ads">
+              <Plug className="h-3.5 w-3.5 mr-1.5" />
+              Set up paid ads
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const p = performance;
   const hasAdSpend = p.adSpend != null;
   const hasRevenue = p.revenue != null;
-  if (!hasAdSpend && !hasRevenue) return null;
+  if (!hasAdSpend && !hasRevenue) {
+    return (
+      <Card className="border-border border-dashed bg-muted/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Gauge className="h-4 w-4 text-primary" />
+            Marknadsföringsresultat
+          </CardTitle>
+          <CardDescription>
+            {connected.shopify ? "Shopify connected — waiting for ad spend data." : "Connect Shopify for revenue side of ROAS."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {!connected.shopify ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/ecommerce">Connect Shopify</Link>
+            </Button>
+          ) : null}
+          {!connected.meta_business && !connected.google_ads ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/connections">Connect Meta or Google Ads</Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
 
   const moneySpend = formatMoney(p.adSpend, p.adSpendCurrency);
   const moneyRevenue = formatMoney(p.revenue, p.revenueCurrency);

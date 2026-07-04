@@ -8,6 +8,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { loadSelectedContent, saveSelectedContent, assetSelectionKey, type SelectedContentAsset } from "@/lib/contentSelection";
+import { fetchProducts } from "@/lib/productsApi";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
@@ -255,9 +256,41 @@ export default function ContentPage() {
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((profile) => profile.id === (activeBusinessProfileId ?? activeProfileId));
+  const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId ?? null;
+  const [topProductNames, setTopProductNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!createBusinessProfileId) {
+      setTopProductNames([]);
+      return;
+    }
+    let cancelled = false;
+    fetchProducts(createBusinessProfileId)
+      .then((products) => {
+        if (cancelled) return;
+        setTopProductNames(
+          products
+            .slice(0, 3)
+            .map((p) => p.name)
+            .filter(Boolean),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setTopProductNames([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [createBusinessProfileId]);
+
   const contentIdeasContext = {
     businessName: activeProfile?.name,
-    description: activeProfile?.notes ?? undefined,
+    description: [
+      activeProfile?.notes,
+      topProductNames.length > 0 ? `Top products: ${topProductNames.join(", ")}` : null,
+    ]
+      .filter(Boolean)
+      .join(". ") || undefined,
     audience: activeProfile?.location ? `Customers in ${activeProfile.location}` : undefined,
   };
   const canvaConnected = useMemo(
@@ -411,7 +444,6 @@ export default function ContentPage() {
   const publishMediaUrls = useMemo(() => publishMediaUrlsFromAssets(selectedAssets), [selectedAssets]);
   const [publishCaption, setPublishCaption] = useState("");
   const combinedOauthError = popupOauthError || oauthErrorDetails;
-  const createBusinessProfileId = activeBusinessProfileId ?? activeProfileId;
   const publishBlockedReason = publishBlockReason(publishReadiness);
   const initialCreateMode = useMemo(() => {
     const mode = searchParams.get("mode");

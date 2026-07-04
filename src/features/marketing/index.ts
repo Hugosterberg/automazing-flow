@@ -1,3 +1,4 @@
+export { MarketingSetupCard } from "./MarketingSetupCard";
 export { MarketingCampaigns } from "./MarketingCampaigns";
 export { CampaignFollowUp, type FollowUpCampaign } from "./CampaignFollowUp";
 export { MarketingPerformance } from "./MarketingPerformance";

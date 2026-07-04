@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom";
 import { PackageX } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useMarketingCampaigns } from "./useMarketingCampaigns";
 
 /**
@@ -30,6 +32,14 @@ export function InventoryAdsAlert() {
         <p className="text-[11px] text-muted-foreground/80 mt-1">
           Beräknas: aktiva kampanjer (Meta/Google) × Shopify-produkter med spårat lager på eller under tröskeln.
         </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+            <Link to="/ecommerce">View in E-commerce</Link>
+          </Button>
+          <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+            <Link to="/marketing#paid-ads">Review campaigns</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
-import { CalendarClock, TrendingUp } from "lucide-react";
+import { CalendarClock, Send, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useMarketingCampaigns } from "./useMarketingCampaigns";
@@ -41,7 +42,13 @@ function periodLabel(startDate: string, endDate: string, nowMs: number): { text:
  * blended ad performance (ROAS / spend / revenue) from the connected ad
  * platforms, so an active campaign never runs without a visible result check.
  */
-export function CampaignFollowUp({ campaigns }: { campaigns: FollowUpCampaign[] }) {
+export function CampaignFollowUp({
+  campaigns,
+  onUseCampaignCta,
+}: {
+  campaigns: FollowUpCampaign[];
+  onUseCampaignCta?: (cta: string, campaignTitle: string) => void;
+}) {
   const { performance, connected } = useMarketingCampaigns();
   if (campaigns.length === 0) return null;
 
@@ -108,6 +115,22 @@ export function CampaignFollowUp({ campaigns }: { campaigns: FollowUpCampaign[] 
                 <CalendarClock className="h-3 w-3" aria-hidden />
                 {period.text}
               </span>
+              {onUseCampaignCta &&
+              (campaign.channel.toLowerCase().includes("social") ||
+                campaign.channel.toLowerCase().includes("organisk") ||
+                campaign.channel.toLowerCase().includes("instagram") ||
+                campaign.channel.toLowerCase().includes("facebook")) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs shrink-0"
+                  onClick={() => onUseCampaignCta(campaign.channel, campaign.title)}
+                >
+                  <Send className="h-3 w-3 mr-1" />
+                  Create post
+                </Button>
+              ) : null}
             </div>
           );
         })}
