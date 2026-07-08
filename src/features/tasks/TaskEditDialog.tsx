@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ListChecks, Loader2, MessageSquare, Send } from "lucide-react";
+import { Copy, Link2, ListChecks, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,13 +15,16 @@ import {
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
+import { cn } from "@/lib/utils";
 import {
   getTaskChecklist,
   getTaskComments,
+  TASK_STATUS_LABELS,
   type TaskChecklistItem,
   type TaskComment,
   type TaskPriority,
   type TaskRow,
+  type TaskStatus,
 } from "./tasksService";
 
 export interface TaskEditPatch {
@@ -30,7 +34,16 @@ export interface TaskEditPatch {
   dueAt: string | null;
   checklist: TaskChecklistItem[];
   comments: TaskComment[];
+  /** Only present when the user changed the status in the dialog. */
+  status?: TaskStatus;
 }
+
+const STATUS_OPTIONS: { status: TaskStatus; activeClass: string }[] = [
+  { status: "open", activeClass: "bg-sky-500/15 text-sky-500 shadow-sm" },
+  { status: "in_progress", activeClass: "bg-amber-500/15 text-amber-500 shadow-sm" },
+  { status: "blocked", activeClass: "bg-destructive/15 text-destructive shadow-sm" },
+  { status: "done", activeClass: "bg-emerald-500/15 text-emerald-500 shadow-sm" },
+];
 
 interface Props {
   task: TaskRow | null;
@@ -48,6 +61,25 @@ interface Props {
   ) => Promise<unknown>;
   /** Shown as the author on new comments (e.g. the signed-in email). */
   currentUser?: string | null;
+  /**
+   * Show the status picker. Off by default because the pipeline reuses this
+   * dialog with its own stage names on the cards.
+   */
+  showStatus?: boolean;
+  /**
+   * Hand the task to AI (adds steps + an analysis comment) and return the
+   * updated row so the dialog can refresh its checklist/comments in place —
+   * without clobbering unsaved title/description edits.
+   */
+  onAiAssist?: (task: TaskRow) => Promise<TaskRow | null>;
+  aiBusy?: boolean;
+  /** Create a copy of this task (checklist reset, no comments). */
+  onDuplicate?: (task: TaskRow) => Promise<unknown>;
+  /**
+   * Page path for shareable deep links (e.g. "/tasks"); when set, a
+   * copy-link button puts `<origin><base>?task=<id>` on the clipboard.
+   */
+  shareUrlBase?: string;
 }
 
 function newCommentId(): string {
@@ -63,10 +95,16 @@ export function TaskEditDialog({
   onSave,
   onQuickPatch,
   currentUser,
+  showStatus,
+  onAiAssist,
+  aiBusy,
+  onDuplicate,
+  shareUrlBase,
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [status, setStatus] = useState<TaskStatus>("open");
   const [dueAt, setDueAt] = useState("");
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -79,6 +117,7 @@ export function TaskEditDialog({
     setTitle(task.title);
     setDescription(task.description ?? "");
     setPriority(task.priority);
+    setStatus(task.status);
     setDueAt(task.due_at ? isoToLocalDateInputValue(task.due_at) : "");
     setChecklist(getTaskChecklist(task));
     setComments(getTaskComments(task));
@@ -135,6 +174,16 @@ export function TaskEditDialog({
     }
   }
 
+  async function handleAiClick() {
+    if (!task || !onAiAssist) return;
+    const updated = await onAiAssist(task);
+    // Refresh only the lists AI touched; keep in-progress field edits.
+    if (updated) {
+      setChecklist(getTaskChecklist(updated));
+      setComments(getTaskComments(updated));
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!task) return;
@@ -153,6 +202,7 @@ export function TaskEditDialog({
         dueAt: dueAt ? dateInputToEndOfDayIso(dueAt) : null,
         checklist,
         comments,
+        ...(status !== task.status ? { status } : {}),
       });
       onOpenChange(false);
     } catch (err) {
@@ -168,9 +218,73 @@ export function TaskEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Task details</DialogTitle>
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span className="flex items-center gap-1.5">
+              Task details
+              {shareUrlBase && task ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}${shareUrlBase}?task=${task.id}`;
+                    void navigator.clipboard
+                      .writeText(url)
+                      .then(() => toast.success("Link copied."))
+                      .catch(() => toast.error("Could not copy the link."));
+                  }}
+                  aria-label="Copy link to this task"
+                  title="Copy link to this task"
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </span>
+            {onAiAssist ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs text-violet-500 hover:text-violet-400"
+                onClick={() => void handleAiClick()}
+                disabled={saving || aiBusy}
+              >
+                {aiBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {aiBusy ? "Analyzing…" : "Prepare with AI"}
+              </Button>
+            ) : null}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          {showStatus ? (
+            <div
+              role="radiogroup"
+              aria-label="Status"
+              className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <button
+                  key={option.status}
+                  type="button"
+                  role="radio"
+                  aria-checked={status === option.status}
+                  disabled={saving}
+                  onClick={() => setStatus(option.status)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+                    status === option.status
+                      ? option.activeClass
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {option.status === "open" ? "To-do" : TASK_STATUS_LABELS[option.status]}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-title" className="text-xs">
               Title
@@ -232,18 +346,29 @@ export function TaskEditDialog({
             </Label>
             {comments.length > 0 ? (
               <ul className="space-y-1.5">
-                {comments.map((c) => (
-                  <li
-                    key={c.id}
-                    className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2"
-                  >
-                    <p className="whitespace-pre-wrap break-words text-xs">{c.text}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {c.author ? `${c.author} · ` : ""}
-                      {formatRelativeTime(c.createdAt) ?? c.createdAt.slice(0, 16)}
-                    </p>
-                  </li>
-                ))}
+                {comments.map((c) => {
+                  const isAi = c.author === "AI";
+                  return (
+                    <li
+                      key={c.id}
+                      className={cn(
+                        "rounded-md border px-2.5 py-2",
+                        isAi
+                          ? "border-violet-500/30 bg-violet-500/5"
+                          : "border-border/60 bg-muted/30"
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap break-words text-xs">{c.text}</p>
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {isAi ? (
+                          <Sparkles className="h-3 w-3 text-violet-500" aria-hidden />
+                        ) : null}
+                        {c.author ? `${c.author} · ` : ""}
+                        {formatRelativeTime(c.createdAt) ?? c.createdAt.slice(0, 16)}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
             <div className="flex items-end gap-1.5">
@@ -271,7 +396,25 @@ export function TaskEditDialog({
           </div>
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {task?.created_at ? (
+            <p className="text-[11px] text-muted-foreground">
+              Created {formatRelativeTime(task.created_at) ?? task.created_at.slice(0, 10)}
+            </p>
+          ) : null}
           <DialogFooter>
+            {onDuplicate && task ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mr-auto gap-1.5 px-2 text-xs text-muted-foreground"
+                onClick={() => void onDuplicate(task)}
+                disabled={saving}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Duplicate
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"

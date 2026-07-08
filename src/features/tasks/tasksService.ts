@@ -21,6 +21,16 @@ export interface TaskComment {
 }
 
 /**
+ * Marker that AI has analyzed/prepared this task, stored in `metadata.ai`.
+ * The actual output lives where humans work with it (checklist items and an
+ * AI comment) — this only powers the badge and "already enriched" checks.
+ */
+export interface TaskAiState {
+  enrichedAt: string;
+  source: "ai" | "heuristic";
+}
+
+/**
  * Input shape for creating a new task from the UI. We keep it narrower than
  * the raw Insert type on purpose — tenants, actor, and timestamps are
  * derived inside the service, never accepted from untrusted callers.
@@ -35,6 +45,7 @@ export interface TaskInput {
   module?: string | null;
   checklist?: TaskChecklistItem[];
   comments?: TaskComment[];
+  ai?: TaskAiState | null;
 }
 
 export const TASK_STATUS_ORDER: TaskStatus[] = [
@@ -113,19 +124,29 @@ export function getTaskComments(task: Pick<TaskRow, "metadata">): TaskComment[] 
   return comments;
 }
 
-function buildMetadata(
-  checklist: TaskChecklistItem[],
-  comments: TaskComment[]
-): Json {
-  return {
-    checklist: checklist.map((i) => ({ id: i.id, text: i.text.trim(), done: i.done })),
-    comments: comments.map((c) => ({
-      id: c.id,
-      text: c.text.trim(),
-      createdAt: c.createdAt,
-      author: c.author ?? null,
-    })),
-  };
+export function getTaskAi(task: Pick<TaskRow, "metadata">): TaskAiState | null {
+  const raw = metadataRecord(task.metadata).ai;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const { enrichedAt, source } = raw as Record<string, Json | undefined>;
+  if (typeof enrichedAt !== "string") return null;
+  return { enrichedAt, source: source === "heuristic" ? "heuristic" : "ai" };
+}
+
+function serializeChecklist(items: TaskChecklistItem[]): Json {
+  return items.map((i) => ({ id: i.id, text: i.text.trim(), done: i.done }));
+}
+
+function serializeComments(comments: TaskComment[]): Json {
+  return comments.map((c) => ({
+    id: c.id,
+    text: c.text.trim(),
+    createdAt: c.createdAt,
+    author: c.author ?? null,
+  }));
+}
+
+function serializeAi(ai: TaskAiState | null): Json {
+  return ai ? { enrichedAt: ai.enrichedAt, source: ai.source } : null;
 }
 
 export async function listTasks(
@@ -157,8 +178,12 @@ export async function createTask(
     due_at: input.dueAt ?? null,
     module: input.module ?? null,
   };
-  if (input.checklist?.length || input.comments?.length) {
-    row.metadata = buildMetadata(input.checklist ?? [], input.comments ?? []);
+  if (input.checklist?.length || input.comments?.length || input.ai) {
+    row.metadata = {
+      checklist: serializeChecklist(input.checklist ?? []),
+      comments: serializeComments(input.comments ?? []),
+      ai: serializeAi(input.ai ?? null),
+    };
   }
   const { data, error } = await supabase
     .from("tasks")
@@ -183,11 +208,23 @@ export async function updateTask(
   if (patch.dueAt !== undefined) row.due_at = patch.dueAt;
   if (patch.module !== undefined) row.module = patch.module;
   if (patch.completedAt !== undefined) row.completed_at = patch.completedAt;
-  // Metadata is replaced as a whole, so callers touching either list must
-  // send BOTH (use getTaskChecklist/getTaskComments on the current row for
-  // the untouched one) or the other list would be wiped.
-  if (patch.checklist !== undefined || patch.comments !== undefined) {
-    row.metadata = buildMetadata(patch.checklist ?? [], patch.comments ?? []);
+  // Metadata keys merge read-modify-write style: patching just the checklist
+  // leaves comments and the AI marker untouched. Costs one extra read, but
+  // removes the "partial patch wipes the other lists" foot-gun.
+  if (patch.checklist !== undefined || patch.comments !== undefined || patch.ai !== undefined) {
+    const { data: current, error: readError } = await supabase
+      .from("tasks")
+      .select("metadata")
+      .eq("id", id)
+      .single();
+    if (readError) throw readError;
+    const base = metadataRecord(current?.metadata ?? null);
+    row.metadata = {
+      ...base,
+      ...(patch.checklist !== undefined ? { checklist: serializeChecklist(patch.checklist) } : {}),
+      ...(patch.comments !== undefined ? { comments: serializeComments(patch.comments) } : {}),
+      ...(patch.ai !== undefined ? { ai: serializeAi(patch.ai) } : {}),
+    };
   }
 
   const { data, error } = await supabase

@@ -1,12 +1,12 @@
 import { useMemo, useState, type DragEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, CheckCircle2, Clock3, Loader2, MessageSquare, PlayCircle, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/relativeTime";
 import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
+  getTaskAi,
   getTaskChecklist,
   getTaskComments,
   TASK_PRIORITY_LABELS,
@@ -35,6 +35,12 @@ interface Props {
   onEdit?: (task: TaskRow) => void;
   /** Tick/untick a checklist item straight from the card. */
   onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
+  /** Hand the task to AI: it adds steps, research and a draft to the task. */
+  onAiAssist?: (task: TaskRow) => void;
+  /** Task id currently being AI-analyzed (shows a spinner on that card). */
+  aiBusyTaskId?: string | null;
+  /** "Clear done": archive every task currently in the Done lane. */
+  onArchiveDone?: () => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }
@@ -80,11 +86,6 @@ function columnForTask(task: TaskRow): BoardStatus | null {
   return "open";
 }
 
-function safeRelative(iso: string | null): string | null {
-  if (!iso) return null;
-  return formatRelativeTime(iso) ?? iso.slice(0, 19);
-}
-
 function formatDueDate(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
@@ -100,6 +101,8 @@ function TaskCard({
   onDelete,
   onEdit,
   onToggleChecklistItem,
+  onAiAssist,
+  aiBusy,
   isMutating,
   isDeleting,
 }: {
@@ -108,17 +111,28 @@ function TaskCard({
   onDelete: (id: string) => void;
   onEdit?: (task: TaskRow) => void;
   onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
+  onAiAssist?: (task: TaskRow) => void;
+  aiBusy?: boolean;
   isMutating?: boolean;
   isDeleting?: boolean;
 }) {
   const overdue = isTaskOverdue(task);
-  const createdAgo = safeRelative(task.created_at);
   const dueDate = formatDueDate(task.due_at);
   const completed = task.status === "done";
   const checklist = getTaskChecklist(task);
   const doneCount = checklist.filter((item) => item.done).length;
   const commentCount = getTaskComments(task).length;
   const visibleChecklist = checklist.slice(0, CARD_CHECKLIST_LIMIT);
+  const aiState = getTaskAi(task);
+  const checklistPct = checklist.length > 0 ? Math.round((doneCount / checklist.length) * 100) : 0;
+
+  // One contextual advance action instead of every possible move — drag or
+  // the dialog's status picker covers the rest.
+  const advance: { label: string; status: TaskStatus } = completed
+    ? { label: "Reopen", status: "open" }
+    : task.status === "in_progress"
+      ? { label: "Done", status: "done" }
+      : { label: "Start", status: "in_progress" };
 
   return (
     <article
@@ -130,189 +144,171 @@ function TaskCard({
       }}
       onClick={() => onEdit?.(task)}
       className={cn(
-        "group rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
+        "group space-y-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
         onEdit && "cursor-pointer",
+        overdue && "border-destructive/40",
         completed && "bg-muted/40"
       )}
     >
-      <div className="flex items-start gap-2">
-        <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-muted-foreground" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h3
-                className={cn(
-                  "text-sm font-semibold leading-snug break-words",
-                  completed && "text-muted-foreground line-through"
-                )}
-              >
-                {task.title}
-              </h3>
-              {task.status === "blocked" ? (
-                <Badge variant="outline" className="border-destructive/50 text-[10px] uppercase text-destructive">
-                  {TASK_STATUS_LABELS.blocked}
-                </Badge>
-              ) : null}
-            </div>
-            {task.description ? (
-              <p className="line-clamp-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
-                {task.description}
-              </p>
-            ) : null}
-          </div>
-
-          {visibleChecklist.length > 0 ? (
-            <ul className="space-y-1">
-              {visibleChecklist.map((item) => (
-                <li key={item.id} className="flex items-center gap-1.5">
-                  <Checkbox
-                    checked={item.done}
-                    onCheckedChange={(v) =>
-                      onToggleChecklistItem?.(task, item.id, Boolean(v))
-                    }
-                    onClick={(e) => e.stopPropagation()}
-                    disabled={isMutating || !onToggleChecklistItem}
-                    aria-label={item.done ? "Mark as not done" : "Mark as done"}
-                    className="h-3.5 w-3.5"
-                  />
-                  <span
-                    className={cn(
-                      "min-w-0 flex-1 truncate text-xs",
-                      item.done && "text-muted-foreground line-through"
-                    )}
-                  >
-                    {item.text}
-                  </span>
-                </li>
-              ))}
-              {checklist.length > CARD_CHECKLIST_LIMIT ? (
-                <li className="text-[11px] text-muted-foreground">
-                  +{checklist.length - CARD_CHECKLIST_LIMIT} more
-                </li>
-              ) : null}
-            </ul>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
-              {TASK_PRIORITY_LABELS[task.priority]}
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <h3
+            className={cn(
+              "text-sm font-semibold leading-snug break-words",
+              completed && "text-muted-foreground line-through"
+            )}
+          >
+            {task.title}
+          </h3>
+          {task.status === "blocked" ? (
+            <Badge variant="outline" className="border-destructive/50 text-[10px] uppercase text-destructive">
+              {TASK_STATUS_LABELS.blocked}
             </Badge>
-            {checklist.length > 0 ? (
-              <Badge variant="outline" className="gap-1 border-border text-[10px] uppercase tracking-wide text-muted-foreground">
-                <ListChecks className="h-3 w-3" />
-                {doneCount}/{checklist.length}
-              </Badge>
-            ) : null}
-            {commentCount > 0 ? (
-              <Badge variant="outline" className="gap-1 border-border text-[10px] uppercase tracking-wide text-muted-foreground">
-                <MessageSquare className="h-3 w-3" />
-                {commentCount}
-              </Badge>
-            ) : null}
-            {dueDate ? (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "gap-1 text-[10px] uppercase tracking-wide",
-                  overdue ? "border-destructive/50 text-destructive" : "border-border text-muted-foreground"
-                )}
-              >
-                <CalendarDays className="h-3 w-3" />
-                {overdue ? "Overdue " : "Due "}
-                {dueDate}
-              </Badge>
-            ) : null}
-          </div>
+          ) : null}
+        </div>
+        {task.description ? (
+          <p className="line-clamp-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+            {task.description}
+          </p>
+        ) : null}
+      </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <p className="text-[11px] tabular-nums text-muted-foreground">
-              {createdAgo ? `Created ${createdAgo}` : "Created"}
-            </p>
-            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-              {onEdit ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(task);
-                  }}
-                  disabled={isMutating}
-                  aria-label="Edit task"
+      {checklist.length > 0 ? (
+        <div className="space-y-1.5">
+          <ul className="space-y-1">
+            {visibleChecklist.map((item) => (
+              <li key={item.id} className="flex items-center gap-1.5">
+                <Checkbox
+                  checked={item.done}
+                  onCheckedChange={(v) =>
+                    onToggleChecklistItem?.(task, item.id, Boolean(v))
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={isMutating || !onToggleChecklistItem}
+                  aria-label={item.done ? "Mark as not done" : "Mark as done"}
+                  className="h-3.5 w-3.5"
+                />
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-xs",
+                    item.done && "text-muted-foreground line-through"
+                  )}
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              ) : null}
-              {task.status !== "open" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSetStatus(task.id, "open");
-                  }}
-                  disabled={isMutating}
-                >
-                  To-do
-                </Button>
-              ) : null}
-              {task.status !== "in_progress" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSetStatus(task.id, "in_progress");
-                  }}
-                  disabled={isMutating}
-                >
-                  Start
-                </Button>
-              ) : null}
-              {task.status !== "done" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSetStatus(task.id, "done");
-                  }}
-                  disabled={isMutating}
-                >
-                  Done
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                disabled={isDeleting}
-                aria-label="Delete task"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+                  {item.text}
+                </span>
+              </li>
+            ))}
+            {checklist.length > CARD_CHECKLIST_LIMIT ? (
+              <li className="text-[11px] text-muted-foreground">
+                +{checklist.length - CARD_CHECKLIST_LIMIT} more
+              </li>
+            ) : null}
+          </ul>
+          <div className="flex items-center gap-2">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  checklistPct === 100 ? "bg-emerald-500" : "bg-primary/60"
+                )}
+                style={{ width: `${checklistPct}%` }}
+              />
             </div>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {doneCount}/{checklist.length}
+            </span>
           </div>
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
+            {TASK_PRIORITY_LABELS[task.priority]}
+          </Badge>
+          {aiState ? (
+            <Badge variant="outline" className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500">
+              <Sparkles className="h-3 w-3" />
+              AI
+            </Badge>
+          ) : null}
+          {dueDate ? (
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1 text-[10px] uppercase tracking-wide",
+                overdue ? "border-destructive/50 text-destructive" : "border-border text-muted-foreground"
+              )}
+            >
+              <CalendarDays className="h-3 w-3" />
+              {overdue ? "Overdue " : ""}
+              {dueDate}
+            </Badge>
+          ) : null}
+          {commentCount > 0 ? (
+            <span className="flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />
+              {commentCount}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          {onAiAssist && !completed ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-violet-500 hover:text-violet-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAiAssist(task);
+              }}
+              disabled={isMutating || aiBusy}
+              aria-label="Prepare task with AI"
+              title="Prepare task with AI"
+            >
+              {aiBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-[11px]"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSetStatus(task.id, advance.status);
+            }}
+            disabled={isMutating}
+          >
+            {advance.label}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task.id);
+            }}
+            disabled={isDeleting}
+            aria-label="Delete task"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
     </article>
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -387,9 +383,25 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                   <p className="text-xs text-muted-foreground">{column.description}</p>
                 </div>
               </div>
-              <Badge variant="secondary" className="tabular-nums">
-                {columnTasks.length}
-              </Badge>
+              <div className="flex items-center gap-1">
+                {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                    onClick={onArchiveDone}
+                    disabled={isMutating}
+                    title="Move all done tasks to the archive"
+                  >
+                    <Archive className="h-3 w-3" />
+                    Archive all
+                  </Button>
+                ) : null}
+                <Badge variant="secondary" className="tabular-nums">
+                  {columnTasks.length}
+                </Badge>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -406,6 +418,8 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onToggleChecklistItem={onToggleChecklistItem}
+                    onAiAssist={onAiAssist}
+                    aiBusy={aiBusyTaskId === task.id}
                     isMutating={isMutating}
                     isDeleting={isDeleting}
                   />

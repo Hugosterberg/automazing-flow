@@ -52,6 +52,7 @@ import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
 import { registerProductRoutes } from "./routes/productRoutes.ts";
 import { registerMarketingRoutes } from "./routes/marketingRoutes.ts";
 import { registerSalesRoutes } from "./routes/salesRoutes.ts";
+import { registerTaskRoutes } from "./routes/tasksRoutes.ts";
 import { registerDiagnosticsRoute } from "./routes/diagnosticsRoute.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -577,6 +578,12 @@ registerMarketingRoutes(app, {
 
 registerSalesRoutes(app, {
   getSessionUserId,
+  secretResolver,
+});
+
+registerTaskRoutes(app, {
+  getSessionUserId,
+  requireMembership,
   secretResolver,
 });
 
