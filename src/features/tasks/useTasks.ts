@@ -70,7 +70,7 @@ export function useTasks(businessProfileId: string | null | undefined) {
       patch,
     }: {
       id: string;
-      patch: Partial<TaskInput>;
+      patch: Partial<TaskInput> & { completedAt?: string | null };
     }) => {
       if (!supabase || !enabled) throw new Error("Not signed in.");
       return updateTask(supabase, id, patch);

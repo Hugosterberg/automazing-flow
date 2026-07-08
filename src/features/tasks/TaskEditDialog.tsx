@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ListChecks, Loader2, MessageSquare, Send } from "lucide-react";
+import { ListChecks, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,13 +14,16 @@ import {
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
+import { cn } from "@/lib/utils";
 import {
   getTaskChecklist,
   getTaskComments,
+  TASK_STATUS_LABELS,
   type TaskChecklistItem,
   type TaskComment,
   type TaskPriority,
   type TaskRow,
+  type TaskStatus,
 } from "./tasksService";
 
 export interface TaskEditPatch {
@@ -30,7 +33,16 @@ export interface TaskEditPatch {
   dueAt: string | null;
   checklist: TaskChecklistItem[];
   comments: TaskComment[];
+  /** Only present when the user changed the status in the dialog. */
+  status?: TaskStatus;
 }
+
+const STATUS_OPTIONS: { status: TaskStatus; activeClass: string }[] = [
+  { status: "open", activeClass: "bg-sky-500/15 text-sky-500 shadow-sm" },
+  { status: "in_progress", activeClass: "bg-amber-500/15 text-amber-500 shadow-sm" },
+  { status: "blocked", activeClass: "bg-destructive/15 text-destructive shadow-sm" },
+  { status: "done", activeClass: "bg-emerald-500/15 text-emerald-500 shadow-sm" },
+];
 
 interface Props {
   task: TaskRow | null;
@@ -48,6 +60,18 @@ interface Props {
   ) => Promise<unknown>;
   /** Shown as the author on new comments (e.g. the signed-in email). */
   currentUser?: string | null;
+  /**
+   * Show the status picker. Off by default because the pipeline reuses this
+   * dialog with its own stage names on the cards.
+   */
+  showStatus?: boolean;
+  /**
+   * Hand the task to AI (adds steps + an analysis comment) and return the
+   * updated row so the dialog can refresh its checklist/comments in place —
+   * without clobbering unsaved title/description edits.
+   */
+  onAiAssist?: (task: TaskRow) => Promise<TaskRow | null>;
+  aiBusy?: boolean;
 }
 
 function newCommentId(): string {
@@ -63,10 +87,14 @@ export function TaskEditDialog({
   onSave,
   onQuickPatch,
   currentUser,
+  showStatus,
+  onAiAssist,
+  aiBusy,
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [status, setStatus] = useState<TaskStatus>("open");
   const [dueAt, setDueAt] = useState("");
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -79,6 +107,7 @@ export function TaskEditDialog({
     setTitle(task.title);
     setDescription(task.description ?? "");
     setPriority(task.priority);
+    setStatus(task.status);
     setDueAt(task.due_at ? isoToLocalDateInputValue(task.due_at) : "");
     setChecklist(getTaskChecklist(task));
     setComments(getTaskComments(task));
@@ -135,6 +164,16 @@ export function TaskEditDialog({
     }
   }
 
+  async function handleAiClick() {
+    if (!task || !onAiAssist) return;
+    const updated = await onAiAssist(task);
+    // Refresh only the lists AI touched; keep in-progress field edits.
+    if (updated) {
+      setChecklist(getTaskChecklist(updated));
+      setComments(getTaskComments(updated));
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!task) return;
@@ -153,6 +192,7 @@ export function TaskEditDialog({
         dueAt: dueAt ? dateInputToEndOfDayIso(dueAt) : null,
         checklist,
         comments,
+        ...(status !== task.status ? { status } : {}),
       });
       onOpenChange(false);
     } catch (err) {
@@ -168,9 +208,54 @@ export function TaskEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Task details</DialogTitle>
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            Task details
+            {onAiAssist ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs text-violet-500 hover:text-violet-400"
+                onClick={() => void handleAiClick()}
+                disabled={saving || aiBusy}
+              >
+                {aiBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {aiBusy ? "Analyzing…" : "Prepare with AI"}
+              </Button>
+            ) : null}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          {showStatus ? (
+            <div
+              role="radiogroup"
+              aria-label="Status"
+              className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <button
+                  key={option.status}
+                  type="button"
+                  role="radio"
+                  aria-checked={status === option.status}
+                  disabled={saving}
+                  onClick={() => setStatus(option.status)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+                    status === option.status
+                      ? option.activeClass
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {option.status === "open" ? "To-do" : TASK_STATUS_LABELS[option.status]}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-title" className="text-xs">
               Title

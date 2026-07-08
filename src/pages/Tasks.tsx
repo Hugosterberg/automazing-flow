@@ -136,7 +136,18 @@ export default function TasksPage() {
 
   async function handleSaveEdit(id: string, patch: TaskEditPatch) {
     try {
-      await updateTask({ id, patch });
+      const { status, ...rest } = patch;
+      await updateTask({
+        id,
+        patch: {
+          ...rest,
+          // Status changes keep completed_at in sync, same as the board's
+          // drag/button flow does via setTaskStatus.
+          ...(status !== undefined
+            ? { status, completedAt: status === "done" ? new Date().toISOString() : null }
+            : {}),
+        },
+      });
       toast.success("Task updated.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save task.");
@@ -170,10 +181,13 @@ export default function TasksPage() {
    * where the work happens — new checklist steps, plus an AI comment holding
    * the summary, research notes, draft and open questions.
    */
-  async function handleAiAssist(task: TaskRow) {
-    if (aiTaskId) return;
-    setAiTaskId(task.id);
+  async function handleAiAssist(taskRef: TaskRow): Promise<TaskRow | null> {
+    if (aiTaskId) return null;
+    setAiTaskId(taskRef.id);
     try {
+      // The dialog's row can be stale (quick patches persist without
+      // re-seeding it) — prefer the latest row from the query cache.
+      const task = tasks.find((t) => t.id === taskRef.id) ?? taskRef;
       const existingChecklist = getTaskChecklist(task);
       const existingComments = getTaskComments(task);
       const { result, source } = await fetchTaskAssist({
@@ -193,7 +207,7 @@ export default function TasksPage() {
       const newSteps = result.steps.filter((s) => !known.has(s.trim().toLowerCase()));
       const commentText = composeAiComment(result);
 
-      await updateTask({
+      const updated = await updateTask({
         id: task.id,
         patch: {
           checklist: [...existingChecklist, ...newSteps.map(newChecklistItem)],
@@ -218,8 +232,10 @@ export default function TasksPage() {
           ? `AI prepared the task: ${newSteps.length} step${newSteps.length === 1 ? "" : "s"} + analysis added.`
           : "Added a basic plan. Connect an OpenAI key in Settings for full AI analysis."
       );
+      return updated;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "AI could not analyze the task.");
+      return null;
     } finally {
       setAiTaskId(null);
     }
@@ -361,6 +377,9 @@ export default function TasksPage() {
         onSave={handleSaveEdit}
         onQuickPatch={handleQuickPatch}
         currentUser={user?.email ?? null}
+        showStatus
+        onAiAssist={handleAiAssist}
+        aiBusy={aiTaskId !== null && aiTaskId === editTask?.id}
       />
     </div>
   );

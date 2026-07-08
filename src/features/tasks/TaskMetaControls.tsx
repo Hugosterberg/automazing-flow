@@ -91,6 +91,13 @@ function parseDateInputValue(value: string): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+function dateInputValueFromToday(daysAhead: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysAhead);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function formatDueLabel(date: Date): string {
   const sameYear = date.getFullYear() === new Date().getFullYear();
   return date.toLocaleDateString("sv-SE", {
@@ -143,26 +150,33 @@ export function DueDatePicker({
             setOpen(false);
           }}
         />
-        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <div className="flex items-center gap-1 border-t border-border px-2 py-2">
+          {(
+            [
+              ["Today", 0],
+              ["Tomorrow", 1],
+              ["Next week", 7],
+            ] as const
+          ).map(([label, days]) => (
+            <Button
+              key={label}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => {
+                onChange(dateInputValueFromToday(days));
+                setOpen(false);
+              }}
+            >
+              {label}
+            </Button>
+          ))}
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => {
-              const now = new Date();
-              const pad = (n: number) => String(n).padStart(2, "0");
-              onChange(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
-              setOpen(false);
-            }}
-          >
-            Today
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs text-muted-foreground"
+            className="ml-auto h-7 px-2 text-xs text-muted-foreground"
             disabled={!value}
             onClick={() => {
               onChange("");
