@@ -2,20 +2,24 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { segmentLinks, splitEmailBody } from "./messageBodyFormat";
+import { segmentLinks, splitEmailBody, splitEmailParagraphs } from "./messageBodyFormat";
 import type { UnifiedMessage } from "./types";
 
 function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
-  const paragraphs = text.split(/\n{2,}/).filter((p) => p.trim());
+  const paragraphs = splitEmailParagraphs(text);
+  if (paragraphs.length === 0) {
+    return null;
+  }
+
   return (
-    <div className={cn("space-y-3", quoted && "text-muted-foreground/80")}>
+    <div className={cn("space-y-4 text-left", quoted && "text-muted-foreground/80")}>
       {paragraphs.map((paragraph, pi) => {
         const segments = segmentLinks(paragraph);
         return (
           <p
             key={pi}
             className={cn(
-              "whitespace-pre-wrap break-words text-[15px] leading-relaxed",
+              "text-[15px] leading-[1.65] text-left",
               quoted ? "text-muted-foreground/80" : "text-foreground"
             )}
           >
@@ -26,12 +30,15 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
                   href={seg.href}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+                  title={seg.href}
+                  className="inline-block max-w-full break-all font-medium text-primary underline underline-offset-2 hover:text-primary/80"
                 >
                   {seg.label}
                 </a>
               ) : (
-                <span key={i}>{seg.value}</span>
+                <span key={i} className="break-words">
+                  {seg.value}
+                </span>
               )
             )}
           </p>
@@ -55,10 +62,10 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
   if (message.kind === "email") {
     const { main, quoted } = splitEmailBody(raw);
     return (
-      <div className="space-y-4">
+      <article className="message-prose w-full text-left">
         <FormattedBlock text={main || raw} />
         {quoted ? (
-          <div className="rounded-lg border border-border/60 bg-muted/20">
+          <div className="mt-6 rounded-lg border border-border/60 bg-muted/20">
             <Button
               type="button"
               variant="ghost"
@@ -77,9 +84,13 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
             ) : null}
           </div>
         ) : null}
-      </div>
+      </article>
     );
   }
 
-  return <FormattedBlock text={raw} />;
+  return (
+    <article className="message-prose w-full text-left">
+      <FormattedBlock text={raw} />
+    </article>
+  );
 }

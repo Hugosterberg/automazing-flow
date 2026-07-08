@@ -142,9 +142,9 @@ export function MessageWorkspace({
       </div>
 
       <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
-        <ResizablePanel defaultSize={36} minSize={26} maxSize={48} className="min-h-0">
+        <ResizablePanel defaultSize={36} minSize={26} maxSize={48} className="min-h-0 min-w-0">
           <InboxPane
-            className="flex h-full min-h-0 flex-col"
+            className="flex h-full min-h-0 flex-col overflow-hidden"
             filteredMessages={filteredMessages}
             selectedId={selectedId}
             loading={loading}
@@ -158,9 +158,9 @@ export function MessageWorkspace({
             onMarkHandled={onMarkHandled}
           />
         </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={64} minSize={42} className="min-h-0">
-          <section className="flex h-full min-h-0 flex-col bg-background">
+        <ResizableHandle withHandle className="bg-border/60" />
+        <ResizablePanel defaultSize={64} minSize={42} className="min-h-0 min-w-0">
+          <section className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
             <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
           </section>
         </ResizablePanel>

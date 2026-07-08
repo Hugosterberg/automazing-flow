@@ -100,6 +100,84 @@ function encodeBase64Url(value: string): string {
     .replace(/=+$/g, "");
 }
 
+function decodeBase64Url(value: string | undefined): string {
+  if (!value) return "";
+  try {
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return Buffer.from(padded, "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+}
+
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function extractGmailBody(payload?: GmailMessage["payload"]): string {
+  if (!payload) return "";
+
+  function readPart(part: { mimeType?: string; body?: { data?: string }; parts?: Array<{ mimeType?: string; body?: { data?: string } }> }): {
+    plain: string;
+    html: string;
+  } {
+    let plain = "";
+    let html = "";
+    const mime = String(part.mimeType || "").toLowerCase();
+    const decoded = decodeBase64Url(part.body?.data);
+    if (mime.startsWith("text/plain") && decoded.trim()) plain = decoded;
+    if (mime.startsWith("text/html") && decoded.trim()) html = decoded;
+    for (const nested of part.parts ?? []) {
+      const child = readPart(nested);
+      if (!plain && child.plain) plain = child.plain;
+      if (!html && child.html) html = child.html;
+    }
+    return { plain, html };
+  }
+
+  const direct = decodeBase64Url(payload.body?.data);
+  if (direct.trim()) return direct;
+
+  let plain = "";
+  let html = "";
+  for (const part of payload.parts ?? []) {
+    const chunk = readPart(part);
+    if (!plain && chunk.plain) plain = chunk.plain;
+    if (!html && chunk.html) html = chunk.html;
+  }
+  if (plain.trim()) return plain;
+  if (html.trim()) return stripHtmlToText(html);
+  return "";
+}
+
+function getGmailHeader(headers: GmailHeader[] | undefined, name: string): string {
+  return (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+}
+
+function parseGmailSender(from: string) {
+  const match = from.match(/^(.+?)\s*<(.+)>$/);
+  if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
+  return { name: from, email: from };
+}
+
 function sanitizeHeader(value: string): string {
   return String(value || "").replace(/[\r\n]+/g, " ").trim();
 }
@@ -149,40 +227,6 @@ export async function fetchGmailAccountData({
   googleClientId,
   googleClientSecret,
 }: GmailFetchArgs) {
-  function decodeBase64Url(value: string | undefined): string {
-    if (!value) return "";
-    try {
-      const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-      return Buffer.from(padded, "base64").toString("utf8");
-    } catch {
-      return "";
-    }
-  }
-
-  function extractBody(payload?: GmailMessage["payload"]): string {
-    if (!payload) return "";
-    const direct = decodeBase64Url(payload.body?.data);
-    if (direct.trim()) return direct;
-
-    const parts = payload.parts ?? [];
-    for (const part of parts) {
-      if (part.mimeType?.startsWith("text/plain")) {
-        const txt = decodeBase64Url(part.body?.data);
-        if (txt.trim()) return txt;
-      }
-      if (part.parts?.length) {
-        for (const nested of part.parts) {
-          if (nested.mimeType?.startsWith("text/plain")) {
-            const txt = decodeBase64Url(nested.body?.data);
-            if (txt.trim()) return txt;
-          }
-        }
-      }
-    }
-    return "";
-  }
-
   async function fetchMessagesList(token: string) {
     const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX", {
       headers: { Authorization: `Bearer ${token}` },
@@ -302,14 +346,8 @@ export async function fetchGmailAccountData({
     )
   );
 
-  const getHeader = (headers: GmailHeader[] | undefined, name: string) =>
-    (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
-
-  const parseSender = (from: string) => {
-    const match = from.match(/^(.+?)\s*<(.+)>$/);
-    if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
-    return { name: from, email: from };
-  };
+  const getHeader = getGmailHeader;
+  const parseSender = parseGmailSender;
 
   const formatted = (messages as Array<GmailMessage | null>)
     .filter((msg): msg is GmailMessage => Boolean(msg))
@@ -317,7 +355,7 @@ export async function fetchGmailAccountData({
       const headers = msg.payload?.headers ?? [];
       const dateRaw = getHeader(headers, "Date");
       const subject = getHeader(headers, "Subject");
-      const body = extractBody(msg.payload);
+      const body = extractGmailBody(msg.payload);
       return {
         id: msg.id,
         threadId: msg.threadId,
@@ -354,49 +392,6 @@ export async function fetchGmailThread({
   googleClientSecret,
   threadId,
 }: GmailFetchArgs & { threadId: string }) {
-  function decodeBase64Url(value: string | undefined): string {
-    if (!value) return "";
-    try {
-      const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-      return Buffer.from(padded, "base64").toString("utf8");
-    } catch {
-      return "";
-    }
-  }
-
-  function extractBody(payload?: GmailMessage["payload"]): string {
-    if (!payload) return "";
-    const direct = decodeBase64Url(payload.body?.data);
-    if (direct.trim()) return direct;
-
-    const parts = payload.parts ?? [];
-    for (const part of parts) {
-      if (part.mimeType?.startsWith("text/plain")) {
-        const txt = decodeBase64Url(part.body?.data);
-        if (txt.trim()) return txt;
-      }
-      if (part.parts?.length) {
-        for (const nested of part.parts) {
-          if (nested.mimeType?.startsWith("text/plain")) {
-            const txt = decodeBase64Url(nested.body?.data);
-            if (txt.trim()) return txt;
-          }
-        }
-      }
-    }
-    return "";
-  }
-
-  const getHeader = (headers: GmailHeader[] | undefined, name: string) =>
-    (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
-
-  const parseSender = (from: string) => {
-    const match = from.match(/^(.+?)\s*<(.+)>$/);
-    if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
-    return { name: from, email: from };
-  };
-
   async function fetchThread(token: string) {
     return fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?format=full`,
@@ -435,15 +430,15 @@ export async function fetchGmailThread({
   const messages: GmailThreadMessage[] = rawMessages
     .map((msg) => {
       const headers = msg.payload?.headers ?? [];
-      const dateRaw = getHeader(headers, "Date");
-      const subject = getHeader(headers, "Subject");
-      const body = extractBody(msg.payload);
+      const dateRaw = getGmailHeader(headers, "Date");
+      const subject = getGmailHeader(headers, "Subject");
+      const body = extractGmailBody(msg.payload);
       const labelIds = msg.labelIds || [];
       return {
         id: msg.id,
         threadId: msg.threadId || threadData.id,
         subject: subject || "(No subject)",
-        from: parseSender(getHeader(headers, "From")),
+        from: parseGmailSender(getGmailHeader(headers, "From")),
         date: dateRaw || (msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : ""),
         snippet: msg.snippet || "",
         body: body || msg.snippet || "",

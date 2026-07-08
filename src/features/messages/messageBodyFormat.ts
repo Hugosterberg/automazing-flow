@@ -12,8 +12,53 @@ const QUOTE_SPLIT_PATTERNS: RegExp[] = [
   /\nBegin forwarded message:\s*\n/i,
 ];
 
+/** Collapse noise common in marketing / multipart plain-text emails. */
+export function normalizeEmailPlainText(raw: string): string {
+  let text = raw.replace(/\r\n/g, "\n").replace(/\t/g, " ").trim();
+  text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  text = text
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .join("\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  const lines = text.split("\n");
+  const deduped: string[] = [];
+  for (const line of lines) {
+    if (!line) {
+      if (deduped.length > 0 && deduped[deduped.length - 1] !== "") deduped.push("");
+      continue;
+    }
+    if (deduped.length > 0 && deduped[deduped.length - 1] === line) continue;
+    deduped.push(line);
+  }
+  return deduped.join("\n").trim();
+}
+
+/** Group single line breaks into flowing paragraphs (blank line = new paragraph). */
+export function splitEmailParagraphs(text: string): string[] {
+  const normalized = normalizeEmailPlainText(text);
+  const lines = normalized.split("\n");
+  const paragraphs: string[] = [];
+  let buffer: string[] = [];
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      if (buffer.length) {
+        paragraphs.push(buffer.join(" "));
+        buffer = [];
+      }
+      continue;
+    }
+    buffer.push(line.trim());
+  }
+  if (buffer.length) paragraphs.push(buffer.join(" "));
+
+  return paragraphs.filter(Boolean);
+}
+
 export function splitEmailBody(raw: string): MessageBodyParts {
-  const text = raw.trim();
+  const text = normalizeEmailPlainText(raw);
   if (!text) return { main: "", quoted: null };
 
   for (const pattern of QUOTE_SPLIT_PATTERNS) {
@@ -39,7 +84,21 @@ export function splitEmailBody(raw: string): MessageBodyParts {
 
 export type TextSegment = { type: "text"; value: string } | { type: "link"; href: string; label: string };
 
-const URL_RE = /https?:\/\/[^\s<>"']+/g;
+const URL_RE = /(?:\(?\s*)?(https?:\/\/[^\s<>"')\]]+)/g;
+
+export function linkDisplayLabel(href: string): string {
+  try {
+    const url = new URL(href);
+    const host = url.hostname.replace(/^www\./, "");
+    const path = url.pathname === "/" ? "" : url.pathname;
+    const combined = host + path;
+    if (combined.length <= 44) return combined;
+    return `${combined.slice(0, 41)}…`;
+  } catch {
+    if (href.length <= 44) return href;
+    return `${href.slice(0, 41)}…`;
+  }
+}
 
 /** Break text into plain segments and clickable URLs (safe — no raw HTML). */
 export function segmentLinks(text: string): TextSegment[] {
@@ -49,8 +108,8 @@ export function segmentLinks(text: string): TextSegment[] {
   for (const match of text.matchAll(URL_RE)) {
     const index = match.index ?? 0;
     if (index > last) segments.push({ type: "text", value: text.slice(last, index) });
-    const href = match[0].replace(/[.,;:!?)]+$/, "");
-    segments.push({ type: "link", href, label: href });
+    const href = match[1].replace(/[.,;:!?)]+$/, "");
+    segments.push({ type: "link", href, label: linkDisplayLabel(href) });
     last = index + match[0].length;
   }
   if (last < text.length) segments.push({ type: "text", value: text.slice(last) });

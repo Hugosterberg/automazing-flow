@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { segmentLinks, splitEmailBody } from "@/features/messages/messageBodyFormat";
+import {
+  linkDisplayLabel,
+  normalizeEmailPlainText,
+  segmentLinks,
+  splitEmailBody,
+  splitEmailParagraphs,
+} from "@/features/messages/messageBodyFormat";
 
 describe("splitEmailBody", () => {
   it("splits on quoted lines", () => {
@@ -19,13 +25,42 @@ describe("splitEmailBody", () => {
   });
 });
 
+describe("normalizeEmailPlainText", () => {
+  it("dedupes consecutive identical lines", () => {
+    expect(
+      normalizeEmailPlainText("Hello\nHello\n\nWorld")
+    ).toBe("Hello\n\nWorld");
+  });
+
+  it("merges single line breaks into paragraphs via splitEmailParagraphs", () => {
+    expect(
+      splitEmailParagraphs("Line one\nLine two\n\nNew paragraph")
+    ).toEqual(["Line one Line two", "New paragraph"]);
+  });
+});
+
 describe("segmentLinks", () => {
-  it("extracts URLs", () => {
+  it("extracts URLs with shortened labels", () => {
     const segments = segmentLinks("See https://example.com/page for info");
     expect(segments).toEqual([
-      { type: "text", value: "See " },
-      { type: "link", href: "https://example.com/page", label: "https://example.com/page" },
+      { type: "text", value: "See" },
+      { type: "link", href: "https://example.com/page", label: "example.com/page" },
       { type: "text", value: " for info" },
     ]);
+  });
+
+  it("handles parenthesized tracking URLs", () => {
+    const segments = segmentLinks("( https://clicks.example.com/track/abc123 )");
+    expect(segments.some((s) => s.type === "link" && s.href.includes("clicks.example.com"))).toBe(true);
+  });
+});
+
+describe("linkDisplayLabel", () => {
+  it("shortens long paths", () => {
+    const label = linkDisplayLabel(
+      "https://clicks.suno.com/f/a/very-long-tracking-path-that-should-be-truncated"
+    );
+    expect(label.endsWith("…")).toBe(true);
+    expect(label.includes("clicks.suno.com")).toBe(true);
   });
 });

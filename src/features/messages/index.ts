@@ -7,4 +7,4 @@ export { MessageBody } from "./MessageBody";
 export { MessageInboxRow } from "./MessageInboxRow";
 export { MessageDetailPanel, MessageDetailPlaceholder } from "./MessageDetailPanel";
 export type { MessageDetailPanelProps } from "./MessageDetailPanel";
-export { splitEmailBody, segmentLinks } from "./messageBodyFormat";
+export { splitEmailBody, segmentLinks, linkDisplayLabel, normalizeEmailPlainText, splitEmailParagraphs } from "./messageBodyFormat";
