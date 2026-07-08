@@ -50,9 +50,9 @@ export const MessageInboxRow = forwardRef<HTMLButtonElement, Props>(function Mes
         type="button"
         onClick={onSelect}
         className={cn(
-          "w-full px-3 py-3 text-left transition-colors",
+          "w-full px-3 py-3 text-left transition-all duration-150 ease-out",
           "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          selected && "border-l-[3px] border-l-primary pl-[calc(0.75rem-2px)]",
+          selected && "border-l-[3px] border-l-primary bg-primary/5 pl-[calc(0.75rem-2px)] ring-1 ring-inset ring-primary/10",
           open && !selected && "border-l-2 border-l-primary/50"
         )}
         aria-current={selected ? "true" : undefined}

@@ -21,6 +21,7 @@ type Props = {
   loading: boolean;
   error: string | null;
   unreadOnly: boolean;
+  unansweredCount?: number;
   emptyTitle: string;
   emptyDescription: string;
   getRowMeta: (msg: UnifiedMessage) => RowMeta;
@@ -34,6 +35,7 @@ export function MessageInboxList({
   loading,
   error,
   unreadOnly,
+  unansweredCount = 0,
   emptyTitle,
   emptyDescription,
   getRowMeta,
@@ -50,13 +52,20 @@ export function MessageInboxList({
 
   return (
     <>
-      <div className="shrink-0 border-b border-border px-3 py-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          {loading
-            ? "Loading inbox…"
-            : `${messages.length} message${messages.length === 1 ? "" : "s"}`}
-          {unreadOnly ? " · unread" : ""}
-        </p>
+      <div className="shrink-0 border-b border-border bg-muted/20 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-foreground/80">
+            {loading
+              ? "Loading inbox…"
+              : `${messages.length} message${messages.length === 1 ? "" : "s"}`}
+            {unreadOnly ? " · filtered" : ""}
+          </p>
+          {!loading && unansweredCount > 0 ? (
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
+              {unansweredCount} open
+            </span>
+          ) : null}
+        </div>
       </div>
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {loading ? (

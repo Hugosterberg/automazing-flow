@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCheck,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -10,6 +12,7 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
+import { m } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import type { UnifiedMessage } from "./types";
 
-type Props = {
+export type MessageDetailPanelProps = {
   message: UnifiedMessage;
   channelLabel: string;
   aiSummary?: string;
@@ -33,6 +36,7 @@ type Props = {
   onDraftReply: () => void;
   onSendReply: () => void;
   onMarkHandled: () => void;
+  onNextAfterSend?: () => void;
   onBack?: () => void;
   showBack?: boolean;
   navigation?: {
@@ -44,6 +48,8 @@ type Props = {
     onNext: () => void;
   };
 };
+
+type Props = MessageDetailPanelProps;
 
 function formatFullDate(raw: string): string {
   if (!raw) return "";
@@ -75,10 +81,23 @@ export function MessageDetailPanel({
   onDraftReply,
   onSendReply,
   onMarkHandled,
+  onNextAfterSend,
   onBack,
   showBack,
   navigation,
 }: Props) {
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+  const [summaryOpen, setSummaryOpen] = useState(true);
+
+  useEffect(() => {
+    setSummaryOpen(true);
+  }, [message.id]);
+
+  useEffect(() => {
+    if (replySent || !canReply || draftBusy) return;
+    const timer = window.setTimeout(() => replyRef.current?.focus(), 140);
+    return () => window.clearTimeout(timer);
+  }, [message.id, draftBusy, replySent, canReply]);
   const fromLine =
     message.kind === "email"
       ? message.from.email
@@ -105,7 +124,7 @@ export function MessageDetailPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b border-border px-4 py-4 sm:px-5">
+      <header className="shrink-0 border-b border-border bg-gradient-to-b from-muted/30 to-background px-4 py-4 sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
             <Button
@@ -170,7 +189,12 @@ export function MessageDetailPanel({
                     <CheckCheck className="h-3.5 w-3.5" />
                     Mark handled
                   </Button>
-                ) : null}
+                ) : (
+                  <Badge variant="outline" className="h-8 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600">
+                    <CheckCheck className="h-3 w-3" />
+                    Handled
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -203,12 +227,26 @@ export function MessageDetailPanel({
             </div>
 
             {aiSummary ? (
-              <div className="rounded-lg border border-violet-500/25 bg-violet-500/5 px-3 py-2">
-                <p className="mb-0.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-violet-500">
-                  <Sparkles className="h-3 w-3" />
-                  AI summary
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground">{aiSummary}</p>
+              <div className="overflow-hidden rounded-lg border border-violet-500/25 bg-violet-500/5">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                  onClick={() => setSummaryOpen((v) => !v)}
+                  aria-expanded={summaryOpen}
+                >
+                  <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-violet-500">
+                    <Sparkles className="h-3 w-3" />
+                    AI summary
+                  </p>
+                  <ChevronDown
+                    className={cn("h-3.5 w-3.5 text-violet-500/70 transition-transform", summaryOpen && "rotate-180")}
+                  />
+                </button>
+                {summaryOpen ? (
+                  <p className="border-t border-violet-500/15 px-3 pb-2 text-sm leading-relaxed text-muted-foreground">
+                    {aiSummary}
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -216,19 +254,30 @@ export function MessageDetailPanel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto app-scroll px-4 py-5 sm:px-6">
-        <MessageBody message={message} />
+        <div className="mx-auto max-w-3xl">
+          <MessageBody message={message} />
+        </div>
       </div>
 
       {canReply ? (
-        <footer className="shrink-0 border-t border-border bg-card/80 px-4 py-3 backdrop-blur-sm sm:px-5">
+        <footer className="shrink-0 border-t border-border bg-card/90 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur-md sm:px-5">
           {replySent ? (
-            <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
-              <Send className="h-4 w-4" />
-              Reply sent
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
+                <Send className="h-4 w-4" />
+                Reply sent
+              </p>
+              {onNextAfterSend ? (
+                <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
+                  Next message
+                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <div className="space-y-2">
               <Textarea
+                ref={replyRef}
                 value={replyDraft}
                 onChange={(e) => onReplyDraftChange(e.target.value)}
                 placeholder={
@@ -287,10 +336,15 @@ export function MessageDetailPanel({
 
 export function MessageDetailPlaceholder() {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 px-6 text-center">
-      <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5">
-        <Mail className="mx-auto h-8 w-8 text-muted-foreground/60" />
-      </div>
+    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 bg-gradient-to-b from-muted/20 to-background px-6 text-center">
+      <m.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35 }}
+        className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-6 shadow-sm"
+      >
+        <Mail className="mx-auto h-9 w-9 text-muted-foreground/50" />
+      </m.div>
       <div className="space-y-1">
         <p className="text-sm font-medium">Select a message</p>
         <p className="max-w-sm text-xs text-muted-foreground">
@@ -303,6 +357,12 @@ export function MessageDetailPlaceholder() {
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd> /{" "}
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> — next / previous
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> — mark handled
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">/</kbd> — focus search
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> — close message

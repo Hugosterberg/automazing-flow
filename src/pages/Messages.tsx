@@ -26,14 +26,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
+import { toast as sonnerToast } from "sonner";
 import {
-  MessageDetailPanel,
-  MessageDetailPlaceholder,
-  MessageInboxList,
+  MessageWorkspace,
   type MessageChannelTab,
   type UnifiedMessage,
 } from "@/features/messages";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
@@ -168,6 +166,7 @@ export default function MessagesPage() {
   const defaultedUnread = useRef(false);
   const autoSelectedDesktop = useRef(false);
   const autoDraftForId = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [replyDraft, setReplyDraft] = useState("");
@@ -184,11 +183,20 @@ export default function MessagesPage() {
     [handledDoc.data]
   );
   const markHandled = useCallback(
-    (ids: string[]) => {
+    (ids: string[], opts?: { silent?: boolean }) => {
       const fresh = ids.filter((id) => !handledIds.has(id));
       if (fresh.length === 0) return;
-      const next = [...(Array.isArray(handledDoc.data) ? handledDoc.data : []), ...fresh];
-      handledDoc.save(next.slice(-MAX_HANDLED_IDS));
+      const prev = Array.isArray(handledDoc.data) ? handledDoc.data : [];
+      const next = [...prev, ...fresh].slice(-MAX_HANDLED_IDS);
+      handledDoc.save(next);
+      if (opts?.silent) return;
+      if (fresh.length === 1) {
+        sonnerToast.success("Marked as handled", {
+          action: { label: "Undo", onClick: () => handledDoc.save(prev) },
+        });
+      } else {
+        sonnerToast.success(`Marked ${fresh.length} messages as handled`);
+      }
     },
     [handledDoc, handledIds]
   );
@@ -411,55 +419,6 @@ export default function MessagesPage() {
     }
   }
 
-  async function sendReply() {
-    if (!selectedMessage || !replyDraft.trim()) return;
-    const messageId = providerMessageIdFor(selectedMessage);
-    if (selectedMessage.kind === "email" && !messageId) {
-      toast({
-        title: "Could not send reply",
-        description: "This email is missing a provider message id. Refresh messages and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (selectedMessage.kind === "dm" && !selectedMessage.conversationId) return;
-    setSendBusy(true);
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/messages/reply"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: selectedMessage.accountId,
-          conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
-          messageId: selectedMessage.kind === "email" ? messageId : undefined,
-          message: replyDraft.trim(),
-          business_profile_id: selectedMessage.profileId || activeProfileId,
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
-      setReplySent(true);
-      markHandled([selectedMessage.id]);
-      void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
-      toast({
-        title: "Reply sent",
-        description:
-          selectedMessage.kind === "email"
-            ? `Your ${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"} reply was sent.`
-            : "Your message was sent via Zernio.",
-      });
-    } catch (e) {
-      toast({
-        title: "Could not send reply",
-        description: e instanceof Error ? e.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setSendBusy(false);
-    }
-  }
-
   const summaryPayload = useMemo(
     () =>
       messages.slice(0, 20).map((m) => ({
@@ -550,6 +509,92 @@ export default function MessagesPage() {
     () => filteredMessages.filter(isUnanswered),
     [filteredMessages, isUnanswered]
   );
+
+  const advanceToNextMessage = useCallback(
+    (fromId: string) => {
+      const idx = filteredMessages.findIndex((m) => m.id === fromId);
+      if (idx === -1) return;
+      const next =
+        filteredMessages.slice(idx + 1).find((m) => isUnanswered(m)) ??
+        filteredMessages.slice(0, idx).find((m) => isUnanswered(m)) ??
+        filteredMessages[idx + 1] ??
+        null;
+      selectMessage(next);
+    },
+    [filteredMessages, isUnanswered, selectMessage]
+  );
+
+  const sendReply = useCallback(async () => {
+    if (!selectedMessage || !replyDraft.trim()) return;
+    const messageId = providerMessageIdFor(selectedMessage);
+    if (selectedMessage.kind === "email" && !messageId) {
+      toast({
+        title: "Could not send reply",
+        description: "This email is missing a provider message id. Refresh messages and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (selectedMessage.kind === "dm" && !selectedMessage.conversationId) return;
+    const sentId = selectedMessage.id;
+    setSendBusy(true);
+    try {
+      const res = await fetchWithTimeout(apiUrl("/api/messages/reply"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: selectedMessage.accountId,
+          conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
+          messageId: selectedMessage.kind === "email" ? messageId : undefined,
+          message: replyDraft.trim(),
+          business_profile_id: selectedMessage.profileId || activeProfileId,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
+      setReplySent(true);
+      markHandled([sentId], { silent: true });
+      void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
+      sonnerToast.success(
+        selectedMessage.kind === "email"
+          ? `${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"} reply sent`
+          : "Reply sent via Zernio"
+      );
+      window.setTimeout(() => advanceToNextMessage(sentId), 500);
+    } catch (e) {
+      toast({
+        title: "Could not send reply",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSendBusy(false);
+    }
+  }, [
+    activeProfileId,
+    advanceToNextMessage,
+    markHandled,
+    queryClient,
+    replyDraft,
+    selectedMessage,
+    toast,
+  ]);
+
+  const getRowMeta = useCallback(
+    (msg: UnifiedMessage) => ({
+      open: isUnanswered(msg),
+      waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
+      channelLabel: channelBadge(msg),
+      aiSummary: aiSummaries[msg.id],
+      formattedDate: formatDate(msg.date),
+      senderInitial: senderInitial(msg.from.name || msg.from.email),
+      avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
+      isHandled: handledIds.has(msg.id),
+    }),
+    [aiSummaries, handledIds, isUnanswered]
+  );
+
   const tabCounts = useMemo(
     () =>
       MESSAGE_TABS.reduce(
@@ -613,16 +658,72 @@ export default function MessagesPage() {
       if (e.key === "Escape" && selectedId) {
         e.preventDefault();
         selectMessage(null);
+        return;
+      }
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if ((e.key === "e" || e.key === "E") && selectedMessage && isUnanswered(selectedMessage)) {
+        e.preventDefault();
+        markHandled([selectedMessage.id]);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigateRelative, selectMessage, selectedId]);
+  }, [isUnanswered, markHandled, navigateRelative, selectMessage, selectedId, selectedMessage]);
 
   const canReplyToSelected =
     selectedMessage &&
     ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
       (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)));
+
+  const detailProps = useMemo(() => {
+    if (!selectedMessage) return null;
+    return {
+      channelLabel: channelBadge(selectedMessage),
+      aiSummary: aiSummaries[selectedMessage.id],
+      replyDraft,
+      onReplyDraftChange: setReplyDraft,
+      draftBusy,
+      sendBusy,
+      replySent,
+      canReply: Boolean(canReplyToSelected),
+      isHandled: handledIds.has(selectedMessage.id),
+      onDraftReply: () => void draftReply(),
+      onSendReply: () => void sendReply(),
+      onMarkHandled: () => markHandled([selectedMessage.id]),
+      onNextAfterSend: () => advanceToNextMessage(selectedMessage.id),
+      onBack: () => selectMessage(null),
+      navigation:
+        filteredMessages.length > 1 && selectedIndex >= 0
+          ? {
+              index: selectedIndex,
+              total: filteredMessages.length,
+              hasPrev: selectedIndex > 0,
+              hasNext: selectedIndex < filteredMessages.length - 1,
+              onPrev: () => navigateRelative(-1),
+              onNext: () => navigateRelative(1),
+            }
+          : undefined,
+    };
+  }, [
+    advanceToNextMessage,
+    aiSummaries,
+    canReplyToSelected,
+    draftBusy,
+    filteredMessages.length,
+    handledIds,
+    markHandled,
+    navigateRelative,
+    replyDraft,
+    replySent,
+    selectedIndex,
+    selectedMessage,
+    sendBusy,
+    sendReply,
+  ]);
 
   return (
     <div className="space-y-6 max-w-7xl w-full">
@@ -785,8 +886,9 @@ export default function MessagesPage() {
             <div className="relative w-full sm:w-48">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 type="search"
-                placeholder="Search inbox…"
+                placeholder="Search inbox…  /"
                 value={inboxSearch}
                 onChange={(e) => setInboxSearch(e.target.value)}
                 className="h-8 pl-8 text-xs"
@@ -819,136 +921,24 @@ export default function MessagesPage() {
       <m.div
         {...fadeUp}
         transition={{ duration: 0.35 }}
-        className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+        className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-border/40"
         style={{ height: "min(76vh, 860px)" }}
       >
-        {/* Mobile: full-width list OR detail */}
-        <div className="flex h-full min-h-0 lg:hidden">
-          {!selectedMessage ? (
-            <aside className="flex h-full w-full min-h-0 flex-col">
-              <MessageInboxList
-                messages={filteredMessages}
-                selectedId={selectedId}
-                loading={loading}
-                error={error}
-                unreadOnly={unreadOnly}
-                emptyTitle={activeEmptyCopy.title}
-                emptyDescription={activeEmptyCopy.description}
-                getRowMeta={(msg) => ({
-                  open: isUnanswered(msg),
-                  waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
-                  channelLabel: channelBadge(msg),
-                  aiSummary: aiSummaries[msg.id],
-                  formattedDate: formatDate(msg.date),
-                  senderInitial: senderInitial(msg.from.name || msg.from.email),
-                  avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
-                  isHandled: handledIds.has(msg.id),
-                })}
-                onSelect={selectMessage}
-                onMarkHandled={(id) => markHandled([id])}
-              />
-            </aside>
-          ) : (
-            <section className="flex h-full min-h-0 w-full flex-col bg-background">
-              <MessageDetailPanel
-                message={selectedMessage}
-                channelLabel={channelBadge(selectedMessage)}
-                aiSummary={aiSummaries[selectedMessage.id]}
-                replyDraft={replyDraft}
-                onReplyDraftChange={setReplyDraft}
-                draftBusy={draftBusy}
-                sendBusy={sendBusy}
-                replySent={replySent}
-                canReply={Boolean(canReplyToSelected)}
-                isHandled={handledIds.has(selectedMessage.id)}
-                onDraftReply={() => void draftReply()}
-                onSendReply={() => void sendReply()}
-                onMarkHandled={() => markHandled([selectedMessage.id])}
-                onBack={() => selectMessage(null)}
-                showBack
-                navigation={
-                  filteredMessages.length > 1 && selectedIndex >= 0
-                    ? {
-                        index: selectedIndex,
-                        total: filteredMessages.length,
-                        hasPrev: selectedIndex > 0,
-                        hasNext: selectedIndex < filteredMessages.length - 1,
-                        onPrev: () => navigateRelative(-1),
-                        onNext: () => navigateRelative(1),
-                      }
-                    : undefined
-                }
-              />
-            </section>
-          )}
-        </div>
-
-        {/* Desktop: resizable split */}
-        <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
-          <ResizablePanel defaultSize={36} minSize={26} maxSize={50} className="min-h-0">
-            <aside className="flex h-full min-h-0 flex-col">
-              <MessageInboxList
-                messages={filteredMessages}
-                selectedId={selectedId}
-                loading={loading}
-                error={error}
-                unreadOnly={unreadOnly}
-                emptyTitle={activeEmptyCopy.title}
-                emptyDescription={activeEmptyCopy.description}
-                getRowMeta={(msg) => ({
-                  open: isUnanswered(msg),
-                  waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
-                  channelLabel: channelBadge(msg),
-                  aiSummary: aiSummaries[msg.id],
-                  formattedDate: formatDate(msg.date),
-                  senderInitial: senderInitial(msg.from.name || msg.from.email),
-                  avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
-                  isHandled: handledIds.has(msg.id),
-                })}
-                onSelect={selectMessage}
-                onMarkHandled={(id) => markHandled([id])}
-              />
-            </aside>
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          <ResizablePanel defaultSize={64} minSize={40} className="min-h-0">
-            <section className="flex h-full min-h-0 flex-col bg-background">
-              {selectedMessage ? (
-                <MessageDetailPanel
-                  message={selectedMessage}
-                  channelLabel={channelBadge(selectedMessage)}
-                  aiSummary={aiSummaries[selectedMessage.id]}
-                  replyDraft={replyDraft}
-                  onReplyDraftChange={setReplyDraft}
-                  draftBusy={draftBusy}
-                  sendBusy={sendBusy}
-                  replySent={replySent}
-                  canReply={Boolean(canReplyToSelected)}
-                  isHandled={handledIds.has(selectedMessage.id)}
-                  onDraftReply={() => void draftReply()}
-                  onSendReply={() => void sendReply()}
-                  onMarkHandled={() => markHandled([selectedMessage.id])}
-                  navigation={
-                    filteredMessages.length > 1 && selectedIndex >= 0
-                      ? {
-                          index: selectedIndex,
-                          total: filteredMessages.length,
-                          hasPrev: selectedIndex > 0,
-                          hasNext: selectedIndex < filteredMessages.length - 1,
-                          onPrev: () => navigateRelative(-1),
-                          onNext: () => navigateRelative(1),
-                        }
-                      : undefined
-                  }
-                />
-              ) : (
-                <MessageDetailPlaceholder />
-              )}
-            </section>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        <MessageWorkspace
+          filteredMessages={filteredMessages}
+          selectedMessage={selectedMessage}
+          selectedId={selectedId}
+          loading={loading}
+          error={error}
+          unreadOnly={unreadOnly}
+          unansweredCount={unansweredVisible.length}
+          emptyTitle={activeEmptyCopy.title}
+          emptyDescription={activeEmptyCopy.description}
+          getRowMeta={getRowMeta}
+          onSelect={selectMessage}
+          onMarkHandled={(id) => markHandled([id])}
+          detailProps={detailProps}
+        />
       </m.div>
     </div>
   );
