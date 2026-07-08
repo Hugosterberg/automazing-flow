@@ -13,12 +13,14 @@ import {
   Palette,
   Save,
   Shield,
+  Sparkles,
   Users,
   Wrench,
   XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TeamManager } from "@/components/TeamManager";
+import { AiFeaturesPanel } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -436,6 +438,10 @@ export default function PreferencesPage() {
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Team
           </TabsTrigger>
+          <TabsTrigger value="ai">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            AI
+          </TabsTrigger>
           <TabsTrigger value="automation">
             <Bot className="h-3.5 w-3.5 mr-1.5" />
             Automation
@@ -490,6 +496,10 @@ export default function PreferencesPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AiFeaturesPanel businessProfileId={activeBusinessProfileId ?? null} />
         </TabsContent>
 
         <TabsContent value="automation">

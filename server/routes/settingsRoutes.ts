@@ -18,6 +18,7 @@
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import type { EnvConfig, RequirementDefinition } from "../lib/envConfig.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
+import { buildAiFeatureStatus } from "../lib/aiFeatureCatalog.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 
 interface SettingsRoutesDeps {
@@ -212,6 +213,27 @@ export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
         : definition.message,
       authPath: result.ok ? definition.authPath || null : null,
     });
+  });
+
+  // --- AI feature status: which AI features are active for this profile,
+  // which run in fallback mode, and what unlocks the rest. Read-only. ---
+  app.get("/api/settings/ai-features", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    let tenantKeys: string[] = [];
+    try {
+      tenantKeys = await secretResolver.listConfiguredKeys(businessProfileId);
+    } catch (e) {
+      console.warn("[settings] ai-features listConfiguredKeys failed:", e instanceof Error ? e.message : e);
+    }
+    const tenant = new Set(tenantKeys);
+    const features = buildAiFeatureStatus({
+      openaiTenant: tenant.has("OPENAI_API_KEY"),
+      openaiPlatform: envConfig.hasEnvValue("OPENAI_API_KEY"),
+      apiai: tenant.has("APIAI_API_KEY") || envConfig.hasEnvValue("APIAI_API_KEY"),
+      zernio: envConfig.hasEnvValue("ZERNIO_API_KEY") || envConfig.hasEnvValue("LATE_API_KEY"),
+      cron: envConfig.hasEnvValue("CRON_SECRET"),
+    });
+    return res.json({ features });
   });
 
   // --- Per-tenant secrets: configured status + values write. Membership-gated. ---
