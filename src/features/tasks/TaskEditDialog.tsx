@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Copy, Link2, ListChecks, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDat
 import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
 import { cn } from "@/lib/utils";
 import {
+  getTaskAi,
   getTaskChecklist,
   getTaskComments,
   TASK_STATUS_LABELS,
@@ -213,6 +215,7 @@ export function TaskEditDialog({
   }
 
   const doneCount = checklist.filter((i) => i.done).length;
+  const aiState = task ? getTaskAi(task) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -240,7 +243,18 @@ export function TaskEditDialog({
               ) : null}
             </span>
             {onAiAssist ? (
-              <Button
+              <div className="flex items-center gap-1.5">
+                {aiState ? (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500"
+                    title={`AI prepared ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    AI
+                  </Badge>
+                ) : null}
+                <Button
                 type="button"
                 variant="outline"
                 size="sm"
@@ -255,6 +269,7 @@ export function TaskEditDialog({
                 )}
                 {aiBusy ? "Analyzing…" : "Prepare with AI"}
               </Button>
+              </div>
             ) : null}
           </DialogTitle>
         </DialogHeader>
@@ -274,7 +289,7 @@ export function TaskEditDialog({
                   disabled={saving}
                   onClick={() => setStatus(option.status)}
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     status === option.status
                       ? option.activeClass
                       : "text-muted-foreground hover:text-foreground"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,7 @@ function matchesModuleFilter(module: string | null | undefined, filter: ModuleFi
  * operational lanes (To-do, In progress, Done) so the workflow stays obvious.
  */
 export default function TasksPage() {
+  const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const { user } = useAuth();
@@ -322,11 +323,19 @@ export default function TasksPage() {
           ai: { enrichedAt: new Date().toISOString(), source },
         },
       });
-      toast.success(
-        source === "ai"
-          ? `AI prepared the task: ${newSteps.length} step${newSteps.length === 1 ? "" : "s"} + analysis added.`
-          : "Added a basic plan. Connect an OpenAI key in Settings for full AI analysis."
-      );
+      if (source === "ai") {
+        toast.success(
+          `AI prepared the task: ${newSteps.length} step${newSteps.length === 1 ? "" : "s"} + analysis added.`
+        );
+      } else {
+        toast.success("Added a basic plan.", {
+          description: "Add an OpenAI key for full task-specific analysis.",
+          action: {
+            label: "AI settings",
+            onClick: () => navigate("/preferences?tab=ai"),
+          },
+        });
+      }
       return updated;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "AI could not analyze the task.");
@@ -425,7 +434,7 @@ export default function TasksPage() {
                 onClick={() => setQuickFilter(chip.id)}
                 aria-pressed={quickFilter === chip.id}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                  "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   quickFilter === chip.id
                     ? chip.activeClass
                     : "border-border text-muted-foreground hover:text-foreground"

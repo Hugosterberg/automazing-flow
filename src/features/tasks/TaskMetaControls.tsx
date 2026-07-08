@@ -69,7 +69,7 @@ export function PriorityPicker({
             disabled={disabled}
             onClick={() => onChange(p)}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selected
                 ? styles.active
                 : "text-muted-foreground hover:text-foreground"

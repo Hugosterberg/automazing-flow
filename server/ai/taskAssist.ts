@@ -128,7 +128,7 @@ export function heuristicTaskAssist(ctx: TaskAssistContext): TaskAssistResult {
           "Verify the result against the task description before closing.",
         ],
     info: [
-      "Connect an OpenAI key in Settings to get task-specific analysis, research and drafts here.",
+      "Add an OpenAI key (Preferences → AI) to get task-specific analysis, research and drafts here.",
     ],
     draft: null,
     questions: [],

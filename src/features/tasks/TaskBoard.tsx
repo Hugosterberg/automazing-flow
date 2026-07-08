@@ -137,6 +137,14 @@ function TaskCard({
   return (
     <article
       draggable={!isMutating}
+      tabIndex={onEdit ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onEdit || isMutating) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onEdit(task);
+        }
+      }}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/task-id", task.id);
@@ -144,7 +152,7 @@ function TaskCard({
       }}
       onClick={() => onEdit?.(task)}
       className={cn(
-        "group space-y-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
+        "group space-y-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         onEdit && "cursor-pointer",
         overdue && "border-destructive/40",
         completed && "bg-muted/40"
@@ -227,7 +235,11 @@ function TaskCard({
             {TASK_PRIORITY_LABELS[task.priority]}
           </Badge>
           {aiState ? (
-            <Badge variant="outline" className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500">
+            <Badge
+              variant="outline"
+              className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500"
+              title={`AI prepared ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
+            >
               <Sparkles className="h-3 w-3" />
               AI
             </Badge>

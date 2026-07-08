@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, CircleOff, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, CircleAlert, CircleOff, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { fetchAiFeatures, type AiFeatureState, type AiFeatureStatus } from "./aiFeaturesClient";
@@ -34,7 +35,14 @@ const STATE_META: Record<
  * the app with its live status for the active profile, and exactly what to
  * configure to unlock the ones that aren't fully active.
  */
-export function AiFeaturesPanel({ businessProfileId }: { businessProfileId: string | null }) {
+export function AiFeaturesPanel({
+  businessProfileId,
+  onOpenIntegrations,
+}: {
+  businessProfileId: string | null;
+  /** Jumps to where the keys are actually entered (Preferences → Integrations). */
+  onOpenIntegrations?: () => void;
+}) {
   const [features, setFeatures] = useState<AiFeatureStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +75,23 @@ export function AiFeaturesPanel({ businessProfileId }: { businessProfileId: stri
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-violet-500" />
-          AI features
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-500" />
+            AI features
+          </span>
+          {onOpenIntegrations ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={onOpenIntegrations}
+            >
+              Manage keys
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          ) : null}
         </CardTitle>
         <CardDescription>
           {features.length > 0

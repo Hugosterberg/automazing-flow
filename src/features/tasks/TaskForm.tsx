@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const detailCount = (description.trim() ? 1 : 0) + checklist.length;
 
@@ -54,6 +55,8 @@ export function TaskForm({ onSubmit, disabled }: Props) {
       setDueAt("");
       setChecklist([]);
       setShowDetails(false);
+      // Keep focus in the title so several tasks can be added in a row.
+      titleRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create task.");
     } finally {
@@ -70,6 +73,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     >
       <div className="flex items-center gap-2">
         <Input
+          ref={titleRef}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a task — press Enter to create…"

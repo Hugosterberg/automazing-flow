@@ -18,7 +18,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { TeamManager } from "@/components/TeamManager";
 import { AiFeaturesPanel } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -278,10 +278,27 @@ function StatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
+const PREFERENCES_TABS = ["overview", "team", "ai", "automation", "api-keys", "help"] as const;
+type PreferencesTab = (typeof PREFERENCES_TABS)[number];
+
+function parsePreferencesTab(raw: string | null): PreferencesTab {
+  if (raw && (PREFERENCES_TABS as readonly string[]).includes(raw)) {
+    return raw as PreferencesTab;
+  }
+  return "api-keys";
+}
+
 export default function PreferencesPage() {
   const { toast } = useToast();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
-
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parsePreferencesTab(searchParams.get("tab"));
+  const setActiveTab = useCallback(
+    (tab: PreferencesTab) => {
+      setSearchParams(tab === "api-keys" ? {} : { tab }, { replace: true });
+    },
+    [setSearchParams]
+  );
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([]);
   const [storeEnabled, setStoreEnabled] = useState(true);
@@ -428,10 +445,10 @@ export default function PreferencesPage() {
       <PageHeader
         icon={Wrench}
         title="Preferences"
-        description="Platform key status and your per-profile integration secrets."
+        description="AI feature status, platform key status, and your per-profile integration secrets."
       />
 
-      <Tabs defaultValue="api-keys" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="team">
@@ -499,7 +516,10 @@ export default function PreferencesPage() {
         </TabsContent>
 
         <TabsContent value="ai">
-          <AiFeaturesPanel businessProfileId={activeBusinessProfileId ?? null} />
+          <AiFeaturesPanel
+            businessProfileId={activeBusinessProfileId ?? null}
+            onOpenIntegrations={() => setActiveTab("api-keys")}
+          />
         </TabsContent>
 
         <TabsContent value="automation">
