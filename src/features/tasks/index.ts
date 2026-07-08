@@ -11,6 +11,8 @@ export {
   TASK_PRIORITY_LABELS,
   getTaskChecklist,
   getTaskComments,
+  getTaskAi,
+  newChecklistItem,
 } from "./tasksService";
 export type {
   TaskRow,
@@ -19,7 +21,10 @@ export type {
   TaskPriority,
   TaskChecklistItem,
   TaskComment,
+  TaskAiState,
 } from "./tasksService";
+export { fetchTaskAssist } from "./taskAssistClient";
+export type { TaskAssistInput, TaskAssistResult } from "./taskAssistClient";
 export { useTasks, TASKS_KEY } from "./useTasks";
 export { TaskForm } from "./TaskForm";
 export { TaskEditDialog } from "./TaskEditDialog";

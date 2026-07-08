@@ -1,5 +1,5 @@
 import { useMemo, useState, type DragEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
+  getTaskAi,
   getTaskChecklist,
   getTaskComments,
   TASK_PRIORITY_LABELS,
@@ -35,6 +36,10 @@ interface Props {
   onEdit?: (task: TaskRow) => void;
   /** Tick/untick a checklist item straight from the card. */
   onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
+  /** Hand the task to AI: it adds steps, research and a draft to the task. */
+  onAiAssist?: (task: TaskRow) => void;
+  /** Task id currently being AI-analyzed (shows a spinner on that card). */
+  aiBusyTaskId?: string | null;
   isMutating?: boolean;
   isDeleting?: boolean;
 }
@@ -100,6 +105,8 @@ function TaskCard({
   onDelete,
   onEdit,
   onToggleChecklistItem,
+  onAiAssist,
+  aiBusy,
   isMutating,
   isDeleting,
 }: {
@@ -108,6 +115,8 @@ function TaskCard({
   onDelete: (id: string) => void;
   onEdit?: (task: TaskRow) => void;
   onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
+  onAiAssist?: (task: TaskRow) => void;
+  aiBusy?: boolean;
   isMutating?: boolean;
   isDeleting?: boolean;
 }) {
@@ -119,6 +128,7 @@ function TaskCard({
   const doneCount = checklist.filter((item) => item.done).length;
   const commentCount = getTaskComments(task).length;
   const visibleChecklist = checklist.slice(0, CARD_CHECKLIST_LIMIT);
+  const aiState = getTaskAi(task);
 
   return (
     <article
@@ -197,6 +207,12 @@ function TaskCard({
             <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
               {TASK_PRIORITY_LABELS[task.priority]}
             </Badge>
+            {aiState ? (
+              <Badge variant="outline" className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500">
+                <Sparkles className="h-3 w-3" />
+                AI
+              </Badge>
+            ) : null}
             {checklist.length > 0 ? (
               <Badge variant="outline" className="gap-1 border-border text-[10px] uppercase tracking-wide text-muted-foreground">
                 <ListChecks className="h-3 w-3" />
@@ -229,6 +245,27 @@ function TaskCard({
               {createdAgo ? `Created ${createdAgo}` : "Created"}
             </p>
             <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+              {onAiAssist && !completed ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-violet-500 hover:text-violet-400"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAiAssist(task);
+                  }}
+                  disabled={isMutating || aiBusy}
+                  aria-label="Prepare task with AI"
+                  title="Prepare task with AI"
+                >
+                  {aiBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              ) : null}
               {onEdit ? (
                 <Button
                   type="button"
@@ -312,7 +349,7 @@ function TaskCard({
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -406,6 +443,8 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onToggleChecklistItem={onToggleChecklistItem}
+                    onAiAssist={onAiAssist}
+                    aiBusy={aiBusyTaskId === task.id}
                     isMutating={isMutating}
                     isDeleting={isDeleting}
                   />

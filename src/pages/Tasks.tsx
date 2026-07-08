@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp } from "@/lib/motion";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import {
   useTasks,
   TaskForm,
@@ -21,10 +21,12 @@ import type { TaskEditPatch } from "@/features/tasks/TaskEditDialog";
 import {
   getTaskChecklist,
   getTaskComments,
+  newChecklistItem,
   type TaskChecklistItem,
   type TaskComment,
   type TaskRow,
 } from "@/features/tasks/tasksService";
+import { fetchTaskAssist, type TaskAssistResult } from "@/features/tasks/taskAssistClient";
 import {
   Select,
   SelectContent,
@@ -34,6 +36,20 @@ import {
 } from "@/components/ui/select";
 
 type ModuleFilter = "all" | "general" | "campaign" | "pipeline";
+
+/** One readable comment out of the AI result (summary, research, draft, questions). */
+function composeAiComment(result: TaskAssistResult): string {
+  const parts: string[] = [];
+  if (result.summary) parts.push(result.summary);
+  if (result.info.length) {
+    parts.push(`Good to know:\n${result.info.map((i) => `• ${i}`).join("\n")}`);
+  }
+  if (result.questions.length) {
+    parts.push(`Open questions:\n${result.questions.map((q) => `• ${q}`).join("\n")}`);
+  }
+  if (result.draft) parts.push(`Draft:\n${result.draft}`);
+  return parts.join("\n\n").trim();
+}
 
 function matchesModuleFilter(module: string | null | undefined, filter: ModuleFilter): boolean {
   if (filter === "all") return true;
@@ -75,6 +91,10 @@ export default function TasksPage() {
 
   const [editTask, setEditTask] = useState<TaskRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [aiTaskId, setAiTaskId] = useState<string | null>(null);
+
+  const { profiles } = useBusinessProfiles();
+  const activeProfile = profiles.find((p) => p.id === businessProfileId);
 
   const overdueTasks = useMemo(() => tasks.filter((task) => isTaskOverdue(task)), [tasks]);
   const moduleFilteredTasks = useMemo(
@@ -139,10 +159,69 @@ export default function TasksPage() {
       item.id === itemId ? { ...item, done } : item
     );
     try {
-      // Metadata is replaced wholesale, so comments ride along untouched.
-      await updateTask({ id: task.id, patch: { checklist, comments: getTaskComments(task) } });
+      await updateTask({ id: task.id, patch: { checklist } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update checklist.");
+    }
+  }
+
+  /**
+   * "Give the task to AI": the server analyzes the task and the result lands
+   * where the work happens — new checklist steps, plus an AI comment holding
+   * the summary, research notes, draft and open questions.
+   */
+  async function handleAiAssist(task: TaskRow) {
+    if (aiTaskId) return;
+    setAiTaskId(task.id);
+    try {
+      const existingChecklist = getTaskChecklist(task);
+      const existingComments = getTaskComments(task);
+      const { result, source } = await fetchTaskAssist({
+        business_profile_id: task.business_profile_id,
+        title: task.title,
+        description: task.description ?? undefined,
+        priority: task.priority,
+        dueAt: task.due_at ?? undefined,
+        checklist: existingChecklist.map((i) => i.text),
+        comments: existingComments.map((c) => c.text),
+        businessName: activeProfile?.name,
+        businessDescription: activeProfile?.notes ?? undefined,
+        location: activeProfile?.location ?? undefined,
+      });
+
+      const known = new Set(existingChecklist.map((i) => i.text.trim().toLowerCase()));
+      const newSteps = result.steps.filter((s) => !known.has(s.trim().toLowerCase()));
+      const commentText = composeAiComment(result);
+
+      await updateTask({
+        id: task.id,
+        patch: {
+          checklist: [...existingChecklist, ...newSteps.map(newChecklistItem)],
+          ...(commentText
+            ? {
+                comments: [
+                  ...existingComments,
+                  {
+                    id: crypto.randomUUID(),
+                    text: commentText,
+                    createdAt: new Date().toISOString(),
+                    author: "AI",
+                  },
+                ],
+              }
+            : {}),
+          ai: { enrichedAt: new Date().toISOString(), source },
+        },
+      });
+      toast.success(
+        source === "ai"
+          ? `AI prepared the task: ${newSteps.length} step${newSteps.length === 1 ? "" : "s"} + analysis added.`
+          : "Added a basic plan. Connect an OpenAI key in Settings for full AI analysis."
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI could not analyze the task.");
+    } finally {
+      setAiTaskId(null);
     }
   }
 
@@ -268,6 +347,8 @@ export default function TasksPage() {
           onToggleChecklistItem={(task, itemId, done) =>
             void handleToggleChecklistItem(task, itemId, done)
           }
+          onAiAssist={(task) => void handleAiAssist(task)}
+          aiBusyTaskId={aiTaskId}
           isMutating={isSettingStatus || isUpdating}
           isDeleting={isDeleting}
         />
