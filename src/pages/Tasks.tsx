@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, X } from "lucide-react";
+import { CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
 import { pageFadeUp } from "@/lib/motion";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -16,9 +18,12 @@ import {
   TaskBoard,
   TaskEditDialog,
   isTaskOverdue,
+  isTaskDueToday,
 } from "@/features/tasks";
+import { taskMatchesQuery } from "@/features/tasks/taskFilters";
 import type { TaskEditPatch } from "@/features/tasks/TaskEditDialog";
 import {
+  getTaskAi,
   getTaskChecklist,
   getTaskComments,
   newChecklistItem,
@@ -36,6 +41,7 @@ import {
 } from "@/components/ui/select";
 
 type ModuleFilter = "all" | "general" | "campaign" | "pipeline";
+type QuickFilter = "all" | "overdue" | "today";
 
 /** One readable comment out of the AI result (summary, research, draft, questions). */
 function composeAiComment(result: TaskAssistResult): string {
@@ -68,11 +74,22 @@ export default function TasksPage() {
   const { user } = useAuth();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
 
-  // `?view=overdue` deep links come from the sidebar badge, the home
-  // dashboard tile and the daily brief — honour them by filtering the board.
+  // `?view=overdue|today` deep links come from the sidebar badge, the home
+  // dashboard tile and the daily brief. The quick-filter chips read and
+  // write the same param so deep links and in-page filtering stay one thing.
   const [searchParams, setSearchParams] = useSearchParams();
-  const showOverdueOnly = searchParams.get("view") === "overdue";
+  const viewParam = searchParams.get("view");
+  const quickFilter: QuickFilter =
+    viewParam === "overdue" ? "overdue" : viewParam === "today" ? "today" : "all";
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("general");
+  const [search, setSearch] = useState("");
+
+  function setQuickFilter(filter: QuickFilter) {
+    const next = new URLSearchParams(searchParams);
+    if (filter === "all") next.delete("view");
+    else next.set("view", filter);
+    setSearchParams(next, { replace: true });
+  }
 
   const {
     tasks,
@@ -96,22 +113,43 @@ export default function TasksPage() {
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((p) => p.id === businessProfileId);
 
-  const overdueTasks = useMemo(() => tasks.filter((task) => isTaskOverdue(task)), [tasks]);
   const moduleFilteredTasks = useMemo(
     () => tasks.filter((t) => matchesModuleFilter(t.module, moduleFilter)),
     [tasks, moduleFilter]
   );
-  const visibleTasks = useMemo(() => {
-    const base = showOverdueOnly ? overdueTasks : moduleFilteredTasks;
-    if (!showOverdueOnly) return base;
-    return base.filter((t) => matchesModuleFilter(t.module, moduleFilter));
-  }, [showOverdueOnly, overdueTasks, moduleFilteredTasks, moduleFilter]);
+  const overdueCount = useMemo(
+    () => moduleFilteredTasks.filter((t) => isTaskOverdue(t)).length,
+    [moduleFilteredTasks]
+  );
+  const dueTodayCount = useMemo(
+    () => moduleFilteredTasks.filter((t) => isTaskDueToday(t)).length,
+    [moduleFilteredTasks]
+  );
+  const visibleTasks = useMemo(
+    () =>
+      moduleFilteredTasks.filter((t) => {
+        if (quickFilter === "overdue" && !isTaskOverdue(t)) return false;
+        if (quickFilter === "today" && !isTaskDueToday(t)) return false;
+        return taskMatchesQuery(t, search);
+      }),
+    [moduleFilteredTasks, quickFilter, search]
+  );
 
-  function clearOverdueFilter() {
+  // `?task=<id>` deep links open the detail dialog directly (used by shared
+  // links from the dialog's copy-link button). Consumed so refresh/close
+  // doesn't re-open it.
+  useEffect(() => {
+    const taskId = searchParams.get("task");
+    if (!taskId || tasks.length === 0) return;
+    const linked = tasks.find((t) => t.id === taskId);
+    if (linked) {
+      setEditTask(linked);
+      setEditOpen(true);
+    }
     const next = new URLSearchParams(searchParams);
-    next.delete("view");
+    next.delete("task");
     setSearchParams(next, { replace: true });
-  }
+  }, [tasks, searchParams, setSearchParams]);
 
   async function handleSetStatus(id: string, status: Parameters<typeof setStatus>[0]["status"]) {
     try {
@@ -122,10 +160,67 @@ export default function TasksPage() {
   }
 
   async function handleDeleteTask(id: string) {
+    const row = tasks.find((t) => t.id === id);
     try {
       await deleteTask(id);
+      if (!row) return;
+      // Deletes are permanent in the DB, so give a grace period via the
+      // toast: Undo recreates the task (new id) with all its content.
+      toast.success("Task deleted.", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void createTask({
+              title: row.title,
+              description: row.description,
+              priority: row.priority,
+              status: row.status === "archived" ? "open" : row.status,
+              dueAt: row.due_at,
+              module: row.module,
+              checklist: getTaskChecklist(row),
+              comments: getTaskComments(row),
+              ai: getTaskAi(row),
+            }).catch(() => toast.error("Could not restore the task."));
+          },
+        },
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not delete task.");
+    }
+  }
+
+  /** "Clear done": move every finished task in the current module scope to
+   * the archive so the Done lane stays readable. Archived rows keep their
+   * completed_at and stay in the DB. */
+  async function handleArchiveDone() {
+    const done = moduleFilteredTasks.filter((t) => t.status === "done");
+    if (done.length === 0) return;
+    try {
+      await Promise.all(
+        done.map((t) => updateTask({ id: t.id, patch: { status: "archived" } }))
+      );
+      toast.success(
+        `Archived ${done.length} done task${done.length === 1 ? "" : "s"}.`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not archive tasks.");
+    }
+  }
+
+  async function handleDuplicate(task: TaskRow) {
+    try {
+      await createTask({
+        title: `${task.title} (copy)`,
+        description: task.description,
+        priority: task.priority,
+        dueAt: task.due_at,
+        module: task.module,
+        // Fresh ids and unticked boxes — the copy is a new piece of work.
+        checklist: getTaskChecklist(task).map((item) => newChecklistItem(item.text)),
+      });
+      toast.success("Task duplicated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not duplicate task.");
     }
   }
 
@@ -304,27 +399,46 @@ export default function TasksPage() {
         />
       </m.div>
 
-      {showOverdueOnly ? (
-        <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/5 px-3 py-2">
-            <AlertTriangle className="h-4 w-4 text-warning" aria-hidden />
-            <p className="text-sm text-foreground">
-              Showing {overdueTasks.length === 1 ? "1 overdue task" : `${overdueTasks.length} overdue tasks`}.
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto h-7 px-2 text-xs"
-              onClick={clearOverdueFilter}
-            >
-              <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-              Show all tasks
-            </Button>
-          </div>
-        </m.div>
-      ) : null}
-
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] max-w-sm flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks…"
+              className="h-8 pl-8 text-xs"
+              aria-label="Search tasks"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            {(
+              [
+                { id: "all", label: "All", count: null, activeClass: "border-primary/50 bg-primary/10 text-primary" },
+                { id: "overdue", label: "Overdue", count: overdueCount, activeClass: "border-destructive/50 bg-destructive/10 text-destructive" },
+                { id: "today", label: "Due today", count: dueTodayCount, activeClass: "border-warning/50 bg-warning/10 text-warning" },
+              ] as const
+            ).map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setQuickFilter(chip.id)}
+                aria-pressed={quickFilter === chip.id}
+                className={cn(
+                  "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                  quickFilter === chip.id
+                    ? chip.activeClass
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {chip.label}
+                {chip.count !== null && chip.count > 0 ? (
+                  <span className="tabular-nums">{chip.count}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
           <Card className="border-sky-500/20 bg-sky-500/5">
             <CardContent className="flex items-center justify-between p-4">
@@ -365,6 +479,7 @@ export default function TasksPage() {
           }
           onAiAssist={(task) => void handleAiAssist(task)}
           aiBusyTaskId={aiTaskId}
+          onArchiveDone={() => void handleArchiveDone()}
           isMutating={isSettingStatus || isUpdating}
           isDeleting={isDeleting}
         />
@@ -380,6 +495,8 @@ export default function TasksPage() {
         showStatus
         onAiAssist={handleAiAssist}
         aiBusy={aiTaskId !== null && aiTaskId === editTask?.id}
+        onDuplicate={handleDuplicate}
+        shareUrlBase="/tasks"
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useMemo, useState, type DragEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Sparkles, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +40,8 @@ interface Props {
   onAiAssist?: (task: TaskRow) => void;
   /** Task id currently being AI-analyzed (shows a spinner on that card). */
   aiBusyTaskId?: string | null;
+  /** "Clear done": archive every task currently in the Done lane. */
+  onArchiveDone?: () => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }
@@ -349,7 +351,7 @@ function TaskCard({
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -424,9 +426,25 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                   <p className="text-xs text-muted-foreground">{column.description}</p>
                 </div>
               </div>
-              <Badge variant="secondary" className="tabular-nums">
-                {columnTasks.length}
-              </Badge>
+              <div className="flex items-center gap-1">
+                {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                    onClick={onArchiveDone}
+                    disabled={isMutating}
+                    title="Move all done tasks to the archive"
+                  >
+                    <Archive className="h-3 w-3" />
+                    Archive all
+                  </Button>
+                ) : null}
+                <Badge variant="secondary" className="tabular-nums">
+                  {columnTasks.length}
+                </Badge>
+              </div>
             </div>
 
             <div className="space-y-2">

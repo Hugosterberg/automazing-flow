@@ -1,4 +1,4 @@
-import type { TaskRow } from "./tasksService";
+import { getTaskChecklist, type TaskRow } from "./tasksService";
 
 /**
  * Shared predicates for task filtering. Centralising these keeps the sidebar
@@ -41,6 +41,24 @@ export function compareTasksByUrgency(a: TaskRow, b: TaskRow, nowMs: number = Da
   if (aHasDue !== bHasDue) return aHasDue ? -1 : 1;
 
   return Date.parse(b.created_at) - Date.parse(a.created_at);
+}
+
+/**
+ * Case-insensitive free-text match across the fields a user thinks of as
+ * "the task": title, description and checklist items. Empty/whitespace
+ * queries match everything.
+ */
+export function taskMatchesQuery(task: TaskRow, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    task.title,
+    task.description ?? "",
+    ...getTaskChecklist(task).map((item) => item.text),
+  ]
+    .join("\n")
+    .toLowerCase();
+  return haystack.includes(q);
 }
 
 /**

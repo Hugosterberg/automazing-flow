@@ -32,4 +32,4 @@ export type { TaskEditPatch } from "./TaskEditDialog";
 export { PriorityPicker, DueDatePicker, ChecklistEditor } from "./TaskMetaControls";
 export { TaskList } from "./TaskList";
 export { TaskBoard } from "./TaskBoard";
-export { isTaskOpen, isTaskOverdue, isTaskDueToday } from "./taskFilters";
+export { isTaskOpen, isTaskOverdue, isTaskDueToday, taskMatchesQuery } from "./taskFilters";

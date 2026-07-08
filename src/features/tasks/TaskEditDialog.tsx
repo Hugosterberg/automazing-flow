@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ListChecks, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { Copy, Link2, ListChecks, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +73,13 @@ interface Props {
    */
   onAiAssist?: (task: TaskRow) => Promise<TaskRow | null>;
   aiBusy?: boolean;
+  /** Create a copy of this task (checklist reset, no comments). */
+  onDuplicate?: (task: TaskRow) => Promise<unknown>;
+  /**
+   * Page path for shareable deep links (e.g. "/tasks"); when set, a
+   * copy-link button puts `<origin><base>?task=<id>` on the clipboard.
+   */
+  shareUrlBase?: string;
 }
 
 function newCommentId(): string {
@@ -90,6 +98,8 @@ export function TaskEditDialog({
   showStatus,
   onAiAssist,
   aiBusy,
+  onDuplicate,
+  shareUrlBase,
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -209,7 +219,26 @@ export function TaskEditDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
-            Task details
+            <span className="flex items-center gap-1.5">
+              Task details
+              {shareUrlBase && task ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}${shareUrlBase}?task=${task.id}`;
+                    void navigator.clipboard
+                      .writeText(url)
+                      .then(() => toast.success("Link copied."))
+                      .catch(() => toast.error("Could not copy the link."));
+                  }}
+                  aria-label="Copy link to this task"
+                  title="Copy link to this task"
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </span>
             {onAiAssist ? (
               <Button
                 type="button"
@@ -357,6 +386,19 @@ export function TaskEditDialog({
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
           <DialogFooter>
+            {onDuplicate && task ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mr-auto gap-1.5 px-2 text-xs text-muted-foreground"
+                onClick={() => void onDuplicate(task)}
+                disabled={saving}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Duplicate
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
