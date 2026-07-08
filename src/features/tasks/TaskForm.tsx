@@ -100,7 +100,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-9 gap-1 px-2 text-xs text-muted-foreground"
+          className="ml-auto h-9 gap-1 px-2 text-xs text-muted-foreground"
           onClick={() => setShowDetails((v) => !v)}
           aria-expanded={showDetails}
         >

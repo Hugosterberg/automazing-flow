@@ -360,7 +360,7 @@ export default function TasksPage() {
       <PageHeader
         icon={ListChecks}
         title="Tasks"
-        description="Create tasks in To-do, drag them into In progress, and finish them in Done."
+        description="Add a task in seconds, click a card for details, and drag between lanes."
         actions={
           <>
             <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as ModuleFilter)}>
@@ -439,32 +439,32 @@ export default function TasksPage() {
             ))}
           </div>
         </div>
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="mb-3 grid grid-cols-3 gap-3">
           <Card className="border-sky-500/20 bg-sky-500/5">
-            <CardContent className="flex items-center justify-between p-4">
+            <CardContent className="flex items-center justify-between p-3">
               <div>
-                <p className="text-xs text-muted-foreground">To-do</p>
-                <p className="text-2xl font-semibold tabular-nums">{stats.todo}</p>
+                <p className="text-[11px] text-muted-foreground">To-do</p>
+                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.todo}</p>
               </div>
-              <Circle className="h-5 w-5 text-sky-500" />
+              <Circle className="h-4 w-4 text-sky-500" />
             </CardContent>
           </Card>
           <Card className="border-amber-500/20 bg-amber-500/5">
-            <CardContent className="flex items-center justify-between p-4">
+            <CardContent className="flex items-center justify-between p-3">
               <div>
-                <p className="text-xs text-muted-foreground">In progress</p>
-                <p className="text-2xl font-semibold tabular-nums">{stats.inProgress}</p>
+                <p className="text-[11px] text-muted-foreground">In progress</p>
+                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.inProgress}</p>
               </div>
-              <PlayCircle className="h-5 w-5 text-amber-500" />
+              <PlayCircle className="h-4 w-4 text-amber-500" />
             </CardContent>
           </Card>
           <Card className="border-emerald-500/20 bg-emerald-500/5">
-            <CardContent className="flex items-center justify-between p-4">
+            <CardContent className="flex items-center justify-between p-3">
               <div>
-                <p className="text-xs text-muted-foreground">Done</p>
-                <p className="text-2xl font-semibold tabular-nums">{stats.done}</p>
+                <p className="text-[11px] text-muted-foreground">Done</p>
+                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.done}</p>
               </div>
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </CardContent>
           </Card>
         </div>

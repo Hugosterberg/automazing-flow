@@ -123,6 +123,11 @@ export function DueDatePicker({
 }) {
   const [open, setOpen] = useState(false);
   const selected = value ? parseDateInputValue(value) : undefined;
+  // "Overdue" here means the picked day already ended in local time.
+  const isPast =
+    selected !== undefined &&
+    new Date(selected.getFullYear(), selected.getMonth(), selected.getDate(), 23, 59, 59, 999) <
+      new Date();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -133,7 +138,8 @@ export function DueDatePicker({
           disabled={disabled}
           className={cn(
             "h-9 justify-start gap-1.5 px-3 text-xs font-normal",
-            !selected && "text-muted-foreground"
+            !selected && "text-muted-foreground",
+            isPast && "border-destructive/40 text-destructive"
           )}
         >
           <CalendarDays className="h-3.5 w-3.5" />
@@ -258,7 +264,7 @@ export function ChecklistEditor({
                 onClick={() => onChange(items.filter((i) => i.id !== item.id))}
                 disabled={disabled}
                 aria-label={`Remove "${item.text}"`}
-                className="text-muted-foreground/50 opacity-0 transition-opacity hover:text-destructive group-hover/check:opacity-100 focus-visible:opacity-100"
+                className="text-muted-foreground/50 transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover/check:opacity-100"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

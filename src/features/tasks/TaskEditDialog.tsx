@@ -346,18 +346,29 @@ export function TaskEditDialog({
             </Label>
             {comments.length > 0 ? (
               <ul className="space-y-1.5">
-                {comments.map((c) => (
-                  <li
-                    key={c.id}
-                    className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2"
-                  >
-                    <p className="whitespace-pre-wrap break-words text-xs">{c.text}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {c.author ? `${c.author} · ` : ""}
-                      {formatRelativeTime(c.createdAt) ?? c.createdAt.slice(0, 16)}
-                    </p>
-                  </li>
-                ))}
+                {comments.map((c) => {
+                  const isAi = c.author === "AI";
+                  return (
+                    <li
+                      key={c.id}
+                      className={cn(
+                        "rounded-md border px-2.5 py-2",
+                        isAi
+                          ? "border-violet-500/30 bg-violet-500/5"
+                          : "border-border/60 bg-muted/30"
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap break-words text-xs">{c.text}</p>
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {isAi ? (
+                          <Sparkles className="h-3 w-3 text-violet-500" aria-hidden />
+                        ) : null}
+                        {c.author ? `${c.author} · ` : ""}
+                        {formatRelativeTime(c.createdAt) ?? c.createdAt.slice(0, 16)}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
             <div className="flex items-end gap-1.5">
@@ -385,6 +396,11 @@ export function TaskEditDialog({
           </div>
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {task?.created_at ? (
+            <p className="text-[11px] text-muted-foreground">
+              Created {formatRelativeTime(task.created_at) ?? task.created_at.slice(0, 10)}
+            </p>
+          ) : null}
           <DialogFooter>
             {onDuplicate && task ? (
               <Button
