@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ListChecks, Loader2, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,38 +11,66 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
+import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
 import {
-  TASK_PRIORITY_LABELS,
-  TASK_PRIORITY_ORDER,
+  getTaskChecklist,
+  getTaskComments,
+  type TaskChecklistItem,
+  type TaskComment,
   type TaskPriority,
   type TaskRow,
 } from "./tasksService";
+
+export interface TaskEditPatch {
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  dueAt: string | null;
+  checklist: TaskChecklistItem[];
+  comments: TaskComment[];
+}
 
 interface Props {
   task: TaskRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: string, patch: {
-    title: string;
-    description: string | null;
-    priority: TaskPriority;
-    dueAt: string | null;
-  }) => Promise<unknown>;
+  onSave: (id: string, patch: TaskEditPatch) => Promise<unknown>;
+  /**
+   * Persists checklist/comment changes immediately (no Save needed), so
+   * ticking off a requirement or posting a comment sticks even if the
+   * dialog is closed without saving. Falls back to save-on-Save if omitted.
+   */
+  onQuickPatch?: (
+    id: string,
+    patch: { checklist: TaskChecklistItem[]; comments: TaskComment[] }
+  ) => Promise<unknown>;
+  /** Shown as the author on new comments (e.g. the signed-in email). */
+  currentUser?: string | null;
 }
 
-export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
+function newCommentId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function TaskEditDialog({
+  task,
+  open,
+  onOpenChange,
+  onSave,
+  onQuickPatch,
+  currentUser,
+}: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueAt, setDueAt] = useState("");
+  const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [commentDraft, setCommentDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,8 +80,60 @@ export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
     setDescription(task.description ?? "");
     setPriority(task.priority);
     setDueAt(task.due_at ? isoToLocalDateInputValue(task.due_at) : "");
+    setChecklist(getTaskChecklist(task));
+    setComments(getTaskComments(task));
+    setCommentDraft("");
     setError(null);
   }, [task, open]);
+
+  /**
+   * Checklist and comments persist immediately: local state updates first
+   * for a snappy UI, then the quick patch fires. On failure we surface the
+   * error but keep the local state — Save can still persist it.
+   */
+  function persistLists(nextChecklist: TaskChecklistItem[], nextComments: TaskComment[]) {
+    if (!task || !onQuickPatch) return;
+    onQuickPatch(task.id, { checklist: nextChecklist, comments: nextComments }).catch(
+      (err) => {
+        setError(err instanceof Error ? err.message : "Could not save changes.");
+      }
+    );
+  }
+
+  function handleChecklistChange(next: TaskChecklistItem[]) {
+    setChecklist(next);
+    persistLists(next, comments);
+  }
+
+  function handleChecklistToggle(item: TaskChecklistItem, done: boolean) {
+    const next = checklist.map((i) => (i.id === item.id ? { ...i, done } : i));
+    setChecklist(next);
+    persistLists(next, comments);
+  }
+
+  function addComment() {
+    const text = commentDraft.trim();
+    if (!text || !task) return;
+    const next = [
+      ...comments,
+      {
+        id: newCommentId(),
+        text,
+        createdAt: new Date().toISOString(),
+        author: currentUser ?? null,
+      },
+    ];
+    setComments(next);
+    setCommentDraft("");
+    persistLists(checklist, next);
+  }
+
+  function handleCommentKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      addComment();
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,6 +151,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
         description: description.trim() || null,
         priority,
         dueAt: dueAt ? dateInputToEndOfDayIso(dueAt) : null,
+        checklist,
+        comments,
       });
       onOpenChange(false);
     } catch (err) {
@@ -80,13 +162,15 @@ export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
     }
   }
 
+  const doneCount = checklist.filter((i) => i.done).length;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit task</DialogTitle>
+          <DialogTitle>Task details</DialogTitle>
         </DialogHeader>
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-title" className="text-xs">
               Title
@@ -98,6 +182,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
               disabled={saving}
             />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-description" className="text-xs">
               Description
@@ -106,44 +191,93 @@ export function TaskEditDialog({ task, open, onOpenChange, onSave }: Props) {
               id="edit-task-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add context, links, or notes…"
               rows={3}
               disabled={saving}
             />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Priority</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)} disabled={saving}>
-                <SelectTrigger className="h-9 w-[130px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_PRIORITY_ORDER.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {TASK_PRIORITY_LABELS[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-task-due" className="text-xs flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" />
-                Due date
-              </Label>
-              <Input
-                id="edit-task-due"
-                type="date"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <PriorityPicker value={priority} onChange={setPriority} disabled={saving} />
+            <DueDatePicker value={dueAt} onChange={setDueAt} disabled={saving} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs">
+              <ListChecks className="h-3.5 w-3.5" />
+              Checklist
+              {checklist.length > 0 ? (
+                <span className="tabular-nums text-muted-foreground">
+                  {doneCount}/{checklist.length}
+                </span>
+              ) : null}
+            </Label>
+            <ChecklistEditor
+              items={checklist}
+              onChange={handleChecklistChange}
+              onToggle={handleChecklistToggle}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs">
+              <MessageSquare className="h-3.5 w-3.5" />
+              Comments
+              {comments.length > 0 ? (
+                <span className="tabular-nums text-muted-foreground">
+                  {comments.length}
+                </span>
+              ) : null}
+            </Label>
+            {comments.length > 0 ? (
+              <ul className="space-y-1.5">
+                {comments.map((c) => (
+                  <li
+                    key={c.id}
+                    className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2"
+                  >
+                    <p className="whitespace-pre-wrap break-words text-xs">{c.text}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {c.author ? `${c.author} · ` : ""}
+                      {formatRelativeTime(c.createdAt) ?? c.createdAt.slice(0, 16)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex items-end gap-1.5">
+              <Textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                onKeyDown={handleCommentKeyDown}
+                placeholder="Add a comment…"
+                rows={1}
                 disabled={saving}
-                className="h-9 text-xs w-[150px]"
+                className="min-h-[2rem] text-xs"
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 p-0"
+                onClick={addComment}
+                disabled={saving || !commentDraft.trim()}
+                aria-label="Add comment"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
+
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>

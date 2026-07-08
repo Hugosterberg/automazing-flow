@@ -287,7 +287,7 @@ export default function SalesMarketingPage() {
   const [pipelineOpen, setPipelineOpen] = useState(false);
   const [pipelineTitle, setPipelineTitle] = useState("");
   const [pipelineDesc, setPipelineDesc] = useState("");
-  const [pipelinePriority, setPipelinePriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [pipelinePriority, setPipelinePriority] = useState<"low" | "medium" | "high">("medium");
   const [pipelineDue, setPipelineDue] = useState("");
   const [pipelineAdding, setPipelineAdding] = useState(false);
   const [editTask, setEditTask] = useState<TaskRow | null>(null);
@@ -731,7 +731,6 @@ export default function SalesMarketingPage() {
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -756,6 +755,9 @@ export default function SalesMarketingPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSave={async (id, patch) => {
+          await updateTask({ id, patch });
+        }}
+        onQuickPatch={async (id, patch) => {
           await updateTask({ id, patch });
         }}
       />

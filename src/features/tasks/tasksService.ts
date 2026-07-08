@@ -1,9 +1,24 @@
 import type { TypedSupabaseClient } from "@/lib/supabase";
-import type { Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
 
 export type TaskRow = Tables<"tasks">;
 export type TaskStatus = TaskRow["status"];
 export type TaskPriority = TaskRow["priority"];
+
+/** A short requirement/sub-item on a task, stored in `metadata.checklist`. */
+export interface TaskChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+/** A free-form comment on a task, stored in `metadata.comments`. */
+export interface TaskComment {
+  id: string;
+  text: string;
+  createdAt: string;
+  author?: string | null;
+}
 
 /**
  * Input shape for creating a new task from the UI. We keep it narrower than
@@ -18,6 +33,8 @@ export interface TaskInput {
   dueAt?: string | null;
   /** Source module tag. Useful for filtering ("connections", "reviews"…). */
   module?: string | null;
+  checklist?: TaskChecklistItem[];
+  comments?: TaskComment[];
 }
 
 export const TASK_STATUS_ORDER: TaskStatus[] = [
@@ -28,12 +45,12 @@ export const TASK_STATUS_ORDER: TaskStatus[] = [
   "archived",
 ];
 
-export const TASK_PRIORITY_ORDER: TaskPriority[] = [
-  "low",
-  "medium",
-  "high",
-  "urgent",
-];
+/**
+ * Priorities offered in the UI. The DB enum still contains "urgent" so
+ * legacy rows keep rendering, but new/edited tasks only pick from these
+ * three — urgent collapsed into "high" to keep the choice simple.
+ */
+export const TASK_PRIORITY_ORDER: TaskPriority[] = ["low", "medium", "high"];
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
@@ -49,6 +66,67 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   high: "High",
   urgent: "Urgent",
 };
+
+/**
+ * Task metadata is wholly owned by the UI today (the server only reads
+ * tasks), so the checklist and comments live as plain arrays under
+ * `metadata.checklist` / `metadata.comments`. Parsing is defensive: rows
+ * created elsewhere (or hand-edited) simply yield empty lists.
+ */
+function metadataRecord(metadata: Json): Record<string, Json | undefined> {
+  return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata
+    : {};
+}
+
+export function newChecklistItem(text: string): TaskChecklistItem {
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return { id, text: text.trim(), done: false };
+}
+
+export function getTaskChecklist(task: Pick<TaskRow, "metadata">): TaskChecklistItem[] {
+  const raw = metadataRecord(task.metadata).checklist;
+  if (!Array.isArray(raw)) return [];
+  const items: TaskChecklistItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const { id, text, done } = entry as Record<string, Json | undefined>;
+    if (typeof id !== "string" || typeof text !== "string") continue;
+    items.push({ id, text, done: done === true });
+  }
+  return items;
+}
+
+export function getTaskComments(task: Pick<TaskRow, "metadata">): TaskComment[] {
+  const raw = metadataRecord(task.metadata).comments;
+  if (!Array.isArray(raw)) return [];
+  const comments: TaskComment[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const { id, text, createdAt, author } = entry as Record<string, Json | undefined>;
+    if (typeof id !== "string" || typeof text !== "string" || typeof createdAt !== "string") continue;
+    comments.push({ id, text, createdAt, author: typeof author === "string" ? author : null });
+  }
+  return comments;
+}
+
+function buildMetadata(
+  checklist: TaskChecklistItem[],
+  comments: TaskComment[]
+): Json {
+  return {
+    checklist: checklist.map((i) => ({ id: i.id, text: i.text.trim(), done: i.done })),
+    comments: comments.map((c) => ({
+      id: c.id,
+      text: c.text.trim(),
+      createdAt: c.createdAt,
+      author: c.author ?? null,
+    })),
+  };
+}
 
 export async function listTasks(
   supabase: TypedSupabaseClient,
@@ -79,6 +157,9 @@ export async function createTask(
     due_at: input.dueAt ?? null,
     module: input.module ?? null,
   };
+  if (input.checklist?.length || input.comments?.length) {
+    row.metadata = buildMetadata(input.checklist ?? [], input.comments ?? []);
+  }
   const { data, error } = await supabase
     .from("tasks")
     .insert(row)
@@ -102,6 +183,12 @@ export async function updateTask(
   if (patch.dueAt !== undefined) row.due_at = patch.dueAt;
   if (patch.module !== undefined) row.module = patch.module;
   if (patch.completedAt !== undefined) row.completed_at = patch.completedAt;
+  // Metadata is replaced as a whole, so callers touching either list must
+  // send BOTH (use getTaskChecklist/getTaskComments on the current row for
+  // the untouched one) or the other list would be wiped.
+  if (patch.checklist !== undefined || patch.comments !== undefined) {
+    row.metadata = buildMetadata(patch.checklist ?? [], patch.comments ?? []);
+  }
 
   const { data, error } = await supabase
     .from("tasks")

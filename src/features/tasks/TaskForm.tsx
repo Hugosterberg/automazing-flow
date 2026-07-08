@@ -1,23 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { CalendarDays, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { dateInputToEndOfDayIso } from "@/lib/localDate";
-import {
-  TASK_PRIORITY_LABELS,
-  TASK_PRIORITY_ORDER,
-  type TaskInput,
-  type TaskPriority,
-} from "./tasksService";
+import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
+import type { TaskChecklistItem, TaskInput, TaskPriority } from "./tasksService";
 
 interface Props {
   onSubmit: (input: TaskInput) => Promise<unknown>;
@@ -29,6 +18,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueAt, setDueAt] = useState("");
+  const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,11 +40,13 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         // user's timezone — not UTC midnight (which reads as overdue for
         // most of the due day east of UTC).
         dueAt: dueAt ? dateInputToEndOfDayIso(dueAt) : null,
+        checklist,
       });
       setTitle("");
       setDescription("");
       setPriority("medium");
       setDueAt("");
+      setChecklist([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create task.");
     } finally {
@@ -98,46 +90,24 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="task-priority" className="text-xs">
-            Priority
-          </Label>
-          <Select
-            value={priority}
-            onValueChange={(v) => setPriority(v as TaskPriority)}
-            disabled={busy}
-          >
-            <SelectTrigger id="task-priority" className="h-9 w-[130px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TASK_PRIORITY_ORDER.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {TASK_PRIORITY_LABELS[p]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">
+          Requirements{" "}
+          <span className="text-muted-foreground">(optional)</span>
+        </Label>
+        <ChecklistEditor items={checklist} onChange={setChecklist} disabled={busy} />
+      </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="task-due" className="text-xs flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />
-            Due date{" "}
-            <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="task-due"
-            type="date"
-            value={dueAt}
-            onChange={(e) => setDueAt(e.target.value)}
-            disabled={busy}
-            className="h-9 text-xs w-[150px]"
-          />
-        </div>
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <PriorityPicker value={priority} onChange={setPriority} disabled={busy} />
+        <DueDatePicker value={dueAt} onChange={setDueAt} disabled={busy} />
 
-        <Button type="submit" size="sm" className="gap-1.5 h-9" disabled={busy}>
+        <Button
+          type="submit"
+          size="sm"
+          className="ml-auto h-9 gap-1.5"
+          disabled={busy}
+        >
           {submitting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
@@ -147,7 +117,7 @@ export function TaskForm({ onSubmit, disabled }: Props) {
         </Button>
 
         {error ? (
-          <p className="text-xs text-destructive w-full">{error}</p>
+          <p className="w-full text-xs text-destructive">{error}</p>
         ) : null}
       </div>
     </form>

@@ -1,11 +1,14 @@
 import { useMemo, useState, type DragEvent } from "react";
-import { CalendarDays, CheckCircle2, Clock3, GripVertical, Loader2, Pencil, PlayCircle, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, GripVertical, ListChecks, Loader2, MessageSquare, Pencil, PlayCircle, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
+  getTaskChecklist,
+  getTaskComments,
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
   type TaskPriority,
@@ -30,6 +33,8 @@ interface Props {
   onSetStatus: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (task: TaskRow) => void;
+  /** Tick/untick a checklist item straight from the card. */
+  onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }
@@ -87,11 +92,14 @@ function formatDueDate(iso: string | null): string | null {
   return date.toLocaleDateString("sv-SE", { month: "short", day: "numeric" });
 }
 
+const CARD_CHECKLIST_LIMIT = 3;
+
 function TaskCard({
   task,
   onSetStatus,
   onDelete,
   onEdit,
+  onToggleChecklistItem,
   isMutating,
   isDeleting,
 }: {
@@ -99,6 +107,7 @@ function TaskCard({
   onSetStatus: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (task: TaskRow) => void;
+  onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
   isMutating?: boolean;
   isDeleting?: boolean;
 }) {
@@ -106,6 +115,10 @@ function TaskCard({
   const createdAgo = safeRelative(task.created_at);
   const dueDate = formatDueDate(task.due_at);
   const completed = task.status === "done";
+  const checklist = getTaskChecklist(task);
+  const doneCount = checklist.filter((item) => item.done).length;
+  const commentCount = getTaskComments(task).length;
+  const visibleChecklist = checklist.slice(0, CARD_CHECKLIST_LIMIT);
 
   return (
     <article
@@ -115,8 +128,10 @@ function TaskCard({
         event.dataTransfer.setData("text/task-id", task.id);
         event.dataTransfer.setData("text/plain", task.id);
       }}
+      onClick={() => onEdit?.(task)}
       className={cn(
         "group rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
+        onEdit && "cursor-pointer",
         completed && "bg-muted/40"
       )}
     >
@@ -146,10 +161,54 @@ function TaskCard({
             ) : null}
           </div>
 
+          {visibleChecklist.length > 0 ? (
+            <ul className="space-y-1">
+              {visibleChecklist.map((item) => (
+                <li key={item.id} className="flex items-center gap-1.5">
+                  <Checkbox
+                    checked={item.done}
+                    onCheckedChange={(v) =>
+                      onToggleChecklistItem?.(task, item.id, Boolean(v))
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    disabled={isMutating || !onToggleChecklistItem}
+                    aria-label={item.done ? "Mark as not done" : "Mark as done"}
+                    className="h-3.5 w-3.5"
+                  />
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-xs",
+                      item.done && "text-muted-foreground line-through"
+                    )}
+                  >
+                    {item.text}
+                  </span>
+                </li>
+              ))}
+              {checklist.length > CARD_CHECKLIST_LIMIT ? (
+                <li className="text-[11px] text-muted-foreground">
+                  +{checklist.length - CARD_CHECKLIST_LIMIT} more
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
               {TASK_PRIORITY_LABELS[task.priority]}
             </Badge>
+            {checklist.length > 0 ? (
+              <Badge variant="outline" className="gap-1 border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                <ListChecks className="h-3 w-3" />
+                {doneCount}/{checklist.length}
+              </Badge>
+            ) : null}
+            {commentCount > 0 ? (
+              <Badge variant="outline" className="gap-1 border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                <MessageSquare className="h-3 w-3" />
+                {commentCount}
+              </Badge>
+            ) : null}
             {dueDate ? (
               <Badge
                 variant="outline"
@@ -176,7 +235,10 @@ function TaskCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-muted-foreground"
-                  onClick={() => onEdit(task)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(task);
+                  }}
                   disabled={isMutating}
                   aria-label="Edit task"
                 >
@@ -189,7 +251,10 @@ function TaskCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[11px]"
-                  onClick={() => onSetStatus(task.id, "open")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSetStatus(task.id, "open");
+                  }}
                   disabled={isMutating}
                 >
                   To-do
@@ -201,7 +266,10 @@ function TaskCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[11px]"
-                  onClick={() => onSetStatus(task.id, "in_progress")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSetStatus(task.id, "in_progress");
+                  }}
                   disabled={isMutating}
                 >
                   Start
@@ -213,7 +281,10 @@ function TaskCard({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[11px]"
-                  onClick={() => onSetStatus(task.id, "done")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSetStatus(task.id, "done");
+                  }}
                   disabled={isMutating}
                 >
                   Done
@@ -224,7 +295,10 @@ function TaskCard({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                onClick={() => onDelete(task.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
                 disabled={isDeleting}
                 aria-label="Delete task"
               >
@@ -238,7 +312,7 @@ function TaskCard({
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -331,6 +405,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, isM
                     onSetStatus={onSetStatus}
                     onDelete={onDelete}
                     onEdit={onEdit}
+                    onToggleChecklistItem={onToggleChecklistItem}
                     isMutating={isMutating}
                     isDeleting={isDeleting}
                   />

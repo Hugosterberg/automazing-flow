@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp } from "@/lib/motion";
 import { useAccounts } from "@/context/AccountsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import {
   useTasks,
@@ -16,7 +17,14 @@ import {
   TaskEditDialog,
   isTaskOverdue,
 } from "@/features/tasks";
-import type { TaskRow, TaskPriority } from "@/features/tasks/tasksService";
+import type { TaskEditPatch } from "@/features/tasks/TaskEditDialog";
+import {
+  getTaskChecklist,
+  getTaskComments,
+  type TaskChecklistItem,
+  type TaskComment,
+  type TaskRow,
+} from "@/features/tasks/tasksService";
 import {
   Select,
   SelectContent,
@@ -41,6 +49,7 @@ function matchesModuleFilter(module: string | null | undefined, filter: ModuleFi
 export default function TasksPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
+  const { user } = useAuth();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
 
   // `?view=overdue` deep links come from the sidebar badge, the home
@@ -105,16 +114,35 @@ export default function TasksPage() {
     setEditOpen(true);
   }
 
-  async function handleSaveEdit(
-    id: string,
-    patch: { title: string; description: string | null; priority: TaskPriority; dueAt: string | null }
-  ) {
+  async function handleSaveEdit(id: string, patch: TaskEditPatch) {
     try {
       await updateTask({ id, patch });
       toast.success("Task updated.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save task.");
       throw err;
+    }
+  }
+
+  // Silent variant used by the detail dialog for checklist ticks and
+  // comments — these persist immediately, a success toast per tick would
+  // be noise.
+  async function handleQuickPatch(
+    id: string,
+    patch: { checklist: TaskChecklistItem[]; comments: TaskComment[] }
+  ) {
+    await updateTask({ id, patch });
+  }
+
+  async function handleToggleChecklistItem(task: TaskRow, itemId: string, done: boolean) {
+    const checklist = getTaskChecklist(task).map((item) =>
+      item.id === itemId ? { ...item, done } : item
+    );
+    try {
+      // Metadata is replaced wholesale, so comments ride along untouched.
+      await updateTask({ id: task.id, patch: { checklist, comments: getTaskComments(task) } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update checklist.");
     }
   }
 
@@ -237,6 +265,9 @@ export default function TasksPage() {
           onSetStatus={(id, status) => void handleSetStatus(id, status)}
           onDelete={(id) => void handleDeleteTask(id)}
           onEdit={openEdit}
+          onToggleChecklistItem={(task, itemId, done) =>
+            void handleToggleChecklistItem(task, itemId, done)
+          }
           isMutating={isSettingStatus || isUpdating}
           isDeleting={isDeleting}
         />
@@ -247,6 +278,8 @@ export default function TasksPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSave={handleSaveEdit}
+        onQuickPatch={handleQuickPatch}
+        currentUser={user?.email ?? null}
       />
     </div>
   );
