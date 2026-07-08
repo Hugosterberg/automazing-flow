@@ -333,6 +333,130 @@ export async function fetchGmailAccountData({
   return { messages: formatted };
 }
 
+export type GmailThreadMessage = {
+  id: string;
+  threadId?: string;
+  subject: string;
+  from: { name: string; email: string };
+  date: string;
+  snippet: string;
+  body: string;
+  isOutgoing: boolean;
+};
+
+export async function fetchGmailThread({
+  accessToken,
+  refreshToken,
+  accountId,
+  tokenStore,
+  stored,
+  googleClientId,
+  googleClientSecret,
+  threadId,
+}: GmailFetchArgs & { threadId: string }) {
+  function decodeBase64Url(value: string | undefined): string {
+    if (!value) return "";
+    try {
+      const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+      return Buffer.from(padded, "base64").toString("utf8");
+    } catch {
+      return "";
+    }
+  }
+
+  function extractBody(payload?: GmailMessage["payload"]): string {
+    if (!payload) return "";
+    const direct = decodeBase64Url(payload.body?.data);
+    if (direct.trim()) return direct;
+
+    const parts = payload.parts ?? [];
+    for (const part of parts) {
+      if (part.mimeType?.startsWith("text/plain")) {
+        const txt = decodeBase64Url(part.body?.data);
+        if (txt.trim()) return txt;
+      }
+      if (part.parts?.length) {
+        for (const nested of part.parts) {
+          if (nested.mimeType?.startsWith("text/plain")) {
+            const txt = decodeBase64Url(nested.body?.data);
+            if (txt.trim()) return txt;
+          }
+        }
+      }
+    }
+    return "";
+  }
+
+  const getHeader = (headers: GmailHeader[] | undefined, name: string) =>
+    (headers || []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+  const parseSender = (from: string) => {
+    const match = from.match(/^(.+?)\s*<(.+)>$/);
+    if (match) return { name: match[1].replace(/"/g, "").trim(), email: match[2].trim() };
+    return { name: from, email: from };
+  };
+
+  async function fetchThread(token: string) {
+    return fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?format=full`,
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(20_000) }
+    );
+  }
+
+  let token = accessToken;
+  let threadRes = await fetchThread(token);
+  if (threadRes.status === 401 && refreshToken) {
+    const refreshed = await refreshGmailToken({ refreshToken, googleClientId, googleClientSecret });
+    if (refreshed.accessToken) {
+      token = refreshed.accessToken;
+      await tokenStore.set(accountId, { ...stored, accessToken: refreshed.accessToken });
+      threadRes = await fetchThread(token);
+    }
+  }
+
+  if (!threadRes.ok) {
+    if (threadRes.status === 401) {
+      return { error: "Gmail token invalid. Reconnect the account.", status: 401 };
+    }
+    const body = await threadRes.json().catch(() => ({}));
+    return {
+      error: String((body as { error?: { message?: string } })?.error?.message || "gmail_thread_failed"),
+      status: threadRes.status,
+    };
+  }
+
+  const threadData = (await threadRes.json().catch(() => ({}))) as {
+    id?: string;
+    messages?: GmailMessage[];
+  };
+  const rawMessages = Array.isArray(threadData.messages) ? threadData.messages : [];
+
+  const messages: GmailThreadMessage[] = rawMessages
+    .map((msg) => {
+      const headers = msg.payload?.headers ?? [];
+      const dateRaw = getHeader(headers, "Date");
+      const subject = getHeader(headers, "Subject");
+      const body = extractBody(msg.payload);
+      const labelIds = msg.labelIds || [];
+      return {
+        id: msg.id,
+        threadId: msg.threadId || threadData.id,
+        subject: subject || "(No subject)",
+        from: parseSender(getHeader(headers, "From")),
+        date: dateRaw || (msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : ""),
+        snippet: msg.snippet || "",
+        body: body || msg.snippet || "",
+        isOutgoing: labelIds.includes("SENT"),
+        _sort: Number(msg.internalDate || 0),
+      };
+    })
+    .sort((a, b) => a._sort - b._sort)
+    .map(({ _sort, ...rest }) => rest);
+
+  return { messages, threadId: threadData.id || threadId };
+}
+
 export async function sendGmailReply({
   accessToken,
   refreshToken,

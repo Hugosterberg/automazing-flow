@@ -29,7 +29,9 @@ import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import {
   MessageWorkspace,
+  fetchMessageThread,
   type MessageChannelTab,
+  type ThreadMessage,
   type UnifiedMessage,
 } from "@/features/messages";
 
@@ -173,6 +175,8 @@ export default function MessagesPage() {
   const [draftBusy, setDraftBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
   const [replySent, setReplySent] = useState(false);
+  const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   // "Handled" is app-level triage (the providers don't expose mark-as-read):
   // handled ids stop counting as unanswered in this inbox. Persisted per
@@ -373,7 +377,39 @@ export default function MessagesPage() {
     setReplySent(false);
     setDraftBusy(false);
     setSendBusy(false);
+    setThreadMessages([]);
   }, [selectedMessage?.id]);
+
+  useEffect(() => {
+    if (!selectedMessage) {
+      setThreadLoading(false);
+      return;
+    }
+    const canLoad =
+      (selectedMessage.kind === "email" &&
+        (selectedMessage.threadId || selectedMessage.providerMessageId)) ||
+      (selectedMessage.kind === "dm" && selectedMessage.conversationId);
+    if (!canLoad) {
+      setThreadMessages([]);
+      setThreadLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    setThreadLoading(true);
+    void fetchMessageThread(selectedMessage, activeProfileId, ac.signal)
+      .then((rows) => {
+        if (!ac.signal.aborted) setThreadMessages(rows);
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) setThreadMessages([]);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setThreadLoading(false);
+      });
+
+    return () => ac.abort();
+  }, [selectedMessage, activeProfileId]);
 
   useEffect(() => {
     if (defaultedUnread.current || loading) return;
@@ -684,6 +720,8 @@ export default function MessagesPage() {
     return {
       channelLabel: channelBadge(selectedMessage),
       aiSummary: aiSummaries[selectedMessage.id],
+      threadMessages,
+      threadLoading,
       replyDraft,
       onReplyDraftChange: setReplyDraft,
       draftBusy,
@@ -723,6 +761,8 @@ export default function MessagesPage() {
     selectedMessage,
     sendBusy,
     sendReply,
+    threadLoading,
+    threadMessages,
   ]);
 
   return (

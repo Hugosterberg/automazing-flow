@@ -19,6 +19,7 @@ type OutlookReplyArgs = OutlookMailFetchArgs & {
 
 type GraphMessage = {
   id?: string;
+  conversationId?: string;
   subject?: string;
   bodyPreview?: string;
   receivedDateTime?: string;
@@ -34,6 +35,41 @@ type GraphMessage = {
     content?: string;
   };
 };
+
+export type OutlookThreadMessage = {
+  id: string;
+  conversationId?: string;
+  subject: string;
+  from: { name: string; email: string };
+  date: string;
+  snippet: string;
+  body: string;
+  isOutgoing: boolean;
+};
+
+function stripHtmlBody(content: string | undefined): string {
+  return typeof content === "string"
+    ? content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    : "";
+}
+
+function formatOutlookGraphMessage(m: GraphMessage, mailboxEmail: string): OutlookThreadMessage {
+  const addr = m.from?.emailAddress;
+  const name = String(addr?.name || addr?.address || "Unknown");
+  const email = String(addr?.address || "");
+  const bodyText = stripHtmlBody(m.body?.content);
+  const mailbox = mailboxEmail.trim().toLowerCase();
+  return {
+    id: String(m.id || crypto.randomUUID()),
+    conversationId: m.conversationId ? String(m.conversationId) : undefined,
+    subject: String(m.subject || "(No subject)"),
+    from: { name, email },
+    date: String(m.receivedDateTime || ""),
+    snippet: String(m.bodyPreview || ""),
+    body: bodyText || String(m.bodyPreview || ""),
+    isOutgoing: Boolean(mailbox && email.toLowerCase() === mailbox),
+  };
+}
 
 export async function refreshMicrosoftToken({
   refreshToken,
@@ -81,7 +117,7 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
 
   const listUrl =
     "https://graph.microsoft.com/v1.0/me/messages?" +
-    "$top=10&$orderby=receivedDateTime%20desc&$select=id,subject,bodyPreview,receivedDateTime,from,isRead,body";
+    "$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,body";
 
   async function fetchList(t: string) {
     return fetch(listUrl, { headers: headers(t), signal: AbortSignal.timeout(15_000) });
@@ -120,26 +156,103 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
     ? (listData as { value: GraphMessage[] }).value
     : [];
 
+  const mailboxEmail = String(stored.username || "");
   const messages = rows.map((m) => {
-    const addr = m.from?.emailAddress;
-    const name = String(addr?.name || addr?.address || "Unknown");
-    const email = String(addr?.address || "");
-    const bodyText =
-      typeof m.body?.content === "string"
-        ? m.body.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-        : "";
+    const formatted = formatOutlookGraphMessage(m, mailboxEmail);
     return {
-      id: String(m.id || crypto.randomUUID()),
-      subject: String(m.subject || "(No subject)"),
-      from: { name, email },
-      date: String(m.receivedDateTime || ""),
-      snippet: String(m.bodyPreview || ""),
-      body: bodyText || String(m.bodyPreview || ""),
+      id: formatted.id,
+      conversationId: formatted.conversationId,
+      subject: formatted.subject,
+      from: formatted.from,
+      date: formatted.date,
+      snippet: formatted.snippet,
+      body: formatted.body,
       isUnread: m.isRead === false,
     };
   });
 
   return { messages };
+}
+
+export async function fetchOutlookMailThread(
+  args: OutlookMailFetchArgs & { messageId?: string; conversationId?: string }
+) {
+  const {
+    accessToken,
+    refreshToken,
+    accountId,
+    tokenStore,
+    stored,
+    microsoftClientId,
+    microsoftClientSecret,
+    messageId,
+    conversationId,
+  } = args;
+  let token = accessToken;
+  const mailboxEmail = String(stored.username || "");
+  const headers = (t: string) => ({ Authorization: `Bearer ${t}` });
+
+  async function graphFetch(url: string, t: string) {
+    return fetch(url, { headers: headers(t), signal: AbortSignal.timeout(15_000) });
+  }
+
+  async function refreshStoredToken() {
+    const refreshed = await refreshMicrosoftToken({
+      refreshToken,
+      microsoftClientId,
+      microsoftClientSecret,
+    });
+    if (!refreshed) return null;
+    token = refreshed.accessToken;
+    await tokenStore.set(accountId, {
+      ...stored,
+      accessToken: refreshed.accessToken,
+      ...(refreshed.refreshToken ? { refreshToken: refreshed.refreshToken } : {}),
+    });
+    return refreshed.accessToken;
+  }
+
+  async function authedFetch(url: string) {
+    let res = await graphFetch(url, token);
+    if (res.status === 401) {
+      const nextToken = await refreshStoredToken();
+      if (!nextToken) return { ok: false as const, status: 401, error: "outlook_reconnect_required" };
+      res = await graphFetch(url, nextToken);
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = String((body as { error?: { message?: string } })?.error?.message || "outlook_thread_failed");
+      return { ok: false as const, status: res.status, error };
+    }
+    return { ok: true as const, data: await res.json().catch(() => ({})) };
+  }
+
+  let resolvedConversationId = conversationId?.trim() || "";
+  if (!resolvedConversationId && messageId?.trim()) {
+    const msgRes = await authedFetch(
+      `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId.trim())}?$select=conversationId`
+    );
+    if (!msgRes.ok) return { error: msgRes.error, status: msgRes.status };
+    resolvedConversationId = String((msgRes.data as { conversationId?: string }).conversationId || "");
+  }
+  if (!resolvedConversationId) {
+    return { error: "conversationId or messageId is required", status: 400 };
+  }
+
+  const filter = encodeURIComponent(`conversationId eq '${resolvedConversationId.replace(/'/g, "''")}'`);
+  const threadUrl =
+    "https://graph.microsoft.com/v1.0/me/messages?" +
+    `$filter=${filter}&$orderby=receivedDateTime%20asc&$top=50&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,body`;
+
+  const threadRes = await authedFetch(threadUrl);
+  if (!threadRes.ok) return { error: threadRes.error, status: threadRes.status };
+
+  const rows = Array.isArray((threadRes.data as { value?: GraphMessage[] }).value)
+    ? (threadRes.data as { value: GraphMessage[] }).value
+    : [];
+
+  const messages = rows.map((m) => formatOutlookGraphMessage(m, mailboxEmail));
+  return { messages, conversationId: resolvedConversationId };
 }
 
 export async function sendOutlookMailReply({

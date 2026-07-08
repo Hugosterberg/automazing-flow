@@ -1,44 +1,32 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   ArrowLeft,
-  CheckCheck,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Copy,
   ExternalLink,
   Loader2,
-  Mail,
   Send,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { m } from "framer-motion";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { cn } from "@/lib/utils";
-import { MessageBody } from "./MessageBody";
-import { MessageThread } from "./MessageThread";
-import type { ThreadMessage, UnifiedMessage } from "./types";
+import type { ReviewItem } from "./types";
 
-export type MessageDetailPanelProps = {
-  message: UnifiedMessage;
-  channelLabel: string;
-  aiSummary?: string;
-  threadMessages?: ThreadMessage[];
-  threadLoading?: boolean;
+export type ReviewDetailPanelProps = {
+  review: ReviewItem;
   replyDraft: string;
   onReplyDraftChange: (value: string) => void;
   draftBusy: boolean;
   sendBusy: boolean;
   replySent: boolean;
-  canReply: boolean;
-  isHandled: boolean;
+  isReplied: boolean;
   onDraftReply: () => void;
   onSendReply: () => void;
-  onMarkHandled: () => void;
   onNextAfterSend?: () => void;
   onBack?: () => void;
   showBack?: boolean;
@@ -52,9 +40,7 @@ export type MessageDetailPanelProps = {
   };
 };
 
-type Props = MessageDetailPanelProps;
-
-function formatFullDate(raw: string): string {
+function formatFullDate(raw?: string): string {
   if (!raw) return "";
   try {
     return new Date(raw).toLocaleString("sv-SE", {
@@ -70,62 +56,44 @@ function formatFullDate(raw: string): string {
   }
 }
 
-export function MessageDetailPanel({
-  message,
-  channelLabel,
-  aiSummary,
-  threadMessages = [],
-  threadLoading = false,
+function Stars({ rating }: { rating?: number }) {
+  if (rating == null) return <span className="text-sm text-muted-foreground">No rating</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-amber-500">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={cn("h-4 w-4", i < rating ? "fill-current" : "fill-none opacity-30")}
+          aria-hidden
+        />
+      ))}
+      <span className="ml-1 text-sm text-muted-foreground tabular-nums">{rating}/5</span>
+    </span>
+  );
+}
+
+export function ReviewDetailPanel({
+  review,
   replyDraft,
   onReplyDraftChange,
   draftBusy,
   sendBusy,
   replySent,
-  canReply,
-  isHandled,
+  isReplied,
   onDraftReply,
   onSendReply,
-  onMarkHandled,
   onNextAfterSend,
   onBack,
   showBack,
   navigation,
-}: Props) {
+}: ReviewDetailPanelProps) {
   const replyRef = useRef<HTMLTextAreaElement>(null);
-  const [summaryOpen, setSummaryOpen] = useState(true);
 
   useEffect(() => {
-    setSummaryOpen(true);
-  }, [message.id]);
-
-  useEffect(() => {
-    if (replySent || !canReply || draftBusy) return;
+    if (isReplied || replySent || draftBusy) return;
     const timer = window.setTimeout(() => replyRef.current?.focus(), 140);
     return () => window.clearTimeout(timer);
-  }, [message.id, draftBusy, replySent, canReply]);
-  const fromLine =
-    message.kind === "email"
-      ? message.from.email
-        ? `${message.from.name || message.from.email} <${message.from.email}>`
-        : message.from.name
-      : message.from.name || message.from.email;
-
-  function copyBody() {
-    const text = (message.body || message.snippet || "").trim();
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => toast.success("Message copied."))
-      .catch(() => toast.error("Could not copy."));
-  }
-
-  function copyEmail() {
-    const email = message.from.email?.trim();
-    if (!email) return;
-    void navigator.clipboard
-      .writeText(email)
-      .then(() => toast.success("Email address copied."))
-      .catch(() => toast.error("Could not copy."));
-  }
+  }, [review.id, draftBusy, isReplied, replySent]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -140,13 +108,13 @@ export function MessageDetailPanel({
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back to inbox</span>
+              <span className="sr-only">Back to list</span>
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <h2 className="text-lg font-semibold leading-snug tracking-tight break-words">
-                {message.subject || "(No subject)"}
+                {review.author || "Anonymous"}
               </h2>
               <div className="flex shrink-0 items-center gap-1">
                 {navigation ? (
@@ -158,7 +126,7 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
-                      aria-label="Previous message"
+                      aria-label="Previous review"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -172,118 +140,61 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
-                      aria-label="Next message"
+                      aria-label="Next review"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : null}
-                {message.externalUrl ? (
+                {review.url ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                    <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Open in platform">
+                    <a href={review.url} target="_blank" rel="noreferrer" aria-label="Open review externally">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : null}
-                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody}>
-                  <Copy className="h-4 w-4" />
-                  <span className="sr-only">Copy message</span>
-                </Button>
-                {!isHandled ? (
-                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs" onClick={onMarkHandled}>
-                    <CheckCheck className="h-3.5 w-3.5" />
-                    Mark handled
-                  </Button>
-                ) : (
+                {isReplied ? (
                   <Badge variant="outline" className="h-8 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600">
-                    <CheckCheck className="h-3 w-3" />
-                    Handled
+                    <Send className="h-3 w-3" />
+                    Replied
                   </Badge>
-                )}
+                ) : null}
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant="outline" className="gap-1 text-[10px] uppercase tracking-wide">
-                {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
-                {channelLabel}
-              </Badge>
-              {message.accountLabel ? (
-                <span className="text-xs text-muted-foreground">{message.accountLabel}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <Stars rating={review.rating} />
+              {review.createdAt ? (
+                <span className="text-xs text-muted-foreground">{formatFullDate(review.createdAt)}</span>
               ) : null}
-              <span className="text-xs text-muted-foreground">{formatFullDate(message.date)}</span>
+              {review.source ? (
+                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                  {review.source}
+                </Badge>
+              ) : null}
             </div>
-
-            <div className="rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">From</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm break-words">{fromLine}</p>
-                {message.from.email ? (
-                  <div className="flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-                      <a href={`mailto:${message.from.email}`}>Email</a>
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyEmail}>
-                      Copy
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            {aiSummary ? (
-              <div className="overflow-hidden rounded-lg border border-violet-500/25 bg-violet-500/5">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
-                  onClick={() => setSummaryOpen((v) => !v)}
-                  aria-expanded={summaryOpen}
-                >
-                  <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-violet-500">
-                    <Sparkles className="h-3 w-3" />
-                    AI summary
-                  </p>
-                  <ChevronDown
-                    className={cn("h-3.5 w-3.5 text-violet-500/70 transition-transform", summaryOpen && "rotate-180")}
-                  />
-                </button>
-                {summaryOpen ? (
-                  <p className="border-t border-violet-500/15 px-3 pb-2 text-sm leading-relaxed text-muted-foreground">
-                    {aiSummary}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto app-scroll px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-3xl">
-          {threadMessages.length > 1 || threadLoading ? (
-            <MessageThread
-              messages={threadMessages}
-              loading={threadLoading}
-              highlightId={message.providerMessageId || message.id}
-              kind={message.kind}
-            />
-          ) : (
-            <MessageBody message={message} />
-          )}
+          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
+            {review.text || "No review text."}
+          </p>
         </div>
       </div>
 
-      {canReply ? (
+      {!isReplied ? (
         <footer className="shrink-0 border-t border-border bg-card/90 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur-md sm:px-5">
           {replySent ? (
             <div className="flex flex-wrap items-center gap-3">
               <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                 <Send className="h-4 w-4" />
-                Reply sent
+                Reply posted
               </p>
               {onNextAfterSend ? (
                 <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
-                  Next message
+                  Next review
                   <ChevronRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               ) : null}
@@ -294,15 +205,8 @@ export function MessageDetailPanel({
                 ref={replyRef}
                 value={replyDraft}
                 onChange={(e) => onReplyDraftChange(e.target.value)}
-                placeholder={
-                  message.kind === "email"
-                    ? "Write your reply… (AI draft loads automatically)"
-                    : "Write a reply…"
-                }
-                className={cn(
-                  "min-h-[88px] resize-none border-border/80 bg-background text-sm leading-relaxed",
-                  "focus-visible:ring-primary/30"
-                )}
+                placeholder="Write a reply, or generate one with AI…"
+                className="min-h-[88px] resize-none border-border/80 bg-background text-sm leading-relaxed focus-visible:ring-primary/30"
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
                     e.preventDefault();
@@ -321,7 +225,7 @@ export function MessageDetailPanel({
                 </Button>
                 <ReplyTemplatePicker
                   onInsert={onReplyDraftChange}
-                  recipientName={message.from.name}
+                  recipientName={review.author}
                   disabled={sendBusy}
                 />
                 <Button
@@ -348,7 +252,7 @@ export function MessageDetailPanel({
   );
 }
 
-export function MessageDetailPlaceholder() {
+export function ReviewDetailPlaceholder() {
   return (
     <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 bg-gradient-to-b from-muted/20 to-background px-6 text-center">
       <m.div
@@ -357,12 +261,12 @@ export function MessageDetailPlaceholder() {
         transition={{ duration: 0.35 }}
         className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-6 shadow-sm"
       >
-        <Mail className="mx-auto h-9 w-9 text-muted-foreground/50" />
+        <Star className="mx-auto h-9 w-9 text-muted-foreground/50" />
       </m.div>
       <div className="space-y-1">
-        <p className="text-sm font-medium">Select a message</p>
+        <p className="text-sm font-medium">Select a review</p>
         <p className="max-w-sm text-xs text-muted-foreground">
-          Pick an item from the inbox to read it here — your list stays visible on the left.
+          Pick a review from the list to read it here and compose your reply.
         </p>
       </div>
       <div className="hidden rounded-lg border border-border/60 bg-muted/20 px-4 py-2 text-left lg:block">
@@ -373,13 +277,7 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> — next / previous
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> — mark handled
-          </li>
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">/</kbd> — focus search
-          </li>
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> — close message
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> — close review
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Ctrl</kbd>+

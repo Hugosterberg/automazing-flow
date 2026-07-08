@@ -1,5 +1,5 @@
-import { fetchGmailAccountData, sendGmailReply } from "../providers/gmail.ts";
-import { fetchOutlookMailData, sendOutlookMailReply } from "../providers/outlookMail.ts";
+import { fetchGmailAccountData, fetchGmailThread, sendGmailReply } from "../providers/gmail.ts";
+import { fetchOutlookMailData, fetchOutlookMailThread, sendOutlookMailReply } from "../providers/outlookMail.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import {
   parseZernioConversationList,
@@ -12,6 +12,7 @@ import {
   zernioConversationUnreadCount,
   textFromZernioMessage,
   dateFromZernioMessage,
+  isInboundZernioMessage,
 } from "../lib/zernioInbox.ts";
 import {
   accountInBusinessProfile,
@@ -226,6 +227,8 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
                   providerMessageId: mid,
+                  threadId: m.threadId ? String(m.threadId) : undefined,
+                  conversationId: m.conversationId ? String(m.conversationId) : undefined,
                   profileId: stored.profileId ? String(stored.profileId) : null,
                 });
               }
@@ -591,5 +594,133 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     }
 
     return res.json({ ok: true, data: result.data });
+  });
+
+  app.get("/api/messages/thread", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const accountId = String(req.query.accountId || "").trim();
+    const threadId = String(req.query.threadId || "").trim();
+    const messageId = String(req.query.messageId || "").trim();
+    const conversationId = String(req.query.conversationId || "").trim();
+    const businessProfileId = readRequestBusinessProfileId(req);
+
+    if (!accountId) {
+      return res.status(400).json({ error: "accountId is required" });
+    }
+
+    const stored = await tokenStore.get(accountId);
+    if (!stored) {
+      return res.status(404).json({ error: "Account not connected" });
+    }
+    const access = getStoredAccountAccess(stored, userId);
+    if (!access.allowed) {
+      return res.status(404).json({ error: "Account not connected" });
+    }
+    if (access.migrate) {
+      await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+    if (!accountInBusinessProfile(stored, businessProfileId)) {
+      return res.status(404).json({ error: "Account not connected for this business profile" });
+    }
+
+    const platform = String(stored.platform || "");
+
+    if (platform === "gmail") {
+      if (!threadId) {
+        return res.status(400).json({ error: "threadId is required for Gmail" });
+      }
+      const data = await fetchGmailThread({
+        accessToken: String(stored.accessToken || ""),
+        refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+        accountId,
+        tokenStore,
+        stored,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        threadId,
+      });
+      if (data && "error" in data && data.error) {
+        return res.status(typeof data.status === "number" ? data.status : 502).json({ error: String(data.error) });
+      }
+      return res.json({ messages: (data as { messages?: unknown[] }).messages || [], threadId });
+    }
+
+    if (platform === "outlook") {
+      if (!threadId && !messageId && !conversationId) {
+        return res.status(400).json({ error: "messageId, conversationId, or threadId is required for Outlook" });
+      }
+      const data = await fetchOutlookMailThread({
+        accessToken: String(stored.accessToken || ""),
+        refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+        accountId,
+        tokenStore,
+        stored,
+        microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+        microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+        messageId: messageId || undefined,
+        conversationId: conversationId || threadId || undefined,
+      });
+      if (data && "error" in data && data.error) {
+        return res.status(typeof data.status === "number" ? data.status : 502).json({ error: String(data.error) });
+      }
+      return res.json({
+        messages: (data as { messages?: unknown[] }).messages || [],
+        conversationId: (data as { conversationId?: string }).conversationId,
+      });
+    }
+
+    if ((SOCIAL_MESSAGE_PLATFORMS as readonly string[]).includes(platform)) {
+      if (!conversationId) {
+        return res.status(400).json({ error: "conversationId is required for DMs" });
+      }
+      const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
+      if (!zernioAccountId) {
+        return res.status(400).json({ error: "dm_thread_requires_zernio" });
+      }
+      const result = await zernio.listInboxConversationMessages(conversationId, {
+        accountId: zernioAccountId,
+        limit: 50,
+        sortOrder: "asc",
+      });
+      if (!result.ok) {
+        const failure = describeZernioFailure(result);
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+          error: failure.code,
+          message: failure.message,
+        });
+      }
+      const rows = parseZernioConversationMessages(result.data);
+      const messages = rows.map((raw, index) => {
+        const row = raw as Record<string, unknown>;
+        const inbound = isInboundZernioMessage(row);
+        const fromName =
+          firstString(row, [
+            "senderName",
+            "sender_name",
+            "fromName",
+            "from_name",
+            "authorName",
+            "author_name",
+            "participantName",
+            "participant_name",
+          ]) || (inbound === false ? String(stored.displayName || stored.username || "You") : "Contact");
+        const text = textFromZernioMessage(row);
+        return {
+          id: firstString(row, ["id", "_id", "messageId", "message_id"]) || String(index),
+          date: dateFromZernioMessage(row),
+          from: { name: fromName, email: "" },
+          snippet: text.slice(0, 160),
+          body: text,
+          isOutgoing: inbound === false,
+        };
+      });
+      return res.json({ messages, conversationId });
+    }
+
+    return res.status(400).json({ error: "Unsupported account platform for thread fetch" });
   });
 }

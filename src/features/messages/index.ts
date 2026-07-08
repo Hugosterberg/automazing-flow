@@ -1,6 +1,8 @@
 export { MessageInboxList } from "./MessageInboxList";
 export { MessageWorkspace } from "./MessageWorkspace";
-export type { UnifiedMessage, MessageChannelTab } from "./types";
+export { MessageThread } from "./MessageThread";
+export { fetchMessageThread } from "./messagesClient";
+export type { UnifiedMessage, MessageChannelTab, ThreadMessage } from "./types";
 export { MessageBody } from "./MessageBody";
 export { MessageInboxRow } from "./MessageInboxRow";
 export { MessageDetailPanel, MessageDetailPlaceholder } from "./MessageDetailPanel";

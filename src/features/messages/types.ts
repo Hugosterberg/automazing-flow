@@ -18,3 +18,13 @@ export interface UnifiedMessage {
 }
 
 export type MessageChannelTab = "mail" | "instagram" | "messenger" | "whatsapp";
+
+export type ThreadMessage = {
+  id: string;
+  date: string;
+  from: { name: string; email: string };
+  snippet: string;
+  body: string;
+  subject?: string;
+  isOutgoing?: boolean;
+};
