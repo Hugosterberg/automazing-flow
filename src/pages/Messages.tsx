@@ -1,58 +1,41 @@
 import { m } from "framer-motion";
-import { Inbox, RefreshCw, Loader2, MessageSquare, Circle, ExternalLink, Sparkles, Send, Search, CheckCheck, Clock } from "lucide-react";
+import { RefreshCw, Loader2, MessageSquare, Search, CheckCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
-import { ReplyTemplatePicker } from "@/features/reply-templates";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
-
-interface UnifiedMessage {
-  id: string;
-  kind: "email" | "dm";
-  channel: string;
-  accountId: string;
-  accountLabel: string;
-  subject: string;
-  from: { name: string; email: string };
-  date: string;
-  snippet: string;
-  body: string;
-  isUnread: boolean;
-  externalUrl?: string;
-  conversationId?: string;
-  providerMessageId?: string;
-  threadId?: string;
-  profileId?: string | null;
-}
+import {
+  MessageDetailPanel,
+  MessageDetailPlaceholder,
+  MessageInboxList,
+  type MessageChannelTab,
+  type UnifiedMessage,
+} from "@/features/messages";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
-
-type MessageChannelTab = "mail" | "instagram" | "messenger" | "whatsapp";
 
 const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string }> = [
   { value: "mail", label: "Mail" },
@@ -172,8 +155,8 @@ export default function MessagesPage() {
   const { accounts, activeProfileId, addAccountFromOAuth, setSelectedAccountId } = useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<UnifiedMessage | null>(null);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +166,7 @@ export default function MessagesPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [inboxSearch, setInboxSearch] = useState("");
   const defaultedUnread = useRef(false);
+  const autoSelectedDesktop = useRef(false);
   const autoDraftForId = useRef<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -211,6 +195,27 @@ export default function MessagesPage() {
   const isUnanswered = useCallback(
     (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
     [handledIds]
+  );
+
+  const selectedId = searchParams.get("id");
+  const selectedMessage = useMemo(
+    () => (selectedId ? messages.find((m) => m.id === selectedId) ?? null : null),
+    [messages, selectedId]
+  );
+
+  const selectMessage = useCallback(
+    (msg: UnifiedMessage | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (msg) next.set("id", msg.id);
+          else next.delete("id");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
   );
 
   const mailAccounts = useMemo(
@@ -518,6 +523,29 @@ export default function MessagesPage() {
       return aOpen ? aDate - bDate : bDate - aDate;
     });
   }, [activeTab, messages, unreadOnly, inboxSearch, isUnanswered]);
+
+  const navigateRelative = useCallback(
+    (delta: number) => {
+      if (filteredMessages.length === 0) return;
+      const currentIndex = selectedId
+        ? filteredMessages.findIndex((m) => m.id === selectedId)
+        : -1;
+      const nextIndex =
+        currentIndex === -1
+          ? delta > 0
+            ? 0
+            : filteredMessages.length - 1
+          : Math.min(filteredMessages.length - 1, Math.max(0, currentIndex + delta));
+      selectMessage(filteredMessages[nextIndex] ?? null);
+    },
+    [filteredMessages, selectedId, selectMessage]
+  );
+
+  const selectedIndex = useMemo(
+    () => (selectedId ? filteredMessages.findIndex((m) => m.id === selectedId) : -1),
+    [filteredMessages, selectedId]
+  );
+
   const unansweredVisible = useMemo(
     () => filteredMessages.filter(isUnanswered),
     [filteredMessages, isUnanswered]
@@ -540,8 +568,64 @@ export default function MessagesPage() {
   const activeEmptyCopy = emptyCopyForTab(activeTab);
   const showZernioNote = activeTab !== "mail" && Boolean(zernioNote);
 
+  useEffect(() => {
+    if (!selectedId || loading) return;
+    if (messages.some((m) => m.id === selectedId)) return;
+    selectMessage(null);
+  }, [loading, messages, selectedId, selectMessage]);
+
+  useEffect(() => {
+    if (!selectedMessage) return;
+    if (messageMatchesTab(selectedMessage, activeTab)) return;
+    selectMessage(null);
+  }, [activeTab, selectedMessage, selectMessage]);
+
+  useEffect(() => {
+    autoSelectedDesktop.current = false;
+  }, [activeTab, activeProfileId]);
+
+  useEffect(() => {
+    if (loading || selectedId || filteredMessages.length === 0 || autoSelectedDesktop.current) return;
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+      const first = filteredMessages.find(isUnanswered) ?? filteredMessages[0];
+      if (first) selectMessage(first);
+      autoSelectedDesktop.current = true;
+    }
+  }, [loading, selectedId, filteredMessages, isUnanswered, selectMessage]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigateRelative(1);
+        return;
+      }
+      if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigateRelative(-1);
+        return;
+      }
+      if (e.key === "Escape" && selectedId) {
+        e.preventDefault();
+        selectMessage(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navigateRelative, selectMessage, selectedId]);
+
+  const canReplyToSelected =
+    selectedMessage &&
+    ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
+      (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)));
+
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={MessageSquare}
         title="Messages"
@@ -730,197 +814,142 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {MESSAGE_TABS.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-4">
-            {loading && (
-              <div className="space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <m.div
-                    key={i}
-                    {...fadeUp}
-                    transition={{ duration: 0.3, delay: i * 0.03 }}
-                  >
-                    <Card className="bg-card border-border">
-                      <CardContent className="p-4 flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-full bg-secondary animate-pulse shrink-0" />
-                        <div className="flex-1 space-y-2 py-0.5">
-                          <div className="h-3.5 w-2/5 rounded bg-secondary animate-pulse" />
-                          <div className="h-3 w-3/5 rounded bg-secondary animate-pulse" />
-                          <div className="h-3 w-4/5 rounded bg-secondary/60 animate-pulse" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </m.div>
-                ))}
-              </div>
-            )}
-
-            {!loading && filteredMessages.length > 0 && (
-              <div className="space-y-2">
-                {filteredMessages.map((msg, i) => {
-                  const open = isUnanswered(msg);
-                  const waited = open ? formatWaitTime(msg.date) : null;
-                  return (
-                  <m.div key={msg.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.02 }}>
-                    <Card className={`bg-card border-border hover:glow-sm transition-shadow duration-200 cursor-pointer ${open ? "border-l-2 border-l-primary" : ""}`}>
-                      <CardContent
-                        className="p-4 flex items-start gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Öppna meddelande: ${msg.subject}`}
-                        onClick={() => setSelectedMessage(msg)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setSelectedMessage(msg);
-                          }
-                        }}
-                      >
-                        <div className={`h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold text-white ${avatarColor(msg.from.name || msg.from.email || msg.id)}`}>
-                          {senderInitial(msg.from.name || msg.from.email)}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5 flex-wrap">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge variant="secondary" className="text-[11px] uppercase tracking-wide shrink-0">
-                                {channelBadge(msg)}
-                              </Badge>
-                              {msg.accountLabel ? (
-                                <span className="text-[11px] text-muted-foreground truncate">{msg.accountLabel}</span>
-                              ) : null}
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {waited ? (
-                                <span
-                                  className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning tabular-nums"
-                                  title="Waiting for a reply"
-                                >
-                                  <Clock className="h-2.5 w-2.5" aria-hidden />
-                                  {waited}
-                                </span>
-                              ) : null}
-                              {open && <Circle className="h-2 w-2 fill-primary text-primary" />}
-                              <span className="text-xs text-muted-foreground">{formatDate(msg.date)}</span>
-                            </div>
-                          </div>
-
-                          <span className={`text-sm block truncate ${open ? "font-semibold" : "font-medium text-muted-foreground"}`}>
-                            {msg.subject}
-                          </span>
-
-                          <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                            {msg.kind === "email" && msg.from.name
-                              ? `${msg.from.name} - ${msg.snippet}`
-                              : msg.snippet}
-                          </p>
-                        </div>
-                        <div className="hidden lg:block w-52 shrink-0 text-right">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground/60">AI summary</p>
-                          <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
-                            {aiSummaries[msg.id] || "..."}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </m.div>
-                  );
-                })}
-              </div>
-            )}
-
-            {!loading && !error && filteredMessages.length === 0 && (
-              <m.div {...fadeUp} transition={{ duration: 0.4 }}>
-                <EmptyState
-                  icon={Inbox}
-                  title={activeEmptyCopy.title}
-                  description={activeEmptyCopy.description}
-                />
-              </m.div>
-            )}
-          </TabsContent>
-        ))}
       </Tabs>
 
-      <Dialog open={Boolean(selectedMessage)} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <div className="flex items-start justify-between gap-2">
-              <DialogTitle className="break-words pr-2">{selectedMessage?.subject || "(No subject)"}</DialogTitle>
-              {selectedMessage?.externalUrl ? (
-                <a
-                  href={selectedMessage.externalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label="Open in platform"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              ) : null}
-            </div>
-            <DialogDescription className="text-xs space-y-1">
-              {selectedMessage ? (
-                <>
-                  <span className="inline-flex items-center gap-2">
-                    <Badge variant="outline">{channelBadge(selectedMessage)}</Badge>
-                    {selectedMessage.accountLabel ? <span>{selectedMessage.accountLabel}</span> : null}
-                  </span>
-                  <span className="block">
-                    {selectedMessage.from.name || selectedMessage.from.email}
-                    {selectedMessage.date ? ` · ${new Date(selectedMessage.date).toLocaleString("sv-SE")}` : ""}
-                  </span>
-                </>
-              ) : (
-                ""
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[50vh] overflow-auto rounded border border-border p-3 text-sm leading-relaxed whitespace-pre-wrap">
-            {selectedMessage?.body?.trim() || selectedMessage?.snippet || "(No content)"}
-          </div>
-
-          {selectedMessage &&
-            ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
-              (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage))) && (
-            <div className="space-y-2 pt-1">
-              {replySent ? (
-                <p className="text-xs text-emerald-600 inline-flex items-center gap-1">
-                  <Send className="h-3.5 w-3.5" /> Reply sent
-                </p>
-              ) : (
-                <>
-                  <Textarea
-                    value={replyDraft}
-                    onChange={(e) => setReplyDraft(e.target.value)}
-                    placeholder={
-                      selectedMessage.kind === "email"
-                        ? "Write an email reply, or generate one with AI..."
-                        : "Write a reply, or generate one with AI..."
-                    }
-                    className="min-h-[72px] text-sm"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={() => void draftReply()} disabled={draftBusy}>
-                      {draftBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                      AI draft
-                    </Button>
-                    <ReplyTemplatePicker
-                      onInsert={setReplyDraft}
-                      recipientName={selectedMessage.from.name}
-                      disabled={sendBusy}
-                    />
-                    <Button size="sm" onClick={() => void sendReply()} disabled={sendBusy || !replyDraft.trim()}>
-                      {sendBusy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                      Send reply
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
+      <m.div
+        {...fadeUp}
+        transition={{ duration: 0.35 }}
+        className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+        style={{ height: "min(76vh, 860px)" }}
+      >
+        {/* Mobile: full-width list OR detail */}
+        <div className="flex h-full min-h-0 lg:hidden">
+          {!selectedMessage ? (
+            <aside className="flex h-full w-full min-h-0 flex-col">
+              <MessageInboxList
+                messages={filteredMessages}
+                selectedId={selectedId}
+                loading={loading}
+                error={error}
+                unreadOnly={unreadOnly}
+                emptyTitle={activeEmptyCopy.title}
+                emptyDescription={activeEmptyCopy.description}
+                getRowMeta={(msg) => ({
+                  open: isUnanswered(msg),
+                  waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
+                  channelLabel: channelBadge(msg),
+                  aiSummary: aiSummaries[msg.id],
+                  formattedDate: formatDate(msg.date),
+                  senderInitial: senderInitial(msg.from.name || msg.from.email),
+                  avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
+                  isHandled: handledIds.has(msg.id),
+                })}
+                onSelect={selectMessage}
+                onMarkHandled={(id) => markHandled([id])}
+              />
+            </aside>
+          ) : (
+            <section className="flex h-full min-h-0 w-full flex-col bg-background">
+              <MessageDetailPanel
+                message={selectedMessage}
+                channelLabel={channelBadge(selectedMessage)}
+                aiSummary={aiSummaries[selectedMessage.id]}
+                replyDraft={replyDraft}
+                onReplyDraftChange={setReplyDraft}
+                draftBusy={draftBusy}
+                sendBusy={sendBusy}
+                replySent={replySent}
+                canReply={Boolean(canReplyToSelected)}
+                isHandled={handledIds.has(selectedMessage.id)}
+                onDraftReply={() => void draftReply()}
+                onSendReply={() => void sendReply()}
+                onMarkHandled={() => markHandled([selectedMessage.id])}
+                onBack={() => selectMessage(null)}
+                showBack
+                navigation={
+                  filteredMessages.length > 1 && selectedIndex >= 0
+                    ? {
+                        index: selectedIndex,
+                        total: filteredMessages.length,
+                        hasPrev: selectedIndex > 0,
+                        hasNext: selectedIndex < filteredMessages.length - 1,
+                        onPrev: () => navigateRelative(-1),
+                        onNext: () => navigateRelative(1),
+                      }
+                    : undefined
+                }
+              />
+            </section>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Desktop: resizable split */}
+        <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+          <ResizablePanel defaultSize={36} minSize={26} maxSize={50} className="min-h-0">
+            <aside className="flex h-full min-h-0 flex-col">
+              <MessageInboxList
+                messages={filteredMessages}
+                selectedId={selectedId}
+                loading={loading}
+                error={error}
+                unreadOnly={unreadOnly}
+                emptyTitle={activeEmptyCopy.title}
+                emptyDescription={activeEmptyCopy.description}
+                getRowMeta={(msg) => ({
+                  open: isUnanswered(msg),
+                  waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
+                  channelLabel: channelBadge(msg),
+                  aiSummary: aiSummaries[msg.id],
+                  formattedDate: formatDate(msg.date),
+                  senderInitial: senderInitial(msg.from.name || msg.from.email),
+                  avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
+                  isHandled: handledIds.has(msg.id),
+                })}
+                onSelect={selectMessage}
+                onMarkHandled={(id) => markHandled([id])}
+              />
+            </aside>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={64} minSize={40} className="min-h-0">
+            <section className="flex h-full min-h-0 flex-col bg-background">
+              {selectedMessage ? (
+                <MessageDetailPanel
+                  message={selectedMessage}
+                  channelLabel={channelBadge(selectedMessage)}
+                  aiSummary={aiSummaries[selectedMessage.id]}
+                  replyDraft={replyDraft}
+                  onReplyDraftChange={setReplyDraft}
+                  draftBusy={draftBusy}
+                  sendBusy={sendBusy}
+                  replySent={replySent}
+                  canReply={Boolean(canReplyToSelected)}
+                  isHandled={handledIds.has(selectedMessage.id)}
+                  onDraftReply={() => void draftReply()}
+                  onSendReply={() => void sendReply()}
+                  onMarkHandled={() => markHandled([selectedMessage.id])}
+                  navigation={
+                    filteredMessages.length > 1 && selectedIndex >= 0
+                      ? {
+                          index: selectedIndex,
+                          total: filteredMessages.length,
+                          hasPrev: selectedIndex > 0,
+                          hasNext: selectedIndex < filteredMessages.length - 1,
+                          onPrev: () => navigateRelative(-1),
+                          onNext: () => navigateRelative(1),
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <MessageDetailPlaceholder />
+              )}
+            </section>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </m.div>
     </div>
   );
 }
