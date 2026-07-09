@@ -1,6 +1,7 @@
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import type { CompanyEnrichment } from "@/features/business-profiles/companyEnrichmentClient";
 
 export interface LeadSuggestion {
   target: string;
@@ -21,31 +22,36 @@ export interface LeadSuggestionInput {
   existingLeadSegments?: string[];
 }
 
-export interface LeadEnrichment {
-  url: string;
-  company?: string;
-  description?: string;
+export interface LeadEnrichment extends CompanyEnrichment {
+  url?: string;
 }
 
-/** Look up a company's name + description from its website. */
-export async function enrichLeadFromWebsite(url: string): Promise<LeadEnrichment> {
+/** Look up company data from website, org number, or name. */
+export async function enrichLead(input: {
+  url?: string;
+  orgNumber?: string;
+  company?: string;
+  business_profile_id?: string | null;
+}): Promise<LeadEnrichment> {
   const res = await fetchWithTimeout(
     apiUrl("/api/sales/lead-enrich"),
     {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(input),
     },
-    20_000,
+    45_000
   );
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't read that website."));
-  return {
-    url: String(body.url || url),
-    company: body.company ? String(body.company) : undefined,
-    description: body.description ? String(body.description) : undefined,
-  };
+  if (!res.ok) throw new Error(apiErrorMessage(body, "Kunde inte hämta företagsdata."));
+  return body as LeadEnrichment;
+}
+
+/** @deprecated Use enrichLead — kept for callers that only pass a URL. */
+export async function enrichLeadFromWebsite(url: string): Promise<LeadEnrichment> {
+  const data = await enrichLead({ url });
+  return { ...data, url: data.website || data.url || url };
 }
 
 export async function fetchLeadSuggestions(
@@ -62,7 +68,7 @@ export async function fetchLeadSuggestions(
     30_000,
   );
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load suggestions."));
+  if (!res.ok) throw new Error(apiErrorMessage(body, "Kunde inte hämta förslag."));
   return {
     suggestions: Array.isArray(body.suggestions) ? (body.suggestions as LeadSuggestion[]) : [],
     source: String(body.source || ""),

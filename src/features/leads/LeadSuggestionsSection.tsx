@@ -43,10 +43,10 @@ export function LeadSuggestionsSection({
       setSuggestions(result.suggestions);
       setSource(result.source);
       if (result.suggestions.length === 0) {
-        toast.message("No suggestions returned — try adding more company details.");
+        toast.message("Inga förslag — fyll i mer under Företag och försök igen.");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load lead suggestions.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte hämta lead-förslag.");
     } finally {
       setLoading(false);
     }
@@ -71,13 +71,13 @@ export function LeadSuggestionsSection({
         status: "new",
       });
       setSuggestions((prev) => prev.filter((x) => x.target !== s.target));
-      toast.success("Added to leads");
+      toast.success("Tillagd som lead");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't add the lead.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte lägga till lead.");
     }
   }
 
-  const companyLabel = profile?.company?.trim() || profile?.name?.trim() || "Your business";
+  const companyLabel = profile?.company?.trim() || profile?.name?.trim() || "ert bolag";
 
   return (
     <Card id="lead-suggestions" className="border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-background">
@@ -86,11 +86,11 @@ export function LeadSuggestionsSection({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              Suggested leads from your company profile
+              Lead-förslag från er profil
             </CardTitle>
             <CardDescription>
-              AI proposes customer segments that fit {companyLabel} — based on what you sell, where you operate, and
-              customers you already won.
+              AI föreslår kundsegment som passar {companyLabel} — utifrån vad ni säljer, var ni finns och
+              kunder ni redan vunnit.
             </CardDescription>
           </div>
           <Button
@@ -105,7 +105,7 @@ export function LeadSuggestionsSection({
             ) : (
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             )}
-            {suggestions.length > 0 ? "Refresh" : "Suggest leads"}
+            {suggestions.length > 0 ? "Uppdatera" : "Föreslå leads"}
           </Button>
         </div>
       </CardHeader>
@@ -136,8 +136,8 @@ export function LeadSuggestionsSection({
           ) : null}
           {suggestionInput.sampleCustomers?.length ? (
             <Badge variant="outline" className="font-normal">
-              {suggestionInput.sampleCustomers.length} won customer
-              {suggestionInput.sampleCustomers.length === 1 ? "" : "s"} as signal
+              {suggestionInput.sampleCustomers.length} vunna kund
+              {suggestionInput.sampleCustomers.length === 1 ? "" : "er"}
             </Badge>
           ) : null}
         </div>
@@ -145,16 +145,16 @@ export function LeadSuggestionsSection({
         {!completeness.isStrong ? (
           <div className="rounded-lg border border-dashed border-primary/30 bg-primary/[0.03] px-4 py-3 space-y-2">
             <p className="text-sm font-medium text-foreground">
-              Fyll i bolagsprofilen för bättre lead-förslag ({completeness.percent}% klart)
+              Bättre profil = bättre förslag ({completeness.percent}% klart)
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Gå till{" "}
               <Link to="/company" className="font-medium text-primary underline underline-offset-2">
                 Företag
               </Link>{" "}
-              och börja med <strong>beskrivningen av verksamheten</strong> — det är det viktigaste fältet för AI.
-              {completeness.missing.length > 0 ? (
-                <> Saknas just nu: {completeness.missing.slice(0, 3).map((f) => f.label.toLowerCase()).join(", ")}.</>
+              och fyll i <strong>beskrivningen</strong> först. Org.nr kan hämtas automatiskt där.
+              {completeness.priorities.length > 0 ? (
+                <> Saknas: {completeness.priorities.map((f) => f.label.toLowerCase()).join(", ")}.</>
               ) : null}
             </p>
           </div>
@@ -163,20 +163,21 @@ export function LeadSuggestionsSection({
         {loading && suggestions.length === 0 ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground justify-center">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Analysing your business profile…
+            Analyserar er profil…
           </div>
         ) : null}
 
         {!loading && suggestions.length === 0 && completeness.percent >= 50 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Click &quot;Suggest leads&quot; to generate segments worth contacting.
+            Klicka &quot;Föreslå leads&quot; för att få segment att kontakta.
           </p>
         ) : null}
 
         {suggestions.length > 0 ? (
           <div className="space-y-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Who to contact {source === "heuristic" ? "· general ideas (no AI key)" : "· tailored to your profile"}
+              Vem ni kan kontakta{" "}
+              {source === "heuristic" ? "· allmänna idéer (ingen AI-nyckel)" : "· anpassat till er profil"}
             </p>
             {suggestions.map((s) => (
               <div
@@ -188,7 +189,7 @@ export function LeadSuggestionsSection({
                   {s.why ? <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.why}</p> : null}
                   {s.how ? (
                     <p className="text-[11px] text-muted-foreground/90 mt-1">
-                      <span className="text-primary/80">Approach:</span> {s.how}
+                      <span className="text-primary/80">Tillvägagångssätt:</span> {s.how}
                     </p>
                   ) : null}
                 </div>
@@ -200,7 +201,7 @@ export function LeadSuggestionsSection({
                   onClick={() => void addSuggestion(s)}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add
+                  Lägg till
                 </Button>
               </div>
             ))}

@@ -154,6 +154,17 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     requiredAny: [["PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]],
     message: "Required for Digital Brand audits to fetch Google PageSpeed Insights and Lighthouse metrics reliably.",
   },
+  google_places: {
+    label: "Google Places",
+    requiredAny: [["GOOGLE_PLACES_API_KEY", "PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]],
+    message: "Optional. Enriches company lookups in Sales and Företag via Google Places Find Place.",
+  },
+  bolagsverket: {
+    label: "Bolagsverket (värdefulla datamängder)",
+    required: ["BOLAGSVERKET_CLIENT_ID", "BOLAGSVERKET_CLIENT_SECRET"],
+    message:
+      "Optional. Free Swedish company registry lookup by org number. Register at bolagsverket.se for API keys.",
+  },
   apiai: {
     label: "apiai.me",
     required: ["APIAI_API_KEY"],

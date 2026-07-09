@@ -5,6 +5,7 @@ type Row = {
   id: string;
   name: string;
   kind: string | null;
+  org_number: string | null;
   website: string | null;
   company: string | null;
   email: string | null;
@@ -17,13 +18,14 @@ type Row = {
 };
 
 const SELECT =
-  "id,name,kind,website,company,email,phone,location,notes,owner_user_id,created_at,updated_at";
+  "id,name,kind,org_number,website,company,email,phone,location,notes,owner_user_id,created_at,updated_at";
 
 function rowToDomain(row: Row): BusinessProfile {
   return {
     id: row.id,
     name: row.name,
     kind: row.kind === "personal" ? "personal" : "company",
+    orgNumber: row.org_number ?? undefined,
     website: row.website ?? undefined,
     company: row.company ?? undefined,
     email: row.email ?? undefined,
@@ -39,6 +41,7 @@ function rowToDomain(row: Row): BusinessProfile {
 function inputToRow(input: BusinessProfileInput): Record<string, string | null> {
   const row: Record<string, string | null> = {
     name: input.name.trim(),
+    org_number: input.orgNumber?.trim() || null,
     website: input.website?.trim() || null,
     company: input.company?.trim() || null,
     email: input.email?.trim() || null,

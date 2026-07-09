@@ -3,11 +3,11 @@ export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
 export const LEAD_STATUS_ORDER: LeadStatus[] = ["new", "contacted", "qualified", "won", "lost"];
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New",
-  contacted: "Contacted",
-  qualified: "Qualified",
-  won: "Won",
-  lost: "Lost",
+  new: "Ny",
+  contacted: "Kontaktad",
+  qualified: "Kvalificerad",
+  won: "Vunnen",
+  lost: "Förlorad",
 };
 
 /** Open leads are the ones still worth chasing. */

@@ -37,6 +37,7 @@ const HEADER_ALIASES: Record<keyof LeadInput, string[]> = {
   email: ["email", "e-mail", "mail", "e-post", "epost"],
   phone: ["phone", "telefon", "tel", "mobile", "mobil", "phone number"],
   website: ["website", "url", "webbplats", "site", "web", "hemsida"],
+  orgNumber: ["org number", "orgnumber", "org nr", "orgnr", "organisationsnummer", "organization number"],
   notes: ["notes", "note", "anteckningar", "comment", "comments", "description"],
   source: ["source", "källa", "kalla"],
   status: [],

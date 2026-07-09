@@ -9,6 +9,7 @@ export interface Lead {
   email: string | null;
   phone: string | null;
   website: string | null;
+  orgNumber?: string | null;
   source: string | null;
   status: LeadStatus;
   notes: string | null;
@@ -23,6 +24,7 @@ export interface LeadInput {
   email?: string | null;
   phone?: string | null;
   website?: string | null;
+  orgNumber?: string | null;
   source?: string | null;
   status?: LeadStatus;
   notes?: string | null;
@@ -46,6 +48,7 @@ function rowToLead(r: Record<string, unknown>): Lead {
     email: (r.email as string | null) ?? null,
     phone: (r.phone as string | null) ?? null,
     website: (r.website as string | null) ?? null,
+    orgNumber: (r.org_number as string | null) ?? null,
     source: (r.source as string | null) ?? null,
     status: (r.status as LeadStatus) ?? "new",
     notes: (r.notes as string | null) ?? null,
@@ -62,6 +65,7 @@ function inputToRow(input: Partial<LeadInput>): Record<string, unknown> {
   if (input.email !== undefined) row.email = input.email?.trim() || null;
   if (input.phone !== undefined) row.phone = input.phone?.trim() || null;
   if (input.website !== undefined) row.website = input.website?.trim() || null;
+  if (input.orgNumber !== undefined) row.org_number = input.orgNumber?.trim() || null;
   if (input.source !== undefined) row.source = input.source?.trim() || null;
   if (input.status !== undefined) row.status = input.status;
   if (input.notes !== undefined) row.notes = input.notes?.trim() || null;

@@ -54,11 +54,15 @@ export function buildLeadSuggestionContext(opts: {
   ].slice(0, 15);
 
   const productLine =
-    productNames.length > 0 ? `Products/services: ${productNames.slice(0, 10).join(", ")}` : "";
+    productNames.length > 0 ? `Produkter/tjänster: ${productNames.slice(0, 10).join(", ")}` : "";
   const notes = profile?.notes?.trim() || "";
-  const offering = [notes, productLine].filter(Boolean).join(". ") || undefined;
+  const orgLine = profile?.orgNumber?.trim() ? `Org.nr: ${profile.orgNumber.trim()}` : "";
+  const offering = [orgLine, notes, productLine].filter(Boolean).join(". ") || undefined;
 
   const displayName = profile?.company?.trim() || profile?.name?.trim();
+  const industryFromProfile =
+    inferIndustry(profile) ||
+    (profile?.notes?.match(/Bransch(?: \(SNI\))?:?\s*([^\n]+)/i)?.[1]?.trim());
 
   return {
     business_profile_id: opts.businessProfileId,
@@ -68,7 +72,7 @@ export function buildLeadSuggestionContext(opts: {
     description: notes || undefined,
     location: profile?.location?.trim(),
     offering,
-    industry: inferIndustry(profile),
+    industry: industryFromProfile,
     sampleCustomers: wonCustomers.length > 0 ? wonCustomers : undefined,
     existingLeadSegments: existingLeadSegments.length > 0 ? existingLeadSegments : undefined,
   };

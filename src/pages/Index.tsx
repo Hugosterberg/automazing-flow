@@ -45,7 +45,7 @@ import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
@@ -172,6 +172,11 @@ export default function Index() {
     useAccounts();
   const activeBpId = useActiveBusinessProfileIdOptional();
   const homeBusinessProfileId = activeBpId ?? activeProfileId ?? null;
+  const { profiles: businessProfiles } = useBusinessProfiles();
+  const businessProfile = useMemo(
+    () => businessProfiles.find((p) => p.id === homeBusinessProfileId) ?? null,
+    [businessProfiles, homeBusinessProfileId]
+  );
   const { mode } = useWorkspaceMode();
   const { connections } = useConnections(homeBusinessProfileId);
   const prefetchFor = useRoutePrefetch();
@@ -368,6 +373,8 @@ export default function Index() {
 
       <ProfileList />
 
+      {mode === "business" ? <CompanyProfileNudge profile={businessProfile} /> : null}
+
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 
       {/* Crypto/market sentiment via the tenant's LunarCrush MCP account.
@@ -487,27 +494,27 @@ export default function Index() {
       </section>
 
       {activeProfile ? (
-        <section aria-label="Active profile" className="space-y-2">
+        <section aria-label="Profildetaljer" className="space-y-2">
           <div className="flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-foreground">
-              Profile details
+              Profildetaljer
             </h2>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
                 className="inline-flex h-6 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 transition-colors"
-                aria-label={`Edit profile ${activeProfile.name}`}
+                aria-label={`Redigera profil ${activeProfile.name}`}
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                Redigera
               </button>
               {profiles.length > 1 ? (
                 <button
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
                   className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
-                  aria-label={`Delete profile ${activeProfile.name}`}
+                  aria-label={`Ta bort profil ${activeProfile.name}`}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -517,9 +524,9 @@ export default function Index() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 space-y-2 text-sm">
               <p className="text-muted-foreground">
-                Loaded profile data from {profileSummary.withLoadedData} of{" "}
-                {profileSummary.connectedCount} account
-                {profileSummary.connectedCount === 1 ? "" : "s"}.
+                Profildata laddad från {profileSummary.withLoadedData} av{" "}
+                {profileSummary.connectedCount} kopplat
+                {profileSummary.connectedCount === 1 ? " konto" : "a konton"}.
               </p>
               {profileSummary.profileText ? (
                 <p className="text-foreground border-t border-border/70 pt-2">
@@ -531,21 +538,21 @@ export default function Index() {
                 activeProfile.phone ||
                 activeProfile.location) && (
                 <p className="text-xs text-muted-foreground/80 border-t border-border/70 pt-2">
-                  {activeProfile.website ? `Website: ${activeProfile.website}` : ""}
+                  {activeProfile.website ? `Webb: ${activeProfile.website}` : ""}
                   {activeProfile.website &&
                   (activeProfile.email ||
                     activeProfile.phone ||
                     activeProfile.location)
                     ? " · "
                     : ""}
-                  {activeProfile.email ? `Email: ${activeProfile.email}` : ""}
+                  {activeProfile.email ? `E-post: ${activeProfile.email}` : ""}
                   {activeProfile.email &&
                   (activeProfile.phone || activeProfile.location)
                     ? " · "
                     : ""}
-                  {activeProfile.phone ? `Phone: ${activeProfile.phone}` : ""}
+                  {activeProfile.phone ? `Telefon: ${activeProfile.phone}` : ""}
                   {activeProfile.phone && activeProfile.location ? " · " : ""}
-                  {activeProfile.location ? `Location: ${activeProfile.location}` : ""}
+                  {activeProfile.location ? `Plats: ${activeProfile.location}` : ""}
                 </p>
               )}
             </CardContent>
@@ -681,7 +688,7 @@ export default function Index() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit profile</DialogTitle>
+            <DialogTitle>Redigera profil</DialogTitle>
             <DialogDescription>
               Snabb redigering här — för guide om varje fält, gå till{" "}
               <Link to="/company" className="font-medium text-primary underline underline-offset-2">
@@ -692,7 +699,7 @@ export default function Index() {
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-name">Profile name</Label>
+              <Label htmlFor="profile-name">Profilnamn</Label>
               <Input
                 id="profile-name"
                 value={profileForm.name}
@@ -702,7 +709,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-company">Company</Label>
+              <Label htmlFor="profile-company">Företag</Label>
               <Input
                 id="profile-company"
                 value={profileForm.company}
@@ -712,7 +719,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-location">Location</Label>
+              <Label htmlFor="profile-location">Plats</Label>
               <Input
                 id="profile-location"
                 value={profileForm.location}
@@ -722,7 +729,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-email">Email</Label>
+              <Label htmlFor="profile-email">E-post</Label>
               <Input
                 id="profile-email"
                 type="email"
@@ -733,7 +740,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-phone">Phone</Label>
+              <Label htmlFor="profile-phone">Telefon</Label>
               <Input
                 id="profile-phone"
                 value={profileForm.phone}
@@ -743,7 +750,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-website">Website</Label>
+              <Label htmlFor="profile-website">Webbplats</Label>
               <Input
                 id="profile-website"
                 placeholder="https://example.com"
@@ -769,10 +776,10 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
+              Avbryt
             </Button>
             <Button onClick={saveProfileEdits} disabled={!activeProfile}>
-              Save
+              Spara
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -785,14 +792,14 @@ export default function Index() {
         <AlertDialogContent className="sm:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              You want to delete profile &quot;{activeProfile?.name || ""}&quot;?
+              Ta bort profilen &quot;{activeProfile?.name || ""}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              It means the analysis of all connected accounts will be removed.
+              All analys från kopplade konton för denna profil tas bort.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -800,7 +807,7 @@ export default function Index() {
                 setConfirmDeleteOpen(false);
               }}
             >
-              Delete
+              Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

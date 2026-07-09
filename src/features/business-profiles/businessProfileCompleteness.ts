@@ -2,6 +2,7 @@ import type { BusinessProfile } from "@/types/businessProfile";
 
 export type ProfileFieldId =
   | "notes"
+  | "org_number"
   | "company"
   | "location"
   | "website"
@@ -19,74 +20,130 @@ export type ProfileFieldGuide = {
   powers: string[];
   weight: number;
   multiline?: boolean;
+  /** Hidden from manual form — filled via auto-fill card. */
+  autoFillOnly?: boolean;
 };
 
-/** Ordered for display — most important first. */
+export type ProfileFieldSection = {
+  id: string;
+  title: string;
+  description: string;
+  fields: ProfileFieldId[];
+};
+
+/** How the Företag page is organized for users. */
+export const PROFILE_FIELD_SECTIONS: ProfileFieldSection[] = [
+  {
+    id: "core",
+    title: "Vad ni gör",
+    description: "Det här läser AI först — avgör kvaliteten på lead-förslag och utkast.",
+    fields: ["notes"],
+  },
+  {
+    id: "identity",
+    title: "Bolaget",
+    description: "Namn, plats och webb. Org.nr fyller du enklast i via uppslaget ovan.",
+    fields: ["company", "location", "website"],
+  },
+  {
+    id: "contact",
+    title: "Kontakt",
+    description: "Syns i genererade mail och signaturer.",
+    fields: ["email", "phone"],
+  },
+  {
+    id: "app",
+    title: "I appen",
+    description: "Bara för dig — påverkar inte AI:s förslag.",
+    fields: ["name"],
+  },
+];
+
+/** Ordered field metadata. */
 export const PROFILE_FIELD_GUIDE: ProfileFieldGuide[] = [
   {
     id: "notes",
-    label: "Beskrivning av verksamheten",
+    label: "Beskrivning",
     placeholder:
       "T.ex. Vi säljer webb och SEO till lokala gym i Skåne. Våra kunder är oftast ägare med 1–3 platser som vill växa online.",
-    why: "Det viktigaste fältet. AI läser detta för att förstå vad ni säljer, till vem och hur ni skiljer er.",
-    powers: ["Lead-förslag i Sales", "Outreach- och svarsmallar", "Innehållsideer", "Sälj-playbook"],
-    weight: 30,
+    why: "Förklara vad ni säljer, till vem och varför kunder väljer er.",
+    powers: ["Lead-förslag", "Outreach", "Innehåll", "Playbook"],
+    weight: 35,
     multiline: true,
   },
   {
+    id: "org_number",
+    label: "Organisationsnummer",
+    placeholder: "556016-0680",
+    why: "Hämtar namn, adress och bransch från Bolagsverket.",
+    powers: ["Officiell bolagsdata"],
+    weight: 5,
+    autoFillOnly: true,
+  },
+  {
     id: "company",
-    label: "Företagsnamn (juridiskt eller varumärke)",
+    label: "Företagsnamn",
     placeholder: "T.ex. Acme Studio AB",
-    why: "Används som avsändare i utkast och när AI beskriver er för prospects.",
-    powers: ["Outreach", "Playbook", "Lead-förslag"],
+    why: "Hur ni presenteras i utkast och lead-förslag.",
+    powers: ["Outreach", "Lead-förslag"],
     weight: 15,
   },
   {
     id: "location",
     label: "Marknad / plats",
     placeholder: "T.ex. Stockholm, Skåne eller Sverige",
-    why: "AI begränsar förslag till rätt geografi och skriver mer relevant copy.",
-    powers: ["Lead-förslag", "Brand discovery", "Kampanjer"],
+    why: "AI begränsar förslag till rätt geografi.",
+    powers: ["Lead-förslag", "Kampanjer"],
     weight: 15,
   },
   {
     id: "website",
     label: "Webbplats",
     placeholder: "https://example.com",
-    why: "Låter AI läsa er positioning och föreslå liknande prospects att kontakta.",
-    powers: ["Lead-förslag", "Webb-enrichment", "Extern intelligens"],
+    why: "AI läser er positioning och hittar liknande prospects.",
+    powers: ["Lead-förslag", "Webb-uppslag"],
     weight: 15,
   },
   {
     id: "email",
     label: "Kontakt-e-post",
     placeholder: "hej@foretag.se",
-    why: "Signatur och avsändare i genererade mail — prospects ska kunna svara.",
-    powers: ["Outreach-utkast", "Automatiska uppdateringar"],
+    why: "Avsändare i genererade mail.",
+    powers: ["Outreach", "Automation"],
     weight: 10,
   },
   {
     id: "phone",
     label: "Telefon",
     placeholder: "+46 70 123 45 67",
-    why: "Kompletterar kontaktuppgifter i utkast och profilvisning.",
-    powers: ["Outreach", "Företagsprofil"],
+    why: "Kompletterar kontaktuppgifter i utkast.",
+    powers: ["Outreach"],
     weight: 5,
   },
   {
     id: "name",
-    label: "Profilnamn i appen",
+    label: "Profilnamn",
     placeholder: "T.ex. Mitt företag",
-    why: "Visas i menyn och hjälper dig skilja flera bolag om du har flera profiler.",
-    powers: ["Navigation", "Rapporter"],
-    weight: 10,
+    why: "Visas i menyn om du har flera profiler.",
+    powers: ["Navigation"],
+    weight: 5,
   },
 ];
+
+const FIELD_BY_ID = Object.fromEntries(PROFILE_FIELD_GUIDE.map((f) => [f.id, f])) as Record<
+  ProfileFieldId,
+  ProfileFieldGuide
+>;
+
+export function getProfileField(id: ProfileFieldId): ProfileFieldGuide {
+  return FIELD_BY_ID[id];
+}
 
 const TOTAL_WEIGHT = PROFILE_FIELD_GUIDE.reduce((sum, f) => sum + f.weight, 0);
 
 function fieldValue(profile: BusinessProfile | null | undefined, id: ProfileFieldId): string {
   if (!profile) return "";
+  if (id === "org_number") return String(profile.orgNumber ?? "").trim();
   return String(profile[id] ?? "").trim();
 }
 
@@ -101,36 +158,40 @@ export type BusinessProfileCompleteness = {
   missing: ProfileFieldGuide[];
   filled: ProfileFieldGuide[];
   isStrong: boolean;
+  /** Top gaps to fix first (notes always first if missing). */
+  priorities: ProfileFieldGuide[];
 };
 
-export function getBusinessProfileCompleteness(
-  profile: BusinessProfile | null | undefined
-): BusinessProfileCompleteness {
-  let earned = 0;
-  const missing: ProfileFieldGuide[] = [];
-  const filled: ProfileFieldGuide[] = [];
-
-  for (const field of PROFILE_FIELD_GUIDE) {
-    if (isProfileFieldFilled(profile, field.id)) {
-      earned += field.weight;
-      filled.push(field);
-    } else {
-      missing.push(field);
-    }
-  }
-
+function buildCompleteness(filled: ProfileFieldGuide[], missing: ProfileFieldGuide[], notesFilled: boolean) {
+  const earned = filled.reduce((sum, f) => sum + f.weight, 0);
   const percent = Math.round((earned / TOTAL_WEIGHT) * 100);
+  const sortedMissing = [...missing].sort((a, b) => {
+    if (a.id === "notes") return -1;
+    if (b.id === "notes") return 1;
+    return b.weight - a.weight;
+  });
   return {
     percent,
     filledCount: filled.length,
     totalCount: PROFILE_FIELD_GUIDE.length,
     missing,
     filled,
-    isStrong: percent >= 75 && isProfileFieldFilled(profile, "notes"),
+    isStrong: percent >= 75 && notesFilled,
+    priorities: sortedMissing.slice(0, 3),
   };
 }
 
-/** @deprecated Use getBusinessProfileCompleteness — kept for lead suggestions gate. */
+export function getBusinessProfileCompleteness(
+  profile: BusinessProfile | null | undefined
+): BusinessProfileCompleteness {
+  const filled: ProfileFieldGuide[] = [];
+  const missing: ProfileFieldGuide[] = [];
+  for (const field of PROFILE_FIELD_GUIDE) {
+    (isProfileFieldFilled(profile, field.id) ? filled : missing).push(field);
+  }
+  return buildCompleteness(filled, missing, isProfileFieldFilled(profile, "notes"));
+}
+
 export function leadSuggestionProfileReadiness(profile?: BusinessProfile | null): {
   score: number;
   missing: string[];
@@ -138,12 +199,13 @@ export function leadSuggestionProfileReadiness(profile?: BusinessProfile | null)
   const c = getBusinessProfileCompleteness(profile);
   return {
     score: Math.min(4, Math.floor(c.percent / 25)),
-    missing: c.missing.slice(0, 4).map((f) => f.label.toLowerCase()),
+    missing: c.priorities.map((f) => f.label.toLowerCase()),
   };
 }
 
 export type BusinessProfileFormState = {
   name: string;
+  orgNumber: string;
   company: string;
   website: string;
   email: string;
@@ -155,6 +217,7 @@ export type BusinessProfileFormState = {
 export function profileToFormState(profile: BusinessProfile | null | undefined): BusinessProfileFormState {
   return {
     name: profile?.name?.trim() || "",
+    orgNumber: profile?.orgNumber?.trim() || "",
     company: profile?.company?.trim() || "",
     website: profile?.website?.trim() || "",
     email: profile?.email?.trim() || "",
@@ -167,6 +230,7 @@ export function profileToFormState(profile: BusinessProfile | null | undefined):
 export function formStateToProfileInput(form: BusinessProfileFormState) {
   return {
     name: form.name.trim() || "Min profil",
+    orgNumber: form.orgNumber.trim() || undefined,
     company: form.company.trim() || undefined,
     website: form.website.trim() || undefined,
     email: form.email.trim() || undefined,
@@ -176,31 +240,24 @@ export function formStateToProfileInput(form: BusinessProfileFormState) {
   };
 }
 
+export function formFieldKey(id: ProfileFieldId): keyof BusinessProfileFormState {
+  return id === "org_number" ? "orgNumber" : id;
+}
+
 export function isFormFieldFilled(form: BusinessProfileFormState, id: ProfileFieldId): boolean {
-  return String(form[id] ?? "").trim().length > 0;
+  return String(form[formFieldKey(id)] ?? "").trim().length > 0;
 }
 
 export function getFormCompleteness(form: BusinessProfileFormState): BusinessProfileCompleteness {
-  let earned = 0;
-  const missing: ProfileFieldGuide[] = [];
   const filled: ProfileFieldGuide[] = [];
-
+  const missing: ProfileFieldGuide[] = [];
   for (const field of PROFILE_FIELD_GUIDE) {
-    if (isFormFieldFilled(form, field.id)) {
-      earned += field.weight;
-      filled.push(field);
-    } else {
-      missing.push(field);
-    }
+    (isFormFieldFilled(form, field.id) ? filled : missing).push(field);
   }
+  return buildCompleteness(filled, missing, isFormFieldFilled(form, "notes"));
+}
 
-  const percent = Math.round((earned / TOTAL_WEIGHT) * 100);
-  return {
-    percent,
-    filledCount: filled.length,
-    totalCount: PROFILE_FIELD_GUIDE.length,
-    missing,
-    filled,
-    isStrong: percent >= 75 && isFormFieldFilled(form, "notes"),
-  };
+/** Fields shown in the manual edit form (excludes auto-fill-only). */
+export function manualProfileFields(): ProfileFieldGuide[] {
+  return PROFILE_FIELD_GUIDE.filter((f) => !f.autoFillOnly);
 }

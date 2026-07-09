@@ -38,7 +38,9 @@ import {
   type LeadStatus,
   suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
-import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
+import { enrichLead, fetchLeadSuggestions, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
+import { applyEnrichmentToLeadForm } from "@/features/business-profiles/companyEnrichmentClient";
+import { LeadAutoFillFields } from "./LeadAutoFillFields";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
 import { LeadEditDialog } from "./LeadEditDialog";
 import type { OutreachDraftTarget } from "@/features/outreach";
@@ -68,6 +70,7 @@ const EMPTY_FORM = {
   email: "",
   phone: "",
   website: "",
+  orgNumber: "",
   notes: "",
   nextFollowUpAt: "",
 };
@@ -88,6 +91,8 @@ interface Props {
   onDraftOutreach?: (target: OutreachDraftTarget) => void;
   /** Start drafting outreach for due follow-ups (parent queues leads). */
   onDraftDueLeads?: () => void;
+  /** Parent can call this to open the add-lead dialog (e.g. from SalesActionHub). */
+  onRegisterAddOpener?: (open: () => void) => void;
 }
 
 function LeadRow({
@@ -121,16 +126,16 @@ function LeadRow({
           {staleDays != null ? (
             <span
               className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
-              title={`No activity for ${staleDays} days and no follow-up planned — reach out or set a date.`}
+              title={`Ingen aktivitet på ${staleDays} dagar och ingen uppföljning planerad — hör av dig eller sätt ett datum.`}
             >
               <CalendarClock className="h-2.5 w-2.5" aria-hidden />
-              Stale · {staleDays}d
+              Inaktiv · {staleDays}d
             </span>
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {[lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ") ||
-            (lead.notes ? lead.notes.slice(0, 80) : "No contact details yet")}
+            (lead.notes ? lead.notes.slice(0, 80) : "Inga kontaktuppgifter än")}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -149,7 +154,7 @@ function LeadRow({
         <div className="relative">
           <Input
             type="date"
-            aria-label={`Follow-up date for ${lead.company}`}
+            aria-label={`Uppföljningsdatum för ${lead.company}`}
             value={lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : ""}
             onChange={(e) => onFollowUp(e.target.value)}
             className={cn(
@@ -164,8 +169,8 @@ function LeadRow({
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={onResearch}
-          title={`Research ${lead.company} via your connected research provider`}
-          aria-label={`Research ${lead.company}`}
+          title={`Researcha ${lead.company} via din kopplade research-leverantör`}
+          aria-label={`Researcha ${lead.company}`}
         >
           <Search className="h-3.5 w-3.5" />
         </Button>
@@ -175,8 +180,8 @@ function LeadRow({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-primary"
             onClick={onDraftOutreach}
-            title={`Draft outreach to ${lead.company}`}
-            aria-label={`Draft outreach to ${lead.company}`}
+            title={`Skriv utkast till ${lead.company}`}
+            aria-label={`Skriv utkast till ${lead.company}`}
           >
             <Mail className="h-3.5 w-3.5" />
           </Button>
@@ -187,8 +192,8 @@ function LeadRow({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-primary"
             onClick={onAddToPipeline}
-            title={`Add ${lead.company} to pipeline`}
-            aria-label={`Add ${lead.company} to pipeline`}
+            title={`Lägg till ${lead.company} i pipelinen`}
+            aria-label={`Lägg till ${lead.company} i pipelinen`}
           >
             <Target className="h-3.5 w-3.5" />
           </Button>
@@ -199,8 +204,8 @@ function LeadRow({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={onEdit}
-            title={`Edit ${lead.company}`}
-            aria-label={`Edit ${lead.company}`}
+            title={`Redigera ${lead.company}`}
+            aria-label={`Redigera ${lead.company}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -213,7 +218,17 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, hideSuggestionPanel = false, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach, onDraftDueLeads }: Props) {
+export function LeadsSection({
+  businessProfileId,
+  context,
+  hideSuggestionPanel = false,
+  sellerContext,
+  followUpsOnly = false,
+  onAddToPipeline,
+  onDraftOutreach,
+  onDraftDueLeads,
+  onRegisterAddOpener,
+}: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -227,13 +242,13 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
       const text = await file.text();
       const { leads: parsed, skipped } = parseLeadsCsv(text);
       if (parsed.length === 0) {
-        toast.error("No leads found in that file. Expected a header row with a company column.");
+        toast.error("Inga leads hittades i filen. Förväntar en rubrikrad med kolumn för företag.");
         return;
       }
       const count = await importLeads(parsed);
-      toast.success(`Imported ${count} lead${count === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}`);
+      toast.success(`Importerade ${count} lead${count === 1 ? "" : "s"}${skipped ? ` (${skipped} hoppades över)` : ""}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't import that file.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte importera filen.");
     }
   }
 
@@ -248,6 +263,10 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
     URL.revokeObjectURL(url);
   }
   const [addOpen, setAddOpen] = useState(false);
+
+  useEffect(() => {
+    onRegisterAddOpener?.(() => setAddOpen(true));
+  }, [onRegisterAddOpener]);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [researchTarget, setResearchTarget] = useState<LeadResearchTarget | null>(null);
@@ -258,22 +277,28 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
   const [suggestSource, setSuggestSource] = useState<string>("");
   const [enriching, setEnriching] = useState(false);
 
-  async function autofillFromWebsite() {
+  async function autofillLead() {
     const url = form.website.trim();
-    if (!url) return;
+    const orgNumber = form.orgNumber.trim();
+    const company = form.company.trim();
+    if (!url && !orgNumber && !company) return;
     setEnriching(true);
     try {
-      const meta = await enrichLeadFromWebsite(url);
-      setForm((f) => ({
-        ...f,
-        website: meta.url || f.website,
-        company: f.company.trim() ? f.company : meta.company || f.company,
-        notes: f.notes.trim() ? f.notes : meta.description || f.notes,
-      }));
-      if (!meta.company && !meta.description) toast.message("Nothing useful found on that page.");
-      else toast.success("Filled in from website");
+      const meta = await enrichLead({
+        url: url || undefined,
+        orgNumber: orgNumber || undefined,
+        company: company || undefined,
+        business_profile_id: businessProfileId,
+      });
+      setForm((f) => applyEnrichmentToLeadForm(f, meta));
+      const sources = meta.sources?.filter((s) => s.status === "success").length ?? 0;
+      if (!meta.company && !meta.description && sources === 0) {
+        toast.message("Ingen data hittades.");
+      } else {
+        toast.success(sources > 0 ? `Hämtade från ${sources} källa${sources === 1 ? "" : "r"}` : "Ifyllt från uppslag");
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't read that website.");
+      toast.error(e instanceof Error ? e.message : "Uppslag misslyckades.");
     } finally {
       setEnriching(false);
     }
@@ -310,6 +335,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
         email: form.email || null,
         phone: form.phone || null,
         website: form.website.trim() || null,
+        orgNumber: form.orgNumber.trim() || null,
         notes: form.notes || null,
         nextFollowUpAt: form.nextFollowUpAt
           ? dateInputToEndOfDayIso(form.nextFollowUpAt)
@@ -318,9 +344,9 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
       });
       setForm({ ...EMPTY_FORM });
       setAddOpen(false);
-      toast.success("Lead added");
+      toast.success("Lead tillagd");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't add the lead.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte lägga till lead.");
     } finally {
       setSaving(false);
     }
@@ -335,9 +361,9 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
       });
       setSuggestions(result.suggestions);
       setSuggestSource(result.source);
-      if (result.suggestions.length === 0) toast.message("No suggestions came back — try again.");
+      if (result.suggestions.length === 0) toast.message("Inga förslag — försök igen eller fyll i mer under Företag.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load suggestions.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte hämta förslag.");
     } finally {
       setSuggesting(false);
     }
@@ -360,10 +386,10 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
     try {
       await updateLead({ id: lead.id, patch });
       if (patch.nextFollowUpAt) {
-        toast.message("Follow-up date set automatically.");
+        toast.message("Uppföljningsdatum sattes automatiskt.");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't update lead.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte uppdatera lead.");
     }
   }
 
@@ -376,9 +402,9 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
         status: "new",
       });
       setSuggestions((prev) => prev.filter((x) => x.target !== s.target));
-      toast.success("Added to leads");
+      toast.success("Tillagd som lead");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't add the lead.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte lägga till lead.");
     }
   }
 
@@ -392,8 +418,8 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
               Leads
             </CardTitle>
             <CardDescription>
-              {openCount} open
-              {followUpDue > 0 ? ` · ${followUpDue} follow-up${followUpDue === 1 ? "" : "s"} due` : ""}
+              {openCount} öppna
+              {followUpDue > 0 ? ` · ${followUpDue} uppföljning${followUpDue === 1 ? "" : "ar"} att göra` : ""}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -409,15 +435,15 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isImporting || !businessProfileId}
-              title="Import leads from a CSV"
+              title="Importera leads från CSV"
             >
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              <span className="ml-1.5 hidden sm:inline">Import CSV</span>
+              <span className="ml-1.5 hidden sm:inline">Importera</span>
             </Button>
             {leads.length > 0 ? (
-              <Button size="sm" variant="ghost" onClick={exportCsv} title="Export leads to CSV">
+              <Button size="sm" variant="ghost" onClick={exportCsv} title="Exportera leads till CSV">
                 <Download className="h-3.5 w-3.5" />
-                <span className="ml-1.5 hidden sm:inline">Export</span>
+                <span className="ml-1.5 hidden sm:inline">Exportera</span>
               </Button>
             ) : null}
             <Button
@@ -437,17 +463,17 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
               ) : (
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Suggest companies
+              Föreslå segment
             </Button>
             {followUpDue > 0 && onDraftDueLeads ? (
               <Button size="sm" variant="default" onClick={onDraftDueLeads}>
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
-                Draft due ({followUpDue})
+                Utkast ({followUpDue})
               </Button>
             ) : null}
             <Button size="sm" onClick={() => setAddOpen(true)} disabled={!businessProfileId}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Add lead
+              Ny lead
             </Button>
           </div>
         </div>
@@ -457,7 +483,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
           <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
             <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Who to contact {suggestSource === "heuristic" ? "(general ideas)" : ""}
+              Vem ni kan kontakta {suggestSource === "heuristic" ? "(allmänna idéer)" : ""}
             </p>
             {suggestions.map((s) => (
               <div key={s.target} className="flex items-start justify-between gap-3 rounded-md bg-card px-3 py-2">
@@ -468,7 +494,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                 </div>
                 <Button size="sm" variant="ghost" className="shrink-0" onClick={() => void addSuggestionAsLead(s)}>
                   <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add
+                  Lägg till
                 </Button>
               </div>
             ))}
@@ -482,8 +508,8 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search company, contact, email…"
-                aria-label="Search leads"
+                placeholder="Sök företag, kontakt, e-post…"
+                aria-label="Sök leads"
                 className="h-8 pl-8 text-xs"
               />
             </div>
@@ -492,7 +518,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+                <SelectItem value="all" className="text-xs">Alla statusar</SelectItem>
                 {LEAD_STATUS_ORDER.map((s) => (
                   <SelectItem key={s} value={s} className="text-xs">
                     {LEAD_STATUS_LABELS[s]}
@@ -505,17 +531,17 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
+            <Loader2 className="h-4 w-4 animate-spin" /> Laddar leads…
           </div>
         ) : sortedLeads.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
             <CalendarClock className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" aria-hidden />
             <p className="text-sm text-muted-foreground">
-              No leads yet. Add one, or get AI suggestions for who to contact.
+              Inga leads än. Lägg till en, eller låt AI föreslå vem ni kan kontakta.
             </p>
           </div>
         ) : filteredLeads.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No leads match your filters.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">Inga leads matchar filtren.</p>
         ) : (
           <div className="space-y-2">
             {filteredLeads.map((lead) => (
@@ -530,7 +556,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                       patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
                     });
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Couldn't update follow-up date.");
+                    toast.error(error instanceof Error ? error.message : "Kunde inte uppdatera uppföljningsdatum.");
                   }
                 }}
                 onDelete={() => setLeadToDelete(lead)}
@@ -576,33 +602,34 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
       <LeadEditDialog
         lead={editLead}
         open={editOpen}
+        businessProfileId={businessProfileId}
         onOpenChange={setEditOpen}
         onSave={async (id, patch) => {
           await updateLead({ id, patch });
-          toast.success("Lead updated.");
+          toast.success("Lead uppdaterad.");
         }}
       />
 
       <AlertDialog open={Boolean(leadToDelete)} onOpenChange={(open) => !open && setLeadToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete lead?</AlertDialogTitle>
+            <AlertDialogTitle>Ta bort lead?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove {leadToDelete?.company || "this lead"} from your CRM. This cannot be undone.
+              Ta bort {leadToDelete?.company || "denna lead"} från CRM. Det går inte att ångra.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (!leadToDelete) return;
                 void deleteLead(leadToDelete.id)
-                  .then(() => toast.success("Lead deleted"))
-                  .catch((error) => toast.error(error instanceof Error ? error.message : "Couldn't delete lead."));
+                  .then(() => toast.success("Lead borttagen"))
+                  .catch((error) => toast.error(error instanceof Error ? error.message : "Kunde inte ta bort lead."));
                 setLeadToDelete(null);
               }}
             >
-              Delete
+              Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -611,49 +638,28 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add lead</DialogTitle>
-            <DialogDescription>A company or contact to follow up with.</DialogDescription>
+            <DialogTitle>Ny lead</DialogTitle>
+            <DialogDescription>Ett företag eller en kontakt att följa upp.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <LeadAutoFillFields
+              form={{ orgNumber: form.orgNumber, company: form.company, website: form.website }}
+              loading={enriching}
+              onLookup={() => void autofillLead()}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            />
             <div className="space-y-1.5">
-              <Label htmlFor="lead-website" className="flex items-center gap-1.5">
-                <Globe className="h-3.5 w-3.5" /> Website
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="lead-website"
-                  value={form.website}
-                  onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && void autofillFromWebsite()}
-                  placeholder="example.com"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void autofillFromWebsite()}
-                  disabled={enriching || !form.website.trim()}
-                  className="shrink-0"
-                >
-                  {enriching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  <span className="ml-1.5 hidden sm:inline">Auto-fill</span>
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Paste a site and we'll pull in the company name + description.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-company">Company *</Label>
+              <Label htmlFor="lead-company">Företag *</Label>
               <Input
                 id="lead-company"
                 value={form.company}
                 onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-                placeholder="Company name"
+                placeholder="Företagsnamn"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="lead-contact">Contact</Label>
+                <Label htmlFor="lead-contact">Kontakt</Label>
                 <Input
                   id="lead-contact"
                   value={form.contactName}
@@ -661,7 +667,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-followup">Follow up on</Label>
+                <Label htmlFor="lead-followup">Följ upp</Label>
                 <Input
                   id="lead-followup"
                   type="date"
@@ -670,7 +676,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-email">Email</Label>
+                <Label htmlFor="lead-email">E-post</Label>
                 <Input
                   id="lead-email"
                   type="email"
@@ -679,7 +685,7 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-phone">Phone</Label>
+                <Label htmlFor="lead-phone">Telefon</Label>
                 <Input
                   id="lead-phone"
                   value={form.phone}
@@ -688,23 +694,23 @@ export function LeadsSection({ businessProfileId, context, hideSuggestionPanel =
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lead-notes">Notes</Label>
+              <Label htmlFor="lead-notes">Anteckningar</Label>
               <Textarea
                 id="lead-notes"
                 rows={3}
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Why they're a fit, next step…"
+                placeholder="Varför de passar, nästa steg…"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
-              Cancel
+              Avbryt
             </Button>
             <Button onClick={() => void submitLead()} disabled={saving || !form.company.trim()}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-              Add lead
+              Spara lead
             </Button>
           </DialogFooter>
         </DialogContent>

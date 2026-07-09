@@ -46,17 +46,25 @@ import {
   type OutreachContentContext,
 } from "../ai/outreachContent.ts";
 import { fetchSiteMeta } from "../lib/siteMeta.ts";
+import { enrichCompany } from "../lib/companyEnrichment.ts";
 import { readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
+
+type TokenStoreLike = {
+  set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
+  get: (id: string) => Promise<Record<string, unknown> | null>;
+  entries: () => Promise<Array<[string, Record<string, unknown>]>>;
+};
 
 type SalesRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
   secretResolver?: {
     resolve: (businessProfileId: string | null | undefined, key: string) => Promise<string | null>;
   };
+  tokenStore?: TokenStoreLike;
 };
 
 export function registerSalesRoutes(app: import("express").Express, deps: SalesRouteDeps) {
-  const { getSessionUserId } = deps;
+  const { getSessionUserId, secretResolver, tokenStore } = deps;
   const limit = rateLimitMiddleware("sales:lead-suggestions", (req) => getSessionUserId(req), 12, 60_000);
   const limitEnrich = rateLimitMiddleware("sales:lead-enrich", (req) => getSessionUserId(req), 20, 60_000);
   const limitOutreachDiscovery = rateLimitMiddleware(
@@ -84,22 +92,88 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
     60_000
   );
 
-  // Auto-fill a lead from its website: fetch the site (SSRF-safe) and read its
-  // company name + description from meta tags. Degrades to an empty result.
+  // Auto-fill from website meta + JSON-LD. Backward-compatible response shape.
   app.post("/api/sales/lead-enrich", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
     if (!limitEnrich(req, res)) return;
-    const url = String((req.body as { url?: string })?.url || "").trim();
-    if (!url) return res.status(400).json({ error: "missing_url", message: "Enter a website to look up." });
+    const body = (req.body ?? {}) as {
+      url?: string;
+      orgNumber?: string;
+      company?: string;
+      business_profile_id?: string;
+    };
+    const url = String(body.url || "").trim();
+    const orgNumber = String(body.orgNumber || "").trim();
+    const company = String(body.company || "").trim();
+    if (!url && !orgNumber && !company) {
+      return res.status(400).json({
+        error: "missing_input",
+        message: "Enter a website, org number, or company name to look up.",
+      });
+    }
     try {
-      const meta = await fetchSiteMeta(url);
-      return res.json({ ok: true, ...meta });
+      if (url && !orgNumber && !company) {
+        const meta = await fetchSiteMeta(url);
+        return res.json({ ok: true, ...meta });
+      }
+      const businessProfileId = readRequestBodyBusinessProfileId(req);
+      const enriched = await enrichCompany({
+        url: url || undefined,
+        orgNumber: orgNumber || undefined,
+        company: company || undefined,
+        businessProfileId,
+        secretResolver,
+        tokenStore,
+      });
+      return res.json({ ok: true, ...enriched });
     } catch (e) {
       const code = e instanceof Error ? e.message : "enrich_failed";
       return res
         .status(422)
-        .json({ error: code, message: "Couldn't read that website. Enter the details manually." });
+        .json({ error: code, message: "Couldn't enrich that company. Enter the details manually." });
+    }
+  });
+
+  // Full enrichment: Bolagsverket + website + Google Places + optional Exa/Sprouts.
+  app.post("/api/sales/company-enrich", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!limitEnrich(req, res)) return;
+    const body = (req.body ?? {}) as {
+      orgNumber?: string;
+      url?: string;
+      company?: string;
+      business_profile_id?: string;
+      includeMcpResearch?: boolean;
+    };
+    const orgNumber = String(body.orgNumber || "").trim();
+    const url = String(body.url || "").trim();
+    const company = String(body.company || "").trim();
+    if (!orgNumber && !url && !company) {
+      return res.status(400).json({
+        error: "missing_input",
+        message: "Ange organisationsnummer, webbplats eller företagsnamn.",
+      });
+    }
+    try {
+      const businessProfileId = readRequestBodyBusinessProfileId(req);
+      const enriched = await enrichCompany({
+        orgNumber: orgNumber || undefined,
+        url: url || undefined,
+        company: company || undefined,
+        businessProfileId,
+        includeMcpResearch: Boolean(body.includeMcpResearch),
+        secretResolver,
+        tokenStore,
+      });
+      return res.json({ ok: true, ...enriched });
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "enrich_failed";
+      return res.status(422).json({
+        error: code,
+        message: "Kunde inte hämta företagsdata. Fyll i manuellt eller försök igen.",
+      });
     }
   });
 

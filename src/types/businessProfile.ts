@@ -14,6 +14,7 @@ export interface BusinessProfile {
   id: string;
   name: string;
   kind: ProfileKind;
+  orgNumber?: string;
   website?: string;
   company?: string;
   email?: string;
@@ -37,6 +38,7 @@ export interface Membership {
 export interface BusinessProfileInput {
   name: string;
   kind?: ProfileKind;
+  orgNumber?: string;
   website?: string;
   company?: string;
   email?: string;

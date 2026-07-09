@@ -579,6 +579,7 @@ registerMarketingRoutes(app, {
 registerSalesRoutes(app, {
   getSessionUserId,
   secretResolver,
+  tokenStore,
 });
 
 registerTaskRoutes(app, {

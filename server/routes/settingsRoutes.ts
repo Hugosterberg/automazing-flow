@@ -76,6 +76,12 @@ const TENANT_SECRET_CATALOG: TenantSecretDef[] = [
     inputType: "password",
   },
   {
+    key: "GOOGLE_PLACES_API_KEY",
+    label: "Google Places API key",
+    description: "Optional. Used for company enrichment in Sales and Företag (Find Place).",
+    inputType: "password",
+  },
+  {
     key: "APIAI_API_KEY",
     label: "apiai.me API key",
     description: "Your apiai.me API key for Content -> Create tools and pipelines.",

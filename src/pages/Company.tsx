@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import {
   BusinessProfileCompletenessCard,
   BusinessProfileEditForm,
+  CompanyAutoFillCard,
   getBusinessProfileCompleteness,
   profileToFormState,
   formStateToProfileInput,
@@ -79,6 +80,10 @@ export default function CompanyPage() {
   );
 
   function scrollToField(fieldId: ProfileFieldId) {
+    if (fieldId === "org_number") {
+      document.getElementById("company-auto-fill")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setFocusField(fieldId);
     document.getElementById(`profile-field-${fieldId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     window.setTimeout(() => setFocusField(null), 2000);
@@ -89,18 +94,18 @@ export default function CompanyPage() {
     try {
       await updateProfile({ id: profile.id, updates: formStateToProfileInput(form) });
       setDirty(false);
-      toast.success("Bolagsprofil sparad — AI-förslag uppdateras nästa gång du använder Sales och outreach.");
+      toast.success("Sparat — Sales och outreach använder profilen nästa gång du genererar förslag.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Kunde inte spara profilen.");
     }
   }
 
   return (
-    <m.div {...pageFadeUp} className="space-y-6 max-w-3xl">
+    <m.div {...pageFadeUp} className="space-y-6 max-w-3xl pb-8">
       <PageHeader
         icon={Building2}
         title="Företag"
-        description="Här fyller du i allt om bolaget. Informationen delas med AI i Sales, outreach, innehåll och automation — ju mer desto bättre."
+        description="Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara."
       />
 
       {!profile ? (
@@ -111,68 +116,79 @@ export default function CompanyPage() {
         </Card>
       ) : (
         <>
-          <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
-            <BusinessProfileCompletenessCard profile={profile} form={dirty ? form : undefined} onFocusField={scrollToField} />
-          </m.div>
+          <BusinessProfileCompletenessCard
+            profile={profile}
+            form={dirty ? form : undefined}
+            onFocusField={scrollToField}
+          />
 
-          <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
-            <Card className="border-border">
-              <CardHeader className="pb-2">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base">Redigera bolagsprofil</CardTitle>
-                    <CardDescription>
-                      {completeness.percent < 50
-                        ? "Börja med beskrivningen — resten kan du fylla i efter hand."
-                        : "Spara när du är klar. Du kan alltid komma tillbaka och uppdatera."}
-                    </CardDescription>
-                  </div>
-                  <Button type="button" size="sm" onClick={() => void saveProfile()} disabled={isUpdating || !dirty}>
-                    {isUpdating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-1.5" />
-                    )}
-                    Spara
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <BusinessProfileEditForm
-                  form={form}
-                  disabled={isUpdating}
-                  focusFieldId={focusField}
-                  onChange={(next) => {
-                    setForm(next);
-                    setDirty(true);
-                  }}
-                />
-                <div className="mt-6 flex justify-end">
-                  <Button type="button" onClick={() => void saveProfile()} disabled={isUpdating || !dirty}>
-                    {isUpdating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-1.5" />
-                    )}
-                    Spara bolagsprofil
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </m.div>
+          <CompanyAutoFillCard
+            businessProfileId={businessProfileId}
+            form={form}
+            disabled={isUpdating}
+            onApply={(next) => {
+              setForm(next);
+              setDirty(true);
+            }}
+          />
+
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Steg 2 · Granska och komplettera</CardTitle>
+              <CardDescription>
+                {completeness.percent < 50
+                  ? "Skriv minst några rader under beskrivning — det påverkar lead-förslagen mest."
+                  : "Kontrollera att uppgifterna stämmer innan du sparar."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BusinessProfileEditForm
+                form={form}
+                disabled={isUpdating}
+                focusFieldId={focusField}
+                onChange={(next) => {
+                  setForm(next);
+                  setDirty(true);
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="sticky bottom-4 z-10 flex justify-end">
+            <Button
+              type="button"
+              size="lg"
+              className="shadow-md"
+              onClick={() => void saveProfile()}
+              disabled={isUpdating || !dirty}
+            >
+              {isUpdating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Steg 3 · Spara bolagsprofil
+            </Button>
+          </div>
         </>
       )}
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.05 }} className="space-y-4">
+      <div className="space-y-4 pt-2 border-t border-border/60">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Extern analys</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Jämför er domän och position med kopplade research-verktyg (valfritt).
+          </p>
+        </div>
+
         {!form.website?.trim() && !profile?.website ? (
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Lägg till webbplats ovan</AlertTitle>
-            <AlertDescription>
-              Med webbadress kan vi hämta extern intelligens om företaget och föreslå bättre prospects.
-            </AlertDescription>
+            <AlertTitle>Lägg till webbplats i profilen</AlertTitle>
+            <AlertDescription>Behövs för domänuppslag och extern jämförelse nedan.</AlertDescription>
           </Alert>
         ) : null}
+
         <McpMultiSourceCompare
           businessProfileId={businessProfileId}
           initialSubject={hostname || profile?.company || ""}
@@ -180,53 +196,46 @@ export default function CompanyPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.company}
-          title="External intelligence"
-          description="Domain lookup, SEO overview, and competitive research for this company via connected MCP providers."
+          title="Domän & konkurrens"
+          description="SEO, domäninfo och marknadsresearch via kopplade MCP-leverantörer."
         />
-      </m.div>
+      </div>
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
-        <Card className="border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Anslutna källor ({activeConnections.length})</CardTitle>
-            <CardDescription>Plattformar vi hämtar data om företaget från.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {activeConnections.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {activeConnections.map((c) => (
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Anslutna källor ({activeConnections.length})</CardTitle>
+          <CardDescription>Plattformar som kan bidra med data om ert bolag.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activeConnections.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {activeConnections.map((c) => (
+                <span
+                  key={c.id}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs"
+                >
                   <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs"
-                  >
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-current",
-                        HEALTH_TONE[c.health] ?? "text-muted-foreground"
-                      )}
-                      aria-hidden
-                    />
-                    <span className="font-medium text-foreground">{platformLabel(c.platform)}</span>
-                    {c.username ? <span className="text-muted-foreground">· {c.username}</span> : null}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">
-                Inga anslutningar ännu — börja på Connections-sidan.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </m.div>
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full bg-current",
+                      HEALTH_TONE[c.health] ?? "text-muted-foreground"
+                    )}
+                    aria-hidden
+                  />
+                  <span className="font-medium text-foreground">{platformLabel(c.platform)}</span>
+                  {c.username ? <span className="text-muted-foreground">· {c.username}</span> : null}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-2">
+              Inga anslutningar — börja under Connections.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.08 }}>
-        <AutomatedUpdatesCard businessProfileId={activeBpId} fallbackEmail={profile?.email ?? undefined} />
-      </m.div>
-
-      <m.div {...pageFadeUp} transition={{ delay: 0.1 }}>
-        <SystemHealthCard />
-      </m.div>
+      <AutomatedUpdatesCard businessProfileId={activeBpId} fallbackEmail={profile?.email ?? undefined} />
+      <SystemHealthCard />
     </m.div>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Bot, Activity } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Bot, Activity, Building2 } from "lucide-react";
 import { connectionsToCsv, downloadCsv } from "@/lib/exportCsv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -406,6 +407,20 @@ export default function ConnectionsPage() {
           message={formatOAuthErrorMessage(oauthErrorDetails)}
           onDismiss={clearOauthError}
         />
+      ) : null}
+
+      {searchParams.get("next") === "company" ? (
+        <Alert className="border-primary/30 bg-primary/[0.04]">
+          <Building2 className="h-4 w-4" />
+          <AlertTitle>Nästa steg: fyll i bolagsprofilen</AlertTitle>
+          <AlertDescription className="text-sm leading-relaxed">
+            När du kopplat det du behöver här, gå till{" "}
+            <Link to="/company" className="font-medium text-primary underline underline-offset-2">
+              Företag
+            </Link>{" "}
+            och hämta data med org.nr — det gör lead-förslagen mycket bättre.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <Card className="border-border/80">

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { m } from "framer-motion";
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
 import { LeadsSection, LeadSuggestionsSection, useLeads, buildLeadSuggestionContext, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
 import { fetchProducts } from "@/lib/productsApi";
 import { BrandDiscoverySection } from "@/features/brand-discovery";
@@ -328,11 +328,20 @@ export default function SalesMarketingPage() {
   const [draftLeadId, setDraftLeadId] = useState<string | null>(null);
   const { performance, connected: marketingConnected } = useMarketingCampaigns();
 
-  // Deep link from the command palette: /sales?new=lead opens the add-lead
-  // dialog directly. Param is consumed so refresh doesn't re-open it.
+  const openAddLeadRef = useRef<(() => void) | null>(null);
+  const registerAddLeadOpener = useCallback((open: () => void) => {
+    openAddLeadRef.current = open;
+  }, []);
+
+  function openAddLeadDialog() {
+    document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    window.setTimeout(() => openAddLeadRef.current?.(), 280);
+  }
+
+  // Deep link: /sales?new=lead opens the CRM add-lead dialog.
   useEffect(() => {
     if (searchParams.get("new") !== "lead") return;
-    setPipelineOpen(true);
+    openAddLeadDialog();
     const next = new URLSearchParams(searchParams);
     next.delete("new");
     setSearchParams(next, { replace: true });
@@ -462,15 +471,17 @@ export default function SalesMarketingPage() {
       <PageHeader
         icon={Target}
         title="Sales"
-        description="Pipeline, leads, and goals for your business."
+        description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
       />
+
+      <CompanyProfileNudge profile={activeProfile} />
 
       {/* KPI tiles */}
       <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
-          { label: "Active leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
-          { label: "Won deals", value: wonLeads, icon: Trophy, color: "text-green-500" },
-          { label: "Conversion rate", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
+          { label: "Aktiva leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
+          { label: "Vunna affärer", value: wonLeads, icon: Trophy, color: "text-green-500" },
+          { label: "Konvertering", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-border">
             <CardContent className="p-4">
@@ -491,7 +502,8 @@ export default function SalesMarketingPage() {
           shopifyOrders={performance?.orders ?? null}
           shopifyRevenueLabel={shopifyRevenueLabel}
           onFollowUps={() => navigate("/sales?view=followups")}
-          onAddLead={() => setPipelineOpen(true)}
+          onAddLead={openAddLeadDialog}
+          onAddDeal={() => setPipelineOpen(true)}
           onDraftDueLeads={startDueLeadDrafts}
           onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
           onSuggestLeads={() => document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" })}
@@ -554,6 +566,7 @@ export default function SalesMarketingPage() {
           hideSuggestionPanel
           sellerContext={marketingContext}
           followUpsOnly={showFollowUpsOnly}
+          onRegisterAddOpener={registerAddLeadOpener}
           onAddToPipeline={openPipelineFromLead}
           onDraftOutreach={(target) => {
             setOutreachDraftTarget(target);
