@@ -625,9 +625,9 @@ export default function ConnectionsPage() {
           {[1, 2, 3].map((i) => (
             <div key={i} className="space-y-3">
               <Skeleton className="h-4 w-32" />
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
                 {[1, 2, 3, 4].map((j) => (
-                  <Skeleton key={j} className="h-36 rounded-xl" />
+                  <Skeleton key={j} className="h-10 rounded-xl" />
                 ))}
               </div>
             </div>

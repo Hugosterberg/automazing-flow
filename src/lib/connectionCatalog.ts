@@ -39,7 +39,7 @@ export const AREA_LABELS: Record<AppArea, string> = {
   social: "Social media",
   marketing: "Marketing",
   ecommerce: "E-commerce",
-  messages: "Mail",
+  messages: "Messages & mail",
   calendar: "Calendar",
   reviews: "Reviews",
   content: "Content library",
@@ -49,7 +49,13 @@ export const AREA_LABELS: Record<AppArea, string> = {
 export type ConnectionCatalogEntry = {
   platform: AccountPlatform;
   label: string;
-  area: AppArea;
+  /**
+   * Every product area the connection powers — one connection can serve
+   * several (Instagram feeds both Social media and the Messages inbox).
+   * The first entry is the primary area (where the Connect flow lives);
+   * the entry is listed under every area on the Connections page.
+   */
+  areas: [AppArea, ...AppArea[]];
   /** In-app page where Connect actions live */
   pageHref: string;
   pageName: string;
@@ -67,7 +73,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "instagram",
     label: "Instagram",
-    area: "social",
+    areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps:
@@ -77,7 +83,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "facebook",
     label: "Facebook",
-    area: "social",
+    areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Connect via Zernio from Social Media, Connect accounts, or the sidebar.",
@@ -86,7 +92,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "google_business",
     label: "Google Business Profile",
-    area: "social",
+    areas: ["social", "reviews"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Choose Official API or Zernio when connecting.",
@@ -96,7 +102,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "whatsapp",
     label: "WhatsApp Business",
-    area: "social",
+    areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Connect via Zernio from Social Media or Connect accounts.",
@@ -105,7 +111,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "tiktok",
     label: "TikTok",
-    area: "social",
+    areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Use Connect on Social Media (Zernio and/or official TikTok OAuth, depending on provider choice).",
@@ -114,7 +120,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "youtube",
     label: "YouTube",
-    area: "social",
+    areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Use Connect on Social Media (Google OAuth for YouTube).",
@@ -123,7 +129,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "x",
     label: "X (Twitter)",
-    area: "social",
+    areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps: "Use Connect on Social Media (X OAuth).",
@@ -132,7 +138,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "google_ads",
     label: "Google Ads",
-    area: "marketing",
+    areas: ["marketing"],
     pageHref: "/marketing",
     pageName: "Marketing",
     connectSteps: "Open Marketing → choose Google official or Zernio.",
@@ -142,7 +148,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "meta_business",
     label: "Meta Business",
-    area: "marketing",
+    areas: ["marketing"],
     pageHref: "/marketing",
     pageName: "Marketing",
     connectSteps: "Open Marketing → connect with Meta official.",
@@ -152,7 +158,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "shopify",
     label: "Shopify",
-    area: "ecommerce",
+    areas: ["ecommerce", "marketing"],
     pageHref: "/ecommerce",
     pageName: "E-commerce",
     connectSteps:
@@ -162,7 +168,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "notion",
     label: "Notion",
-    area: "ecommerce",
+    areas: ["ecommerce"],
     pageHref: "/ecommerce",
     pageName: "E-commerce",
     connectSteps: "Open E-commerce → Connect Notion.",
@@ -171,7 +177,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "gmail",
     label: "Gmail",
-    area: "messages",
+    areas: ["messages"],
     pageHref: "/messages",
     pageName: "Messages",
     connectSteps: "Open Messages → Connect Gmail (Google OAuth).",
@@ -180,7 +186,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "outlook",
     label: "Outlook mail",
-    area: "messages",
+    areas: ["messages"],
     pageHref: "/messages",
     pageName: "Messages",
     connectSteps: "Open Messages → Connect Outlook (Microsoft OAuth).",
@@ -189,7 +195,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "google_calendar",
     label: "Google Calendar",
-    area: "calendar",
+    areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
     connectSteps: "Open Calendar → Connect Google Calendar (may use Zernio or official Google, depending on setup).",
@@ -198,7 +204,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "outlook_calendar",
     label: "Outlook Calendar",
-    area: "calendar",
+    areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
     connectSteps: "Open Calendar → connect Outlook calendar from the Add flow / provider options.",
@@ -207,7 +213,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "google_reviews",
     label: "Google Reviews (Business Profile)",
-    area: "reviews",
+    areas: ["reviews"],
     pageHref: "/reviews",
     pageName: "Reviews",
     connectSteps: "Open Reviews → Connect Google Reviews (official Google Business Profile APIs) or Zernio if available.",
@@ -217,7 +223,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "tripadvisor",
     label: "Tripadvisor",
-    area: "reviews",
+    areas: ["reviews"],
     pageHref: "/reviews",
     pageName: "Reviews",
     connectSteps:
@@ -228,7 +234,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "google_drive",
     label: "Google Drive",
-    area: "content",
+    areas: ["content"],
     pageHref: "/content",
     pageName: "Content",
     connectSteps: "Open Content → Connect Google Drive.",
@@ -237,7 +243,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "canva",
     label: "Canva",
-    area: "content",
+    areas: ["content", "social"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
@@ -249,7 +255,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "dayai",
     label: "Day.ai",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "OAuth MCP — CRM and assistant tools for your workspace.",
@@ -258,7 +264,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "windsor",
     label: "Windsor.ai",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "OAuth MCP — marketing data connectors via Windsor.",
@@ -267,7 +273,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "era",
     label: "Era",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "OAuth MCP — Era context and forge tools.",
@@ -276,7 +282,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "ahrefs",
     label: "Ahrefs",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "OAuth MCP — SEO data and site tools (apiv3-mcp scope).",
@@ -285,7 +291,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "canva_mcp",
     label: "Canva MCP",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "OAuth MCP — broader Canva automation tools (separate from Canva Connect export).",
@@ -294,7 +300,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "superhuman_mcp",
     label: "Superhuman Mail",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
@@ -305,7 +311,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "supermetrics_mcp",
     label: "Supermetrics",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
@@ -316,7 +322,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "exa",
     label: "Exa",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste your Exa API key — web search MCP.",
@@ -325,7 +331,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "klarity",
     label: "Klarity Architect",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste your Klarity API token.",
@@ -334,7 +340,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "lunarcrush",
     label: "LunarCrush",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste your LunarCrush API key — social/crypto sentiment MCP.",
@@ -343,7 +349,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "peec",
     label: "Peec AI",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste your Peec AI API key.",
@@ -352,7 +358,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "sprouts",
     label: "Sprouts Data Intelligence",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Optional API key — server accepts keyless connects.",
@@ -361,7 +367,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "gamma",
     label: "Gamma",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste your Gamma API key — deck/content MCP.",
@@ -370,7 +376,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "godaddy",
     label: "GoDaddy Domains",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps: "Paste GoDaddy API credentials as KEY:SECRET (optional for read-only).",
@@ -379,7 +385,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "shopify_mcp",
     label: "Shopify Storefront MCP",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
@@ -389,7 +395,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
   {
     platform: "twilio_mcp",
     label: "Twilio Docs MCP",
-    area: "intelligence",
+    areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
@@ -410,7 +416,9 @@ const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {
 };
 
 for (const row of CONNECTION_CATALOG) {
-  byAreaCache[row.area].push(row);
+  for (const area of row.areas) {
+    byAreaCache[area].push(row);
+  }
 }
 
 export function getConnectionEntriesForArea(area: AppArea): ConnectionCatalogEntry[] {

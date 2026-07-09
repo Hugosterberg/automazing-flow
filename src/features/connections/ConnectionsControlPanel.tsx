@@ -51,7 +51,7 @@ function connectionIssues(connections: Connection[]): HealthIssue[] {
   const seen = new Set<string>();
 
   for (const entry of CONNECTION_CATALOG) {
-    if (entry.area === "intelligence") continue;
+    if (entry.areas.includes("intelligence")) continue;
     const rows = connections.filter((c) => c.platform === entry.platform);
     const status = aggregateStatus(rows);
     if (!ATTENTION_CONNECTION_STATUSES.includes(status)) continue;

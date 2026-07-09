@@ -32,8 +32,10 @@ interface Props {
 }
 
 /**
- * All integrations grouped by area. Single source of truth for what can be
- * connected. Pages elsewhere should only *read* from the resulting
+ * All integrations grouped by area, as compact expandable rows. A connection
+ * that powers several areas (entry.areas) is listed under each of them, with
+ * the same live status everywhere. Single source of truth for what can be
+ * connected — pages elsewhere should only *read* from the resulting
  * connections, not own their own Connect flows.
  */
 export function ConnectionsGrid({
@@ -123,11 +125,12 @@ export function ConnectionsGrid({
                 / {entries.length} linked
               </span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
               {visible.map((entry) => (
                 <ConnectionCard
                   key={entry.platform}
                   entry={entry}
+                  currentArea={area}
                   activeConnections={connections}
                   businessProfileId={businessProfileId}
                   mcpReadiness={mcpReadinessByPlatform?.get(entry.platform) ?? null}

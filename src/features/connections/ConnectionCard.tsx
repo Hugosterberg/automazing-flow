@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2 } from "lucide-react";
+import { CheckSquare2, ChevronRight, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2, TriangleAlert } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
+import { AREA_LABELS, type AppArea, type ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
 import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
@@ -53,6 +54,8 @@ interface Props {
   entry: ConnectionCatalogEntry;
   activeConnections: Connection[];
   businessProfileId: string;
+  /** Area section the row is rendered under — used to hint the entry's other areas. */
+  currentArea?: AppArea;
   mcpReadiness?: McpProviderReadiness | null;
   onDisconnect: (connectionId: string) => void;
   isDisconnecting: boolean;
@@ -67,17 +70,20 @@ interface Props {
 }
 
 /**
- * Single integration card: shows catalog info, linked accounts, health,
- * last sync, and Connect / Reconnect / Disconnect / Details actions.
+ * Single integration row: a slim always-visible summary line (label, status,
+ * linked accounts, quick Connect) that expands to the full details — accounts
+ * with health/test/disconnect, connect paths, and setup guidance. Compact by
+ * design: many connections must stay scannable as the catalog grows.
  *
  * All auth-bearing actions go through `buildConnectUrl` → server `/api/auth/*`
- * → Zernio (or native OAuth fallback). The card never talks to a provider
+ * → Zernio (or native OAuth fallback). The row never talks to a provider
  * directly.
  */
 export function ConnectionCard({
   entry,
   activeConnections,
   businessProfileId,
+  currentArea,
   mcpReadiness,
   onDisconnect,
   isDisconnecting,
@@ -89,6 +95,7 @@ export function ConnectionCard({
   onToggleSelect,
   manuallyConnected = false,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopifyShop, setShopifyShop] = useState("");
@@ -244,21 +251,107 @@ export function ConnectionCard({
     .filter((option) => option.label !== defaultPathOption?.label)
     .map((option) => option.label);
 
+  const otherAreas = currentArea ? entry.areas.filter((area) => area !== currentArea) : [];
+  const dualPath =
+    entry.platform === "google_ads" ||
+    entry.platform === "google_business" ||
+    entry.platform === "tripadvisor";
+  const hasDirectConnect = Boolean(
+    connectConfig && (!connectConfig.manual || isMcpPlatform(entry.platform))
+  );
+
+  /** Quick action on the collapsed row: connect directly when the path is
+   *  unambiguous, otherwise expand so the user can pick (or read setup steps). */
+  function handleQuickConnect() {
+    if (!hasDirectConnect || dualPath) {
+      setExpanded(true);
+      return;
+    }
+    if (isMcpPlatform(entry.platform)) {
+      startMcpConnect();
+      return;
+    }
+    if (entry.platform === "shopify") {
+      startShopifyConnect();
+      return;
+    }
+    startConnect();
+  }
+
   return (
     <>
-    <Card className="border-border/80">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-0.5 min-w-0">
-            <CardTitle className="text-base flex items-center gap-2">
-              {entry.label}
-            </CardTitle>
-            <CardDescription className="text-xs">{entry.connectSteps}</CardDescription>
-          </div>
+    <Card className="border-border/80 overflow-hidden">
+      {/* Slim summary row — always visible */}
+      <div className="flex items-center gap-2 pl-2 pr-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-muted/40"
+        >
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+              expanded && "rotate-90"
+            )}
+            aria-hidden
+          />
+          <span className="truncate text-sm font-medium">{entry.label}</span>
           <ConnectionStatusBadge status={displayStatus} />
-        </div>
+          {rows.slice(0, 2).map((c) => (
+            <span
+              key={c.id}
+              className="hidden sm:inline-flex max-w-[150px] truncate rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground"
+            >
+              {c.displayName || `@${c.username}`}
+            </span>
+          ))}
+          {rows.length > 2 ? (
+            <span className="hidden sm:inline text-[10px] text-muted-foreground tabular-nums">
+              +{rows.length - 2}
+            </span>
+          ) : null}
+          {firstError && !expanded ? (
+            <TriangleAlert
+              className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-label="Has sync error"
+            />
+          ) : null}
+          <span className="ml-auto flex shrink-0 items-center gap-2 pr-1">
+            {otherAreas.length > 0 ? (
+              <span className="hidden lg:inline text-[10px] text-muted-foreground/70">
+                Also in {otherAreas.map((area) => AREA_LABELS[area]).join(", ")}
+              </span>
+            ) : null}
+            {lastSync ? (
+              <span className="hidden md:inline text-[10px] text-muted-foreground tabular-nums">
+                {lastSync}
+              </span>
+            ) : null}
+          </span>
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
+          className="h-7 shrink-0 gap-1 px-2.5 text-xs"
+          onClick={handleQuickConnect}
+          disabled={mcpConnecting && mcpMeta?.auth === "keyless"}
+        >
+          {mcpConnecting && mcpMeta?.auth === "keyless" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <PrimaryIcon className="h-3 w-3" />
+          )}
+          {active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add"}
+        </Button>
+      </div>
+
+      {expanded ? (
+      <div className="space-y-3 border-t border-border/60 px-3 pb-3 pt-2.5">
+        <p className="text-xs text-muted-foreground">{entry.connectSteps}</p>
         {defaultPathOption ? (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] leading-none">
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] leading-none">
             <span className="text-muted-foreground/70">Paths</span>
             <span className="rounded-full border border-border bg-muted/30 px-2 py-1 text-muted-foreground">
               Default: {defaultPathOption.label}
@@ -270,8 +363,6 @@ export function ConnectionCard({
             ) : null}
           </div>
         ) : null}
-      </CardHeader>
-      <CardContent className="space-y-3 pt-0">
         {isMcpPlatform(entry.platform) && mcpReadiness ? (
           <McpReadinessHint readiness={mcpReadiness} />
         ) : null}
@@ -459,7 +550,8 @@ export function ConnectionCard({
             </Button>
           ) : null}
         </div>
-      </CardContent>
+      </div>
+      ) : null}
 
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>

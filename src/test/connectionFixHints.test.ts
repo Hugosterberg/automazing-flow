@@ -6,7 +6,7 @@ import type { Connection } from "@/types/connection";
 const catalogEntry: ConnectionCatalogEntry = {
   platform: "gmail",
   label: "Gmail",
-  area: "messages",
+  areas: ["messages"],
   pageHref: "/messages",
   pageName: "Messages",
   connectSteps: "Connect Gmail from Messages.",
