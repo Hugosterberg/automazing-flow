@@ -80,6 +80,32 @@ export function ConnectionsGrid({
 
   return (
     <div className="space-y-8">
+      {areaOrder.length > 1 ? (
+        <nav aria-label="Jump to area" className="flex flex-wrap gap-1.5">
+          {areaOrder.map((area) => {
+            const entries = byArea[area];
+            if (!entries.length) return null;
+            const linked = entries.filter((e) => entryIsLinked(e.platform)).length;
+            return (
+              <button
+                key={area}
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById(`area-${area}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                {AREA_LABELS[area]}
+                <span className="ml-1 tabular-nums text-muted-foreground/70">
+                  {linked}/{entries.length}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      ) : null}
       {areaOrder.map((area) => {
         const entries = byArea[area];
         if (!entries.length) return null;
@@ -110,11 +136,11 @@ export function ConnectionsGrid({
         if (!visible.length) return null;
 
         return (
-          <section key={area} aria-labelledby={`area-${area}`} className="space-y-3">
+          <section key={area} aria-labelledby={`area-${area}`} className="scroll-mt-20 space-y-3">
             <div className="flex items-baseline justify-between gap-2">
               <h2
                 id={`area-${area}`}
-                className="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
+                className="scroll-mt-20 text-sm font-semibold uppercase tracking-wide text-muted-foreground"
               >
                 {AREA_LABELS[area]}
               </h2>

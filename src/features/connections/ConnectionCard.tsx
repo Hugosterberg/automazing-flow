@@ -95,7 +95,13 @@ export function ConnectionCard({
   onToggleSelect,
   manuallyConnected = false,
 }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  // Rows that need action start expanded so the fix hint is visible at once.
+  const [expanded, setExpanded] = useState(() => {
+    const initialStatus = aggregateStatus(
+      activeConnections.filter((c) => c.platform === entry.platform)
+    );
+    return initialStatus === "error" || initialStatus === "reconnect_required";
+  });
   const [removeTarget, setRemoveTarget] = useState<Connection | null>(null);
   const [shopifyDialogOpen, setShopifyDialogOpen] = useState(false);
   const [shopifyShop, setShopifyShop] = useState("");
@@ -296,8 +302,21 @@ export function ConnectionCard({
             )}
             aria-hidden
           />
-          <span className="truncate text-sm font-medium">{entry.label}</span>
-          <ConnectionStatusBadge status={displayStatus} />
+          <span
+            className={cn(
+              "truncate text-sm",
+              rows.length > 0 || manuallyConnected
+                ? "font-medium"
+                : "font-normal text-muted-foreground"
+            )}
+          >
+            {entry.label}
+          </span>
+          {/* "Not connected" is already told by the muted label + Connect
+              button; a badge on every unlinked row would just be noise. */}
+          {displayStatus !== "not_connected" ? (
+            <ConnectionStatusBadge status={displayStatus} />
+          ) : null}
           {rows.slice(0, 2).map((c) => (
             <span
               key={c.id}
@@ -333,16 +352,17 @@ export function ConnectionCard({
         <Button
           type="button"
           size="sm"
-          variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
-          className="h-7 shrink-0 gap-1 px-2.5 text-xs"
+          variant={reconnectNeeded ? "default" : active.length === 0 ? "outline" : "ghost"}
+          className={cn(
+            "h-6 shrink-0 px-2 text-[11px] font-normal",
+            active.length > 0 && !reconnectNeeded && "text-muted-foreground hover:text-foreground"
+          )}
           onClick={handleQuickConnect}
           disabled={mcpConnecting && mcpMeta?.auth === "keyless"}
         >
           {mcpConnecting && mcpMeta?.auth === "keyless" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <PrimaryIcon className="h-3 w-3" />
-          )}
+          ) : null}
           {active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add"}
         </Button>
       </div>
