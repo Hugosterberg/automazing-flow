@@ -111,20 +111,28 @@ export function registerSalesRoutes(app: import("express").Express, deps: SalesR
     const body = (req.body ?? {}) as {
       business_profile_id?: string;
       businessName?: string;
+      company?: string;
+      website?: string;
       industry?: string;
       description?: string;
       location?: string;
       offering?: string;
       sampleCustomers?: unknown;
+      existingLeadSegments?: unknown;
     };
     const ctx: LeadSuggestionContext = {
-      businessName: String(body.businessName || "").slice(0, 200),
+      businessName: String(body.businessName || body.company || "").slice(0, 200),
+      company: String(body.company || "").slice(0, 200),
+      website: String(body.website || "").slice(0, 300),
       industry: String(body.industry || "").slice(0, 200),
       description: String(body.description || "").slice(0, 1000),
       location: String(body.location || "").slice(0, 200),
       offering: String(body.offering || "").slice(0, 500),
       sampleCustomers: Array.isArray(body.sampleCustomers)
         ? body.sampleCustomers.map((c) => String(c)).filter(Boolean).slice(0, 10)
+        : undefined,
+      existingLeadSegments: Array.isArray(body.existingLeadSegments)
+        ? body.existingLeadSegments.map((c) => String(c)).filter(Boolean).slice(0, 15)
         : undefined,
     };
 

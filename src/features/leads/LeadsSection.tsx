@@ -38,7 +38,7 @@ import {
   type LeadStatus,
   suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
-import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion } from "./leadSuggestionsClient";
+import { enrichLeadFromWebsite, fetchLeadSuggestions, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
 import { parseLeadsCsv, leadsToCsv } from "./parseLeadsCsv";
 import { LeadEditDialog } from "./LeadEditDialog";
 import type { OutreachDraftTarget } from "@/features/outreach";
@@ -75,7 +75,9 @@ const EMPTY_FORM = {
 interface Props {
   businessProfileId: string | null;
   /** Business context used to seed AI outreach suggestions. */
-  context?: { businessName?: string; description?: string; location?: string; sampleCustomers?: string[] };
+  context?: LeadSuggestionInput;
+  /** When true, suggestions are shown in LeadSuggestionsSection instead. */
+  hideSuggestionPanel?: boolean;
   /** Seller profile for personalized outreach drafts. */
   sellerContext?: Omit<OutreachDraftInput, "business_profile_id" | "channel" | keyof OutreachDraftTarget>;
   /** When true, only leads with follow-up due today or overdue are shown. */
@@ -211,7 +213,7 @@ function LeadRow({
   );
 }
 
-export function LeadsSection({ businessProfileId, context, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach, onDraftDueLeads }: Props) {
+export function LeadsSection({ businessProfileId, context, hideSuggestionPanel = false, sellerContext, followUpsOnly = false, onAddToPipeline, onDraftOutreach, onDraftDueLeads }: Props) {
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -329,10 +331,7 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
     try {
       const result = await fetchLeadSuggestions({
         business_profile_id: businessProfileId,
-        businessName: context?.businessName,
-        description: context?.description,
-        location: context?.location,
-        sampleCustomers: context?.sampleCustomers,
+        ...context,
       });
       setSuggestions(result.suggestions);
       setSuggestSource(result.source);
@@ -346,10 +345,11 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
 
   const autoSuggestedRef = useRef(false);
   useEffect(() => {
+    if (hideSuggestionPanel) return;
     if (autoSuggestedRef.current || isLoading || leads.length > 0 || !businessProfileId) return;
     autoSuggestedRef.current = true;
     void getSuggestions();
-  }, [isLoading, leads.length, businessProfileId]);
+  }, [hideSuggestionPanel, isLoading, leads.length, businessProfileId]);
 
   async function handleStatusChange(lead: Lead, status: LeadStatus) {
     const patch: Parameters<typeof updateLead>[0]["patch"] = { status };
@@ -420,8 +420,23 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
                 <span className="ml-1.5 hidden sm:inline">Export</span>
               </Button>
             ) : null}
-            <Button size="sm" variant="outline" onClick={() => void getSuggestions()} disabled={suggesting}>
-              {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (hideSuggestionPanel) {
+                  document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" });
+                  return;
+                }
+                void getSuggestions();
+              }}
+              disabled={suggesting && !hideSuggestionPanel}
+            >
+              {suggesting && !hideSuggestionPanel ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              )}
               Suggest companies
             </Button>
             {followUpDue > 0 && onDraftDueLeads ? (
@@ -438,7 +453,7 @@ export function LeadsSection({ businessProfileId, context, sellerContext, follow
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {suggestions.length > 0 ? (
+        {!hideSuggestionPanel && suggestions.length > 0 ? (
           <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
             <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-primary" />

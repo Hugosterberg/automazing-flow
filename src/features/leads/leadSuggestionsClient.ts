@@ -11,9 +11,14 @@ export interface LeadSuggestion {
 export interface LeadSuggestionInput {
   business_profile_id?: string | null;
   businessName?: string;
+  company?: string;
+  website?: string;
+  industry?: string;
   description?: string;
   location?: string;
+  offering?: string;
   sampleCustomers?: string[];
+  existingLeadSegments?: string[];
 }
 
 export interface LeadEnrichment {

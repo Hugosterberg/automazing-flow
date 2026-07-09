@@ -134,7 +134,8 @@ export function OnboardingCreateProfile() {
             </CardTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Den här informationen visas i sidofältet och hjälper AI:n att ge dig mer relevanta förslag.
-              Du kan skapa fler profiler senare — t.ex. en per företag och en för privatlivet.
+              Efter koppling: fyll i <strong>beskrivning av verksamheten</strong> under Företag — det gör
+              lead-förslag och outreach mycket bättre.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">

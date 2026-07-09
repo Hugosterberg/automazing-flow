@@ -1,11 +1,21 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
-import { AlertTriangle, Building2 } from "lucide-react";
+import { AlertTriangle, Building2, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
+import {
+  BusinessProfileCompletenessCard,
+  BusinessProfileEditForm,
+  getBusinessProfileCompleteness,
+  profileToFormState,
+  formStateToProfileInput,
+  useActiveBusinessProfileIdOptional,
+  useBusinessProfiles,
+  type ProfileFieldId,
+} from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
 import { AutomatedUpdatesCard } from "@/features/automation";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -44,75 +54,122 @@ function websiteHostname(url: string | null) {
   }
 }
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="flex flex-col gap-0.5 py-2 border-b border-border/60 last:border-0 sm:flex-row sm:items-baseline sm:justify-between">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="text-sm text-foreground sm:text-right">{value?.trim() ? value : "—"}</span>
-    </div>
-  );
-}
-
 export default function CompanyPage() {
   const activeBpId = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBpId ?? null;
-  const { profiles } = useBusinessProfiles();
+  const { profiles, updateProfile, isUpdating } = useBusinessProfiles();
   const profile = useMemo(() => profiles.find((p) => p.id === activeBpId) ?? null, [profiles, activeBpId]);
-  const websiteUrl = safeWebsiteUrl(profile?.website);
+  const [form, setForm] = useState(profileToFormState(profile));
+  const [focusField, setFocusField] = useState<ProfileFieldId | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setForm(profileToFormState(profile));
+    setDirty(false);
+  }, [profile?.id, profile?.updatedAt]);
+
+  const completeness = getBusinessProfileCompleteness(profile);
+  const websiteUrl = safeWebsiteUrl(form.website || profile?.website);
   const hostname = websiteHostname(websiteUrl);
   const { connections } = useConnections(activeBpId);
 
   const activeConnections = useMemo(
     () => connections.filter((c) => !c.disconnectedAt),
-    [connections],
+    [connections]
   );
 
+  function scrollToField(fieldId: ProfileFieldId) {
+    setFocusField(fieldId);
+    document.getElementById(`profile-field-${fieldId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => setFocusField(null), 2000);
+  }
+
+  async function saveProfile() {
+    if (!profile) return;
+    try {
+      await updateProfile({ id: profile.id, updates: formStateToProfileInput(form) });
+      setDirty(false);
+      toast.success("Bolagsprofil sparad — AI-förslag uppdateras nästa gång du använder Sales och outreach.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Kunde inte spara profilen.");
+    }
+  }
+
   return (
-    <m.div {...pageFadeUp} className="space-y-6 max-w-5xl">
+    <m.div {...pageFadeUp} className="space-y-6 max-w-3xl">
       <PageHeader
         icon={Building2}
         title="Företag"
-        description="Allt vi vet om företaget och vart automatiska uppdateringar skickas."
+        description="Här fyller du i allt om bolaget. Informationen delas med AI i Sales, outreach, innehåll och automation — ju mer desto bättre."
       />
 
-      {/* Company overview */}
-      <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
+      {!profile ? (
         <Card className="border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Företagsinformation</CardTitle>
-            <CardDescription>Från den aktiva business-profilen.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {profile ? (
-              <div className="grid gap-x-8 sm:grid-cols-2">
-                <InfoRow label="Namn" value={profile.name} />
-                <InfoRow label="Typ" value={profile.kind === "personal" ? "Personlig" : "Företag"} />
-                <InfoRow label="Företag" value={profile.company} />
-                <InfoRow label="Webbplats" value={profile.website} />
-                <InfoRow label="Kontakt-e-post" value={profile.email} />
-                <InfoRow label="Telefon" value={profile.phone} />
-                <InfoRow label="Plats" value={profile.location} />
-                <InfoRow label="Anteckningar" value={profile.notes} />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4">Ingen aktiv profil vald.</p>
-            )}
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            Ingen aktiv profil vald. Välj eller skapa en profil först.
           </CardContent>
         </Card>
-      </m.div>
+      ) : (
+        <>
+          <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
+            <BusinessProfileCompletenessCard profile={profile} form={dirty ? form : undefined} onFocusField={scrollToField} />
+          </m.div>
 
-      {/* External MCP intelligence */}
+          <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
+            <Card className="border-border">
+              <CardHeader className="pb-2">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Redigera bolagsprofil</CardTitle>
+                    <CardDescription>
+                      {completeness.percent < 50
+                        ? "Börja med beskrivningen — resten kan du fylla i efter hand."
+                        : "Spara när du är klar. Du kan alltid komma tillbaka och uppdatera."}
+                    </CardDescription>
+                  </div>
+                  <Button type="button" size="sm" onClick={() => void saveProfile()} disabled={isUpdating || !dirty}>
+                    {isUpdating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1.5" />
+                    )}
+                    Spara
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <BusinessProfileEditForm
+                  form={form}
+                  disabled={isUpdating}
+                  focusFieldId={focusField}
+                  onChange={(next) => {
+                    setForm(next);
+                    setDirty(true);
+                  }}
+                />
+                <div className="mt-6 flex justify-end">
+                  <Button type="button" onClick={() => void saveProfile()} disabled={isUpdating || !dirty}>
+                    {isUpdating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1.5" />
+                    )}
+                    Spara bolagsprofil
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </m.div>
+        </>
+      )}
+
       <m.div {...pageFadeUp} transition={{ delay: 0.05 }} className="space-y-4">
-        {!profile?.website ? (
+        {!form.website?.trim() && !profile?.website ? (
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Ingen webbplats registrerad</AlertTitle>
+            <AlertTitle>Lägg till webbplats ovan</AlertTitle>
             <AlertDescription>
-              Lägg till webbplatsens URL på{" "}
-              <Link to="/connections" className="font-medium underline underline-offset-2 hover:text-foreground">
-                Connections
-              </Link>{" "}
-              för att hämta extern intelligens om företaget.
+              Med webbadress kan vi hämta extern intelligens om företaget och föreslå bättre prospects.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -128,7 +185,6 @@ export default function CompanyPage() {
         />
       </m.div>
 
-      {/* Connected sources */}
       <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
         <Card className="border-border">
           <CardHeader className="pb-2">
@@ -146,7 +202,7 @@ export default function CompanyPage() {
                     <span
                       className={cn(
                         "h-1.5 w-1.5 rounded-full bg-current",
-                        HEALTH_TONE[c.health] ?? "text-muted-foreground",
+                        HEALTH_TONE[c.health] ?? "text-muted-foreground"
                       )}
                       aria-hidden
                     />
@@ -164,12 +220,10 @@ export default function CompanyPage() {
         </Card>
       </m.div>
 
-      {/* Automated updates — same settings card as the Automations page */}
       <m.div {...pageFadeUp} transition={{ delay: 0.08 }}>
         <AutomatedUpdatesCard businessProfileId={activeBpId} fallbackEmail={profile?.email ?? undefined} />
       </m.div>
 
-      {/* System health — config + schema diagnostics */}
       <m.div {...pageFadeUp} transition={{ delay: 0.1 }}>
         <SystemHealthCard />
       </m.div>

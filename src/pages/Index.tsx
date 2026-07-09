@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Link } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +41,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Link } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
@@ -682,7 +683,11 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Edit profile</DialogTitle>
             <DialogDescription>
-              Update profile details used for planning and account context.
+              Snabb redigering här — för guide om varje fält, gå till{" "}
+              <Link to="/company" className="font-medium text-primary underline underline-offset-2">
+                Företag
+              </Link>
+              .
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
@@ -749,11 +754,13 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-notes">Notes</Label>
-              <Input
+              <Label htmlFor="profile-notes">Beskrivning av verksamheten</Label>
+              <Textarea
                 id="profile-notes"
-                placeholder="Short profile notes"
+                placeholder="Vad ni säljer, till vem och hur ni skiljer er — viktigast för AI i Sales och outreach."
                 value={profileForm.notes}
+                rows={3}
+                className="text-sm resize-y min-h-[72px]"
                 onChange={(e) =>
                   setProfileForm((p) => ({ ...p, notes: e.target.value }))
                 }

@@ -38,7 +38,8 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
-import { LeadsSection, useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
+import { LeadsSection, LeadSuggestionsSection, useLeads, buildLeadSuggestionContext, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
+import { fetchProducts } from "@/lib/productsApi";
 import { BrandDiscoverySection } from "@/features/brand-discovery";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
 import { SalesActionHub } from "@/features/sales/SalesActionHub";
@@ -229,11 +230,41 @@ export default function SalesMarketingPage() {
   }
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((p) => p.id === businessProfileId);
-  const leadsContext = {
-    businessName: activeProfile?.name,
-    description: activeProfile?.notes ?? undefined,
-    location: activeProfile?.location ?? undefined,
-  };
+  const [productNames, setProductNames] = useState<string[]>([]);
+
+  // KPIs are driven by the real leads pipeline (not pipeline-tagged tasks).
+  const { leads, createLead, updateLead } = useLeads(businessProfileId);
+
+  const leadSuggestionInput = useMemo(
+    () =>
+      buildLeadSuggestionContext({
+        businessProfileId,
+        profile: activeProfile,
+        leads,
+        productNames,
+      }),
+    [activeProfile, businessProfileId, leads, productNames]
+  );
+
+  useEffect(() => {
+    if (!businessProfileId) {
+      setProductNames([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchProducts(businessProfileId)
+      .then((products) => {
+        if (cancelled) return;
+        setProductNames(products.map((p) => p.name).filter(Boolean).slice(0, 12));
+      })
+      .catch(() => {
+        if (!cancelled) setProductNames([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [businessProfileId]);
+
   const marketingContext = {
     businessName: activeProfile?.name,
     company: activeProfile?.company,
@@ -344,8 +375,7 @@ export default function SalesMarketingPage() {
     await updateTask({ id, patch: { status } });
   }
 
-  // KPIs are driven by the real leads pipeline (not pipeline-tagged tasks).
-  const { leads, createLead, updateLead } = useLeads(businessProfileId);
+  // Add pipeline lead dialog
   const activeLeads = leads.filter((l) => isLeadOpen(l.status)).length;
   const wonLeads = leads.filter((l) => l.status === "won").length;
   const lostLeads = leads.filter((l) => l.status === "lost").length;
@@ -464,6 +494,7 @@ export default function SalesMarketingPage() {
           onAddLead={() => setPipelineOpen(true)}
           onDraftDueLeads={startDueLeadDrafts}
           onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
+          onSuggestLeads={() => document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" })}
           onOpenContent={() => {
             stashContentCaption("");
             navigate("/content?tab=create");
@@ -506,10 +537,21 @@ export default function SalesMarketingPage() {
           </Card>
         </m.div>
       ) : null}
+      {!showFollowUpsOnly ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
+          <LeadSuggestionsSection
+            businessProfileId={businessProfileId}
+            profile={activeProfile}
+            suggestionInput={leadSuggestionInput}
+            onCreateLead={createLead}
+          />
+        </m.div>
+      ) : null}
       <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
         <LeadsSection
           businessProfileId={businessProfileId}
-          context={leadsContext}
+          context={leadSuggestionInput}
+          hideSuggestionPanel
           sellerContext={marketingContext}
           followUpsOnly={showFollowUpsOnly}
           onAddToPipeline={openPipelineFromLead}
@@ -583,7 +625,7 @@ export default function SalesMarketingPage() {
             ...marketingContext,
             description: marketingContext.notes,
             targetAudience: activeProfile?.location ? `Buyers in ${activeProfile.location}` : undefined,
-            idealCustomer: leadsContext.description,
+            idealCustomer: leadSuggestionInput.description,
           }}
           onUseIdea={handoffContentIdea}
         />

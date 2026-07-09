@@ -24,6 +24,7 @@ export function SalesActionHub({
   onAddLead,
   onDraftDueLeads,
   onDiscover,
+  onSuggestLeads,
   onOpenContent,
   onSyncGoals,
 }: {
@@ -37,6 +38,7 @@ export function SalesActionHub({
   onAddLead: () => void;
   onDraftDueLeads: () => void;
   onDiscover: () => void;
+  onSuggestLeads: () => void;
   onOpenContent: () => void;
   onSyncGoals?: () => void;
 }) {
@@ -65,6 +67,14 @@ export function SalesActionHub({
       hint: "AI brand discovery",
       icon: Sparkles,
       onClick: onDiscover,
+      variant: "outline" as const,
+    },
+    {
+      id: "suggest-leads",
+      label: "Suggest leads",
+      hint: "From your company profile",
+      icon: Target,
+      onClick: onSuggestLeads,
       variant: "outline" as const,
     },
     {

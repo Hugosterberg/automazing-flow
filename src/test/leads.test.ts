@@ -94,8 +94,26 @@ describe("lead suggestions", () => {
   });
 
   it("falls back to non-empty heuristic suggestions", () => {
-    const s = heuristicLeadSuggestions({ industry: "SaaS", location: "Stockholm" });
+    const s = heuristicLeadSuggestions({ industry: "SaaS", location: "Stockholm", company: "Acme" });
     expect(s.length).toBeGreaterThan(0);
     expect(s.every((x) => x.target && x.why && x.how)).toBe(true);
+  });
+
+  it("skips heuristic suggestions that overlap the pipeline", () => {
+    const s = heuristicLeadSuggestions({
+      company: "Acme",
+      existingLeadSegments: ["Mid-size local businesses without a dedicated in-house team in Stockholm"],
+      location: "Stockholm",
+    });
+    expect(s.some((x) => x.target.toLowerCase().includes("mid-size local"))).toBe(false);
+  });
+
+  it("mentions won customers in heuristic look-alikes", () => {
+    const s = heuristicLeadSuggestions({
+      company: "Acme Agency",
+      sampleCustomers: ["Nordic Gym Group"],
+      location: "Sweden",
+    });
+    expect(s[0]?.target).toMatch(/Nordic Gym Group/i);
   });
 });
