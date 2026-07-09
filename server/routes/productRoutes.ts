@@ -10,9 +10,7 @@
 
 import { fetchShopifyProducts, type NormalizedShopifyProduct } from "../providers/shopify.ts";
 import { accountInBusinessProfile } from "../lib/profileScope.ts";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
-type SupabaseAdminLike = { from: (table: string) => any };
+import type { SupabaseAdminLike } from "../lib/supabaseAdminLike.ts";
 
 interface ProductRoutesDeps {
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;

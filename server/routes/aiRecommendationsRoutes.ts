@@ -11,9 +11,7 @@
  */
 
 import { generateAiRecommendations } from "../ai/recommendations/producer.ts";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped
-type SupabaseLike = { from: (table: string) => any };
+import type { SupabaseAdminLike as SupabaseLike } from "../lib/supabaseAdminLike.ts";
 
 interface RegisterAiRecommendationsRoutesDeps {
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;

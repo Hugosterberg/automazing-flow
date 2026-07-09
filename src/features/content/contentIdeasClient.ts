@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export interface ContentIdea {
   title: string;
@@ -20,18 +18,11 @@ export interface ContentIdeaInput {
 export async function fetchContentIdeas(
   input: ContentIdeaInput,
 ): Promise<{ ideas: ContentIdea[]; source: string }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/content/ideas"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    30_000,
+  const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
+    "/api/content/ideas",
+    "Couldn't load content ideas.",
+    { body: input, timeoutMs: 30_000 },
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load content ideas."));
   return {
     ideas: Array.isArray(body.ideas) ? (body.ideas as ContentIdea[]) : [],
     source: String(body.source || ""),

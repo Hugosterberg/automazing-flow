@@ -308,7 +308,6 @@ export function ConnectionsControlPanel({
 
 /** Issue count for tab badges (cron failures + connections + MCP not ready). */
 export function useConnectionsHealthIssueCount(
-  businessProfileId: string | null,
   connections: Connection[],
   mcpProviders: ReturnType<typeof useMcpProvidersStatus>["providers"],
   runs: ReturnType<typeof useAutomationRuns>
@@ -321,7 +320,7 @@ export function useConnectionsHealthIssueCount(
     n += connectionIssues(connections).length;
     n += mcpIssues(mcpProviders).length;
     return n;
-  }, [businessProfileId, connections, mcpProviders, runs.loading, runs.byKey]);
+  }, [connections, mcpProviders, runs.loading, runs.byKey]);
 }
 
 export type { AppArea };

@@ -443,7 +443,7 @@ function buildPortfolioRecommendations(
 
   if (analytics.campaignsPoor === 0 && performance.roas != null && performance.roas >= 1.5) {
     recs.push({
-      id: `rec-${idx++}`,
+      id: `rec-${idx}`,
       severity: "opportunity",
       title: "Stark total performance",
       detail: `Portföljen presterar bra med Shopify-ROAS ${formatRoasReason(performance.roas)}.`,

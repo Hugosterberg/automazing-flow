@@ -8,9 +8,7 @@ import crypto from "node:crypto";
 import { heuristicContentIdeas } from "../ai/contentIdeas.ts";
 import { loadProfileDocument, saveProfileDocument } from "./profileDocumentStore.ts";
 import { parseScheduledPostsDoc, type StoredScheduledPost } from "./scheduledPostsPublisher.ts";
-
-/** eslint-disable @typescript-eslint/no-explicit-any */
-type SupabaseAdminLike = any;
+import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
 const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";

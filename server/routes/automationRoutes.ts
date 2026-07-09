@@ -24,9 +24,7 @@ import {
   parseJobSchedulesJson,
   type JobSchedulesMap,
 } from "../lib/profileJobSchedule.ts";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
-type SupabaseAdminLike = { from: (table: string) => any };
+import type { SupabaseAdminLike } from "../lib/supabaseAdminLike.ts";
 
 interface AutomationRoutesDeps {
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;

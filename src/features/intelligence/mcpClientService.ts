@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export interface McpToolDescriptor {
   name: string;
@@ -22,14 +20,10 @@ export interface McpToolCallResponse {
 }
 
 export async function fetchMcpTools(accountId: string): Promise<McpToolsResponse> {
-  const res = await fetchWithTimeout(apiUrl(`/api/mcp/${encodeURIComponent(accountId)}/tools`), {
-    credentials: "include",
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Could not list MCP tools."));
-  }
-  return payload as McpToolsResponse;
+  return apiJson<McpToolsResponse>(
+    `/api/mcp/${encodeURIComponent(accountId)}/tools`,
+    "Could not list MCP tools."
+  );
 }
 
 export async function callMcpTool(options: {
@@ -37,22 +31,12 @@ export async function callMcpTool(options: {
   name: string;
   arguments?: Record<string, unknown>;
 }): Promise<McpToolCallResponse> {
-  const res = await fetchWithTimeout(
-    apiUrl(`/api/mcp/${encodeURIComponent(options.accountId)}/call`),
+  return apiJson<McpToolCallResponse>(
+    `/api/mcp/${encodeURIComponent(options.accountId)}/call`,
+    "MCP tool call failed.",
     {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: options.name,
-        arguments: options.arguments ?? {},
-      }),
-    },
-    60_000
+      body: { name: options.name, arguments: options.arguments ?? {} },
+      timeoutMs: 60_000,
+    }
   );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "MCP tool call failed."));
-  }
-  return payload as McpToolCallResponse;
 }

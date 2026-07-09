@@ -1,6 +1,6 @@
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type McpProviderStatus =
   | "not_connected"
@@ -36,14 +36,10 @@ export async function fetchMcpProvidersStatus(
   if (businessProfileId) params.set("business_profile_id", businessProfileId);
   if (options?.probe) params.set("probe", "1");
   if (options?.platform) params.set("platform", options.platform);
-  const res = await fetchWithTimeout(apiUrl(`/api/intelligence/providers?${params}`), {
-    credentials: "include",
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Could not load MCP provider status."));
-  }
-  return payload as McpProvidersResponse;
+  return apiJson<McpProvidersResponse>(
+    `/api/intelligence/providers?${params}`,
+    "Could not load MCP provider status."
+  );
 }
 
 export interface MarketPulse {
@@ -88,50 +84,32 @@ export async function researchLead(options: {
   company?: string;
   website?: string;
 }): Promise<LeadResearchResult> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/intelligence/lead-research"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        business_profile_id: options.businessProfileId || undefined,
-        name: options.name,
-        company: options.company,
-        website: options.website,
-      }),
+  return apiJson<LeadResearchResult>("/api/intelligence/lead-research", "Lead research failed.", {
+    body: {
+      business_profile_id: options.businessProfileId || undefined,
+      name: options.name,
+      company: options.company,
+      website: options.website,
     },
-    60_000
-  );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Lead research failed."));
-  }
-  return payload as LeadResearchResult;
+    timeoutMs: 60_000,
+  });
 }
 
 export async function searchDocs(options: {
   businessProfileId: string | null;
   query: string;
 }): Promise<{ provider: string; tool: string; query: string; text: string }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/intelligence/doc-search"),
+  return apiJson<{ provider: string; tool: string; query: string; text: string }>(
+    "/api/intelligence/doc-search",
+    "Doc search failed.",
     {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      body: {
         business_profile_id: options.businessProfileId || undefined,
         query: options.query,
-      }),
-    },
-    60_000
+      },
+      timeoutMs: 60_000,
+    }
   );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Doc search failed."));
-  }
-  return payload as { provider: string; tool: string; query: string; text: string };
 }
 
 export interface McpTextResult {
@@ -148,24 +126,10 @@ async function postIntelligenceQuery(
   body: Record<string, unknown>,
   failLabel: string
 ): Promise<McpTextResult> {
-  const res = await fetchWithTimeout(
-    apiUrl(path),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        business_profile_id: businessProfileId || undefined,
-        ...body,
-      }),
-    },
-    60_000
-  );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, failLabel));
-  }
-  return payload as McpTextResult;
+  return apiJson<McpTextResult>(path, failLabel, {
+    body: { business_profile_id: businessProfileId || undefined, ...body },
+    timeoutMs: 60_000,
+  });
 }
 
 export async function fetchSeoOverview(options: {
@@ -174,14 +138,7 @@ export async function fetchSeoOverview(options: {
 }): Promise<McpTextResult> {
   const params = new URLSearchParams({ target: options.target });
   if (options.businessProfileId) params.set("business_profile_id", options.businessProfileId);
-  const res = await fetchWithTimeout(apiUrl(`/api/intelligence/seo-overview?${params}`), {
-    credentials: "include",
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "SEO overview failed."));
-  }
-  return payload as McpTextResult;
+  return apiJson<McpTextResult>(`/api/intelligence/seo-overview?${params}`, "SEO overview failed.");
 }
 
 export async function runMarketingQuery(options: {
@@ -329,22 +286,15 @@ export async function fetchMultiSourceAssessment(options: {
   businessProfileId: string | null;
   subject: string;
 }): Promise<MultiSourceAssessmentResponse> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/intelligence/multi-source-assessment"),
+  return apiJson<MultiSourceAssessmentResponse>(
+    "/api/intelligence/multi-source-assessment",
+    "Multi-source comparison failed.",
     {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      body: {
         business_profile_id: options.businessProfileId || undefined,
         subject: options.subject,
-      }),
-    },
-    120_000
+      },
+      timeoutMs: 120_000,
+    }
   );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Multi-source comparison failed."));
-  }
-  return payload as MultiSourceAssessmentResponse;
 }

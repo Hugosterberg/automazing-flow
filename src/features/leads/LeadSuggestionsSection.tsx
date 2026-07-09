@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, Globe2, Loader2, MapPin, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -35,7 +35,7 @@ export function LeadSuggestionsSection({
   const completeness = getBusinessProfileCompleteness(profile);
   const readinessScore = Math.min(4, Math.floor(completeness.percent / 25));
 
-  async function loadSuggestions() {
+  const loadSuggestions = useCallback(async () => {
     if (!businessProfileId) return;
     setLoading(true);
     try {
@@ -50,7 +50,7 @@ export function LeadSuggestionsSection({
     } finally {
       setLoading(false);
     }
-  }
+  }, [businessProfileId, suggestionInput]);
 
   useEffect(() => {
     autoLoaded.current = false;
@@ -60,7 +60,7 @@ export function LeadSuggestionsSection({
     if (!businessProfileId || autoLoaded.current || readinessScore < 2) return;
     autoLoaded.current = true;
     void loadSuggestions();
-  }, [businessProfileId, readinessScore, suggestionInput]);
+  }, [businessProfileId, readinessScore, loadSuggestions]);
 
   async function addSuggestion(s: LeadSuggestion) {
     try {

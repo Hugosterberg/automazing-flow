@@ -19,6 +19,7 @@ import {
 } from "./scheduledPostsPublisher.ts";
 import { isJobEnabledForProfile, type JobSchedulesMap } from "./profileJobSchedule.ts";
 import { sendEmail, type EmailResult } from "./email.ts";
+import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 export const OUTREACH_QUEUE_DOC_KEY = "outreach-queue";
 export const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
@@ -88,9 +89,6 @@ interface BusinessProfileRow {
   email?: string;
   owner_user_id?: string;
 }
-
-/** eslint-disable @typescript-eslint/no-explicit-any */
-type SupabaseAdminLike = any;
 
 interface TokenStoreLike {
   get(accountId: string): Promise<Record<string, unknown> | null | undefined>;
@@ -377,7 +375,7 @@ export async function runContentPipeline(deps: {
     workflows.enabled["evergreen-repost"];
 
   const pipelineDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, CONTENT_PIPELINE_DOC_KEY);
-  let queue = parseContentPipeline(pipelineDoc?.data);
+  const queue = parseContentPipeline(pipelineDoc?.data);
   const pending = queue.filter((item) => item.status === "queued");
 
   if (!pipelineEnabled && pending.length === 0) {

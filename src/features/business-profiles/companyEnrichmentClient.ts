@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type EnrichmentSourceResult = {
   id: string;
@@ -48,19 +46,10 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 export async function enrichCompany(input: CompanyEnrichInput): Promise<CompanyEnrichment> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/company-enrich"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    45_000
-  );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Kunde inte hämta företagsdata."));
-  return body as CompanyEnrichment;
+  return apiJson<CompanyEnrichment>("/api/sales/company-enrich", "Kunde inte hämta företagsdata.", {
+    body: input,
+    timeoutMs: 45_000,
+  });
 }
 
 export function describeEnrichmentSources(sources: EnrichmentSourceResult[]) {

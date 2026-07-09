@@ -108,7 +108,6 @@ export default function ConnectionsPage() {
   const { byPlatform: mcpReadinessByPlatform, providers: mcpProviders } = useMcpProvidersStatus(businessProfileId);
   const automationRuns = useAutomationRuns(businessProfileId);
   const healthIssueCount = useConnectionsHealthIssueCount(
-    businessProfileId,
     connections,
     mcpProviders,
     automationRuns

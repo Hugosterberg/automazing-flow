@@ -9,10 +9,9 @@ import {
 } from "./zernioInbox.ts";
 import { sendEmail } from "./email.ts";
 import { loadProfileDocument, saveProfileDocument } from "./profileDocumentStore.ts";
+import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 export const ENGAGEMENT_NUDGE_LOG_KEY = "engagement-nudge-log";
-
-type SupabaseAdminLike = any;
 
 export async function runEngagementFollowup(deps: {
   supabaseAdmin: SupabaseAdminLike;

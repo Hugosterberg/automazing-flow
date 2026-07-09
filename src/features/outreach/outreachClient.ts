@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { apiErrorMessage } from "@/lib/apiError";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiJson } from "@/lib/apiJson";
 
 export type OutreachChannel = "email" | "linkedin" | "follow-up";
 
@@ -40,18 +38,11 @@ export type OutreachDraft = {
 export async function fetchOutreachDraft(
   input: OutreachDraftInput
 ): Promise<{ draft: OutreachDraft; source: string; channel: OutreachChannel }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/outreach-draft"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    35_000
+  const body = await apiJson<{ draft?: unknown; source?: unknown; channel?: unknown }>(
+    "/api/sales/outreach-draft",
+    "Couldn't generate outreach draft.",
+    { body: input, timeoutMs: 35_000 }
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't generate outreach draft."));
   return {
     draft: body.draft as OutreachDraft,
     source: String(body.source || ""),
@@ -83,20 +74,13 @@ export type OutreachContentInput = {
 export async function fetchOutreachContentIdeas(
   input: OutreachContentInput
 ): Promise<{ ideas: OutreachContentIdea[]; source: string }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/outreach-content-ideas"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    30_000
+  const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
+    "/api/sales/outreach-content-ideas",
+    "Couldn't load outreach content ideas.",
+    { body: input, timeoutMs: 30_000 }
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load outreach content ideas."));
   return {
-    ideas: Array.isArray(body.ideas) ? body.ideas : [],
+    ideas: Array.isArray(body.ideas) ? (body.ideas as OutreachContentIdea[]) : [],
     source: String(body.source || ""),
   };
 }

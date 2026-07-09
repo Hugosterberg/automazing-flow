@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type SalesPlaybookMode =
   | "pitch-angles"
@@ -32,18 +30,11 @@ export interface SalesPlaybookInput {
 export async function fetchSalesPlaybookItems(
   input: SalesPlaybookInput
 ): Promise<{ items: SalesPlaybookItem[]; source: string; mode: SalesPlaybookMode }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/marketing-playbook"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    35_000
+  const body = await apiJson<{ items?: unknown; source?: unknown; mode?: SalesPlaybookMode }>(
+    "/api/sales/marketing-playbook",
+    "Couldn't load playbook ideas.",
+    { body: input, timeoutMs: 35_000 }
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load playbook ideas."));
   const modes: SalesPlaybookMode[] = [
     "pitch-angles",
     "cold-outreach",

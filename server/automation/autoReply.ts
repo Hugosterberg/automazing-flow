@@ -24,6 +24,7 @@ import {
 } from "../lib/profileJobSchedule.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import { logActivity } from "../lib/activityLog.ts";
+import type { SupabaseAdminLike } from "../lib/supabaseAdminLike.ts";
 import {
   parseZernioConversationList,
   parseZernioConversationMessages,
@@ -102,12 +103,6 @@ export interface AutoReplyRunSummary {
   errors: string[];
 }
 
-/**
- * Minimal Supabase client surface (same pattern as ai/recommendations/producer):
- * the full generic SupabaseClient type adds noise without safety here.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
-type SupabaseAdminLike = { from: (table: string) => any };
 
 export interface AutoReplyDeps {
   supabaseAdmin: SupabaseAdminLike;

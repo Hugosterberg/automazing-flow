@@ -37,14 +37,7 @@ import type {
   RecommendationCandidate,
 } from "./types.ts";
 
-/**
- * Minimal Supabase client surface we need. Using the real SupabaseClient
- * type from `@supabase/supabase-js` would pull the full generic into this
- * module; the local shape covers `.select(...).eq(...).in(...)` and
- * `.insert(...)` / `.update(...).in(...)` which is all we use here.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
-type SupabaseLike = { from: (table: string) => any };
+import type { SupabaseAdminLike as SupabaseLike } from "../../lib/supabaseAdminLike.ts";
 
 const CONNECTED_ACCOUNTS_COLS = [
   "id",

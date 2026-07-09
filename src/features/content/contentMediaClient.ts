@@ -1,44 +1,32 @@
-import { apiUrl } from "@/lib/apiBase";
-import { apiErrorMessage } from "@/lib/apiError";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiJson } from "@/lib/apiJson";
 
 export async function generateSocialImage(payload: {
   prompt: string;
   caption: string;
   businessProfileId: string | null;
 }): Promise<{ url: string; previewUrl?: string; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/image/generate"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  return apiJson("/api/content/image/generate", "Could not generate image", {
+    body: {
       prompt: payload.prompt,
       caption: payload.caption,
       business_profile_id: payload.businessProfileId,
-    }),
-  }, 70_000);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not generate image"));
-  return data;
+    },
+    timeoutMs: 70_000,
+  });
 }
 
 export async function exportCanvaImage(payload: {
   designId: string;
   businessProfileId: string | null;
 }): Promise<{ url: string; canvaUrl?: string; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/canva/export"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  return apiJson("/api/content/canva/export", "Could not export Canva design", {
+    body: {
       designId: payload.designId,
       format: "png",
       business_profile_id: payload.businessProfileId,
-    }),
-  }, 60_000);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not export Canva design"));
-  return data;
+    },
+    timeoutMs: 60_000,
+  });
 }
 
 export function normalizeCanvaDesignId(value: string): string {
@@ -65,19 +53,19 @@ export async function uploadContentMedia(payload: {
     reader.onerror = () => reject(new Error("Could not read file"));
     reader.readAsDataURL(payload.file);
   });
-  const res = await fetchWithTimeout(apiUrl("/api/content/media/upload"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      dataBase64,
-      contentType: payload.file.type || "image/png",
-      filename: payload.file.name,
-      business_profile_id: payload.businessProfileId,
-    }),
-  }, 60_000);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(data, "Could not upload image"));
+  const data = await apiJson<{ url?: unknown; contentType?: unknown; filename?: unknown }>(
+    "/api/content/media/upload",
+    "Could not upload image",
+    {
+      body: {
+        dataBase64,
+        contentType: payload.file.type || "image/png",
+        filename: payload.file.name,
+        business_profile_id: payload.businessProfileId,
+      },
+      timeoutMs: 60_000,
+    }
+  );
   return {
     url: String(data.url || ""),
     contentType: String(data.contentType || payload.file.type || "image/png"),

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -352,7 +352,7 @@ export function LeadsSection({
     }
   }
 
-  async function getSuggestions() {
+  const getSuggestions = useCallback(async () => {
     setSuggesting(true);
     try {
       const result = await fetchLeadSuggestions({
@@ -367,7 +367,7 @@ export function LeadsSection({
     } finally {
       setSuggesting(false);
     }
-  }
+  }, [businessProfileId, context]);
 
   const autoSuggestedRef = useRef(false);
   useEffect(() => {
@@ -375,7 +375,7 @@ export function LeadsSection({
     if (autoSuggestedRef.current || isLoading || leads.length > 0 || !businessProfileId) return;
     autoSuggestedRef.current = true;
     void getSuggestions();
-  }, [hideSuggestionPanel, isLoading, leads.length, businessProfileId]);
+  }, [hideSuggestionPanel, isLoading, leads.length, businessProfileId, getSuggestions]);
 
   async function handleStatusChange(lead: Lead, status: LeadStatus) {
     const patch: Parameters<typeof updateLead>[0]["patch"] = { status };

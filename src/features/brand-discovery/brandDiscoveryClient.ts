@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type BrandDiscoveryMode = "websites" | "emails";
 
@@ -27,18 +25,11 @@ export interface BrandDiscoveryInput {
 export async function fetchBrandDiscoverySuggestions(
   input: BrandDiscoveryInput
 ): Promise<{ suggestions: BrandDiscoverySuggestion[]; source: string; mode: BrandDiscoveryMode }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/outreach-discovery-suggestions"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    35_000
+  const body = await apiJson<{ suggestions?: unknown; source?: unknown; mode?: unknown }>(
+    "/api/sales/outreach-discovery-suggestions",
+    "Couldn't load brand suggestions.",
+    { body: input, timeoutMs: 35_000 }
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load brand suggestions."));
   return {
     suggestions: Array.isArray(body.suggestions) ? (body.suggestions as BrandDiscoverySuggestion[]) : [],
     source: String(body.source || ""),

@@ -29,8 +29,7 @@ const MAX_IDEAS = 5;
 /** Default when caller doesn't specify. Balance between cost and value. */
 const DEFAULT_IDEAS = 5;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase query builder chain is intentionally untyped for brevity
-type SupabaseLike = { from: (table: string) => any };
+import type { SupabaseAdminLike as SupabaseLike } from "../../../lib/supabaseAdminLike.ts";
 
 export interface LlmContentResult {
   created: number;

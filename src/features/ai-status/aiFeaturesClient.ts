@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type AiFeatureState = "active" | "limited" | "inactive";
 
@@ -17,13 +15,11 @@ export interface AiFeatureStatus {
 const VALID_STATES = new Set<AiFeatureState>(["active", "limited", "inactive"]);
 
 export async function fetchAiFeatures(businessProfileId: string): Promise<AiFeatureStatus[]> {
-  const res = await fetchWithTimeout(
-    apiUrl(`/api/settings/ai-features?business_profile_id=${encodeURIComponent(businessProfileId)}`),
-    { credentials: "include" },
-    15_000
+  const body = await apiJson<{ features?: unknown }>(
+    `/api/settings/ai-features?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+    "Could not load AI feature status.",
+    { timeoutMs: 15_000 }
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Could not load AI feature status."));
   const raw = Array.isArray(body.features) ? body.features : [];
   return raw
     .filter(

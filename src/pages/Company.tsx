@@ -64,9 +64,12 @@ export default function CompanyPage() {
   const [focusField, setFocusField] = useState<ProfileFieldId | null>(null);
   const [dirty, setDirty] = useState(false);
 
+  // Reset the form only when a different profile (or a fresh save) arrives —
+  // not on every refetch, which would wipe in-progress edits.
   useEffect(() => {
     setForm(profileToFormState(profile));
     setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, profile?.updatedAt]);
 
   const completeness = getBusinessProfileCompleteness(profile);

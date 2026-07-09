@@ -320,7 +320,9 @@ export default function ContentPage() {
   });
   const selectedAssets = selectionDoc.data;
   const accountsRef = useRef(accounts);
-  accountsRef.current = accounts;
+  useEffect(() => {
+    accountsRef.current = accounts;
+  }, [accounts]);
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
@@ -420,7 +422,7 @@ export default function ContentPage() {
   }, []);
 
   // Backend always puts the relevant items in `items` — view=shared-with-me puts shared in items too
-  const activeItems = providerData?.items || [];
+  const activeItems = useMemo(() => providerData?.items || [], [providerData]);
   const driveQuery = driveSearch.trim().toLowerCase();
   const filteredActiveItems = useMemo(() => {
     if (!driveQuery) return activeItems;

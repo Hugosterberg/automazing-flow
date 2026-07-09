@@ -7,6 +7,7 @@ import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "
 import type { MarketingRecommendation } from "./marketingAnalytics.ts";
 import { loadProfileDocument, saveProfileDocument } from "./profileDocumentStore.ts";
 import { sendEmail } from "./email.ts";
+import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 export const MARKETING_ACTIONS_LOG_KEY = "marketing-actions-log";
 
@@ -26,8 +27,6 @@ export interface MarketingActionsLogDoc {
 interface TokenStoreLike {
   get(accountId: string): Promise<Record<string, unknown> | null | undefined>;
 }
-
-type SupabaseAdminLike = any;
 
 function parseLogDoc(data: unknown): MarketingActionsLogDoc {
   if (!data || typeof data !== "object") return { entries: [] };

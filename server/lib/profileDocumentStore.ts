@@ -9,9 +9,7 @@ export interface ProfileDocumentRow {
   data: unknown;
 }
 
-/** Minimal Supabase admin surface used by cron jobs. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseAdminLike = any;
+import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 export async function listProfileDocumentsByKey(
   supabaseAdmin: SupabaseAdminLike,

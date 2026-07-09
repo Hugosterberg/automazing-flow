@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import type { CompanyEnrichment } from "@/features/business-profiles/companyEnrichmentClient";
 
 export interface LeadSuggestion {
@@ -33,19 +31,10 @@ export async function enrichLead(input: {
   company?: string;
   business_profile_id?: string | null;
 }): Promise<LeadEnrichment> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/lead-enrich"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    45_000
-  );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Kunde inte hämta företagsdata."));
-  return body as LeadEnrichment;
+  return apiJson<LeadEnrichment>("/api/sales/lead-enrich", "Kunde inte hämta företagsdata.", {
+    body: input,
+    timeoutMs: 45_000,
+  });
 }
 
 /** @deprecated Use enrichLead — kept for callers that only pass a URL. */
@@ -57,18 +46,11 @@ export async function enrichLeadFromWebsite(url: string): Promise<LeadEnrichment
 export async function fetchLeadSuggestions(
   input: LeadSuggestionInput,
 ): Promise<{ suggestions: LeadSuggestion[]; source: string }> {
-  const res = await fetchWithTimeout(
-    apiUrl("/api/sales/lead-suggestions"),
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-    30_000,
+  const body = await apiJson<{ suggestions?: unknown; source?: unknown }>(
+    "/api/sales/lead-suggestions",
+    "Kunde inte hämta förslag.",
+    { body: input, timeoutMs: 30_000 },
   );
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(body, "Kunde inte hämta förslag."));
   return {
     suggestions: Array.isArray(body.suggestions) ? (body.suggestions as LeadSuggestion[]) : [],
     source: String(body.source || ""),

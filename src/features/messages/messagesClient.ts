@@ -1,6 +1,4 @@
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import type { ThreadMessage, UnifiedMessage } from "./types";
 
 export async function fetchMessageThread(
@@ -22,13 +20,10 @@ export async function fetchMessageThread(
     return [];
   }
 
-  const res = await fetchWithTimeout(apiUrl(`/api/messages/thread?${params.toString()}`), {
-    credentials: "include",
-    signal,
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(apiErrorMessage(payload, "Could not load conversation thread."));
-  }
-  return Array.isArray(payload.messages) ? payload.messages : [];
+  const payload = await apiJson<{ messages?: unknown }>(
+    `/api/messages/thread?${params.toString()}`,
+    "Could not load conversation thread.",
+    { signal }
+  );
+  return Array.isArray(payload.messages) ? (payload.messages as ThreadMessage[]) : [];
 }
