@@ -338,10 +338,15 @@ export default function SalesMarketingPage() {
     window.setTimeout(() => openAddLeadRef.current?.(), 280);
   }
 
-  // Deep link: /sales?new=lead opens the CRM add-lead dialog.
+  // Deep link: /sales?new=lead | ?new=deal opens CRM dialogs.
   useEffect(() => {
-    if (searchParams.get("new") !== "lead") return;
-    openAddLeadDialog();
+    const action = searchParams.get("new");
+    if (action !== "lead" && action !== "deal") return;
+    if (action === "lead") {
+      openAddLeadDialog();
+    } else {
+      setPipelineOpen(true);
+    }
     const next = new URLSearchParams(searchParams);
     next.delete("new");
     setSearchParams(next, { replace: true });

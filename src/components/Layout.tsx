@@ -17,9 +17,12 @@ import { LogOut, Settings, Terminal, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
+import { recordRecentPage } from "@/lib/keyboardShortcuts";
 import { WorkspaceModeTabs, useWorkspaceMode } from "@/features/workspace-mode";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
 
@@ -42,7 +45,14 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { mode } = useWorkspaceMode();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   useDocumentTitle();
+  useGlobalKeyboardShortcuts({ mode, onOpenShortcuts: openShortcuts });
+
+  useEffect(() => {
+    recordRecentPage(location.pathname);
+  }, [location.pathname]);
 
   // Mode fence: business-only pages don't exist in the private workspace.
   // Covers deep links and mode flips triggered from the profile switcher
@@ -75,7 +85,8 @@ export default function Layout() {
             <WorkspaceModeTabs />
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-2 shrink-0">
-              <CommandPalette />
+              <CommandPalette onOpenShortcuts={openShortcuts} />
+              <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
               <NotificationsBell />
               {authMode === "cloud" ? (
                 <DropdownMenu>
