@@ -3,19 +3,15 @@ import { Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { McpReadinessHint } from "./McpReadinessHint";
+import { ToolPlanHint } from "./ToolPlanHint";
 import { useMcpProvidersStatus } from "./useMcpProvidersStatus";
 import type { McpProviderReadiness } from "./intelligenceService";
+import type { McpQueryResponse } from "./toolPlanTypes";
 
-export interface McpQueryResult {
-  provider: string;
-  tool: string;
-  query: string;
-  text: string;
-}
+export type McpQueryResult = McpQueryResponse;
 
 interface McpQueryBoxProps {
   businessProfileId: string | null;
-  /** MCP platform ids — first ready provider wins on the server. */
   platforms: string[];
   title: string;
   description?: string;
@@ -36,17 +32,13 @@ function pickReadiness(
   return null;
 }
 
-/**
- * Small query UI for a feature backed by one or more MCP providers.
- * Surfaces missing-key / reconnect state before the user runs a search.
- */
 export function McpQueryBox({
   businessProfileId,
   platforms,
   title,
   description,
   placeholder,
-  buttonLabel = "Run",
+  buttonLabel = "Kör",
   onQuery,
   multiline = false,
 }: McpQueryBoxProps) {
@@ -80,17 +72,19 @@ export function McpQueryBox({
     try {
       setResult(await onQuery(q));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed.");
+      setError(err instanceof Error ? err.message : "Förfrågan misslyckades.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="rounded-md border border-dashed border-border/80 p-3 space-y-2">
+    <div className="rounded-lg border border-border/80 bg-card/50 p-3 space-y-3">
       <div>
-        <p className="text-xs font-medium">{title}</p>
-        {description ? <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p> : null}
+        <p className="text-xs font-medium text-foreground">{title}</p>
+        {description ? (
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        ) : null}
       </div>
       <McpReadinessHint readiness={readiness} />
       <div className="flex flex-wrap gap-2">
@@ -124,19 +118,29 @@ export function McpQueryBox({
       </div>
       {!canRun && readiness?.status === "not_connected" ? (
         <p className="text-[11px] text-muted-foreground">
-          Connect the provider under Connections → Intelligence &amp; MCP.
+          Koppla leverantören under Kopplingar → Intelligence &amp; MCP.
         </p>
       ) : null}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
       {result ? (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-end gap-1">
-            <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void copyResult()}>
+        <div className="space-y-2">
+          <ToolPlanHint plan={result.toolPlan} selectedPlatform={result.selectedPlatform ?? result.provider} />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-muted-foreground truncate">
+              {result.provider} · {result.tool}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs shrink-0"
+              onClick={() => void copyResult()}
+            >
               {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Kopierad" : "Kopiera"}
             </Button>
           </div>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted/30 p-2 text-xs text-muted-foreground font-sans">
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-border/60 bg-muted/20 p-2.5 text-xs text-muted-foreground font-sans leading-relaxed">
             {result.text}
           </pre>
         </div>

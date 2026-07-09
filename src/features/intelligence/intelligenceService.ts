@@ -1,6 +1,10 @@
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiJson } from "@/lib/apiJson";
+import type { McpQueryResponse } from "./toolPlanTypes";
+
+export type { McpQueryResponse, AiToolPlan, ToolPlanPlatform } from "./toolPlanTypes";
+export { ToolPlanHint } from "./ToolPlanHint";
 
 export type McpProviderStatus =
   | "not_connected"
@@ -70,11 +74,7 @@ export async function fetchMarketPulse(
   return (await res.json()) as MarketPulse;
 }
 
-export interface LeadResearchResult {
-  provider: string;
-  tool: string;
-  query: string;
-  text: string;
+export interface LeadResearchResult extends McpQueryResponse {
   fetchedAt: string;
 }
 
@@ -98,8 +98,8 @@ export async function researchLead(options: {
 export async function searchDocs(options: {
   businessProfileId: string | null;
   query: string;
-}): Promise<{ provider: string; tool: string; query: string; text: string }> {
-  return apiJson<{ provider: string; tool: string; query: string; text: string }>(
+}): Promise<McpTextResult> {
+  return apiJson<McpTextResult>(
     "/api/intelligence/doc-search",
     "Doc search failed.",
     {
@@ -112,13 +112,7 @@ export async function searchDocs(options: {
   );
 }
 
-export interface McpTextResult {
-  provider: string;
-  tool: string;
-  query: string;
-  text: string;
-  fetchedAt?: string;
-}
+export type McpTextResult = McpQueryResponse;
 
 async function postIntelligenceQuery(
   path: string,

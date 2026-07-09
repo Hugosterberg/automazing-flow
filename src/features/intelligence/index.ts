@@ -9,6 +9,8 @@ export { MarketingIntelligencePanel } from "./MarketingIntelligencePanel";
 export { McpFeatureSection } from "./McpFeatureSection";
 export { McpDataCatalog } from "./McpDataCatalog";
 export { McpToolsExplorer } from "./McpToolsExplorer";
+export { ToolPlanHint } from "./ToolPlanHint";
+export type { AiToolPlan, McpQueryResponse, ToolPlanPlatform } from "./toolPlanTypes";
 export { MCP_PAGE_FEATURE_IDS, mcpFeaturesByIds } from "./mcpPageWidgets";
 export { fetchMcpTools, callMcpTool, type McpToolDescriptor, type McpToolsResponse, type McpToolCallResponse } from "./mcpClientService";
 export { useMarketPulse, MARKET_PULSE_KEY } from "./useMarketPulse";

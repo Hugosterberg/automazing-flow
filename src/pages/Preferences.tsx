@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { TeamManager } from "@/components/TeamManager";
-import { AiFeaturesPanel, AiUsagePanel } from "@/features/ai-status";
+import { AiSettingsSection } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -505,12 +505,11 @@ export default function PreferencesPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ai" className="space-y-4">
-          <AiFeaturesPanel
+        <TabsContent value="ai">
+          <AiSettingsSection
             businessProfileId={activeBusinessProfileId ?? null}
             onOpenIntegrations={() => setActiveTab("api-keys")}
           />
-          <AiUsagePanel businessProfileId={activeBusinessProfileId ?? null} />
         </TabsContent>
 
         <TabsContent value="automation">

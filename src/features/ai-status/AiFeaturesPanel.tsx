@@ -11,36 +11,30 @@ const STATE_META: Record<
   { label: string; icon: typeof CheckCircle2; badgeClass: string; iconClass: string }
 > = {
   active: {
-    label: "Active",
+    label: "Aktiv",
     icon: CheckCircle2,
-    badgeClass: "border-emerald-500/40 text-emerald-500",
+    badgeClass: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
     iconClass: "text-emerald-500",
   },
   limited: {
-    label: "Basic mode",
+    label: "Begränsat",
     icon: CircleAlert,
     badgeClass: "border-warning/50 text-warning",
     iconClass: "text-warning",
   },
   inactive: {
-    label: "Inactive",
+    label: "Inaktiv",
     icon: CircleOff,
     badgeClass: "border-destructive/50 text-destructive",
     iconClass: "text-destructive",
   },
 };
 
-/**
- * The single answer to "which AI features are on?" — every AI feature in
- * the app with its live status for the active profile, and exactly what to
- * configure to unlock the ones that aren't fully active.
- */
 export function AiFeaturesPanel({
   businessProfileId,
   onOpenIntegrations,
 }: {
   businessProfileId: string | null;
-  /** Jumps to where the keys are actually entered (Preferences → Integrations). */
   onOpenIntegrations?: () => void;
 }) {
   const [features, setFeatures] = useState<AiFeatureStatus[]>([]);
@@ -60,7 +54,7 @@ export function AiFeaturesPanel({
         if (!ignore) setFeatures(list);
       })
       .catch((e) => {
-        if (!ignore) setError(e instanceof Error ? e.message : "Could not load AI feature status.");
+        if (!ignore) setError(e instanceof Error ? e.message : "Kunde inte ladda AI-status.");
       })
       .finally(() => {
         if (!ignore) setLoading(false);
@@ -73,12 +67,12 @@ export function AiFeaturesPanel({
   const activeCount = features.filter((f) => f.state === "active").length;
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
+    <Card className="bg-card border-border h-full flex flex-col">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-500" />
-            AI features
+          <span className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-violet-500" />
+            AI-funktioner
           </span>
           {onOpenIntegrations ? (
             <Button
@@ -88,26 +82,23 @@ export function AiFeaturesPanel({
               className="h-7 gap-1 px-2 text-xs"
               onClick={onOpenIntegrations}
             >
-              Manage keys
+              Hantera nycklar
               <ArrowRight className="h-3 w-3" />
             </Button>
           ) : null}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs">
           {features.length > 0
-            ? `${activeCount} of ${features.length} AI features are fully active for this profile. ` +
-              "Basic mode means the feature works but without real AI until a key is added."
-            : "Live status for every AI feature in Automazing and what activates it."}
+            ? `${activeCount} av ${features.length} funktioner är fullt aktiva. Begränsat = mallar utan riktig AI.`
+            : "Status för varje AI-funktion och vad som aktiverar den."}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {!businessProfileId ? (
-          <p className="text-sm text-muted-foreground">
-            Select a business profile to see its AI feature status.
-          </p>
+          <p className="text-sm text-muted-foreground">Välj en bolagsprofil.</p>
         ) : loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Checking AI features…
+            <Loader2 className="h-4 w-4 animate-spin" /> Kontrollerar AI-funktioner…
           </div>
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
@@ -122,19 +113,18 @@ export function AiFeaturesPanel({
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="text-sm font-medium">{feature.name}</p>
-                      <Badge variant="outline" className="border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <Badge variant="outline" className="border-border text-[10px] text-muted-foreground">
                         {feature.area}
                       </Badge>
-                      <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", meta.badgeClass)}>
+                      <Badge variant="outline" className={cn("text-[10px]", meta.badgeClass)}>
                         {meta.label}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">{feature.description}</p>
-                    <p className="text-xs text-muted-foreground">{feature.detail}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{feature.detail}</p>
                     {feature.activation ? (
-                      <p className="text-xs">
-                        <span className="font-medium">To activate:</span>{" "}
-                        <span className="text-muted-foreground">{feature.activation}</span>
+                      <p className="text-[11px] text-muted-foreground/90">
+                        <span className="font-medium text-foreground/80">Aktivera:</span>{" "}
+                        {feature.activation}
                       </p>
                     ) : null}
                   </div>
