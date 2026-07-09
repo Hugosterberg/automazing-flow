@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { useMarketingCampaigns, type MarketingPerformance as Performance } from "./useMarketingCampaigns";
 import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney, formatNumber, formatPct, formatRoas } from "./format";
-import { MarketingGradeBadge, portfolioGradeTone } from "./MarketingGradeBadge";
+import { MarketingGradeBadge } from "./MarketingGradeBadge";
+import { portfolioGradeTone } from "./gradeTone";
 import { MarketingRecommendations } from "./MarketingRecommendations";
 
 function pct(value: number | null): string {

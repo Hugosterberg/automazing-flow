@@ -37,12 +37,6 @@ export async function enrichLead(input: {
   });
 }
 
-/** @deprecated Use enrichLead — kept for callers that only pass a URL. */
-export async function enrichLeadFromWebsite(url: string): Promise<LeadEnrichment> {
-  const data = await enrichLead({ url });
-  return { ...data, url: data.website || data.url || url };
-}
-
 export async function fetchLeadSuggestions(
   input: LeadSuggestionInput,
 ): Promise<{ suggestions: LeadSuggestion[]; source: string }> {

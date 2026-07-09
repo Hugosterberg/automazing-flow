@@ -57,10 +57,10 @@ import { cn } from "@/lib/utils";
 
 // Pipeline stages - mapped to task statuses
 const PIPELINE_STAGES: { status: TaskStatus; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
-  { status: "open", label: "Prospect", icon: CircleDot, color: "text-muted-foreground" },
-  { status: "in_progress", label: "In discussion", icon: ChevronRight, color: "text-blue-500" },
-  { status: "blocked", label: "Waiting", icon: Clock, color: "text-yellow-500" },
-  { status: "done", label: "Closed / Won", icon: Trophy, color: "text-green-500" },
+  { status: "open", label: "Prospekt", icon: CircleDot, color: "text-muted-foreground" },
+  { status: "in_progress", label: "I dialog", icon: ChevronRight, color: "text-blue-500" },
+  { status: "blocked", label: "Väntar", icon: Clock, color: "text-yellow-500" },
+  { status: "done", label: "Avslutad / Vunnen", icon: Trophy, color: "text-green-500" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -71,15 +71,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  low: "Low", medium: "Medium", high: "High", urgent: "Urgent",
+  low: "Låg", medium: "Medel", high: "Hög", urgent: "Akut",
 };
 
 type GoalItem = { id: string; title: string; current: number; target: number; unit: string };
 
 const DEFAULT_GOALS: GoalItem[] = [
-  { id: "g1", title: "New customers this month", current: 0, target: 10, unit: "customers" },
-  { id: "g2", title: "Revenue target (SEK)", current: 0, target: 100000, unit: "SEK" },
-  { id: "g3", title: "Customer satisfaction (NPS)", current: 0, target: 80, unit: "points" },
+  { id: "g1", title: "Nya kunder denna månad", current: 0, target: 10, unit: "kunder" },
+  { id: "g2", title: "Intäktsmål (SEK)", current: 0, target: 100000, unit: "SEK" },
+  { id: "g3", title: "Kundnöjdhet (NPS)", current: 0, target: 80, unit: "poäng" },
 ];
 
 function normalizeGoal(goal: GoalItem): GoalItem {
@@ -112,7 +112,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
               type="button"
               onClick={() => onEdit(task)}
               className="text-muted-foreground hover:text-foreground transition-opacity shrink-0 p-1"
-              aria-label="Edit deal"
+              aria-label="Redigera affär"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -122,7 +122,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
             onClick={() => onDelete(task.id)}
             disabled={isDeleting}
             className="text-muted-foreground hover:text-destructive transition-opacity shrink-0 p-1"
-            aria-label="Delete"
+            aria-label="Ta bort"
           >
             {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </button>
@@ -142,13 +142,13 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
             className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
             onClick={() => onMove(task.id, next)}
           >
-            Move forward
+            Flytta framåt
           </Button>
         )}
       </div>
       {task.due_at && (
         <p className="text-[11px] text-muted-foreground">
-          Deadline: {new Date(task.due_at).toLocaleDateString("en-US")}
+          Deadline: {new Date(task.due_at).toLocaleDateString("sv-SE")}
         </p>
       )}
     </div>
@@ -183,30 +183,30 @@ function GoalCard({ goal, onUpdate }: {
           onClick={() => { setCurrent(String(goal.current)); setTarget(String(goal.target)); setEditing(true); }}
           className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          Edit
+          Redigera
         </button>
       </div>
       <Progress value={pct} className="h-2" />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{goal.current.toLocaleString("en-US")} {goal.unit}</span>
+        <span>{goal.current.toLocaleString("sv-SE")} {goal.unit}</span>
         <span className={cn("font-medium", pct >= 100 ? "text-green-600" : "text-foreground")}>
-          {pct}% of {goal.target.toLocaleString("en-US")}
+          {pct}% av {goal.target.toLocaleString("sv-SE")}
         </span>
       </div>
 
       {editing && (
         <div className="flex gap-2 pt-1">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Current</Label>
+            <Label className="text-xs">Nuvarande</Label>
             <Input value={current} onChange={(e) => setCurrent(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Target</Label>
+            <Label className="text-xs">Mål</Label>
             <Input value={target} onChange={(e) => setTarget(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex items-end gap-1">
-            <Button size="sm" className="h-7 text-xs" onClick={save}>Save</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={save}>Spara</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Avbryt</Button>
           </div>
         </div>
       )}
@@ -427,14 +427,14 @@ export default function SalesMarketingPage() {
       try {
         await updateLead({ id: draftLeadId, patch: { status: "contacted" } });
       } catch {
-        toast.error("Could not update lead status.");
+        toast.error("Kunde inte uppdatera lead-status.");
       }
     }
     const idx = draftLeadId ? dueLeadsList.findIndex((l) => l.id === draftLeadId) : -1;
     const next = idx >= 0 ? dueLeadsList[idx + 1] : null;
     if (next) {
       openOutreachForLead(next);
-      toast.message(`Next: ${next.company}`);
+      toast.message(`Nästa: ${next.company}`);
     } else {
       setOutreachDraftOpen(false);
       setDraftLeadId(null);
@@ -444,7 +444,7 @@ export default function SalesMarketingPage() {
 
   function syncGoalsFromShopify() {
     if (!performance?.revenue && !performance?.orders) {
-      toast.message("Connect Shopify and wait for data on Marketing or E-commerce.");
+      toast.message("Koppla Shopify och vänta på data under Marketing eller E-handel.");
       return;
     }
     goalsDoc.save(
@@ -458,7 +458,7 @@ export default function SalesMarketingPage() {
         return g;
       })
     );
-    toast.success("Goals updated from Shopify (7-day window)");
+    toast.success("Mål uppdaterade från Shopify (7 dagar)");
   }
 
   const shopifyRevenueLabel =
@@ -591,9 +591,9 @@ export default function SalesMarketingPage() {
                 source: "outreach-discovery",
                 status: "new",
               });
-              toast.success("Added to leads");
+              toast.success("Tillagd som lead");
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Couldn't add the lead.");
+              toast.error(error instanceof Error ? error.message : "Kunde inte lägga till lead.");
             }
           }}
           onDraftOutreach={(item) => {
@@ -663,8 +663,8 @@ export default function SalesMarketingPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.sales}
-          title="MCP lead research"
-          description="Company research and competitive intelligence from Exa, Sprouts, and Peec AI."
+          title="MCP lead-research"
+          description="Företagsresearch och konkurrentanalys via Exa, Sprouts och Peec AI."
         />
       </m.div>
 
@@ -673,11 +673,11 @@ export default function SalesMarketingPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-sm font-semibold">Pipeline</h2>
-            <p className="text-xs text-muted-foreground">Move leads through each stage toward close.</p>
+            <p className="text-xs text-muted-foreground">Flytta affärer genom varje steg mot avslut.</p>
           </div>
           <Button size="sm" className="gap-1.5" onClick={() => setPipelineOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            Add to pipeline
+            Ny affär
           </Button>
         </div>
 
@@ -714,10 +714,10 @@ export default function SalesMarketingPage() {
                     ))}
                     {stageTasks.length === 0 && (
                       <div className="text-center pt-4 space-y-2 px-1">
-                        <p className="text-[11px] text-muted-foreground/60">No deals here yet</p>
+                        <p className="text-[11px] text-muted-foreground/60">Inga affärer här än</p>
                         <div className="flex flex-col gap-1">
                           <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPipelineOpen(true)}>
-                            Add deal
+                            Lägg till affär
                           </Button>
                           {stage.status === "open" && activeLeads > 0 ? (
                             <Button
@@ -727,7 +727,7 @@ export default function SalesMarketingPage() {
                               className="h-7 text-[11px]"
                               onClick={() => document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth" })}
                             >
-                              From leads
+                              Från leads
                             </Button>
                           ) : null}
                         </div>
@@ -746,12 +746,12 @@ export default function SalesMarketingPage() {
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold">Goals & KPIs</h2>
-            <p className="text-xs text-muted-foreground">Click Edit on a goal, or sync from Shopify when connected.</p>
+            <h2 className="text-sm font-semibold">Mål & KPI:er</h2>
+            <p className="text-xs text-muted-foreground">Klicka Redigera på ett mål, eller synka från Shopify när det är kopplat.</p>
           </div>
           {marketingConnected.shopify ? (
             <Button type="button" size="sm" variant="outline" onClick={syncGoalsFromShopify}>
-              Sync from Shopify
+              Synka från Shopify
             </Button>
           ) : null}
         </div>
@@ -766,40 +766,40 @@ export default function SalesMarketingPage() {
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add to pipeline</DialogTitle>
+            <DialogTitle>Ny affär i pipelinen</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="lead-title">Company / contact name</Label>
-              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme Inc." autoFocus />
+              <Label htmlFor="lead-title">Företag / kontaktnamn</Label>
+              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme AB" autoFocus />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lead-desc">Note (optional)</Label>
-              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Contact info, source, etc." rows={2} />
+              <Label htmlFor="lead-desc">Anteckning (valfritt)</Label>
+              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Kontakt, källa, nästa steg…" rows={2} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Priority</Label>
+                <Label>Prioritet</Label>
                 <Select value={pipelinePriority} onValueChange={(v) => setPipelinePriority(v as typeof pipelinePriority)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="low">Låg</SelectItem>
+                    <SelectItem value="medium">Medel</SelectItem>
+                    <SelectItem value="high">Hög</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-due">Deadline (optional)</Label>
+                <Label htmlFor="lead-due">Deadline (valfritt)</Label>
                 <Input id="lead-due" type="date" value={pipelineDue} onChange={(e) => setPipelineDue(e.target.value)} className="h-9 text-sm" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPipelineOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPipelineOpen(false)}>Avbryt</Button>
             <Button onClick={() => void addLead()} disabled={pipelineAdding || !pipelineTitle.trim()}>
               {pipelineAdding && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Add
+              Lägg till
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -47,6 +47,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
 import type { AccountPlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 
@@ -504,7 +505,7 @@ export default function ConnectionsPage() {
             <CardContent className="pt-4 pb-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-xs text-muted-foreground max-w-xl">
-                  All 16 MCP data providers — connect here, run multi-source compare and queries on{" "}
+                  All {getConnectionEntriesForArea("intelligence").length} MCP data providers — connect here, run multi-source compare and queries on{" "}
                   <Link to="/intelligence" className="text-primary hover:underline">
                     MCP Intelligence
                   </Link>

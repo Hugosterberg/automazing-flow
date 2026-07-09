@@ -50,9 +50,3 @@ export function MarketingGradeBadge({
 export function MarketingVerdictDot({ verdict }: { verdict: MarketingVerdict }) {
   return <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", VERDICT_DOT[verdict])} aria-hidden />;
 }
-
-export function portfolioGradeTone(grade: MarketingGrade): "good" | "bad" | "default" {
-  if (grade === "A" || grade === "B") return "good";
-  if (grade === "D" || grade === "F") return "bad";
-  return "default";
-}

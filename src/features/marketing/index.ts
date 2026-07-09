@@ -1,4 +1,5 @@
-export { MarketingGradeBadge, MarketingVerdictDot, portfolioGradeTone } from "./MarketingGradeBadge";
+export { MarketingGradeBadge, MarketingVerdictDot } from "./MarketingGradeBadge";
+export { portfolioGradeTone } from "./gradeTone";
 export { MarketingSetupCard } from "./MarketingSetupCard";
 export { MarketingRecommendations } from "./MarketingRecommendations";
 export { ScoreBreakdown } from "./ScoreBreakdown";

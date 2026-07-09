@@ -230,10 +230,10 @@ export default function Index() {
     if (overdueTasks.length > 0) {
       const dueTodayHint =
         dueTodayTasks.length > 0
-          ? `+${dueTodayTasks.length} due today`
-          : `${openTasks.length - overdueTasks.length} more open`;
+          ? `+${dueTodayTasks.length} idag`
+          : `${openTasks.length - overdueTasks.length} fler öppna`;
       return {
-        title: "Overdue tasks",
+        title: "Försenade uppgifter",
         value: overdueTasks.length,
         hint: dueTodayHint,
         tone: "warning" as const,
@@ -242,26 +242,26 @@ export default function Index() {
     }
     if (dueTodayTasks.length > 0) {
       return {
-        title: "Due today",
+        title: "Klart idag",
         value: dueTodayTasks.length,
-        hint: `${openTasks.length - dueTodayTasks.length} more open`,
+        hint: `${openTasks.length - dueTodayTasks.length} fler öppna`,
         tone: "info" as const,
         to: "/tasks",
       };
     }
     if (openTasks.length > 0) {
       return {
-        title: "Open tasks",
+        title: "Öppna uppgifter",
         value: openTasks.length,
-        hint: `${tasks.length - openTasks.length} completed`,
+        hint: `${tasks.length - openTasks.length} klara`,
         tone: "default" as const,
         to: "/tasks",
       };
     }
     return {
-      title: "Open tasks",
+      title: "Öppna uppgifter",
       value: 0,
-      hint: "All tasks done — nice.",
+      hint: "Allt klart — bra jobbat.",
       tone: "success" as const,
       to: "/tasks",
     };
@@ -353,20 +353,20 @@ export default function Index() {
     >
       <header className="flex flex-col gap-1">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Home
+          Startsida
         </p>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-          {activeProfile?.name || "Active profile"}
+          {activeProfile?.name || "Aktiv profil"}
         </h1>
         {profileSummary.connectedCount > 0 ? (
           <p className="text-sm text-muted-foreground">
-            {profileSummary.connectedCount} connected account
-            {profileSummary.connectedCount === 1 ? "" : "s"}
+            {profileSummary.connectedCount} kopplat
+            {profileSummary.connectedCount === 1 ? " konto" : "a konton"}
             {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No integrations connected yet. Start on the Connections page.
+            Inga kopplingar än. Börja under Kopplingar.
           </p>
         )}
       </header>
@@ -381,15 +381,15 @@ export default function Index() {
           Business-only and self-hiding when no provider is connected. */}
       {mode === "business" ? <MarketPulseCard businessProfileId={homeBusinessProfileId} /> : null}
 
-      <section aria-label="Today" className="space-y-2">
+      <section aria-label="Idag" className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Today</h2>
+          <h2 className="text-sm font-semibold text-foreground">Idag</h2>
           <Link
             to="/activity"
             className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1"
           >
             <ActivityIcon className="h-3 w-3" />
-            Activity feed
+            Aktivitetsflöde
           </Link>
         </div>
         <div
@@ -402,7 +402,7 @@ export default function Index() {
             <TodayTile
               title={`Business health · ${health.label}`}
               value={health.score}
-              hint={health.topReason ?? "Everything looks good"}
+              hint={health.topReason ?? "Allt ser bra ut"}
               icon={HeartPulse}
               to="/activity"
               tone={health.tone}
@@ -419,9 +419,9 @@ export default function Index() {
             onPrefetch={prefetchFor}
           />
           <TodayTile
-            title="Unread messages"
+            title="Olästa meddelanden"
             value={unreadDms}
-            hint={unreadDms === 0 ? "Inbox is clear" : "Replies waiting in Messages"}
+            hint={unreadDms === 0 ? "Inkorgen är tom" : "Svar väntar under Meddelanden"}
             icon={MessageSquare}
             to="/messages"
             tone={unreadDms > 0 ? "info" : "default"}
@@ -429,9 +429,9 @@ export default function Index() {
           />
           {mode === "business" ? (
             <TodayTile
-              title="Leads to follow up"
+              title="Leads att följa upp"
               value={leadsToFollowUp}
-              hint={leadsToFollowUp === 0 ? "Pipeline is on track" : "Due today or overdue"}
+              hint={leadsToFollowUp === 0 ? "Pipelinen ser bra ut" : "Idag eller försenade"}
               icon={UserPlus}
               to="/sales?view=followups"
               tone={leadsToFollowUp > 0 ? "warning" : "default"}
@@ -440,9 +440,9 @@ export default function Index() {
           ) : null}
           {reviewsNeedingReply > 0 ? (
             <TodayTile
-              title="Reviews to reply"
+              title="Recensioner att svara på"
               value={reviewsNeedingReply}
-              hint="Customer feedback waiting"
+              hint="Kundfeedback väntar"
               icon={Star}
               to="/reviews?filter=needs_reply"
               tone="warning"
@@ -451,12 +451,12 @@ export default function Index() {
           ) : null}
           {mode === "business" && storeAttentionCount > 0 ? (
             <TodayTile
-              title="Store needs attention"
+              title="Butik behöver uppmärksamhet"
               value={storeAttentionCount}
               hint={
                 inventoryAlert?.outOfStock
-                  ? `${inventoryAlert.outOfStock} out of stock · check ads & inventory`
-                  : "Low stock — pause ads or restock"
+                  ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
+                  : "Lågt lager — pausa annonser eller fyll på"
               }
               icon={ShoppingBag}
               to="/ecommerce"
@@ -465,12 +465,12 @@ export default function Index() {
             />
           ) : null}
           <TodayTile
-            title="Active AI recommendations"
+            title="Aktiva AI-rekommendationer"
             value={activeRecs.length}
             hint={
               activeRecs.length === 0
-                ? "Run Generate on /ai-recommendations"
-                : "Review and accept or dismiss"
+                ? "Kör Generera under AI-rekommendationer"
+                : "Granska och acceptera eller avfärda"
             }
             icon={Sparkles}
             to="/ai-recommendations"

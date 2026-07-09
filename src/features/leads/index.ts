@@ -14,6 +14,6 @@ export {
   leadStaleDays,
   suggestedFollowUpIsoForStatus,
 } from "./leadHelpers";
-export { fetchLeadSuggestions, enrichLead, enrichLeadFromWebsite, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
+export { fetchLeadSuggestions, enrichLead, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
 export { buildLeadSuggestionContext, leadSuggestionProfileReadiness } from "./buildLeadSuggestionContext";
 export { LeadSuggestionsSection } from "./LeadSuggestionsSection";

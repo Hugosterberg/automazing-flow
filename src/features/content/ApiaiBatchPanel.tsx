@@ -28,8 +28,6 @@ import {
 import { batchStatusLabel, isBatchComplete, isBatchTerminal } from "./apiaiBatchUtils";
 import { readLastBatchWorkflow, writeLastBatchWorkflow } from "./contentAutomationPrefs";
 
-export { batchStatusLabel } from "./apiaiBatchUtils";
-
 export function ApiaiBatchPanel({
   businessProfileId,
   imageAssets,

@@ -23,7 +23,7 @@ const QUERY_TABS = MCP_HUB_TABS.filter(
 
 /**
  * Unified hub: one tab per MCP category, one input box per feature.
- * Covers all 16 MCP providers (some share a fallback input).
+ * Covers every MCP provider in the catalog (some share a fallback input).
  */
 export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: string | null }) {
   const [tab, setTab] = useState<McpHubTabId>("compare");
