@@ -16,6 +16,7 @@ import {
   parseTaskAssist,
   type TaskAssistContext,
 } from "../ai/taskAssist.ts";
+import { estimateOpenAiCostUsd, recordAiUsage } from "../lib/aiUsageTracker.ts";
 
 type TaskRouteDeps = {
   getSessionUserId: (req: { headers?: { cookie?: string } }) => string | null;
@@ -23,6 +24,7 @@ type TaskRouteDeps = {
   secretResolver?: {
     resolve: (businessProfileId: string | null | undefined, key: string) => Promise<string | null>;
   };
+  supabaseAdmin?: Parameters<typeof import("../lib/aiUsageTracker.ts").recordAiUsage>[0] | null;
 };
 
 function cleanStrings(raw: unknown, max: number, maxLen: number): string[] {
@@ -104,8 +106,28 @@ export function registerTaskRoutes(app: import("express").Express, deps: TaskRou
       }
       const aiData = (await aiRes.json().catch(() => ({}))) as {
         choices?: { message?: { content?: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
       };
       const content = aiData?.choices?.[0]?.message?.content ?? "{}";
+      const usage = aiData.usage;
+      const businessProfileId = String(body.business_profile_id || "").trim();
+      if (businessProfileId && usage) {
+        const promptTokens = Number(usage.prompt_tokens) || 0;
+        const completionTokens = Number(usage.completion_tokens) || 0;
+        void recordAiUsage(deps.supabaseAdmin, {
+          businessProfileId,
+          actorUserId: getSessionUserId(req),
+          kind: "openai",
+          featureId: "task-assist",
+          model: "gpt-4o-mini",
+          provider: "openai",
+          promptTokens,
+          completionTokens,
+          totalTokens: Number(usage.total_tokens) || promptTokens + completionTokens,
+          estimatedUsd: estimateOpenAiCostUsd("gpt-4o-mini", promptTokens, completionTokens),
+          queryPreview: title,
+        });
+      }
       const result = parseTaskAssist(content);
       if (!result) {
         return res.json({ result: heuristicTaskAssist(ctx), source: "heuristic" });

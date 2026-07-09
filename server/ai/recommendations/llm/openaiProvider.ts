@@ -45,6 +45,24 @@ export interface ChatJsonRequest {
   maxTokens?: number;
   /** Abort the request after this long. Defaults to 25 s. */
   timeoutMs?: number;
+  /** When set, usage is recorded after a successful completion. */
+  usageTracking?: {
+    supabase?: Parameters<typeof import("../../../lib/aiUsageTracker.ts").recordAiUsage>[0] | null;
+    businessProfileId: string;
+    actorUserId?: string | null;
+    featureId: string;
+    runId?: string;
+  };
+}
+
+export interface ChatJsonResult {
+  data: Record<string, unknown>;
+  model: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 /**
@@ -56,9 +74,7 @@ export interface ChatJsonRequest {
  * check `hasOpenAiKey()` first if they want to fall back gracefully).
  * Throws `LlmRequestError` for transport or API-level failures.
  */
-export async function chatJson(
-  req: ChatJsonRequest
-): Promise<Record<string, unknown>> {
+export async function chatJson(req: ChatJsonRequest): Promise<ChatJsonResult> {
   const key = getOpenAiKey();
   if (!key) {
     throw new LlmConfigError("OPENAI_API_KEY is not configured");
@@ -100,18 +116,46 @@ export async function chatJson(
 
     const payload = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     };
     const content = payload.choices?.[0]?.message?.content ?? "";
     if (!content) {
       throw new LlmRequestError("OpenAI returned an empty completion");
     }
 
+    const model = req.model ?? DEFAULT_MODEL;
+    const usage = payload.usage
+      ? {
+          prompt_tokens: Number(payload.usage.prompt_tokens) || 0,
+          completion_tokens: Number(payload.usage.completion_tokens) || 0,
+          total_tokens: Number(payload.usage.total_tokens) || 0,
+        }
+      : undefined;
+
     try {
       const parsed = JSON.parse(content);
       if (!parsed || typeof parsed !== "object") {
         throw new LlmRequestError("OpenAI JSON reply was not an object");
       }
-      return parsed as Record<string, unknown>;
+
+      if (req.usageTracking && usage) {
+        const { recordAiUsage, estimateOpenAiCostUsd } = await import("../../../lib/aiUsageTracker.ts");
+        void recordAiUsage(req.usageTracking.supabase, {
+          businessProfileId: req.usageTracking.businessProfileId,
+          actorUserId: req.usageTracking.actorUserId,
+          runId: req.usageTracking.runId,
+          kind: "openai",
+          featureId: req.usageTracking.featureId,
+          model,
+          provider: "openai",
+          promptTokens: usage.prompt_tokens,
+          completionTokens: usage.completion_tokens,
+          totalTokens: usage.total_tokens,
+          estimatedUsd: estimateOpenAiCostUsd(model, usage.prompt_tokens, usage.completion_tokens),
+        });
+      }
+
+      return { data: parsed as Record<string, unknown>, model, usage };
     } catch (err) {
       throw new LlmRequestError(
         `Could not parse OpenAI JSON reply: ${err instanceof Error ? err.message : String(err)}`

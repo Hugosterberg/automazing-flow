@@ -34,6 +34,13 @@ import { runMcpQuery } from "../lib/mcpQuery.ts";
 import { runMultiSourceAssessment } from "../lib/mcpMultiSource.ts";
 import { assessMcpAccount, buildMcpProvidersReadiness, findReadyMcpAccount } from "../lib/mcpReadiness.ts";
 import { readRequestBusinessProfileId } from "../lib/profileScope.ts";
+import {
+  buildAiToolPlan,
+  findReadyAccountFromPlan,
+  inferFeatureFromQuery,
+  type McpFeatureId,
+} from "../lib/aiToolManager.ts";
+import { usageFromToolPlan } from "../lib/aiUsageTracker.ts";
 
 interface TokenStoreLike {
   set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
@@ -68,8 +75,10 @@ async function handleAuthenticatedMcpQuery(
     tokenStore: TokenStoreLike;
     getSessionUserId: (req: unknown) => string | null;
     getStoredAccountAccess: IntelligenceRouteDeps["getStoredAccountAccess"];
+    supabaseAdmin?: IntelligenceRouteDeps["supabaseAdmin"];
     businessProfileId: string | null;
     userId: string;
+    featureId: McpFeatureId;
     platforms: readonly string[];
     query: string;
     toolPatterns: RegExp[];
@@ -79,30 +88,106 @@ async function handleAuthenticatedMcpQuery(
   }
 ): Promise<unknown> {
   try {
-    const ready = await findReadyMcpAccount({
+    const executed = await runFeatureMcpQuery({
       tokenStore: deps.tokenStore,
+      supabaseAdmin: deps.supabaseAdmin,
       businessProfileId: deps.businessProfileId,
-      platforms: [...deps.platforms],
-    });
-    if (ready.ok === false) {
-      return res.status(ready.status).json({ error: ready.error });
-    }
-    const access = deps.getStoredAccountAccess(ready.account, deps.userId);
-    if (!access.allowed) return res.status(403).json({ error: "Account belongs to another user" });
-
-    const result = await runMcpQuery({
-      tokenStore: deps.tokenStore,
-      account: ready.account,
+      userId: deps.userId,
+      getStoredAccountAccess: deps.getStoredAccountAccess,
+      featureId: deps.featureId,
+      query: deps.query,
       toolPatterns: deps.toolPatterns,
       argCandidates: deps.argCandidates,
-      query: deps.query,
     });
-    if (result.ok === false) return res.status(result.status).json({ error: result.error });
-    return res.json({ ...result, query: deps.query, fetchedAt: new Date().toISOString() });
+    if (executed.ok === false) {
+      return res.status(executed.status).json({
+        error: executed.error,
+        toolPlan: executed.toolPlan,
+      });
+    }
+
+    return res.json({
+      ...executed.result,
+      query: deps.query,
+      fetchedAt: new Date().toISOString(),
+      toolPlan: executed.toolPlan,
+      selectedPlatform: executed.selectedPlatform,
+    });
   } catch (err) {
     console.error(`[intelligence] ${deps.logTag} failed:`, err);
     return res.status(500).json({ error: deps.failMessage });
   }
+}
+
+/** Shared MCP execution with smart tool selection and usage tracking. */
+async function runFeatureMcpQuery(deps: {
+  tokenStore: TokenStoreLike;
+  supabaseAdmin?: IntelligenceRouteDeps["supabaseAdmin"];
+  businessProfileId: string | null;
+  userId: string;
+  getStoredAccountAccess: IntelligenceRouteDeps["getStoredAccountAccess"];
+  featureId: McpFeatureId;
+  query: string;
+  toolPatterns: RegExp[];
+  argCandidates: string[];
+  maxProviders?: number;
+}): Promise<
+  | {
+      ok: true;
+      result: { tool: string; text: string; provider: string };
+      toolPlan: Awaited<ReturnType<typeof buildAiToolPlan>>;
+      selectedPlatform: string;
+    }
+  | { ok: false; status: number; error: string; toolPlan?: Awaited<ReturnType<typeof buildAiToolPlan>> }
+> {
+  const plan = await buildAiToolPlan({
+    featureId: deps.featureId,
+    query: deps.query,
+    tokenStore: deps.tokenStore,
+    businessProfileId: deps.businessProfileId,
+    maxProviders: deps.maxProviders,
+  });
+  const ready = await findReadyAccountFromPlan({
+    tokenStore: deps.tokenStore,
+    businessProfileId: deps.businessProfileId,
+    plan,
+  });
+  if (ready.ok === false) {
+    return { ok: false, status: ready.status, error: ready.error, toolPlan: plan };
+  }
+  const access = deps.getStoredAccountAccess(ready.account, deps.userId);
+  if (!access.allowed) {
+    return { ok: false, status: 403, error: "Account belongs to another user", toolPlan: plan };
+  }
+  const planMeta = usageFromToolPlan(plan);
+  const result = await runMcpQuery({
+    tokenStore: deps.tokenStore,
+    account: ready.account,
+    toolPatterns: deps.toolPatterns,
+    argCandidates: deps.argCandidates,
+    query: deps.query,
+    usage: deps.businessProfileId
+      ? {
+          supabase: deps.supabaseAdmin as Parameters<typeof import("../lib/aiUsageTracker.ts").recordAiUsage>[0],
+          businessProfileId: deps.businessProfileId,
+          actorUserId: deps.userId,
+          runId: planMeta.runId,
+          featureId: deps.featureId,
+          toolsSelected: planMeta.toolsSelected,
+          selectionReason: planMeta.selectionReason,
+          queryPreview: deps.query,
+        }
+      : undefined,
+  });
+  if (result.ok === false) {
+    return { ok: false, status: result.status, error: result.error, toolPlan: plan };
+  }
+  return {
+    ok: true,
+    result,
+    toolPlan: plan,
+    selectedPlatform: ready.platform,
+  };
 }
 
 export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
@@ -248,40 +333,33 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     }
 
     try {
-      const ready = await findReadyMcpAccount({
-        tokenStore,
-        businessProfileId,
-        platforms: [...MCP_FEATURE_PLATFORMS.leadResearch],
-      });
-      if (ready.ok === false) {
-        return res.status(ready.status).json({ error: ready.error });
-      }
-      const account = ready.account;
-      const access = getStoredAccountAccess(account, userId);
-      if (!access.allowed) {
-        return res.status(403).json({ error: "Account belongs to another user" });
-      }
-
       const query = [company || name, website, "company overview news"]
         .filter(Boolean)
         .join(" ");
-      const result = await runMcpQuery({
+      const executed = await runFeatureMcpQuery({
         tokenStore,
-        account,
+        supabaseAdmin,
+        businessProfileId,
+        userId,
+        getStoredAccountAccess,
+        featureId: "leadResearch",
+        query,
         toolPatterns: [/web_search/i, /^search/i, /prospect/i, /company/i],
         argCandidates: ["query", "q", "search", "text", "prompt", "name"],
-        query,
+        maxProviders: 2,
       });
-      if (result.ok === false) {
-        return res.status(result.status).json({ error: result.error });
+      if (executed.ok === false) {
+        return res.status(executed.status).json({ error: executed.error, toolPlan: executed.toolPlan });
       }
 
       return res.json({
-        provider: result.provider,
-        tool: result.tool,
+        provider: executed.result.provider,
+        tool: executed.result.tool,
         query,
-        text: result.text,
+        text: executed.result.text,
         fetchedAt: new Date().toISOString(),
+        toolPlan: executed.toolPlan,
+        selectedPlatform: executed.selectedPlatform,
       });
     } catch (err) {
       console.error("[intelligence] lead-research failed:", err);
@@ -297,26 +375,27 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     if (!query) return res.status(400).json({ error: "Query is required." });
 
     try {
-      const ready = await findReadyMcpAccount({
+      const executed = await runFeatureMcpQuery({
         tokenStore,
+        supabaseAdmin,
         businessProfileId,
-        platforms: [...MCP_FEATURE_PLATFORMS.docSearch],
-      });
-      if (ready.ok === false) {
-        return res.status(ready.status).json({ error: ready.error });
-      }
-      const access = getStoredAccountAccess(ready.account, userId);
-      if (!access.allowed) return res.status(403).json({ error: "Account belongs to another user" });
-
-      const result = await runMcpQuery({
-        tokenStore,
-        account: ready.account,
+        userId,
+        getStoredAccountAccess,
+        featureId: "docSearch",
+        query,
         toolPatterns: [/twilio__search/i, /search/i, /web_search/i, /doc/i],
         argCandidates: ["query", "q", "search", "text", "prompt"],
-        query,
       });
-      if (result.ok === false) return res.status(result.status).json({ error: result.error });
-      return res.json({ ...result, query, fetchedAt: new Date().toISOString() });
+      if (executed.ok === false) {
+        return res.status(executed.status).json({ error: executed.error, toolPlan: executed.toolPlan });
+      }
+      return res.json({
+        ...executed.result,
+        query,
+        fetchedAt: new Date().toISOString(),
+        toolPlan: executed.toolPlan,
+        selectedPlatform: executed.selectedPlatform,
+      });
     } catch (err) {
       console.error("[intelligence] doc-search failed:", err);
       return res.status(500).json({ error: "Doc search failed." });
@@ -331,26 +410,27 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     if (!target) return res.status(400).json({ error: "Provide a domain or URL (target=)." });
 
     try {
-      const ready = await findReadyMcpAccount({
+      const executed = await runFeatureMcpQuery({
         tokenStore,
+        supabaseAdmin,
         businessProfileId,
-        platforms: [...MCP_FEATURE_PLATFORMS.seoOverview],
-      });
-      if (ready.ok === false) {
-        return res.status(ready.status).json({ error: ready.error });
-      }
-      const access = getStoredAccountAccess(ready.account, userId);
-      if (!access.allowed) return res.status(403).json({ error: "Account belongs to another user" });
-
-      const result = await runMcpQuery({
-        tokenStore,
-        account: ready.account,
+        userId,
+        getStoredAccountAccess,
+        featureId: "seoOverview",
+        query: target,
         toolPatterns: [/site/i, /domain/i, /overview/i, /seo/i, /search/i],
         argCandidates: ["target", "domain", "url", "query", "q"],
-        query: target,
       });
-      if (result.ok === false) return res.status(result.status).json({ error: result.error });
-      return res.json({ ...result, target, fetchedAt: new Date().toISOString() });
+      if (executed.ok === false) {
+        return res.status(executed.status).json({ error: executed.error, toolPlan: executed.toolPlan });
+      }
+      return res.json({
+        ...executed.result,
+        target,
+        fetchedAt: new Date().toISOString(),
+        toolPlan: executed.toolPlan,
+        selectedPlatform: executed.selectedPlatform,
+      });
     } catch (err) {
       console.error("[intelligence] seo-overview failed:", err);
       return res.status(500).json({ error: "SEO overview failed." });
@@ -365,26 +445,27 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     if (!query) return res.status(400).json({ error: "Query is required." });
 
     try {
-      const ready = await findReadyMcpAccount({
+      const executed = await runFeatureMcpQuery({
         tokenStore,
+        supabaseAdmin,
         businessProfileId,
-        platforms: [...MCP_FEATURE_PLATFORMS.marketingQuery],
-      });
-      if (ready.ok === false) {
-        return res.status(ready.status).json({ error: ready.error });
-      }
-      const access = getStoredAccountAccess(ready.account, userId);
-      if (!access.allowed) return res.status(403).json({ error: "Account belongs to another user" });
-
-      const result = await runMcpQuery({
-        tokenStore,
-        account: ready.account,
+        userId,
+        getStoredAccountAccess,
+        featureId: "marketingQuery",
+        query,
         toolPatterns: [/query/i, /report/i, /metric/i, /data/i, /search/i],
         argCandidates: ["query", "q", "prompt", "text", "question"],
-        query,
       });
-      if (result.ok === false) return res.status(result.status).json({ error: result.error });
-      return res.json({ ...result, query, fetchedAt: new Date().toISOString() });
+      if (executed.ok === false) {
+        return res.status(executed.status).json({ error: executed.error, toolPlan: executed.toolPlan });
+      }
+      return res.json({
+        ...executed.result,
+        query,
+        fetchedAt: new Date().toISOString(),
+        toolPlan: executed.toolPlan,
+        selectedPlatform: executed.selectedPlatform,
+      });
     } catch (err) {
       console.error("[intelligence] marketing-query failed:", err);
       return res.status(500).json({ error: "Marketing query failed." });
@@ -399,26 +480,27 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     if (!query) return res.status(400).json({ error: "Company or query is required." });
 
     try {
-      const ready = await findReadyMcpAccount({
+      const executed = await runFeatureMcpQuery({
         tokenStore,
+        supabaseAdmin,
         businessProfileId,
-        platforms: [...MCP_FEATURE_PLATFORMS.competitiveResearch],
-      });
-      if (ready.ok === false) {
-        return res.status(ready.status).json({ error: ready.error });
-      }
-      const access = getStoredAccountAccess(ready.account, userId);
-      if (!access.allowed) return res.status(403).json({ error: "Account belongs to another user" });
-
-      const result = await runMcpQuery({
-        tokenStore,
-        account: ready.account,
+        userId,
+        getStoredAccountAccess,
+        featureId: "competitiveResearch",
+        query,
         toolPatterns: [/compet/i, /company/i, /research/i, /search/i],
         argCandidates: ["query", "company", "name", "q", "text"],
-        query,
       });
-      if (result.ok === false) return res.status(result.status).json({ error: result.error });
-      return res.json({ ...result, query, fetchedAt: new Date().toISOString() });
+      if (executed.ok === false) {
+        return res.status(executed.status).json({ error: executed.error, toolPlan: executed.toolPlan });
+      }
+      return res.json({
+        ...executed.result,
+        query,
+        fetchedAt: new Date().toISOString(),
+        toolPlan: executed.toolPlan,
+        selectedPlatform: executed.selectedPlatform,
+      });
     } catch (err) {
       console.error("[intelligence] competitive-research failed:", err);
       return res.status(500).json({ error: "Competitive research failed." });
@@ -434,8 +516,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "mailSearch",
       platforms: MCP_FEATURE_PLATFORMS.mailSearch,
       query,
       toolPatterns: [/mail/i, /search/i, /inbox/i, /message/i],
@@ -454,8 +538,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "domainLookup",
       platforms: MCP_FEATURE_PLATFORMS.domainLookup,
       query,
       toolPatterns: [/domain/i, /lookup/i, /dns/i, /whois/i, /search/i],
@@ -474,8 +560,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "architectureDocs",
       platforms: MCP_FEATURE_PLATFORMS.architectureDocs,
       query,
       toolPatterns: [/arch/i, /doc/i, /search/i, /query/i],
@@ -494,8 +582,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "deckGeneration",
       platforms: MCP_FEATURE_PLATFORMS.deckGeneration,
       query,
       toolPatterns: [/deck/i, /presentation/i, /slide/i, /generate/i, /create/i],
@@ -514,8 +604,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "shopCatalog",
       platforms: MCP_FEATURE_PLATFORMS.shopCatalog,
       query,
       toolPatterns: [/product/i, /catalog/i, /collection/i, /shop/i, /search/i],
@@ -534,8 +626,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "crmQuery",
       platforms: MCP_FEATURE_PLATFORMS.crmQuery,
       query,
       toolPatterns: [/crm/i, /customer/i, /contact/i, /deal/i, /search/i, /query/i],
@@ -554,8 +648,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "contextQuery",
       platforms: MCP_FEATURE_PLATFORMS.contextQuery,
       query,
       toolPatterns: [/context/i, /search/i, /query/i, /tool/i],
@@ -574,8 +670,10 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
       tokenStore,
       getSessionUserId,
       getStoredAccountAccess,
+      supabaseAdmin,
       businessProfileId: readRequestBusinessProfileId(req),
       userId,
+      featureId: "designAssist",
       platforms: MCP_FEATURE_PLATFORMS.designAssist,
       query,
       toolPatterns: [/design/i, /create/i, /template/i, /generate/i, /search/i],
@@ -606,6 +704,30 @@ export function registerIntelligenceRoutes(app, deps: IntelligenceRouteDeps) {
     } catch (err) {
       console.error("[intelligence] multi-source-assessment failed:", err);
       return res.status(500).json({ error: "Multi-source assessment failed." });
+    }
+  });
+
+  app.get("/api/intelligence/tool-plan", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const businessProfileId = readRequestBusinessProfileId(req);
+    const query = String(req.query.query || req.query.q || "").trim();
+    let featureId = String(req.query.feature || req.query.featureId || "").trim() as McpFeatureId;
+    if (!featureId || !(featureId in MCP_FEATURE_PLATFORMS)) {
+      const inferred = inferFeatureFromQuery(query);
+      featureId = inferred ?? "leadResearch";
+    }
+    try {
+      const plan = await buildAiToolPlan({
+        featureId,
+        query,
+        tokenStore,
+        businessProfileId,
+      });
+      return res.json(plan);
+    } catch (err) {
+      console.error("[intelligence] tool-plan failed:", err);
+      return res.status(500).json({ error: "Could not build tool plan." });
     }
   });
 }

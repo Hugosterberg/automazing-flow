@@ -440,6 +440,7 @@ registerSettingsRoutes(app, {
   secretResolver,
   requireMembership,
   zernio: zernioModule,
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerAccountRoutes(app, {
@@ -586,6 +587,7 @@ registerTaskRoutes(app, {
   getSessionUserId,
   requireMembership,
   secretResolver,
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerDiagnosticsRoute(app, {

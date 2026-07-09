@@ -375,7 +375,7 @@ async function runLlmContentSuggestions(
   let ideasRaw: unknown;
   try {
     const response = await chatJson({ system, user });
-    ideasRaw = response.ideas;
+    ideasRaw = response.data.ideas;
   } catch (err) {
     const message =
       err instanceof LlmRequestError

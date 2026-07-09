@@ -4,6 +4,8 @@
  */
 
 import { MCP_FEATURE_PLATFORMS } from "./mcpCatalog.ts";
+import { buildAiToolPlan, inferFeatureFromQuery, type McpFeatureId } from "./aiToolManager.ts";
+import { usageFromToolPlan } from "./aiUsageTracker.ts";
 import { findReadyMcpAccount } from "./mcpReadiness.ts";
 import { runMcpQuery } from "./mcpQuery.ts";
 import { fetchSiteMeta } from "./siteMeta.ts";
@@ -72,7 +74,17 @@ async function runMultiMcpResearch(opts: {
   businessProfileId: string | null;
   query: string;
 }): Promise<McpInsight[]> {
-  const platforms = [...MCP_FEATURE_PLATFORMS.leadResearch];
+  const plan = await buildAiToolPlan({
+    featureId: "leadResearch",
+    query: opts.query,
+    tokenStore: opts.tokenStore,
+    businessProfileId: opts.businessProfileId,
+    maxProviders: 2,
+  });
+  const planMeta = usageFromToolPlan(plan);
+  const platforms =
+    plan.selectedPlatforms.length > 0 ? plan.selectedPlatforms : [...MCP_FEATURE_PLATFORMS.leadResearch];
+
   const results = await Promise.all(
     platforms.map(async (platform) => {
       const ready = await findReadyMcpAccount({
@@ -88,6 +100,16 @@ async function runMultiMcpResearch(opts: {
         argCandidates: ["query", "q", "search", "text", "prompt", "name"],
         query: opts.query,
         maxChars: 2000,
+        usage: opts.businessProfileId
+          ? {
+              businessProfileId: opts.businessProfileId,
+              featureId: "company-enrich",
+              runId: planMeta.runId,
+              toolsSelected: planMeta.toolsSelected,
+              selectionReason: planMeta.selectionReason,
+              queryPreview: opts.query,
+            }
+          : undefined,
       });
       if (result.ok === false) return null;
       return {

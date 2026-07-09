@@ -19,6 +19,7 @@ import type { AuthHelpers } from "../lib/authHelpers.ts";
 import type { EnvConfig, RequirementDefinition } from "../lib/envConfig.ts";
 import type { SecretResolver } from "../lib/secretResolver.ts";
 import { buildAiFeatureStatus } from "../lib/aiFeatureCatalog.ts";
+import { getAiUsageSummary } from "../lib/aiUsageTracker.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 
 interface SettingsRoutesDeps {
@@ -28,6 +29,7 @@ interface SettingsRoutesDeps {
   secretResolver: SecretResolver;
   requireMembership: (req: unknown, res: unknown, next: () => void) => void;
   zernio?: Pick<ZernioModule, "listProfiles" | "listInboxConversations">;
+  supabaseAdmin?: Parameters<typeof import("../lib/aiUsageTracker.ts").getAiUsageSummary>[0] | null;
 }
 
 /** Per-tenant overridable keys. Anything not listed here can only be set as a global env var. */
@@ -240,6 +242,14 @@ export function registerSettingsRoutes(app, deps: SettingsRoutesDeps) {
       cron: envConfig.hasEnvValue("CRON_SECRET"),
     });
     return res.json({ features });
+  });
+
+  app.get("/api/settings/ai-usage", requireMembership, async (req, res) => {
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const daysRaw = Number(req.query.days);
+    const windowDays = Number.isFinite(daysRaw) && daysRaw > 0 ? Math.min(90, Math.floor(daysRaw)) : 30;
+    const summary = await getAiUsageSummary(deps.supabaseAdmin ?? null, businessProfileId, windowDays);
+    return res.json(summary);
   });
 
   // --- Per-tenant secrets: configured status + values write. Membership-gated. ---
