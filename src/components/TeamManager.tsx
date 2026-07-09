@@ -24,10 +24,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/apiBase";
 import { useAuth } from "@/context/AuthContext";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 type Member = {
   userId: string;
@@ -73,30 +71,19 @@ export function TeamManager({ businessProfileId }: Props) {
 
   const { data, isLoading } = useQuery<{ members: Member[] }>({
     queryKey: ["team-members", businessProfileId],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(
-        apiUrl(`/api/team/members?business_profile_id=${encodeURIComponent(businessProfileId)}`),
-        { credentials: "include" }
-      );
-      if (!res.ok) throw new Error("Kunde inte hämta teammedlemmar");
-      return res.json() as Promise<{ members: Member[] }>;
-    },
+    queryFn: () =>
+      apiJson<{ members: Member[] }>(
+        `/api/team/members?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+        "Kunde inte hämta teammedlemmar"
+      ),
     enabled: Boolean(businessProfileId),
   });
 
   const inviteMut = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      const res = await fetchWithTimeout(apiUrl("/api/team/invite"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role, business_profile_id: businessProfileId }),
+      return apiJson("/api/team/invite", "Inbjudan misslyckades", {
+        body: { email, role, business_profile_id: businessProfileId },
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(apiErrorMessage(body, "Inbjudan misslyckades"));
-      }
-      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Inbjudan skickad", description: `${inviteEmail} har bjudits in.` });
@@ -110,14 +97,11 @@ export function TeamManager({ businessProfileId }: Props) {
 
   const removeMut = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await fetchWithTimeout(
-        apiUrl(`/api/team/members/${encodeURIComponent(userId)}?business_profile_id=${encodeURIComponent(businessProfileId)}`),
-        { method: "DELETE", credentials: "include" }
+      await apiJson(
+        `/api/team/members/${encodeURIComponent(userId)}?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+        "Borttagning misslyckades",
+        { method: "DELETE" }
       );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(apiErrorMessage(body, "Borttagning misslyckades"));
-      }
     },
     onSuccess: () => {
       toast({ title: "Teammedlem borttagen" });

@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
 
 type VideoDraftResult = {
@@ -26,17 +24,9 @@ async function generateVideoDraft(payload: {
   platform: string;
   objective: string;
 }): Promise<{ draft: VideoDraftResult; source: string }> {
-  const res = await fetchWithTimeout(apiUrl("/api/content/video-draft"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+  return apiJson("/api/content/video-draft", "Could not generate video draft", {
+    body: payload,
   });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(apiErrorMessage(payload, "Could not generate video draft"));
-  }
-  return res.json();
 }
 
 /**

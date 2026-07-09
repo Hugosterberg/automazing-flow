@@ -30,10 +30,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/apiBase";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
@@ -338,19 +336,18 @@ export default function PreferencesPage() {
   }, [activeBusinessProfileId, toast]);
 
   const loadGlobal = useCallback(async () => {
-    const res = await fetchWithTimeout(apiUrl("/api/settings/api-keys"), { credentials: "include" });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not load platform keys."));
+    const payload = await apiJson<{ entries?: unknown }>(
+      "/api/settings/api-keys",
+      "Could not load platform keys."
+    );
     setGlobalEntries(Array.isArray(payload.entries) ? payload.entries : []);
   }, []);
 
   const loadTenant = useCallback(async (businessProfileId: string) => {
-    const res = await fetchWithTimeout(
-      apiUrl(`/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`),
-      { credentials: "include" }
+    const payload = await apiJson<{ storeEnabled?: unknown; entries?: unknown }>(
+      `/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+      "Could not load profile secrets."
     );
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not load profile secrets."));
     setStoreEnabled(Boolean(payload.storeEnabled));
     setTenantEntries(Array.isArray(payload.entries) ? payload.entries : []);
   }, []);
@@ -392,14 +389,10 @@ export default function PreferencesPage() {
     const entries = dirtyKeys.map((key) => ({ key, value: edited[key] }));
     setSaving(true);
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/settings/secrets"), {
+      await apiJson("/api/settings/secrets", "Could not save secrets.", {
         method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ business_profile_id: activeBusinessProfileId, entries }),
+        body: { business_profile_id: activeBusinessProfileId, entries },
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not save secrets.");
       setEdited({});
       await loadTenant(activeBusinessProfileId);
       toast({
@@ -420,14 +413,11 @@ export default function PreferencesPage() {
   async function runConfigTest(target: string) {
     setRunningTests((current) => ({ ...current, [target]: true }));
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/settings/api-keys/test"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(payload, `Could not test ${target}.`));
+      const payload = await apiJson<ConfigTestResult>(
+        "/api/settings/api-keys/test",
+        `Could not test ${target}.`,
+        { body: { target } }
+      );
       setTestResults((current) => ({ ...current, [target]: payload }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { Switch } from "@/components/ui/switch";
@@ -431,18 +432,13 @@ export default function MessagesPage() {
     if (!selectedMessage) return;
     setDraftBusy(true);
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/ai/reply-draft"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const payload = await apiJson<{ draft?: unknown }>("/api/ai/reply-draft", "Could not draft a reply", {
+        body: {
           kind: selectedMessage.kind === "email" ? "email" : "dm",
           authorName: selectedMessage.from.name || selectedMessage.subject,
           text: selectedMessage.body || selectedMessage.snippet,
-        }),
+        },
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not draft a reply"));
       setReplyDraft(String(payload?.draft || ""));
     } catch (e) {
       toast({
@@ -575,20 +571,15 @@ export default function MessagesPage() {
     const sentId = selectedMessage.id;
     setSendBusy(true);
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/messages/reply"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiJson("/api/messages/reply", "Could not send reply", {
+        body: {
           accountId: selectedMessage.accountId,
           conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
           messageId: selectedMessage.kind === "email" ? messageId : undefined,
           message: replyDraft.trim(),
           business_profile_id: selectedMessage.profileId || activeProfileId,
-        }),
+        },
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(payload, "Could not send reply"));
       setReplySent(true);
       markHandled([sentId], { silent: true });
       void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });

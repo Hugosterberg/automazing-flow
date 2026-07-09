@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export type CheckStatus = "ok" | "warn" | "error";
 
@@ -31,12 +29,7 @@ export function useDiagnostics() {
   const { enabled, user } = useAuth();
   const query = useQuery<DiagnosticsReport>({
     queryKey: [...DIAGNOSTICS_KEY, user?.id ?? null],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(apiUrl("/api/diagnostics"), { credentials: "include" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load diagnostics."));
-      return body as DiagnosticsReport;
-    },
+    queryFn: () => apiJson<DiagnosticsReport>("/api/diagnostics", "Couldn't load diagnostics."),
     enabled: Boolean(enabled),
     staleTime: 5 * 60_000,
     meta: { silent: true },

@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
-import { apiUrl } from "@/lib/apiBase";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 
 export interface AdCampaign {
   id: string;
@@ -173,21 +171,13 @@ export function useMarketingCampaigns() {
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const query = useQuery<MarketingCampaignsResponse>({
     queryKey: [...MARKETING_CAMPAIGNS_KEY, user?.id ?? null, businessProfileId ?? null],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(
-        apiUrl(
-          `/api/marketing/campaigns${
-            businessProfileId ? `?business_profile_id=${encodeURIComponent(businessProfileId)}` : ""
-          }`,
-        ),
-        {
-          credentials: "include",
-        },
-      );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiErrorMessage(body, "Couldn't load campaigns."));
-      return body as MarketingCampaignsResponse;
-    },
+    queryFn: () =>
+      apiJson<MarketingCampaignsResponse>(
+        `/api/marketing/campaigns${
+          businessProfileId ? `?business_profile_id=${encodeURIComponent(businessProfileId)}` : ""
+        }`,
+        "Couldn't load campaigns.",
+      ),
     enabled: Boolean(enabled),
     staleTime: 60_000,
     meta: { silent: true },

@@ -39,11 +39,10 @@ import {
   buildMcpOAuthConnectUrl,
   getMcpProviderMeta,
   isMcpPlatform,
-  mcpManualConnectUrl,
+  mcpManualConnectPath,
 } from "./mcpProviders";
 import type { IntelligencePlatform } from "@/types/accounts";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
 import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 import { useAccounts } from "@/context/AccountsContext";
@@ -188,16 +187,11 @@ export function ConnectionCard({
         mcpMeta.auth === "shop_domain"
           ? { shopDomain: normalizeShopifyShopDomain(trimmed), profileId: businessProfileId }
           : { apiKey: trimmed, profileId: businessProfileId };
-      const res = await fetchWithTimeout(mcpManualConnectUrl(entry.platform as IntelligencePlatform), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(apiErrorMessage(payload, `Could not connect ${entry.label}.`));
-      }
+      const payload = await apiJson<Record<string, unknown>>(
+        mcpManualConnectPath(entry.platform as IntelligencePlatform),
+        `Could not connect ${entry.label}.`,
+        { body }
+      );
       setMcpDialogOpen(false);
       setMcpCredential("");
       toast.success(`${entry.label} connected`);

@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/context/AccountsContext";
-import { apiUrl } from "@/lib/apiBase";
 import type { AccountPlatform } from "@/types/accounts";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { apiJson } from "@/lib/apiJson";
 import { platformLabel } from "@/lib/platformLabels";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useScheduledPosts, type ScheduledPost } from "@/features/social";
@@ -177,21 +176,16 @@ export function PublishComposer({
     if (selectedIds.length === 0 || !caption.trim()) return;
     setBusy(true);
     try {
-      const res = await fetchWithTimeout(apiUrl("/api/content/publish"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const payload = await apiJson<{ published?: number }>("/api/content/publish", "Could not publish", {
+        body: {
           accountIds: selectedIds,
           business_profile_id: businessProfileId,
           content: caption.trim(),
           publishNow: true,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           mediaUrls: resolvedMediaUrls,
-        }),
+        },
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.message || payload?.error || "Could not publish");
       scheduledPosts.upsert(buildPost("published", new Date().toISOString()));
       setDone(true);
       resetForm();

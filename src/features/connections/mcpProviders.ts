@@ -1,5 +1,4 @@
 import type { IntelligencePlatform } from "@/types/accounts";
-import { apiUrl } from "@/lib/apiBase";
 import { buildConnectUrl } from "./zernioClient";
 
 export type McpAuthKind = "oauth" | "api_key" | "shop_domain" | "keyless";
@@ -112,6 +111,7 @@ export function buildMcpOAuthConnectUrl(platform: IntelligencePlatform, business
   return buildConnectUrl(`mcp/${platform}`, businessProfileId);
 }
 
-export function mcpManualConnectUrl(platform: IntelligencePlatform): string {
-  return apiUrl(`/api/auth/mcp/${platform}/manual-connect`);
+/** API path (not full URL) — pass to apiJson, which applies the API origin. */
+export function mcpManualConnectPath(platform: IntelligencePlatform): string {
+  return `/api/auth/mcp/${platform}/manual-connect`;
 }

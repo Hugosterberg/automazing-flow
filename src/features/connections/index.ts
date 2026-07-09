@@ -16,7 +16,5 @@ export {
 export type { ConnectionStatus } from "./connectionStatus";
 export { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 export { ConnectionDetailsDrawer } from "./ConnectionDetailsDrawer";
-export {
-  ConnectionsControlPanel,
-  useConnectionsHealthIssueCount,
-} from "./ConnectionsControlPanel";
+export { ConnectionsControlPanel } from "./ConnectionsControlPanel";
+export { useConnectionsHealthIssueCount } from "./connectionsHealthIssues";

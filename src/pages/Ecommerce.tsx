@@ -84,6 +84,7 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { apiJson } from "@/lib/apiJson";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { downloadCsv, shopifyOrdersToCsv } from "@/lib/exportCsv";
 
@@ -655,22 +656,15 @@ export default function Ecommerce() {
     setNotionSaving(true);
     setNotionWriteMessage(null);
     try {
-      const res = await fetchWithTimeout(apiUrl(`/api/notion/${activeNotion.id}/pages`), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await apiJson(`/api/notion/${activeNotion.id}/pages`, "Could not create Notion page.", {
+        body: {
           parentId: notionParentId.trim(),
           parentType: notionParentType,
           title: notionTitle.trim(),
           content: notionContent.trim(),
           business_profile_id: activeBusinessProfileId ?? activeProfileId,
-        }),
+        },
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(apiErrorMessage(payload, "Could not create Notion page."));
-      }
       setNotionWriteMessage("Page created in Notion.");
       setNotionTitle("");
       setNotionContent("");

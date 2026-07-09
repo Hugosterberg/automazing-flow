@@ -18,81 +18,20 @@ import { automationCatalog } from "@/features/automation/automationCatalog";
 import { useAutomationRuns } from "@/features/automation/useAutomationRuns";
 import { fetchAutoReplyLog, type AutoReplyLogEntry } from "@/features/automation/automationService";
 import { useMcpProvidersStatus, mcpStatusLabel } from "@/features/intelligence/useMcpProvidersStatus";
-import {
-  CONNECTION_CATALOG,
-  type AppArea,
-} from "@/lib/connectionCatalog";
+import { type AppArea } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
-import { aggregateStatus, CONNECTION_STATUS_LABELS, type ConnectionStatus } from "./connectionStatus";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { cn } from "@/lib/utils";
 import type { AccountPlatform } from "@/types/accounts";
-
-export type HealthIssueCategory = "cron" | "connection" | "mcp" | "automation";
-
-export interface HealthIssue {
-  id: string;
-  severity: "error" | "warning";
-  category: HealthIssueCategory;
-  title: string;
-  message: string;
-  actionHref?: string;
-  actionLabel?: string;
-}
+import {
+  connectionIssues,
+  mcpIssues,
+  type HealthIssue,
+  type HealthIssueCategory,
+} from "./connectionsHealthIssues";
 
 function cronTitle(key: string): string {
   return automationCatalog.find((e) => e.cronKey === key)?.title ?? key;
-}
-
-const ATTENTION_CONNECTION_STATUSES: ConnectionStatus[] = ["error", "reconnect_required"];
-
-function connectionIssues(connections: Connection[]): HealthIssue[] {
-  const issues: HealthIssue[] = [];
-  const seen = new Set<string>();
-
-  for (const entry of CONNECTION_CATALOG) {
-    if (entry.areas.includes("intelligence")) continue;
-    const rows = connections.filter((c) => c.platform === entry.platform);
-    const status = aggregateStatus(rows);
-    if (!ATTENTION_CONNECTION_STATUSES.includes(status)) continue;
-    if (seen.has(entry.platform)) continue;
-    seen.add(entry.platform);
-
-    const lastError = rows.find((r) => r.lastSyncError)?.lastSyncError;
-    issues.push({
-      id: `connection-${entry.platform}`,
-      severity: status === "error" ? "error" : "warning",
-      category: "connection",
-      title: `${entry.label} — ${CONNECTION_STATUS_LABELS[status]}`,
-      message: lastError || entry.connectSteps,
-      actionHref: "/connections?tab=integrations",
-      actionLabel: "Open connections",
-    });
-  }
-  return issues;
-}
-
-function mcpIssues(
-  providers: ReturnType<typeof useMcpProvidersStatus>["providers"]
-): HealthIssue[] {
-  return providers
-    .filter((p) => p.status !== "ready")
-    .map((p) => ({
-      id: `mcp-${p.platform}`,
-      severity:
-        p.status === "error" || p.status === "auth_expired" || p.status === "missing_credential"
-          ? ("error" as const)
-          : ("warning" as const),
-      category: "mcp" as const,
-      title: `${p.label} — ${mcpStatusLabel(p.status)}`,
-      message:
-        p.message ||
-        (p.status === "not_connected"
-          ? `Required for: ${p.usedBy.slice(0, 2).join(", ")}${p.usedBy.length > 2 ? "…" : ""}`
-          : "MCP calls will fail until this is fixed."),
-      actionHref: "/connections?tab=mcp",
-      actionLabel: "Fix MCP connection",
-    }));
 }
 
 function categoryLabel(category: HealthIssueCategory): string {
@@ -304,23 +243,6 @@ export function ConnectionsControlPanel({
       </CardContent>
     </Card>
   );
-}
-
-/** Issue count for tab badges (cron failures + connections + MCP not ready). */
-export function useConnectionsHealthIssueCount(
-  connections: Connection[],
-  mcpProviders: ReturnType<typeof useMcpProvidersStatus>["providers"],
-  runs: ReturnType<typeof useAutomationRuns>
-): number {
-  return useMemo(() => {
-    let n = 0;
-    if (!runs.loading) {
-      n += Object.values(runs.byKey).filter((r) => r?.lastRun?.status === "failed").length;
-    }
-    n += connectionIssues(connections).length;
-    n += mcpIssues(mcpProviders).length;
-    return n;
-  }, [connections, mcpProviders, runs.loading, runs.byKey]);
 }
 
 export type { AppArea };
