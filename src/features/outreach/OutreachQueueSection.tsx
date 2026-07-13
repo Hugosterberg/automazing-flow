@@ -28,7 +28,7 @@ export function OutreachQueueSection({
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Outreach-kö</CardTitle>
           <CardDescription>
-            Aktivera automatisk outreach under Automations — utkast hamnar här när follow-ups är due.
+            Aktivera automatisk outreach under Automationer — utkast hamnar här när uppföljningar ska göras.
           </CardDescription>
         </CardHeader>
       </Card>

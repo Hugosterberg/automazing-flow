@@ -220,7 +220,7 @@ export default function ConnectionsPage() {
     } catch (e) {
       setReconcileState({
         loading: false,
-        error: e instanceof Error ? e.message : "Reconcile failed",
+        error: e instanceof Error ? e.message : "Uppdatering misslyckades",
       });
     }
   }
@@ -284,7 +284,7 @@ export default function ConnectionsPage() {
       });
     } catch (err) {
       toast({
-        title: "Connection test failed",
+        title: "Kopplingstest misslyckades",
         description: err instanceof Error ? err.message : "Could not test the connection.",
         variant: "destructive",
       });
@@ -298,7 +298,7 @@ export default function ConnectionsPage() {
       normalized = normalizeWebsiteUrl(websiteInput);
     } catch {
       toast({
-        title: "Invalid website URL",
+        title: "Ogiltig webbadress",
         description: "Enter a valid domain or URL, for example https://example.com.",
         variant: "destructive",
       });
@@ -316,12 +316,12 @@ export default function ConnectionsPage() {
       toast({
         title: normalized ? "Website saved" : "Website removed",
         description: normalized
-          ? "Digital Brand recommendations will use this URL."
-          : "Add a website URL later to enable Digital Brand recommendations.",
+          ? "Digitalt varumärke använder den här URL:en för rekommendationer."
+          : "Lägg till en webbadress senare för Digitalt varumärke-rekommendationer.",
       });
     } catch (error) {
       toast({
-        title: "Could not save website URL",
+        title: "Kunde inte spara webbadress",
         description: error instanceof Error ? error.message : "The profile update failed.",
         variant: "destructive",
       });
@@ -336,7 +336,7 @@ export default function ConnectionsPage() {
         <EmptyState
           icon={PlugZap}
           title="Ingen företagsprofil vald"
-          description="Välj eller skapa en företagsprofil för att hantera anslutningar."
+          description="Välj eller skapa en företagsprofil för att hantera kopplingar."
           action={
             <Button variant="outline" size="sm" asChild>
               <Link to="/company">Gå till Företag</Link>
@@ -356,14 +356,14 @@ export default function ConnectionsPage() {
   const needsAttentionOnly = statusFilter === "needs_attention";
 
   const summary = isLoading
-    ? "Laddar anslutningar…"
+    ? "Laddar kopplingar…"
     : `${activeCount} kopplade`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <PageHeader
         icon={PlugZap}
-        title="Anslutningar"
+        title="Kopplingar"
         description={
           <>
             Alla integrationer för{" "}
@@ -456,7 +456,7 @@ export default function ConnectionsPage() {
           <div className="min-w-0 flex-1 space-y-1.5">
             <Label htmlFor="business-website" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Globe2 className="h-3.5 w-3.5" />
-              Website URL
+              Webbplats
             </Label>
             <Input
               id="business-website"
@@ -468,7 +468,7 @@ export default function ConnectionsPage() {
               disabled={!legacy.activeProfile}
             />
             <p className="text-[11px] text-muted-foreground">
-              Used by Digital Brand for SEO, trust, content, and optimization recommendations.
+              Används av Digitalt varumärke för SEO, förtroende och innehållsrekommendationer.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -476,12 +476,12 @@ export default function ConnectionsPage() {
               <Button type="button" size="sm" variant="outline" asChild>
                 <a href={safeWebsiteUrl(legacy.activeProfile?.website) ?? "#"} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Open site
+                  Öppna sajt
                 </a>
               </Button>
             ) : null}
             <Button type="button" size="sm" variant="outline" asChild>
-              <Link to="/digital-brand">Digital Brand</Link>
+              <Link to="/digital-brand">Digitalt varumärke</Link>
             </Button>
             <Button
               type="button"
@@ -494,7 +494,7 @@ export default function ConnectionsPage() {
               ) : (
                 <Save className="mr-1.5 h-3.5 w-3.5" />
               )}
-              Save URL
+              Spara URL
             </Button>
           </div>
         </CardContent>
@@ -503,7 +503,7 @@ export default function ConnectionsPage() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ConnectionsTab)}>
         <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border rounded-none w-full">
           <TabsTrigger value="integrations" className="text-xs data-[state=active]:bg-muted rounded-b-none">
-            Integrations
+            Integrationer
           </TabsTrigger>
           <TabsTrigger value="mcp" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
             <Bot className="h-3.5 w-3.5" aria-hidden />
@@ -511,7 +511,7 @@ export default function ConnectionsPage() {
           </TabsTrigger>
           <TabsTrigger value="health" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
             <Activity className="h-3.5 w-3.5" aria-hidden />
-            Health
+            Hälsa
             {healthIssueCount > 0 ? (
               <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
                 {healthIssueCount}
@@ -533,7 +533,7 @@ export default function ConnectionsPage() {
             <CardContent className="pt-4 pb-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-xs text-muted-foreground max-w-xl">
-                  All {getConnectionEntriesForArea("intelligence").length} MCP data providers — connect here, run multi-source compare and queries on{" "}
+                  Alla {getConnectionEntriesForArea("intelligence").length} MCP-dataleverantörer — koppla här, kör multi-source-jämförelse och frågor på{" "}
                   <Link to="/intelligence" className="text-primary hover:underline">
                     MCP Intelligence
                   </Link>
@@ -541,7 +541,7 @@ export default function ConnectionsPage() {
                 </p>
                 <Button variant="outline" size="sm" className="shrink-0 gap-1.5" asChild>
                   <Link to="/intelligence">
-                    Open MCP Intelligence
+                    Öppna MCP Intelligence
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                   </Link>
                 </Button>
@@ -579,7 +579,7 @@ export default function ConnectionsPage() {
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">
-            <strong>{selectedIds.size}</strong> selected
+            <strong>{selectedIds.size}</strong> markerade
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -589,7 +589,7 @@ export default function ConnectionsPage() {
               className="h-7 text-xs"
             >
               <X className="h-3 w-3 mr-1" />
-              Clear selection
+              Rensa markering
             </Button>
             <Button
               variant="destructive"
@@ -603,7 +603,7 @@ export default function ConnectionsPage() {
               ) : (
                 <Unplug className="h-3 w-3 mr-1" />
               )}
-              Disconnect
+              Koppla från
             </Button>
           </div>
         </div>
@@ -626,11 +626,11 @@ export default function ConnectionsPage() {
           onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
         >
           <SelectTrigger className="h-8 w-[180px] text-xs">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder="Filtrera på status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="needs_attention">Needs attention</SelectItem>
+            <SelectItem value="all">Alla statusar</SelectItem>
+            <SelectItem value="needs_attention">Behöver uppmärksamhet</SelectItem>
             {CONNECTION_STATUS_ORDER.map((s) => (
               <SelectItem key={s} value={s}>
                 {CONNECTION_STATUS_LABELS[s]}
@@ -640,8 +640,8 @@ export default function ConnectionsPage() {
         </Select>
         {reconcileState.updated != null ? (
           <span className="text-[11px] text-success">
-            Updated {reconcileState.updated} connection
-            {reconcileState.updated === 1 ? "" : "s"}
+            Uppdaterade {reconcileState.updated} koppling
+            {reconcileState.updated === 1 ? "" : "ar"}
           </span>
         ) : null}
         {reconcileState.error ? (

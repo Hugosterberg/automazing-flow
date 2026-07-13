@@ -19,8 +19,8 @@ export function ContentAiImageCard({
   onLocalUploadClick,
   canvaInputRef,
   showContentActions = true,
-  title = "Generate or import image",
-  description = "Create with OpenAI or export a Canva design — saved to History automatically.",
+  title = "Generera eller importera bild",
+  description = "Skapa med OpenAI eller exportera en Canva-design — sparas automatiskt i historiken.",
   onGenerated,
   onSaveToSelection,
   onContinueToPublish,
@@ -67,7 +67,7 @@ export function ContentAiImageCard({
   async function handleGenerate() {
     const text = prompt.trim() || captionHint.trim();
     if (!text) {
-      setError(embedded ? "Describe the image or write a caption first." : "Write a prompt or add a caption in Post or save first.");
+      setError(embedded ? "Beskriv bilden eller skriv en bildtext först." : "Skriv en prompt eller lägg till en bildtext under Publicera eller Spara först.");
       return;
     }
     setBusy("openai");
@@ -92,7 +92,7 @@ export function ContentAiImageCard({
       };
       finishWithAsset(asset);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate image");
+      setError(e instanceof Error ? e.message : "Kunde inte generera bild");
     } finally {
       setBusy(null);
     }
@@ -101,7 +101,7 @@ export function ContentAiImageCard({
   async function handleCanvaExport() {
     const designId = normalizeCanvaDesignId(canvaDesignId);
     if (!designId) {
-      setError("Paste a Canva design link or ID.");
+      setError("Klistra in en Canva-designlänk eller ID.");
       return;
     }
     setBusy("canva");
@@ -121,7 +121,7 @@ export function ContentAiImageCard({
       };
       finishWithAsset(asset);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not export Canva design");
+      setError(e instanceof Error ? e.message : "Kunde inte exportera Canva-design");
     } finally {
       setBusy(null);
     }
@@ -155,26 +155,26 @@ export function ContentAiImageCard({
         ) : null}
         <div className={`space-y-3 ${embedded ? "flex-1 min-w-[220px]" : ""}`}>
           <div className="space-y-2">
-            <Label htmlFor={promptId}>AI image prompt</Label>
+            <Label htmlFor={promptId}>AI-bildprompt</Label>
             <Textarea
               id={promptId}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               rows={embedded ? 3 : 3}
-              placeholder={embedded ? "Describe the image you want for this post..." : "Describe the marketing image you want…"}
+              placeholder={embedded ? "Beskriv bilden du vill ha till inlägget…" : "Beskriv marknadsföringsbilden du vill ha…"}
               className={embedded ? "min-h-[80px]" : undefined}
             />
           </div>
           <Button type="button" variant="outline" onClick={() => void handleGenerate()} disabled={busy !== null}>
             {busy === "openai" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-            {busy === "openai" ? "Generating image..." : "Generate with AI"}
+            {busy === "openai" ? "Genererar bild…" : "Generera med AI"}
           </Button>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <Input
               ref={canvaInputRef}
               value={canvaDesignId}
               onChange={(event) => setCanvaDesignId(event.target.value)}
-              placeholder="Canva design link or ID"
+              placeholder="Canva-designlänk eller ID"
             />
             <Button type="button" variant="outline" onClick={() => void handleCanvaExport()} disabled={busy !== null}>
               {busy === "canva" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
@@ -204,14 +204,14 @@ export function ContentAiImageCard({
             {preview ? (
               <img src={preview} alt="Latest generated" className="max-h-[120px] object-contain" />
             ) : (
-              <p className="text-[11px] text-muted-foreground px-2 text-center">Preview appears here</p>
+              <p className="text-[11px] text-muted-foreground px-2 text-center">Förhandsgranskning visas här</p>
             )}
           </div>
         ) : null}
       </div>
       {embedded && preview && !localPreviewUrl?.startsWith("blob:") ? (
         <div className="rounded-lg border border-border bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground">Ready to publish with your post.</p>
+          <p className="text-xs text-muted-foreground">Redo att publiceras med ditt inlägg.</p>
         </div>
       ) : null}
       {showContentActions && lastAsset ? (
@@ -219,13 +219,13 @@ export function ContentAiImageCard({
           {onSaveToSelection ? (
             <Button type="button" size="sm" variant="secondary" onClick={() => onSaveToSelection(lastAsset)}>
               <FolderPlus className="h-3.5 w-3.5 mr-1.5" />
-              Save to selection
+              Spara till urval
             </Button>
           ) : null}
           {onContinueToPublish ? (
             <Button type="button" size="sm" onClick={onContinueToPublish}>
               <Send className="h-3.5 w-3.5 mr-1.5" />
-              Continue to post
+              Fortsätt till inlägg
             </Button>
           ) : null}
         </div>

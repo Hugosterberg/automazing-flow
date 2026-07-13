@@ -64,18 +64,18 @@ export const TASK_STATUS_ORDER: TaskStatus[] = [
 export const TASK_PRIORITY_ORDER: TaskPriority[] = ["low", "medium", "high"];
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  open: "Open",
-  in_progress: "In progress",
-  blocked: "Blocked",
+  open: "Att göra",
+  in_progress: "Pågår",
+  blocked: "Blockerad",
   done: "Klart",
   archived: "Arkiverad",
 };
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
+  low: "Låg",
+  medium: "Medel",
+  high: "Hög",
+  urgent: "Brådskande",
 };
 
 /**

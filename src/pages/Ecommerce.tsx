@@ -731,7 +731,7 @@ export default function Ecommerce() {
           "Synka produkter och följ ordrar under Overview",
           "Importera från Alibaba eller hantera katalogen under Products",
         ]}
-        tip="Dagliga automationer synkar ordrar och lager. Ordrar som väntar på fulfillment markeras i action-stripen."
+        tip="Dagliga automationer synkar ordrar och lager. Ordrar som väntar på leverans markeras i åtgärdsraden."
         liveHintOverride={
           actionNeeded && actionNeeded.total > 0
             ? `${actionNeeded.total} åtgärd${actionNeeded.total === 1 ? "" : "er"} väntar — ordrar eller lågt lager`

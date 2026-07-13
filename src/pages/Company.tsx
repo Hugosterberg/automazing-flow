@@ -249,7 +249,7 @@ export default function CompanyPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground py-2">
-              Inga anslutningar — börja under Connections.
+              Inga kopplingar — börja under Kopplingar.
             </p>
           )}
         </CardContent>

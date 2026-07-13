@@ -110,7 +110,7 @@ export function CompanyAutoFillCard({ businessProfileId, form, onApply, disabled
           <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-3 py-2.5 space-y-2">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Kräver webbplats eller företagsnamn ifyllt nedan. Exa/Sprouts måste vara kopplade under
-              Connections.
+              Kopplingar.
             </p>
             <Button
               type="button"

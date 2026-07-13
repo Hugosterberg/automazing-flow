@@ -4,7 +4,7 @@ import { titleForPath } from "@/hooks/useDocumentTitle";
 describe("titleForPath", () => {
   it("resolves known top-level routes to their nav title", () => {
     expect(titleForPath("/ecommerce")).toBe("E-handel");
-    expect(titleForPath("/content")).toBe("Content");
+    expect(titleForPath("/content")).toBe("Innehåll");
     expect(titleForPath("/connections")).toBe("Kopplingar");
     expect(titleForPath("/preferences")).toBe("Inställningar");
   });

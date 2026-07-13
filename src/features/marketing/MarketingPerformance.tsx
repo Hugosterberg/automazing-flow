@@ -206,18 +206,20 @@ export function MarketingPerformance() {
             Marknadsföringsresultat
           </CardTitle>
           <CardDescription>
-            {connected.shopify ? "Shopify connected — waiting for ad spend data." : "Connect Shopify for revenue side of ROAS."}
+            {connected.shopify
+              ? "Shopify kopplad — väntar på annonskostnadsdata."
+              : "Koppla Shopify för intäktssidan av ROAS."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {!connected.shopify ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/ecommerce">Connect Shopify</Link>
+              <Link to="/ecommerce">Koppla Shopify</Link>
             </Button>
           ) : null}
           {!connected.meta_business && !connected.google_ads ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/connections">Connect Meta or Google Ads</Link>
+              <Link to="/connections">Koppla Meta eller Google Ads</Link>
             </Button>
           ) : null}
         </CardContent>

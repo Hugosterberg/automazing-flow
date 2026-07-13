@@ -255,7 +255,7 @@ export default function TasksPage() {
     try {
       await setStatus({ id, status });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not update task.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte uppdatera uppgiften.");
     }
   }
 
@@ -266,9 +266,9 @@ export default function TasksPage() {
       if (!row) return;
       // Deletes are permanent in the DB, so give a grace period via the
       // toast: Undo recreates the task (new id) with all its content.
-      toast.success("Task deleted.", {
+      toast.success("Uppgiften togs bort.", {
         action: {
-          label: "Undo",
+          label: "Ångra",
           onClick: () => {
             void createTask({
               title: row.title,

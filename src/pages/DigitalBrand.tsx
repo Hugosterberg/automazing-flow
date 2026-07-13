@@ -573,7 +573,7 @@ export default function DigitalBrandPage() {
     <div className="max-w-6xl space-y-6">
       <PageHeader
         icon={Sparkles}
-        title="Digital Brand"
+        title="Digitalt varumärke"
         description="Live webbplatsaudit plus SEO-, prestanda-, förtroende- och kanalrekommendationer."
         actions={
           <div className="flex flex-wrap gap-2">
@@ -598,7 +598,7 @@ export default function DigitalBrandPage() {
       />
 
       <PageSmartBar
-        title="Digital Brand granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer."
+        title="Digitalt varumärke granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer."
         steps={[
           "Registrera webbadress under Kopplingar",
           "Kör audit och granska PageSpeed- och HTML-värden",

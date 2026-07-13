@@ -384,7 +384,7 @@ export default function ReviewsPage() {
       setReplyDraft(displayString(payload?.draft));
     } catch (e) {
       toast({
-        title: "AI draft failed",
+        title: "AI-utkast misslyckades",
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -453,16 +453,16 @@ export default function ReviewsPage() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(displayString(payload?.message) || displayString(payload?.error) || "Could not send reply");
+        throw new Error(displayString(payload?.message) || displayString(payload?.error) || "Kunde inte skicka svar");
       }
       markReplied(reviewId);
       setReplySent(true);
-      toast({ title: "Reply posted", description: "Your reply was sent via Zernio." });
+      toast({ title: "Svar skickat", description: "Ditt svar skickades via Zernio." });
       window.setTimeout(() => advanceToNextReview(reviewId), 500);
     } catch (e) {
       toast({
-        title: "Could not send reply",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: "Kunde inte skicka svar",
+        description: e instanceof Error ? e.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {
@@ -696,7 +696,7 @@ export default function ReviewsPage() {
                 zernio_connect_failed: "Zernio could not start the Tripadvisor/Reviews connect flow. Use Official API, or check that Zernio supports this platform for your workspace.",
                 zernio_init_failed: "Zernio could not initialize the Reviews connect flow. Use Official API, or check ZERNIO_API_KEY/ZERNIO_PROFILE_ID.",
               },
-              "Connect failed"
+              "Koppling misslyckades"
             )}
             onDismiss={clearOauthError}
           />
@@ -710,10 +710,10 @@ export default function ReviewsPage() {
               <p className="text-sm text-destructive">{error}</p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => void refresh()}>
-                  Retry
+                  Försök igen
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setError(null)}>
-                  Dismiss
+                  Stäng
                 </Button>
               </div>
             </CardContent>

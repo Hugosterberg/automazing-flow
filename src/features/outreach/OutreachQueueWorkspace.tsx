@@ -285,7 +285,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
       <div className="rounded-lg border border-dashed border-border px-6 py-10 text-center">
         <p className="text-sm font-medium text-foreground">Outreach-kön är tom</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Aktivera automatisk outreach under Automations — utkast hamnar här när uppföljningar är due.
+          Aktivera automatisk outreach under Automationer — utkast hamnar här när uppföljningar ska göras.
         </p>
       </div>
     );

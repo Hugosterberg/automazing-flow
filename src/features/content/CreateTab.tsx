@@ -403,8 +403,8 @@ export function CreateTab({
       <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/20 p-1">
         {(
           [
-            { id: "generate", label: "Generate" },
-            { id: "transform", label: "Transform" },
+            { id: "generate", label: "Generera" },
+            { id: "transform", label: "Transformera" },
             { id: "batch", label: "Batch" },
           ] as const
         ).map((mode) => (
@@ -432,7 +432,7 @@ export function CreateTab({
           autoContinueToPublish
           onGenerated={(asset) => {
             onRecordGenerated?.(asset);
-            toast.message("Saved to History");
+            toast.message("Sparat i historiken");
           }}
           onSaveToSelection={(asset) => onSaveResultToSelection?.(asset)}
           onContinueToPublish={onContinueToPublish}
@@ -468,7 +468,7 @@ export function CreateTab({
             </div>
             <Button variant="outline" size="sm" onClick={() => void loadTools()} disabled={loadingTools || !businessProfileId}>
               {loadingTools ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-              Reload tools
+              Ladda om verktyg
             </Button>
           </div>
         </CardHeader>
@@ -476,7 +476,7 @@ export function CreateTab({
           {!businessProfileId ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No active profile</AlertTitle>
+              <AlertTitle>Ingen aktiv profil</AlertTitle>
               <AlertDescription>Välj en företagsprofil innan du laddar apiai.me-verktyg.</AlertDescription>
             </Alert>
           ) : toolsError ? (
@@ -535,7 +535,7 @@ export function CreateTab({
                   disabled={loadingTools || tools.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={loadingTools ? "Loading apiai.me tools…" : "Choose a tool"} />
+                    <SelectValue placeholder={loadingTools ? "Laddar apiai.me-verktyg…" : "Välj ett verktyg"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
                     {(["workflow", "pipeline", "flow"] as const).map((type) =>
@@ -577,7 +577,7 @@ export function CreateTab({
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={4}
-                    placeholder="Describe the content you want to create, transform, or evaluate…"
+                    placeholder="Beskriv innehållet du vill skapa, transformera eller utvärdera…"
                   />
                 </div>
               ) : null}
@@ -745,7 +745,7 @@ export function CreateTab({
                   {onContinueToPublish ? (
                     <Button type="button" onClick={onContinueToPublish}>
                       <Send className="h-4 w-4 mr-2" />
-                      Continue to post
+                      Fortsätt till inlägg
                     </Button>
                   ) : null}
                 </div>

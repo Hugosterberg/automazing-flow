@@ -68,10 +68,10 @@ export function ReplyTemplatePicker({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuLabel className="text-xs">Reply templates</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs">Svarsmallar</DropdownMenuLabel>
           {templates.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-muted-foreground">
-              No templates yet — create one below.
+              Inga mallar ännu — skapa en nedan.
             </p>
           ) : (
             templates.map((template) => (
@@ -88,7 +88,7 @@ export function ReplyTemplatePicker({
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setManageOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-2" />
-            Manage templates…
+            Hantera mallar…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -96,47 +96,47 @@ export function ReplyTemplatePicker({
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reply templates</DialogTitle>
+            <DialogTitle>Svarsmallar</DialogTitle>
             <DialogDescription>
-              Saved per business profile and available in Messages and Reviews. Use{" "}
-              <code className="rounded bg-muted px-1">{"{name}"}</code> to insert the recipient's name.
+              Sparas per företagsprofil och finns i Meddelanden och Recensioner. Använd{" "}
+              <code className="rounded bg-muted px-1">{"{name}"}</code> för att infoga mottagarens namn.
             </DialogDescription>
           </DialogHeader>
 
           {editor ? (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label htmlFor="template-name">Name</Label>
+                <Label htmlFor="template-name">Namn</Label>
                 <Input
                   id="template-name"
                   value={editor.name}
                   onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-                  placeholder="e.g. Thanks for the feedback"
+                  placeholder="t.ex. Tack för feedbacken"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="template-body">Message</Label>
+                <Label htmlFor="template-body">Meddelande</Label>
                 <Textarea
                   id="template-body"
                   value={editor.body}
                   onChange={(e) => setEditor({ ...editor, body: e.target.value })}
-                  placeholder="Hi {name}, thanks for reaching out…"
+                  placeholder="Hej {name}, tack för att du hörde av dig…"
                   className="min-h-[96px] text-sm"
                 />
               </div>
               <DialogFooter>
                 <Button variant="ghost" size="sm" onClick={() => setEditor(null)}>
-                  Cancel
+                  Avbryt
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={!editor.name.trim() || !editor.body.trim()}>
-                  Save template
+                  Spara mall
                 </Button>
               </DialogFooter>
             </div>
           ) : (
             <div className="space-y-2">
               {templates.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">No templates yet.</p>
+                <p className="text-sm text-muted-foreground py-2">Inga mallar ännu.</p>
               ) : (
                 templates.map((template) => (
                   <div
@@ -153,7 +153,7 @@ export function ReplyTemplatePicker({
                         size="sm"
                         className="h-7 w-7 p-0"
                         onClick={() => openEditor(template)}
-                        aria-label={`Edit template ${template.name}`}
+                        aria-label={`Redigera mall ${template.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -162,7 +162,7 @@ export function ReplyTemplatePicker({
                         size="sm"
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                         onClick={() => deleteTemplate(template.id)}
-                        aria-label={`Delete template ${template.name}`}
+                        aria-label={`Ta bort mall ${template.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -172,7 +172,7 @@ export function ReplyTemplatePicker({
               )}
               <Button variant="outline" size="sm" onClick={() => openEditor()}>
                 <Plus className="h-4 w-4 mr-2" />
-                New template
+                Ny mall
               </Button>
             </div>
           )}

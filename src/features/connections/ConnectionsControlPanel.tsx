@@ -159,7 +159,7 @@ export function ConnectionsControlPanel({
         title: `Auto-reply failed (${entry.platform ?? entry.kind})`,
         message: entry.error || entry.incoming_text?.slice(0, 120) || "Send or draft failed.",
         actionHref: "/messages",
-        actionLabel: "Open messages",
+        actionLabel: "Öppna meddelanden",
       });
     }
 
@@ -178,11 +178,11 @@ export function ConnectionsControlPanel({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" aria-hidden />
-              Health control panel
+              Hälsokontroll
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              Scheduled jobs, integrations, and MCP providers where calls fail or credentials are missing.
-              MCP tool calls themselves run on button click — this panel shows setup and job failures.
+              Schemalagda jobb, integrationer och MCP-leverantörer där anrop misslyckas eller nycklar saknas.
+              MCP-verktyg körs när du klickar — den här panelen visar setup- och jobbproblem.
             </CardDescription>
           </div>
           <Button
@@ -231,7 +231,7 @@ export function ConnectionsControlPanel({
         <div className="flex flex-wrap gap-3 pt-2 border-t border-border/60 text-xs">
           <Link to="/automations" className="inline-flex items-center gap-1 text-primary hover:underline">
             <Bot className="h-3.5 w-3.5" aria-hidden />
-            Automations
+            Automationer
             <ArrowRight className="h-3 w-3" />
           </Link>
           <Link to="/intelligence" className="inline-flex items-center gap-1 text-primary hover:underline">

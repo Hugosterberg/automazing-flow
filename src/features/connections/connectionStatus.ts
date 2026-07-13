@@ -30,11 +30,11 @@ export const CONNECTION_STATUS_ORDER: readonly ConnectionStatus[] = [
 ] as const;
 
 export const CONNECTION_STATUS_LABELS: Record<ConnectionStatus, string> = {
-  connected: "Connected",
-  not_connected: "Not connected",
-  reconnect_required: "Reconnect required",
-  error: "Error",
-  syncing: "Syncing",
+  connected: "Kopplad",
+  not_connected: "Ej kopplad",
+  reconnect_required: "Kräver återanslutning",
+  error: "Fel",
+  syncing: "Synkar",
 };
 
 /**

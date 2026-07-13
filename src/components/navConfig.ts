@@ -103,7 +103,7 @@ export const topNavItems: TopNavItem[] = [
 export const navItems: NavItem[] = [
   {
     key: "content",
-    title: "Content",
+    title: "Innehåll",
     url: "/content",
     icon: FolderOpen,
     platforms: ["google_drive", "canva"] as AccountPlatform[],

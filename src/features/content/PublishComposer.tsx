@@ -150,12 +150,12 @@ export function PublishComposer({
   function schedulePost() {
     if (selectedIds.length === 0 || !caption.trim()) return;
     if (!scheduledFor) {
-      toast({ title: "Pick a date and time", variant: "destructive" });
+      toast({ title: "Välj datum och tid", variant: "destructive" });
       return;
     }
     const atMs = new Date(scheduledFor).getTime();
     if (!Number.isFinite(atMs) || atMs < Date.now() - 60_000) {
-      toast({ title: "Scheduled time must be in the future", variant: "destructive" });
+      toast({ title: "Schemalagd tid måste ligga i framtiden", variant: "destructive" });
       return;
     }
     scheduledPosts.upsert(buildPost("scheduled", new Date(atMs).toISOString()));
@@ -163,7 +163,7 @@ export function PublishComposer({
     resetForm();
     onPublished?.();
     toast({
-      title: "Scheduled",
+      title: "Schemalagt",
       description: "Publiceras automatiskt på vald tid. Flytta eller redigera från kalendern tills dess.",
     });
   }
@@ -191,13 +191,13 @@ export function PublishComposer({
       resetForm();
       onPublished?.();
       toast({
-        title: "Published",
-        description: `${payload?.published ?? selectedIds.length} account(s) via Zernio.`,
+        title: "Publicerat",
+        description: `${payload?.published ?? selectedIds.length} konto(n) via Zernio.`,
       });
     } catch (e) {
       toast({
-        title: "Publish failed",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: "Publicering misslyckades",
+        description: e instanceof Error ? e.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {
@@ -210,7 +210,7 @@ export function PublishComposer({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Send className="h-4 w-4 text-muted-foreground" />
-          Publish or schedule a post
+          Publicera eller schemalägg inlägg
         </CardTitle>
         <CardDescription>
           Utkast → Schemalagd → Publicerad: spara som utkast, schemalägg för automatisk publicering, eller publicera direkt via Zernio.
@@ -219,9 +219,9 @@ export function PublishComposer({
       <CardContent className="space-y-4">
         {postable.length === 0 ? (
           <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            Connect a Zernio-backed social account to publish or schedule posts from here.
+            Koppla ett Zernio-kopplat socialt konto för att publicera eller schemalägga inlägg här.
             <Button variant="link" size="sm" className="h-auto px-1 py-0 text-sm" asChild>
-              <Link to="/connections">Manage connections</Link>
+              <Link to="/connections">Hantera kopplingar</Link>
             </Button>
           </div>
         ) : null}
@@ -245,13 +245,13 @@ export function PublishComposer({
             onCaptionChange?.(next);
             setDone(false);
           }}
-          placeholder="Write your caption here…"
+          placeholder="Skriv din bildtext här…"
           className="min-h-[90px]"
         />
 
         {resolvedMediaUrls.length > 0 ? (
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Attached media ({resolvedMediaUrls.length})</Label>
+            <Label className="text-xs text-muted-foreground">Bifogad media ({resolvedMediaUrls.length})</Label>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {resolvedMediaUrls.map((url) => (
                 <img
@@ -266,7 +266,7 @@ export function PublishComposer({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No media attached — add images in Browse or Create first.</p>
+          <p className="text-xs text-muted-foreground">Ingen media bifogad — lägg till bilder under Bläddra eller Skapa först.</p>
         )}
 
         {hasBlobOnlyMedia ? (

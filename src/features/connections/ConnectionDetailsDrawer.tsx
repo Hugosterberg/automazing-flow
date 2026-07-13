@@ -209,17 +209,17 @@ export function ConnectionDetailsDrawer({
             <section className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Recent sync runs
+                  Senaste synkkörningar
                 </h3>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {runs.length}
                 </span>
               </div>
               {runsLoading ? (
-                <p className="text-xs text-muted-foreground">Loading runs…</p>
+                <p className="text-xs text-muted-foreground">Laddar körningar…</p>
               ) : runs.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No sync runs recorded for this connection yet.
+                  Inga synkkörningar registrerade för den här kopplingen ännu.
                 </p>
               ) : (
                 <ul className="space-y-1.5">
@@ -233,7 +233,7 @@ export function ConnectionDetailsDrawer({
             <section className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Recent activity
+                  Senaste aktivitet
                 </h3>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {activityEvents.length}
@@ -242,7 +242,7 @@ export function ConnectionDetailsDrawer({
               <ActivityFeed
                 events={activityEvents}
                 isLoading={activityLoading}
-                emptyMessage="No activity recorded for this connection yet."
+                emptyMessage="Ingen aktivitet registrerad för den här kopplingen ännu."
                 maxRows={10}
               />
             </section>
@@ -259,7 +259,7 @@ export function ConnectionDetailsDrawer({
               className="gap-1.5"
               onClick={() => onReconnect(connection)}
             >
-              Reconnect
+              Koppla om
             </Button>
           ) : null}
           {onResync ? (
@@ -270,7 +270,7 @@ export function ConnectionDetailsDrawer({
               onClick={() => void onResync(connection)}
             >
               <PlugZap className="h-3.5 w-3.5" />
-              Test connection
+              Testa koppling
             </Button>
           ) : null}
           {onDisconnect ? (
@@ -282,7 +282,7 @@ export function ConnectionDetailsDrawer({
               disabled={isDisconnecting}
             >
               {isDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              Disconnect
+              Koppla från
             </Button>
           ) : null}
         </div>
@@ -291,14 +291,16 @@ export function ConnectionDetailsDrawer({
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect {connection?.displayName || connection?.username}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Koppla från {connection?.displayName || connection?.username}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              The account will be removed and its stored tokens cleared. You can connect a different
-              account in its place. This cannot be undone.
+              Kontot tas bort och sparade tokens rensas. Du kan koppla ett annat konto i stället.
+              Detta går inte att ångra.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -306,7 +308,7 @@ export function ConnectionDetailsDrawer({
                 setRemoveOpen(false);
               }}
             >
-              Disconnect
+              Koppla från
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

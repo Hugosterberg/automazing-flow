@@ -136,7 +136,7 @@ export function TaskEditDialog({
     if (!task || !onQuickPatch) return;
     onQuickPatch(task.id, { checklist: nextChecklist, comments: nextComments }).catch(
       (err) => {
-        setError(err instanceof Error ? err.message : "Could not save changes.");
+        setError(err instanceof Error ? err.message : "Kunde inte spara ändringarna.");
       }
     );
   }
@@ -191,7 +191,7 @@ export function TaskEditDialog({
     if (!task) return;
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Title is required.");
+      setError("Titel krävs.");
       return;
     }
     setSaving(true);
@@ -208,7 +208,7 @@ export function TaskEditDialog({
       });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save task.");
+      setError(err instanceof Error ? err.message : "Kunde inte spara uppgiften.");
     } finally {
       setSaving(false);
     }
@@ -223,7 +223,7 @@ export function TaskEditDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
             <span className="flex items-center gap-1.5">
-              Task details
+              Uppgiftsdetaljer
               {shareUrlBase && task ? (
                 <button
                   type="button"
@@ -231,11 +231,11 @@ export function TaskEditDialog({
                     const url = `${window.location.origin}${shareUrlBase}?task=${task.id}`;
                     void navigator.clipboard
                       .writeText(url)
-                      .then(() => toast.success("Link copied."))
-                      .catch(() => toast.error("Could not copy the link."));
+                      .then(() => toast.success("Länk kopierad."))
+                      .catch(() => toast.error("Kunde inte kopiera länken."));
                   }}
-                  aria-label="Copy link to this task"
-                  title="Copy link to this task"
+                  aria-label="Kopiera länk till uppgiften"
+                  title="Kopiera länk till uppgiften"
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Link2 className="h-3.5 w-3.5" />
@@ -267,7 +267,7 @@ export function TaskEditDialog({
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                {aiBusy ? "Analyzing…" : "Prepare with AI"}
+                {aiBusy ? "Analyserar…" : "Förbered med AI"}
               </Button>
               </div>
             ) : null}
@@ -295,14 +295,14 @@ export function TaskEditDialog({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {option.status === "open" ? "To-do" : TASK_STATUS_LABELS[option.status]}
+                  {option.status === "open" ? "Att göra" : TASK_STATUS_LABELS[option.status]}
                 </button>
               ))}
             </div>
           ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-title" className="text-xs">
-              Title
+              Titel
             </Label>
             <Input
               id="edit-task-title"
@@ -314,13 +314,13 @@ export function TaskEditDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="edit-task-description" className="text-xs">
-              Description
+              Beskrivning
             </Label>
             <Textarea
               id="edit-task-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add context, links, or notes…"
+              placeholder="Lägg till kontext, länkar eller anteckningar…"
               rows={3}
               disabled={saving}
             />
@@ -334,7 +334,7 @@ export function TaskEditDialog({
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs">
               <ListChecks className="h-3.5 w-3.5" />
-              Checklist
+              Checklista
               {checklist.length > 0 ? (
                 <span className="tabular-nums text-muted-foreground">
                   {doneCount}/{checklist.length}
@@ -352,7 +352,7 @@ export function TaskEditDialog({
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs">
               <MessageSquare className="h-3.5 w-3.5" />
-              Comments
+              Kommentarer
               {comments.length > 0 ? (
                 <span className="tabular-nums text-muted-foreground">
                   {comments.length}
@@ -391,7 +391,7 @@ export function TaskEditDialog({
                 value={commentDraft}
                 onChange={(e) => setCommentDraft(e.target.value)}
                 onKeyDown={handleCommentKeyDown}
-                placeholder="Add a comment…"
+                placeholder="Lägg till en kommentar…"
                 rows={1}
                 disabled={saving}
                 className="min-h-[2rem] text-xs"
@@ -403,7 +403,7 @@ export function TaskEditDialog({
                 className="h-8 w-8 shrink-0 p-0"
                 onClick={addComment}
                 disabled={saving || !commentDraft.trim()}
-                aria-label="Add comment"
+                aria-label="Lägg till kommentar"
               >
                 <Send className="h-3.5 w-3.5" />
               </Button>
@@ -413,7 +413,7 @@ export function TaskEditDialog({
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
           {task?.created_at ? (
             <p className="text-[11px] text-muted-foreground">
-              Created {formatRelativeTime(task.created_at) ?? task.created_at.slice(0, 10)}
+              Skapad {formatRelativeTime(task.created_at) ?? task.created_at.slice(0, 10)}
             </p>
           ) : null}
           <DialogFooter>
@@ -427,7 +427,7 @@ export function TaskEditDialog({
                 disabled={saving}
               >
                 <Copy className="h-3.5 w-3.5" />
-                Duplicate
+                Duplicera
               </Button>
             ) : null}
             <Button
@@ -436,10 +436,10 @@ export function TaskEditDialog({
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Cancel
+              Avbryt
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Spara"}
             </Button>
           </DialogFooter>
         </form>

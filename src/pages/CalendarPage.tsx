@@ -727,7 +727,7 @@ export default function CalendarPage() {
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-foreground"
                               onClick={() => openEditDialog(ev)}
-                              aria-label="Edit event"
+                              aria-label="Redigera händelse"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -736,7 +736,7 @@ export default function CalendarPage() {
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
                               onClick={() => removeEvent(ev.id)}
-                              aria-label="Delete event"
+                              aria-label="Ta bort händelse"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1125,14 +1125,14 @@ export default function CalendarPage() {
       >
         <DialogContent className="rounded-xl">
           <DialogHeader>
-            <DialogTitle>{editingEventId ? "Edit activity" : "Add activity"}</DialogTitle>
+            <DialogTitle>{editingEventId ? "Redigera aktivitet" : "Lägg till aktivitet"}</DialogTitle>
             <DialogDescription>
-              {editingEventId ? "Update this calendar entry." : "Add an activity or automated task to the calendar"}
+              {editingEventId ? "Uppdatera den här kalenderposten." : "Lägg till en aktivitet eller automatiserad uppgift i kalendern"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="cal-date">Date</Label>
+              <Label htmlFor="cal-date">Datum</Label>
               <Input
                 id="cal-date"
                 type="date"
@@ -1141,16 +1141,16 @@ export default function CalendarPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cal-title">Title</Label>
+              <Label htmlFor="cal-title">Titel</Label>
               <Input
                 id="cal-title"
-                placeholder="E.g. Team meeting, Scheduled post"
+                placeholder="T.ex. teammöte, schemalagt inlägg"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cal-time">Time (optional)</Label>
+              <Label htmlFor="cal-time">Tid (valfritt)</Label>
               <Input
                 id="cal-time"
                 type="time"
@@ -1159,22 +1159,22 @@ export default function CalendarPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cal-description">Description (optional)</Label>
+              <Label htmlFor="cal-description">Beskrivning (valfritt)</Label>
               <Textarea
                 id="cal-description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 rows={2}
-                placeholder="Notes or agenda"
+                placeholder="Anteckningar eller agenda"
               />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
                 <Label htmlFor="cal-auto" className="font-medium">
-                  Automated task
+                  Automatiserad uppgift
                 </Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Runs automatically at the specified time
+                  Körs automatiskt vid angiven tid
                 </p>
               </div>
               <Switch
@@ -1186,10 +1186,10 @@ export default function CalendarPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              Avbryt
             </Button>
             <Button onClick={saveEvent} disabled={!formTitle.trim()}>
-              {editingEventId ? "Save" : "Add"}
+              {editingEventId ? "Spara" : "Lägg till"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1198,12 +1198,12 @@ export default function CalendarPage() {
       <Dialog open={postDialog != null} onOpenChange={(open) => { if (!open) setPostDialog(null); }}>
         <DialogContent className="rounded-xl">
           <DialogHeader>
-            <DialogTitle>Scheduled post</DialogTitle>
+            <DialogTitle>Schemalagt inlägg</DialogTitle>
             <DialogDescription>
               {postDialog
                 ? postDialog.status === "published"
-                  ? "This post is already published."
-                  : "Move the publish time, or open the post in the composer to edit it."
+                  ? "Det här inlägget är redan publicerat."
+                  : "Flytta publiceringstiden, eller öppna inlägget i publiceringsverktyget för att redigera."
                 : ""}
             </DialogDescription>
           </DialogHeader>
@@ -1226,11 +1226,11 @@ export default function CalendarPage() {
               {postDialog.status !== "published" ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="post-date">Date</Label>
+                    <Label htmlFor="post-date">Datum</Label>
                     <Input id="post-date" type="date" value={postFormDate} onChange={(e) => setPostFormDate(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="post-time">Time</Label>
+                    <Label htmlFor="post-time">Tid</Label>
                     <Input id="post-time" type="time" value={postFormTime} onChange={(e) => setPostFormTime(e.target.value)} />
                   </div>
                 </div>
@@ -1240,12 +1240,12 @@ export default function CalendarPage() {
           <DialogFooter className="gap-2">
             {postDialog ? (
               <Button variant="outline" asChild>
-                <Link to={`/social-media?post=${postDialog.id}`}>Open in composer</Link>
+                <Link to={`/social-media?post=${postDialog.id}`}>Öppna i publiceringsverktyget</Link>
               </Button>
             ) : null}
             {postDialog && postDialog.status !== "published" ? (
               <Button onClick={savePostReschedule} disabled={!postFormDate}>
-                Save new time
+                Spara ny tid
               </Button>
             ) : null}
           </DialogFooter>

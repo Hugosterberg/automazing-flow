@@ -466,7 +466,7 @@ export default function PreferencesPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex w-full min-h-0 flex-1 flex-col">
         <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">Översikt</TabsTrigger>
           <TabsTrigger value="team">
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Team
@@ -479,7 +479,7 @@ export default function PreferencesPage() {
             <Bot className="h-3.5 w-3.5 mr-1.5" />
             Automation
           </TabsTrigger>
-          <TabsTrigger value="api-keys">Integrations</TabsTrigger>
+          <TabsTrigger value="api-keys">Integrationer</TabsTrigger>
           <TabsTrigger value="help">
             <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
             Help
@@ -552,7 +552,7 @@ export default function PreferencesPage() {
                 Automationer har flyttat
               </CardTitle>
               <CardDescription>
-                Schemalagda jobb och AI-flöden hanteras på sidan Automations — status, schema och
+                Schemalagda jobb och AI-flöden hanteras på sidan Automationer — status, schema och
                 resultat på samma ställe. Här under Inställningar finns bara nycklar och AI-preferenser.
               </CardDescription>
             </CardHeader>
@@ -568,12 +568,12 @@ export default function PreferencesPage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span>Publicering schemaläggs under Content → Post (inte här)</span>
+                  <span>Publicering schemaläggs under Content → Publicera (inte här)</span>
                 </li>
               </ul>
               <Button asChild>
                 <Link to="/automations">
-                  Öppna Automations
+                  Öppna Automationer
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
@@ -682,7 +682,7 @@ export default function PreferencesPage() {
                       <div className="flex justify-end">
                         <Button onClick={() => void handleSaveTenant()} disabled={saving || dirtyKeys.length === 0}>
                           <Save className="h-4 w-4 mr-2" />
-                          {saving ? "Saving..." : "Save profile secrets"}
+                          {saving ? "Sparar…" : "Spara profilnycklar"}
                         </Button>
                       </div>
                     </>

@@ -555,7 +555,7 @@ export default function SocialMedia() {
       />
 
       <PageSmartBar
-        title="Social Media är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
+        title="Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
         steps={[
           "Koppla konton under Kopplingar om en plattform saknas",
           "Välj plattform och konto i flikarna ovan",

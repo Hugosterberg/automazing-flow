@@ -54,7 +54,7 @@ export function PriorityPicker({
   return (
     <div
       role="radiogroup"
-      aria-label="Priority"
+      aria-label="Prioritet"
       className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1"
     >
       {TASK_PRIORITY_ORDER.map((p) => {
@@ -143,7 +143,7 @@ export function DueDatePicker({
           )}
         >
           <CalendarDays className="h-3.5 w-3.5" />
-          {selected ? `Due ${formatDueLabel(selected)}` : "Due date"}
+          {selected ? `Förfaller ${formatDueLabel(selected)}` : "Förfallodatum"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -159,9 +159,9 @@ export function DueDatePicker({
         <div className="flex items-center gap-1 border-t border-border px-2 py-2">
           {(
             [
-              ["Today", 0],
-              ["Tomorrow", 1],
-              ["Next week", 7],
+              ["Idag", 0],
+              ["Imorgon", 1],
+              ["Nästa vecka", 7],
             ] as const
           ).map(([label, days]) => (
             <Button
@@ -189,7 +189,7 @@ export function DueDatePicker({
               setOpen(false);
             }}
           >
-            Clear
+            Rensa
           </Button>
         </div>
       </PopoverContent>
@@ -206,7 +206,7 @@ export function ChecklistEditor({
   onChange,
   onToggle,
   disabled,
-  placeholder = "Add a requirement…",
+  placeholder = "Lägg till krav…",
 }: {
   items: TaskChecklistItem[];
   onChange: (items: TaskChecklistItem[]) => void;
@@ -289,7 +289,7 @@ export function ChecklistEditor({
           className="h-8 w-8 shrink-0 p-0"
           onClick={addDraft}
           disabled={disabled || !draft.trim()}
-          aria-label="Add requirement"
+          aria-label="Lägg till krav"
         >
           <Plus className="h-3.5 w-3.5" />
         </Button>

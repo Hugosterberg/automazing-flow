@@ -766,7 +766,7 @@ export function MessageDetailPanel({
                     {sendBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     Skicka svar
                   </Button>
-                  <span className="hidden w-full text-[10px] text-muted-foreground sm:inline sm:w-auto">
+                  <span className="hidden text-[10px] text-muted-foreground lg:inline">
                     Ctrl+Enter
                     {replyDraft.trim() ? ` · ${replyDraft.trim().length} tecken` : null}
                   </span>

@@ -65,7 +65,7 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
       // Keep focus in the title so several tasks can be added in a row.
       titleRef.current?.focus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create task.");
+      setError(err instanceof Error ? err.message : "Kunde inte skapa uppgiften.");
     } finally {
       setSubmitting(false);
     }
@@ -87,10 +87,10 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
           id="task-title-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a task — press Enter to create…"
+          placeholder="Ny uppgift — tryck Enter för att skapa…"
           disabled={busy}
           autoComplete="off"
-          aria-label="Task title"
+          aria-label="Uppgiftstitel"
           className="flex-1"
         />
         <Button
@@ -104,7 +104,7 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
           ) : (
             <Plus className="h-3.5 w-3.5" />
           )}
-          Add
+          Lägg till
         </Button>
       </div>
 
@@ -122,7 +122,7 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", showDetails && "rotate-180")}
           />
-          Details
+          Detaljer
           {!showDetails && detailCount > 0 ? (
             <span className="rounded-full bg-primary/15 px-1.5 text-[10px] tabular-nums text-primary">
               {detailCount}
@@ -135,22 +135,22 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
         <div className="space-y-3 border-t border-border/60 pt-3">
           <div className="space-y-1.5">
             <Label htmlFor="task-description" className="text-xs">
-              Description{" "}
-              <span className="text-muted-foreground">(optional)</span>
+              Beskrivning{" "}
+              <span className="text-muted-foreground">(valfritt)</span>
             </Label>
             <Textarea
               id="task-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add context or acceptance criteria…"
+              placeholder="Lägg till kontext eller acceptanskriterier…"
               rows={2}
               disabled={busy}
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">
-              Requirements{" "}
-              <span className="text-muted-foreground">(optional)</span>
+              Checklista{" "}
+              <span className="text-muted-foreground">(valfritt)</span>
             </Label>
             <ChecklistEditor items={checklist} onChange={setChecklist} disabled={busy} />
           </div>

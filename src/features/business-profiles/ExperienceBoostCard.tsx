@@ -74,18 +74,18 @@ export function ExperienceBoostCard({
 
   const automationTips = [
     {
-      title: "Inbox & AI-svar",
+      title: "Inkorg & AI-svar",
       detail: "Sammanfattningar och utkast till mail/DM — du godkänner innan sändning.",
       to: "/messages",
     },
     {
       title: "Recensionssvar",
-      detail: "AI föreslår svar på omdömen; templates sparar tid.",
+      detail: "AI föreslår svar på omdömen; sparade mallar sparar tid.",
       to: "/reviews",
     },
     {
       title: "Schemalagd publicering",
-      detail: "Content → Post: köa inlägg så de går ut utan manuell klickning.",
+      detail: "Under Content → Publicera: köa inlägg så de går ut utan manuellt klick.",
       to: "/content?tab=publish",
     },
     {
@@ -109,7 +109,7 @@ export function ExperienceBoostCard({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" aria-hidden />
           <h2 className="text-base font-semibold tracking-tight sm:text-sm">
-            {pendingSetup > 0 ? "Gör appen smartare" : "Klart att automationer tar mer"}
+            {pendingSetup > 0 ? "Gör appen smartare" : "Redo för mer automation"}
           </h2>
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground sm:text-xs">

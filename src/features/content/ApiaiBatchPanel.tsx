@@ -165,10 +165,10 @@ export function ApiaiBatchPanel({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
-              Batch process images
+              Batchbearbeta bilder
             </CardTitle>
             <CardDescription>
-              Run the same apiai.me workflow on all selected images — results import to History automatically.
+              Kör samma apiai.me-arbetsflöde på alla valda bilder — resultat importeras automatiskt till historiken.
             </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={() => void refreshJobs()} disabled={loadingJobs}>
@@ -182,17 +182,17 @@ export function ApiaiBatchPanel({
         ) : null}
         {imageAssets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Add images to Selected first — batch runs on your current picks.</p>
+            <p className="text-sm text-muted-foreground">Lägg till bilder i Urval först — batch körs på dina nuvarande val.</p>
             <div className="flex flex-wrap justify-center gap-2">
               {onOpenSelected ? (
                 <Button type="button" size="sm" variant="default" onClick={onOpenSelected}>
-                  Open Selected
+                  Öppna urval
                 </Button>
               ) : null}
               {onOpenBrowse ? (
                 <Button type="button" size="sm" variant="outline" onClick={onOpenBrowse}>
                   <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                  Browse Drive
+                  Bläddra i Drive
                 </Button>
               ) : null}
             </div>
@@ -243,7 +243,7 @@ export function ApiaiBatchPanel({
                 }}
               >
                 <SelectTrigger id="apiai-batch-workflow">
-                  <SelectValue placeholder="Pick workflow" />
+                  <SelectValue placeholder="Välj arbetsflöde" />
                 </SelectTrigger>
                 <SelectContent>
                   {workflowOptions.map((option) => (
@@ -312,7 +312,7 @@ export function ApiaiBatchPanel({
                 <span className="text-xs text-primary">{importedCount} in History</span>
               ) : null}
               <Button variant="ghost" size="sm" className="h-7 px-2 ml-auto" onClick={() => void refreshActiveJob(activeJob.id)}>
-                Refresh
+                Uppdatera
               </Button>
               {isBatchComplete(String(activeJob.status || "")) ? (
                 <>

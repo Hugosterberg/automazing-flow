@@ -22,15 +22,15 @@ export function connectionFixHint(
   switch (connection.health as ConnectionHealth) {
     case "expired":
     case "missing":
-      return "Reconnect and sign in again to refresh OAuth tokens.";
+      return "Koppla om och logga in igen för att förnya OAuth-token.";
     case "failed":
       return catalogEntry?.serverNeeds
-        ? `Check server configuration: ${catalogEntry.serverNeeds}`
-        : "Review integration settings under Preferences.";
+        ? `Kontrollera serverkonfiguration: ${catalogEntry.serverNeeds}`
+        : "Granska integrationsinställningar under Inställningar.";
     case "disconnected":
-      return catalogEntry?.connectSteps ?? "Connect this integration again.";
+      return catalogEntry?.connectSteps ?? "Koppla den här integrationen igen.";
     case "pending":
-      return "Sync in progress — try testing again in a moment.";
+      return "Synk pågår — testa igen om en stund.";
     default:
       return catalogEntry?.serverNeeds ?? null;
   }
@@ -42,12 +42,12 @@ export function connectionTestToastMessage(result: {
   fix?: string;
 }): { title: string; description?: string; variant?: "destructive" } {
   if (result.health === "healthy") {
-    return { title: "Connection OK", description: result.message ?? "Credentials verified." };
+    return { title: "Koppling OK", description: result.message ?? "Uppgifterna verifierades." };
   }
   const description = [result.message, result.fix].filter(Boolean).join(" — ");
   return {
-    title: "Connection needs attention",
-    description: description || "Test did not pass.",
+    title: "Kopplingen behöver uppmärksamhet",
+    description: description || "Testet gick inte igenom.",
     variant: "destructive",
   };
 }

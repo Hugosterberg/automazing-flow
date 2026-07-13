@@ -40,7 +40,7 @@ const PRIMARY_NAV = [
 
 /** Work destinations + permanent setup destinations (always visible when mode allows). */
 const MORE_LINKS = [
-  { to: "/content", label: "Content", icon: Film },
+  { to: "/content", label: "Innehåll", icon: Film },
   { to: "/calendar", label: "Kalender", icon: CalendarDays },
   { to: "/social-media", label: "Socialt", icon: Share2 },
   { to: "/sales", label: "Sales", icon: Target, modes: ["business"] as const },

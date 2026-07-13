@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 import type { ConnectionHealth } from "@/types/connection";
 
 const LABELS: Record<ConnectionHealth, string> = {
-  healthy: "Healthy",
-  expired: "Re-auth needed",
-  failed: "Sync error",
-  disconnected: "Disconnected",
-  pending: "Pending",
-  missing: "Re-auth needed",
+  healthy: "Frisk",
+  expired: "Kräver inloggning",
+  failed: "Synkfel",
+  disconnected: "Frånkopplad",
+  pending: "Väntar",
+  missing: "Kräver inloggning",
 };
 
 const STYLES: Record<ConnectionHealth, string> = {

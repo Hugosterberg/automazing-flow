@@ -49,7 +49,7 @@ export function ActiveProfileGuard({ children }: { children: ReactNode }) {
         aria-busy="true"
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-        <span>Loading your business profiles…</span>
+        <span>Laddar dina företagsprofiler…</span>
       </div>
     );
   }
@@ -68,7 +68,7 @@ export function ActiveProfileGuard({ children }: { children: ReactNode }) {
         aria-busy="true"
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-        <span>Selecting business profile…</span>
+        <span>Väljer företagsprofil…</span>
       </div>
     );
   }
