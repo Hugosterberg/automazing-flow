@@ -100,24 +100,42 @@ function TodayTile({
         : tone === "success"
           ? "text-success"
           : "text-primary";
+  const toneSurface =
+    tone === "warning"
+      ? "mobile-widget-tile-warning"
+      : tone === "info"
+        ? "mobile-widget-tile-info"
+        : tone === "success"
+          ? "mobile-widget-tile-success"
+          : "";
   return (
     <Link
       to={to}
       onPointerEnter={() => onPrefetch?.(to)}
       onFocus={() => onPrefetch?.(to)}
       className={cn(
-        "group block rounded-xl border border-border bg-card px-4 py-4 transition-colors",
-        "hover:border-primary/40 hover:bg-accent/40"
+        "group pressable mobile-widget-tile block px-3.5 py-3.5 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:px-4 sm:py-4 sm:shadow-none",
+        "sm:hover:border-primary/40 sm:hover:bg-accent/40",
+        toneSurface
       )}
     >
       <div className="flex items-center justify-between">
-        <Icon className={cn("h-4 w-4", toneAccent)} />
-        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <span
+          className={cn(
+            "inline-flex h-8 w-8 items-center justify-center rounded-xl bg-background/40 sm:h-auto sm:w-auto sm:rounded-none sm:bg-transparent",
+            toneAccent
+          )}
+        >
+          <Icon className={cn("h-4 w-4", toneAccent)} />
+        </span>
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-70 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" />
       </div>
-      <p className="mt-3 text-3xl font-semibold tabular-nums sm:text-2xl">{value}</p>
-      <p className="text-sm font-medium text-muted-foreground mt-1 sm:mt-0.5 sm:text-xs">{title}</p>
+      <p className="mt-3 font-display text-3xl font-semibold tabular-nums tracking-tight sm:text-2xl">
+        {value}
+      </p>
+      <p className="mt-1 text-sm font-medium text-muted-foreground sm:mt-0.5 sm:text-xs">{title}</p>
       {hint ? (
-        <p className="text-xs text-muted-foreground/80 mt-1.5 sm:mt-1 sm:text-[11px]">{hint}</p>
+        <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground/80 sm:mt-1 sm:text-[11px]">{hint}</p>
       ) : null}
     </Link>
   );
@@ -148,19 +166,19 @@ function JumpCard({
       onPointerEnter={() => onPrefetch?.(to)}
       onFocus={() => onPrefetch?.(to)}
       className={cn(
-        "group flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors",
+        "group pressable flex items-start gap-3 rounded-2xl border border-border/70 bg-card/70 px-3.5 py-3.5 sm:rounded-xl sm:border-border sm:bg-card sm:px-4",
         "hover:border-primary/40 hover:bg-accent/40"
       )}
     >
-      <div className="rounded-md bg-muted/60 p-2 shrink-0 group-hover:bg-primary/10 transition-colors">
-        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+      <div className="rounded-xl bg-muted/60 p-2.5 shrink-0 transition-colors group-hover:bg-primary/10 sm:rounded-md sm:p-2">
+        <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="text-sm font-semibold text-foreground truncate">
+          <p className="truncate text-sm font-semibold text-foreground">
             {title}
           </p>
-          <ArrowRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+          <ArrowRight className="h-3 w-3 text-muted-foreground opacity-60 transition-all sm:opacity-0 sm:group-hover:translate-x-0.5 sm:group-hover:opacity-100" />
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
           {description}
@@ -653,7 +671,7 @@ export default function Index() {
         <SyncFreshnessStrip businessProfileId={homeBusinessProfileId} />
         <div
           className={cn(
-            "grid grid-cols-1 gap-3",
+            "grid grid-cols-2 gap-2.5 sm:gap-3",
             mode === "business" ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
           )}
         >
@@ -672,7 +690,7 @@ export default function Index() {
         </div>
         {moreTodayTiles.length > 0 ? (
           <HomeCollapsibleSection title="Fler idag" ariaLabel="Fler idag">
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-1 sm:gap-3">
               {moreTodayTiles.map((tile) => (
                 <TodayTile
                   key={tile.id}

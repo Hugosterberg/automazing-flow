@@ -221,15 +221,22 @@ export function MobileQuickNav() {
                     to={dest.to}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
-                      "relative flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5 text-center transition-transform active:scale-[0.96]",
+                      "pressable relative flex min-h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5 text-center",
                       active
-                        ? "border-primary/35 bg-primary/10 text-primary"
+                        ? "border-primary/40 bg-primary/12 text-primary shadow-[0_0_24px_-10px_hsl(var(--primary)/0.55)]"
                         : highlighted
                           ? "border-primary/25 bg-primary/[0.04] text-foreground"
                           : "border-border/60 bg-card/50 text-foreground"
                     )}
                   >
-                    <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                    <span
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-2xl",
+                        active ? "bg-primary/15" : "bg-muted/40"
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                    </span>
                     <span className="line-clamp-2 text-[11px] font-medium leading-tight">
                       {dest.label}
                     </span>

@@ -9,10 +9,12 @@ export function OfflineBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-1.5 text-xs text-warning"
+      className="flex items-center justify-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-sm sm:py-1.5"
     >
       <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span>Du är offline — vissa funktioner kan vara otillgängliga tills anslutningen återkommer.</span>
+      <span className="line-clamp-1">
+        Du är offline — vissa funktioner kan vara otillgängliga.
+      </span>
     </div>
   );
 }

@@ -56,28 +56,28 @@ function BriefRow({
   const Icon = KIND_ICON[item.kind];
   const styles = SEVERITY_STYLES[item.severity];
   return (
-    <div className="group relative flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors hover:border-primary/40 hover:bg-accent/40">
+    <div className="group pressable relative flex items-center gap-3 rounded-2xl border border-border/60 bg-card/80 px-3.5 py-3.5 sm:rounded-lg sm:border-border/70 sm:bg-card sm:py-3 sm:hover:border-primary/40 sm:hover:bg-accent/40">
       <Link
         to={item.to}
         onPointerEnter={() => onPrefetch?.(item.to)}
         onFocus={() => onPrefetch?.(item.to)}
         className="flex min-w-0 flex-1 items-center gap-3"
       >
-        <div className={cn("rounded-md p-2 shrink-0", styles.chip)}>
+        <div className={cn("rounded-xl p-2.5 shrink-0 sm:rounded-md sm:p-2", styles.chip)}>
           <Icon className={cn("h-4 w-4", styles.icon)} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
         </div>
-        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-70 transition-all sm:opacity-0 sm:group-hover:translate-x-0.5 sm:group-hover:opacity-100" />
       </Link>
       {onDone ? (
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
+          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
           aria-label="Markera klar"
           title="Markera klar"
           onClick={() => onDone(item.id)}
@@ -90,7 +90,7 @@ function BriefRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
+          className="h-9 w-9 shrink-0 text-muted-foreground opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
           aria-label="Skjut upp till imorgon"
           title="Skjut upp till imorgon"
           onClick={() => onSnooze(item.id)}
@@ -175,7 +175,7 @@ export function SmartDailyBrief({
   return (
     <section
       aria-label="Dagens brief"
-      className="rounded-2xl border border-border bg-gradient-to-br from-card to-card/60 p-5"
+      className="mobile-brief-shell p-4 sm:rounded-2xl sm:border sm:border-border sm:bg-gradient-to-br sm:from-card sm:to-card/60 sm:p-5 sm:shadow-none sm:[backdrop-filter:none]"
     >
       <div className="flex items-start gap-3">
         <div

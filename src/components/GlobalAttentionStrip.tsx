@@ -68,15 +68,15 @@ export function GlobalAttentionStrip() {
     routeItems.length > 0 && moduleLabel ? `${moduleLabel}` : "Kräver uppmärksamhet";
 
   return (
-    <div className="shrink-0 border-b border-border/60 bg-gradient-to-r from-primary/5 via-card/40 to-muted/10 px-3 py-2 sm:px-4">
+    <div className="shrink-0 border-b border-border/50 bg-card/50 px-3 py-1.5 backdrop-blur-md sm:bg-gradient-to-r sm:from-primary/5 sm:via-card/40 sm:to-muted/10 sm:px-4 sm:py-2 sm:backdrop-blur-none">
       <div className="mx-auto flex max-w-screen-2xl items-center gap-2">
-        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-primary min-w-0">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 text-[11px] font-medium text-primary">
           <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="truncate max-w-[7rem] sm:max-w-none">{stripLabel}</span>
-          <span className="tabular-nums shrink-0">({brief.actionCount})</span>
+          <span className="max-w-[7rem] truncate sm:max-w-none">{stripLabel}</span>
+          <span className="shrink-0 tabular-nums">({brief.actionCount})</span>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto app-scroll">
+        <div className="app-scroll flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
           {topItems.map((item) => {
             const Icon = KIND_ICON[item.kind];
             return (
@@ -85,7 +85,7 @@ export function GlobalAttentionStrip() {
                 to={item.to}
                 onPointerEnter={() => prefetchFor(item.to.split("?")[0] ?? item.to)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:opacity-90",
+                  "pressable inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition-colors hover:opacity-90 sm:py-1",
                   SEVERITY_CLASS[item.severity]
                 )}
               >

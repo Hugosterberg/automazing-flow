@@ -8,7 +8,9 @@ On phones: header drops duplicate mode tabs (mode lives in Mer), bottom tabs
 use press/active affordances, Mer is a launcher-style bottom sheet with
 grabber, and route changes use a short enter motion. Shared
 `--app-tab-bar-offset` / `.pb-tab-bar` keep FAB/content clearance consistent.
-Do not invent a second chrome system — extend Layout + MobileQuickNav + sheets.
+Hem uses 2-col widget tiles + pressable Brief rows; Notiser and Sök open as
+bottom sheets; drawer/sheets/tab language stays consistent. Do not invent a
+second chrome system — extend Layout + MobileQuickNav + sheets + Hem.
 
 ## 2026-07-13 — Pre-login landing is kinetic B&W brand theater — **Active**
 

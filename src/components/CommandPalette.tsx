@@ -172,10 +172,10 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           refreshRecent();
           setOpen(true);
         }}
-        className="relative flex h-8 w-8 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-md border border-border bg-card/40 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+        className="pressable relative flex h-9 w-9 items-center justify-center gap-2 rounded-full border border-border bg-card/40 px-0 text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground sm:h-auto sm:w-auto sm:rounded-md sm:px-2 sm:py-1.5"
         aria-label="Öppna kommandopalett"
       >
-        <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <Search className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
         <span className="hidden sm:inline">Sök…</span>
         {pulseItems.length > 0 ? (
           <span
