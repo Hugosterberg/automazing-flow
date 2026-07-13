@@ -59,3 +59,35 @@ export function useMobileReadingFocus() {
     return false;
   }, [stacked, pathname, search]);
 }
+
+/** Soft keyboard overlap in CSS pixels (0 when closed). */
+export function useKeyboardInset() {
+  const [inset, setInset] = React.useState(0);
+
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setInset(overlap > 48 ? Math.round(overlap) : 0);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  return inset;
+}
+
+export function mobileReadingTitle(pathname: string): string {
+  if (pathname.startsWith("/messages")) return "Meddelanden";
+  if (pathname.startsWith("/reviews")) return "Recensioner";
+  if (pathname.startsWith("/customers")) return "Kunder";
+  return "Detalj";
+}

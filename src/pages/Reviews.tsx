@@ -853,7 +853,7 @@ export default function ReviewsPage() {
           transition={{ duration: 0.35 }}
           className={cn(
             "app-workspace-shell",
-            focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+            focusedReading && "workspace-reading-focus rounded-none border-0 shadow-none"
           )}
         >
           {!focusedReading ? (

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
-import { useIsDesktopWorkspace, useIsMobile } from "@/hooks/use-mobile";
+import { useIsDesktopWorkspace, useIsMobile, useKeyboardInset } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
@@ -91,7 +91,9 @@ export function MessageDetailPanel({
 }: MessageDetailPanelProps) {
   const isDesktopWorkspace = useIsDesktopWorkspace();
   const isStackedWorkspace = !isDesktopWorkspace;
+  const keyboardInset = useKeyboardInset();
   const replyRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const rawBody = (message.body || message.snippet || "").trim();
   const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
   const [summaryOpen, setSummaryOpen] = useState(Boolean(aiSummary) && needsAttention && !htmlEmail);
@@ -132,6 +134,16 @@ export function MessageDetailPanel({
     const timer = window.setTimeout(() => replyRef.current?.focus(), 180);
     return () => window.clearTimeout(timer);
   }, [composeOpen, isStackedWorkspace, message.id, replySent]);
+
+  useEffect(() => {
+    if (!composeOpen || !isStackedWorkspace) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const timer = window.setTimeout(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [composeOpen, isStackedWorkspace, message.id]);
 
   const fromName = message.from.name || message.from.email || "Unknown";
   const fromEmail = message.from.email?.trim();
@@ -202,25 +214,46 @@ export function MessageDetailPanel({
 
   if (isStackedWorkspace) {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-        <header className="shrink-0 border-b border-border/70 bg-background/95 px-2 pb-3 pt-2 backdrop-blur-md">
+      <div
+        className="flex h-full min-h-0 flex-1 flex-col bg-background"
+        style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+      >
+        <header
+          className={cn(
+            "shrink-0 border-b border-border/70 bg-background/95 backdrop-blur-md",
+            composeOpen ? "px-2 py-1.5" : "px-2 pb-3 pt-2"
+          )}
+        >
           <div className="flex items-center gap-1">
             {showBack && onBack ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-11 shrink-0 gap-1.5 px-2.5 text-[15px] font-medium"
+                className={cn(
+                  "shrink-0 gap-1 font-medium",
+                  composeOpen ? "h-9 px-2 text-sm" : "h-11 gap-1.5 px-2.5 text-[15px]"
+                )}
                 onClick={onBack}
               >
-                <ArrowLeft className="h-5 w-5" />
-                Inkorg
+                <ArrowLeft className={cn(composeOpen ? "h-4 w-4" : "h-5 w-5")} />
+                {composeOpen ? <span className="sr-only">Inkorg</span> : <span>Inkorg</span>}
               </Button>
             ) : (
-              <div className="h-11 w-2" />
+              <div className={cn(composeOpen ? "h-9 w-2" : "h-11 w-2")} />
             )}
+
+            {composeOpen ? (
+              <div className="min-w-0 flex-1 px-1">
+                <p className="truncate text-xs font-medium text-muted-foreground">{fromName}</p>
+                <p className="truncate text-sm font-semibold leading-tight">
+                  {message.subject || "(Utan ämne)"}
+                </p>
+              </div>
+            ) : null}
+
             <div className="ml-auto flex items-center gap-1">
-              {navigation ? (
+              {!composeOpen && navigation ? (
                 <div className="flex items-center rounded-xl border border-border/60 bg-muted/25 p-0.5">
                   <Button
                     type="button"
@@ -254,96 +287,111 @@ export function MessageDetailPanel({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="h-11 gap-1.5 px-3.5 text-[15px] font-medium"
+                  className={cn(
+                    "gap-1.5 font-medium",
+                    composeOpen ? "h-9 px-2.5 text-xs" : "h-11 px-3.5 text-[15px]"
+                  )}
                   onClick={onMarkHandled}
                 >
                   <CheckCheck className="h-4 w-4" />
-                  Klar
+                  {composeOpen ? <span className="sr-only">Klar</span> : <span>Klar</span>}
                 </Button>
               ) : (
                 <Badge
                   variant="outline"
-                  className="h-9 gap-1 border-emerald-500/40 px-2.5 text-[11px] uppercase text-emerald-600"
+                  className={cn(
+                    "gap-1 border-emerald-500/40 uppercase text-emerald-600",
+                    composeOpen ? "h-8 px-2 text-[10px]" : "h-9 px-2.5 text-[11px]"
+                  )}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   Klar
                 </Badge>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="h-11 w-11 p-0" aria-label="Fler åtgärder">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  <DropdownMenuItem onSelect={copyBody}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Kopiera meddelande
-                  </DropdownMenuItem>
-                  {fromEmail ? (
-                    <DropdownMenuItem onSelect={copyEmail}>
-                      <Mail className="mr-2 h-4 w-4" />
-                      Kopiera e-post
+              {!composeOpen ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="h-11 w-11 p-0" aria-label="Fler åtgärder">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem onSelect={copyBody}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Kopiera meddelande
                     </DropdownMenuItem>
-                  ) : null}
-                  {message.externalUrl ? (
-                    <DropdownMenuItem asChild>
-                      <a href={message.externalUrl} target="_blank" rel="noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Öppna externt
-                      </a>
-                    </DropdownMenuItem>
-                  ) : null}
-                  {isHandled && onUnmarkHandled ? (
-                    <DropdownMenuItem onSelect={onUnmarkHandled}>Återöppna</DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {fromEmail ? (
+                      <DropdownMenuItem onSelect={copyEmail}>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Kopiera e-post
+                      </DropdownMenuItem>
+                    ) : null}
+                    {message.externalUrl ? (
+                      <DropdownMenuItem asChild>
+                        <a href={message.externalUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Öppna externt
+                        </a>
+                      </DropdownMenuItem>
+                    ) : null}
+                    {isHandled && onUnmarkHandled ? (
+                      <DropdownMenuItem onSelect={onUnmarkHandled}>Återöppna</DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-3 flex items-start gap-3 px-2">
-            <div
-              className={cn(
-                "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-semibold text-white shadow-sm ring-2 ring-background",
-                headerAvatarGradient
-              )}
-              aria-hidden
-            >
-              {headerInitial}
-            </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="truncate text-[17px] font-semibold leading-tight tracking-tight">{fromName}</p>
-                {relativeDate ? (
-                  <time
-                    className="shrink-0 text-xs tabular-nums text-muted-foreground"
-                    dateTime={message.date}
-                    title={formatFullMessageDate(message.date)}
-                  >
-                    {relativeDate}
-                  </time>
-                ) : null}
+          {!composeOpen ? (
+            <>
+              <div className="mt-3 flex items-start gap-3 px-2">
+                <div
+                  className={cn(
+                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-semibold text-white shadow-sm ring-2 ring-background",
+                    headerAvatarGradient
+                  )}
+                  aria-hidden
+                >
+                  {headerInitial}
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-[17px] font-semibold leading-tight tracking-tight">{fromName}</p>
+                    {relativeDate ? (
+                      <time
+                        className="shrink-0 text-xs tabular-nums text-muted-foreground"
+                        dateTime={message.date}
+                        title={formatFullMessageDate(message.date)}
+                      >
+                        {relativeDate}
+                      </time>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px] uppercase tracking-wide">
+                      {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
+                      {channelLabel}
+                    </Badge>
+                    {fromEmail ? <span className="truncate">{fromEmail}</span> : null}
+                  </div>
+                </div>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px] uppercase tracking-wide">
-                  {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
-                  {channelLabel}
-                </Badge>
-                {fromEmail ? <span className="truncate">{fromEmail}</span> : null}
-              </div>
-            </div>
-          </div>
 
-          <h2 className="mt-3 px-2 text-[20px] font-semibold leading-snug tracking-tight">
-            {message.subject || "(Utan ämne)"}
-          </h2>
+              <h2 className="mt-3 px-2 text-[20px] font-semibold leading-snug tracking-tight">
+                {message.subject || "(Utan ämne)"}
+              </h2>
+            </>
+          ) : null}
         </header>
 
         <div
+          ref={scrollRef}
           className={cn(
-            "message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4",
-            composeOpen && "py-3 [&_.message-prose_p]:text-[13px] [&_.message-prose_p]:leading-snug"
+            "message-scroll min-h-0 flex-1 overflow-y-auto px-3",
+            composeOpen
+              ? "py-2 [&_.message-prose_p]:text-[13px] [&_.message-prose_p]:leading-snug"
+              : "py-4"
           )}
         >
           {bodyContent}
@@ -353,46 +401,30 @@ export function MessageDetailPanel({
           <footer
             className={cn(
               "shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md",
-              composeOpen || replySent ? "message-compose-footer px-3 py-2.5" : "message-compose-footer-dock px-3 py-2"
+              composeOpen || replySent ? "message-compose-footer px-3 py-2" : "message-compose-footer-dock px-3 py-2"
             )}
           >
             {replySent ? (
               <div className="flex flex-col gap-2">
-                <p className="inline-flex items-center gap-1.5 text-[15px] text-emerald-600">
+                <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                   <Send className="h-4 w-4" />
                   Svar skickat
                 </p>
                 {onNextAfterSend ? (
-                  <Button type="button" variant="secondary" className="h-12 w-full text-[15px]" onClick={onNextAfterSend}>
+                  <Button type="button" variant="secondary" className="h-11 w-full text-sm" onClick={onNextAfterSend}>
                     Nästa meddelande
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 ) : null}
               </div>
             ) : composeOpen ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-foreground/80">Svara</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs text-muted-foreground"
-                    onClick={() => setComposeOpen(false)}
-                  >
-                    Dölj
-                  </Button>
-                </div>
+              <div className="space-y-1.5">
                 <Textarea
                   ref={replyRef}
                   value={replyDraft}
                   onChange={(e) => onReplyDraftChange(e.target.value)}
-                  placeholder={
-                    message.kind === "email"
-                      ? "Skriv ditt svar…"
-                      : "Skriv ett svar…"
-                  }
-                  className="min-h-[72px] max-h-[28vh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
+                  placeholder="Skriv ditt svar…"
+                  className="min-h-[64px] max-h-[22vh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
                       e.preventDefault();
@@ -400,23 +432,24 @@ export function MessageDetailPanel({
                     }
                   }}
                 />
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex items-center gap-1.5">
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 text-xs"
+                    size="sm"
+                    className="h-9 shrink-0 px-2.5 text-xs"
                     onClick={onDraftReply}
                     disabled={draftBusy}
                   >
                     {draftBusy ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      <Sparkles className="h-3.5 w-3.5" />
                     )}
-                    AI-utkast
+                    <span className="ml-1.5">AI</span>
                   </Button>
                   <ReplyTemplatePicker
-                    className="h-9 w-full text-xs"
+                    className="h-9 shrink-0 px-2.5 text-xs [&_svg]:mr-1"
                     onInsert={(text) => {
                       onReplyDraftChange(text);
                       openCompose();
@@ -424,16 +457,25 @@ export function MessageDetailPanel({
                     recipientName={message.from.name}
                     disabled={sendBusy}
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 shrink-0 px-2 text-xs text-muted-foreground"
+                    onClick={() => setComposeOpen(false)}
+                  >
+                    Dölj
+                  </Button>
+                  <Button
+                    type="button"
+                    className="ml-auto h-9 gap-1.5 px-3 text-xs font-semibold glow-sm"
+                    onClick={onSendReply}
+                    disabled={sendBusy || !replyDraft.trim()}
+                  >
+                    {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Skicka
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  className="h-10 w-full gap-1.5 text-sm font-semibold glow-sm"
-                  onClick={onSendReply}
-                  disabled={sendBusy || !replyDraft.trim()}
-                >
-                  {sendBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Skicka svar
-                </Button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -441,7 +483,7 @@ export function MessageDetailPanel({
                   type="button"
                   onClick={openCompose}
                   className={cn(
-                    "flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-4 text-left text-[15px] transition-colors",
+                    "flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3.5 text-left text-sm transition-colors",
                     hasDraft || draftBusy
                       ? "border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10"
                       : "border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/45"
@@ -455,9 +497,7 @@ export function MessageDetailPanel({
                   ) : hasDraft ? (
                     <>
                       <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="min-w-0 truncate">
-                        AI-utkast klart — tryck för att granska
-                      </span>
+                      <span className="min-w-0 truncate">Utkast klart — granska</span>
                     </>
                   ) : (
                     <span>Svara…</span>
@@ -467,7 +507,7 @@ export function MessageDetailPanel({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="h-12 w-12 shrink-0 rounded-2xl"
+                  className="h-11 w-11 shrink-0 rounded-2xl"
                   onClick={() => {
                     openCompose();
                     if (!hasDraft) onDraftReply();
@@ -482,7 +522,7 @@ export function MessageDetailPanel({
                     type="button"
                     variant="secondary"
                     size="icon"
-                    className="h-12 w-12 shrink-0 rounded-2xl"
+                    className="h-11 w-11 shrink-0 rounded-2xl"
                     onClick={onMarkHandled}
                     aria-label="Markera klar"
                   >

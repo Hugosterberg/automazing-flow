@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
-import { useStackedWorkspace } from "@/hooks/use-mobile";
+import { useKeyboardInset, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { ReviewItem } from "./types";
 
@@ -58,7 +58,7 @@ function formatFullDate(raw?: string): string {
 }
 
 function Stars({ rating }: { rating?: number }) {
-  if (rating == null) return <span className="text-sm text-muted-foreground">No rating</span>;
+  if (rating == null) return <span className="text-sm text-muted-foreground">Inget betyg</span>;
   return (
     <span className="inline-flex items-center gap-1 text-amber-500">
       {Array.from({ length: 5 }).map((_, i) => (
@@ -89,13 +89,273 @@ export function ReviewDetailPanel({
   navigation,
 }: ReviewDetailPanelProps) {
   const isStackedWorkspace = useStackedWorkspace();
+  const keyboardInset = useKeyboardInset();
   const replyRef = useRef<HTMLTextAreaElement>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const userOpenedComposeRef = useRef(false);
+  const hasDraft = Boolean(replyDraft.trim());
+  const author = review.author || "Anonym";
 
   useEffect(() => {
+    userOpenedComposeRef.current = false;
+    setComposeOpen(false);
+  }, [review.id]);
+
+  useEffect(() => {
+    if (isStackedWorkspace) return;
     if (isReplied || replySent || draftBusy) return;
     const timer = window.setTimeout(() => replyRef.current?.focus(), 140);
     return () => window.clearTimeout(timer);
-  }, [review.id, draftBusy, isReplied, replySent]);
+  }, [review.id, draftBusy, isReplied, replySent, isStackedWorkspace]);
+
+  useEffect(() => {
+    if (!isStackedWorkspace || !composeOpen || replySent || isReplied) return;
+    if (!userOpenedComposeRef.current) return;
+    const timer = window.setTimeout(() => replyRef.current?.focus(), 180);
+    return () => window.clearTimeout(timer);
+  }, [composeOpen, isStackedWorkspace, review.id, replySent, isReplied]);
+
+  function openCompose() {
+    userOpenedComposeRef.current = true;
+    setComposeOpen(true);
+  }
+
+  const canReply = !isReplied;
+
+  if (isStackedWorkspace) {
+    return (
+      <div
+        className="flex h-full min-h-0 flex-1 flex-col bg-background"
+        style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+      >
+        <header
+          className={cn(
+            "shrink-0 border-b border-border/70 bg-background/95 backdrop-blur-md",
+            composeOpen ? "px-2 py-1.5" : "px-3 pb-3 pt-2"
+          )}
+        >
+          <div className="flex items-center gap-1">
+            {showBack && onBack ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn("shrink-0 font-medium", composeOpen ? "h-9 px-2 text-sm" : "h-10 gap-1.5 px-2 text-sm")}
+                onClick={onBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {composeOpen ? <span className="sr-only">Lista</span> : <span>Lista</span>}
+              </Button>
+            ) : null}
+
+            {composeOpen ? (
+              <div className="min-w-0 flex-1 px-1">
+                <p className="truncate text-sm font-semibold leading-tight">{author}</p>
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1" />
+            )}
+
+            <div className="flex shrink-0 items-center gap-0.5">
+              {navigation && !composeOpen ? (
+                <div className="mr-1 flex items-center gap-0.5 rounded-md border border-border/70 bg-muted/30 p-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 w-10 p-0"
+                    disabled={!navigation.hasPrev}
+                    onClick={navigation.onPrev}
+                    aria-label="Previous review"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <span className="min-w-[3.5rem] px-1 text-center text-xs tabular-nums text-muted-foreground">
+                    {navigation.index + 1}/{navigation.total}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 w-10 p-0"
+                    disabled={!navigation.hasNext}
+                    onClick={navigation.onNext}
+                    aria-label="Next review"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+              ) : null}
+              {review.url && !composeOpen ? (
+                <Button type="button" variant="ghost" size="sm" className="h-10 w-10 p-0" asChild>
+                  <a href={review.url} target="_blank" rel="noreferrer" aria-label="Open review externally">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              ) : null}
+              {isReplied ? (
+                <Badge variant="outline" className="h-8 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600">
+                  <Send className="h-3 w-3" />
+                  Besvarad
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+
+          {!composeOpen ? (
+            <div className="mt-3 space-y-2 px-1">
+              <h2 className="text-lg font-semibold leading-snug tracking-tight break-words">{author}</h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <Stars rating={review.rating} />
+                {review.createdAt ? (
+                  <span className="text-xs text-muted-foreground">{formatFullDate(review.createdAt)}</span>
+                ) : null}
+                {review.source ? (
+                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                    {review.source}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </header>
+
+        <div
+          className={cn(
+            "message-scroll min-h-0 flex-1 overflow-y-auto px-3",
+            composeOpen ? "py-2" : "py-4"
+          )}
+        >
+          <div className="message-reading-card px-4 py-4">
+            <p
+              className={cn(
+                "whitespace-pre-wrap break-words text-foreground",
+                composeOpen ? "text-[13px] leading-snug" : "text-[15px] leading-relaxed"
+              )}
+            >
+              {review.text || "Ingen recensionstext."}
+            </p>
+          </div>
+        </div>
+
+        {canReply ? (
+          <footer
+            className={cn(
+              "shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md",
+              composeOpen || replySent ? "message-compose-footer px-3 py-2" : "message-compose-footer-dock px-3 py-2"
+            )}
+          >
+            {replySent ? (
+              <div className="flex flex-col gap-2">
+                <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
+                  <Send className="h-4 w-4" />
+                  Svar skickat
+                </p>
+                {onNextAfterSend ? (
+                  <Button type="button" variant="secondary" className="h-11 w-full text-sm" onClick={onNextAfterSend}>
+                    Nästa recension
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ) : composeOpen ? (
+              <div className="space-y-1.5">
+                <Textarea
+                  ref={replyRef}
+                  value={replyDraft}
+                  onChange={(e) => onReplyDraftChange(e.target.value)}
+                  placeholder="Skriv ditt svar…"
+                  className="min-h-[64px] max-h-[22vh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
+                      e.preventDefault();
+                      onSendReply();
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 px-2.5 text-xs"
+                    onClick={onDraftReply}
+                    disabled={draftBusy}
+                  >
+                    {draftBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    <span className="ml-1.5">AI</span>
+                  </Button>
+                  <ReplyTemplatePicker
+                    className="h-9 shrink-0 px-2.5 text-xs [&_svg]:mr-1"
+                    onInsert={(text) => {
+                      onReplyDraftChange(text);
+                      openCompose();
+                    }}
+                    recipientName={review.author}
+                    disabled={sendBusy}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 shrink-0 px-2 text-xs text-muted-foreground"
+                    onClick={() => setComposeOpen(false)}
+                  >
+                    Dölj
+                  </Button>
+                  <Button
+                    type="button"
+                    className="ml-auto h-9 gap-1.5 px-3 text-xs font-semibold"
+                    onClick={onSendReply}
+                    disabled={sendBusy || !replyDraft.trim()}
+                  >
+                    {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Skicka
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openCompose}
+                  className={cn(
+                    "flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3.5 text-left text-sm transition-colors",
+                    hasDraft
+                      ? "border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10"
+                      : "border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/45"
+                  )}
+                >
+                  {hasDraft ? (
+                    <>
+                      <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate">Utkast klart — granska</span>
+                    </>
+                  ) : (
+                    <span>Svara…</span>
+                  )}
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-2xl"
+                  onClick={() => {
+                    openCompose();
+                    if (!hasDraft) onDraftReply();
+                  }}
+                  disabled={draftBusy}
+                  aria-label="Skapa AI-utkast"
+                >
+                  {draftBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                </Button>
+              </div>
+            )}
+          </footer>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -106,21 +366,16 @@ export function ReviewDetailPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className={cn(
-                "shrink-0 lg:hidden",
-                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
-              )}
+              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              {isStackedWorkspace ? <span>Lista</span> : <span className="sr-only">Tillbaka till listan</span>}
+              <span className="sr-only">Tillbaka till listan</span>
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <h2 className="text-lg font-semibold leading-snug tracking-tight break-words">
-                {review.author || "Anonymous"}
-              </h2>
+              <h2 className="text-lg font-semibold leading-snug tracking-tight break-words">{author}</h2>
               <div className="flex shrink-0 items-center gap-1">
                 {navigation ? (
                   <div className="mr-1 flex items-center gap-0.5 rounded-md border border-border/70 bg-muted/30 p-0.5">
@@ -128,31 +383,26 @@ export function ReviewDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
+                      className="h-7 w-7 p-0"
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
                       aria-label="Previous review"
                     >
-                      <ChevronLeft className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span
-                      className={cn(
-                        "min-w-[3.5rem] px-1 text-center tabular-nums text-muted-foreground",
-                        isStackedWorkspace ? "text-xs" : "text-[10px]"
-                      )}
-                    >
+                    <span className="min-w-[3.5rem] px-1 text-center text-[10px] tabular-nums text-muted-foreground">
                       {navigation.index + 1}/{navigation.total}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
+                      className="h-7 w-7 p-0"
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
                       aria-label="Next review"
                     >
-                      <ChevronRight className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : null}
@@ -284,27 +534,6 @@ export function ReviewDetailPlaceholder() {
         <p className="text-sm leading-relaxed text-muted-foreground">
           Listan stannar kvar till vänster — läs och svara utan att tappa kontexten.
         </p>
-      </div>
-      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
-        <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd> /{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
-          </li>
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">M</kbd> Mark replied ·{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">D</kbd> Draft ·{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">A</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">N</kbd> filter
-          </li>
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng
-          </li>
-          <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Ctrl</kbd>+
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Enter</kbd> skicka svar
-          </li>
-        </ul>
       </div>
     </div>
   );

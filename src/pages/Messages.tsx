@@ -436,6 +436,10 @@ export default function MessagesPage() {
     if (autoDraftForId.current === selectedMessage.id) return;
     const text = (selectedMessage.body || selectedMessage.snippet || "").trim();
     if (!text) return;
+    // On phones/tablets, wait for an explicit AI tap so reading stays calm.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      return;
+    }
     autoDraftForId.current = selectedMessage.id;
     void draftReply();
   }, [selectedMessage?.id, draftBusy, sendBusy, replySent]);

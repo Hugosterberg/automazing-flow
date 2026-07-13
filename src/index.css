@@ -388,17 +388,17 @@
 
   .workspace-reading-focus,
   .messages-reading-focus {
-    /* Full viewport under the sticky app header; QuickNav is hidden while reading. */
-    min-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
-    height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
-    max-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
+    /* Full viewport under the slim reading app header (h-11); QuickNav hidden. */
+    min-height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
+    height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
   }
   @media (min-width: 640px) {
     .workspace-reading-focus,
     .messages-reading-focus {
-      min-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
-      height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
-      max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
+      min-height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
+      height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
+      max-height: calc(100dvh - 2.75rem - env(safe-area-inset-top, 0px));
     }
   }
 
