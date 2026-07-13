@@ -2,7 +2,7 @@
 
 _Numbered versions are deliberate increments, not a wish pile. When a version
 ships, move its highlights to Shipped and renumber what's left. Last updated:
-2026-07-02._
+2026-07-13._
 
 ## Shipped (highlights)
 
@@ -22,13 +22,21 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - **First CMA agent live**: `bai-repo-engineer` passed its outcome rubric on
   run 1 (Automations run-status feature; patch in
   `c:\Code\launch-your-agent\my-agent\outputs\`, ready to review/apply).
+- **Dashboards & daily-process batch** (2026-07-13): social stats snapshots
+  (`social_stats_snapshots` + cron) with week-over-week deltas on the Social
+  KPI cards; daily marketing/ROAS charts and AI cost-per-day chart from
+  existing snapshot tables; data-freshness strip on Home with one-click
+  resync; Daily Brief upgraded to done/snooze with progress; token-expiry
+  nudges now name the platform and deep-link to its Connections card.
 
 ## v1 — Trust the automation (make what exists visibly reliable)
 
-- [ ] Automations page: per-automation last-run status + next-run time surfaced
-      from cron runs (no silent failures).
-- [ ] Connection health: proactive re-auth nudges before tokens die (expiry
-      notifier exists; make it actionable per platform).
+- [x] Automations page: per-automation last-run status + next-run time surfaced
+      from cron runs (no silent failures). _Shipped: AutomationRunStatus +
+      retry on the Automations page._
+- [x] Connection health: proactive re-auth nudges before tokens die (expiry
+      notifier exists; make it actionable per platform). _Shipped: toast names
+      the platform and deep-links to its card via `/connections?filter=attention&q=…`._
 - [ ] Eval/regression habit: golden cases for auto-reply drafts and digests so
       prompt changes can't silently regress.
 
