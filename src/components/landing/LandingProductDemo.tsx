@@ -552,7 +552,7 @@ export function LandingIntegrationsMarquee() {
   const items = [...LANDING_INTEGRATIONS, ...LANDING_INTEGRATIONS];
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/30 py-3.5">
+    <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-r from-card/40 via-muted/10 to-card/40 py-4 landing-premium-card">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-background to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-background to-transparent" />
       <div className="landing-marquee flex w-max items-center gap-6 px-4">

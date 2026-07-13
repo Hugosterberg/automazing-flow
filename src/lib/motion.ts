@@ -23,6 +23,19 @@ export const pageFadeUpTransition: Transition = {
   ease: "easeOut",
 };
 
+/** Scroll-triggered section reveal for landing page blocks. */
+export const sectionReveal = {
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-48px" },
+  transition: { duration: 0.45, ease: "easeOut" },
+} as const;
+
+export const sectionRevealTransition: Transition = {
+  duration: 0.45,
+  ease: "easeOut",
+};
+
 /**
  * Subtle fade without translate — use for inline content that appears
  * post-mount (e.g. data arriving from a query).

@@ -1,45 +1,109 @@
+import { useState } from "react";
+import { m, AnimatePresence } from "framer-motion";
 import { ArrowRight, X, Check } from "lucide-react";
 import { LANDING_COMPARISON, LANDING_PILLARS } from "@/lib/landingContent";
 import { cn } from "@/lib/utils";
 
-export function LandingComparison() {
-  return (
-    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-      <article className="min-w-0 rounded-2xl border border-border/70 bg-card/30 p-4 sm:p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {LANDING_COMPARISON.before.title}
-        </p>
-        <ul className="mt-4 space-y-3">
-          {LANDING_COMPARISON.before.items.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-              <X className="mt-0.5 h-4 w-4 shrink-0 text-destructive/70" aria-hidden />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </article>
+type ComparisonSide = "before" | "after";
 
-      <article className="relative min-w-0 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 p-4 landing-premium-card glow-sm hover-lift interactive sm:p-5">
+function ComparisonCard({ side }: { side: ComparisonSide }) {
+  const data = LANDING_COMPARISON[side];
+  const isAfter = side === "after";
+
+  return (
+    <article
+      className={cn(
+        "relative min-w-0 overflow-hidden rounded-2xl border p-5 sm:p-6",
+        isAfter
+          ? "border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 landing-premium-card glow-sm"
+          : "border-border/70 bg-card/30"
+      )}
+    >
+      {isAfter ? (
         <div
           aria-hidden
           className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl"
         />
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-          {LANDING_COMPARISON.after.title}
-        </p>
-        <ul className="mt-4 space-y-3">
-          {LANDING_COMPARISON.after.items.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
+      ) : null}
+      <p
+        className={cn(
+          "text-[11px] font-semibold uppercase tracking-wide",
+          isAfter ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        {data.title}
+      </p>
+      <ul className="mt-4 space-y-3">
+        {data.items.map((item) => (
+          <li
+            key={item}
+            className={cn(
+              "flex items-start gap-2.5 text-sm",
+              isAfter ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            {isAfter ? (
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-              {item}
-            </li>
-          ))}
-        </ul>
+            ) : (
+              <X className="mt-0.5 h-4 w-4 shrink-0 text-destructive/70" aria-hidden />
+            )}
+            {item}
+          </li>
+        ))}
+      </ul>
+      {isAfter ? (
         <p className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
           Så enkelt ska det vara
           <ArrowRight className="h-3.5 w-3.5" />
         </p>
-      </article>
+      ) : null}
+    </article>
+  );
+}
+
+export function LandingComparison() {
+  const [activeSide, setActiveSide] = useState<ComparisonSide>("after");
+
+  return (
+    <div className="min-w-0 space-y-3">
+      <div className="flex rounded-xl border border-border/60 bg-muted/20 p-1 sm:hidden">
+        {(["before", "after"] as const).map((side) => (
+          <button
+            key={side}
+            type="button"
+            onClick={() => setActiveSide(side)}
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+              activeSide === side
+                ? side === "after"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground"
+            )}
+          >
+            {side === "before" ? "Utan" : "Med automazing"}
+          </button>
+        ))}
+      </div>
+
+      <div className="sm:hidden">
+        <AnimatePresence mode="wait">
+          <m.div
+            key={activeSide}
+            initial={{ opacity: 0, x: activeSide === "after" ? 12 : -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: activeSide === "after" ? -12 : 12 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          >
+            <ComparisonCard side={activeSide} />
+          </m.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="hidden min-w-0 gap-3 sm:grid sm:grid-cols-2">
+        <ComparisonCard side="before" />
+        <ComparisonCard side="after" />
+      </div>
     </div>
   );
 }
@@ -51,7 +115,7 @@ export function LandingPillars() {
         <article
           key={pillar.title}
           className={cn(
-            "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all hover-lift interactive",
+            "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all hover-lift interactive landing-premium-card",
             index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/5"
           )}
         >
@@ -60,8 +124,8 @@ export function LandingPillars() {
             className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 landing-grid-bg"
           />
           <div className="relative space-y-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-muted/40">
-              <pillar.icon className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-gradient-to-br from-muted/60 to-card/40">
+              <pillar.icon className="h-5 w-5 text-info" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

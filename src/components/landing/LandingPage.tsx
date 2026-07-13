@@ -11,7 +11,7 @@ import {
 } from "@/components/landing/LandingProductDemo";
 import { LandingSection } from "@/components/landing/LandingSection";
 import { LANDING_STEPS, LANDING_TRUST_POINTS } from "@/lib/landingContent";
-import { pageFadeUp, pageFadeUpTransition } from "@/lib/motion";
+import { pageFadeUp, pageFadeUpTransition, sectionReveal, sectionRevealTransition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -39,10 +39,13 @@ export function LandingPage() {
   const [showMobileCta, setShowMobileCta] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [authInView, setAuthInView] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     function onScroll() {
       setShowMobileCta(window.scrollY > 360);
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? Math.min(window.scrollY / docHeight, 1) : 0);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -83,7 +86,7 @@ export function LandingPage() {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-border/50 glass safe-top safe-x">
-        <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6">
+        <div className="mx-auto flex h-14 min-w-0 max-w-6xl items-center justify-between gap-2 px-6 sm:gap-3 sm:px-8">
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
@@ -152,12 +155,21 @@ export function LandingPage() {
             </Button>
           </div>
         </div>
+        <div
+          aria-hidden
+          className="h-0.5 w-full bg-border/30"
+        >
+          <div
+            className="landing-scroll-progress h-full transition-[width] duration-150 ease-out"
+            style={{ width: `${scrollProgress * 100}%` }}
+          />
+        </div>
       </header>
 
-      <div className="relative mx-auto grid min-w-0 max-w-7xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0 px-4 pb-24 pt-6 safe-x sm:px-6 sm:pt-8 lg:pb-12 lg:pr-8 lg:pt-10">
-          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-12 sm:space-y-16">
-            <section className="min-w-0 space-y-5 sm:space-y-6">
+      <div className="relative mx-auto grid min-w-0 max-w-6xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="min-w-0 px-6 pb-28 pt-7 safe-x sm:px-8 sm:pb-24 sm:pt-9 lg:pb-12 lg:pr-8 lg:pt-10">
+          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-14 sm:space-y-16">
+            <section className="landing-hero-panel min-w-0 space-y-5 rounded-3xl border border-border/50 p-6 backdrop-blur-md sm:space-y-6 sm:p-8">
               <p className="flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-border/70 bg-card/50 px-3 py-1.5 text-xs leading-snug text-muted-foreground backdrop-blur-sm">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-40" />
@@ -187,28 +199,40 @@ export function LandingPage() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 sm:max-w-md sm:gap-3">
-                {HERO_STATS.map((stat) => (
-                  <div
+              <div className="grid grid-cols-3 gap-2 sm:max-w-md sm:gap-3">
+                {HERO_STATS.map((stat, index) => (
+                  <m.div
                     key={stat.label}
-                    className="min-w-0 rounded-xl border border-border/60 bg-card/40 px-1.5 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 + index * 0.08, duration: 0.35, ease: "easeOut" }}
+                    className="landing-stat-card min-w-0 rounded-2xl border border-border/60 bg-card/50 px-2 py-2.5 text-center backdrop-blur-sm sm:px-3 sm:py-3"
                   >
-                    <p className="font-display text-base font-bold tabular-nums sm:text-lg lg:text-xl">{stat.value}</p>
+                    <p className="font-display text-base font-bold tabular-nums text-foreground sm:text-lg lg:text-xl">
+                      {stat.value}
+                    </p>
                     <p className="mt-0.5 text-[9px] leading-tight text-muted-foreground sm:text-[11px]">{stat.label}</p>
-                  </div>
+                  </m.div>
                 ))}
               </div>
 
-              <ul className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2 sm:text-sm">
-                {LANDING_TRUST_POINTS.map((point) => (
-                  <li key={point} className="flex items-center gap-1.5">
+              <ul className="landing-trust-card flex flex-col gap-2.5 rounded-2xl border border-border/50 p-4 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2 sm:border-0 sm:bg-transparent sm:p-0 sm:text-sm">
+                {LANDING_TRUST_POINTS.map((point, index) => (
+                  <m.li
+                    key={point}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.35 + index * 0.06, duration: 0.3, ease: "easeOut" }}
+                    className="flex items-center gap-2"
+                  >
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                     <span>{point}</span>
-                  </li>
+                  </m.li>
                 ))}
               </ul>
             </section>
 
+            <m.div {...sectionReveal} transition={sectionRevealTransition}>
             <LandingSection
               id="varfor"
               title="Varför byta?"
@@ -216,7 +240,9 @@ export function LandingPage() {
             >
               <LandingComparison />
             </LandingSection>
+            </m.div>
 
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <LandingSection
               id="produktdemo"
               title="Se appen i action"
@@ -224,21 +250,27 @@ export function LandingPage() {
             >
               <LandingProductDemo />
             </LandingSection>
+            </m.div>
 
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <div className="space-y-3">
               <p className="text-sm font-medium text-muted-foreground">
                 Kopplar till det du redan använder
               </p>
               <LandingIntegrationsMarquee />
             </div>
+            </m.div>
 
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <LandingSection
               title="Tre saker. En plattform."
               description="Allt hänger ihop — från första meddelande till stängd affär."
             >
               <LandingPillars />
             </LandingSection>
+            </m.div>
 
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <LandingSection title="Kom igång på tre steg">
               <ol className="relative grid gap-3 sm:grid-cols-3">
                 <div
@@ -248,7 +280,7 @@ export function LandingPage() {
                 {LANDING_STEPS.map((step) => (
                   <li
                     key={step.step}
-                    className="relative rounded-2xl border border-border/70 bg-card/40 p-4 text-center sm:text-left hover-lift interactive"
+                    className="relative rounded-2xl border border-border/70 bg-card/40 p-5 text-center landing-premium-card hover-lift interactive sm:text-left"
                   >
                     <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/10 font-display text-sm font-bold text-primary sm:mx-0">
                       {step.step}
@@ -261,10 +293,12 @@ export function LandingPage() {
                 ))}
               </ol>
             </LandingSection>
+            </m.div>
 
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <div
               id="kom-igang"
-              className="scroll-mt-20 rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-5 landing-premium-card sm:p-6 lg:hidden"
+              className="scroll-mt-20 rounded-3xl border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-6 landing-premium-card sm:p-7 lg:hidden"
             >
               <div className="mb-4 space-y-1">
                 <h2 className="font-display text-xl font-semibold">Redo?</h2>
@@ -274,8 +308,9 @@ export function LandingPage() {
               </div>
               <LandingAuthPanel compact />
             </div>
+            </m.div>
 
-            <footer className="border-t border-border/50 pt-6 text-xs text-muted-foreground/70">
+            <footer className="border-t border-border/50 px-1 pt-6 text-xs text-muted-foreground/70">
               © {new Date().getFullYear()} automazing
             </footer>
           </m.div>
@@ -296,16 +331,22 @@ export function LandingPage() {
         </aside>
       </div>
 
-      <div
-        className={cn(
-          "fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/90 p-3 backdrop-blur-md transition-transform duration-300 safe-bottom safe-x lg:hidden",
-          showMobileCta && !authInView ? "translate-y-0" : "translate-y-full"
-        )}
-      >
-        <Button className="w-full gap-2 glow-sm" size="lg" onClick={scrollToAuth}>
-          Skapa konto gratis
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-6 pb-5 safe-bottom safe-x lg:hidden">
+        <div
+          className={cn(
+            "pointer-events-auto transition-all duration-300",
+            showMobileCta && !authInView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+          )}
+        >
+          <Button
+            className="w-full gap-2 rounded-2xl border border-border/40 shadow-2xl glow-md landing-shine"
+            size="lg"
+            onClick={scrollToAuth}
+          >
+            Skapa konto gratis
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
