@@ -794,7 +794,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (loading || selectedId || filteredMessages.length === 0 || autoSelectedDesktop.current) return;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
       const first = filteredMessages.find(isUnanswered) ?? filteredMessages[0];
       if (first) selectMessage(first);
       autoSelectedDesktop.current = true;

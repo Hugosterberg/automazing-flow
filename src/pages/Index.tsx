@@ -557,23 +557,32 @@ export default function Index() {
                 activeProfile.email ||
                 activeProfile.phone ||
                 activeProfile.location) && (
-                <p className="text-xs text-muted-foreground/80 border-t border-border/70 pt-2">
-                  {activeProfile.website ? `Webb: ${activeProfile.website}` : ""}
-                  {activeProfile.website &&
-                  (activeProfile.email ||
-                    activeProfile.phone ||
-                    activeProfile.location)
-                    ? " · "
-                    : ""}
-                  {activeProfile.email ? `E-post: ${activeProfile.email}` : ""}
-                  {activeProfile.email &&
-                  (activeProfile.phone || activeProfile.location)
-                    ? " · "
-                    : ""}
-                  {activeProfile.phone ? `Telefon: ${activeProfile.phone}` : ""}
-                  {activeProfile.phone && activeProfile.location ? " · " : ""}
-                  {activeProfile.location ? `Plats: ${activeProfile.location}` : ""}
-                </p>
+                <dl className="grid gap-1 border-t border-border/70 pt-2 text-xs text-muted-foreground/80">
+                  {activeProfile.website ? (
+                    <div className="flex flex-wrap gap-x-2">
+                      <dt className="shrink-0 font-medium text-muted-foreground">Webb</dt>
+                      <dd className="min-w-0 break-all">{activeProfile.website}</dd>
+                    </div>
+                  ) : null}
+                  {activeProfile.email ? (
+                    <div className="flex flex-wrap gap-x-2">
+                      <dt className="shrink-0 font-medium text-muted-foreground">E-post</dt>
+                      <dd className="min-w-0 break-all">{activeProfile.email}</dd>
+                    </div>
+                  ) : null}
+                  {activeProfile.phone ? (
+                    <div className="flex flex-wrap gap-x-2">
+                      <dt className="shrink-0 font-medium text-muted-foreground">Telefon</dt>
+                      <dd className="min-w-0">{activeProfile.phone}</dd>
+                    </div>
+                  ) : null}
+                  {activeProfile.location ? (
+                    <div className="flex flex-wrap gap-x-2">
+                      <dt className="shrink-0 font-medium text-muted-foreground">Plats</dt>
+                      <dd className="min-w-0">{activeProfile.location}</dd>
+                    </div>
+                  ) : null}
+                </dl>
               )}
             </CardContent>
           </Card>

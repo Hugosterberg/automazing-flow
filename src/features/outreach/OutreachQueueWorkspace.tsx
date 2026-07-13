@@ -200,7 +200,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
 
   useEffect(() => {
     if (selectedId || filtered.length === 0 || autoSelectedDesktop.current) return;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
       selectItem(filtered[0] ?? null);
       autoSelectedDesktop.current = true;
     }
@@ -310,7 +310,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-[480px] flex-col">
+    <div className="flex h-full min-h-[280px] flex-col sm:min-h-[400px] lg:min-h-[480px]">
       <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
         <div className="relative min-w-[180px] max-w-xs flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -330,7 +330,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
       </div>
 
       <div className="min-h-0 flex-1">
-        <div className="flex h-full min-h-0 md:hidden">
+        <div className="flex h-full min-h-0 lg:hidden">
           {!selectedItem ? (
             <aside className="flex h-full w-full min-h-0 flex-col">
               <OutreachInboxList
@@ -350,7 +350,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
           )}
         </div>
 
-        <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 md:flex">
+        <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
           <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
             <aside className="flex h-full min-h-0 flex-col overflow-hidden">
               <OutreachInboxList

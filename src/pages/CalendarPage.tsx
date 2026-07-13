@@ -140,7 +140,9 @@ export default function CalendarPage() {
     legacyWrite: (_bpId, value) => writeLegacyEvents(value),
   });
   const events = eventsDoc.data;
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "day" : "week"
+  );
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -747,7 +749,8 @@ export default function CalendarPage() {
             )}
 
             {viewMode === "week" && (
-              <div className="grid grid-cols-7 gap-2 min-w-0">
+              <div className="-mx-1 overflow-x-auto app-scroll px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+              <div className="grid min-w-[640px] grid-cols-7 gap-2 sm:min-w-0">
                 {weekDays.map((day) => {
                   const dayEvents = eventsOnDate(day);
                   const today = isSameDay(day, new Date());
@@ -813,10 +816,12 @@ export default function CalendarPage() {
                   );
                 })}
               </div>
+              </div>
             )}
 
             {viewMode === "month" && (
-              <div className="grid grid-cols-7 gap-1">
+              <div className="-mx-1 overflow-x-auto app-scroll px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+              <div className="grid min-w-[560px] grid-cols-7 gap-1 sm:min-w-0">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <div
                     key={d}
@@ -847,15 +852,20 @@ export default function CalendarPage() {
                         {format(day, "d")}
                       </span>
                       {dayEvents.length > 0 && (
-                        <div className="absolute bottom-1 left-1 right-1 px-0.5 text-center text-[9px] text-muted-foreground truncate">
-                          {dayEvents.length === 1
-                            ? dayEvents[0].title
-                            : `${dayEvents.length} events`}
+                        <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                          {dayEvents.slice(0, 3).map((ev) => (
+                            <span
+                              key={ev.id}
+                              className="h-1 w-1 rounded-full bg-primary"
+                              title={ev.title}
+                            />
+                          ))}
                         </div>
                       )}
                     </div>
                   );
                 })}
+              </div>
               </div>
             )}
           </CardContent>

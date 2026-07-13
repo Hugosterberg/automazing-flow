@@ -186,8 +186,8 @@ export default function ActivityPage() {
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
-        <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
-          <div className="relative min-w-[180px] max-w-xs flex-1">
+        <div className="app-workspace-toolbar flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+          <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchInputRef}
@@ -199,7 +199,7 @@ export default function ActivityPage() {
             />
           </div>
           <Select value={moduleFilter} onValueChange={setModuleFilter}>
-            <SelectTrigger className="h-8 w-[180px] border-border/60 bg-background/60 text-xs shadow-sm">
+            <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[180px]">
               <SelectValue placeholder="Modul" />
             </SelectTrigger>
             <SelectContent>
@@ -213,7 +213,7 @@ export default function ActivityPage() {
           </Select>
 
           <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as SeverityFilter)}>
-            <SelectTrigger className="h-8 w-[160px] border-border/60 bg-background/60 text-xs shadow-sm">
+            <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[160px]">
               <SelectValue placeholder="Allvarlighet" />
             </SelectTrigger>
             <SelectContent>

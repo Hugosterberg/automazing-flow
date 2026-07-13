@@ -104,7 +104,7 @@ export function ReviewDetailPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 md:hidden"
+              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -275,7 +275,7 @@ export function ReviewDetailPlaceholder() {
           Listan stannar kvar till vänster — läs och svara utan att tappa kontexten.
         </p>
       </div>
-      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left md:block">
+      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
         <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
           <li>

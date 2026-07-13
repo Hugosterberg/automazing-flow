@@ -59,10 +59,10 @@ export function GlobalAttentionStrip() {
   return (
     <div className="shrink-0 border-b border-border/60 bg-gradient-to-r from-primary/5 via-card/40 to-muted/10 px-3 py-2 sm:px-4">
       <div className="mx-auto flex max-w-screen-2xl items-center gap-2">
-        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-primary">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          <span className="hidden sm:inline">{stripLabel}</span>
-          <span className="tabular-nums">({brief.actionCount})</span>
+        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-primary min-w-0">
+          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate max-w-[7rem] sm:max-w-none">{stripLabel}</span>
+          <span className="tabular-nums shrink-0">({brief.actionCount})</span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto app-scroll">
@@ -85,6 +85,15 @@ export function GlobalAttentionStrip() {
             );
           })}
         </div>
+
+        <Link
+          to="/"
+          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground sm:hidden"
+          aria-label="Full översikt"
+          title="Full översikt"
+        >
+          <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+        </Link>
 
         <Link
           to="/"

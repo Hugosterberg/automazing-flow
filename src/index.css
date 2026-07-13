@@ -314,13 +314,24 @@
   /* Shared elevated shell for inbox-style workspaces (Messages, Reviews, Activity, …). */
   .app-workspace-shell {
     display: flex;
-    min-height: min(78vh, 880px);
+    min-height: min(38vh, 420px);
     flex-direction: column;
     overflow: hidden;
-    border-radius: 1rem;
+    border-radius: 0.875rem;
     border: 1px solid hsl(var(--border) / 0.8);
     background: hsl(var(--card) / 0.3);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 0 0 1px hsl(var(--border) / 0.4);
+  }
+  @media (min-width: 640px) {
+    .app-workspace-shell {
+      min-height: min(58vh, 680px);
+      border-radius: 1rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .app-workspace-shell {
+      min-height: min(78vh, 880px);
+    }
   }
 
   .app-workspace-toolbar {
@@ -417,5 +428,65 @@
   }
   .landing-demo-progress {
     transform-origin: left center;
+  }
+
+  /* Premium landing — spotlight, noise, card shine */
+  .landing-spotlight {
+    background-image:
+      radial-gradient(ellipse 80% 55% at 50% -15%, hsl(var(--glow) / 0.14), transparent 65%),
+      radial-gradient(ellipse 45% 35% at 85% 5%, hsl(var(--info) / 0.08), transparent 55%);
+  }
+  .landing-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+  .landing-premium-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .landing-premium-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glow) / 0.22),
+      hsl(var(--info) / 0.12) 40%,
+      hsl(var(--glow) / 0.06) 70%,
+      transparent
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  @keyframes landing-shine {
+    0% { transform: translateX(-120%) skewX(-12deg); }
+    100% { transform: translateX(220%) skewX(-12deg); }
+  }
+  .landing-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .landing-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      hsl(var(--glow) / 0.06) 50%,
+      transparent 60%
+    );
+    animation: landing-shine 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .landing-demo-frame {
+    box-shadow:
+      0 0 0 1px hsl(var(--glow) / 0.08),
+      0 25px 50px -12px rgb(0 0 0 / 0.55),
+      0 0 80px -20px hsl(var(--info) / 0.15);
   }
 }

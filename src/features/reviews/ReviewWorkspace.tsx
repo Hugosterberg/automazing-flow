@@ -105,7 +105,7 @@ export function ReviewWorkspace({
 }: Props) {
   return (
     <>
-      <div className="flex h-full min-h-0 md:hidden">
+      <div className="flex h-full min-h-0 lg:hidden">
         {!selectedReview ? (
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
@@ -126,7 +126,7 @@ export function ReviewWorkspace({
         )}
       </div>
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 md:flex">
+      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
         <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
           <InboxPane
             className="flex h-full min-h-0 flex-col overflow-hidden"

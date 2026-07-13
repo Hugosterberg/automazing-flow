@@ -134,7 +134,7 @@ export function MessageDetailPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 md:hidden"
+              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -272,7 +272,7 @@ export function MessageDetailPanel({
           <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
             <CheckCheck className="mr-1 h-3 w-3" />
             Markera klar
-            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">H</kbd>
+            <kbd className="ml-1.5 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">H</kbd>
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onDraftReply} disabled={draftBusy}>
             {draftBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
@@ -286,7 +286,7 @@ export function MessageDetailPanel({
             onClick={() => replyRef.current?.focus()}
           >
             Skriv svar
-            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">R</kbd>
+            <kbd className="ml-1.5 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">R</kbd>
           </Button>
         </div>
       ) : null}
@@ -431,7 +431,7 @@ export function MessageDetailPlaceholder() {
           Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten.
         </p>
       </div>
-      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left md:block">
+      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
         <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <li>

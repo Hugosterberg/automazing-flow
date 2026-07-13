@@ -263,7 +263,7 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/80 bg-card/80 p-6 shadow-xl backdrop-blur-md glow-border",
+        "landing-premium-card rounded-2xl border border-border/80 bg-card/80 p-5 shadow-xl backdrop-blur-md sm:p-6",
         className
       )}
     >
@@ -275,11 +275,11 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
       </div>
 
       {!compact ? (
-        <ol className="mt-4 flex gap-2" aria-label="Steg för att komma igång">
+        <ol className="mt-4 flex flex-col gap-2 sm:flex-row" aria-label="Steg för att komma igång">
           {LANDING_STEPS.map((step) => (
             <li
               key={step.step}
-              className="flex-1 rounded-lg border border-border/60 bg-muted/20 px-2 py-2 text-center"
+              className="flex-1 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-left sm:px-2 sm:py-2 sm:text-center"
             >
               <span className="block font-display text-xs font-bold text-primary">{step.step}</span>
               <span className="mt-0.5 block text-[10px] leading-tight text-muted-foreground">

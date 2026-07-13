@@ -86,7 +86,7 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
 
   return (
     <>
-      <div className="flex h-full min-h-0 md:hidden">
+      <div className="flex h-full min-h-0 lg:hidden">
         {!selectedRow || selectedIndex == null ? (
           <CustomerList
             rows={rows}
@@ -108,7 +108,7 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
         )}
       </div>
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 md:flex">
+      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
         <ResizablePanel defaultSize={36} minSize={28} maxSize={48} className="min-h-0 min-w-[260px] border-r border-border/40">
           <CustomerList
             rows={rows}

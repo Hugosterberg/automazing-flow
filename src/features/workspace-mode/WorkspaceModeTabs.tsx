@@ -37,7 +37,7 @@ export function WorkspaceModeTabs() {
             onClick={() => setMode(tabMode)}
             disabled={switching}
             aria-pressed={isActive}
-            className={`flex h-7 items-center gap-1.5 rounded-full px-2.5 sm:px-3 text-xs font-medium transition-colors ${
+            className={`flex h-7 items-center gap-1 rounded-full px-2 sm:gap-1.5 sm:px-3 text-xs font-medium transition-colors ${
               isActive
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

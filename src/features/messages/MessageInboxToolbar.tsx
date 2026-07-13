@@ -146,8 +146,8 @@ export function MessageInboxToolbar({
         </div>
       </div>
 
-      <div className={cn("flex flex-wrap items-center gap-2 border-t border-border/50 px-3 py-2 sm:px-4", isSearching && "pb-4")}>
-        <div className="relative min-w-[140px] flex-1 sm:max-w-xs">
+      <div className={cn("flex flex-col gap-2 border-t border-border/50 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:px-4", isSearching && "pb-4")}>
+        <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={searchInputRef}
@@ -185,46 +185,47 @@ export function MessageInboxToolbar({
           ) : null}
         </div>
 
-        <div
-          className="flex items-center rounded-lg border border-border/60 bg-background/40 p-0.5"
-          role="group"
-          aria-label="Filtrera inkorg"
-        >
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onInboxFilterChange(opt.value)}
-              title={`Genväg: ${opt.shortcut}`}
-              className={cn(
-                "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
-                inboxFilter === opt.value
-                  ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
-                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-              )}
-            >
-              {opt.label}
-              {opt.value === "open" && unansweredCount > 0 ? (
-                <span className="ml-1 tabular-nums opacity-80">({unansweredCount})</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <div
+            className="flex min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-border/60 bg-background/40 p-0.5 app-scroll"
+            role="group"
+            aria-label="Filtrera inkorg"
+          >
+            {FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onInboxFilterChange(opt.value)}
+                title={`Genväg: ${opt.shortcut}`}
+                className={cn(
+                  "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  inboxFilter === opt.value
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                )}
+              >
+                {opt.label}
+                {opt.value === "open" && unansweredCount > 0 ? (
+                  <span className="ml-1 tabular-nums opacity-80">({unansweredCount})</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
 
-        <AlertDialog open={markAllOpen} onOpenChange={setMarkAllOpen}>
-          <AlertDialogTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={markAllDisabled}
-            >
-              <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Hantera alla</span>
-              <span className="sm:hidden">Alla</span>
-            </Button>
-          </AlertDialogTrigger>
+          <AlertDialog open={markAllOpen} onOpenChange={setMarkAllOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 px-2 text-xs sm:px-3"
+                disabled={markAllDisabled}
+                aria-label="Markera alla som hanterade"
+              >
+                <CheckCheck className="h-3.5 w-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Hantera alla</span>
+              </Button>
+            </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Markera alla som hanterade?</AlertDialogTitle>
@@ -246,6 +247,11 @@ export function MessageInboxToolbar({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        </div>
+
+        <p className="text-[10px] tabular-nums text-muted-foreground sm:hidden">
+          {loading ? "Laddar…" : `${totalVisible} · ${openTotal} öppna`}
+        </p>
 
         <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
           {loading ? "Laddar…" : isSearching ? `${totalVisible} träffar · ${openTotal} öppna` : `${totalVisible} visade · ${openTotal} öppna`}

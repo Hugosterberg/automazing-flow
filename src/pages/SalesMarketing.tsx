@@ -601,7 +601,7 @@ export default function SalesMarketingPage() {
                   </Button>
                 </CardContent>
               </Card>
-              <div className="app-workspace-shell min-h-[520px]">
+              <div className="app-workspace-shell">
                 <OutreachQueueWorkspace businessProfileId={businessProfileId} />
               </div>
             </>
@@ -626,7 +626,7 @@ export default function SalesMarketingPage() {
               </Button>
             </CardContent>
           </Card>
-          <div className="app-workspace-shell min-h-[520px]">
+          <div className="app-workspace-shell">
             <LeadFollowUpsWorkspace
               businessProfileId={businessProfileId}
               onDraftOutreach={(target, leadId) => {

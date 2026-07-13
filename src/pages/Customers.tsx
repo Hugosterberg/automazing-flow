@@ -149,7 +149,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     if (autoSelected.current || filteredRows.length === 0) return;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
       setSelectedIndex(0);
       autoSelected.current = true;
     }

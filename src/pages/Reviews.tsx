@@ -829,8 +829,8 @@ export default function ReviewsPage() {
 
       {!loading && reviews.length > 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell">
-          <div className="app-workspace-toolbar flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
-            <div className="relative min-w-[180px] max-w-xs flex-1">
+          <div className="app-workspace-toolbar flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4">
+            <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 ref={searchInputRef}
@@ -841,9 +841,9 @@ export default function ReviewsPage() {
                 aria-label="Sök recensioner"
               />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
               <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as typeof ratingFilter)}>
-                <SelectTrigger className="h-8 w-[140px] border-border/60 bg-background/60 text-xs shadow-sm">
+                <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[140px]">
                   <SelectValue placeholder="Alla betyg" />
                 </SelectTrigger>
                 <SelectContent>
@@ -856,7 +856,7 @@ export default function ReviewsPage() {
                 </SelectContent>
               </Select>
               <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as typeof replyFilter)}>
-                <SelectTrigger className="h-8 w-[140px] border-border/60 bg-background/60 text-xs shadow-sm">
+                <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[140px]">
                   <SelectValue placeholder="Alla" />
                 </SelectTrigger>
                 <SelectContent>

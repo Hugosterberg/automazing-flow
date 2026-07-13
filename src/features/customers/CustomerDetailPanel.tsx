@@ -54,7 +54,7 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
       <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 md:hidden" onClick={onBack}>
+            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden" onClick={onBack}>
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Tillbaka till listan</span>
             </Button>

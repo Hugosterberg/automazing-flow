@@ -145,9 +145,9 @@ function LeadRow({
           <SearchHighlight text={contactLine} query={searchQuery} />
         </p>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 shrink-0 overflow-x-auto app-scroll pb-0.5 sm:overflow-visible sm:pb-0">
         <Select value={lead.status} onValueChange={(v) => onStatus(v as LeadStatus)}>
-          <SelectTrigger className={cn("h-8 w-[120px] text-xs", STATUS_TONE[lead.status])}>
+          <SelectTrigger className={cn("h-8 w-full min-w-[108px] text-xs sm:w-[120px]", STATUS_TONE[lead.status])}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -165,7 +165,7 @@ function LeadRow({
             value={lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : ""}
             onChange={(e) => onFollowUp(e.target.value)}
             className={cn(
-              "h-8 w-[150px] text-xs",
+              "h-8 w-full min-w-[130px] text-xs sm:w-[150px]",
               overdue && "border-destructive text-destructive",
               dueToday && "border-warning text-warning",
             )}

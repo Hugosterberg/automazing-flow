@@ -19,7 +19,7 @@ export function LandingComparison() {
         </ul>
       </article>
 
-      <article className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 p-5 glow-sm">
+      <article className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 p-5 landing-premium-card glow-sm hover-lift interactive">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl"
@@ -46,7 +46,7 @@ export function LandingComparison() {
 
 export function LandingPillars() {
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {LANDING_PILLARS.map((pillar, index) => (
         <article
           key={pillar.title}

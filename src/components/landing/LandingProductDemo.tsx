@@ -21,45 +21,48 @@ function BrowserChrome({
   activeNav: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-2xl glow-md">
-      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
+    <div className="landing-demo-frame landing-premium-card overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-2xl">
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2.5 sm:px-4">
         <div className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
           <span className="h-2.5 w-2.5 rounded-full bg-warning/70" />
           <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
         </div>
-        <div className="mx-auto flex h-6 w-full max-w-xs items-center justify-center rounded-md bg-background/60 px-3 text-[10px] text-muted-foreground">
-          app.automazing.io
+        <div className="mx-auto flex h-6 min-w-0 flex-1 max-w-xs items-center justify-center rounded-md bg-background/60 px-2 text-[10px] text-muted-foreground sm:px-3">
+          <span className="truncate">app.automazing.io</span>
         </div>
       </div>
-      <div className="flex min-h-[320px] bg-gradient-to-br from-background via-card to-muted/20 sm:min-h-[380px]">
-        <div className="hidden w-[108px] shrink-0 border-r border-border/50 bg-sidebar/80 p-2 sm:block">
-          <div className="mb-3 flex items-center gap-1.5 px-1.5">
+      <div className="flex min-h-[280px] bg-gradient-to-br from-background via-card to-muted/20 sm:min-h-[380px]">
+        <div className="flex w-10 shrink-0 flex-col border-r border-border/50 bg-sidebar/80 p-1.5 sm:w-[108px] sm:p-2">
+          <div className="mb-2 flex items-center justify-center sm:mb-3 sm:justify-start sm:gap-1.5 sm:px-1.5">
             <div className="h-5 w-5 rounded-md bg-primary" />
-            <span className="font-display text-[10px] font-bold">automazing</span>
+            <span className="hidden font-display text-[10px] font-bold sm:inline">automazing</span>
           </div>
           <nav className="space-y-0.5">
             {SIDEBAR_NAV.map((item) => (
               <div
                 key={item}
+                title={item}
                 className={cn(
-                  "rounded-md px-2 py-1.5 text-[10px] transition-colors",
+                  "rounded-md px-1 py-1.5 text-center text-[9px] transition-colors sm:px-2 sm:text-left sm:text-[10px]",
                   item === activeNav
                     ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/60"
                 )}
               >
-                {item}
+                <span className="sm:hidden">{item.charAt(0)}</span>
+                <span className="hidden sm:inline">{item}</span>
               </div>
             ))}
             {activeNav === "MCP Intelligence" ? (
-              <div className="rounded-md bg-sidebar-accent px-2 py-1.5 text-[10px] font-medium text-sidebar-accent-foreground">
-                MCP Intelligence
+              <div className="rounded-md bg-sidebar-accent px-1 py-1.5 text-center text-[9px] font-medium text-sidebar-accent-foreground sm:px-2 sm:text-left sm:text-[10px]">
+                <span className="sm:hidden">M</span>
+                <span className="hidden sm:inline">MCP Intelligence</span>
               </div>
             ) : null}
           </nav>
         </div>
-        <div className="relative flex-1 p-4 sm:p-5">{children}</div>
+        <div className="relative min-w-0 flex-1 p-3 sm:p-5">{children}</div>
       </div>
     </div>
   );
@@ -252,7 +255,7 @@ function SalesScene() {
         <p className="text-xs font-medium">Pipeline</p>
         <span className="text-[10px] text-muted-foreground">3 affärer · 142 000 kr</span>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {columns.map((col, colIndex) => (
           <div key={col.title} className="space-y-2">
             <p className="text-[10px] font-medium text-muted-foreground">{col.title}</p>
@@ -482,7 +485,7 @@ export function LandingProductDemo() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         {DEMO_SCENES.map((scene, index) => {
           const Icon = SCENE_ICONS[scene.id];
           const isActive = index === activeIndex;
@@ -491,15 +494,16 @@ export function LandingProductDemo() {
               key={scene.id}
               type="button"
               onClick={() => selectScene(index)}
+              title={scene.label}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all sm:px-3",
                 isActive
                   ? "border-primary/40 bg-primary/10 text-foreground glow-sm"
                   : "border-border/60 bg-card/40 text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{scene.label}</span>
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="max-w-[5rem] truncate sm:max-w-none">{scene.label}</span>
             </button>
           );
         })}
@@ -536,7 +540,9 @@ export function LandingProductDemo() {
         </AnimatePresence>
       </BrowserChrome>
 
-      <p className="text-sm leading-relaxed text-muted-foreground">{activeScene.caption}</p>
+      <p className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
+        {activeScene.caption}
+      </p>
     </div>
   );
 }
