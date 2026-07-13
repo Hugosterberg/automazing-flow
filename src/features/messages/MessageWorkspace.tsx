@@ -37,10 +37,10 @@ type Props = {
 };
 
 const detailMotion = {
-  initial: { opacity: 0, x: 12, filter: "blur(4px)" },
-  animate: { opacity: 1, x: 0, filter: "blur(0px)" },
-  exit: { opacity: 0, x: -8, filter: "blur(2px)" },
-  transition: { duration: 0.16, ease: [0.25, 0.1, 0.25, 1] as const },
+  initial: { opacity: 0, x: 12 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -8 },
+  transition: { duration: 0.14, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
 function DetailPane({
@@ -53,7 +53,7 @@ function DetailPane({
   showBack?: boolean;
 }) {
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       {selectedMessage && detailProps ? (
         <m.div key={selectedMessage.id} className="flex h-full min-h-0 flex-col" {...detailMotion}>
           <MessageDetailPanel message={selectedMessage} {...detailProps} showBack={showBack} />
@@ -108,6 +108,11 @@ function InboxPane(
   );
 }
 
+/**
+ * Mount exactly one layout tree.
+ * Do NOT dual-render mobile + desktop with Tailwind `hidden` — react-resizable-panels
+ * sets inline `display:flex` which overrides `hidden` and stacked both views on phones.
+ */
 export function MessageWorkspace({
   filteredMessages,
   selectedMessage,
@@ -127,10 +132,11 @@ export function MessageWorkspace({
 }: Props) {
   const isDesktopWorkspace = useIsDesktopWorkspace();
 
+  // Phone/tablet: list OR detail — never both, never a sibling desktop tree.
   if (!isDesktopWorkspace) {
-    return (
-      <div className="flex h-full min-h-0">
-        {!selectedMessage ? (
+    if (!selectedMessage) {
+      return (
+        <div className="flex h-full min-h-0 w-full">
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
             filteredMessages={filteredMessages}
@@ -147,41 +153,43 @@ export function MessageWorkspace({
             onMarkHandled={onMarkHandled}
             onPrefetch={onPrefetch}
           />
-        ) : (
-          <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
-            <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} showBack />
-          </section>
-        )}
-      </div>
+        </div>
+      );
+    }
+
+    return (
+      <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
+        <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} showBack />
+      </section>
     );
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
-        <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
-          <InboxPane
-            className="flex h-full min-h-0 flex-col overflow-hidden"
-            filteredMessages={filteredMessages}
-            selectedId={selectedId}
-            loading={loading}
-            error={error}
-            inboxFilter={inboxFilter}
-            searchQuery={searchQuery}
-            emptyTitle={emptyTitle}
-            emptyDescription={emptyDescription}
-            emptyAction={emptyAction}
-            getRowMeta={getRowMeta}
-            onSelect={onSelect}
-            onMarkHandled={onMarkHandled}
-            onPrefetch={onPrefetch}
-          />
-        </ResizablePanel>
-        <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35 data-[resize-handle-active]:bg-primary/50" />
-        <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
-          <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden bg-background">
-            <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
-          </section>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+    <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0">
+      <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
+        <InboxPane
+          className="flex h-full min-h-0 flex-col overflow-hidden"
+          filteredMessages={filteredMessages}
+          selectedId={selectedId}
+          loading={loading}
+          error={error}
+          inboxFilter={inboxFilter}
+          searchQuery={searchQuery}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+          emptyAction={emptyAction}
+          getRowMeta={getRowMeta}
+          onSelect={onSelect}
+          onMarkHandled={onMarkHandled}
+          onPrefetch={onPrefetch}
+        />
+      </ResizablePanel>
+      <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35 data-[resize-handle-active]:bg-primary/50" />
+      <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+        <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden bg-background">
+          <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
+        </section>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
