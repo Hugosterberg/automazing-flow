@@ -369,6 +369,25 @@
 
   .message-iframe-shell {
     transition: height 0.2s ease;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .messages-workspace-shell {
+    min-height: min(72dvh, 100%);
+  }
+  @media (min-width: 640px) {
+    .messages-workspace-shell {
+      min-height: min(58vh, 680px);
+    }
+  }
+  @media (min-width: 1024px) {
+    .messages-workspace-shell {
+      min-height: min(78vh, 880px);
+    }
+  }
+
+  .message-compose-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   @keyframes message-iframe-shimmer {

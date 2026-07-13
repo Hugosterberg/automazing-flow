@@ -1,5 +1,6 @@
 import { Clock, Inbox, Play, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 type MessageInboxStatsProps = {
@@ -23,10 +24,12 @@ export function MessageInboxStats({
   onShowAiReady,
   onStartTriage,
 }: MessageInboxStatsProps) {
+  const isMobile = useIsMobile();
+
   if (loading) {
     return (
       <div className="flex gap-2 border-b border-border/40 bg-muted/10 px-3 py-2 sm:px-4">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: isMobile ? 1 : 3 }).map((_, i) => (
           <div key={i} className="h-7 flex-1 animate-pulse rounded-lg bg-muted/40" />
         ))}
       </div>
@@ -35,9 +38,35 @@ export function MessageInboxStats({
 
   if (openCount === 0 && aiReadyCount === 0) {
     return (
-      <div className="flex items-center gap-2 border-b border-border/40 bg-success/5 px-3 py-2 text-xs text-success sm:px-4">
+      <div className="flex items-center gap-2 border-b border-border/40 bg-success/5 px-3 py-2.5 text-xs text-success sm:px-4 sm:py-2">
         <Inbox className="h-3.5 w-3.5 shrink-0" />
         <span>Inkorgen är tom — bra jobbat.</span>
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-2.5 border-b border-border/40 bg-gradient-to-r from-primary/[0.04] via-background/50 to-primary/[0.04] px-3 py-3 sm:px-4">
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-medium text-foreground">
+            {openCount} öppna meddelande{openCount === 1 ? "" : "n"}
+            {oldestWait ? (
+              <span className="font-normal text-muted-foreground"> · äldsta väntar {oldestWait}</span>
+            ) : null}
+          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {aiReadyCount > 0
+              ? `${aiReadyCount} har AI-utkast klara — tryck ett meddelande för att läsa och svara.`
+              : "Tryck ett meddelande i listan nedan för att läsa och svara."}
+          </p>
+        </div>
+        {onStartTriage && openCount > 0 ? (
+          <Button type="button" className="h-11 w-full gap-2 text-sm glow-sm" onClick={onStartTriage}>
+            <Play className="h-4 w-4" />
+            Börja triage
+          </Button>
+        ) : null}
       </div>
     );
   }

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
@@ -81,6 +82,7 @@ export function MessageDetailPanel({
   focusReplyRef,
   navigation,
 }: MessageDetailPanelProps) {
+  const isMobile = useIsMobile();
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const rawBody = (message.body || message.snippet || "").trim();
   const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
@@ -95,8 +97,8 @@ export function MessageDetailPanel({
   }, [focusReplyRef, message.id]);
 
   useEffect(() => {
-    setSummaryOpen(Boolean(aiSummary) && needsAttention && !htmlEmail);
-  }, [message.id, aiSummary, needsAttention, htmlEmail]);
+    setSummaryOpen(Boolean(aiSummary) && (isMobile || (needsAttention && !htmlEmail)));
+  }, [message.id, aiSummary, needsAttention, htmlEmail, isMobile]);
 
   useEffect(() => {
     if (replySent || !canReply || draftBusy) return;
@@ -127,18 +129,21 @@ export function MessageDetailPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
-        <div className="flex w-full items-start gap-3">
+      <header className="shrink-0 border-b border-border/80 bg-card/20 px-3 py-2.5 backdrop-blur-sm sm:px-5 sm:py-3">
+        <div className="flex w-full items-start gap-2 sm:gap-3">
           {showBack && onBack ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isMobile ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till inkorgen</span>
+              {isMobile ? <span>Inkorg</span> : <span className="sr-only">Tillbaka till inkorgen</span>}
             </Button>
           ) : null}
 
@@ -154,7 +159,7 @@ export function MessageDetailPanel({
 
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 className="min-w-0 text-base font-semibold leading-snug tracking-tight sm:text-lg">
+              <h2 className="min-w-0 text-[15px] font-semibold leading-snug tracking-tight sm:text-lg">
                 {message.subject || "(Utan ämne)"}
               </h2>
               <div className="flex shrink-0 items-center gap-0.5">
@@ -164,7 +169,7 @@ export function MessageDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0"
+                      className={cn(isMobile ? "h-9 w-9" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
                       aria-label="Föregående meddelande"
@@ -178,7 +183,7 @@ export function MessageDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0"
+                      className={cn(isMobile ? "h-9 w-9" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
                       aria-label="Nästa meddelande"
@@ -187,28 +192,30 @@ export function MessageDetailPanel({
                     </Button>
                   </div>
                 ) : null}
-                {message.externalUrl ? (
+                {!isMobile && message.externalUrl ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
                     <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Öppna i plattformen">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : null}
+                {!isMobile ? (
                 <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title="Kopiera meddelande">
                   <Copy className="h-4 w-4" />
                   <span className="sr-only">Kopiera meddelande</span>
                 </Button>
+                ) : null}
                 {!isHandled ? (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant={isMobile ? "secondary" : "ghost"}
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className={cn(isMobile ? "h-9 gap-1 px-2.5 text-xs" : "h-8 w-8 p-0")}
                     onClick={onMarkHandled}
                     title="Markera hanterad (E)"
                   >
-                    <CheckCheck className="h-4 w-4" />
-                    <span className="sr-only">Markera hanterad</span>
+                    <CheckCheck className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+                    {isMobile ? <span>Klar</span> : <span className="sr-only">Markera hanterad</span>}
                   </Button>
                 ) : (
                   <div className="flex items-center gap-1">
@@ -266,7 +273,7 @@ export function MessageDetailPanel({
         </div>
       </header>
 
-      {needsAttention && canReply && !replySent ? (
+      {needsAttention && canReply && !replySent && !isMobile ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/5 px-4 py-2 sm:px-5">
           <span className="text-[11px] font-medium text-primary">Snabbåtgärder</span>
           <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
@@ -291,7 +298,7 @@ export function MessageDetailPanel({
         </div>
       ) : null}
 
-      <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+      <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-5">
         <div className="w-full space-y-4">
           {aiSummary ? (
             <div className="overflow-hidden rounded-lg border border-violet-500/20 bg-violet-500/[0.04]">
@@ -331,23 +338,23 @@ export function MessageDetailPanel({
       </div>
 
       {canReply ? (
-        <footer className="shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-4 py-3 backdrop-blur-md sm:px-5">
+        <footer className="message-compose-footer shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-3 py-3 backdrop-blur-md sm:px-5">
           <div className="mx-auto w-full">
             {replySent ? (
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                   <Send className="h-4 w-4" />
                   Svar skickat
                 </p>
                 {onNextAfterSend ? (
-                  <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
+                  <Button type="button" variant="outline" size="sm" className="h-10 w-full text-sm sm:h-8 sm:w-auto sm:text-xs" onClick={onNextAfterSend}>
                     Nästa meddelande
                     <ChevronRight className="ml-1 h-3.5 w-3.5" />
                   </Button>
                 ) : null}
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <Textarea
                   ref={replyRef}
                   value={replyDraft}
@@ -358,7 +365,8 @@ export function MessageDetailPanel({
                       : "Skriv ett svar…"
                   }
                   className={cn(
-                    "min-h-[88px] resize-none rounded-xl border-border/70 bg-background/80 text-sm leading-relaxed shadow-inner",
+                    "resize-none rounded-xl border-border/70 bg-background/80 text-sm leading-relaxed shadow-inner",
+                    isMobile ? "min-h-[100px]" : "min-h-[88px]",
                     "focus-visible:ring-primary/30"
                   )}
                   onKeyDown={(e) => {
@@ -368,6 +376,23 @@ export function MessageDetailPanel({
                     }
                   }}
                 />
+                {isMobile ? (
+                  <div className="grid grid-cols-2 gap-2 [&_button]:h-10 [&_button]:w-full [&_button]:text-sm">
+                    <Button type="button" variant="outline" className="h-10 text-sm" onClick={onDraftReply} disabled={draftBusy}>
+                      {draftBusy ? (
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-1.5 h-4 w-4" />
+                      )}
+                      AI-utkast
+                    </Button>
+                    <ReplyTemplatePicker
+                      onInsert={onReplyDraftChange}
+                      recipientName={message.from.name}
+                      disabled={sendBusy}
+                    />
+                  </div>
+                ) : (
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" size="sm" className="h-8" onClick={onDraftReply} disabled={draftBusy}>
                     {draftBusy ? (
@@ -382,25 +407,28 @@ export function MessageDetailPanel({
                     recipientName={message.from.name}
                     disabled={sendBusy}
                   />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="ml-auto h-8 gap-1.5 glow-sm"
-                    onClick={onSendReply}
-                    disabled={sendBusy || !replyDraft.trim()}
-                  >
-                    {sendBusy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Send className="h-3.5 w-3.5" />
-                    )}
-                    Skicka svar
-                  </Button>
+                </div>
+                )}
+                <Button
+                  type="button"
+                  size={isMobile ? "default" : "sm"}
+                  className={cn("gap-1.5 glow-sm", isMobile ? "h-11 w-full text-sm" : "ml-auto h-8")}
+                  onClick={onSendReply}
+                  disabled={sendBusy || !replyDraft.trim()}
+                >
+                  {sendBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Skicka svar
+                </Button>
+                {!isMobile ? (
                   <span className="hidden w-full text-[10px] text-muted-foreground sm:inline sm:w-auto sm:ml-0">
                     Ctrl+Enter
                     {replyDraft.trim() ? ` · ${replyDraft.trim().length} tecken` : null}
                   </span>
-                </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -411,13 +439,15 @@ export function MessageDetailPanel({
 }
 
 export function MessageDetailPlaceholder() {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="message-reading-pane flex h-full min-h-[320px] flex-col items-center justify-center gap-6 px-6 text-center">
+    <div className="message-reading-pane flex h-full min-h-[280px] flex-col items-center justify-center gap-5 px-5 py-8 text-center sm:min-h-[320px] sm:gap-6 sm:px-6">
       <m.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/30 p-6 shadow-sm"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/30 p-5 shadow-sm sm:p-6"
       >
         <div className="hidden h-24 w-16 rounded-lg border border-border/50 bg-muted/30 sm:block" aria-hidden />
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15">
@@ -426,9 +456,13 @@ export function MessageDetailPlaceholder() {
         <div className="hidden h-24 w-28 rounded-lg border border-border/50 bg-muted/20 sm:block" aria-hidden />
       </m.div>
       <div className="max-w-sm space-y-1.5">
-        <p className="font-display text-base font-semibold">Välj ett meddelande</p>
+        <p className="font-display text-base font-semibold">
+          {isMobile ? "Tryck ett meddelande" : "Välj ett meddelande"}
+        </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten.
+          {isMobile
+            ? "Välj ett meddelande i listan nedan. AI sammanfattar och föreslår svar — du godkänner innan du skickar."
+            : "Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten."}
         </p>
       </div>
       <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">

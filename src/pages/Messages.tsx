@@ -26,6 +26,8 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
@@ -954,6 +956,9 @@ export default function MessagesPage() {
     [messages, activeTab, isUnanswered]
   );
 
+  const isMobile = useIsMobile();
+  const mobileReading = isMobile && Boolean(selectedMessage);
+
   const oauthAlertMessage = oauthErrorDetails
     ? formatOAuthErrorMessage(
         oauthErrorDetails,
@@ -968,28 +973,49 @@ export default function MessagesPage() {
     : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4">
-      <PageHeader
-        icon={MessageSquare}
-        title="Meddelanden"
-        description="Mail, DM och WhatsApp i en inkorg — med AI-sammanfattningar och snabbsvar."
-      />
+    <div
+      className={cn(
+        "mx-auto flex w-full max-w-[1520px] flex-col",
+        mobileReading ? "gap-0" : "gap-3 sm:gap-4"
+      )}
+    >
+      {!mobileReading ? (
+        <>
+          <PageHeader
+            icon={MessageSquare}
+            title="Meddelanden"
+            description={
+              isMobile
+                ? "Välj ett meddelande — AI hjälper dig sammanfatta och svara."
+                : "Mail, DM och WhatsApp i en inkorg — med AI-sammanfattningar och snabbsvar."
+            }
+          />
 
-      <PageSmartBar
-        title="Meddelanden är din triage-inkorg — läs, svara och markera hanterade utan att tappa kontext."
-        steps={[
-          "Välj kanal och filter (Kö / Öppna) för att fokusera på det viktiga",
-          "Använd J/K för att bläddra och H för Handled",
-          "Låt AI sammanfatta och skriva utkast — du redigerar innan du skickar",
-        ]}
-        tip="Tryck / för att söka snabbt i inkorgen."
-        liveHintOverride={inboxLiveHint}
-        extraActions={
-          inboxStats.openCount > 0
-            ? [{ label: "Starta triage", to: "/messages" }]
-            : []
-        }
-      />
+          <PageSmartBar
+            title={
+              isMobile
+                ? "Tryck Börja triage för att gå igenom öppna meddelanden i ordning."
+                : "Meddelanden är din triage-inkorg — läs, svara och markera hanterade utan att tappa kontext."
+            }
+            steps={
+              isMobile
+                ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
+                : [
+                    "Välj kanal och filter (Kö / Öppna) för att fokusera på det viktiga",
+                    "Använd J/K för att bläddra och H för Handled",
+                    "Låt AI sammanfatta och skriva utkast — du redigerar innan du skickar",
+                  ]
+            }
+            tip={isMobile ? undefined : "Tryck / för att söka snabbt i inkorgen."}
+            liveHintOverride={inboxLiveHint}
+            extraActions={
+              inboxStats.openCount > 0
+                ? [{ label: isMobile ? "Börja triage" : "Starta triage", to: "/messages" }]
+                : []
+            }
+          />
+        </>
+      ) : null}
 
       {!hasAnyMailConnected ? (
         <m.div {...fadeUp} transition={{ duration: 0.35 }} className="grid gap-3 sm:grid-cols-2">
@@ -1022,9 +1048,13 @@ export default function MessagesPage() {
 
       <m.div
         {...fadeUp}
-        transition={{ duration: 0.35, delay: 0.03 }}
-        className="app-workspace-shell flex flex-col"
+        transition={{ duration: 0.35, delay: mobileReading ? 0 : 0.03 }}
+        className={cn(
+          "app-workspace-shell messages-workspace-shell flex flex-col",
+          mobileReading && "rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+        )}
       >
+        {!mobileReading ? (
         <MessageInboxToolbar
           activeTab={activeTab}
           onTabChange={setActiveTabPersisted}
@@ -1046,7 +1076,9 @@ export default function MessagesPage() {
           aiSearchOpen={aiSearchOpen}
           isSearching={Boolean(debouncedInboxSearch.trim())}
         />
+        ) : null}
 
+        {!mobileReading || error || mailErrors.length > 0 || oauthAlertMessage ? (
         <MessageAlertsBanner
           error={error}
           onDismissError={() => setError(null)}
@@ -1058,7 +1090,9 @@ export default function MessagesPage() {
           oauthMessage={oauthAlertMessage || undefined}
           onDismissOAuth={oauthErrorDetails ? clearOauthError : undefined}
         />
+        ) : null}
 
+        {!mobileReading ? (
         <MessageInboxStats
           openCount={inboxStats.openCount}
           oldestWait={inboxStats.oldestWait}
@@ -1069,6 +1103,7 @@ export default function MessagesPage() {
           onShowAiReady={jumpToAiReady}
           onStartTriage={startTriage}
         />
+        ) : null}
 
         <div className="min-h-0 flex-1">
           <MessageWorkspace
@@ -1090,6 +1125,7 @@ export default function MessagesPage() {
           />
         </div>
 
+        {!isMobile ? (
         <MessageStatusBar
           selectedLabel={
             selectedMessage
@@ -1097,6 +1133,7 @@ export default function MessagesPage() {
               : null
           }
         />
+        ) : null}
 
         <Collapsible open={aiSearchOpen} onOpenChange={setAiSearchOpen}>
           <CollapsibleContent className="border-t border-border/60 bg-muted/10 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">

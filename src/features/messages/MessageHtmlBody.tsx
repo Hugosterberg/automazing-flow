@@ -52,7 +52,7 @@ export function MessageHtmlBody({ html }: Props) {
   }, [html]);
 
   return (
-    <div className="message-iframe-shell relative overflow-hidden rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
+    <div className="message-iframe-shell relative max-w-full overflow-x-auto rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
       {!loaded ? (
         <div className="message-iframe-loading absolute inset-x-0 top-0 h-[420px] rounded-lg" aria-hidden />
       ) : null}
@@ -61,7 +61,7 @@ export function MessageHtmlBody({ html }: Props) {
         title="E-postinnehåll"
         sandbox="allow-popups allow-popups-to-escape-sandbox"
         className={cn(
-          "relative w-full border-0 bg-white transition-opacity duration-200",
+          "relative min-w-0 border-0 bg-white transition-opacity duration-200",
           loaded ? "opacity-100" : "opacity-0"
         )}
         style={{ height }}
