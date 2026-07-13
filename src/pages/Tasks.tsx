@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { m } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { cn } from "@/lib/utils";
 import { pageFadeUp } from "@/lib/motion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -22,6 +22,7 @@ import {
   isTaskDueToday,
 } from "@/features/tasks";
 import { taskMatchesQuery } from "@/features/tasks/taskFilters";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import type { TaskEditPatch } from "@/features/tasks/TaskEditDialog";
 import {
   getTaskAi,
@@ -86,6 +87,9 @@ export default function TasksPage() {
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("general");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 180);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const taskTitleRef = useRef<HTMLInputElement>(null);
+  const [prefillTitle, setPrefillTitle] = useState("");
 
   function setQuickFilter(filter: QuickFilter) {
     const next = new URLSearchParams(searchParams);
@@ -112,6 +116,7 @@ export default function TasksPage() {
   const [editTask, setEditTask] = useState<TaskRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [aiTaskId, setAiTaskId] = useState<string | null>(null);
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
 
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((p) => p.id === businessProfileId);
@@ -138,6 +143,35 @@ export default function TasksPage() {
     [moduleFilteredTasks, quickFilter, debouncedSearch]
   );
 
+  const navigateTaskRelative = useCallback(
+    (delta: number) => {
+      if (visibleTasks.length === 0) return;
+      const currentIndex = focusedTaskId ? visibleTasks.findIndex((t) => t.id === focusedTaskId) : -1;
+      const nextIndex =
+        currentIndex === -1
+          ? delta > 0
+            ? 0
+            : visibleTasks.length - 1
+          : Math.min(visibleTasks.length - 1, Math.max(0, currentIndex + delta));
+      setFocusedTaskId(visibleTasks[nextIndex]?.id ?? null);
+    },
+    [visibleTasks, focusedTaskId]
+  );
+
+  const focusedTask = useMemo(
+    () => (focusedTaskId ? visibleTasks.find((t) => t.id === focusedTaskId) ?? null : null),
+    [visibleTasks, focusedTaskId]
+  );
+
+  useEffect(() => {
+    setFocusedTaskId(null);
+  }, [quickFilter, debouncedSearch, moduleFilter]);
+
+  useEffect(() => {
+    if (!focusedTaskId) return;
+    document.querySelector(`[data-task-id="${focusedTaskId}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedTaskId, visibleTasks.length]);
+
   // `?task=<id>` deep links open the detail dialog directly (used by shared
   // links from the dialog's copy-link button). Consumed so refresh/close
   // doesn't re-open it.
@@ -153,6 +187,68 @@ export default function TasksPage() {
     next.delete("task");
     setSearchParams(next, { replace: true });
   }, [tasks, searchParams, setSearchParams]);
+
+  // Deep link from Customers: /tasks?new=1&title=...
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    const title = searchParams.get("title");
+    if (title) setPrefillTitle(title);
+    queueMicrotask(() => taskTitleRef.current?.focus());
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    next.delete("title");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (isShortcutBlocked() || isTypingTarget(e.target)) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        taskTitleRef.current?.focus();
+        return;
+      }
+      if (matchesKey(e, "a") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        setQuickFilter("all");
+        return;
+      }
+      if (matchesKey(e, "o") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        setQuickFilter("overdue");
+        return;
+      }
+      if (matchesKey(e, "t") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        setQuickFilter("today");
+        return;
+      }
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigateTaskRelative(1);
+        return;
+      }
+      if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigateTaskRelative(-1);
+        return;
+      }
+      if (matchesKey(e, "e") && isPlainLetterShortcut(e) && focusedTaskId && !editOpen) {
+        const task = visibleTasks.find((t) => t.id === focusedTaskId);
+        if (task) {
+          e.preventDefault();
+          openEdit(task);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setQuickFilter, navigateTaskRelative, focusedTaskId, editOpen, visibleTasks]);
 
   async function handleSetStatus(id: string, status: Parameters<typeof setStatus>[0]["status"]) {
     try {
@@ -403,31 +499,44 @@ export default function TasksPage() {
         }
       />
 
+      <PageSmartBar
+        title="Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
+        steps={[
+          "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
+          "Filtrera på försenade eller dagens deadlines när du triagerar",
+          "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
+        ]}
+        tip="Genvägar: / Search · N New · J/K bläddra · E Edit · A/O/T filter (All/Overdue/Today)."
+      />
+
       <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
         <TaskForm
           onSubmit={(input) => createTask(input)}
           disabled={isCreating}
+          initialTitle={prefillTitle}
+          titleInputRef={taskTitleRef}
         />
       </m.div>
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+      <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
+        <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
           <div className="relative min-w-[200px] max-w-sm flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tasks…"
-              className="h-8 pl-8 text-xs"
-              aria-label="Search tasks"
+              placeholder="Sök uppgifter…"
+              className="h-8 border-border/60 bg-background/60 pl-8 text-xs shadow-sm"
+              aria-label="Sök uppgifter"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center rounded-lg border border-border/60 bg-background/40 p-0.5">
             {(
               [
-                { id: "all", label: "All", count: null, activeClass: "border-primary/50 bg-primary/10 text-primary" },
-                { id: "overdue", label: "Overdue", count: overdueCount, activeClass: "border-destructive/50 bg-destructive/10 text-destructive" },
-                { id: "today", label: "Due today", count: dueTodayCount, activeClass: "border-warning/50 bg-warning/10 text-warning" },
+                { id: "all", label: "Alla", count: null, activeClass: "bg-primary text-primary-foreground shadow-sm" },
+                { id: "overdue", label: "Försenade", count: overdueCount, activeClass: "bg-destructive/90 text-destructive-foreground shadow-sm" },
+                { id: "today", label: "Idag", count: dueTodayCount, activeClass: "bg-warning/90 text-warning-foreground shadow-sm" },
               ] as const
             ).map((chip) => (
               <button
@@ -436,64 +545,77 @@ export default function TasksPage() {
                 onClick={() => setQuickFilter(chip.id)}
                 aria-pressed={quickFilter === chip.id}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  quickFilter === chip.id
-                    ? chip.activeClass
-                    : "border-border text-muted-foreground hover:text-foreground"
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  quickFilter === chip.id ? chip.activeClass : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {chip.label}
                 {chip.count !== null && chip.count > 0 ? (
-                  <span className="tabular-nums">{chip.count}</span>
+                  <span className="ml-1 tabular-nums">{chip.count}</span>
                 ) : null}
               </button>
             ))}
           </div>
+          <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
+            {visibleTasks.length} visade
+          </p>
         </div>
-        <div className="mb-3 grid grid-cols-3 gap-3">
-          <Card className="border-sky-500/20 bg-sky-500/5">
-            <CardContent className="flex items-center justify-between p-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">To-do</p>
-                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.todo}</p>
-              </div>
-              <Circle className="h-4 w-4 text-sky-500" />
-            </CardContent>
-          </Card>
-          <Card className="border-amber-500/20 bg-amber-500/5">
-            <CardContent className="flex items-center justify-between p-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">In progress</p>
-                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.inProgress}</p>
-              </div>
-              <PlayCircle className="h-4 w-4 text-amber-500" />
-            </CardContent>
-          </Card>
-          <Card className="border-emerald-500/20 bg-emerald-500/5">
-            <CardContent className="flex items-center justify-between p-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Done</p>
-                <p className="text-xl font-semibold leading-tight tabular-nums">{stats.done}</p>
-              </div>
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            </CardContent>
-          </Card>
+
+        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+          <div className="flex items-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/5 px-2.5 py-1.5">
+            <Circle className="h-3.5 w-3.5 text-sky-500" />
+            <div>
+              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Att göra</p>
+              <p className="text-xs font-semibold tabular-nums">{stats.todo}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5">
+            <PlayCircle className="h-3.5 w-3.5 text-amber-500" />
+            <div>
+              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Pågår</p>
+              <p className="text-xs font-semibold tabular-nums">{stats.inProgress}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <div>
+              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Klara</p>
+              <p className="text-xs font-semibold tabular-nums">{stats.done}</p>
+            </div>
+          </div>
         </div>
-        <TaskBoard
-          tasks={visibleTasks}
-          isLoading={isLoading}
-          onSetStatus={(id, status) => void handleSetStatus(id, status)}
-          onDelete={(id) => void handleDeleteTask(id)}
-          onEdit={openEdit}
-          onToggleChecklistItem={(task, itemId, done) =>
-            void handleToggleChecklistItem(task, itemId, done)
-          }
-          onAiAssist={(task) => void handleAiAssist(task)}
-          aiBusyTaskId={aiTaskId}
-          onArchiveDone={() => void handleArchiveDone()}
-          isMutating={isSettingStatus || isUpdating}
-          isDeleting={isDeleting}
-        />
+
+        <div className="min-h-0 flex-1 overflow-hidden p-3 sm:p-4">
+          <TaskBoard
+            tasks={visibleTasks}
+            isLoading={isLoading}
+            onSetStatus={(id, status) => void handleSetStatus(id, status)}
+            onDelete={(id) => void handleDeleteTask(id)}
+            onEdit={openEdit}
+            focusedTaskId={focusedTaskId}
+            onToggleChecklistItem={(task, itemId, done) =>
+              void handleToggleChecklistItem(task, itemId, done)
+            }
+            onAiAssist={(task) => void handleAiAssist(task)}
+            aiBusyTaskId={aiTaskId}
+            onArchiveDone={() => void handleArchiveDone()}
+            isMutating={isSettingStatus || isUpdating}
+            isDeleting={isDeleting}
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
+          <span className="truncate">
+            {focusedTask ? (
+              <>
+                Fokus: <span className="font-medium text-foreground/80">{focusedTask.title}</span>
+              </>
+            ) : (
+              "J/K för att bläddra bland synliga kort"
+            )}
+          </span>
+          <span className="hidden sm:inline">E Edit · / Search · N New</span>
+        </div>
       </m.div>
 
       <TaskEditDialog

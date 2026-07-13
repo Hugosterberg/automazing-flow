@@ -11,6 +11,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
@@ -187,6 +188,42 @@ export default function InsightsPage() {
         description="Samlad bild av datan som tankas in från dina källor — som trender, inte ögonblicksbilder."
       />
 
+      <PageSmartBar
+        title="Insights samlar trender från alla kopplade källor — följare, marknadsföring och recensioner över tid."
+        steps={[
+          "Koppla konton under Kopplingar om graferna är tomma",
+          "Vänta 1–2 dagar på dagliga snapshots från automationer",
+          "Klicka vidare till Social, Marketing eller Reviews för att agera på datan",
+        ]}
+        tip="Webbplatsstatistik kräver att spårningsscriptet är installerat på din sajt."
+        liveHintOverride={
+          isEmpty
+            ? "Ingen trenddata ännu — koppla sociala konton eller installera spårning på webbplatsen."
+            : null
+        }
+        extraActions={isEmpty ? [{ label: "Öppna kopplingar", to: "/connections" }] : []}
+      />
+
+      <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
+        <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Socialt</p>
+            <p className="text-xs font-semibold tabular-nums">{socialAccounts.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Recensioner</p>
+            <p className="text-xs font-semibold tabular-nums">{reviewAccounts.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Marknadsföring</p>
+            <p className="text-xs font-semibold tabular-nums">{hasMarketing ? "Ja" : "—"}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Webb</p>
+            <p className="text-xs font-semibold tabular-nums">{trackingSite?.siteKey ? "Ja" : "—"}</p>
+          </div>
+        </div>
+
       <CompaniesOverview />
 
       {businessProfileId ? (
@@ -314,6 +351,7 @@ export default function InsightsPage() {
           </ul>
         </section>
       ) : null}
+      </div>
     </m.div>
   );
 }

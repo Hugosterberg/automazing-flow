@@ -12,6 +12,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
@@ -27,6 +28,7 @@ import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import {
   MessageWorkspace,
   MessageInboxToolbar,
@@ -38,6 +40,7 @@ import {
   channelBadge,
   inboxEmptyCopy,
   formatMessageDate,
+  formatFullMessageDate,
   formatWaitTime,
   isUrgentWait,
   messageMatchesTab,
@@ -60,10 +63,9 @@ const INBOX_REFRESH_MS = 60_000;
 const MAX_HANDLED_IDS = 500;
 
 const FILTER_SHORTCUTS: Record<string, InboxFilter> = {
-  "1": "queue",
-  "2": "open",
-  "3": "all",
-  "4": "handled",
+  q: "queue",
+  o: "open",
+  a: "all",
 };
 
 export default function MessagesPage() {
@@ -525,6 +527,15 @@ export default function MessagesPage() {
     });
   }, [activeTab, messages, inboxFilter, debouncedInboxSearch, isUnanswered, handledIds]);
 
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (!q) return;
+    setInboxSearch(q);
+    const next = new URLSearchParams(searchParams);
+    next.delete("search");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const navigateRelative = useCallback(
     (delta: number) => {
       if (filteredMessages.length === 0) return;
@@ -562,6 +573,14 @@ export default function MessagesPage() {
     const aiReadyCount = open.filter((m) => Boolean(aiSummaries[m.id])).length;
     return { openCount: open.length, oldestWait, aiReadyCount };
   }, [unansweredInTab, aiSummaries]);
+
+  const inboxLiveHint = useMemo(() => {
+    if (inboxStats.openCount === 0) return null;
+    const parts = [`${inboxStats.openCount} öppna i inkorgen`];
+    if (inboxStats.oldestWait) parts.push(`äldsta väntar ${inboxStats.oldestWait}`);
+    if (inboxStats.aiReadyCount > 0) parts.push(`${inboxStats.aiReadyCount} med AI-utkast klara`);
+    return parts.join(" · ");
+  }, [inboxStats]);
 
   const advanceToNextMessage = useCallback(
     (fromId: string) => {
@@ -706,6 +725,7 @@ export default function MessagesPage() {
       channelLabel: channelBadge(msg),
       aiSummary: aiSummaries[msg.id],
       formattedDate: formatMessageDate(msg.date),
+      fullDate: formatFullMessageDate(msg.date),
       senderInitial: senderInitial(msg.from.name || msg.from.email),
       avatarGradient: avatarGradient(msg.from.name || msg.from.email || msg.id),
       isHandled: handledIds.has(msg.id),
@@ -774,7 +794,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (loading || selectedId || filteredMessages.length === 0 || autoSelectedDesktop.current) return;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
       const first = filteredMessages.find(isUnanswered) ?? filteredMessages[0];
       if (first) selectMessage(first);
       autoSelectedDesktop.current = true;
@@ -788,10 +808,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      const tag = target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+      if (isShortcutBlocked() || isTypingTarget(e.target)) return;
 
       if (e.shiftKey && (e.key === "j" || e.key === "ArrowDown")) {
         e.preventDefault();
@@ -828,8 +845,17 @@ export default function MessagesPage() {
         cycleTab(1);
         return;
       }
-      const filterShortcut = FILTER_SHORTCUTS[e.key];
-      if (filterShortcut && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (matchesKey(e, "h") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        if (selectedMessage && isUnanswered(selectedMessage)) {
+          markHandledAndAdvance(selectedMessage.id);
+        } else {
+          setInboxFilterPersisted("handled");
+        }
+        return;
+      }
+      const filterShortcut = FILTER_SHORTCUTS[e.key.toLowerCase()];
+      if (filterShortcut && isPlainLetterShortcut(e)) {
         e.preventDefault();
         setInboxFilterPersisted(filterShortcut);
         return;
@@ -844,14 +870,10 @@ export default function MessagesPage() {
         searchInputRef.current?.focus();
         return;
       }
-      if ((e.key === "r" || e.key === "R") && selectedMessage && canReplyToSelected) {
+      if (matchesKey(e, "r") && isPlainLetterShortcut(e) && selectedMessage && canReplyToSelected) {
         e.preventDefault();
         focusReplyRef.current?.();
         return;
-      }
-      if ((e.key === "e" || e.key === "E") && selectedMessage && isUnanswered(selectedMessage)) {
-        e.preventDefault();
-        markHandledAndAdvance(selectedMessage.id);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -953,6 +975,22 @@ export default function MessagesPage() {
         description="Mail, DM och WhatsApp i en inkorg — med AI-sammanfattningar och snabbsvar."
       />
 
+      <PageSmartBar
+        title="Meddelanden är din triage-inkorg — läs, svara och markera hanterade utan att tappa kontext."
+        steps={[
+          "Välj kanal och filter (Kö / Öppna) för att fokusera på det viktiga",
+          "Använd J/K för att bläddra och H för Handled",
+          "Låt AI sammanfatta och skriva utkast — du redigerar innan du skickar",
+        ]}
+        tip="Tryck / för att söka snabbt i inkorgen."
+        liveHintOverride={inboxLiveHint}
+        extraActions={
+          inboxStats.openCount > 0
+            ? [{ label: "Starta triage", to: "/messages" }]
+            : []
+        }
+      />
+
       {!hasAnyMailConnected ? (
         <m.div {...fadeUp} transition={{ duration: 0.35 }} className="grid gap-3 sm:grid-cols-2">
           <Card className="border-dashed border-border bg-card/40">
@@ -985,7 +1023,7 @@ export default function MessagesPage() {
       <m.div
         {...fadeUp}
         transition={{ duration: 0.35, delay: 0.03 }}
-        className="flex min-h-[min(78vh,880px)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/30 shadow-lg ring-1 ring-border/40"
+        className="app-workspace-shell flex flex-col"
       >
         <MessageInboxToolbar
           activeTab={activeTab}

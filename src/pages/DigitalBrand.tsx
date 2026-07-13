@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -596,6 +597,25 @@ export default function DigitalBrandPage() {
         }
       />
 
+      <PageSmartBar
+        title="Digital Brand granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer."
+        steps={[
+          "Registrera webbadress under Kopplingar",
+          "Kör audit och granska PageSpeed- och HTML-värden",
+          "Prioritera höga rekommendationer under flikarna SEO, Prestanda och Trust",
+        ]}
+        tip="Auditen körs server-side — ingen kod behöver installeras på sidan."
+        liveHintOverride={
+          !websiteUrl
+            ? "Lägg till webbadress under Kopplingar för att köra audit."
+            : highCount > 0
+              ? `${highCount} högprioriterad${highCount === 1 ? "" : "e"} rekommendation${highCount === 1 ? "" : "er"} — börja under SEO eller Prestanda`
+              : audit
+                ? "Auditen ser bra ut — inga kritiska punkter just nu."
+                : null
+        }
+      />
+
       {!websiteUrl ? (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
@@ -623,6 +643,7 @@ export default function DigitalBrandPage() {
       </m.div>
 
       {websiteUrl ? (
+        <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
         <m.div {...pageFadeUp} className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
           <Card className="border-border">
             <CardHeader className="pb-2">
@@ -674,7 +695,6 @@ export default function DigitalBrandPage() {
             </CardContent>
           </Card>
         </m.div>
-      ) : null}
 
       {audit ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -747,6 +767,8 @@ export default function DigitalBrandPage() {
           </div>
         </TabsContent>
       </Tabs>
+        </div>
+      ) : null}
     </div>
   );
 }

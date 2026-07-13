@@ -7,6 +7,7 @@ import type { ReviewItem } from "./types";
 type RowMeta = {
   needsReply: boolean;
   formattedDate: string;
+  fullDate: string;
   senderInitial: string;
   avatarClass: string;
 };
@@ -22,13 +23,14 @@ type Props = {
   getRowMeta: (review: ReviewItem) => RowMeta;
   onSelect: (review: ReviewItem | null) => void;
   detailProps: Omit<ReviewDetailPanelProps, "review"> | null;
+  searchQuery?: string;
 };
 
 const detailMotion = {
-  initial: { opacity: 0, x: 10 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -8 },
-  transition: { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] as const },
+  initial: { opacity: 0, x: 12, filter: "blur(4px)" },
+  animate: { opacity: 1, x: 0, filter: "blur(0px)" },
+  exit: { opacity: 0, x: -8, filter: "blur(2px)" },
+  transition: { duration: 0.16, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
 function DetailPane({
@@ -67,6 +69,7 @@ function InboxPane(
     emptyDescription,
     getRowMeta,
     onSelect,
+    searchQuery = "",
     className,
   } = props;
 
@@ -81,6 +84,7 @@ function InboxPane(
         emptyDescription={emptyDescription}
         getRowMeta={getRowMeta}
         onSelect={onSelect}
+        searchQuery={searchQuery}
       />
     </aside>
   );
@@ -97,10 +101,11 @@ export function ReviewWorkspace({
   getRowMeta,
   onSelect,
   detailProps,
+  searchQuery = "",
 }: Props) {
   return (
     <>
-      <div className="flex h-full min-h-0 lg:hidden">
+      <div className="flex h-full min-h-0 md:hidden">
         {!selectedReview ? (
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
@@ -112,18 +117,19 @@ export function ReviewWorkspace({
             emptyDescription={emptyDescription}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
+            searchQuery={searchQuery}
           />
         ) : (
-          <section className="flex h-full min-h-0 w-full flex-col bg-background">
+          <section className="message-reading-pane flex h-full min-h-0 w-full flex-col">
             <DetailPane selectedReview={selectedReview} detailProps={detailProps} showBack />
           </section>
         )}
       </div>
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
-        <ResizablePanel defaultSize={36} minSize={26} maxSize={48} className="min-h-0">
+      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 md:flex">
+        <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
           <InboxPane
-            className="flex h-full min-h-0 flex-col"
+            className="flex h-full min-h-0 flex-col overflow-hidden"
             filteredReviews={filteredReviews}
             selectedId={selectedId}
             loading={loading}
@@ -132,11 +138,12 @@ export function ReviewWorkspace({
             emptyDescription={emptyDescription}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
+            searchQuery={searchQuery}
           />
         </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={64} minSize={42} className="min-h-0">
-          <section className="flex h-full min-h-0 flex-col bg-background">
+        <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35" />
+        <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+          <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden">
             <DetailPane selectedReview={selectedReview} detailProps={detailProps} />
           </section>
         </ResizablePanel>

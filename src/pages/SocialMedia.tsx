@@ -43,6 +43,7 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
@@ -550,7 +551,23 @@ export default function SocialMedia() {
       <PageHeader
         icon={Sparkles}
         title="Social Media"
-        description="Automate and manage your social media"
+        description="Automatisera och hantera dina sociala kanaler — publicera, schemalägg och följ statistik."
+      />
+
+      <PageSmartBar
+        title="Social Media är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
+        steps={[
+          "Koppla konton under Kopplingar om en plattform saknas",
+          "Välj plattform och konto i flikarna ovan",
+          "Skriv, lägg till media och publicera eller schemalägg",
+        ]}
+        tip="AI-idéer ovan kan fyllas i direkt i kompositören."
+        liveHintOverride={
+          socialAccounts.length === 0
+            ? "Inga sociala konton kopplade — börja under Kopplingar."
+            : null
+        }
+        extraActions={socialAccounts.length === 0 ? [{ label: "Koppla konto", to: "/connections" }] : []}
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
@@ -570,7 +587,22 @@ export default function SocialMedia() {
         />
       </m.div>
 
-      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+      <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell !min-h-0">
+        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Konton</p>
+            <p className="text-xs font-semibold tabular-nums">{socialAccounts.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Schemalagda</p>
+            <p className="text-xs font-semibold tabular-nums">{pipelinePosts.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Plattform</p>
+            <p className="text-xs font-semibold capitalize">{activeSocialTab.replace(/_/g, " ")}</p>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 space-y-3 p-3 sm:p-4">
         <Tabs value={activeSocialTab} onValueChange={handleSocialTabChange}>
           <div className="rounded-lg border border-border bg-card/70 p-1">
             <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0">
@@ -636,6 +668,7 @@ export default function SocialMedia() {
             );
           })}
         </Tabs>
+        </div>
       </m.div>
 
       {authMode === "local" && (

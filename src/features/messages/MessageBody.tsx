@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MessageHtmlBody } from "./MessageHtmlBody";
+import { isHtmlEmailContent } from "./messageBodyHtml";
 import { segmentLinks, splitEmailBody, splitEmailParagraphs } from "./messageBodyFormat";
 import type { UnifiedMessage } from "./types";
 
@@ -56,16 +58,26 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
   const [showQuoted, setShowQuoted] = useState(false);
   const raw = (message.body || message.snippet || "").trim();
   if (!raw) {
-    return <p className="text-sm text-muted-foreground">No content.</p>;
+    return <p className="text-sm text-muted-foreground">Inget innehåll.</p>;
   }
 
   if (message.kind === "email") {
+    if (isHtmlEmailContent(raw)) {
+      return (
+        <article className="message-prose w-full text-left">
+          <MessageHtmlBody html={raw} />
+        </article>
+      );
+    }
+
     const { main, quoted } = splitEmailBody(raw);
     return (
       <article className="message-prose w-full text-left">
-        <FormattedBlock text={main || raw} />
+        <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+          <FormattedBlock text={main || raw} />
+        </div>
         {quoted ? (
-          <div className="mt-6 rounded-lg border border-border/60 bg-muted/20">
+          <div className="mt-4 rounded-lg border border-border/60 bg-muted/20">
             <Button
               type="button"
               variant="ghost"
@@ -74,11 +86,11 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
               onClick={() => setShowQuoted((v) => !v)}
               aria-expanded={showQuoted}
             >
-              {showQuoted ? "Hide quoted text" : "Show quoted text"}
+              {showQuoted ? "Dölj citerat" : "Visa citerat"}
               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showQuoted && "rotate-180")} />
             </Button>
             {showQuoted ? (
-              <div className="border-t border-border/60 px-4 py-3">
+              <div className="border-t border-border/60 px-4 py-3 sm:px-5">
                 <FormattedBlock text={quoted} quoted />
               </div>
             ) : null}
@@ -90,7 +102,9 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
 
   return (
     <article className="message-prose w-full text-left">
-      <FormattedBlock text={raw} />
+      <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+        <FormattedBlock text={raw} />
+      </div>
     </article>
   );
 }

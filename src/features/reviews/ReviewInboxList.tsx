@@ -7,6 +7,7 @@ import type { ReviewItem } from "./types";
 type RowMeta = {
   needsReply: boolean;
   formattedDate: string;
+  fullDate: string;
   senderInitial: string;
   avatarClass: string;
 };
@@ -20,6 +21,7 @@ type Props = {
   emptyDescription: string;
   getRowMeta: (review: ReviewItem) => RowMeta;
   onSelect: (review: ReviewItem) => void;
+  searchQuery?: string;
 };
 
 export function ReviewInboxList({
@@ -31,6 +33,7 @@ export function ReviewInboxList({
   emptyDescription,
   getRowMeta,
   onSelect,
+  searchQuery = "",
 }: Props) {
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -40,34 +43,42 @@ export function ReviewInboxList({
   }, [selectedId, reviews.length]);
 
   return (
-    <>
-      <div className="shrink-0 border-b border-border bg-muted/20 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-foreground/80">
-            {loading ? "Loading reviews…" : `${reviews.length} review${reviews.length === 1 ? "" : "s"}`}
-          </p>
-          {!loading && needsReplyCount > 0 ? (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
-              {needsReplyCount} open
-            </span>
-          ) : null}
-        </div>
+    <div className="message-inbox-pane flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
+        <p className="text-[11px] font-medium text-foreground/80">
+          {loading ? "Laddar recensioner…" : "Recensioner"}
+        </p>
+        {!loading && reviews.length > 0 ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] tabular-nums text-muted-foreground">{reviews.length} st</span>
+            {needsReplyCount > 0 ? (
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
+                {needsReplyCount} öppna
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+
       <div className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {loading ? (
-          <div className="divide-y divide-border/60">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-3 px-3 py-3">
-                <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
-                <div className="flex-1 space-y-2 py-0.5">
-                  <div className="h-3 w-2/5 animate-pulse rounded bg-secondary" />
-                  <div className="h-3 w-4/5 animate-pulse rounded bg-secondary/70" />
+          <div className="divide-y divide-border/40">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2.5 shimmer">
+                <div className="h-8 w-8 shrink-0 rounded-full bg-muted/60" />
+                <div className="flex-1 space-y-1.5 py-0.5">
+                  <div className="flex justify-between gap-2">
+                    <div className="h-2.5 w-2/5 rounded bg-muted/60" />
+                    <div className="h-2.5 w-8 rounded bg-muted/40" />
+                  </div>
+                  <div className="h-2 w-16 rounded bg-muted/50" />
+                  <div className="h-2.5 w-4/5 rounded bg-muted/30" />
                 </div>
               </div>
             ))}
           </div>
         ) : reviews.length > 0 ? (
-          <div className="divide-y divide-border/60">
+          <div>
             {reviews.map((review) => {
               const meta = getRowMeta(review);
               return (
@@ -81,19 +92,21 @@ export function ReviewInboxList({
                   selected={selectedId === review.id}
                   needsReply={meta.needsReply}
                   formattedDate={meta.formattedDate}
+                  fullDate={meta.fullDate}
                   senderInitial={meta.senderInitial}
                   avatarClass={meta.avatarClass}
                   onSelect={() => onSelect(review)}
+                  searchQuery={searchQuery}
                 />
               );
             })}
           </div>
         ) : (
-          <div className="p-6">
-            <EmptyState icon={MessageSquare} title={emptyTitle} description={emptyDescription} />
+          <div className="flex h-full min-h-[240px] items-center justify-center p-6">
+            <EmptyState icon={MessageSquare} title={emptyTitle} description={emptyDescription} size="compact" />
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

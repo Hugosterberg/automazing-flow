@@ -26,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -430,15 +431,40 @@ export default function PreferencesPage() {
     }
   }
 
+  const unconfiguredCount = useMemo(() => {
+    const global = globalEntries.filter((e) => !e.configured).length;
+    const tenant = tenantEntries.filter((e) => !e.configured).length;
+    return global + tenant;
+  }, [globalEntries, tenantEntries]);
+
   return (
     <div className="space-y-6 max-w-5xl w-full mx-auto">
       <PageHeader
         icon={Wrench}
-        title="Preferences"
-        description="AI feature status, platform key status, and your per-profile integration secrets."
+        title="Inställningar"
+        description="AI-status, plattformsnycklar och integrationshemligheter per profil."
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <PageSmartBar
+        title="Inställningar styr hur appen ansluter — AI, automationer och tredjepartsintegrationer."
+        steps={[
+          "Börja under Översikt för att se vad som saknas",
+          "Lägg till API-nycklar och testa anslutningarna",
+          "Justera AI- och automationspreferenser per profil",
+        ]}
+        tip="Team-fliken hanterar vem som har tillgång till profilen."
+        liveHintOverride={
+          unconfiguredCount > 0
+            ? `${unconfiguredCount} integration${unconfiguredCount === 1 ? "" : "er"} saknar nyckel — fyll i under Integrationer`
+            : !storeEnabled
+              ? "Hemlighetslagret är inte aktiverat på servern."
+              : null
+        }
+      />
+
+      <div className="app-workspace-shell !min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex w-full min-h-0 flex-1 flex-col">
+        <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="team">
@@ -459,6 +485,9 @@ export default function PreferencesPage() {
             Help
           </TabsTrigger>
         </TabsList>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
 
         <TabsContent value="overview">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -756,7 +785,9 @@ export default function PreferencesPage() {
         <TabsContent value="help">
           <ZernioHelpTab />
         </TabsContent>
+        </div>
       </Tabs>
+      </div>
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { SearchHighlight } from "@/features/messages/SearchHighlight";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { useLeads } from "./useLeads";
 import type { Lead } from "./leadsService";
@@ -97,6 +98,7 @@ interface Props {
 
 function LeadRow({
   lead,
+  searchQuery = "",
   onStatus,
   onFollowUp,
   onDelete,
@@ -106,6 +108,7 @@ function LeadRow({
   onDraftOutreach,
 }: {
   lead: Lead;
+  searchQuery?: string;
   onStatus: (status: LeadStatus) => void;
   onFollowUp: (value: string) => void;
   onDelete: () => void;
@@ -117,12 +120,17 @@ function LeadRow({
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
   const staleDays = leadStaleDays(lead);
+  const contactLine =
+    [lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ") ||
+    (lead.notes ? lead.notes.slice(0, 80) : "Inga kontaktuppgifter än");
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />
-          <p className="text-sm font-medium text-foreground truncate">{lead.company}</p>
+          <p className="text-sm font-medium text-foreground truncate">
+            <SearchHighlight text={lead.company} query={searchQuery} />
+          </p>
           {staleDays != null ? (
             <span
               className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
@@ -134,8 +142,7 @@ function LeadRow({
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {[lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ") ||
-            (lead.notes ? lead.notes.slice(0, 80) : "Inga kontaktuppgifter än")}
+          <SearchHighlight text={contactLine} query={searchQuery} />
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -506,6 +513,7 @@ export function LeadsSection({
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
               <Input
+                id="sales-leads-search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Sök företag, kontakt, e-post…"
@@ -548,6 +556,7 @@ export function LeadsSection({
               <LeadRow
                 key={lead.id}
                 lead={lead}
+                searchQuery={search}
                 onStatus={(status) => void handleStatusChange(lead, status)}
                 onFollowUp={async (value) => {
                   try {

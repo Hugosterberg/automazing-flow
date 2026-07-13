@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
-import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info } from "lucide-react";
+import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
@@ -18,6 +21,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -109,6 +113,22 @@ function displayNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function formatFullDate(raw?: string): string {
+  if (!raw) return "";
+  try {
+    return new Date(raw).toLocaleString("sv-SE", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return raw;
+  }
+}
+
 function formatDate(raw?: string): string {
   if (!raw) return "";
   try {
@@ -156,6 +176,9 @@ export default function ReviewsPage() {
   const autoDraftForId = useRef<string | null>(null);
   const defaultedReplyFilter = useRef(false);
   const autoSelectedDesktop = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [reviewSearch, setReviewSearch] = useState("");
+  const debouncedReviewSearch = useDebouncedValue(reviewSearch, 160);
 
   const {
     scopedAccounts: reviewAccounts,
@@ -222,8 +245,17 @@ export default function ReviewsPage() {
     if (replyFilter === "needs_reply") {
       list = list.filter((r) => !repliedIds.has(r.id));
     }
+    const q = debouncedReviewSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (r) =>
+          r.author.toLowerCase().includes(q) ||
+          r.text.toLowerCase().includes(q) ||
+          String(r.rating).includes(q)
+      );
+    }
     return list;
-  }, [reviews, ratingFilter, replyFilter, repliedIds]);
+  }, [reviews, ratingFilter, replyFilter, repliedIds, debouncedReviewSearch]);
 
   const selectedId = searchParams.get("id");
   const selectedReview = useMemo(
@@ -393,6 +425,14 @@ export default function ReviewsPage() {
     [filteredReviews, repliedIds, selectReview]
   );
 
+  const markRepliedAndAdvance = useCallback(
+    (reviewId: string) => {
+      markReplied(reviewId);
+      advanceToNextReview(reviewId);
+    },
+    [advanceToNextReview, markReplied]
+  );
+
   const sendReply = useCallback(async () => {
     if (!selectedReview || !activeAccount || !replyDraft.trim()) return;
     const reviewId = selectedReview.id;
@@ -441,6 +481,7 @@ export default function ReviewsPage() {
     (review: ReviewItem) => ({
       needsReply: !repliedIds.has(review.id),
       formattedDate: formatDate(review.createdAt),
+      fullDate: formatFullDate(review.createdAt),
       senderInitial: senderInitial(review.author),
       avatarClass: avatarColor(review.author || review.id),
     }),
@@ -449,10 +490,7 @@ export default function ReviewsPage() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      const tag = target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+      if (isShortcutBlocked() || isTypingTarget(e.target)) return;
 
       if (e.key === "j" || e.key === "ArrowDown") {
         e.preventDefault();
@@ -464,6 +502,31 @@ export default function ReviewsPage() {
         navigateRelative(-1);
         return;
       }
+      if (e.key === "/") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (matchesKey(e, "a") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        setReplyFilter("all");
+        return;
+      }
+      if (matchesKey(e, "n") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        setReplyFilter("needs_reply");
+        return;
+      }
+      if (matchesKey(e, "m") && isPlainLetterShortcut(e) && selectedReview && !repliedIds.has(selectedReview.id)) {
+        e.preventDefault();
+        markRepliedAndAdvance(selectedReview.id);
+        return;
+      }
+      if (matchesKey(e, "d") && isPlainLetterShortcut(e) && selectedReview && !repliedIds.has(selectedReview.id)) {
+        e.preventDefault();
+        void draftReply(selectedReview);
+        return;
+      }
       if (e.key === "Escape" && selectedId) {
         e.preventDefault();
         selectReview(null);
@@ -471,7 +534,15 @@ export default function ReviewsPage() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigateRelative, selectReview, selectedId]);
+  }, [
+    draftReply,
+    markRepliedAndAdvance,
+    navigateRelative,
+    repliedIds,
+    selectReview,
+    selectedId,
+    selectedReview,
+  ]);
 
   const detailProps = useMemo(() => {
     if (!selectedReview) return null;
@@ -553,6 +624,16 @@ export default function ReviewsPage() {
             </Button>
           ) : null
         }
+      />
+
+      <PageSmartBar
+        title="Recensioner samlar kundfeedback — svara snabbt, håll koll på betyg och prioritera det som behöver svar."
+        steps={[
+          "Koppla Google Reviews eller Tripadvisor under Kopplingar",
+          "Filtrera på betyg eller ”Behöver svar” i workspace",
+          "Skriv svar med AI-utkast och markera hanterade när du är klar",
+        ]}
+        tip="Genvägar: J/K Next · M Mark · D Draft · A/N filter · / Search · Esc Close."
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -663,21 +744,21 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {!loading && activeAccount && (
+      {!loading && activeAccount && reviews.length === 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="bg-card border-border">
               <CardContent className="p-5">
                 <Star className="h-5 w-5 text-muted-foreground mb-2" />
                 <p className="text-2xl font-bold">{averageRating != null ? averageRating.toFixed(1) : "—"}</p>
-                <p className="text-sm text-muted-foreground">Average rating</p>
+                <p className="text-sm text-muted-foreground">Snittbetyg</p>
               </CardContent>
             </Card>
             <Card className="bg-card border-border">
               <CardContent className="p-5">
                 <MessageSquare className="h-5 w-5 text-muted-foreground mb-2" />
                 <p className="text-2xl font-bold">{reviewCount ?? reviews.length}</p>
-                <p className="text-sm text-muted-foreground">Reviews</p>
+                <p className="text-sm text-muted-foreground">Recensioner</p>
               </CardContent>
             </Card>
           </div>
@@ -747,45 +828,69 @@ export default function ReviewsPage() {
       )}
 
       {!loading && reviews.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Recent reviews</h2>
-              <p className="text-sm text-muted-foreground">
-                Latest customer feedback from the connected source.
-                {ratingFilter !== "all" ? ` · ${filteredReviews.length} at ${ratingFilter} stars` : ""}
-              </p>
+        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell">
+          <div className="app-workspace-toolbar flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
+            <div className="relative min-w-[180px] max-w-xs flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                value={reviewSearch}
+                onChange={(e) => setReviewSearch(e.target.value)}
+                placeholder="Sök recensioner…"
+                className="h-8 border-border/60 bg-background/60 pl-8 text-xs shadow-sm"
+                aria-label="Sök recensioner"
+              />
             </div>
             <div className="flex flex-wrap gap-2">
               <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as typeof ratingFilter)}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="All ratings" />
+                <SelectTrigger className="h-8 w-[140px] border-border/60 bg-background/60 text-xs shadow-sm">
+                  <SelectValue placeholder="Alla betyg" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All ratings</SelectItem>
+                  <SelectItem value="all">Alla betyg</SelectItem>
                   {[5, 4, 3, 2, 1].map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      {n} star{n === 1 ? "" : "s"}
+                      {n} stjärn{n === 1 ? "a" : "or"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as typeof replyFilter)}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="All reviews" />
+                <SelectTrigger className="h-8 w-[140px] border-border/60 bg-background/60 text-xs shadow-sm">
+                  <SelectValue placeholder="Alla" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All reviews</SelectItem>
-                  <SelectItem value="needs_reply">Needs reply</SelectItem>
+                  <SelectItem value="all">Alla recensioner (A)</SelectItem>
+                  <SelectItem value="needs_reply">Behöver svar (N)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div
-            className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-border/40"
-            style={{ height: "min(76vh, 860px)" }}
-          >
+          <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+              <Star className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Snittbetyg</p>
+                <p className="text-xs font-semibold tabular-nums">{averageRating != null ? averageRating.toFixed(1) : "—"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+              <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Totalt</p>
+                <p className="text-xs font-semibold tabular-nums">{reviewCount ?? reviews.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/[0.06] px-2.5 py-1.5">
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Öppna svar</p>
+                <p className="text-xs font-semibold tabular-nums text-primary">{needsReplyReviews.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1">
             <ReviewWorkspace
               filteredReviews={filteredReviews}
               selectedReview={selectedReview}
@@ -797,7 +902,24 @@ export default function ReviewsPage() {
               getRowMeta={getRowMeta}
               onSelect={selectReview}
               detailProps={detailProps}
+              searchQuery={debouncedReviewSearch}
             />
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
+            <span className="truncate">
+              {selectedReview ? (
+                <>
+                  Vald:{" "}
+                  <span className="font-medium text-foreground/80">{selectedReview.author}</span>
+                </>
+              ) : (
+                "Välj en recension i listan"
+              )}
+            </span>
+            <span className="hidden sm:inline">
+              J/K · M Mark · D Draft · A/N filter · / Search
+            </span>
           </div>
         </m.div>
       )}

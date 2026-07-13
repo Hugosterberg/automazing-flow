@@ -104,7 +104,7 @@ export function ReviewDetailPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
+              className="mt-0.5 h-8 w-8 shrink-0 p-0 md:hidden"
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -176,11 +176,13 @@ export function ReviewDetailPanel({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto app-scroll px-4 py-5 sm:px-6">
-        <div className="mx-auto max-w-3xl">
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
-            {review.text || "No review text."}
-          </p>
+      <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+        <div className="w-full">
+          <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
+              {review.text || "Ingen recensionstext."}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -254,34 +256,43 @@ export function ReviewDetailPanel({
 
 export function ReviewDetailPlaceholder() {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 bg-gradient-to-b from-muted/20 to-background px-6 text-center">
+    <div className="message-reading-pane flex h-full min-h-[320px] flex-col items-center justify-center gap-5 px-6 text-center">
       <m.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-6 shadow-sm"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/30 p-6 shadow-sm"
       >
-        <Star className="mx-auto h-9 w-9 text-muted-foreground/50" />
+        <div className="hidden h-20 w-14 rounded-lg border border-border/50 bg-muted/30 sm:block" aria-hidden />
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15">
+          <Star className="h-6 w-6 text-primary/70" />
+        </div>
+        <div className="hidden h-20 w-24 rounded-lg border border-border/50 bg-muted/20 sm:block" aria-hidden />
       </m.div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Select a review</p>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          Pick a review from the list to read it here and compose your reply.
+      <div className="max-w-sm space-y-1.5">
+        <p className="font-display text-base font-semibold">Välj en recension</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Listan stannar kvar till vänster — läs och svara utan att tappa kontexten.
         </p>
       </div>
-      <div className="hidden rounded-lg border border-border/60 bg-muted/20 px-4 py-2 text-left lg:block">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Shortcuts</p>
-        <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left md:block">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
+        <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd> /{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> — next / previous
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> — close review
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">M</kbd> Mark replied ·{" "}
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">D</kbd> Draft ·{" "}
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">A</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">N</kbd> filter
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Ctrl</kbd>+
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Enter</kbd> — send reply
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Enter</kbd> skicka svar
           </li>
         </ul>
       </div>

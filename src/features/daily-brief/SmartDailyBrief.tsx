@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Gauge,
+  History,
   ListChecks,
   MessageSquare,
   PlugZap,
@@ -17,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { getRecentPages } from "@/lib/keyboardShortcuts";
 import { type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
 import { useDailyBriefSummary } from "./useDailyBriefSummary";
@@ -122,6 +124,29 @@ export function SmartDailyBrief({
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),
     [brief.items, dismissedIds]
   );
+
+  /** Boost items whose destination matches a recently visited page. */
+  const sortedItems = useMemo(() => {
+    const recent = getRecentPages();
+    if (recent.length === 0) return visibleItems;
+    const recentPaths = new Set(recent.map((p) => p.pathname.split("?")[0]));
+    return [...visibleItems].sort((a, b) => {
+      const aPath = a.to.split("?")[0];
+      const bPath = b.to.split("?")[0];
+      const aRecent = recentPaths.has(aPath) ? 1 : 0;
+      const bRecent = recentPaths.has(bPath) ? 1 : 0;
+      if (aRecent !== bRecent) return bRecent - aRecent;
+      return 0;
+    });
+  }, [visibleItems]);
+
+  const continueItem = useMemo(() => {
+    const recent = getRecentPages().filter((p) => p.pathname !== "/");
+    if (recent.length === 0) return null;
+    const lastPath = recent[0].pathname.split("?")[0];
+    return sortedItems.find((item) => item.to.split("?")[0] === lastPath) ?? null;
+  }, [sortedItems]);
+
   const visibleActionCount = visibleItems.reduce((sum, item) => sum + item.count, 0);
   const visibleAllClear = visibleItems.length === 0;
 
@@ -207,8 +232,25 @@ export function SmartDailyBrief({
           <span>Connections are healthy, tasks are under control, and there's nothing new to review.</span>
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
-          {visibleItems.map((item) => (
+        <>
+          {continueItem ? (
+            <div className="mt-4 space-y-2">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <History className="h-3 w-3" />
+                Fortsätt där du slutade
+              </p>
+              <BriefRow
+                item={continueItem}
+                onPrefetch={prefetchFor}
+                onDone={handleDone}
+                onSnooze={handleSnooze}
+              />
+            </div>
+          ) : null}
+          <ul className={cn("space-y-2", continueItem ? "mt-3" : "mt-4")}>
+          {sortedItems
+            .filter((item) => item.id !== continueItem?.id)
+            .map((item) => (
             <li key={item.id}>
               <BriefRow
                 item={item}
@@ -219,6 +261,7 @@ export function SmartDailyBrief({
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

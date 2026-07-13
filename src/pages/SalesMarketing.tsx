@@ -36,21 +36,25 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
-import { LeadsSection, LeadSuggestionsSection, useLeads, buildLeadSuggestionContext, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
+import { LeadsSection, LeadSuggestionsSection, LeadFollowUpsWorkspace, useLeads, buildLeadSuggestionContext, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
 import { fetchProducts } from "@/lib/productsApi";
 import { BrandDiscoverySection } from "@/features/brand-discovery";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
 import { SalesActionHub } from "@/features/sales/SalesActionHub";
 import { useMarketingCampaigns } from "@/features/marketing";
 import { formatMoney } from "@/features/marketing/format";
-import { OutreachContentCard, OutreachDraftDialog, OutreachQueueSection, type OutreachDraftTarget } from "@/features/outreach";
+import { OutreachContentCard, OutreachDraftDialog, OutreachQueueSection, OutreachQueueWorkspace, pendingOutreachItems, type OutreachDraftTarget } from "@/features/outreach";
+import { OUTREACH_QUEUE_DOC_KEY, type OutreachQueueItem } from "@/features/outreach/outreachQueueTypes";
+import { useProfileDocument } from "@/features/profile-documents";
+import { isShortcutBlocked, isTypingTarget } from "@/lib/keyboardShortcuts";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useTasks, TaskEditDialog } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
-import { useProfileDocument } from "@/features/profile-documents";
 import { pageFadeUp } from "@/lib/motion";
 import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { cn } from "@/lib/utils";
@@ -405,6 +409,45 @@ export default function SalesMarketingPage() {
     );
   }, [leads]);
 
+  const outreachDoc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
+  const pendingOutreachCount = useMemo(
+    () => pendingOutreachItems(outreachDoc.data).length,
+    [outreachDoc.data]
+  );
+
+  const salesLiveHint =
+    dueLeadsList.length > 0
+      ? `${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} att följa upp idag`
+      : pendingOutreachCount > 0
+        ? `${pendingOutreachCount} outreach-utkast väntar i kön`
+        : null;
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (isShortcutBlocked() || isTypingTarget(e.target)) return;
+      if (e.key === "/" && !e.shiftKey) {
+        e.preventDefault();
+        if (showOutreachQueue) {
+          document.querySelector<HTMLInputElement>('[aria-label="Sök outreach-utkast"]')?.focus();
+        } else if (showFollowUpsOnly) {
+          document.getElementById("sales-followups-search")?.focus();
+        } else {
+          document.getElementById("sales-leads-search")?.focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showFollowUpsOnly, showOutreachQueue]);
+
+  useEffect(() => {
+    const leadId = searchParams.get("lead");
+    if (!leadId || searchParams.get("view")) return;
+    window.setTimeout(() => {
+      document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  }, [searchParams]);
+
   function leadToOutreachTarget(lead: Lead): OutreachDraftTarget {
     return {
       prospectCompany: lead.company,
@@ -479,8 +522,33 @@ export default function SalesMarketingPage() {
         description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
       />
 
+      <PageSmartBar
+        title="Sales samlar leads, affärer och mål — från första kontakt till avslut."
+        steps={[
+          "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
+          "Lägg till leads och följ upp det som är försenat",
+          "Flytta affärer i pipelinen och mät mot dina mål",
+        ]}
+        tip="Outreach-utkast kan skickas vidare till Content för publicering. Genväg: / fokuserar leadsök."
+        liveHintOverride={salesLiveHint}
+        extraActions={
+          dueLeadsList.length > 0
+            ? [{ label: "Visa uppföljningar", to: "/sales?view=followups" }]
+            : pendingOutreachCount > 0
+              ? [{ label: "Outreach-kö", to: "/sales?view=outreach-queue" }]
+              : []
+        }
+      />
+
+      <PageAiSuggestionsStrip
+        businessProfileId={businessProfileId}
+        kinds={["outreach", "insight"]}
+        label="AI-förslag för sales & outreach"
+      />
+
       <CompanyProfileNudge profile={activeProfile} />
 
+      <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
       {/* KPI tiles */}
       <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
@@ -523,35 +591,52 @@ export default function SalesMarketingPage() {
       {(showOutreachQueue || !showFollowUpsOnly) && (
         <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
           {showOutreachQueue ? (
-            <Card className="border-info/30 bg-info/5 mb-3">
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
-                <p className="text-sm">Visar automatiska outreach-utkast i kön.</p>
-                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
-                  <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                  Visa hela Sales
-                </Button>
-              </CardContent>
-            </Card>
-          ) : null}
-          <OutreachQueueSection businessProfileId={businessProfileId} compact={!showOutreachQueue} />
+            <>
+              <Card className="border-info/30 bg-info/5 mb-3">
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+                  <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
+                  <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
+                    <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                    Visa hela Sales
+                  </Button>
+                </CardContent>
+              </Card>
+              <div className="app-workspace-shell min-h-[520px]">
+                <OutreachQueueWorkspace businessProfileId={businessProfileId} />
+              </div>
+            </>
+          ) : (
+            <OutreachQueueSection businessProfileId={businessProfileId} compact />
+          )}
         </m.div>
       )}
 
       {/* Leads — register + follow up, with AI outreach suggestions */}
       {showFollowUpsOnly ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.038 }}>
-          <Card className="border-warning/30 bg-warning/5">
+          <Card className="border-warning/30 bg-warning/5 mb-3">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
               <div className="flex items-center gap-2 text-sm">
                 <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
-                <span>Showing leads with follow-ups due today or overdue.</span>
+                <span>Leads med uppföljning idag eller försenad — split-vy.</span>
               </div>
               <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                 <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                Show all leads
+                Visa hela Sales
               </Button>
             </CardContent>
           </Card>
+          <div className="app-workspace-shell min-h-[520px]">
+            <LeadFollowUpsWorkspace
+              businessProfileId={businessProfileId}
+              onDraftOutreach={(target, leadId) => {
+                setDraftLeadId(leadId);
+                setOutreachDraftTarget(target);
+                setOutreachDraftOpen(true);
+              }}
+              onAddToPipeline={openPipelineFromLead}
+            />
+          </div>
         </m.div>
       ) : null}
       {!showFollowUpsOnly ? (
@@ -564,23 +649,24 @@ export default function SalesMarketingPage() {
           />
         </m.div>
       ) : null}
-      <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
-        <LeadsSection
-          businessProfileId={businessProfileId}
-          context={leadSuggestionInput}
-          hideSuggestionPanel
-          sellerContext={marketingContext}
-          followUpsOnly={showFollowUpsOnly}
-          onRegisterAddOpener={registerAddLeadOpener}
-          onAddToPipeline={openPipelineFromLead}
-          onDraftOutreach={(target) => {
-            setOutreachDraftTarget(target);
-            setDraftLeadId(null);
-            setOutreachDraftOpen(true);
-          }}
-          onDraftDueLeads={startDueLeadDrafts}
-        />
-      </m.div>
+      {!showFollowUpsOnly ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
+          <LeadsSection
+            businessProfileId={businessProfileId}
+            context={leadSuggestionInput}
+            hideSuggestionPanel
+            sellerContext={marketingContext}
+            onRegisterAddOpener={registerAddLeadOpener}
+            onAddToPipeline={openPipelineFromLead}
+            onDraftOutreach={(target) => {
+              setOutreachDraftTarget(target);
+              setDraftLeadId(null);
+              setOutreachDraftOpen(true);
+            }}
+            onDraftDueLeads={startDueLeadDrafts}
+          />
+        </m.div>
+      ) : null}
 
       <m.div {...pageFadeUp} transition={{ delay: 0.042 }} id="brand-discovery">
         <BrandDiscoverySection
@@ -766,6 +852,8 @@ export default function SalesMarketingPage() {
           ))}
         </div>
       </m.section>
+
+      </div>
 
       {/* Add lead dialog */}
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>

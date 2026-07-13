@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader, PageToolbar } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Select,
@@ -403,6 +404,26 @@ export default function ConnectionsPage() {
         }
       />
 
+      <PageSmartBar
+        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Messages, Content eller Insights."
+        steps={[
+          "Koppla de kanaler du jobbar med (mail, socialt, recensioner …)",
+          "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",
+          "Använd kopplingarna i resten av appen (publicera, svara, rapportera)",
+        ]}
+        tip="Fliken Hälsa visar problem samlat. MCP är för avancerad data och AI-kontext."
+        liveHintOverride={
+          healthIssueCount > 0
+            ? `${healthIssueCount} koppling${healthIssueCount === 1 ? "" : "ar"} behöver åtgärd — öppna fliken Hälsa`
+            : null
+        }
+        extraActions={
+          healthIssueCount > 0
+            ? [{ label: "Visa hälsa", to: "/connections?tab=health" }]
+            : []
+        }
+      />
+
       {oauthErrorDetails ? (
         <OAuthErrorAlert
           details={oauthErrorDetails}
@@ -548,7 +569,8 @@ export default function ConnectionsPage() {
           ) : null}
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-4 space-y-4">
+        <TabsContent value="integrations" className="mt-4">
+      <div className="app-workspace-shell">
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">
@@ -582,7 +604,8 @@ export default function ConnectionsPage() {
         </div>
       )}
 
-      <PageToolbar trailing={summary}>
+      <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
+      <PageToolbar trailing={summary} className="w-full">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
@@ -622,7 +645,24 @@ export default function ConnectionsPage() {
           </span>
         ) : null}
       </PageToolbar>
+      </div>
 
+      <div className="app-workspace-stats flex flex-wrap gap-2 px-3 py-2 sm:px-4">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kopplade</p>
+          <p className="text-xs font-semibold tabular-nums">{activeCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Behöver åtgärd</p>
+          <p className="text-xs font-semibold tabular-nums text-destructive">{healthIssueCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Sök/filter</p>
+          <p className="text-xs font-semibold tabular-nums">{searchQuery.trim() || statusFilter !== "all" ? "Aktivt" : "Av"}</p>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto app-scroll p-3 sm:p-4">
       {isLoading ? (
         <div className="space-y-8">
           {[1, 2, 3].map((i) => (
@@ -657,6 +697,8 @@ export default function ConnectionsPage() {
           areasExclude={["intelligence"]}
         />
       )}
+      </div>
+      </div>
         </TabsContent>
       </Tabs>
 

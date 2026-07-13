@@ -107,9 +107,10 @@ function StatPill({
       onClick={onClick}
       title={title}
       className={cn(
-        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-colors",
-        highlight ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background/40",
-        interactive && "cursor-pointer hover:border-primary/35 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-all duration-150",
+        highlight ? "border-primary/25 bg-primary/[0.06] shadow-sm" : "border-border/50 bg-background/40",
+        interactive &&
+          "cursor-pointer hover:-translate-y-px hover:border-primary/35 hover:bg-primary/10 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0"
       )}
     >
       <Icon className={cn("h-3.5 w-3.5 shrink-0", highlight ? "text-primary" : "text-muted-foreground")} />

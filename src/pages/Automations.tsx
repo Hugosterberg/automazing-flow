@@ -1,8 +1,10 @@
 import { m } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { toast } from "sonner";
-import { ArrowRight, Clock, RefreshCw, Zap } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, RefreshCw, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,6 +31,104 @@ import {
   type AutomationTopic,
 } from "@/features/automation";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
+import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
+
+function AutomationFailuresStrip({
+  businessProfileId,
+  runs,
+  mode,
+}: {
+  businessProfileId: string | null;
+  runs: AutomationRunsState;
+  mode: WorkspaceMode;
+}) {
+  const [retryingKey, setRetryingKey] = useState<string | null>(null);
+
+  const failedEntries = useMemo(() => {
+    const out: { cronKey: string; title: string; message?: string | null }[] = [];
+    for (const topic of AUTOMATION_TOPIC_ORDER) {
+      for (const entry of catalogEntriesForTopic(topic, { includeBusinessOnly: mode === "business" })) {
+        if (!entry.cronKey) continue;
+        const run = runs.byKey[entry.cronKey];
+        if (run?.lastRun?.status === "failed") {
+          out.push({
+            cronKey: entry.cronKey,
+            title: entry.title,
+            message: run.lastRun.errorMessage ?? null,
+          });
+        }
+      }
+    }
+    return out;
+  }, [runs.byKey, mode]);
+
+  async function handleRetry(cronKey: string, title: string) {
+    if (!businessProfileId || retryingKey) return;
+    setRetryingKey(cronKey);
+    try {
+      await retryAutomation(businessProfileId, cronKey);
+      toast.success(`"${title}" kördes om.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
+    } finally {
+      setRetryingKey(null);
+      void runs.refetch();
+    }
+  }
+
+  if (failedEntries.length === 0) return null;
+
+  return (
+    <div
+      id="automation-failures"
+      className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:p-4 space-y-3"
+    >
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" aria-hidden />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {failedEntries.length === 1
+              ? "1 automation misslyckades vid senaste körning"
+              : `${failedEntries.length} automationer misslyckades vid senaste körning`}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Kör om direkt här eller scrolla till jobbkortet för mer detalj.
+          </p>
+        </div>
+      </div>
+      <ul className="space-y-2">
+        {failedEntries.map((entry) => (
+          <li
+            key={entry.cronKey}
+            className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{entry.title}</p>
+              {entry.message ? (
+                <p className="text-xs text-muted-foreground truncate">{entry.message}</p>
+              ) : null}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 h-8"
+              disabled={!businessProfileId || retryingKey === entry.cronKey}
+              onClick={() => void handleRetry(entry.cronKey, entry.title)}
+            >
+              {retryingKey === entry.cronKey ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Kör om
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function ScheduleList({
   entries,
@@ -65,7 +165,15 @@ function ScheduleList({
         const cronKey = entry.cronKey;
         const schedule = cronKey ? schedules.scheduleFor(cronKey) : null;
         return (
-          <Card key={entry.id} className="border-border bg-card">
+          <Card
+            key={entry.id}
+            id={
+              cronKey && runs.byKey[cronKey]?.lastRun?.status === "failed"
+                ? `automation-${cronKey}`
+                : undefined
+            }
+            className="border-border bg-card"
+          >
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -159,6 +267,19 @@ export default function AutomationsPage() {
   const runs = useAutomationRuns(businessProfileId);
   const [runsRefreshing, setRunsRefreshing] = useState(false);
 
+  const runStats = useMemo(() => {
+    const values = Object.values(runs.byKey);
+    let ok = 0;
+    let failed = 0;
+    let never = 0;
+    for (const run of values) {
+      if (!run.lastRun) never += 1;
+      else if (run.lastRun.status === "failed") failed += 1;
+      else ok += 1;
+    }
+    return { ok, failed, never, total: values.length };
+  }, [runs.byKey]);
+
   async function refreshRuns() {
     setRunsRefreshing(true);
     try {
@@ -167,6 +288,18 @@ export default function AutomationsPage() {
       setRunsRefreshing(false);
     }
   }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(e.target) || isShortcutBlocked()) return;
+      if (matchesKey(e, "f") && isPlainLetterShortcut(e) && runStats.failed > 0) {
+        e.preventDefault();
+        document.getElementById("automation-failures")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [runStats.failed]);
 
   return (
     <m.div {...pageFadeUp} className="space-y-8 max-w-5xl w-full mx-auto">
@@ -191,6 +324,60 @@ export default function AutomationsPage() {
           </Button>
         }
       />
+
+      <PageSmartBar
+        title="Automationer sköter det repetitiva — snapshots, påminnelser och synk — så du slipper manuellt underhåll."
+        steps={[
+          "Se status för varje jobb — senaste körning och nästa schemalagda tid",
+          "Justera schema (dagar, tider) efter hur din verksamhet jobbar",
+          "Följ länken ”Se resultatet” för att se vad jobbet faktiskt gjorde",
+        ]}
+        tip={
+          runStats.failed > 0
+            ? "Tryck F för att hoppa till misslyckade körningar."
+            : "Misslyckade körningar kan oftast köras om direkt från kortet."
+        }
+        liveHintOverride={
+          runStats.failed > 0
+            ? `${runStats.failed} jobb misslyckades vid senaste körning — kör om från listan eller jobbkortet.`
+            : runStats.never > 0 && runStats.ok === 0 && runStats.failed === 0
+              ? `${runStats.never} jobb har ännu ingen körningshistorik — kontrollera att schemat är aktiverat.`
+              : null
+        }
+        extraActions={
+          runStats.failed > 0
+            ? [{ label: `${runStats.failed} misslyckade — granska`, to: "/automations#automation-failures" }]
+            : []
+        }
+      />
+
+      <PageAiSuggestionsStrip
+        businessProfileId={businessProfileId}
+        kinds={["maintenance"]}
+        label="AI underhållsförslag"
+      />
+
+      <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Jobb</p>
+          <p className="text-xs font-semibold tabular-nums">{runStats.total}</p>
+        </div>
+        <div className="rounded-lg border border-success/30 bg-success/5 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Senaste OK</p>
+          <p className="text-xs font-semibold tabular-nums text-success">{runStats.ok}</p>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Senaste fel</p>
+          <p className="text-xs font-semibold tabular-nums text-destructive">{runStats.failed}</p>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Aldrig körda</p>
+          <p className="text-xs font-semibold tabular-nums">{runStats.never}</p>
+        </div>
+      </div>
+
+      <div className="app-workspace-shell !min-h-0 space-y-6 p-3 sm:p-4">
+      <AutomationFailuresStrip businessProfileId={businessProfileId} runs={runs} mode={mode} />
 
       {businessProfileId ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.015 }}>
@@ -241,6 +428,7 @@ export default function AutomationsPage() {
           />
         </m.section>
       ))}
+      </div>
     </m.div>
   );
 }

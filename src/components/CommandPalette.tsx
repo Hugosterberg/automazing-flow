@@ -1,19 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Activity,
   Bot,
   Briefcase,
   Building2,
+  CalendarDays,
   Clock,
   Keyboard,
+  Link2,
   ListPlus,
   LogOut,
+  Mail,
   Megaphone,
   Search,
   Sparkles,
   Target,
   TrendingUp,
   User,
+  Users,
+  ListChecks,
+  MessageSquare,
+  Star,
   Zap,
 } from "lucide-react";
 import {
@@ -43,6 +51,10 @@ import {
   NAV_GROUP_LABELS_SV,
   type RecentPage,
 } from "@/lib/keyboardShortcuts";
+import { briefItemsForRoute } from "@/features/daily-brief/briefForRoute";
+import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useCommandPaletteEntities } from "@/hooks/useCommandPaletteEntities";
 
 type CommandPaletteProps = {
   onOpenShortcuts?: () => void;
@@ -57,7 +69,51 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
   const prefetchFor = useRoutePrefetch();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
+  const { brief } = useDailyBriefSummary(businessProfileId);
+  const routeBriefItems = useMemo(
+    () => briefItemsForRoute(location.pathname, brief.items),
+    [location.pathname, brief.items]
+  );
+  const entities = useCommandPaletteEntities(open);
+
+  const contextualActions = useMemo(() => {
+    const path = location.pathname;
+    const rows: Array<{ label: string; url: string; icon: typeof Sparkles }> = [];
+    if (path.startsWith("/messages")) {
+      rows.push({ label: "Filtrera: endast öppna", url: "/messages", icon: MessageSquare });
+    }
+    if (path.startsWith("/tasks")) {
+      rows.push({ label: "Visa försenade uppgifter", url: "/tasks?view=overdue", icon: ListChecks });
+      rows.push({ label: "Visa dagens uppgifter", url: "/tasks?view=today", icon: ListChecks });
+    }
+    if (path.startsWith("/reviews")) {
+      rows.push({ label: "Recensioner som behöver svar", url: "/reviews?filter=needs_reply", icon: Target });
+    }
+    if (path.startsWith("/content")) {
+      rows.push({ label: "Content: publicera", url: "/content?tab=publish", icon: Megaphone });
+      rows.push({ label: "Content: valda filer", url: "/content?tab=selected", icon: Sparkles });
+    }
+    if (path.startsWith("/sales")) {
+      rows.push({ label: "Leads att följa upp", url: "/sales?view=followups", icon: Target });
+      rows.push({ label: "Outreach-kö", url: "/sales?view=outreach-queue", icon: TrendingUp });
+    }
+    if (path.startsWith("/activity")) {
+      rows.push({ label: "Filtrera: fel", url: "/activity?severity=error", icon: Activity });
+    }
+    if (path.startsWith("/connections")) {
+      rows.push({ label: "Kopplingshälsa", url: "/connections?tab=health", icon: Link2 });
+    }
+    if (path.startsWith("/calendar")) {
+      rows.push({ label: "Skapa händelse", url: "/calendar", icon: CalendarDays });
+    }
+    if (path.startsWith("/company")) {
+      rows.push({ label: "Företagsprofil", url: "/company", icon: Building2 });
+    }
+    return rows;
+  }, [location.pathname]);
   const { authMode, signOut } = useAuth();
   const { mode, setMode } = useWorkspaceMode();
   const { items: pulseItems } = useAppPulse();
@@ -136,6 +192,85 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
         <CommandInput placeholder="Sök sidor och åtgärder…" />
         <CommandList>
           <CommandEmpty>Inget hittades.</CommandEmpty>
+
+          {contextualActions.length > 0 ? (
+            <>
+              <CommandGroup heading="Snabbval här">
+                {contextualActions.map((action) => (
+                  <CommandItem
+                    key={action.url + action.label}
+                    value={`Snabbval ${action.label}`}
+                    onSelect={() => goTo(action.url)}
+                    onPointerEnter={() => prefetchFor(action.url.split("?")[0] ?? action.url)}
+                  >
+                    <action.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    {action.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          ) : null}
+
+          {entities.length > 0 ? (
+            <>
+              <CommandGroup heading="Objekt">
+                {entities.slice(0, 12).map((entity) => (
+                  <CommandItem
+                    key={entity.id}
+                    value={`${entity.label} ${entity.description} ${entity.kind}`}
+                    onSelect={() => goTo(entity.to)}
+                    onPointerEnter={() => prefetchFor(entity.to.split("?")[0] ?? entity.to)}
+                  >
+                    {entity.kind === "task" ? (
+                      <ListChecks className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : entity.kind === "outreach" ? (
+                      <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : entity.kind === "message" ? (
+                      <MessageSquare className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : entity.kind === "customer" ? (
+                      <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : entity.kind === "review" ? (
+                      <Star className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : entity.kind === "automation" ? (
+                      <Zap className="mr-2 h-4 w-4 text-destructive/80" />
+                    ) : entity.kind === "event" ? (
+                      <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Target className="mr-2 h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{entity.label}</span>
+                      <span className="truncate text-[10px] text-muted-foreground">{entity.description}</span>
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          ) : null}
+
+          {routeBriefItems.length > 0 ? (
+            <>
+              <CommandGroup heading="På den här sidan">
+                {routeBriefItems.slice(0, 4).map((item) => (
+                  <CommandItem
+                    key={`route-${item.id}`}
+                    value={`Sida ${item.title} ${item.description}`}
+                    onSelect={() => goTo(item.to)}
+                    onPointerEnter={() => prefetchFor(item.to.split("?")[0] ?? item.to)}
+                  >
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{item.title}</span>
+                      <span className="truncate text-[10px] text-muted-foreground">{item.description}</span>
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          ) : null}
 
           {pulseItems.length > 0 ? (
             <>

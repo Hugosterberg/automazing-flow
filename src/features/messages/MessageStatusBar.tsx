@@ -17,7 +17,7 @@ export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarP
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/20 px-3 py-1.5 text-[10px] text-muted-foreground sm:px-4",
+        "flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4",
         className
       )}
     >
@@ -32,31 +32,31 @@ export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarP
       </span>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <span className="inline-flex items-center gap-1">
-          <Kbd>J</Kbd>/<Kbd>K</Kbd> nav
+          <Kbd>J</Kbd>/<Kbd>K</Kbd> Next
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>E</Kbd> klar
+          <Kbd>H</Kbd> Handled
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>Shift</Kbd>+<Kbd>J</Kbd>/<Kbd>K</Kbd> öppna
+          <Kbd>Shift</Kbd>+<Kbd>J</Kbd>/<Kbd>K</Kbd> Open
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>R</Kbd> svar
+          <Kbd>R</Kbd> Reply
         </span>
         <span className="hidden sm:inline-flex items-center gap-1">
-          <Kbd>/</Kbd> sök
+          <Kbd>/</Kbd> Search
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>N</Kbd> nästa öppna
+          <Kbd>N</Kbd> Next open
         </span>
         <span className="hidden sm:inline-flex items-center gap-1">
-          <Kbd>1</Kbd>–<Kbd>4</Kbd> filter
+          <Kbd>Q</Kbd>/<Kbd>O</Kbd>/<Kbd>A</Kbd>/<Kbd>H</Kbd> filter
         </span>
         <span className="hidden md:inline-flex items-center gap-1">
-          <Kbd>[</Kbd>/<Kbd>]</Kbd> kanal
+          <Kbd>[</Kbd>/<Kbd>]</Kbd> channel
         </span>
         <span className="hidden md:inline-flex items-center gap-1">
-          <Kbd>Ctrl</Kbd>+<Kbd>↵</Kbd> skicka
+          <Kbd>Ctrl</Kbd>+<Kbd>↵</Kbd> Send
         </span>
       </div>
     </div>

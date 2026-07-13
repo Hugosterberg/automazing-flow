@@ -39,6 +39,8 @@ interface Props {
   onAiAssist?: (task: TaskRow) => void;
   /** Task id currently being AI-analyzed (shows a spinner on that card). */
   aiBusyTaskId?: string | null;
+  /** Keyboard-focused card for J/K navigation. */
+  focusedTaskId?: string | null;
   /** "Clear done": archive every task currently in the Done lane. */
   onArchiveDone?: () => void;
   isMutating?: boolean;
@@ -103,6 +105,7 @@ function TaskCard({
   onToggleChecklistItem,
   onAiAssist,
   aiBusy,
+  focused,
   isMutating,
   isDeleting,
 }: {
@@ -113,6 +116,7 @@ function TaskCard({
   onToggleChecklistItem?: (task: TaskRow, itemId: string, done: boolean) => void;
   onAiAssist?: (task: TaskRow) => void;
   aiBusy?: boolean;
+  focused?: boolean;
   isMutating?: boolean;
   isDeleting?: boolean;
 }) {
@@ -136,6 +140,7 @@ function TaskCard({
 
   return (
     <article
+      data-task-id={task.id}
       draggable={!isMutating}
       tabIndex={onEdit ? 0 : undefined}
       onKeyDown={(event) => {
@@ -154,6 +159,7 @@ function TaskCard({
       className={cn(
         "group space-y-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         onEdit && "cursor-pointer",
+        focused && "ring-2 ring-primary/60 border-primary/40",
         overdue && "border-destructive/40",
         completed && "bg-muted/40"
       )}
@@ -320,7 +326,7 @@ function TaskCard({
   );
 }
 
-export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
+export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, focusedTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
@@ -432,6 +438,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                     onToggleChecklistItem={onToggleChecklistItem}
                     onAiAssist={onAiAssist}
                     aiBusy={aiBusyTaskId === task.id}
+                    focused={focusedTaskId === task.id}
                     isMutating={isMutating}
                     isDeleting={isDeleting}
                   />

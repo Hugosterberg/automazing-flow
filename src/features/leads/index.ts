@@ -17,3 +17,4 @@ export {
 export { fetchLeadSuggestions, enrichLead, type LeadSuggestion, type LeadSuggestionInput } from "./leadSuggestionsClient";
 export { buildLeadSuggestionContext, leadSuggestionProfileReadiness } from "./buildLeadSuggestionContext";
 export { LeadSuggestionsSection } from "./LeadSuggestionsSection";
+export { LeadFollowUpsWorkspace } from "./LeadFollowUpsWorkspace";

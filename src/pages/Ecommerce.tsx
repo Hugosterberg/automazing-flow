@@ -54,6 +54,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
@@ -723,11 +724,29 @@ export default function Ecommerce() {
         }
       />
 
+      <PageSmartBar
+        title="E-handel samlar Shopify, produkter och ordrar — från lager till åtgärder som kräver uppmärksamhet."
+        steps={[
+          "Koppla Shopify under Kopplingar",
+          "Synka produkter och följ ordrar under Overview",
+          "Importera från Alibaba eller hantera katalogen under Products",
+        ]}
+        tip="Ordrar som väntar på fulfillment markeras i action-stripen."
+        liveHintOverride={
+          actionNeeded && actionNeeded.total > 0
+            ? `${actionNeeded.total} åtgärd${actionNeeded.total === 1 ? "" : "er"} väntar — ordrar eller lågt lager`
+            : shopifyData
+              ? "Inga brådskande e-handelsåtgärder just nu."
+              : null
+        }
+      />
+
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <SectionConnectionStatus area="ecommerce" />
       </m.div>
 
-      <div className="flex items-center gap-1 border-b border-border">
+      <div className="app-workspace-shell !min-h-0">
+        <div className="app-workspace-toolbar flex items-center gap-1 px-3 py-2 sm:px-4 border-b border-border/80">
         <button
           type="button"
           onClick={() => setTab("overview")}
@@ -756,6 +775,23 @@ export default function Ecommerce() {
           ) : null}
         </button>
       </div>
+
+        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Produkter</p>
+            <p className="text-xs font-semibold tabular-nums">{products.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Ordrar</p>
+            <p className="text-xs font-semibold tabular-nums">{shopifyData?.orders.length ?? 0}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Flik</p>
+            <p className="text-xs font-semibold capitalize">{tab}</p>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-8 p-3 sm:p-4">
 
       {tab === "products" && (
         <div className="space-y-8">
@@ -1648,6 +1684,9 @@ export default function Ecommerce() {
       )}
       </div>
       )}
+
+        </div>
+      </div>
 
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
         <DialogContent className="sm:max-w-lg">

@@ -96,6 +96,16 @@ export function isShortcutBlocked(): boolean {
   return Boolean(document.querySelector('[role="dialog"][data-state="open"]'));
 }
 
+/** Case-insensitive single-key match (English shortcut letters). */
+export function matchesKey(event: KeyboardEvent, key: string): boolean {
+  return event.key.toLowerCase() === key.toLowerCase();
+}
+
+/** Letter shortcut without modifiers (not Shift+J list nav, etc.). */
+export function isPlainLetterShortcut(event: KeyboardEvent): boolean {
+  return !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+}
+
 export function titleForRecentPage(pathname: string): string {
   if (pathname === "/") return "Hem";
   const item = ALL_NAV.find((entry) => entry.url === pathname);
@@ -143,22 +153,23 @@ export function goTargetForKey(key: string, mode: WorkspaceMode): GoNavTarget | 
 
 export { GO_CHORD_MS };
 
+/** Keys match the first letter of the English action name (J/K = list navigation convention). */
 export function buildShortcutSections(modKey: string): ShortcutSection[] {
   return [
     {
       id: "global",
       title: "Globalt",
       shortcuts: [
-        { keys: [`${modKey}`, "K"], description: "Kommandopalett — sök sidor och åtgärder" },
-        { keys: ["G", "H"], description: "Gå till Hem" },
-        { keys: ["G", "T"], description: "Gå till Uppgifter" },
-        { keys: ["G", "M"], description: "Gå till Meddelanden" },
-        { keys: ["G", "S"], description: "Gå till Försäljning (företagsläge)" },
-        { keys: ["G", "C"], description: "Gå till Företag (företagsläge)" },
-        { keys: ["G", "I"], description: "Gå till MCP Intelligence" },
-        { keys: ["G", "P"], description: "Gå till Inställningar" },
-        { keys: ["?"], description: "Visa denna genvägslista" },
-        { keys: [`${modKey}`, "B"], description: "Visa/dölj sidopanel" },
+        { keys: [`${modKey}`, "K"], description: "Kommandopalett (Command palette)" },
+        { keys: ["G", "H"], description: "Go Home" },
+        { keys: ["G", "T"], description: "Go Tasks" },
+        { keys: ["G", "M"], description: "Go Messages" },
+        { keys: ["G", "S"], description: "Go Sales (företagsläge)" },
+        { keys: ["G", "C"], description: "Go Company (företagsläge)" },
+        { keys: ["G", "I"], description: "Go Intelligence" },
+        { keys: ["G", "P"], description: "Go Preferences" },
+        { keys: ["?"], description: "Visa genvägslista" },
+        { keys: [`${modKey}`, "B"], description: "Sidebar toggle" },
       ],
     },
     {
@@ -166,12 +177,17 @@ export function buildShortcutSections(modKey: string): ShortcutSection[] {
       title: "Meddelanden",
       routes: ["/messages"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa meddelande" },
-        { keys: ["K"], description: "Föregående meddelande" },
-        { keys: ["E"], description: "Markera som hanterad" },
-        { keys: ["/"], description: "Fokus på sök" },
-        { keys: ["Esc"], description: "Stäng meddelande" },
-        { keys: [`${modKey}`, "Enter"], description: "Skicka svar" },
+        { keys: ["J"], description: "Next message" },
+        { keys: ["K"], description: "Previous message" },
+        { keys: ["H"], description: "Handled (eller filter Handled utan valt meddelande)" },
+        { keys: ["R"], description: "Reply (fokus)" },
+        { keys: ["N"], description: "Next open" },
+        { keys: ["Q"], description: "Filter: Queue" },
+        { keys: ["O"], description: "Filter: Open" },
+        { keys: ["A"], description: "Filter: All" },
+        { keys: ["/"], description: "Search" },
+        { keys: ["Esc"], description: "Close" },
+        { keys: [`${modKey}`, "Enter"], description: "Send reply" },
       ],
     },
     {
@@ -179,9 +195,39 @@ export function buildShortcutSections(modKey: string): ShortcutSection[] {
       title: "Recensioner",
       routes: ["/reviews"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa recension" },
-        { keys: ["K"], description: "Föregående recension" },
-        { keys: ["Esc"], description: "Stäng detaljvy" },
+        { keys: ["J"], description: "Next review" },
+        { keys: ["K"], description: "Previous review" },
+        { keys: ["M"], description: "Mark replied" },
+        { keys: ["D"], description: "Draft (AI)" },
+        { keys: ["A"], description: "Filter: All" },
+        { keys: ["N"], description: "Filter: Needs reply" },
+        { keys: ["/"], description: "Search" },
+        { keys: ["Esc"], description: "Close" },
+      ],
+    },
+    {
+      id: "activity",
+      title: "Aktivitet",
+      routes: ["/activity"],
+      shortcuts: [
+        { keys: ["J"], description: "Next event" },
+        { keys: ["K"], description: "Previous event" },
+        { keys: ["/"], description: "Search" },
+        { keys: ["E"], description: "Filter: Error" },
+        { keys: ["W"], description: "Filter: Warning" },
+        { keys: ["Esc"], description: "Close" },
+      ],
+    },
+    {
+      id: "sales",
+      title: "Sales",
+      routes: ["/sales"],
+      shortcuts: [
+        { keys: ["/"], description: "Search" },
+        { keys: ["J"], description: "Next (outreach / follow-up)" },
+        { keys: ["K"], description: "Previous (outreach / follow-up)" },
+        { keys: ["S"], description: "Sent (outreach-kö)" },
+        { keys: ["O"], description: "Outreach draft (uppföljningar)" },
       ],
     },
     {
@@ -189,8 +235,65 @@ export function buildShortcutSections(modKey: string): ShortcutSection[] {
       title: "Uppgifter",
       routes: ["/tasks"],
       shortcuts: [
-        { keys: ["Enter"], description: "Öppna markerat kort" },
-        { keys: ["Space"], description: "Öppna markerat kort" },
+        { keys: ["/"], description: "Search" },
+        { keys: ["N"], description: "New task" },
+        { keys: ["J"], description: "Next card" },
+        { keys: ["K"], description: "Previous card" },
+        { keys: ["E"], description: "Edit focused card" },
+        { keys: ["A"], description: "Filter: All" },
+        { keys: ["O"], description: "Filter: Overdue" },
+        { keys: ["T"], description: "Filter: Today" },
+      ],
+    },
+    {
+      id: "customers",
+      title: "Kunder",
+      routes: ["/customers"],
+      shortcuts: [
+        { keys: ["J"], description: "Next customer" },
+        { keys: ["K"], description: "Previous customer" },
+        { keys: ["/"], description: "Search" },
+        { keys: ["Esc"], description: "Close" },
+      ],
+    },
+    {
+      id: "content",
+      title: "Innehåll",
+      routes: ["/content"],
+      shortcuts: [
+        { keys: ["J"], description: "Next file (Browse)" },
+        { keys: ["K"], description: "Previous file (Browse)" },
+        { keys: ["/"], description: "Search (Browse)" },
+        { keys: ["S"], description: "Select / toggle file" },
+      ],
+    },
+    {
+      id: "automations",
+      title: "Automationer",
+      routes: ["/automations"],
+      shortcuts: [
+        { keys: ["F"], description: "Failed runs (scroll to list)" },
+      ],
+    },
+    {
+      id: "marketing",
+      title: "Marketing",
+      routes: ["/marketing"],
+      shortcuts: [
+        { keys: ["J"], description: "Next campaign" },
+        { keys: ["K"], description: "Previous campaign" },
+        { keys: ["N"], description: "New campaign" },
+        { keys: ["E"], description: "Edit focused campaign" },
+      ],
+    },
+    {
+      id: "calendar",
+      title: "Kalender",
+      routes: ["/calendar"],
+      shortcuts: [
+        { keys: ["J"], description: "Next event (selected day)" },
+        { keys: ["K"], description: "Previous event (selected day)" },
+        { keys: ["O"], description: "Open focused event" },
       ],
     },
   ];

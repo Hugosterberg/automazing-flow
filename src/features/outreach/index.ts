@@ -1,6 +1,7 @@
 export { OutreachDraftDialog, type OutreachDraftTarget } from "./OutreachDraftDialog";
 export { OutreachContentCard } from "./OutreachContentCard";
 export { OutreachQueueSection } from "./OutreachQueueSection";
+export { OutreachQueueWorkspace } from "./OutreachQueueWorkspace";
 export {
   OUTREACH_QUEUE_DOC_KEY,
   pendingOutreachItems,

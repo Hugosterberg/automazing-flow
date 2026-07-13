@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Layers, Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { useAccounts } from "@/context/AccountsContext";
@@ -48,6 +50,8 @@ import type { TaskRow, TaskStatus } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
+import { cn } from "@/lib/utils";
 
 const MARKETING_PLATFORMS = [
   { platform: "google_ads" as const, label: "Google Ads" },
@@ -185,6 +189,42 @@ export default function MarketingPage() {
   const [campaignNotes, setCampaignNotes] = useState("");
   const [campaignStatus, setCampaignStatus] = useState<TaskStatus>("open");
   const [campaignSaving, setCampaignSaving] = useState(false);
+  const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
+
+  const focusedCampaign = useMemo(
+    () => campaignTasks.find((task) => task.id === focusedCampaignId) ?? null,
+    [campaignTasks, focusedCampaignId]
+  );
+
+  const navigateCampaignRelative = useCallback(
+    (delta: 1 | -1) => {
+      if (campaignTasks.length === 0) return;
+      const currentIndex = focusedCampaignId
+        ? campaignTasks.findIndex((task) => task.id === focusedCampaignId)
+        : -1;
+      const nextIndex =
+        currentIndex < 0
+          ? delta > 0
+            ? 0
+            : campaignTasks.length - 1
+          : (currentIndex + delta + campaignTasks.length) % campaignTasks.length;
+      setFocusedCampaignId(campaignTasks[nextIndex]?.id ?? null);
+    },
+    [campaignTasks, focusedCampaignId]
+  );
+
+  useEffect(() => {
+    if (focusedCampaignId && !campaignTasks.some((task) => task.id === focusedCampaignId)) {
+      setFocusedCampaignId(null);
+    }
+  }, [campaignTasks, focusedCampaignId]);
+
+  useEffect(() => {
+    if (!focusedCampaignId) return;
+    document
+      .querySelector(`[data-campaign-id="${focusedCampaignId}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedCampaignId, campaignTasks.length]);
 
   // Deep link from the command palette: /marketing?new=campaign opens the
   // create dialog directly. The param is consumed (removed) so refresh or
@@ -255,6 +295,40 @@ export default function MarketingPage() {
     if (!open) resetCampaignForm();
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (campaignOpen || isTypingTarget(e.target) || isShortcutBlocked()) return;
+
+      if (matchesKey(e, "n") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        openNewCampaign();
+        return;
+      }
+
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        navigateCampaignRelative(1);
+        return;
+      }
+
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        navigateCampaignRelative(-1);
+        return;
+      }
+
+      if (matchesKey(e, "e") && isPlainLetterShortcut(e) && focusedCampaignId) {
+        const task = campaignTasks.find((item) => item.id === focusedCampaignId);
+        if (!task) return;
+        e.preventDefault();
+        openEditCampaign(task);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [campaignOpen, navigateCampaignRelative, focusedCampaignId, campaignTasks, openNewCampaign, openEditCampaign]);
+
   async function saveCampaign() {
     if (!campaignTitle.trim()) return;
     setCampaignSaving(true);
@@ -298,6 +372,29 @@ export default function MarketingPage() {
         icon={Megaphone}
         title="Marketing"
         description="Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap."
+      />
+
+      <PageSmartBar
+        title="Marketing samlar betald annonsering, kampanjer och AI-idéer — från strategi till publicering."
+        steps={[
+          "Koppla Google Ads och Meta för live kampanjdata",
+          "Skapa kampanjer eller låt AI föreslå kanaler och erbjudanden",
+          "Skicka idéer vidare till Content eller E-handel med ett klick",
+        ]}
+        tip="ROAS och spend syns när annonskonton är kopplade och snapshots körs."
+        liveHintOverride={
+          activeCampaigns.length > 0
+            ? `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — J/K bläddra, N ny kampanj.`
+            : campaignTasks.length > 0
+              ? `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck N för ny.`
+              : null
+        }
+      />
+
+      <PageAiSuggestionsStrip
+        businessProfileId={businessProfileId}
+        kinds={["insight", "maintenance"]}
+        label="AI-insikter för marketing"
       />
 
       <m.div {...pageFadeUp}>
@@ -376,7 +473,23 @@ export default function MarketingPage() {
         </m.div>
       ) : null}
 
-      <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="space-y-3 scroll-mt-24" id="paid-ads">
+      <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="app-workspace-shell !min-h-0 scroll-mt-24 space-y-4 p-3 sm:p-4" id="paid-ads">
+        <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kampanjer</p>
+            <p className="text-xs font-semibold tabular-nums">{campaignTasks.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Aktiva</p>
+            <p className="text-xs font-semibold tabular-nums">{activeCampaigns.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 col-span-2 sm:col-span-1">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Annonsering</p>
+            <p className="text-xs font-semibold tabular-nums">
+              {MARKETING_PLATFORMS.filter((item) => accounts.some((a) => a.platform === item.platform)).length}/{MARKETING_PLATFORMS.length}
+            </p>
+          </div>
+        </div>
         <div>
           <h2 className="text-sm font-semibold">Paid advertising</h2>
           <p className="text-xs text-muted-foreground">
@@ -499,7 +612,14 @@ export default function MarketingPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {campaignTasks.map((task) => (
-              <Card key={task.id} className="border-border">
+              <Card
+                key={task.id}
+                data-campaign-id={task.id}
+                className={cn(
+                  "border-border",
+                  focusedCampaignId === task.id && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                )}
+              >
                 <CardHeader className="pb-2 pt-4 px-4">
                   <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
                 </CardHeader>
@@ -550,6 +670,22 @@ export default function MarketingPage() {
             ))}
           </div>
         )}
+
+        {campaignTasks.length > 0 ? (
+          <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm rounded-b-lg mt-3">
+            <span className="truncate">
+              {focusedCampaign ? (
+                <>
+                  Fokus:{" "}
+                  <span className="font-medium text-foreground/80">{focusedCampaign.title}</span>
+                </>
+              ) : (
+                "J/K bläddra bland kampanjer"
+              )}
+            </span>
+            <span className="hidden sm:inline">E Edit · N New</span>
+          </div>
+        ) : null}
       </m.section>
 
       <Dialog open={campaignOpen} onOpenChange={handleCampaignDialogChange}>

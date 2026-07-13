@@ -40,7 +40,12 @@ export function SearchHighlight({ text, query, className }: SearchHighlightProps
     <span className={className}>
       {parts.map((part, i) =>
         part.match ? (
-          <mark key={i} className={cn("rounded-sm bg-primary/20 px-0.5 text-foreground")}>
+          <mark
+            key={i}
+            className={cn(
+              "rounded-sm bg-primary/25 px-0.5 font-medium text-foreground ring-1 ring-primary/15"
+            )}
+          >
             {part.text}
           </mark>
         ) : (

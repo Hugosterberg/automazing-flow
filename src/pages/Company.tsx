@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import {
   BusinessProfileCompletenessCard,
   BusinessProfileEditForm,
@@ -111,6 +112,23 @@ export default function CompanyPage() {
         description="Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara."
       />
 
+      <PageSmartBar
+        title="Bolagsprofilen är grunden — AI använder den för leads, outreach och innehållsförslag."
+        steps={[
+          "Fyll i automatiskt med org.nr eller börja manuellt",
+          "Komplettera beskrivning och målgrupp — det påverkar AI mest",
+          "Spara så att Sales och Content får bättre förslag direkt",
+        ]}
+        tip="Ju mer komplett profilen är, desto träffsäkrare blir lead- och kampanjförslagen."
+        liveHintOverride={
+          profile && completeness.percent < 100
+            ? `Profilen är ${completeness.percent}% klar — saknas: ${completeness.priorities.map((f) => f.label).join(", ")}`
+            : profile
+              ? "Profilen ser komplett ut — AI kan ge full träffsäkerhet."
+              : null
+        }
+      />
+
       {!profile ? (
         <Card className="border-border">
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -118,7 +136,7 @@ export default function CompanyPage() {
           </CardContent>
         </Card>
       ) : (
-        <>
+        <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
           <BusinessProfileCompletenessCard
             profile={profile}
             form={dirty ? form : undefined}
@@ -173,7 +191,7 @@ export default function CompanyPage() {
               Steg 3 · Spara bolagsprofil
             </Button>
           </div>
-        </>
+        </div>
       )}
 
       <div className="space-y-4 pt-2 border-t border-border/60">

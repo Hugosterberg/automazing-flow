@@ -46,7 +46,7 @@ export function MessageThread({ messages, loading, highlightId, kind }: Props) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading conversation…
+        Laddar konversation…
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function MessageThread({ messages, loading, highlightId, kind }: Props) {
   return (
     <div className="space-y-4">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Conversation · {messages.length} messages
+        Konversation · {messages.length} meddelanden
       </p>
       <ol className="space-y-3">
         {messages.map((msg) => {
@@ -68,8 +68,8 @@ export function MessageThread({ messages, loading, highlightId, kind }: Props) {
             <li
               key={msg.id}
               className={cn(
-                "rounded-xl border px-4 py-3 transition-colors",
-                highlighted ? "border-primary/40 bg-primary/5 ring-1 ring-primary/15" : "border-border/70 bg-muted/15",
+                "message-reading-card px-4 py-3 transition-colors",
+                highlighted ? "border-primary/40 bg-primary/5 ring-1 ring-primary/15" : "",
                 outgoing && "ml-6 sm:ml-10"
               )}
             >

@@ -303,6 +303,79 @@
     text-align: left;
   }
 
+  .message-inbox-pane {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--muted) / 0.12) 0%,
+      hsl(var(--background) / 0.4) 100%
+    );
+  }
+
+  /* Shared elevated shell for inbox-style workspaces (Messages, Reviews, Activity, …). */
+  .app-workspace-shell {
+    display: flex;
+    min-height: min(78vh, 880px);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border) / 0.8);
+    background: hsl(var(--card) / 0.3);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 0 0 1px hsl(var(--border) / 0.4);
+  }
+
+  .app-workspace-toolbar {
+    flex-shrink: 0;
+    border-bottom: 1px solid hsl(var(--border) / 0.8);
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+  }
+
+  .app-workspace-stats {
+    flex-shrink: 0;
+    border-bottom: 1px solid hsl(var(--border) / 0.4);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.15) 0%,
+      hsl(var(--background) / 0.4) 50%,
+      hsl(var(--muted) / 0.15) 100%
+    );
+  }
+
+  .message-reading-pane {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--muted) / 0.06) 100%
+    );
+  }
+
+  .message-reading-card {
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--border) / 0.55);
+    background: hsl(var(--card) / 0.35);
+    box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.03);
+  }
+
+  .message-iframe-shell {
+    transition: height 0.2s ease;
+  }
+
+  @keyframes message-iframe-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .message-iframe-loading {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.35) 0%,
+      hsl(var(--muted) / 0.55) 50%,
+      hsl(var(--muted) / 0.35) 100%
+    );
+    background-size: 200% 100%;
+    animation: message-iframe-shimmer 1.4s ease-in-out infinite;
+  }
+
   /* Landing page ambient motion */
   @keyframes landing-float {
     0%, 100% { transform: translateY(0) scale(1); }

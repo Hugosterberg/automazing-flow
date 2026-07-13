@@ -15,6 +15,8 @@ import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
@@ -40,6 +42,8 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { accountDataUrl } from "@/lib/accountDataUrl";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
+import { cn } from "@/lib/utils";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 type DriveBrowserItem = {
@@ -97,10 +101,12 @@ function MediaTile({
   file,
   checked,
   onToggle,
+  focused = false,
 }: {
   file: DriveBrowserItem;
   checked: boolean;
   onToggle: (checked: boolean) => void;
+  focused?: boolean;
 }) {
   // Per-tile image-failure state so a dead Drive thumbnail falls back to the
   // type icon instead of rendering a broken image.
@@ -111,9 +117,13 @@ function MediaTile({
     <div
       role="button"
       tabIndex={0}
+      data-drive-file-id={file.id}
       aria-pressed={checked}
       aria-label={`${checked ? "Remove from Selected" : "Add to Selected"} ${file.name}`}
-      className="group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className={cn(
+        "group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        focused && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/50"
+      )}
       onClick={() => onToggle(!checked)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -178,6 +188,7 @@ function MediaSection({
   selectedIds,
   selectionKeyForFile,
   onToggleAsset,
+  focusedFileId,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -188,12 +199,21 @@ function MediaSection({
   selectedIds: Set<string>;
   selectionKeyForFile: (file: DriveBrowserItem) => string;
   onToggleAsset: (file: DriveBrowserItem, checked: boolean) => void;
+  focusedFileId?: string | null;
 }) {
   const [visibleCount, setVisibleCount] = useState(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
 
   useEffect(() => {
     setVisibleCount(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
   }, [expanded, files.length, previewCount]);
+
+  useEffect(() => {
+    if (!focusedFileId) return;
+    const idx = files.findIndex((file) => file.id === focusedFileId);
+    if (idx < 0) return;
+    if (!expanded) onToggleExpand();
+    setVisibleCount((count) => Math.max(count, idx + 1));
+  }, [focusedFileId, files, expanded, onToggleExpand]);
 
   const visible = files.slice(0, visibleCount);
   const hidden = files.length - visible.length;
@@ -212,6 +232,7 @@ function MediaSection({
             file={file}
             checked={selectedIds.has(selectionKeyForFile(file))}
             onToggle={(checked) => onToggleAsset(file, checked)}
+            focused={focusedFileId === file.id}
           />
         ))}
       </div>
@@ -436,8 +457,18 @@ export default function ContentPage() {
   const PREVIEW_COUNT = 4;
   const [imagesExpanded, setImagesExpanded] = useState(false);
   const [videosExpanded, setVideosExpanded] = useState(false);
+  const [focusedBrowseFileId, setFocusedBrowseFileId] = useState<string | null>(null);
   const [uploadingBrowse, setUploadingBrowse] = useState(false);
   const browseUploadRef = useRef<HTMLInputElement>(null);
+  const driveSearchRef = useRef<HTMLInputElement>(null);
+  const browseMediaFiles = useMemo(
+    () => [...imageItems, ...videoItems],
+    [imageItems, videoItems]
+  );
+  const focusedBrowseFile = useMemo(
+    () => browseMediaFiles.find((file) => file.id === focusedBrowseFileId) ?? null,
+    [browseMediaFiles, focusedBrowseFileId]
+  );
   const selectedIds = useMemo(
     () => new Set(selectedAssets.map((asset) => assetSelectionKey(asset))),
     [selectedAssets]
@@ -737,6 +768,79 @@ export default function ContentPage() {
     }
   }
 
+  const navigateBrowseFileRelative = useCallback(
+    (delta: 1 | -1) => {
+      if (browseMediaFiles.length === 0) return;
+      const currentIndex = focusedBrowseFileId
+        ? browseMediaFiles.findIndex((file) => file.id === focusedBrowseFileId)
+        : -1;
+      const nextIndex =
+        currentIndex < 0
+          ? delta > 0
+            ? 0
+            : browseMediaFiles.length - 1
+          : (currentIndex + delta + browseMediaFiles.length) % browseMediaFiles.length;
+      setFocusedBrowseFileId(browseMediaFiles[nextIndex]?.id ?? null);
+    },
+    [browseMediaFiles, focusedBrowseFileId]
+  );
+
+  useEffect(() => {
+    if (focusedBrowseFileId && !browseMediaFiles.some((file) => file.id === focusedBrowseFileId)) {
+      setFocusedBrowseFileId(null);
+    }
+  }, [browseMediaFiles, focusedBrowseFileId]);
+
+  useEffect(() => {
+    if (!focusedBrowseFileId) return;
+    document
+      .querySelector(`[data-drive-file-id="${focusedBrowseFileId}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedBrowseFileId, browseMediaFiles.length]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (contentTab !== "browse" || isTypingTarget(e.target) || isShortcutBlocked()) return;
+
+      if (e.key === "/") {
+        e.preventDefault();
+        driveSearchRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        navigateBrowseFileRelative(1);
+        return;
+      }
+
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        navigateBrowseFileRelative(-1);
+        return;
+      }
+
+      if ((matchesKey(e, "s") && isPlainLetterShortcut(e)) && focusedBrowseFileId) {
+        const file = browseMediaFiles.find((item) => item.id === focusedBrowseFileId);
+        if (!file || !activeAccount) return;
+        e.preventDefault();
+        const key = assetSelectionKey({ id: file.id, sourceAccountId: activeAccount.id });
+        toggleAsset(file, !selectedIds.has(key));
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    contentTab,
+    navigateBrowseFileRelative,
+    focusedBrowseFileId,
+    browseMediaFiles,
+    activeAccount,
+    selectedIds,
+    toggleAsset,
+  ]);
+
   function removeFromSelected(asset: SelectedContentAsset) {
     saveAssetSelection(asset, false);
   }
@@ -803,6 +907,29 @@ export default function ContentPage() {
         }
       />
 
+      <PageSmartBar
+        title="Content är hela flödet — välj media, skapa med AI, spara utkast och publicera."
+        steps={[
+          "Bläddra Drive eller ladda upp — markera det du vill använda",
+          "Skapa eller redigera i Create, spara till Selected eller History",
+          "Publicera eller schemalägg under Post or save",
+        ]}
+        tip="Koppla Google Drive först om Browse är tom."
+        liveHintOverride={
+          contentTab === "browse" && browseMediaFiles.length > 0
+            ? `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S Select.`
+            : selectedAssets.length > 0
+              ? `${selectedAssets.length} valda — gå till Create eller Post or save.`
+              : null
+        }
+      />
+
+      <PageAiSuggestionsStrip
+        businessProfileId={createBusinessProfileId}
+        kinds={["content", "engagement"]}
+        label="AI-idéer för innehåll"
+      />
+
       <SectionConnectionStatus area="content" className="mt-0" />
 
       <McpFeatureSection
@@ -835,6 +962,8 @@ export default function ContentPage() {
         }}
       />
 
+      <div className="app-workspace-shell !min-h-0">
+        <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
       <Tabs value={contentTab} onValueChange={(value) => goToTab(value as typeof contentTab)}>
         <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger
@@ -882,6 +1011,24 @@ export default function ContentPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+        </div>
+
+        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Valda</p>
+            <p className="text-xs font-semibold tabular-nums">{selectedAssets.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Historik</p>
+            <p className="text-xs font-semibold tabular-nums">{generatedHistory.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Flik</p>
+            <p className="text-xs font-semibold capitalize">{contentTab}</p>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-4 p-3 sm:p-4">
 
       {combinedOauthError ? (
         <OAuthErrorAlert
@@ -1154,6 +1301,8 @@ export default function ContentPage() {
             <div className="relative max-w-sm flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={driveSearchRef}
+                id="driveSearch"
                 type="search"
                 placeholder="Search files by name…"
                 value={driveSearch}
@@ -1232,6 +1381,7 @@ export default function ContentPage() {
                     assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
                   }
                   onToggleAsset={toggleAsset}
+                  focusedFileId={focusedBrowseFileId}
                 />
               )}
               {videoItems.length > 0 && (
@@ -1247,10 +1397,27 @@ export default function ContentPage() {
                     assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
                   }
                   onToggleAsset={toggleAsset}
+                  focusedFileId={focusedBrowseFileId}
                 />
               )}
             </>
           )}
+
+          {browseMediaFiles.length > 0 ? (
+            <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4 rounded-b-lg -mx-0">
+              <span className="truncate">
+                {focusedBrowseFile ? (
+                  <>
+                    Fokus:{" "}
+                    <span className="font-medium text-foreground/80">{focusedBrowseFile.name}</span>
+                  </>
+                ) : (
+                  "J/K bläddra bland bilder och videor"
+                )}
+              </span>
+              <span className="hidden sm:inline">S Select · / Search</span>
+            </div>
+          ) : null}
 
           {otherItems.length > 0 && (
             <div className="space-y-3">
@@ -1299,6 +1466,9 @@ export default function ContentPage() {
       )}
         </>
       ) : null}
+
+        </div>
+      </div>
 
       <ContentNextStepBar
         active={contentTab}

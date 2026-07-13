@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -54,6 +54,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -68,6 +69,7 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { useScheduledPosts, SCHEDULED_POST_STATUS_LABELS, type ScheduledPost } from "@/features/social";
 import { platformLabel } from "@/lib/platformLabels";
+import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 
 const STORAGE_KEY = "automazing-calendar-events";
 
@@ -153,6 +155,7 @@ export default function CalendarPage() {
   const [postDialog, setPostDialog] = useState<ScheduledPost | null>(null);
   const [postFormDate, setPostFormDate] = useState("");
   const [postFormTime, setPostFormTime] = useState("");
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
 
   const {
     activeAccount: activeCalendarAccount,
@@ -289,6 +292,50 @@ export default function CalendarPage() {
   const eventsOnDate = (date: Date) =>
     allEvents.filter((e) => isSameDay(parseISO(e.date), date));
 
+  const dayFocusDate = selectedDate ?? currentDate;
+  const dayFocusEvents = useMemo(
+    () =>
+      sortByTime(
+        allEvents.filter((e) => isSameDay(parseISO(e.date), dayFocusDate))
+      ) as CalendarItem[],
+    [allEvents, dayFocusDate]
+  );
+
+  const focusedEvent = useMemo(
+    () => dayFocusEvents.find((event) => event.id === focusedEventId) ?? null,
+    [dayFocusEvents, focusedEventId]
+  );
+
+  const navigateDayEventRelative = useCallback(
+    (delta: 1 | -1) => {
+      if (dayFocusEvents.length === 0) return;
+      const currentIndex = focusedEventId
+        ? dayFocusEvents.findIndex((event) => event.id === focusedEventId)
+        : -1;
+      const nextIndex =
+        currentIndex < 0
+          ? delta > 0
+            ? 0
+            : dayFocusEvents.length - 1
+          : (currentIndex + delta + dayFocusEvents.length) % dayFocusEvents.length;
+      setFocusedEventId(dayFocusEvents[nextIndex]?.id ?? null);
+    },
+    [dayFocusEvents, focusedEventId]
+  );
+
+  useEffect(() => {
+    if (focusedEventId && !dayFocusEvents.some((event) => event.id === focusedEventId)) {
+      setFocusedEventId(null);
+    }
+  }, [dayFocusEvents, focusedEventId]);
+
+  useEffect(() => {
+    if (!focusedEventId) return;
+    document
+      .querySelector(`[data-calendar-event-id="${focusedEventId}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedEventId, dayFocusEvents.length, dayFocusDate]);
+
   const saveEvent = () => {
     if (!formTitle.trim() || !formDate) return;
     const payload = {
@@ -354,6 +401,38 @@ export default function CalendarPage() {
     setDialogOpen(true);
   };
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (dialogOpen || postDialog || isTypingTarget(e.target) || isShortcutBlocked()) return;
+
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        navigateDayEventRelative(1);
+        return;
+      }
+
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        navigateDayEventRelative(-1);
+        return;
+      }
+
+      if (matchesKey(e, "o") && isPlainLetterShortcut(e) && focusedEventId) {
+        const event = dayFocusEvents.find((item) => item.id === focusedEventId);
+        if (!event) return;
+        e.preventDefault();
+        if (event.source === "social" && event.post) {
+          openPostDialog(event.post);
+        } else if (!event.readOnly) {
+          openEditDialog(event);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dialogOpen, postDialog, navigateDayEventRelative, focusedEventId, dayFocusEvents]);
+
   const navPrev = () => {
     if (viewMode === "day") setCurrentDate((d) => addDays(d, -1));
     else if (viewMode === "week") setCurrentDate((d) => subWeeks(d, 1));
@@ -413,8 +492,8 @@ export default function CalendarPage() {
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
         icon={CalendarDays}
-        title="Calendar"
-        description="Plan and schedule events across connected calendars."
+        title="Kalender"
+        description="Planera och schemalägg händelser från uppgifter, leads och kopplade kalendrar."
         actions={
           <>
             <Button
@@ -422,17 +501,32 @@ export default function CalendarPage() {
               onClick={() => connectCalendar("google_calendar", "auto")}
             >
               <CalendarDays className="h-4 w-4 mr-2" />
-              Connect Google Calendar
+              Koppla Google Kalender
             </Button>
             <Button onClick={openDialog}>
               <Plus className="h-4 w-4 mr-2" />
-              Add
+              Lägg till
             </Button>
           </>
         }
       />
 
-      <SectionConnectionStatus area="calendar" className="mt-4" />
+      <PageSmartBar
+        title="Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde."
+        steps={[
+          "Koppla Google eller Outlook-kalender för synk",
+          "Växla dag/vecka/månad och klicka en dag för detaljer",
+          "Skapa egna händelser eller följ upp från Tasks och Sales",
+        ]}
+        tip="Uppgifter och leads med datum syns automatiskt i vyn."
+        liveHintOverride={
+          smartSuggestions.length > 0
+            ? `${smartSuggestions.length} uppgift${smartSuggestions.length === 1 ? "" : "er"} eller lead${smartSuggestions.length === 1 ? "" : "s"} förfaller idag — lägg till i kalendern`
+            : null
+        }
+      />
+
+      <SectionConnectionStatus area="calendar" className="mt-0" />
 
       {oauthErrorDetails && (
         <OAuthErrorAlert
@@ -466,7 +560,25 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] gap-6 items-start">
+      <div className="app-workspace-shell !min-h-[min(72vh,820px)]">
+        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Händelser</p>
+            <p className="text-xs font-semibold tabular-nums">{allEvents.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kommande</p>
+            <p className="text-xs font-semibold tabular-nums">{upcomingEvents.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kalendrar</p>
+            <p className="text-xs font-semibold tabular-nums">
+              {accounts.filter((a) => (a.platform === "google_calendar" || a.platform === "outlook_calendar") && a.isOAuth).length}
+            </p>
+          </div>
+        </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] gap-6 items-start p-3 sm:p-4 min-h-0 flex-1 overflow-y-auto">
         <Card className="rounded-xl shrink-0 w-full lg:mx-0 mx-auto">
           <CardContent className="pt-6">
             <Calendar
@@ -568,9 +680,11 @@ export default function CalendarPage() {
                     {sortByTime(eventsOnDate(currentDate)).map((ev: CalendarItem) => (
                       <li
                         key={ev.id}
+                        data-calendar-event-id={ev.id}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted group",
-                          ev.source === "social" && "cursor-pointer"
+                          ev.source === "social" && "cursor-pointer",
+                          focusedEventId === ev.id && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                         )}
                         onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                       >
@@ -655,9 +769,11 @@ export default function CalendarPage() {
                         {sortByTime(dayEvents).map((ev: CalendarItem) => (
                           <li
                             key={ev.id}
+                            data-calendar-event-id={ev.id}
                             className={cn(
                               "group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs",
-                              ev.source === "social" && "cursor-pointer"
+                              ev.source === "social" && "cursor-pointer",
+                              focusedEventId === ev.id && "ring-1 ring-primary"
                             )}
                             onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                           >
@@ -746,6 +862,26 @@ export default function CalendarPage() {
         </Card>
       </div>
 
+      {dayFocusEvents.length > 0 ? (
+        <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
+          <span className="truncate">
+            {focusedEvent ? (
+              <>
+                Fokus:{" "}
+                <span className="font-medium text-foreground/80">{focusedEvent.title}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {format(dayFocusDate, "d MMM", { locale: enUS })}
+                </span>
+              </>
+            ) : (
+              `J/K bläddra händelser ${format(dayFocusDate, "d MMM", { locale: enUS })}`
+            )}
+          </span>
+          <span className="hidden sm:inline">O Open</span>
+        </div>
+      ) : null}
+
       {smartSuggestions.length > 0 && (
         <Card className="rounded-xl border-dashed">
           <CardContent className="py-4 space-y-3">
@@ -808,6 +944,8 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
       )}
+
+      </div>
 
       <Dialog
         open={dialogOpen}

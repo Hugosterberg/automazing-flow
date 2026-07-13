@@ -16,6 +16,7 @@ type Props = {
   aiSummary?: string;
   waited: string | null;
   formattedDate: string;
+  fullDate: string;
   senderInitial: string;
   avatarGradient: string;
   isHandled: boolean;
@@ -36,6 +37,7 @@ export const MessageInboxRow = memo(
       aiSummary,
       waited,
       formattedDate,
+      fullDate,
       senderInitial,
       avatarGradient,
       isHandled,
@@ -56,8 +58,9 @@ export const MessageInboxRow = memo(
         animate={{ opacity: 1 }}
         className={cn(
           "group relative",
-          selected && "bg-primary/[0.06]",
-          open && !selected && "bg-primary/[0.02]"
+          selected && "bg-primary/[0.07]",
+          open && !selected && "bg-primary/[0.03]",
+          isHandled && !selected && !open && "opacity-80"
         )}
       >
         <button
@@ -73,18 +76,19 @@ export const MessageInboxRow = memo(
           onMouseEnter={onPrefetch}
           onFocus={onPrefetch}
           className={cn(
-            "relative w-full border-b border-border/40 px-3 py-2.5 text-left transition-all duration-150",
-            "hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-            selected && "border-l-[3px] border-l-primary bg-primary/[0.06] pl-[calc(0.75rem-2px)] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.08)]",
-            open && !selected && "border-l-2 border-l-primary/40"
+            "relative w-full border-b border-border/35 px-3 py-2 text-left transition-colors duration-150",
+            "hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
+            selected && "border-l-[3px] border-l-primary bg-primary/[0.07] pl-[calc(0.75rem-2px)] shadow-[inset_0_1px_0_hsl(var(--primary)/0.06)]",
+            open && !selected && "border-l-2 border-l-primary/45"
           )}
           aria-current={selected ? "true" : undefined}
+          title={`${displayName}${channelLabel ? ` · ${channelLabel}` : ""}`}
         >
-          <div className="flex items-start gap-2.5">
+          <div className="flex items-start gap-2">
             <div className="relative shrink-0">
               <div
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white shadow-sm ring-2 ring-background transition-transform duration-150 group-hover:scale-[1.03]",
+                  "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white shadow-sm ring-2 ring-background transition-transform duration-150 group-hover:scale-[1.03]",
                   avatarGradient,
                   selected && "ring-primary/30"
                 )}
@@ -107,58 +111,56 @@ export const MessageInboxRow = memo(
               ) : null}
             </div>
 
-            <div className="min-w-0 flex-1 pr-7">
-              <div className="mb-0.5 flex items-baseline justify-between gap-2">
+            <div className="min-w-0 flex-1 pr-6">
+              <div className="flex items-baseline justify-between gap-2">
                 <span
                   className={cn(
-                    "truncate text-sm",
-                    open ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
+                    "truncate text-[13px]",
+                    open ? "font-semibold text-foreground" : isHandled ? "font-normal text-muted-foreground" : "font-medium text-muted-foreground"
                   )}
                 >
                   <SearchHighlight text={displayName} query={searchQuery} />
                 </span>
-                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{formattedDate}</span>
+                <time
+                  className="shrink-0 text-[10px] tabular-nums text-muted-foreground"
+                  dateTime={message.date}
+                  title={fullDate || undefined}
+                >
+                  {formattedDate}
+                </time>
               </div>
 
               {message.kind === "email" && message.subject ? (
-                <p className={cn("truncate text-xs", open ? "font-medium text-foreground/90" : "text-muted-foreground")}>
+                <p className={cn("truncate text-xs", open || selected ? "font-medium text-foreground/90" : "text-muted-foreground")}>
                   <SearchHighlight text={message.subject} query={searchQuery} />
                 </p>
               ) : null}
 
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground/90">
+              <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-muted-foreground/90">
                 <SearchHighlight text={message.snippet} query={searchQuery} />
               </p>
 
-              <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                <span className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {channelLabel}
-                </span>
-                {waited ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-medium",
-                      urgent ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
-                    )}
-                  >
-                    <Clock className="h-2.5 w-2.5" aria-hidden />
-                    {waited}
-                  </span>
-                ) : null}
-                {aiSummary ? (
-                  <span className="inline-flex items-center gap-0.5 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-medium text-violet-400">
-                    <Sparkles className="h-2 w-2" aria-hidden />
-                    AI
-                  </span>
-                ) : null}
-                {isHandled ? <span className="text-[9px] text-muted-foreground">Hanterad</span> : null}
-              </div>
-
-              {aiSummary && selected ? (
-                <p className="mt-1.5 flex items-start gap-1 line-clamp-2 rounded-md border border-violet-500/15 bg-violet-500/5 px-2 py-1 text-[10px] leading-snug text-muted-foreground">
-                  <Sparkles className="mt-0.5 h-2.5 w-2.5 shrink-0 text-violet-400" aria-hidden />
-                  {aiSummary}
-                </p>
+              {(urgent || waited || (selected && aiSummary)) ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  {waited ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-medium",
+                        urgent ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
+                      )}
+                    >
+                      <Clock className="h-2.5 w-2.5" aria-hidden />
+                      {waited}
+                    </span>
+                  ) : null}
+                  {selected && aiSummary ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-medium text-violet-400">
+                      <Sparkles className="h-2 w-2" aria-hidden />
+                      AI
+                    </span>
+                  ) : null}
+                  {isHandled ? <span className="text-[9px] text-muted-foreground">Hanterad</span> : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -169,7 +171,7 @@ export const MessageInboxRow = memo(
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 p-0 text-muted-foreground opacity-100 transition-colors hover:bg-emerald-500/10 hover:text-emerald-600 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onMarkHandled();

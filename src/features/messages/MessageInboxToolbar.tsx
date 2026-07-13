@@ -21,10 +21,10 @@ import type { MessageChannelTab } from "./types";
 type TabCounts = Record<MessageChannelTab, { total: number; unread: number }>;
 
 const FILTER_OPTIONS: Array<{ value: InboxFilter; label: string; shortcut: string }> = [
-  { value: "queue", label: "Kö", shortcut: "1" },
-  { value: "open", label: "Öppna", shortcut: "2" },
-  { value: "all", label: "Alla", shortcut: "3" },
-  { value: "handled", label: "Hanterade", shortcut: "4" },
+  { value: "queue", label: "Kö", shortcut: "Q" },
+  { value: "open", label: "Öppna", shortcut: "O" },
+  { value: "all", label: "Alla", shortcut: "A" },
+  { value: "handled", label: "Hanterade", shortcut: "H" },
 ];
 
 type MessageInboxToolbarProps = {
@@ -166,7 +166,7 @@ export function MessageInboxToolbar({
                 searchInputRef.current?.blur();
               }
             }}
-            className="h-8 border-border/60 bg-background/60 pl-8 pr-8 text-xs transition-shadow focus-visible:ring-primary/25"
+            className="h-8 border-border/60 bg-background/60 pl-8 pr-8 text-xs shadow-sm transition-shadow focus-visible:border-primary/40 focus-visible:ring-primary/25"
           />
           {inboxSearch ? (
             <button
@@ -199,8 +199,8 @@ export function MessageInboxToolbar({
               className={cn(
                 "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                 inboxFilter === opt.value
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
+                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
               )}
             >
               {opt.label}
@@ -247,7 +247,7 @@ export function MessageInboxToolbar({
           </AlertDialogContent>
         </AlertDialog>
 
-        <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground lg:block">
+        <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
           {loading ? "Laddar…" : isSearching ? `${totalVisible} träffar · ${openTotal} öppna` : `${totalVisible} visade · ${openTotal} öppna`}
         </p>
       </div>

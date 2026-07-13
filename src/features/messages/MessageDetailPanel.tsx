@@ -20,8 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
+import { isHtmlEmailContent } from "./messageBodyHtml";
 import { MessageThread } from "./MessageThread";
-import { formatFullMessageDate } from "./messagesUi";
+import { avatarGradient, formatFullMessageDate, senderInitial } from "./messagesUi";
 import type { ThreadMessage, UnifiedMessage } from "./types";
 
 export type MessageDetailPanelProps = {
@@ -81,7 +82,9 @@ export function MessageDetailPanel({
   navigation,
 }: MessageDetailPanelProps) {
   const replyRef = useRef<HTMLTextAreaElement>(null);
-  const [summaryOpen, setSummaryOpen] = useState(Boolean(aiSummary));
+  const rawBody = (message.body || message.snippet || "").trim();
+  const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
+  const [summaryOpen, setSummaryOpen] = useState(Boolean(aiSummary) && needsAttention && !htmlEmail);
 
   useEffect(() => {
     if (!focusReplyRef) return;
@@ -92,8 +95,8 @@ export function MessageDetailPanel({
   }, [focusReplyRef, message.id]);
 
   useEffect(() => {
-    setSummaryOpen(Boolean(aiSummary) && (needsAttention || Boolean(aiSummary)));
-  }, [message.id, aiSummary, needsAttention]);
+    setSummaryOpen(Boolean(aiSummary) && needsAttention && !htmlEmail);
+  }, [message.id, aiSummary, needsAttention, htmlEmail]);
 
   useEffect(() => {
     if (replySent || !canReply || draftBusy) return;
@@ -103,6 +106,8 @@ export function MessageDetailPanel({
 
   const fromName = message.from.name || message.from.email || "Unknown";
   const fromEmail = message.from.email?.trim();
+  const headerInitial = senderInitial(fromName);
+  const headerAvatarGradient = avatarGradient(fromName || fromEmail || message.id);
 
   function copyBody() {
     const text = (message.body || message.snippet || "").trim();
@@ -122,20 +127,30 @@ export function MessageDetailPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b border-border/80 px-4 py-3 sm:px-5">
-        <div className="mx-auto flex max-w-3xl items-start gap-2">
+      <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
+        <div className="flex w-full items-start gap-3">
           {showBack && onBack ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
+              className="mt-0.5 h-8 w-8 shrink-0 p-0 md:hidden"
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Tillbaka till inkorgen</span>
             </Button>
           ) : null}
+
+          <div
+            className={cn(
+              "hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white shadow-sm ring-2 ring-background sm:flex",
+              headerAvatarGradient
+            )}
+            aria-hidden
+          >
+            {headerInitial}
+          </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
@@ -257,7 +272,7 @@ export function MessageDetailPanel({
           <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
             <CheckCheck className="mr-1 h-3 w-3" />
             Markera klar
-            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">E</kbd>
+            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">H</kbd>
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onDraftReply} disabled={draftBusy}>
             {draftBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
@@ -277,12 +292,12 @@ export function MessageDetailPanel({
       ) : null}
 
       <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
-        <div className="mx-auto max-w-3xl space-y-4">
+        <div className="w-full space-y-4">
           {aiSummary ? (
-            <div className="rounded-lg border border-border/70 bg-muted/20">
+            <div className="overflow-hidden rounded-lg border border-violet-500/20 bg-violet-500/[0.04]">
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors hover:bg-violet-500/[0.06]"
                 onClick={() => setSummaryOpen((v) => !v)}
                 aria-expanded={summaryOpen}
               >
@@ -317,7 +332,7 @@ export function MessageDetailPanel({
 
       {canReply ? (
         <footer className="shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-4 py-3 backdrop-blur-md sm:px-5">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto w-full">
             {replySent ? (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
@@ -397,16 +412,18 @@ export function MessageDetailPanel({
 
 export function MessageDetailPlaceholder() {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-5 bg-gradient-to-br from-muted/15 via-background to-background px-6 text-center">
+    <div className="message-reading-pane flex h-full min-h-[320px] flex-col items-center justify-center gap-6 px-6 text-center">
       <m.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-8 shadow-sm"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/30 p-6 shadow-sm"
       >
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+        <div className="hidden h-24 w-16 rounded-lg border border-border/50 bg-muted/30 sm:block" aria-hidden />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15">
           <Mail className="h-7 w-7 text-primary/70" />
         </div>
+        <div className="hidden h-24 w-28 rounded-lg border border-border/50 bg-muted/20 sm:block" aria-hidden />
       </m.div>
       <div className="max-w-sm space-y-1.5">
         <p className="font-display text-base font-semibold">Välj ett meddelande</p>
@@ -414,7 +431,7 @@ export function MessageDetailPlaceholder() {
           Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten.
         </p>
       </div>
-      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
+      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left md:block">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
         <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <li>
@@ -422,19 +439,19 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> markera hanterad
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Handled
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Shift</kbd>+<kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> hoppa mellan öppna
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> fokus svar
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> Reply
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">N</kbd> nästa öppna
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">N</kbd> Next open
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">1</kbd>–<kbd className="rounded border border-border px-1 font-mono text-[10px]">4</kbd> filter
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Q</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">O</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">A</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> filter
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">[</kbd> / <kbd className="rounded border border-border px-1 font-mono text-[10px]">]</kbd> byt kanal

@@ -20,14 +20,15 @@ const NotFound = () => {
         <div className="space-y-1">
           <h1 className="text-3xl font-bold">404</h1>
           <p className="text-sm text-muted-foreground">
-            We couldn't find{" "}
-            <span className="font-mono text-foreground break-all">{location.pathname}</span>.
+            Sidan{" "}
+            <span className="font-mono text-foreground break-all">{location.pathname}</span>{" "}
+            finns inte.
           </p>
         </div>
         <Button asChild className="mx-auto">
           <Link to="/">
             <ArrowLeft className="h-4 w-4 mr-2" aria-hidden />
-            Back to home
+            Till startsidan
           </Link>
         </Button>
       </div>

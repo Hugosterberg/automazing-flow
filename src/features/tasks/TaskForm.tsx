@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useEffect, type FormEvent, type RefObject } from "react";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,9 @@ import type { TaskChecklistItem, TaskInput, TaskPriority } from "./tasksService"
 interface Props {
   onSubmit: (input: TaskInput) => Promise<unknown>;
   disabled?: boolean;
+  /** Pre-fill title (e.g. from Customers deep link). */
+  initialTitle?: string;
+  titleInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 /**
@@ -19,8 +22,8 @@ interface Props {
  * row. Description and requirements live behind the Details toggle so the
  * board stays above the fold; a counter on the toggle shows hidden content.
  */
-export function TaskForm({ onSubmit, disabled }: Props) {
-  const [title, setTitle] = useState("");
+export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Props) {
+  const [title, setTitle] = useState(initialTitle ?? "");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueAt, setDueAt] = useState("");
@@ -29,6 +32,10 @@ export function TaskForm({ onSubmit, disabled }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialTitle) setTitle(initialTitle);
+  }, [initialTitle]);
 
   const detailCount = (description.trim() ? 1 : 0) + checklist.length;
 
@@ -73,7 +80,11 @@ export function TaskForm({ onSubmit, disabled }: Props) {
     >
       <div className="flex items-center gap-2">
         <Input
-          ref={titleRef}
+          ref={(node) => {
+            titleRef.current = node;
+            if (titleInputRef) titleInputRef.current = node;
+          }}
+          id="task-title-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a task — press Enter to create…"

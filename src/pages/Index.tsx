@@ -63,6 +63,7 @@ import {
   isTaskDueToday,
 } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
@@ -372,6 +373,23 @@ export default function Index() {
         )}
       </header>
 
+      <PageSmartBar
+        title="Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
+        steps={[
+          "Läs dagens brief och kolla Idag-rutorna",
+          "Klicka vidare till det område som behöver action",
+          "Koppla fler konton om något ser tomt ut",
+        ]}
+        tip="Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
+        liveHintOverride={
+          health.score < 100 && health.topReason
+            ? `${health.label} (${health.score}/100) — ${health.topReason}`
+            : health.score >= 100
+              ? "Allt ser bra ut idag — inget brådskande i briefen."
+              : null
+        }
+      />
+
       <ProfileList />
 
       {mode === "business" ? <CompanyProfileNudge profile={businessProfile} /> : null}
@@ -382,7 +400,7 @@ export default function Index() {
           Business-only and self-hiding when no provider is connected. */}
       {mode === "business" ? <MarketPulseCard businessProfileId={homeBusinessProfileId} /> : null}
 
-      <section aria-label="Idag" className="space-y-2">
+      <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-2 p-3 sm:p-4">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-foreground">Idag</h2>
           <Link

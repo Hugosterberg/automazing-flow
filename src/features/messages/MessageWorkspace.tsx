@@ -11,6 +11,7 @@ type RowMeta = {
   channelLabel: string;
   aiSummary?: string;
   formattedDate: string;
+  fullDate: string;
   senderInitial: string;
   avatarGradient: string;
   isHandled: boolean;
@@ -125,7 +126,7 @@ export function MessageWorkspace({
 }: Props) {
   return (
     <>
-      <div className="flex h-full min-h-0 lg:hidden">
+      <div className="flex h-full min-h-0 md:hidden">
         {!selectedMessage ? (
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
@@ -150,8 +151,8 @@ export function MessageWorkspace({
         )}
       </div>
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
-        <ResizablePanel defaultSize={34} minSize={24} maxSize={46} className="min-h-0 min-w-0">
+      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 md:flex">
+        <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
           <InboxPane
             className="flex h-full min-h-0 flex-col overflow-hidden"
             filteredMessages={filteredMessages}
@@ -169,9 +170,9 @@ export function MessageWorkspace({
             onPrefetch={onPrefetch}
           />
         </ResizablePanel>
-        <ResizableHandle withHandle className="w-px bg-border/50 transition-colors hover:bg-primary/30" />
-        <ResizablePanel defaultSize={66} minSize={44} className="min-h-0 min-w-0">
-          <section className="flex h-full min-h-0 flex-col overflow-hidden border-l border-border/30 bg-background">
+        <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35 data-[resize-handle-active]:bg-primary/50" />
+        <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+          <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden bg-background">
             <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
           </section>
         </ResizablePanel>

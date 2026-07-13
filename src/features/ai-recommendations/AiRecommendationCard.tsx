@@ -56,7 +56,8 @@ export function AiRecommendationCard({
   return (
     <article
       className={cn(
-        "rounded-lg border border-border bg-card p-4 space-y-3",
+        "rounded-lg border border-border/70 bg-card/40 p-4 shadow-sm transition-all duration-150 space-y-3",
+        "hover:border-border hover:bg-card/60 hover:shadow-md",
         resolved && "opacity-75"
       )}
     >

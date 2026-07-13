@@ -20,7 +20,9 @@ import {
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -194,6 +196,8 @@ export default function AIRecommendationsPage() {
     dismissed: applyKindFilter(dismissed),
   };
 
+  const newRecCount = useMemo(() => active.filter((r) => r.status === "new").length, [active]);
+
   if (!businessProfileId) {
     return (
       <div className="space-y-4 max-w-3xl">
@@ -209,7 +213,7 @@ export default function AIRecommendationsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl w-full">
+    <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={<LightbulbGlowIcon className="h-7 w-7 text-primary" />}
         title="AI Recommendations"
@@ -248,6 +252,23 @@ export default function AIRecommendationsPage() {
         }
       />
 
+      <PageSmartBar
+        title="AI-rekommendationer analyserar din profil och föreslår nästa steg — innehåll, outreach och underhåll."
+        steps={[
+          "Klicka Generera för att köra heuristik + AI på kopplingar, uppgifter och innehåll",
+          "Acceptera för att navigera till rätt sida, eller avvisa det som inte passar",
+          "Granska accepterade och avvisade under flikarna för historik",
+        ]}
+        tip="Nya förslag markeras automatiskt som sedda när du öppnar sidan."
+        liveHintOverride={
+          newRecCount > 0
+            ? `${newRecCount} ny${newRecCount === 1 ? "" : "a"} rekommendation${newRecCount === 1 ? "" : "er"} att granska`
+            : active.length > 0
+              ? `${active.length} aktiv${active.length === 1 ? "" : "a"} förslag — acceptera eller avvisa`
+              : null
+        }
+      />
+
       {error ? (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2">
@@ -270,41 +291,33 @@ export default function AIRecommendationsPage() {
         />
       </m.div>
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <TabsList>
-              <TabsTrigger value="active">
-                Active
-                <span className="ml-1.5 text-[11px] tabular-nums text-muted-foreground">
-                  {active.length}
-                </span>
+      <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="flex min-h-0 flex-1 flex-col">
+          <div className="app-workspace-toolbar flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
+            <TabsList className="h-8 bg-background/50 p-0.5">
+              <TabsTrigger value="active" className="h-7 px-2.5 text-xs">
+                Aktiva
+                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{active.length}</span>
               </TabsTrigger>
-              <TabsTrigger value="accepted">
-                Accepted
-                <span className="ml-1.5 text-[11px] tabular-nums text-muted-foreground">
-                  {accepted.length}
-                </span>
+              <TabsTrigger value="accepted" className="h-7 px-2.5 text-xs">
+                Accepterade
+                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{accepted.length}</span>
               </TabsTrigger>
-              <TabsTrigger value="dismissed">
-                Dismissed
-                <span className="ml-1.5 text-[11px] tabular-nums text-muted-foreground">
-                  {dismissed.length}
-                </span>
+              <TabsTrigger value="dismissed" className="h-7 px-2.5 text-xs">
+                Avvisade
+                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{dismissed.length}</span>
               </TabsTrigger>
             </TabsList>
 
             <Select
               value={kindFilter}
-              onValueChange={(v) =>
-                setKindFilter(v as AiRecommendationKind | "all")
-              }
+              onValueChange={(v) => setKindFilter(v as AiRecommendationKind | "all")}
             >
-              <SelectTrigger className="h-8 w-[160px] text-xs">
-                <SelectValue placeholder="Filter by kind" />
+              <SelectTrigger className="h-8 w-[160px] border-border/60 bg-background/60 text-xs shadow-sm">
+                <SelectValue placeholder="Typ" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All kinds</SelectItem>
+                <SelectItem value="all">Alla typer</SelectItem>
                 {AI_REC_KIND_ORDER.map((k) => (
                   <SelectItem key={k} value={k}>
                     {AI_REC_KIND_LABELS[k]}
@@ -314,48 +327,58 @@ export default function AIRecommendationsPage() {
             </Select>
           </div>
 
-          {(["active", "accepted", "dismissed"] as TabValue[]).map((value) => (
-            <TabsContent key={value} value={value} className="mt-4">
-              {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading recommendations…
-                </div>
-              ) : visible[value].length === 0 ? (
-                <RecommendationsEmpty
-                  tab={value}
-                  hasKindFilter={kindFilter !== "all"}
-                  onGenerate={value === "active" ? () => void handleGenerate() : undefined}
-                  isGenerating={isGenerating}
-                />
-              ) : (
-                <div className="space-y-3">
-                  {visible[value].map((rec) => (
+          <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+            {(
+              [
+                { label: "Aktiva", value: active.length, highlight: active.length > 0 },
+                { label: "Accepterade", value: accepted.length, highlight: false },
+                { label: "Avvisade", value: dismissed.length, highlight: false },
+              ] as const
+            ).map((stat) => (
+              <div
+                key={stat.label}
+                className={cn(
+                  "rounded-lg border px-2.5 py-1.5",
+                  stat.highlight ? "border-primary/25 bg-primary/[0.06]" : "border-border/50 bg-background/40"
+                )}
+              >
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                <p className="text-xs font-semibold tabular-nums">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
+            {(["active", "accepted", "dismissed"] as TabValue[]).map((value) => (
+              <TabsContent key={value} value={value} className="mt-0 space-y-3">
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-28 rounded-lg border border-border/50 bg-muted/20 shimmer" />
+                    ))}
+                  </div>
+                ) : visible[value].length === 0 ? (
+                  <RecommendationsEmpty
+                    tab={value}
+                    hasKindFilter={kindFilter !== "all"}
+                    onGenerate={value === "active" ? () => void handleGenerate() : undefined}
+                    isGenerating={isGenerating}
+                  />
+                ) : (
+                  visible[value].map((rec) => (
                     <AiRecommendationCard
                       key={rec.id}
                       rec={rec}
-                      onAccept={
-                        value === "active"
-                          ? () => void handleAccept(rec)
-                          : undefined
-                      }
-                      onDismiss={
-                        value === "active"
-                          ? (id) => void handleDismiss(id)
-                          : undefined
-                      }
-                      onMarkSeen={
-                        value === "active"
-                          ? (id) => void handleMarkSeen(id)
-                          : undefined
-                      }
+                      onAccept={value === "active" ? () => void handleAccept(rec) : undefined}
+                      onDismiss={value === "active" ? (id) => void handleDismiss(id) : undefined}
+                      onMarkSeen={value === "active" ? (id) => void handleMarkSeen(id) : undefined}
                       isBusy={isTransitioning}
                     />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
+                  ))
+                )}
+              </TabsContent>
+            ))}
+          </div>
         </Tabs>
       </m.div>
     </div>

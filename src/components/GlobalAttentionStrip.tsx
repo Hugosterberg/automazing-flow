@@ -6,6 +6,7 @@ import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummar
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { cn } from "@/lib/utils";
 import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
+import { briefItemsForRoute, routeModuleLabel } from "@/features/daily-brief/briefForRoute";
 import {
   Gauge,
   ListChecks,
@@ -49,14 +50,18 @@ export function GlobalAttentionStrip() {
     return null;
   }
 
-  const topItems = brief.items.slice(0, 4);
+  const routeItems = briefItemsForRoute(location.pathname, brief.items);
+  const topItems = (routeItems.length > 0 ? routeItems : brief.items).slice(0, 4);
+  const moduleLabel = routeModuleLabel(location.pathname);
+  const stripLabel =
+    routeItems.length > 0 && moduleLabel ? `${moduleLabel}` : "Kräver uppmärksamhet";
 
   return (
     <div className="shrink-0 border-b border-border/60 bg-gradient-to-r from-primary/5 via-card/40 to-muted/10 px-3 py-2 sm:px-4">
       <div className="mx-auto flex max-w-screen-2xl items-center gap-2">
         <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-primary">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          <span className="hidden sm:inline">Kräver uppmärksamhet</span>
+          <span className="hidden sm:inline">{stripLabel}</span>
           <span className="tabular-nums">({brief.actionCount})</span>
         </div>
 

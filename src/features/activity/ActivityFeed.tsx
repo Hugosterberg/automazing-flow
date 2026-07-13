@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { SearchHighlight } from "@/features/messages/SearchHighlight";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -44,43 +46,117 @@ interface Props {
   events: ActivityEventRow[];
   isLoading?: boolean;
   emptyMessage?: string;
-  /** Limit rendered rows (for compact drawer usage). */
   maxRows?: number;
   className?: string;
+  selectedId?: string | null;
+  onSelect?: (event: ActivityEventRow) => void;
+  variant?: "cards" | "list";
+  searchQuery?: string;
 }
 
-/**
- * Read-only feed of activity_events rows. Keep it presentational: the
- * caller decides which events to pass in via `useActivityFeed()`, including
- * subject/module filtering.
- *
- * Compact by default, fits drawers and side panels. For a full-page feed
- * just omit maxRows and wrap in a ScrollArea.
- */
 export function ActivityFeed({
   events,
   isLoading,
-  emptyMessage = "No activity yet.",
+  emptyMessage = "Ingen aktivitet ännu.",
   maxRows,
   className,
+  selectedId,
+  onSelect,
+  variant = "cards",
+  searchQuery = "",
 }: Props) {
+  const listMode = variant === "list" && Boolean(onSelect);
+  const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  useEffect(() => {
+    if (!selectedId || !listMode) return;
+    rowRefs.current.get(selectedId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId, events.length, listMode]);
+
   if (isLoading) {
-    return (
-      <p className={cn("text-xs text-muted-foreground", className)}>
-        Loading activity…
-      </p>
-    );
+    if (listMode) {
+      return (
+        <div className={cn("divide-y divide-border/40", className)}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-2 px-3 py-2.5 shimmer">
+              <div className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded bg-muted/60" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-2.5 w-3/4 rounded bg-muted/60" />
+                <div className="h-2 w-1/2 rounded bg-muted/40" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return <p className={cn("text-xs text-muted-foreground", className)}>Laddar aktivitet…</p>;
   }
 
   if (events.length === 0) {
-    return (
-      <p className={cn("text-xs text-muted-foreground", className)}>
-        {emptyMessage}
-      </p>
-    );
+    if (listMode) {
+      return (
+        <div className={cn("flex h-full min-h-[200px] items-center justify-center p-6 text-center", className)}>
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
+      );
+    }
+    return <p className={cn("text-xs text-muted-foreground", className)}>{emptyMessage}</p>;
   }
 
   const rows = maxRows ? events.slice(0, maxRows) : events;
+
+  if (listMode) {
+    return (
+      <div className={cn("flex h-full min-h-0 flex-col", className)}>
+        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
+          <p className="text-[11px] font-medium text-foreground/80">Händelser</p>
+          <span className="text-[10px] tabular-nums text-muted-foreground">{rows.length} st</span>
+        </div>
+        <ul className="min-h-0 flex-1 overflow-y-auto app-scroll">
+          {rows.map((e) => {
+            const when = relativeTime(e.occurred_at);
+            const selected = selectedId === e.id;
+            return (
+              <li key={e.id}>
+                <button
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(e.id, el);
+                    else rowRefs.current.delete(e.id);
+                  }}
+                  type="button"
+                  onClick={() => onSelect?.(e)}
+                  className={cn(
+                    "relative w-full border-b border-border/35 px-3 py-2 text-left transition-colors duration-150",
+                    "hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
+                    selected && "border-l-[3px] border-l-primary bg-primary/[0.07] pl-[calc(0.75rem-2px)]"
+                  )}
+                  aria-current={selected ? "true" : undefined}
+                >
+                  <div className="flex items-start gap-2">
+                    <SeverityIcon
+                      severity={e.severity}
+                      className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", SEVERITY_STYLES[e.severity])}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("truncate text-[13px]", selected ? "font-semibold text-foreground" : "font-medium text-foreground/90")}>
+                        <SearchHighlight text={e.summary} query={searchQuery} />
+                      </p>
+                      <p className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                        <span className="font-mono">
+                          <SearchHighlight text={e.module} query={searchQuery} />
+                        </span>
+                        {when ? <span className="tabular-nums">{when}</span> : null}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <ul className={cn("space-y-1.5", className)}>
@@ -89,7 +165,7 @@ export function ActivityFeed({
         return (
           <li
             key={e.id}
-            className="rounded-md border border-border/70 bg-muted/20 px-3 py-2"
+            className="rounded-lg border border-border/60 bg-card/30 px-3 py-2 shadow-sm transition-colors hover:bg-muted/20"
           >
             <div className="flex items-start gap-2 text-xs">
               <SeverityIcon
@@ -97,9 +173,7 @@ export function ActivityFeed({
                 className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", SEVERITY_STYLES[e.severity])}
               />
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-foreground break-words">
-                  {e.summary}
-                </p>
+                <p className="font-medium text-foreground break-words">{e.summary}</p>
                 <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
                   <span className="font-mono">
                     {e.module}
@@ -114,7 +188,7 @@ export function ActivityFeed({
       })}
       {maxRows && events.length > maxRows ? (
         <li className="text-[11px] text-muted-foreground px-1">
-          Showing {maxRows} of {events.length} events.
+          Visar {maxRows} av {events.length} händelser.
         </li>
       ) : null}
     </ul>

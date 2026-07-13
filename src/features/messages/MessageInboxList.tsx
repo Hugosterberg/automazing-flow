@@ -11,6 +11,7 @@ type RowMeta = {
   channelLabel: string;
   aiSummary?: string;
   formattedDate: string;
+  fullDate: string;
   senderInitial: string;
   avatarGradient: string;
   isHandled: boolean;
@@ -34,11 +35,23 @@ type Props = {
 
 function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/40 bg-muted/30 px-3 py-1.5 backdrop-blur-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{children}</p>
+    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/40 bg-muted/40 px-3 py-1.5 backdrop-blur-md">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</p>
       {count !== undefined ? (
-        <span className="text-[10px] tabular-nums text-muted-foreground">{count}</span>
+        <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+          {count}
+        </span>
       ) : null}
+    </div>
+  );
+}
+
+function InboxListHeader({ count, loading }: { count: number; loading: boolean }) {
+  if (loading || count === 0) return null;
+  return (
+    <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
+      <p className="text-[11px] font-medium text-foreground/80">Inkorg</p>
+      <span className="text-[10px] tabular-nums text-muted-foreground">{count} st</span>
     </div>
   );
 }
@@ -92,6 +105,7 @@ export function MessageInboxList({
         aiSummary={meta.aiSummary}
         waited={meta.waited}
         formattedDate={meta.formattedDate}
+        fullDate={meta.fullDate}
         senderInitial={meta.senderInitial}
         avatarGradient={meta.avatarGradient}
         isHandled={meta.isHandled}
@@ -106,16 +120,21 @@ export function MessageInboxList({
   const showSections = inboxFilter === "queue";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-sidebar/20">
+    <div className="message-inbox-pane flex h-full min-h-0 flex-col">
+      <InboxListHeader count={messages.length} loading={loading} />
       <div className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {loading ? (
           <div className="divide-y divide-border/40">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-3 px-3 py-3 shimmer">
-                <div className="h-10 w-10 shrink-0 rounded-full bg-muted/60" />
-                <div className="flex-1 space-y-2 py-0.5">
-                  <div className="h-3 w-2/5 rounded bg-muted/60" />
-                  <div className="h-3 w-4/5 rounded bg-muted/40" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2.5 shimmer">
+                <div className="h-8 w-8 shrink-0 rounded-full bg-muted/60" />
+                <div className="flex-1 space-y-1.5 py-0.5">
+                  <div className="flex justify-between gap-2">
+                    <div className="h-2.5 w-2/5 rounded bg-muted/60" />
+                    <div className="h-2.5 w-8 rounded bg-muted/40" />
+                  </div>
+                  <div className="h-2.5 w-3/4 rounded bg-muted/50" />
+                  <div className="h-2 w-full rounded bg-muted/30" />
                 </div>
               </div>
             ))}
