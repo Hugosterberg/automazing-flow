@@ -549,7 +549,7 @@ export default function SalesMarketingPage() {
               "Lägg till leads och följ upp det som är försenat",
               "Flytta affärer i pipelinen och mät mot dina mål",
             ]}
-            tip="Outreach-utkast kan skickas vidare till Content för publicering. Genväg: / fokuserar leadsök."
+            tip="Outreach-utkast kan skickas vidare till Content. Fyll i Företag först så AI-förslagen blir mer relevanta."
             liveHintOverride={salesLiveHint}
             extraActions={
               dueLeadsList.length > 0

@@ -46,7 +46,7 @@ import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -582,8 +582,8 @@ export default function Index() {
         title="Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
         steps={[
           "Läs dagens brief och kolla Idag-rutorna",
-          "Klicka vidare till det område som behöver action",
-          "Koppla fler konton om något ser tomt ut",
+          "Fyll i Företag och koppla konton för bättre AI",
+          "Öppna Automationer för jobb som kan köra sig själva",
         ]}
         tip="Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
         liveHintOverride={
@@ -594,17 +594,38 @@ export default function Index() {
               : null
         }
       />
-      ) : health.score < 100 && health.topReason ? (
-        <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-foreground/90">
-          {health.label} · {health.topReason}
-        </p>
-      ) : null}
+      ) : (
+        <div className="space-y-2">
+          {health.score < 100 && health.topReason ? (
+            <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-foreground/90">
+              {health.label} · {health.topReason}
+            </p>
+          ) : null}
+          <PageSmartBar
+            title="Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
+            steps={[
+              "Beskrivning + webb under Företag",
+              "Koppla mail och sociala konton",
+              "Titta under Automationer vad som kan köras automatiskt",
+            ]}
+            tip="AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
+            smart={false}
+          />
+        </div>
+      )}
 
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 
       {profiles.length > 2 ? <ProfileList /> : null}
 
       {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
+
+      {mode === "business" && isMobile ? (
+        <ExperienceBoostCard
+          profile={businessProfile}
+          connectedCount={profileSummary.connectedCount}
+        />
+      ) : null}
 
       {mode === "business" ? (
         isMobile ? (

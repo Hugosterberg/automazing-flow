@@ -920,7 +920,7 @@ export default function ContentPage() {
           "Skapa eller redigera i Create, spara till Selected eller History",
           "Publicera eller schemalägg under Post or save",
         ]}
-        tip="Koppla Google Drive först om Browse är tom."
+        tip="Koppla Google Drive först om Browse är tom. Publicering kan schemaläggas — då går inlägg ut automatiskt."
         liveHintOverride={
           contentTab === "browse" && browseMediaFiles.length > 0
             ? `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S Select.`

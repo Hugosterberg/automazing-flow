@@ -521,7 +521,7 @@ export default function TasksPage() {
                 "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
               ]
         }
-        tip={isMobile ? undefined : "Genvägar: / Search · N New · J/K bläddra · E Edit · A/O/T filter (All/Overdue/Today)."}
+        tip="Svep mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>

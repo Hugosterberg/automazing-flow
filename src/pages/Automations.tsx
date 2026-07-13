@@ -334,8 +334,8 @@ export default function AutomationsPage() {
         ]}
         tip={
           runStats.failed > 0
-            ? "Tryck F för att hoppa till misslyckade körningar."
-            : "Misslyckade körningar kan oftast köras om direkt från kortet."
+            ? "Misslyckade körningar kan oftast köras om direkt från jobbkortet."
+            : "Här körs digests, snapshots, AI-jobb och synk på schema — så du slipper manuellt underhåll."
         }
         liveHintOverride={
           runStats.failed > 0

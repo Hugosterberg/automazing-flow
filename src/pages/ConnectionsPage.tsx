@@ -411,7 +411,7 @@ export default function ConnectionsPage() {
           "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",
           "Använd kopplingarna i resten av appen (publicera, svara, rapportera)",
         ]}
-        tip="Fliken Hälsa visar problem samlat. MCP är för avancerad data och AI-kontext."
+        tip="Efter koppling: fyll i Företag (beskrivning + webb) så AI och automationer får rätt kontext. Hälsa visar problem samlat."
         liveHintOverride={
           healthIssueCount > 0
             ? `${healthIssueCount} koppling${healthIssueCount === 1 ? "" : "ar"} behöver åtgärd — öppna fliken Hälsa`

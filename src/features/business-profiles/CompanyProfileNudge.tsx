@@ -11,7 +11,7 @@ type Props = {
   className?: string;
 };
 
-/** Compact nudge on Sales when the company profile needs work. */
+/** Compact nudge when the company profile needs work for better AI/automation. */
 export function CompanyProfileNudge({ profile, className }: Props) {
   const completeness = getBusinessProfileCompleteness(profile);
   if (completeness.isStrong) return null;
@@ -29,13 +29,13 @@ export function CompanyProfileNudge({ profile, className }: Props) {
         <Building2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
         <div className="min-w-0 space-y-2 flex-1">
           <div>
-            <p className="text-sm font-medium text-foreground">Bolagsprofilen styr lead-förslagen</p>
+            <p className="text-sm font-medium text-foreground">Fyll i Företag — AI blir smartare</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
               {completeness.percent < 40
-                ? "Fyll i Företag först — org.nr kan hämtas automatiskt, sedan en kort beskrivning."
+                ? "Börja med org.nr (hämtas automatiskt) och en kort beskrivning av vad ni säljer och till vem."
                 : topMissing
-                  ? `Nästa steg: ${topMissing.label.toLowerCase()}.`
-                  : "Komplettera profilen för träffsäkrare förslag."}
+                  ? `Nästa: ${topMissing.label.toLowerCase()} — ${topMissing.why}`
+                  : "Komplettera profilen för bättre leads, utkast och automationer."}
             </p>
           </div>
           <div className="flex items-center gap-2 max-w-xs">
@@ -46,10 +46,10 @@ export function CompanyProfileNudge({ profile, className }: Props) {
           </div>
         </div>
       </div>
-      <Button asChild size="sm" variant="secondary" className="shrink-0">
+      <Button asChild size="sm" variant="secondary" className="h-10 shrink-0 sm:h-8">
         <Link to="/company">
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-          Gå till Företag
+          Fyll i Företag
           <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
         </Link>
       </Button>

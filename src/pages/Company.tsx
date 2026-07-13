@@ -119,7 +119,7 @@ export default function CompanyPage() {
           "Komplettera beskrivning och målgrupp — det påverkar AI mest",
           "Spara så att Sales och Content får bättre förslag direkt",
         ]}
-        tip="Ju mer komplett profilen är, desto träffsäkrare blir lead- och kampanjförslagen."
+        tip="Börja med beskrivning (vad ni säljer och till vem), sedan webb och org.nr. Org.nr kan fyllas i automatiskt via uppslag."
         liveHintOverride={
           profile && completeness.percent < 100
             ? `Profilen är ${completeness.percent}% klar — saknas: ${completeness.priorities.map((f) => f.label).join(", ")}`

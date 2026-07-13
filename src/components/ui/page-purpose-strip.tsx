@@ -15,13 +15,14 @@ type PagePurposeStripProps = {
 
 /**
  * Explains page intent and a minimal workflow so users know why they're here
- * and what to do first. Collapses on smaller screens to save vertical space.
+ * and what to do first. Collapses steps on smaller screens behind Guide, but
+ * keeps the tip visible so tips about automation / fill-in aren't lost.
  */
 export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeStripProps) {
   const isDesktop = useIsDesktopWorkspace();
-  const hasDetails = Boolean((steps && steps.length > 0) || tip);
+  const hasSteps = Boolean(steps && steps.length > 0);
   const [expanded, setExpanded] = useState(false);
-  const showDetails = isDesktop || expanded;
+  const showSteps = isDesktop || expanded || !hasSteps;
 
   return (
     <div
@@ -32,7 +33,7 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug text-foreground/90">{title}</p>
-        {!isDesktop && hasDetails ? (
+        {!isDesktop && hasSteps ? (
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -48,7 +49,7 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
           </button>
         ) : null}
       </div>
-      {showDetails && steps && steps.length > 0 ? (
+      {showSteps && steps && steps.length > 0 ? (
         <ol className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5 sm:gap-y-1">
           {steps.map((step, index) => (
             <li key={index} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -63,8 +64,8 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
           ))}
         </ol>
       ) : null}
-      {showDetails && tip ? (
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/90">{tip}</p>
+      {tip ? (
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground/90 sm:text-[11px]">{tip}</p>
       ) : null}
     </div>
   );

@@ -1011,7 +1011,7 @@ export default function MessagesPage() {
                     "Låt AI sammanfatta och skriva utkast — du redigerar innan du skickar",
                   ]
             }
-            tip={isMobile ? undefined : "Tryck / för att söka snabbt i inkorgen."}
+            tip="AI hjälper dig sammanfatta och föreslå svar — du godkänner innan du skickar. Börja med öppna i kön."
             liveHintOverride={inboxLiveHint}
             extraActions={
               inboxStats.openCount > 0

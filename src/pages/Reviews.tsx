@@ -651,7 +651,7 @@ export default function ReviewsPage() {
                 "Skriv svar med AI-utkast och markera hanterade när du är klar",
               ]
         }
-        tip={isMobile ? undefined : "Genvägar: J/K Next · M Mark · D Draft · A/N filter · / Search · Esc Close."}
+        tip="AI kan föreslå svar på omdömen — granska och skicka när det känns rätt."
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>

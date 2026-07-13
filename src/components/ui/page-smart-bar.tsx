@@ -90,7 +90,7 @@ export function PageSmartBar({
         </div>
       ) : null}
       {showLive && visibleTip ? (
-        <p className="hidden text-[11px] leading-relaxed text-muted-foreground/80 px-1 sm:block">{visibleTip}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground/80 px-1 sm:text-[11px]">{visibleTip}</p>
       ) : null}
     </div>
   );

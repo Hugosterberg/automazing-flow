@@ -13,6 +13,7 @@ export { useBusinessProfileBridge } from "./useBusinessProfileBridge";
 export type { BusinessProfileBridge } from "./useBusinessProfileBridge";
 export { BusinessProfileCompletenessCard } from "./BusinessProfileCompletenessCard";
 export { CompanyProfileNudge } from "./CompanyProfileNudge";
+export { ExperienceBoostCard } from "./ExperienceBoostCard";
 export { BusinessProfileEditForm } from "./BusinessProfileEditForm";
 export { CompanyAutoFillCard, CompanyRegistryLookup } from "./CompanyAutoFillCard";
 export {
