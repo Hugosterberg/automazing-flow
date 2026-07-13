@@ -165,7 +165,7 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
 
             {hasData && summary ? (
               <>
-                <ChartContainer config={visitorsChartConfig} className="aspect-[16/5] w-full">
+                <ChartContainer config={visitorsChartConfig} className="aspect-[16/9] sm:aspect-[16/5] w-full">
                   <AreaChart data={summary.byDay} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
                     <defs>
                       <linearGradient id="siteVisitsFill" x1="0" y1="0" x2="0" y2="1">

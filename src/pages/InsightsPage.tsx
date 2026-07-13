@@ -37,6 +37,12 @@ function formatChartDate(iso: string): string {
   return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 }
 
+/** "12,3k" instead of "12 345" so the y-axis stays narrow on mobile. */
+const compactNumber = new Intl.NumberFormat("sv-SE", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 function DeltaChip({ delta, spanDays, decimals = 0, suffix = "" }: {
   delta: number | undefined;
   spanDays: number | undefined;
@@ -225,7 +231,7 @@ export default function InsightsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {followerSeries.length >= 2 ? (
-                <ChartContainer config={followerChartConfig} className="aspect-[16/5] w-full">
+                <ChartContainer config={followerChartConfig} className="aspect-[16/9] sm:aspect-[16/5] w-full">
                   <AreaChart data={followerSeries} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
                     <defs>
                       <linearGradient id="insightsFollowerFill" x1="0" y1="0" x2="0" y2="1">
@@ -242,10 +248,10 @@ export default function InsightsPage() {
                       minTickGap={24}
                     />
                     <YAxis
-                      tickFormatter={(value: number) => value.toLocaleString("sv-SE")}
+                      tickFormatter={(value: number) => compactNumber.format(value)}
                       tickLine={false}
                       axisLine={false}
-                      width={56}
+                      width={44}
                       domain={["auto", "auto"]}
                     />
                     <ChartTooltip
@@ -288,11 +294,9 @@ export default function InsightsPage() {
       {hasMarketing ? (
         <section aria-label="Marknadsföring" className="space-y-2">
           <SectionHeading icon={Megaphone} title="Marknadsföring & butik" to="/marketing" linkLabel="Marketing" />
-          <Card className="border-border">
-            <CardContent className="pt-4">
-              <MarketingTrendChart />
-            </CardContent>
-          </Card>
+          {/* MarketingTrendChart draws its own framed box — no Card wrapper,
+              a double border reads as a mistake. */}
+          <MarketingTrendChart />
         </section>
       ) : null}
 

@@ -8,18 +8,27 @@ function Metric({
   icon: Icon,
   label,
   value,
+  hint,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  hint?: string;
 }) {
   return (
     <div className="min-w-0">
       <p className="text-[10px] text-muted-foreground flex items-center gap-1">
         <Icon className="h-3 w-3 shrink-0" aria-hidden />
-        {label}
+        <span className="truncate">{label}</span>
       </p>
-      <p className="text-sm font-semibold tabular-nums truncate">{value}</p>
+      <p className="text-sm font-semibold tabular-nums truncate" title={value}>
+        {value}
+      </p>
+      {hint ? (
+        <p className="text-[10px] text-muted-foreground/80 truncate" title={hint}>
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -46,30 +55,27 @@ export function CompaniesOverview() {
           <Card key={company.businessProfileId} className="border-border">
             <CardContent className="p-4 space-y-3">
               <p className="text-sm font-semibold text-foreground truncate">{company.name}</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div className="grid grid-cols-3 gap-3">
                 <Metric
                   icon={Eye}
                   label="Besökare"
                   value={company.visitors7d.toLocaleString("sv-SE")}
+                  hint={`${company.pageviews7d.toLocaleString("sv-SE")} sidvisningar`}
                 />
                 <Metric
                   icon={ShoppingBag}
                   label="Försäljning"
-                  value={
-                    company.revenue != null
-                      ? `${formatMoney(company.revenue, company.currency)}${company.orders != null ? ` · ${company.orders} ordrar` : ""}`
-                      : "—"
+                  value={company.revenue != null ? formatMoney(company.revenue, company.currency) : "—"}
+                  hint={
+                    company.orders != null
+                      ? `${company.orders.toLocaleString("sv-SE")} ordrar`
+                      : undefined
                   }
                 />
                 <Metric
                   icon={Users}
                   label="Följare"
                   value={company.followers != null ? company.followers.toLocaleString("sv-SE") : "—"}
-                />
-                <Metric
-                  icon={Eye}
-                  label="Sidvisningar"
-                  value={company.pageviews7d.toLocaleString("sv-SE")}
                 />
               </div>
             </CardContent>

@@ -238,8 +238,12 @@ export function SmartDailyBrief({
           </p>
         </div>
         {!isInitialLoading && doneCount > 0 && !visibleAllClear ? (
-          <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success tabular-nums shrink-0">
-            {doneCount} of {progressTotal} done
+          <span
+            className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success tabular-nums shrink-0"
+            title={`${doneCount} of ${progressTotal} done today`}
+          >
+            {doneCount}/{progressTotal}
+            <CheckCircle2 className="inline h-3 w-3 ml-1 align-[-1.5px]" aria-hidden />
           </span>
         ) : null}
         {!visibleAllClear && !isInitialLoading ? (

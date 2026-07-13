@@ -89,7 +89,7 @@ export function MarketingTrendChart() {
       </p>
 
       {hasMoney ? (
-        <ChartContainer config={moneyChartConfig} className="aspect-[16/5] w-full">
+        <ChartContainer config={moneyChartConfig} className="aspect-[16/9] sm:aspect-[16/5] w-full">
           <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
@@ -144,7 +144,7 @@ export function MarketingTrendChart() {
       ) : null}
 
       {hasOrders ? (
-        <ChartContainer config={ordersChartConfig} className="aspect-[16/3] w-full">
+        <ChartContainer config={ordersChartConfig} className="aspect-[16/6] sm:aspect-[16/3] w-full">
           <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
@@ -183,7 +183,7 @@ export function MarketingTrendChart() {
       ) : null}
 
       {hasRoas ? (
-        <ChartContainer config={roasChartConfig} className="aspect-[16/3] w-full">
+        <ChartContainer config={roasChartConfig} className="aspect-[16/6] sm:aspect-[16/3] w-full">
           <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
