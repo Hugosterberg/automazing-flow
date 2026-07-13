@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { Archive, CalendarDays, CheckCircle2, Clock3, Loader2, MessageSquare, PlayCircle, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -328,6 +328,8 @@ function TaskCard({
 
 export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, focusedTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
+  const [activeLane, setActiveLane] = useState<BoardStatus>("open");
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
       open: [],
@@ -345,6 +347,41 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
     next.in_progress.sort((a, b) => compareTasksByUrgency(a, b, nowMs));
     return next;
   }, [tasks]);
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root) return;
+
+    const lanes = root.querySelectorAll<HTMLElement>("[data-task-lane]");
+    if (lanes.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let best: { status: BoardStatus; ratio: number } | null = null;
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const status = entry.target.getAttribute("data-task-lane") as BoardStatus | null;
+          if (!status) continue;
+          if (!best || entry.intersectionRatio > best.ratio) {
+            best = { status, ratio: entry.intersectionRatio };
+          }
+        }
+        if (best) setActiveLane(best.status);
+      },
+      { root, threshold: [0.35, 0.5, 0.65] }
+    );
+
+    lanes.forEach((lane) => observer.observe(lane));
+    return () => observer.disconnect();
+  }, [isLoading]);
+
+  function scrollToLane(status: BoardStatus) {
+    const root = scrollerRef.current;
+    if (!root) return;
+    const lane = root.querySelector<HTMLElement>(`[data-task-lane="${status}"]`);
+    lane?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    setActiveLane(status);
+  }
 
   function handleDrop(event: DragEvent<HTMLElement>, status: BoardStatus) {
     event.preventDefault();
@@ -366,89 +403,119 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory app-scroll pb-1 -mx-1 px-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:pb-0 lg:px-0">
-      {COLUMNS.map((column) => {
-        const Icon = column.icon;
-        const columnTasks = grouped[column.status];
-        const activeDrop = dragOverStatus === column.status;
-        return (
-          <section
-            key={column.status}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "move";
-              setDragOverStatus(column.status);
-            }}
-            onDragLeave={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                setDragOverStatus(null);
-              }
-            }}
-            onDrop={(event) => handleDrop(event, column.status)}
-            className={cn(
-              "flex w-[min(85vw,320px)] shrink-0 snap-center flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all lg:w-auto lg:min-h-[420px]",
-              "max-h-[min(62vh,560px)] lg:max-h-none",
-              column.accent,
-              activeDrop && "scale-[1.01] border-primary/60 ring-2 ring-primary/20"
-            )}
-          >
-            <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
-              <div className="flex items-start gap-2">
-                <div className="rounded-xl border border-border/70 bg-background/70 p-2">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
-                  <p className="text-xs text-muted-foreground sm:block">{column.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                    onClick={onArchiveDone}
-                    disabled={isMutating}
-                    title="Move all done tasks to the archive"
-                  >
-                    <Archive className="h-3 w-3" />
-                    <span className="hidden sm:inline">Archive all</span>
-                  </Button>
-                ) : null}
-                <Badge variant="secondary" className="tabular-nums">
-                  {columnTasks.length}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto app-scroll pr-0.5">
-              {columnTasks.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-background/45 p-4 text-center text-xs text-muted-foreground">
-                  {column.empty}
-                </div>
-              ) : (
-                columnTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onSetStatus={onSetStatus}
-                    onDelete={onDelete}
-                    onEdit={onEdit}
-                    onToggleChecklistItem={onToggleChecklistItem}
-                    onAiAssist={onAiAssist}
-                    aiBusy={aiBusyTaskId === task.id}
-                    focused={focusedTaskId === task.id}
-                    isMutating={isMutating}
-                    isDeleting={isDeleting}
-                  />
-                ))
+    <div className="space-y-2">
+      <div
+        ref={scrollerRef}
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory app-scroll pb-1 -mx-1 px-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:pb-0 lg:px-0"
+      >
+        {COLUMNS.map((column) => {
+          const Icon = column.icon;
+          const columnTasks = grouped[column.status];
+          const activeDrop = dragOverStatus === column.status;
+          return (
+            <section
+              key={column.status}
+              data-task-lane={column.status}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverStatus(column.status);
+              }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setDragOverStatus(null);
+                }
+              }}
+              onDrop={(event) => handleDrop(event, column.status)}
+              className={cn(
+                "flex w-[min(85vw,320px)] shrink-0 snap-center flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all lg:w-auto lg:min-h-[420px]",
+                "max-h-[min(62vh,560px)] lg:max-h-none",
+                column.accent,
+                activeDrop && "scale-[1.01] border-primary/60 ring-2 ring-primary/20"
               )}
-            </div>
-          </section>
-        );
-      })}
+            >
+              <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
+                <div className="flex items-start gap-2">
+                  <div className="rounded-xl border border-border/70 bg-background/70 p-2">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
+                    <p className="text-xs text-muted-foreground sm:block">{column.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                      onClick={onArchiveDone}
+                      disabled={isMutating}
+                      title="Move all done tasks to the archive"
+                    >
+                      <Archive className="h-3 w-3" />
+                      <span className="hidden sm:inline">Archive all</span>
+                    </Button>
+                  ) : null}
+                  <Badge variant="secondary" className="tabular-nums">
+                    {columnTasks.length}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto app-scroll pr-0.5">
+                {columnTasks.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-background/45 p-4 text-center text-xs text-muted-foreground">
+                    {column.empty}
+                  </div>
+                ) : (
+                  columnTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onSetStatus={onSetStatus}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      onToggleChecklistItem={onToggleChecklistItem}
+                      onAiAssist={onAiAssist}
+                      aiBusy={aiBusyTaskId === task.id}
+                      focused={focusedTaskId === task.id}
+                      isMutating={isMutating}
+                      isDeleting={isDeleting}
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <div
+        className="flex items-center justify-center gap-2 py-1 lg:hidden"
+        role="tablist"
+        aria-label="Task lanes"
+      >
+        {COLUMNS.map((column) => {
+          const active = activeLane === column.status;
+          return (
+            <button
+              key={column.status}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={column.title}
+              onClick={() => scrollToLane(column.status)}
+              className={cn(
+                "h-2.5 rounded-full transition-all",
+                active ? "w-6 bg-primary" : "w-2.5 bg-muted-foreground/35 hover:bg-muted-foreground/55"
+              )}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

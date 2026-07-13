@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "automazing-pwa-install-dismissed";
 const DISMISS_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+const SHOW_DELAY_MS = 8000;
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -48,6 +49,7 @@ function wasDismissedRecently(): boolean {
  */
 export function PwaInstallPrompt({ className }: { className?: string }) {
   const isMobile = useIsMobile();
+  const readingFocus = useMobileReadingFocus();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
@@ -56,20 +58,37 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
   useEffect(() => {
     if (!isMobile || isStandaloneDisplay() || wasDismissedRecently()) return;
 
+    let cancelled = false;
+    let showTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleShow = () => {
+      if (showTimer) clearTimeout(showTimer);
+      showTimer = setTimeout(() => {
+        if (!cancelled) setVisible(true);
+      }, SHOW_DELAY_MS);
+    };
+
     if (isIosSafari()) {
       setIosHint(true);
-      setVisible(true);
-      return;
+      scheduleShow();
+      return () => {
+        cancelled = true;
+        if (showTimer) clearTimeout(showTimer);
+      };
     }
 
     function onBip(event: Event) {
       event.preventDefault();
       setDeferred(event as BeforeInstallPromptEvent);
-      setVisible(true);
+      scheduleShow();
     }
 
     window.addEventListener("beforeinstallprompt", onBip);
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
+    return () => {
+      cancelled = true;
+      if (showTimer) clearTimeout(showTimer);
+      window.removeEventListener("beforeinstallprompt", onBip);
+    };
   }, [isMobile]);
 
   const dismiss = useCallback(() => {
@@ -94,7 +113,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
     }
   }, [deferred, dismiss]);
 
-  if (!visible || !isMobile) return null;
+  if (readingFocus || !visible || !isMobile) return null;
 
   return (
     <div

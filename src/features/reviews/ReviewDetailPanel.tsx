@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ExternalLink,
   Loader2,
+  MoreHorizontal,
   Send,
   Sparkles,
   Star,
@@ -12,6 +13,12 @@ import {
 import { m } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { useKeyboardInset, useStackedWorkspace } from "@/hooks/use-mobile";
@@ -285,24 +292,39 @@ export function ReviewDetailPanel({
                     {draftBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     <span className="ml-1.5">AI</span>
                   </Button>
-                  <ReplyTemplatePicker
-                    className="h-9 shrink-0 px-2.5 text-xs [&_svg]:mr-1"
-                    onInsert={(text) => {
-                      onReplyDraftChange(text);
-                      openCompose();
-                    }}
-                    recipientName={review.author}
-                    disabled={sendBusy}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 shrink-0 px-2 text-xs text-muted-foreground"
-                    onClick={() => setComposeOpen(false)}
-                  >
-                    Dölj
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground"
+                        aria-label="Fler"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Fler</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-52">
+                      <div
+                        className="px-1 py-1"
+                        onPointerDown={(e) => e.preventDefault()}
+                      >
+                        <ReplyTemplatePicker
+                          className="h-9 w-full justify-start px-2.5 text-xs [&_svg]:mr-1"
+                          onInsert={(text) => {
+                            onReplyDraftChange(text);
+                            openCompose();
+                          }}
+                          recipientName={review.author}
+                          disabled={sendBusy}
+                        />
+                      </div>
+                      <DropdownMenuItem onSelect={() => setComposeOpen(false)}>
+                        Dölj
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     type="button"
                     className="ml-auto h-9 gap-1.5 px-3 text-xs font-semibold"

@@ -379,6 +379,164 @@ export default function Index() {
     return { connectedCount, platformText, withLoadedData, profileText };
   }, [accounts]);
 
+  /**
+   * Desktop keeps insertion order. Mobile ranks by urgency (tasks → messages →
+   * reviews → leads, then attention signals) and shows the top four first.
+   */
+  const todayTiles = useMemo(() => {
+    type TodayTileConfig = {
+      id: string;
+      urgency: number;
+      title: string;
+      value: React.ReactNode;
+      hint?: string;
+      icon: React.ComponentType<{ className?: string }>;
+      to: string;
+      tone?: "default" | "warning" | "info" | "success";
+    };
+
+    const tiles: TodayTileConfig[] = [];
+
+    if (mode === "business") {
+      tiles.push({
+        id: "health",
+        urgency: 40,
+        title: `Business health · ${health.label}`,
+        value: health.score,
+        hint: health.topReason ?? "Allt ser bra ut",
+        icon: HeartPulse,
+        to: "/activity",
+        tone: health.tone,
+      });
+    }
+
+    tiles.push({
+      id: "tasks",
+      urgency:
+        400 +
+        (overdueTasks.length > 0
+          ? 50
+          : dueTodayTasks.length > 0
+            ? 30
+            : openTasks.length > 0
+              ? 10
+              : 0),
+      title: tasksTile.title,
+      value: tasksTile.value,
+      hint: tasksTile.hint,
+      icon: ListChecks,
+      to: tasksTile.to,
+      tone: tasksTile.tone,
+    });
+
+    tiles.push({
+      id: "messages",
+      urgency: 300 + unreadDms,
+      title: "Olästa meddelanden",
+      value: unreadDms,
+      hint: unreadDms === 0 ? "Inkorgen är tom" : "Svar väntar under Meddelanden",
+      icon: MessageSquare,
+      to: "/messages",
+      tone: unreadDms > 0 ? "info" : "default",
+    });
+
+    if (mode === "business") {
+      tiles.push({
+        id: "leads",
+        urgency: 200 + leadsToFollowUp,
+        title: "Leads att följa upp",
+        value: leadsToFollowUp,
+        hint: leadsToFollowUp === 0 ? "Pipelinen ser bra ut" : "Idag eller försenade",
+        icon: UserPlus,
+        to: "/sales?view=followups",
+        tone: leadsToFollowUp > 0 ? "warning" : "default",
+      });
+    }
+
+    if (reviewsNeedingReply > 0) {
+      tiles.push({
+        id: "reviews",
+        urgency: 250 + reviewsNeedingReply,
+        title: "Recensioner att svara på",
+        value: reviewsNeedingReply,
+        hint: "Kundfeedback väntar",
+        icon: Star,
+        to: "/reviews?filter=needs_reply",
+        tone: "warning",
+      });
+    }
+
+    if (mode === "business" && storeAttentionCount > 0) {
+      tiles.push({
+        id: "store",
+        urgency: 150 + storeAttentionCount,
+        title: "Butik behöver uppmärksamhet",
+        value: storeAttentionCount,
+        hint: inventoryAlert?.outOfStock
+          ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
+          : "Lågt lager — pausa annonser eller fyll på",
+        icon: ShoppingBag,
+        to: "/ecommerce",
+        tone: "warning",
+      });
+    }
+
+    tiles.push({
+      id: "recs",
+      urgency: 50 + activeRecs.length,
+      title: "Aktiva AI-rekommendationer",
+      value: activeRecs.length,
+      hint:
+        activeRecs.length === 0
+          ? "Kör Generera under AI-rekommendationer"
+          : "Granska och acceptera eller avfärda",
+      icon: Sparkles,
+      to: "/ai-recommendations",
+      tone: activeRecs.length > 0 ? "info" : "default",
+    });
+
+    tiles.push({
+      id: "connections",
+      urgency: connectionIssues.length > 0 ? 80 + connectionIssues.length : 20,
+      title: "Kopplingsproblem",
+      value: connectionIssues.length,
+      hint: connectionIssues.length === 0 ? "Allt fungerar" : "Återkoppla eller synka om",
+      icon: AlertTriangle,
+      to: "/connections",
+      tone: connectionIssues.length > 0 ? "warning" : "success",
+    });
+
+    return tiles;
+  }, [
+    mode,
+    health.label,
+    health.score,
+    health.topReason,
+    health.tone,
+    overdueTasks.length,
+    dueTodayTasks.length,
+    openTasks.length,
+    tasksTile,
+    unreadDms,
+    leadsToFollowUp,
+    reviewsNeedingReply,
+    storeAttentionCount,
+    inventoryAlert?.outOfStock,
+    activeRecs.length,
+    connectionIssues.length,
+  ]);
+
+  const { primaryTodayTiles, moreTodayTiles } = useMemo(() => {
+    if (!isMobile) {
+      return { primaryTodayTiles: todayTiles, moreTodayTiles: [] as typeof todayTiles };
+    }
+    const ranked = [...todayTiles].sort((a, b) => b.urgency - a.urgency);
+    return {
+      primaryTodayTiles: ranked.slice(0, 4),
+      moreTodayTiles: ranked.slice(4),
+    };
+  }, [isMobile, todayTiles]);
+
   useEffect(() => {
     if (!activeProfile) return;
     setProfileForm({
@@ -442,11 +600,11 @@ export default function Index() {
         </p>
       ) : null}
 
+      <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
+
       {profiles.length > 2 ? <ProfileList /> : null}
 
       {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
-
-      <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 
       {mode === "business" ? (
         isMobile ? (
@@ -476,99 +634,37 @@ export default function Index() {
             mode === "business" ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
           )}
         >
-          {mode === "business" ? (
+          {primaryTodayTiles.map((tile) => (
             <TodayTile
-              title={`Business health · ${health.label}`}
-              value={health.score}
-              hint={health.topReason ?? "Allt ser bra ut"}
-              icon={HeartPulse}
-              to="/activity"
-              tone={health.tone}
+              key={tile.id}
+              title={tile.title}
+              value={tile.value}
+              hint={tile.hint}
+              icon={tile.icon}
+              to={tile.to}
+              tone={tile.tone}
               onPrefetch={prefetchFor}
             />
-          ) : null}
-          <TodayTile
-            title={tasksTile.title}
-            value={tasksTile.value}
-            hint={tasksTile.hint}
-            icon={ListChecks}
-            to={tasksTile.to}
-            tone={tasksTile.tone}
-            onPrefetch={prefetchFor}
-          />
-          <TodayTile
-            title="Olästa meddelanden"
-            value={unreadDms}
-            hint={unreadDms === 0 ? "Inkorgen är tom" : "Svar väntar under Meddelanden"}
-            icon={MessageSquare}
-            to="/messages"
-            tone={unreadDms > 0 ? "info" : "default"}
-            onPrefetch={prefetchFor}
-          />
-          {mode === "business" ? (
-            <TodayTile
-              title="Leads att följa upp"
-              value={leadsToFollowUp}
-              hint={leadsToFollowUp === 0 ? "Pipelinen ser bra ut" : "Idag eller försenade"}
-              icon={UserPlus}
-              to="/sales?view=followups"
-              tone={leadsToFollowUp > 0 ? "warning" : "default"}
-              onPrefetch={prefetchFor}
-            />
-          ) : null}
-          {reviewsNeedingReply > 0 ? (
-            <TodayTile
-              title="Recensioner att svara på"
-              value={reviewsNeedingReply}
-              hint="Kundfeedback väntar"
-              icon={Star}
-              to="/reviews?filter=needs_reply"
-              tone="warning"
-              onPrefetch={prefetchFor}
-            />
-          ) : null}
-          {mode === "business" && storeAttentionCount > 0 ? (
-            <TodayTile
-              title="Butik behöver uppmärksamhet"
-              value={storeAttentionCount}
-              hint={
-                inventoryAlert?.outOfStock
-                  ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
-                  : "Lågt lager — pausa annonser eller fyll på"
-              }
-              icon={ShoppingBag}
-              to="/ecommerce"
-              tone="warning"
-              onPrefetch={prefetchFor}
-            />
-          ) : null}
-          <TodayTile
-            title="Aktiva AI-rekommendationer"
-            value={activeRecs.length}
-            hint={
-              activeRecs.length === 0
-                ? "Kör Generera under AI-rekommendationer"
-                : "Granska och acceptera eller avfärda"
-            }
-            icon={Sparkles}
-            to="/ai-recommendations"
-            tone={activeRecs.length > 0 ? "info" : "default"}
-            onPrefetch={prefetchFor}
-          />
-          <TodayTile
-            title="Kopplingsproblem"
-            value={connectionIssues.length}
-            hint={
-              connectionIssues.length === 0
-                ? "Allt fungerar"
-                : "Återkoppla eller synka om"
-            }
-            icon={AlertTriangle}
-            to="/connections"
-            tone={connectionIssues.length > 0 ? "warning" : "success"}
-            onPrefetch={prefetchFor}
-          />
+          ))}
         </div>
+        {moreTodayTiles.length > 0 ? (
+          <HomeCollapsibleSection title="Fler idag" ariaLabel="Fler idag">
+            <div className="grid grid-cols-1 gap-3">
+              {moreTodayTiles.map((tile) => (
+                <TodayTile
+                  key={tile.id}
+                  title={tile.title}
+                  value={tile.value}
+                  hint={tile.hint}
+                  icon={tile.icon}
+                  to={tile.to}
+                  tone={tile.tone}
+                  onPrefetch={prefetchFor}
+                />
+              ))}
+            </div>
+          </HomeCollapsibleSection>
+        ) : null}
       </section>
 
       {activeProfile ? (

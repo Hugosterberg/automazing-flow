@@ -750,124 +750,282 @@ export default function CalendarPage() {
             )}
 
             {viewMode === "week" && (
-              <div className="-mx-1 overflow-x-auto app-scroll px-1 sm:mx-0 sm:overflow-visible sm:px-0">
-              <div className="grid min-w-[640px] grid-cols-7 gap-2 sm:min-w-0">
-                {weekDays.map((day) => {
-                  const dayEvents = eventsOnDate(day);
-                  const today = isSameDay(day, new Date());
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        "rounded-lg border p-2 min-h-[120px]",
-                        today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
-                      )}
-                    >
-                      <div className="text-center mb-2">
-                        <p className="text-[11px] uppercase text-muted-foreground">
-                          {format(day, "EEE", { locale: enUS })}
-                        </p>
-                        <p className="text-sm font-semibold">{format(day, "d")}</p>
-                      </div>
-                      <ul className="space-y-1">
-                        {sortByTime(dayEvents).map((ev: CalendarItem) => (
-                          <li
-                            key={ev.id}
-                            data-calendar-event-id={ev.id}
-                            className={cn(
-                              "group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs",
-                              ev.source === "social" && "cursor-pointer",
-                              focusedEventId === ev.id && "ring-1 ring-primary"
-                            )}
-                            onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                          >
-                            {ev.source === "social" ? (
-                              <Send className="h-3 w-3 text-primary shrink-0" />
-                            ) : ev.isAutomated ? (
-                              <Zap className="h-3 w-3 text-primary shrink-0" />
-                            ) : (
-                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                            )}
-                            <span className="truncate flex-1">{ev.title}</span>
-                            {ev.source === "social" && ev.post ? (
-                              <span className="shrink-0 text-[9px] uppercase text-primary">
-                                {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
-                                {ev.post.platforms.length > 1 ? ` +${ev.post.platforms.length - 1}` : ""}
-                              </span>
-                            ) : isExternalEvent(ev) ? (
-                              <span className="shrink-0 text-[9px] uppercase text-muted-foreground">Ext</span>
-                            ) : null}
-                            {!ev.readOnly && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeEvent(ev.id);
-                                }}
+              <>
+                {/* Mobile (< sm): vertical day agenda — avoids horizontal min-w grid */}
+                <div className="space-y-3 sm:hidden">
+                  {weekDays.map((day) => {
+                    const dayEvents = eventsOnDate(day);
+                    const today = isSameDay(day, new Date());
+                    return (
+                      <div
+                        key={day.toISOString()}
+                        className={cn(
+                          "rounded-xl border p-3",
+                          today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
+                        )}
+                      >
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <p className="text-sm font-semibold">
+                            {format(day, "EEEE d MMM", { locale: enUS })}
+                          </p>
+                          {today ? (
+                            <span className="text-[10px] font-medium uppercase tracking-wide text-primary">Idag</span>
+                          ) : null}
+                        </div>
+                        {dayEvents.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-1">Inga händelser</p>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {sortByTime(dayEvents).map((ev: CalendarItem) => (
+                              <li
+                                key={ev.id}
+                                data-calendar-event-id={ev.id}
+                                className={cn(
+                                  "group flex items-center gap-2 rounded-lg bg-background/80 px-2 py-2 text-sm",
+                                  ev.source === "social" && "cursor-pointer",
+                                  focusedEventId === ev.id && "ring-1 ring-primary"
+                                )}
+                                onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
                               >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </Button>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
+                                {ev.source === "social" ? (
+                                  <Send className="h-3.5 w-3.5 text-primary shrink-0" />
+                                ) : ev.isAutomated ? (
+                                  <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+                                ) : (
+                                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium">{ev.title}</p>
+                                  {ev.time ? (
+                                    <p className="text-[11px] text-muted-foreground">{ev.time}</p>
+                                  ) : null}
+                                </div>
+                                {!ev.readOnly && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 text-destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeEvent(ev.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* sm+: week grid */}
+                <div className="-mx-1 hidden overflow-x-auto app-scroll px-1 sm:mx-0 sm:block sm:overflow-visible sm:px-0">
+                  <div className="grid grid-cols-7 gap-2">
+                    {weekDays.map((day) => {
+                      const dayEvents = eventsOnDate(day);
+                      const today = isSameDay(day, new Date());
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "rounded-lg border p-2 min-h-[120px]",
+                            today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
+                          )}
+                        >
+                          <div className="text-center mb-2">
+                            <p className="text-[11px] uppercase text-muted-foreground">
+                              {format(day, "EEE", { locale: enUS })}
+                            </p>
+                            <p className="text-sm font-semibold">{format(day, "d")}</p>
+                          </div>
+                          <ul className="space-y-1">
+                            {sortByTime(dayEvents).map((ev: CalendarItem) => (
+                              <li
+                                key={ev.id}
+                                data-calendar-event-id={ev.id}
+                                className={cn(
+                                  "group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs",
+                                  ev.source === "social" && "cursor-pointer",
+                                  focusedEventId === ev.id && "ring-1 ring-primary"
+                                )}
+                                onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
+                              >
+                                {ev.source === "social" ? (
+                                  <Send className="h-3 w-3 text-primary shrink-0" />
+                                ) : ev.isAutomated ? (
+                                  <Zap className="h-3 w-3 text-primary shrink-0" />
+                                ) : (
+                                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                                )}
+                                <span className="truncate flex-1">{ev.title}</span>
+                                {ev.source === "social" && ev.post ? (
+                                  <span className="shrink-0 text-[9px] uppercase text-primary">
+                                    {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
+                                    {ev.post.platforms.length > 1 ? ` +${ev.post.platforms.length - 1}` : ""}
+                                  </span>
+                                ) : isExternalEvent(ev) ? (
+                                  <span className="shrink-0 text-[9px] uppercase text-muted-foreground">Ext</span>
+                                ) : null}
+                                {!ev.readOnly && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeEvent(ev.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
 
             {viewMode === "month" && (
-              <div className="-mx-1 overflow-x-auto app-scroll px-1 sm:mx-0 sm:overflow-visible sm:px-0">
-              <div className="grid min-w-[560px] grid-cols-7 gap-1 sm:min-w-0">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                  <div
-                    key={d}
-                    className="py-1 text-center text-xs font-medium text-muted-foreground"
-                  >
-                    {d}
-                  </div>
-                ))}
-                {monthDays.map((day) => {
-                  const dayEvents = eventsOnDate(day);
-                  const today = isSameDay(day, new Date());
-                  const inMonth = isSameMonth(day, currentDate);
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        "min-h-[80px] rounded-lg border p-2 relative flex items-center justify-center",
-                        inMonth ? "border-border/50" : "border-transparent opacity-50",
-                        today && "ring-1 ring-primary/30 bg-primary/5"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
-                          today && "bg-primary text-primary-foreground"
-                        )}
-                      >
-                        {format(day, "d")}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                          {dayEvents.slice(0, 3).map((ev) => (
-                            <span
-                              key={ev.id}
-                              className="h-1 w-1 rounded-full bg-primary"
-                              title={ev.title}
-                            />
-                          ))}
+              <>
+                {/* Mobile (< sm): stacked day cards (days with events in the month) */}
+                <div className="space-y-3 sm:hidden">
+                  {(() => {
+                    const monthAgendaDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
+                      (day) => eventsOnDate(day).length > 0 || isSameDay(day, new Date())
+                    );
+                    if (monthAgendaDays.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground py-6 text-center">
+                          Inga händelser denna månad.
+                        </p>
+                      );
+                    }
+                    return monthAgendaDays.map((day) => {
+                      const dayEvents = eventsOnDate(day);
+                      const today = isSameDay(day, new Date());
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "rounded-xl border p-3",
+                            today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
+                          )}
+                        >
+                          <div className="mb-2 flex items-baseline justify-between gap-2">
+                            <p className="text-sm font-semibold">
+                              {format(day, "EEEE d", { locale: enUS })}
+                            </p>
+                            <span className="text-[11px] tabular-nums text-muted-foreground">
+                              {dayEvents.length > 0 ? `${dayEvents.length} händ.` : ""}
+                            </span>
+                          </div>
+                          {dayEvents.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-1">Inga händelser</p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {sortByTime(dayEvents).map((ev: CalendarItem) => (
+                                <li
+                                  key={ev.id}
+                                  data-calendar-event-id={ev.id}
+                                  className={cn(
+                                    "group flex items-center gap-2 rounded-lg bg-background/80 px-2 py-2 text-sm",
+                                    ev.source === "social" && "cursor-pointer",
+                                    focusedEventId === ev.id && "ring-1 ring-primary"
+                                  )}
+                                  onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
+                                >
+                                  {ev.source === "social" ? (
+                                    <Send className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  ) : ev.isAutomated ? (
+                                    <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  ) : (
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium">{ev.title}</p>
+                                    {ev.time ? (
+                                      <p className="text-[11px] text-muted-foreground">{ev.time}</p>
+                                    ) : null}
+                                  </div>
+                                  {!ev.readOnly && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0 text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeEvent(ev.id);
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
+                      );
+                    });
+                  })()}
+                </div>
+                {/* sm+: month grid */}
+                <div className="-mx-1 hidden overflow-x-auto app-scroll px-1 sm:mx-0 sm:block sm:overflow-visible sm:px-0">
+                  <div className="grid grid-cols-7 gap-1">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                      <div
+                        key={d}
+                        className="py-1 text-center text-xs font-medium text-muted-foreground"
+                      >
+                        {d}
+                      </div>
+                    ))}
+                    {monthDays.map((day) => {
+                      const dayEvents = eventsOnDate(day);
+                      const today = isSameDay(day, new Date());
+                      const inMonth = isSameMonth(day, currentDate);
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "min-h-[80px] rounded-lg border p-2 relative flex items-center justify-center",
+                            inMonth ? "border-border/50" : "border-transparent opacity-50",
+                            today && "ring-1 ring-primary/30 bg-primary/5"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
+                              today && "bg-primary text-primary-foreground"
+                            )}
+                          >
+                            {format(day, "d")}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                              {dayEvents.slice(0, 3).map((ev) => (
+                                <span
+                                  key={ev.id}
+                                  className="h-1 w-1 rounded-full bg-primary"
+                                  title={ev.title}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

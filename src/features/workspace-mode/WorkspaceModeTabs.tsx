@@ -4,11 +4,10 @@ import type { WorkspaceMode } from "./workspaceMode";
 
 const TABS: Array<{
   mode: WorkspaceMode;
-  label: string;
   icon: typeof User;
 }> = [
-  { mode: "private", label: "Private", icon: User },
-  { mode: "business", label: "Business", icon: Briefcase },
+  { mode: "private", icon: User },
+  { mode: "business", icon: Briefcase },
 ];
 
 /**
@@ -27,7 +26,7 @@ export function WorkspaceModeTabs() {
       aria-label="Workspace"
       className="flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 p-0.5"
     >
-      {TABS.map(({ mode: tabMode, label, icon: Icon }) => {
+      {TABS.map(({ mode: tabMode, icon: Icon }) => {
         const isActive = mode === tabMode;
         const isBusy = switching && !isActive;
         return (
@@ -37,7 +36,7 @@ export function WorkspaceModeTabs() {
             onClick={() => setMode(tabMode)}
             disabled={switching}
             aria-pressed={isActive}
-            className={`flex h-7 items-center gap-1 rounded-full px-2 sm:gap-1.5 sm:px-3 text-xs font-medium transition-colors ${
+            className={`flex h-8 items-center gap-1 rounded-full px-2 sm:h-7 sm:gap-1.5 sm:px-3 text-xs font-medium transition-colors ${
               isActive
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -48,7 +47,7 @@ export function WorkspaceModeTabs() {
             ) : (
               <Icon className="h-3.5 w-3.5" aria-hidden />
             )}
-            <span className="sr-only sm:not-sr-only">{label}</span>
+            <span>{tabMode === "private" ? "Privat" : "Business"}</span>
           </button>
         );
       })}

@@ -12,6 +12,7 @@ import {
   Trash2,
   Trophy,
   Pencil,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,6 +59,7 @@ import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { pageFadeUp } from "@/lib/motion";
 import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { cn } from "@/lib/utils";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
 
 // Pipeline stages - mapped to task statuses
 const PIPELINE_STAGES: { status: TaskStatus; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
@@ -226,6 +228,9 @@ export default function SalesMarketingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const showFollowUpsOnly = searchParams.get("view") === "followups";
   const showOutreachQueue = searchParams.get("view") === "outreach-queue";
+  const isStackedWorkspace = useStackedWorkspace();
+  const focusedFilterChrome =
+    isStackedWorkspace && (showFollowUpsOnly || showOutreachQueue);
 
   function clearViewFilter() {
     const next = new URLSearchParams(searchParams);
@@ -515,93 +520,116 @@ export default function SalesMarketingPage() {
       : null;
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      <PageHeader
-        icon={Target}
-        title="Sales"
-        description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
-      />
+    <div className={cn("max-w-6xl", focusedFilterChrome ? "space-y-0" : "space-y-8")}>
+      {focusedFilterChrome ? (
+        <div className="sticky top-0 z-20 -mx-1 mb-2 flex items-center gap-2 border-b border-border/60 bg-background/95 px-1 py-2 backdrop-blur-sm">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1.5 px-2 text-sm"
+            onClick={clearViewFilter}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Tillbaka till Sales
+          </Button>
+        </div>
+      ) : (
+        <>
+          <PageHeader
+            icon={Target}
+            title="Sales"
+            description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
+          />
 
-      <PageSmartBar
-        title="Sales samlar leads, affärer och mål — från första kontakt till avslut."
-        steps={[
-          "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
-          "Lägg till leads och följ upp det som är försenat",
-          "Flytta affärer i pipelinen och mät mot dina mål",
-        ]}
-        tip="Outreach-utkast kan skickas vidare till Content för publicering. Genväg: / fokuserar leadsök."
-        liveHintOverride={salesLiveHint}
-        extraActions={
-          dueLeadsList.length > 0
-            ? [{ label: "Visa uppföljningar", to: "/sales?view=followups" }]
-            : pendingOutreachCount > 0
-              ? [{ label: "Outreach-kö", to: "/sales?view=outreach-queue" }]
-              : []
-        }
-      />
+          <PageSmartBar
+            title="Sales samlar leads, affärer och mål — från första kontakt till avslut."
+            steps={[
+              "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
+              "Lägg till leads och följ upp det som är försenat",
+              "Flytta affärer i pipelinen och mät mot dina mål",
+            ]}
+            tip="Outreach-utkast kan skickas vidare till Content för publicering. Genväg: / fokuserar leadsök."
+            liveHintOverride={salesLiveHint}
+            extraActions={
+              dueLeadsList.length > 0
+                ? [{ label: "Visa uppföljningar", to: "/sales?view=followups" }]
+                : pendingOutreachCount > 0
+                  ? [{ label: "Outreach-kö", to: "/sales?view=outreach-queue" }]
+                  : []
+            }
+          />
 
-      <PageAiSuggestionsStrip
-        businessProfileId={businessProfileId}
-        kinds={["outreach", "insight"]}
-        label="AI-förslag för sales & outreach"
-      />
+          <PageAiSuggestionsStrip
+            businessProfileId={businessProfileId}
+            kinds={["outreach", "insight"]}
+            label="AI-förslag för sales & outreach"
+          />
 
-      <CompanyProfileNudge profile={activeProfile} />
+          <CompanyProfileNudge profile={activeProfile} />
+        </>
+      )}
 
-      <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
-      {/* KPI tiles */}
-      <m.div {...pageFadeUp} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[
-          { label: "Aktiva leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
-          { label: "Vunna affärer", value: wonLeads, icon: Trophy, color: "text-green-500" },
-          { label: "Konvertering", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
-        ].map((kpi) => (
-          <Card key={kpi.label} className="border-border">
-            <CardContent className="p-4">
-              <kpi.icon className={cn("h-4 w-4 mb-2", kpi.color)} />
-              <p className="text-2xl font-bold tabular-nums">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </m.div>
+      <div className={cn("app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4", focusedFilterChrome && "rounded-none border-0 p-0 shadow-none sm:p-0")}>
+      {!focusedFilterChrome ? (
+        <>
+          <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
+            <SalesActionHub
+              followUpCount={dueLeadsList.length}
+              activeLeads={activeLeads}
+              pipelineCount={pipelineTasks.length}
+              shopifyConnected={marketingConnected.shopify}
+              shopifyOrders={performance?.orders ?? null}
+              shopifyRevenueLabel={shopifyRevenueLabel}
+              onFollowUps={() => navigate("/sales?view=followups")}
+              onAddLead={openAddLeadDialog}
+              onAddDeal={() => setPipelineOpen(true)}
+              onDraftDueLeads={startDueLeadDrafts}
+              onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
+              onSuggestLeads={() => document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" })}
+              onOpenContent={() => {
+                stashContentCaption("");
+                navigate("/content?tab=create");
+              }}
+              onSyncGoals={syncGoalsFromShopify}
+            />
+          </m.div>
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
-        <SalesActionHub
-          followUpCount={dueLeadsList.length}
-          activeLeads={activeLeads}
-          pipelineCount={pipelineTasks.length}
-          shopifyConnected={marketingConnected.shopify}
-          shopifyOrders={performance?.orders ?? null}
-          shopifyRevenueLabel={shopifyRevenueLabel}
-          onFollowUps={() => navigate("/sales?view=followups")}
-          onAddLead={openAddLeadDialog}
-          onAddDeal={() => setPipelineOpen(true)}
-          onDraftDueLeads={startDueLeadDrafts}
-          onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
-          onSuggestLeads={() => document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" })}
-          onOpenContent={() => {
-            stashContentCaption("");
-            navigate("/content?tab=create");
-          }}
-          onSyncGoals={syncGoalsFromShopify}
-        />
-      </m.div>
+          {/* KPI tiles — desktop/tablet; ActionHub is the mobile entry */}
+          <m.div {...pageFadeUp} className="hidden grid-cols-2 gap-3 sm:grid sm:grid-cols-3">
+            {[
+              { label: "Aktiva leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
+              { label: "Vunna affärer", value: wonLeads, icon: Trophy, color: "text-green-500" },
+              { label: "Konvertering", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
+            ].map((kpi) => (
+              <Card key={kpi.label} className="border-border">
+                <CardContent className="p-4">
+                  <kpi.icon className={cn("h-4 w-4 mb-2", kpi.color)} />
+                  <p className="text-2xl font-bold tabular-nums">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </m.div>
+        </>
+      ) : null}
 
-      {(showOutreachQueue || !showFollowUpsOnly) && (
+      {(showOutreachQueue || (!showFollowUpsOnly && !focusedFilterChrome)) && (
         <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
           {showOutreachQueue ? (
             <>
-              <Card className="border-info/30 bg-info/5 mb-3">
-                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
-                  <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
-                  <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
-                    <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                    Visa hela Sales
-                  </Button>
-                </CardContent>
-              </Card>
-              <div className="app-workspace-shell">
+              {!focusedFilterChrome ? (
+                <Card className="border-info/30 bg-info/5 mb-3">
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+                    <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
+                    <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
+                      <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                      Visa hela Sales
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              <div className={cn(!focusedFilterChrome && "app-workspace-shell")}>
                 <OutreachQueueWorkspace businessProfileId={businessProfileId} />
               </div>
             </>
@@ -614,19 +642,21 @@ export default function SalesMarketingPage() {
       {/* Leads — register + follow up, with AI outreach suggestions */}
       {showFollowUpsOnly ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.038 }}>
-          <Card className="border-warning/30 bg-warning/5 mb-3">
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
-              <div className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
-                <span>Leads med uppföljning idag eller försenad — split-vy.</span>
-              </div>
-              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
-                <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                Visa hela Sales
-              </Button>
-            </CardContent>
-          </Card>
-          <div className="app-workspace-shell">
+          {!focusedFilterChrome ? (
+            <Card className="border-warning/30 bg-warning/5 mb-3">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
+                  <span>Leads med uppföljning idag eller försenad — split-vy.</span>
+                </div>
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
+                  <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                  Visa hela Sales
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+          <div className={cn(!focusedFilterChrome && "app-workspace-shell")}>
             <LeadFollowUpsWorkspace
               businessProfileId={businessProfileId}
               onDraftOutreach={(target, leadId) => {
@@ -639,7 +669,7 @@ export default function SalesMarketingPage() {
           </div>
         </m.div>
       ) : null}
-      {!showFollowUpsOnly ? (
+      {!showFollowUpsOnly && !focusedFilterChrome ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
           <LeadSuggestionsSection
             businessProfileId={businessProfileId}
@@ -649,7 +679,7 @@ export default function SalesMarketingPage() {
           />
         </m.div>
       ) : null}
-      {!showFollowUpsOnly ? (
+      {!showFollowUpsOnly && !focusedFilterChrome ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
           <LeadsSection
             businessProfileId={businessProfileId}
@@ -668,6 +698,8 @@ export default function SalesMarketingPage() {
         </m.div>
       ) : null}
 
+      {!focusedFilterChrome ? (
+        <>
       <m.div {...pageFadeUp} transition={{ delay: 0.042 }} id="brand-discovery">
         <BrandDiscoverySection
           businessProfileId={businessProfileId}
@@ -734,6 +766,8 @@ export default function SalesMarketingPage() {
           onUseIdea={handoffContentIdea}
         />
       </m.div>
+        </>
+      ) : null}
 
       <OutreachDraftDialog
         open={outreachDraftOpen}
@@ -750,6 +784,8 @@ export default function SalesMarketingPage() {
         onMarkContacted={draftLeadId ? () => void markLeadContactedAndContinue() : undefined}
       />
 
+      {!focusedFilterChrome ? (
+        <>
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
@@ -852,6 +888,8 @@ export default function SalesMarketingPage() {
           ))}
         </div>
       </m.section>
+        </>
+      ) : null}
 
       </div>
 

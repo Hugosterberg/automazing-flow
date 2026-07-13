@@ -29,7 +29,7 @@ import { GlobalAttentionStrip } from "@/components/GlobalAttentionStrip";
 import { MobileQuickNav } from "@/components/MobileQuickNav";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { useBackgroundDataSync } from "@/hooks/useBackgroundDataSync";
-import { useIsMobile, useMobileReadingFocus, mobileReadingTitle } from "@/hooks/use-mobile";
+import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useLiveChangeNotifications } from "@/hooks/useLiveChangeNotifications";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -57,7 +57,6 @@ export default function Layout() {
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const isMobile = useIsMobile();
   const readingFocus = useMobileReadingFocus();
-  const readingTitle = mobileReadingTitle(location.pathname);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   useDocumentTitle();
@@ -95,54 +94,31 @@ export default function Layout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-          <header
-            className={cn(
-              "sticky top-0 z-30 glass safe-top safe-x flex items-center border-b border-border min-w-0",
-              readingFocus
-                ? "h-11 gap-1.5 px-2.5"
-                : "h-12 gap-1.5 px-3 sm:h-14 sm:gap-2 sm:px-4"
-            )}
-          >
+          {!readingFocus ? (
+          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 items-center gap-1.5 border-b border-border px-3 min-w-0 sm:h-14 sm:gap-2 sm:px-4">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0 -ml-0.5" />
-            {readingFocus ? (
-              <p className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight">{readingTitle}</p>
-            ) : (
-              <>
-                <div className="hidden min-[480px]:contents">
-                  <WorkspaceModeTabs />
-                </div>
-                <ActiveProfileContextBar />
-              </>
-            )}
-            <div className={cn("ml-auto flex items-center shrink-0", readingFocus ? "gap-0.5" : "gap-1 sm:gap-2")}>
-              {!readingFocus ? (
-                <>
-                  <CommandPalette onOpenShortcuts={openShortcuts} />
-                  <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-                  <NotificationsBell />
-                </>
-              ) : null}
+            <WorkspaceModeTabs />
+            <ActiveProfileContextBar />
+            <div className="ml-auto flex items-center gap-1 shrink-0 sm:gap-2">
+              <CommandPalette onOpenShortcuts={openShortcuts} />
+              <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+              <NotificationsBell />
               {authMode === "cloud" ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className={cn(
-                        "flex items-center rounded-full border border-border bg-card/40 hover:bg-accent/40 transition-colors",
-                        readingFocus ? "p-0.5" : "gap-2 pl-1 pr-2 py-1"
-                      )}
+                      className="flex items-center gap-2 rounded-full border border-border bg-card/40 pl-1 pr-2 py-1 hover:bg-accent/40 transition-colors"
                       aria-label="Open account menu"
                     >
-                      <Avatar className={cn(readingFocus ? "h-6 w-6" : "h-7 w-7")}>
+                      <Avatar className="h-7 w-7">
                         <AvatarFallback className="text-[11px] font-semibold">
                           {emailInitial(email)}
                         </AvatarFallback>
                       </Avatar>
-                      {!readingFocus ? (
-                        <span className="hidden sm:inline text-xs text-muted-foreground max-w-[160px] truncate">
-                          {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
-                        </span>
-                      ) : null}
+                      <span className="hidden sm:inline text-xs text-muted-foreground max-w-[160px] truncate">
+                        {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
+                      </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[220px]">
@@ -183,7 +159,7 @@ export default function Layout() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : readingFocus ? null : (
+              ) : (
                 <>
                   <span className="text-xs text-muted-foreground">Local mode</span>
                   <Button
@@ -198,6 +174,9 @@ export default function Layout() {
               )}
             </div>
           </header>
+          ) : (
+            <div className="safe-top shrink-0" aria-hidden />
+          )}
           {!readingFocus ? <OfflineBanner /> : null}
           {!readingFocus ? <GlobalAttentionStrip /> : null}
           <div

@@ -38,13 +38,28 @@ export default function ActivityPage() {
 
   useVisibleIntervalRefetch(() => void refetch(), 60_000, { enabled: Boolean(businessProfileId) });
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [activitySearch, setActivitySearch] = useState("");
   const debouncedActivitySearch = useDebouncedValue(activitySearch, 160);
   const [moduleFilter, setModuleFilter] = useState<string>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedId = searchParams.get("id");
+
+  const selectEvent = useCallback(
+    (id: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id) next.set("id", id);
+          else next.delete("id");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   useEffect(() => {
     const severity = searchParams.get("severity");
@@ -104,9 +119,9 @@ export default function ActivityPage() {
             ? 0
             : visible.length - 1
           : Math.min(visible.length - 1, Math.max(0, currentIndex + delta));
-      setSelectedId(visible[nextIndex]?.id ?? null);
+      selectEvent(visible[nextIndex]?.id ?? null);
     },
-    [visible, selectedId]
+    [visible, selectedId, selectEvent]
   );
 
   useEffect(() => {
@@ -123,7 +138,7 @@ export default function ActivityPage() {
         searchInputRef.current?.focus();
       } else if (e.key === "Escape" && selectedId) {
         e.preventDefault();
-        setSelectedId(null);
+        selectEvent(null);
       } else if (matchesKey(e, "e") && isPlainLetterShortcut(e) && severityCounts.error > 0) {
         e.preventDefault();
         setSeverityFilter("error");
@@ -134,7 +149,7 @@ export default function ActivityPage() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigateRelative, selectedId, severityCounts.error, severityCounts.warning]);
+  }, [navigateRelative, selectEvent, selectedId, severityCounts.error, severityCounts.warning]);
 
   const activityLiveHint =
     severityCounts.error > 0
@@ -211,7 +226,7 @@ export default function ActivityPage() {
         transition={{ duration: 0.3 }}
         className={cn(
           "app-workspace-shell",
-          focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+          focusedReading && "workspace-reading-focus rounded-none border-0 shadow-none"
         )}
       >
         {!focusedReading ? (
@@ -300,7 +315,7 @@ export default function ActivityPage() {
                 ? "Inga händelser matchar filtren."
                 : "Ingen aktivitet registrerad ännu. Skapa en uppgift eller koppla en integration för att komma igång."
             }
-            onSelect={(event) => setSelectedId(event?.id ?? null)}
+            onSelect={(event) => selectEvent(event?.id ?? null)}
             searchQuery={debouncedActivitySearch}
             navigation={
               visible.length > 1 && selectedIndex >= 0

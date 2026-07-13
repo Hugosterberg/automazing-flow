@@ -36,8 +36,14 @@ import { uploadContentMedia } from "@/features/content/contentMediaClient";
 import { enqueueContentPipelineItems } from "@/features/content/contentPipelineQueue";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
-import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send, BookmarkCheck } from "lucide-react";
+import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ExternalLink, ArrowLeft, Wand2, Search, Send, BookmarkCheck, MoreHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
@@ -965,51 +971,93 @@ export default function ContentPage() {
       <div className="app-workspace-shell !min-h-0">
         <div className="app-workspace-toolbar overflow-x-auto px-2 py-2 sm:px-4">
       <Tabs value={contentTab} onValueChange={(value) => goToTab(value as typeof contentTab)}>
-        <TabsList className="h-auto w-max min-w-full justify-start rounded-none border-b border-border bg-transparent p-0">
-          <TabsTrigger
-            value="browse"
-            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-          >
-            <HardDrive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            <span className="sm:inline">Browse</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="selected"
-            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-          >
-            <BookmarkCheck className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            Selected
-            {selectedAssets.length > 0 ? (
-              <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[11px] tabular-nums sm:text-[10px]">
-                {selectedAssets.length}
-              </span>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger
-            value="create"
-            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-          >
-            <Wand2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            Create
-          </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-          >
-            <History className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            History
-            {generatedHistory.length > 0 ? (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger
-            value="publish"
-            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-          >
-            <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            Post
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex w-full items-end border-b border-border">
+          <TabsList className="h-auto min-w-0 flex-1 justify-start rounded-none border-0 bg-transparent p-0">
+            <TabsTrigger
+              value="browse"
+              className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <HardDrive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              <span className="sm:inline">Browse</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="selected"
+              className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <BookmarkCheck className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              Selected
+              {selectedAssets.length > 0 ? (
+                <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[11px] tabular-nums sm:text-[10px]">
+                  {selectedAssets.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger
+              value="create"
+              className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <Wand2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              Create
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <History className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              History
+              {generatedHistory.length > 0 ? (
+                <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger
+              value="publish"
+              className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              Post
+            </TabsTrigger>
+          </TabsList>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "mb-px min-h-11 shrink-0 gap-1 rounded-none border-b-2 px-3 py-2.5 text-sm sm:hidden",
+                  contentTab === "selected" || contentTab === "create" || contentTab === "history"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground"
+                )}
+                aria-label="Fler flikar"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                Mer
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onSelect={() => goToTab("selected")}>
+                <BookmarkCheck className="mr-2 h-4 w-4" />
+                Selected
+                {selectedAssets.length > 0 ? (
+                  <span className="ml-auto tabular-nums text-muted-foreground">{selectedAssets.length}</span>
+                ) : null}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => goToTab("create")}>
+                <Wand2 className="mr-2 h-4 w-4" />
+                Create
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => goToTab("history")}>
+                <History className="mr-2 h-4 w-4" />
+                History
+                {generatedHistory.length > 0 ? (
+                  <span className="ml-auto tabular-nums text-muted-foreground">{generatedHistory.length}</span>
+                ) : null}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </Tabs>
         </div>
 

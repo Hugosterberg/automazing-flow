@@ -41,8 +41,8 @@ export function useFocusedWorkspaceReading(hasSelection: boolean) {
 }
 
 /**
- * True when the URL indicates a stacked inbox reading a selected item
- * (Messages/Reviews/Customers). Used to hide bottom tabs and reclaim viewport.
+ * True when the URL indicates a stacked inbox reading a selected item.
+ * Used to hide bottom tabs / app chrome and reclaim viewport.
  */
 export function useMobileReadingFocus() {
   const stacked = useStackedWorkspace();
@@ -55,6 +55,11 @@ export function useMobileReadingFocus() {
     if (pathname.startsWith("/reviews") && params.get("id")) return true;
     if (pathname.startsWith("/customers") && params.get("index") != null && params.get("index") !== "") {
       return true;
+    }
+    if (pathname.startsWith("/activity") && params.get("id")) return true;
+    if (pathname.startsWith("/sales")) {
+      if (params.get("lead")) return true;
+      if (params.get("view") === "outreach-queue" && params.get("id")) return true;
     }
     return false;
   }, [stacked, pathname, search]);
@@ -89,5 +94,7 @@ export function mobileReadingTitle(pathname: string): string {
   if (pathname.startsWith("/messages")) return "Meddelanden";
   if (pathname.startsWith("/reviews")) return "Recensioner";
   if (pathname.startsWith("/customers")) return "Kunder";
+  if (pathname.startsWith("/activity")) return "Aktivitet";
+  if (pathname.startsWith("/sales")) return "Sales";
   return "Detalj";
 }
