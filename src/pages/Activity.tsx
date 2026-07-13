@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader, PageToolbar } from "@/components/ui/page-header";
 import { pageFadeUp } from "@/lib/motion";
+import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { ActivityFeed, useActivityFeed } from "@/features/activity";
@@ -35,6 +36,8 @@ export default function ActivityPage() {
     businessProfileId,
     { limit: 200 }
   );
+
+  useVisibleIntervalRefetch(() => void refetch(), 60_000, { enabled: Boolean(businessProfileId) });
 
   const [moduleFilter, setModuleFilter] = useState<string>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");

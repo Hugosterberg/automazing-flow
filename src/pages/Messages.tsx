@@ -25,6 +25,8 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
+import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import {
   MessageWorkspace,
   MessageInboxToolbar,
@@ -52,7 +54,7 @@ import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
 /** Background refresh interval while the tab is visible. */
-const INBOX_REFRESH_MS = 120_000;
+const INBOX_REFRESH_MS = 60_000;
 
 /** Cap for the persisted handled-ids list so the document stays bounded. */
 const MAX_HANDLED_IDS = 500;
@@ -228,11 +230,14 @@ export default function MessagesPage() {
   }, [ensureBackendSession, activeProfileId]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadUnified({ silent: true });
-    }, INBOX_REFRESH_MS);
-    return () => window.clearInterval(timer);
+    function handleLiveSync() {
+      void loadUnified({ silent: true });
+    }
+    window.addEventListener(LIVE_SYNC_MESSAGES, handleLiveSync);
+    return () => window.removeEventListener(LIVE_SYNC_MESSAGES, handleLiveSync);
   }, [loadUnified]);
+
+  useVisibleIntervalRefetch(() => void loadUnified({ silent: true }), INBOX_REFRESH_MS);
 
   useEffect(() => {
     void loadUnified();

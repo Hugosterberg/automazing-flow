@@ -33,7 +33,8 @@ export function useUnreadDmCount() {
       return Number((body as { count?: unknown })?.count ?? 0) || 0;
     },
     enabled: Boolean(enabled),
-    staleTime: 60_000,
+    staleTime: 45_000,
+    refetchInterval: 60_000,
     meta: { silent: true },
   });
   return { unreadDms: query.data ?? 0, isLoading: query.isLoading };

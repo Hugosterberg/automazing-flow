@@ -16,21 +16,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { platformLabel } from "@/lib/platformLabels";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
-import { useConnections } from "@/features/connections/useConnections";
-import { useAiRecommendations } from "@/features/ai-recommendations";
-import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
-import { useCachedMarketingRoas } from "@/features/marketing";
-import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
-import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
-import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
-import { useReviewReplyState } from "@/features/reviews";
-import { useAutomationRuns, automationTitleForCronKey } from "@/features/automation";
-import { useProfileDocument } from "@/features/profile-documents";
-import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
+import { type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
-import { useUnreadDmCount } from "./useUnreadDmCount";
+import { useDailyBriefSummary } from "./useDailyBriefSummary";
 
 const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string }>> = {
   connection: PlugZap,
@@ -127,57 +116,7 @@ export function SmartDailyBrief({
     () => new Set([...dayState.done, ...dayState.snoozed]),
     [dayState]
   );
-  const { connections, isLoading: connectionsLoading } = useConnections(businessProfileId);
-  const { tasks, isLoading: tasksLoading } = useTasks(businessProfileId);
-  const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
-  const { unreadDms, isLoading: dmsLoading } = useUnreadDmCount();
-  const cachedRoas = useCachedMarketingRoas();
-  const { trend: marketingTrend } = useMarketingTrend();
-  const { inventoryAlert, performance } = useMarketingCampaigns();
-  const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
-  const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
-  const automationRuns = useAutomationRuns(businessProfileId ?? null);
-  const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
-  const outreachQueuePending = useMemo(
-    () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
-    [outreachDoc.data],
-  );
-
-  const marketingRoas =
-    performance?.roas ?? marketingTrend?.current?.roas ?? cachedRoas ?? null;
-  const marketingTrendDown =
-    marketingRoas == null || marketingRoas >= 1 ? marketingTrend?.direction === "down" : false;
-  const inventoryAlertCount =
-    inventoryAlert != null ? inventoryAlert.lowStock + inventoryAlert.outOfStock : 0;
-
-  const brief = useMemo(() => {
-    const nowMs = Date.now();
-    const openTasks = tasks.filter(isTaskOpen);
-    const leadsToFollowUp = leads.filter(
-      (l) => isLeadOpen(l.status) && (isFollowUpOverdue(l.nextFollowUpAt, nowMs) || isFollowUpDueToday(l.nextFollowUpAt, nowMs)),
-    ).length;
-    const failedAutomations = Object.values(automationRuns.byKey)
-      .filter((run) => run.lastRun?.status === "failed")
-      .map((run) => ({ title: automationTitleForCronKey(run.key) }));
-    return buildDailyBrief({
-      connectionIssues: connections
-        .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
-        .map((c) => ({ label: platformLabel(c.platform), health: c.health })),
-      unreadDms,
-      underwaterRoas: marketingRoas != null && marketingRoas < 1 ? marketingRoas : null,
-      marketingTrendDown,
-      reviewsNeedingReply,
-      inventoryAlertCount,
-      leadsToFollowUp,
-      outreachQueuePending,
-      failedAutomations,
-      overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
-      dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
-      newRecommendations: recommendations
-        .filter((r) => r.status === "new" || r.status === "seen")
-        .map((r) => ({ title: r.title })),
-    });
-  }, [connections, tasks, recommendations, unreadDms, marketingRoas, marketingTrendDown, reviewsNeedingReply, inventoryAlertCount, leads, outreachQueuePending, automationRuns.byKey]);
+  const { brief, isLoading: isInitialLoading } = useDailyBriefSummary(businessProfileId);
 
   const visibleItems = useMemo(
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),
@@ -201,11 +140,6 @@ export function SmartDailyBrief({
     snoozeBriefItem(id);
     setDayState(getBriefDayState());
   }
-
-  // Avoid flashing "all caught up" before the first data lands.
-  const isInitialLoading =
-    (connectionsLoading || tasksLoading || recsLoading || dmsLoading || leadsLoading) &&
-    brief.allClear;
 
   return (
     <section

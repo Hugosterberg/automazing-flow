@@ -32,6 +32,8 @@ import {
   type ReviewItem,
 } from "@/features/reviews";
 import { accountDataUrl } from "@/lib/accountDataUrl";
+import { LIVE_SYNC_REVIEWS } from "@/lib/liveSyncEvents";
+import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
@@ -179,6 +181,19 @@ export default function ReviewsPage() {
       }
       return res.json();
     },
+  });
+
+  useEffect(() => {
+    function handleLiveSync() {
+      void refresh();
+    }
+    window.addEventListener(LIVE_SYNC_REVIEWS, handleLiveSync);
+    return () => window.removeEventListener(LIVE_SYNC_REVIEWS, handleLiveSync);
+  }, [refresh]);
+
+  useVisibleIntervalRefetch(() => void refresh(), 120_000, {
+    enabled: Boolean(activeAccount),
+    skipInitial: true,
   });
 
   const stats = data?.stats;

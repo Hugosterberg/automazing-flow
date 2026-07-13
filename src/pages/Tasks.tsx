@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import { pageFadeUp } from "@/lib/motion";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
@@ -84,6 +85,7 @@ export default function TasksPage() {
     viewParam === "overdue" ? "overdue" : viewParam === "today" ? "today" : "all";
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("general");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 180);
 
   function setQuickFilter(filter: QuickFilter) {
     const next = new URLSearchParams(searchParams);
@@ -131,9 +133,9 @@ export default function TasksPage() {
       moduleFilteredTasks.filter((t) => {
         if (quickFilter === "overdue" && !isTaskOverdue(t)) return false;
         if (quickFilter === "today" && !isTaskDueToday(t)) return false;
-        return taskMatchesQuery(t, search);
+        return taskMatchesQuery(t, debouncedSearch);
       }),
-    [moduleFilteredTasks, quickFilter, search]
+    [moduleFilteredTasks, quickFilter, debouncedSearch]
   );
 
   // `?task=<id>` deep links open the detail dialog directly (used by shared

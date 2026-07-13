@@ -5,17 +5,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { ThemeProvider } from "next-themes";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageLoading } from "@/components/PageLoading";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { LazyMotion, domAnimation, MotionConfig } from "framer-motion";
 import { AccountsProvider } from "@/context/AccountsContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthGate } from "@/components/AuthGate";
 import { ActiveBusinessProfileProvider, ActiveProfileGuard } from "@/features/business-profiles";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import Index from "./pages/Index";
-import Layout from "./components/Layout";
 
 /*
  * Route-level code splitting. Each feature page becomes its own chunk so
@@ -47,18 +46,16 @@ const AutomationsPage = lazy(() => import("./pages/Automations"));
 const IntelligencePage = lazy(() => import("./pages/IntelligencePage"));
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
 
+import Index from "./pages/Index";
+import Layout from "./components/Layout";
+
 /**
  * Shared fallback while a lazy route chunk is streaming in. Kept quiet
  * so fast transitions do not flash a busy UI; the spinner only becomes
  * visible on genuinely slow loads (cold cache, poor network).
  */
 function RouteFallback() {
-  return (
-    <div className="flex items-center justify-center py-24 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-      <span className="sr-only">Loading page…</span>
-    </div>
-  );
+  return <PageLoading className="py-8" />;
 }
 
 /**
@@ -96,6 +93,7 @@ const App = () => {
   return (
     <ErrorBoundary label="root" fallback={({ error }) => <RootErrorFallback error={error} />}>
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
       <AuthProvider>
         <LazyMotion features={domAnimation} strict>
         <MotionConfig reducedMotion="user">
@@ -158,6 +156,7 @@ const App = () => {
         </MotionConfig>
         </LazyMotion>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
     </ErrorBoundary>
   );

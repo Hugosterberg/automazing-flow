@@ -14,6 +14,7 @@ import {
   Target,
   TrendingUp,
   User,
+  Zap,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -32,6 +33,7 @@ import {
   type NavGroup,
 } from "@/components/navConfig";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { useAppPulse } from "@/hooks/useAppPulse";
 import { useAuth } from "@/context/AuthContext";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
@@ -58,6 +60,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
   const prefetchFor = useRoutePrefetch();
   const { authMode, signOut } = useAuth();
   const { mode, setMode } = useWorkspaceMode();
+  const { items: pulseItems } = useAppPulse();
   const modKey = modKeyLabel();
 
   const { pageGroups, systemItems } = useMemo(() => {
@@ -113,11 +116,17 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           refreshRecent();
           setOpen(true);
         }}
-        className="flex items-center gap-2 rounded-md border border-border bg-card/40 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+        className="relative flex items-center gap-2 rounded-md border border-border bg-card/40 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
         aria-label="Öppna kommandopalett"
       >
         <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span className="hidden sm:inline">Sök…</span>
+        {pulseItems.length > 0 ? (
+          <span
+            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.7)]"
+            aria-hidden
+          />
+        ) : null}
         <kbd className="pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium">
           {modKey} K
         </kbd>
@@ -127,6 +136,31 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
         <CommandInput placeholder="Sök sidor och åtgärder…" />
         <CommandList>
           <CommandEmpty>Inget hittades.</CommandEmpty>
+
+          {pulseItems.length > 0 ? (
+            <>
+              <CommandGroup heading="Behöver uppmärksamhet">
+                {pulseItems.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`Prioritet ${item.label} ${item.description}`}
+                    onSelect={() => goTo(item.url)}
+                    onPointerEnter={() => prefetchFor(item.url.split("?")[0] ?? item.url)}
+                  >
+                    <item.icon className="mr-2 h-4 w-4 text-primary" />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{item.label}</span>
+                      <span className="truncate text-[10px] text-muted-foreground">{item.description}</span>
+                    </span>
+                    <CommandShortcut>
+                      <Zap className="h-3 w-3" />
+                    </CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          ) : null}
 
           {recentPages.length > 0 ? (
             <>
@@ -166,6 +200,15 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
                 <User className="mr-2 h-4 w-4 text-muted-foreground" />
               )}
               {mode === "private" ? "Byt till företagsläge" : "Byt till privat läge"}
+            </CommandItem>
+            <CommandItem
+              value="Meddelanden triage inkorg"
+              onSelect={() => goTo("/messages")}
+              onPointerEnter={() => prefetchFor("/messages")}
+            >
+              <Sparkles className="mr-2 h-4 w-4 text-muted-foreground" />
+              Meddelande-triage
+              <CommandShortcut>G M</CommandShortcut>
             </CommandItem>
             <CommandItem
               value="Ny uppgift"

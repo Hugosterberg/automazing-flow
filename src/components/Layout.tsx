@@ -24,6 +24,11 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 import { recordRecentPage } from "@/lib/keyboardShortcuts";
 import { WorkspaceModeTabs, useWorkspaceMode } from "@/features/workspace-mode";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { GlobalAttentionStrip } from "@/components/GlobalAttentionStrip";
+import { useBackgroundDataSync } from "@/hooks/useBackgroundDataSync";
+import { useLiveChangeNotifications } from "@/hooks/useLiveChangeNotifications";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
 
 /**
@@ -45,10 +50,13 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { mode } = useWorkspaceMode();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   useDocumentTitle();
   useGlobalKeyboardShortcuts({ mode, onOpenShortcuts: openShortcuts });
+  useBackgroundDataSync(businessProfileId);
+  useLiveChangeNotifications();
 
   useEffect(() => {
     recordRecentPage(location.pathname);
@@ -159,6 +167,8 @@ export default function Layout() {
               )}
             </div>
           </header>
+          <OfflineBanner />
+          <GlobalAttentionStrip />
           <div
             id="main-content"
             tabIndex={-1}
