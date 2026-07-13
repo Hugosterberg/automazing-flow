@@ -27,6 +27,7 @@ import { WorkspaceModeTabs, useWorkspaceMode } from "@/features/workspace-mode";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { GlobalAttentionStrip } from "@/components/GlobalAttentionStrip";
 import { MobileQuickNav } from "@/components/MobileQuickNav";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { useBackgroundDataSync } from "@/hooks/useBackgroundDataSync";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -194,6 +195,7 @@ export default function Layout() {
             </div>
           </div>
           <MobileQuickNav />
+          <PwaInstallPrompt />
         </main>
       </div>
     </SidebarProvider>

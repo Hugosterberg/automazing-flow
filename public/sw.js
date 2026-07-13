@@ -8,8 +8,19 @@
  *  - Static assets use stale-while-revalidate so deploys still update.
  */
 
-const CACHE = "automazing-v1";
-const APP_SHELL = ["/", "/index.html", "/favicon.svg", "/icon.svg", "/manifest.webmanifest"];
+const CACHE = "automazing-v2";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/favicon.svg",
+  "/favicon-32.png",
+  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-512-maskable.png",
+  "/apple-touch-icon.png",
+  "/manifest.webmanifest",
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
