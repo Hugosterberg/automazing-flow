@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Globe,
   KeyRound,
+  LayoutGrid,
   Loader2,
   Lock,
   Palette,
@@ -34,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
 import { apiJson } from "@/lib/apiJson";
 import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
+import { QuickNavPrefsEditor } from "@/features/quick-nav";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
 
@@ -277,7 +279,7 @@ function StatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
-const PREFERENCES_TABS = ["overview", "team", "ai", "automation", "api-keys", "help"] as const;
+const PREFERENCES_TABS = ["overview", "team", "navigation", "ai", "automation", "api-keys", "help"] as const;
 type PreferencesTab = (typeof PREFERENCES_TABS)[number];
 
 function parsePreferencesTab(raw: string | null): PreferencesTab {
@@ -471,6 +473,10 @@ export default function PreferencesPage() {
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Team
           </TabsTrigger>
+          <TabsTrigger value="navigation">
+            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+            Genvägar
+          </TabsTrigger>
           <TabsTrigger value="ai">
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
             AI
@@ -530,6 +536,24 @@ export default function PreferencesPage() {
                   Välj ett företagsprofil för att hantera teammedlemmar.
                 </p>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="navigation">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LayoutGrid className="h-5 w-5" />
+                Genvägar
+              </CardTitle>
+              <CardDescription>
+                Välj dina egna genvägar för bottenmenyn på mobilen och ”Gå till” på Hem. Sparat per
+                företagsprofil.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QuickNavPrefsEditor />
             </CardContent>
           </Card>
         </TabsContent>

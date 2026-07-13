@@ -1,20 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Activity as ActivityIcon,
-  Building2,
-  CalendarDays,
-  Film,
-  Home,
-  ListChecks,
-  Menu,
-  MessageSquare,
-  PlugZap,
-  Share2,
-  Star,
-  Target,
-  Users,
-  Zap,
-} from "lucide-react";
+import { Home, Menu, Settings2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
@@ -29,27 +14,8 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useUnreadDmCount } from "@/features/daily-brief";
 import { useReviewReplyState } from "@/features/reviews";
 import { useTasks, isTaskOpen, isTaskOverdue } from "@/features/tasks";
+import { QuickNavPrefsEditor, useQuickNavPrefs } from "@/features/quick-nav";
 import { cn } from "@/lib/utils";
-
-const PRIMARY_NAV = [
-  { to: "/", label: "Hem", icon: Home, match: (path: string) => path === "/" },
-  { to: "/messages", label: "Mail", icon: MessageSquare, match: (path: string) => path.startsWith("/messages"), badgeKey: "messages" as const },
-  { to: "/tasks", label: "Uppgifter", icon: ListChecks, match: (path: string) => path.startsWith("/tasks"), badgeKey: "tasks" as const },
-  { to: "/reviews", label: "Recensioner", icon: Star, match: (path: string) => path.startsWith("/reviews"), badgeKey: "reviews" as const },
-] as const;
-
-/** Work destinations + permanent setup destinations (always visible when mode allows). */
-const MORE_LINKS = [
-  { to: "/content", label: "Innehåll", icon: Film },
-  { to: "/calendar", label: "Kalender", icon: CalendarDays },
-  { to: "/social-media", label: "Socialt", icon: Share2 },
-  { to: "/sales", label: "Sales", icon: Target, modes: ["business"] as const },
-  { to: "/customers", label: "Kunder", icon: Users, modes: ["business"] as const },
-  { to: "/activity", label: "Aktivitet", icon: ActivityIcon },
-  { to: "/connections", label: "Kopplingar", icon: PlugZap },
-  { to: "/company", label: "Företag", icon: Building2, modes: ["business"] as const },
-  { to: "/automations", label: "Automationer", icon: Zap },
-] as const;
 
 function BadgeCount({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -61,8 +27,8 @@ function BadgeCount({ count }: { count: number }) {
 }
 
 /**
- * Bottom tab bar on phones — primary routes + Mer sheet for secondary destinations.
- * Hidden while a stacked detail pane is open.
+ * Bottom tab bar on phones — user-chosen primary routes + Mer sheet for the rest.
+ * Hem and Mer are always present. Hidden while a stacked detail pane is open.
  */
 export function MobileQuickNav() {
   const isMobile = useIsMobile();
@@ -73,6 +39,9 @@ export function MobileQuickNav() {
   const { profiles } = useBusinessProfiles();
   const { accounts } = useAccounts();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
+  const { primaryDestinations, moreDestinations } = useQuickNavPrefs();
 
   const { unreadDms } = useUnreadDmCount();
   const { briefPendingCount: reviewsPending } = useReviewReplyState(businessProfileId);
@@ -121,18 +90,9 @@ export function MobileQuickNav() {
 
   if (!isMobile || readingFocus) return null;
 
-  const items = PRIMARY_NAV.filter((item) => {
-    if (mode === "private" && item.to === "/reviews") return false;
-    return true;
-  });
-
-  const moreItems = MORE_LINKS.filter((item) => {
-    if ("modes" in item && item.modes && !(item.modes as readonly string[]).includes(mode)) {
-      return false;
-    }
-    return isNavUrlAllowedInMode(item.to, mode);
-  });
-  const moreActive = moreItems.some((item) => pathname.startsWith(item.to));
+  const moreItems = moreDestinations.filter((item) => isNavUrlAllowedInMode(item.to.split("?")[0]!, mode));
+  const moreActive = moreItems.some((item) => item.match(pathname));
+  const columnCount = primaryDestinations.length + 2; // Hem + primaries + Mer
 
   return (
     <>
@@ -143,16 +103,30 @@ export function MobileQuickNav() {
       >
         <ul
           className="mx-auto grid max-w-lg gap-0.5 px-1 pt-1"
-          style={{ gridTemplateColumns: `repeat(${items.length + 1}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
         >
-          {items.map(({ to, label, icon: Icon, match, ...rest }) => {
-            const active = match(pathname);
-            const badgeKey = "badgeKey" in rest ? rest.badgeKey : null;
-            const count = badgeKey ? badges[badgeKey] : 0;
+          <li>
+            <Link
+              to="/"
+              className={cn(
+                "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
+                pathname === "/"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              )}
+            >
+              <Home className={cn("h-5 w-5", pathname === "/" && "text-primary")} aria-hidden />
+              <span className="truncate max-w-full leading-tight">Hem</span>
+            </Link>
+          </li>
+          {primaryDestinations.map((dest) => {
+            const active = dest.match(pathname);
+            const count = dest.badgeKey ? badges[dest.badgeKey] : 0;
+            const Icon = dest.icon;
             return (
-              <li key={to}>
+              <li key={dest.key}>
                 <Link
-                  to={to}
+                  to={dest.to}
                   className={cn(
                     "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
                     active
@@ -164,7 +138,7 @@ export function MobileQuickNav() {
                     <Icon className={cn("h-5 w-5", active && "text-primary")} aria-hidden />
                     <BadgeCount count={count} />
                   </span>
-                  <span className="truncate max-w-full leading-tight">{label}</span>
+                  <span className="truncate max-w-full leading-tight">{dest.shortLabel}</span>
                 </Link>
               </li>
             );
@@ -218,25 +192,26 @@ export function MobileQuickNav() {
             <WorkspaceModeTabs />
           </div>
           <ul className="grid grid-cols-2 gap-2 pb-2">
-            {moreItems.map(({ to, label, icon: Icon }) => {
-              const active = pathname.startsWith(to);
+            {moreItems.map((dest) => {
+              const active = dest.match(pathname);
+              const Icon = dest.icon;
               return (
-                <li key={to}>
+                <li key={dest.key}>
                   <Link
-                    to={to}
+                    to={dest.to}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
                       "relative flex min-h-12 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
                       active
                         ? "border-primary/30 bg-primary/10 text-primary"
-                        : setupHint?.to === to
+                        : setupHint?.to === dest.to.split("?")[0]
                           ? "border-primary/25 bg-primary/[0.04] text-foreground"
                           : "border-border/70 bg-card/40 text-foreground hover:bg-muted/40"
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                    {setupHint?.to === to ? (
+                    <span className="min-w-0 flex-1 truncate">{dest.label}</span>
+                    {setupHint?.to === dest.to.split("?")[0] ? (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
                     ) : null}
                   </Link>
@@ -244,6 +219,29 @@ export function MobileQuickNav() {
               );
             })}
           </ul>
+          <button
+            type="button"
+            onClick={() => {
+              setMoreOpen(false);
+              setCustomizeOpen(true);
+            }}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/30 hover:text-foreground"
+          >
+            <Settings2 className="h-4 w-4" aria-hidden />
+            Anpassa genvägar
+          </button>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={customizeOpen} onOpenChange={setCustomizeOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[90vh] overflow-y-auto rounded-t-2xl px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Anpassa genvägar</SheetTitle>
+          </SheetHeader>
+          <QuickNavPrefsEditor compact />
         </SheetContent>
       </Sheet>
     </>

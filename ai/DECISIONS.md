@@ -2,6 +2,14 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-13 — Custom mobile quick-nav prefs per profile — **Active**
+
+Users can choose primary bottom-bar shortcuts and Hem “Gå till” destinations.
+Stored as a profile document (`quick-nav-prefs`) with localStorage legacy
+fallback. Hem and Mer stay fixed; max three pins each; destinations that share
+a path prefix (e.g. content + drive-library) cannot both be pinned. Defaults
+differ by workspace mode (business includes Recensioner; private uses Innehåll).
+
 ## 2026-07-02 — MCP providers are config, features go through mcpAccess — **Active**
 
 Remote MCP servers are described by descriptors (mcpOauth/mcpDirectory), not

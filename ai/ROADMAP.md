@@ -16,6 +16,9 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
   kind, per-mode nav/catalog) + Automations page gathering all automation
   toggles in one place.
 - Home dashboard: Smart Daily Brief, Today tiles, business health score.
+- **Custom mobile genvägar** (2026-07-13): users pin primary bottom-bar
+  shortcuts and Hem “Gå till” cards per profile (Mer → Anpassa, Inställningar
+  → Genvägar).
 - **Remote MCP layer** (2026-07-02): 16 providers connectable (OAuth + keyed),
   tenant-scoped tool access (`mcpAccess`), Market pulse on the dashboard
   (LunarCrush), lead research in Sales (Exa/Sprouts).

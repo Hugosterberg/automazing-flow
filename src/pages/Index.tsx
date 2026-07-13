@@ -2,9 +2,6 @@ import { m } from "framer-motion";
 import {
   Trash2,
   Pencil,
-  FolderOpen,
-  PlugZap,
-  Share2,
   ListChecks,
   Sparkles,
   AlertTriangle,
@@ -71,6 +68,7 @@ import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
 import { useMarketingCampaigns } from "@/features/marketing";
+import { useQuickNavPrefs } from "@/features/quick-nav";
 
 /**
  * Today tile — one compact stat with a deep-link. Rendered in the home
@@ -232,6 +230,7 @@ export default function Index() {
   const { mode } = useWorkspaceMode();
   const isMobile = useIsMobile();
   const { connections } = useConnections(homeBusinessProfileId);
+  const { homeJumpDestinations } = useQuickNavPrefs();
   const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -868,27 +867,16 @@ export default function Index() {
 
       <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <JumpCard
-            to="/connections"
-            icon={PlugZap}
-            title="Kopplingar"
-            description="Kopplade konton, status och omautentisering"
-            onPrefetch={prefetchFor}
-          />
-          <JumpCard
-            to="/social-media"
-            icon={Share2}
-            title="Social & analys"
-            description="Inlägg, statistik och överblick"
-            onPrefetch={prefetchFor}
-          />
-          <JumpCard
-            to="/content"
-            icon={FolderOpen}
-            title="Innehållsbibliotek"
-            description="Drive-assets och skapa-flöde"
-            onPrefetch={prefetchFor}
-          />
+          {homeJumpDestinations.map((dest) => (
+            <JumpCard
+              key={dest.key}
+              to={dest.to}
+              icon={dest.icon}
+              title={dest.label}
+              description={dest.description ?? dest.label}
+              onPrefetch={prefetchFor}
+            />
+          ))}
         </div>
       </HomeCollapsibleSection>
 
