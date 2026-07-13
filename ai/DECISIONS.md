@@ -2,6 +2,15 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-13 — Pre-login landing is kinetic B&W brand theater — **Active**
+
+The logged-out landing leads with a full-bleed `automazing` brand mark,
+minimal copy (“Automatiskt. Amazing.”), and a mechanical atmosphere
+(SVG gears, bolts, speed streaks) instead of dashboard-style hero chrome.
+Color stays black/white premium; motion conveys speed and efficiency.
+Auth stays sticky on desktop below the fold / side rail so signup conversion
+is preserved without polluting the first viewport.
+
 ## 2026-07-13 — Custom mobile quick-nav prefs per profile — **Active**
 
 Users can choose primary bottom-bar shortcuts and Hem “Gå till” destinations.
