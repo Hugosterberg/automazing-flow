@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Users, Upload, Search, Trash2, Download, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -321,7 +321,13 @@ export default function CustomersPage() {
         {!focusedReading ? (
         <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
           <label className="inline-flex">
-            <Input type="file" accept=".csv,text/csv" className={cn("max-w-[220px] text-sm", isMobile ? "h-10" : "h-8 text-xs")} onChange={(e) => void handleFileChange(e)} />
+            <Input
+              id="customers-csv-upload"
+              type="file"
+              accept=".csv,text/csv"
+              className={cn("max-w-[220px] text-sm", isMobile ? "h-10" : "h-8 text-xs")}
+              onChange={(e) => void handleFileChange(e)}
+            />
           </label>
           {fileName ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -397,6 +403,22 @@ export default function CustomersPage() {
                 icon={Upload}
                 title="Ingen kundbas ännu"
                 description="Ladda upp en CSV ovan. Sök, granska och exportera — koppla Day.ai under Kopplingar för AI-frågor om kunderna."
+                action={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => document.getElementById("customers-csv-upload")?.click()}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    Ladda upp CSV
+                  </Button>
+                }
+                secondaryAction={
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to="/connections">Koppla Day.ai</Link>
+                  </Button>
+                }
               />
             </div>
           ) : filteredRows.length === 0 ? (

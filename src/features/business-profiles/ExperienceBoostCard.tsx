@@ -85,7 +85,7 @@ export function ExperienceBoostCard({
     },
     {
       title: "Schemalagd publicering",
-      detail: "Under Content → Publicera: köa inlägg så de går ut utan manuellt klick.",
+      detail: "Under Innehåll → Publicera: köa inlägg så de går ut utan manuellt klick.",
       to: "/content?tab=publish",
     },
     {
@@ -96,6 +96,11 @@ export function ExperienceBoostCard({
   ];
 
   const pendingSetup = setupItems.filter((item) => !item.done).length;
+  const setupDone = setupItems.length - pendingSetup;
+  const setupPercent = Math.round((setupDone / setupItems.length) * 100);
+  const profilePercent = completeness.percent;
+  // Blend profile + connections into one scannable progress signal.
+  const overallPercent = Math.round(profilePercent * 0.7 + (connectedCount > 0 ? 30 : 0));
 
   return (
     <section
@@ -105,57 +110,88 @@ export function ExperienceBoostCard({
         className
       )}
     >
-      <div className={cn("space-y-1 border-b border-border/50", compact ? "px-3.5 py-3" : "px-4 py-3.5")}>
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" aria-hidden />
-          <h2 className="text-base font-semibold tracking-tight sm:text-sm">
-            {pendingSetup > 0 ? "Gör appen smartare" : "Redo för mer automation"}
-          </h2>
+      <div className={cn("space-y-2 border-b border-border/50", compact ? "px-3.5 py-3" : "px-4 py-3.5")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <h2 className="text-base font-semibold tracking-tight sm:text-sm">
+                {pendingSetup > 0 ? "Gör appen smartare" : "Redo för mer automation"}
+              </h2>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground sm:text-xs">
+              {pendingSetup > 0
+                ? "Fyll i några saker — AI och automationer blir direkt mer användbara."
+                : "Grunden är på plats. Titta igenom vad som redan kan köras automatiskt."}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums",
+              pendingSetup > 0 ? "bg-primary/10 text-primary" : "bg-emerald-500/10 text-emerald-700"
+            )}
+            title={`${overallPercent}% redo`}
+          >
+            {overallPercent}%
+          </span>
         </div>
-        <p className="text-sm leading-relaxed text-muted-foreground sm:text-xs">
-          {pendingSetup > 0
-            ? "Fyll i några saker — AI och automationer blir direkt mer användbara."
-            : "Grunden är på plats. Titta igenom vad som redan kan köras automatiskt."}
-        </p>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-500 ease-out",
+              pendingSetup > 0 ? "bg-primary" : "bg-emerald-500"
+            )}
+            style={{ width: `${Math.max(6, overallPercent)}%` }}
+          />
+        </div>
       </div>
 
       <div className={cn("space-y-3", compact ? "p-3" : "p-3.5 sm:p-4")}>
-        <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Att fylla i
-          </p>
-          <ul className="space-y-2">
-            {setupItems.map((item) => (
-              <li key={item.id}>
-                <Link
-                  to={item.to}
-                  className={cn(
-                    "flex gap-3 rounded-xl border px-3 py-3 transition-colors",
-                    item.done
-                      ? "border-border/50 bg-background/40"
-                      : "border-primary/25 bg-primary/[0.04] hover:bg-primary/[0.07]"
-                  )}
-                >
-                  {item.done ? (
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
-                  ) : item.id === "profile" ? (
-                    <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  ) : (
-                    <Cable className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
-                    <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                      {item.cta}
-                      <ArrowRight className="h-3 w-3" aria-hidden />
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {pendingSetup > 0 ? (
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Att fylla i · {setupDone}/{setupItems.length}
+            </p>
+            <ul className="space-y-2">
+              {setupItems.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    to={item.to}
+                    className={cn(
+                      "flex gap-3 rounded-xl border px-3 py-3 transition-colors",
+                      item.done
+                        ? "border-border/50 bg-background/40"
+                        : "border-primary/25 bg-primary/[0.04] hover:bg-primary/[0.07]"
+                    )}
+                  >
+                    {item.done ? (
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+                    ) : item.id === "profile" ? (
+                      <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                    ) : (
+                      <Cable className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{item.title}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+                      <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                        {item.cta}
+                        <ArrowRight className="h-3 w-3" aria-hidden />
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Profil och kopplingar är på plats ({setupPercent}%). Nästa steg: aktivera automation.
+            </p>
+          </div>
+        )}
 
         <div>
           <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

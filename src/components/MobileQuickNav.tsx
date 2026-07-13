@@ -174,13 +174,22 @@ export function MobileQuickNav() {
               type="button"
               onClick={() => setMoreOpen(true)}
               className={cn(
-                "flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
+                "relative flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
                 moreActive || moreOpen
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
+              aria-label={setupHint ? "Mer — något behöver din uppmärksamhet" : "Mer"}
             >
-              <Menu className="h-5 w-5" aria-hidden />
+              <span className="relative">
+                <Menu className="h-5 w-5" aria-hidden />
+                {setupHint ? (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
               <span className="leading-tight">Mer</span>
             </button>
           </li>
@@ -217,14 +226,19 @@ export function MobileQuickNav() {
                     to={to}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
-                      "flex min-h-12 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                      "relative flex min-h-12 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
                       active
                         ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border/70 bg-card/40 text-foreground hover:bg-muted/40"
+                        : setupHint?.to === to
+                          ? "border-primary/25 bg-primary/[0.04] text-foreground"
+                          : "border-border/70 bg-card/40 text-foreground hover:bg-muted/40"
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {label}
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {setupHint?.to === to ? (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                    ) : null}
                   </Link>
                 </li>
               );

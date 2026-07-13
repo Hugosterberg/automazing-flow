@@ -126,7 +126,7 @@ function MediaTile({
       tabIndex={0}
       data-drive-file-id={file.id}
       aria-pressed={checked}
-      aria-label={`${checked ? "Remove from Selected" : "Add to Selected"} ${file.name}`}
+      aria-label={`${checked ? "Ta bort från Valda" : "Lägg till i Valda"} ${file.name}`}
       className={cn(
         "group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         focused && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/50"
@@ -1390,7 +1390,7 @@ export default function ContentPage() {
             busy={uploadingBrowse}
             disabled={!createBusinessProfileId}
             className="py-6"
-            label="Or drop files here to upload to Selected"
+            label="Eller släpp filer här för att ladda upp till Valda"
           />
           {folderItems.length > 0 && (
             <div className="space-y-3">

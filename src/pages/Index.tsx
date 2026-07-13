@@ -577,29 +577,36 @@ export default function Index() {
         }
       />
 
+      {/* On mobile business home, ExperienceBoost owns setup guidance — keep SmartBar live-only. */}
       <PageSmartBar
         title={
-          isMobile
-            ? "Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
-            : "Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
+          isMobile && mode === "business"
+            ? "Dagens fokus"
+            : isMobile
+              ? "Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
+              : "Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
         }
         steps={
-          isMobile
-            ? [
-                "Beskrivning + webb under Företag",
-                "Koppla mail och sociala konton",
-                "Titta under Automationer vad som kan köras automatiskt",
-              ]
-            : [
-                "Läs dagens brief och kolla Idag-rutorna",
-                "Fyll i Företag och koppla konton för bättre AI",
-                "Öppna Automationer för jobb som kan köra sig själva",
-              ]
+          isMobile && mode === "business"
+            ? undefined
+            : isMobile
+              ? [
+                  "Beskrivning + webb under Företag",
+                  "Koppla mail och sociala konton",
+                  "Titta under Automationer vad som kan köras automatiskt",
+                ]
+              : [
+                  "Läs dagens brief och kolla Idag-rutorna",
+                  "Fyll i Företag och koppla konton för bättre AI",
+                  "Öppna Automationer för jobb som kan köra sig själva",
+                ]
         }
         tip={
-          isMobile
-            ? "AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
-            : "Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
+          isMobile && mode === "business"
+            ? undefined
+            : isMobile
+              ? "AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
+              : "Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
         }
         liveHintOverride={
           health.score < 100 && health.topReason

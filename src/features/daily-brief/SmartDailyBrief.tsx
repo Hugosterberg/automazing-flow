@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AnimatePresence, m } from "framer-motion";
 import {
   ArrowRight,
   CheckCircle2,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { getRecentPages } from "@/lib/keyboardShortcuts";
+import { softFade } from "@/lib/motion";
 import { type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
 import { useDailyBriefSummary } from "./useDailyBriefSummary";
@@ -75,9 +77,9 @@ function BriefRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label="Mark as done"
-          title="Mark as done"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Markera klar"
+          title="Markera klar"
           onClick={() => onDone(item.id)}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -88,9 +90,9 @@ function BriefRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label="Snooze until tomorrow"
-          title="Snooze until tomorrow"
+          className="h-8 w-8 shrink-0 text-muted-foreground opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Skjut upp till imorgon"
+          title="Skjut upp till imorgon"
           onClick={() => onSnooze(item.id)}
         >
           <X className="h-3.5 w-3.5" />
@@ -155,6 +157,8 @@ export function SmartDailyBrief({
   const briefIds = useMemo(() => new Set(brief.items.map((i) => i.id)), [brief.items]);
   const doneCount = dayState.done.filter((id) => briefIds.has(id)).length;
   const progressTotal = visibleItems.length + doneCount;
+  const progressPercent =
+    progressTotal > 0 ? Math.round((doneCount / progressTotal) * 100) : 0;
 
   function handleDone(id: string) {
     markBriefItemDone(id);
@@ -166,9 +170,11 @@ export function SmartDailyBrief({
     setDayState(getBriefDayState());
   }
 
+  const listItems = sortedItems.filter((item) => item.id !== continueItem?.id);
+
   return (
     <section
-      aria-label="Daily brief"
+      aria-label="Dagens brief"
       className="rounded-2xl border border-border bg-gradient-to-br from-card to-card/60 p-5"
     >
       <div className="flex items-start gap-3">
@@ -185,13 +191,13 @@ export function SmartDailyBrief({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-foreground">Today's brief</h2>
+          <h2 className="text-base font-semibold text-foreground">Dagens brief</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isInitialLoading
-              ? "Putting together your brief…"
+              ? "Samlar dagens fokus…"
               : visibleAllClear
               ? doneCount > 0
-                ? `All ${progressTotal} handled — nice work.`
+                ? `Alla ${progressTotal} hanterade — bra jobbat.`
                 : "Du är ikapp för tillfället."
               : brief.subline}
           </p>
@@ -199,7 +205,7 @@ export function SmartDailyBrief({
         {!isInitialLoading && doneCount > 0 && !visibleAllClear ? (
           <span
             className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success tabular-nums shrink-0"
-            title={`${doneCount} of ${progressTotal} done today`}
+            title={`${doneCount} av ${progressTotal} klara idag`}
           >
             {doneCount}/{progressTotal}
             <CheckCircle2 className="inline h-3 w-3 ml-1 align-[-1.5px]" aria-hidden />
@@ -213,10 +219,12 @@ export function SmartDailyBrief({
       </div>
 
       {!isInitialLoading && progressTotal > 0 && doneCount > 0 ? (
-        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-          <div
-            className="h-full rounded-full bg-success transition-all"
-            style={{ width: `${Math.round((doneCount / progressTotal) * 100)}%` }}
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+          <m.div
+            className="h-full rounded-full bg-success"
+            initial={false}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
           />
         </div>
       ) : null}
@@ -227,10 +235,14 @@ export function SmartDailyBrief({
           <div className="h-14 rounded-lg bg-muted/30 animate-pulse" />
         </div>
       ) : visibleAllClear ? (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3 text-sm text-muted-foreground">
+        <m.div
+          {...softFade}
+          transition={{ duration: 0.3 }}
+          className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3 text-sm text-muted-foreground"
+        >
           <CheckCircle2 className="h-4 w-4 text-success shrink-0" aria-hidden />
           <span>Kopplingarna är friska, uppgifterna är under kontroll och inget nytt att granska.</span>
-        </div>
+        </m.div>
       ) : (
         <>
           {continueItem ? (
@@ -239,28 +251,46 @@ export function SmartDailyBrief({
                 <History className="h-3 w-3" />
                 Fortsätt där du slutade
               </p>
-              <BriefRow
-                item={continueItem}
-                onPrefetch={prefetchFor}
-                onDone={handleDone}
-                onSnooze={handleSnooze}
-              />
+              <AnimatePresence mode="popLayout" initial={false}>
+                <m.div
+                  key={continueItem.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                >
+                  <BriefRow
+                    item={continueItem}
+                    onPrefetch={prefetchFor}
+                    onDone={handleDone}
+                    onSnooze={handleSnooze}
+                  />
+                </m.div>
+              </AnimatePresence>
             </div>
           ) : null}
           <ul className={cn("space-y-2", continueItem ? "mt-3" : "mt-4")}>
-          {sortedItems
-            .filter((item) => item.id !== continueItem?.id)
-            .map((item) => (
-            <li key={item.id}>
-              <BriefRow
-                item={item}
-                onPrefetch={prefetchFor}
-                onDone={handleDone}
-                onSnooze={handleSnooze}
-              />
-            </li>
-          ))}
-        </ul>
+            <AnimatePresence mode="popLayout" initial={false}>
+              {listItems.map((item) => (
+                <m.li
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                >
+                  <BriefRow
+                    item={item}
+                    onPrefetch={prefetchFor}
+                    onDone={handleDone}
+                    onSnooze={handleSnooze}
+                  />
+                </m.li>
+              ))}
+            </AnimatePresence>
+          </ul>
         </>
       )}
     </section>
