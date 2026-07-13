@@ -97,44 +97,16 @@ function sortSocialPageAccounts(a: ConnectedAccount, b: ConnectedAccount): numbe
 }
 
 /** Maps old error codes to current Zernio names */
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+
 const OAUTH_ERROR_ALIASES: Record<string, string> = {
   late_profile_failed: "zernio_profile_failed",
   late_not_configured: "zernio_not_configured",
   late_connect_failed: "zernio_connect_failed",
-  late_fetch_accounts_failed: "zernio_fetch_accounts_failed",
-  late_no_account: "zernio_no_account",
+  late_fetch_accounts_failed: "zernio_fetch_failed",
+  late_no_account: "zernio_connect_failed",
   late_no_auth_url: "zernio_no_auth_url",
 };
-
-const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  instagram_not_configured:
-    "Add ZERNIO_API_KEY for Instagram via Zernio, or INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET for Meta only.",
-  zernio_profile_failed:
-    "Zernio could not load your workspace. Check ZERNIO_API_KEY and optional ZERNIO_PROFILE_ID in .env.local.",
-  zernio_not_configured: "ZERNIO_API_KEY is missing in .env.local.",
-  zernio_connect_failed: "Zernio could not start Instagram login. Check your API key in the Zernio dashboard.",
-  zernio_fetch_accounts_failed: "Could not list accounts from Zernio (network or key).",
-  zernio_no_account: "No Instagram account returned—finish connecting the channel in Zernio.",
-  zernio_no_auth_url: "Zernio did not return a login URL.",
-  zernio_init_failed: "Could not start Instagram via Zernio.",
-  zernio_gmb_not_supported:
-    "Google Business direct connect is not enabled for this Zernio workspace yet. Use 'All Zernio channels…' and link an existing Google Business account.",
-  zernio_gmb_selection_failed:
-    "Google Business requires location selection in Zernio. Open 'All Zernio channels…' and complete Google Business selection there.",
-  google_business_not_configured:
-    "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local to connect Google Business via the official API.",
-  google_business_use_official:
-    "Use “Google Business via Official API” from Connect more, or link a location via Zernio.",
-  google_business_accounts_api_failed: "Google could not list Business Profile accounts. Check OAuth scopes and API access.",
-  google_business_locations_api_failed: "Google could not list locations for this account.",
-  google_business_no_account_access: "No Google Business account access on this login.",
-  google_business_no_location_access: "No Google Business location was returned. Check that a location exists in Business Profile.",
-};
-
-function messageForOAuthError(code: string): string {
-  const key = OAUTH_ERROR_ALIASES[code] || code;
-  return OAUTH_ERROR_MESSAGES[key] || `Login failed: ${code.replace(/_/g, " ")}`;
-}
 
 async function runAIAnalysis(
   accountId: string,
@@ -687,7 +659,10 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
-            message={messageForOAuthError(oauthErrorDetails.code)}
+            message={formatOAuthErrorMessage({
+              ...oauthErrorDetails,
+              code: OAUTH_ERROR_ALIASES[oauthErrorDetails.code] || oauthErrorDetails.code,
+            })}
             onDismiss={clearOauthError}
           />
         </m.div>

@@ -36,13 +36,13 @@ export function areaOrderForMode(mode: WorkspaceMode): AppArea[] {
 }
 
 export const AREA_LABELS: Record<AppArea, string> = {
-  social: "Social media",
-  marketing: "Marketing",
-  ecommerce: "E-commerce",
-  messages: "Messages & mail",
-  calendar: "Calendar",
-  reviews: "Reviews",
-  content: "Content library",
+  social: "Sociala medier",
+  marketing: "Marknadsföring",
+  ecommerce: "E-handel",
+  messages: "Meddelanden & mail",
+  calendar: "Kalender",
+  reviews: "Recensioner",
+  content: "Innehållsbibliotek",
   intelligence: "Intelligence & MCP",
 };
 
@@ -77,7 +77,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps:
-      "Use Connect on this page or in the sidebar. Usually via Zernio; optional direct Instagram OAuth if configured.",
+      "Öppna Kopplingar → Instagram → Koppla.",
     serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY. Optional: INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET.",
   },
   {
@@ -86,7 +86,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Connect via Zernio from Social Media, Connect accounts, or the sidebar.",
+    connectSteps: "Öppna Kopplingar → Facebook → Koppla.",
     serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
@@ -95,7 +95,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social", "reviews"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Choose Official API or Zernio when connecting.",
+    connectSteps: "Öppna Kopplingar → Google Business Profile → Koppla (rekommenderat: Official API).",
     serverNeeds:
       "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET with Business Profile APIs enabled. Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
@@ -105,7 +105,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Connect via Zernio from Social Media or Connect accounts.",
+    connectSteps: "Öppna Kopplingar → WhatsApp Business → Koppla.",
     serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
@@ -114,7 +114,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Use Connect on Social Media (Zernio and/or official TikTok OAuth, depending on provider choice).",
+    connectSteps: "Öppna Kopplingar → TikTok → Koppla.",
     serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY; for official path also TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET.",
   },
   {
@@ -123,7 +123,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Use Connect on Social Media (Google OAuth for YouTube).",
+    connectSteps: "Öppna Kopplingar → YouTube → Koppla.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET.",
   },
   {
@@ -132,7 +132,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Use Connect on Social Media (X OAuth).",
+    connectSteps: "Öppna Kopplingar → X (Twitter) → Koppla.",
     serverNeeds: "X_CLIENT_ID + X_CLIENT_SECRET.",
   },
   {
@@ -141,7 +141,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["marketing"],
     pageHref: "/marketing",
     pageName: "Marketing",
-    connectSteps: "Open Marketing → choose Google official or Zernio.",
+    connectSteps: "Öppna Kopplingar → Google Ads → Koppla (rekommenderat: Official API).",
     serverNeeds:
       "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET with Google Ads API enabled. Live campaign API operations also need GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and optionally GOOGLE_ADS_LOGIN_CUSTOMER_ID. Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
@@ -151,7 +151,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["marketing"],
     pageHref: "/marketing",
     pageName: "Marketing",
-    connectSteps: "Open Marketing → connect with Meta official.",
+    connectSteps: "Öppna Kopplingar → Meta Business → Koppla.",
     serverNeeds:
       "META_APP_ID + META_APP_SECRET (or FACEBOOK_CLIENT_ID + FACEBOOK_CLIENT_SECRET) with the Meta callback URL allowed. Zernio currently returns Platform not supported for Meta Business in this workspace.",
   },
@@ -162,7 +162,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/ecommerce",
     pageName: "E-commerce",
     connectSteps:
-      "Open E-commerce → Connect Shopify. Find the shop domain in Shopify Admin → Settings → Domains and use the value ending in .myshopify.com.",
+      "Öppna Kopplingar → Shopify → Koppla. Använd domänen som slutar på .myshopify.com.",
     serverNeeds: "SHOPIFY_API_KEY + SHOPIFY_API_SECRET + public HTTPS SHOPIFY_APP_URL for callbacks.",
   },
   {
@@ -171,7 +171,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["ecommerce"],
     pageHref: "/ecommerce",
     pageName: "E-commerce",
-    connectSteps: "Open E-commerce → Connect Notion.",
+    connectSteps: "Öppna Kopplingar → Notion → Koppla.",
     serverNeeds: "NOTION_CLIENT_ID + NOTION_CLIENT_SECRET + public HTTPS NOTION_APP_URL for callbacks.",
   },
   {
@@ -180,7 +180,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["messages"],
     pageHref: "/messages",
     pageName: "Messages",
-    connectSteps: "Open Messages → Connect Gmail (Google OAuth).",
+    connectSteps: "Öppna Kopplingar → Gmail → Koppla.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Gmail API enabled in Google Cloud).",
   },
   {
@@ -189,7 +189,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["messages"],
     pageHref: "/messages",
     pageName: "Messages",
-    connectSteps: "Open Messages → Connect Outlook (Microsoft OAuth).",
+    connectSteps: "Öppna Kopplingar → Outlook mail → Koppla.",
     serverNeeds: "MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET.",
   },
   {
@@ -198,7 +198,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
-    connectSteps: "Open Calendar → Connect Google Calendar (may use Zernio or official Google, depending on setup).",
+    connectSteps: "Öppna Kopplingar → Google Calendar → Koppla.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; Zernio path also needs ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
@@ -207,7 +207,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
-    connectSteps: "Open Calendar → connect Outlook calendar from the Add flow / provider options.",
+    connectSteps: "Öppna Kopplingar → Outlook Calendar → Koppla.",
     serverNeeds: "MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET; Zernio path also needs ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
@@ -216,7 +216,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["reviews"],
     pageHref: "/reviews",
     pageName: "Reviews",
-    connectSteps: "Open Reviews → Connect Google Reviews (official Google Business Profile APIs) or Zernio if available.",
+    connectSteps: "Öppna Kopplingar → Google Reviews → Koppla.",
     serverNeeds:
       "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + Business Profile APIs in Google Cloud. Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
@@ -227,7 +227,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/reviews",
     pageName: "Reviews",
     connectSteps:
-      "Open Reviews or sidebar: Zernio Tripadvisor connect, or manual Content API connect (location id + optional API key).",
+      "Öppna Kopplingar → Tripadvisor → Koppla.",
     serverNeeds:
       "Official Content API: TRIPADVISOR_API_KEY + TRIPADVISOR_LOCATION_ID (or per-account values). Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
@@ -237,7 +237,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["content"],
     pageHref: "/content",
     pageName: "Content",
-    connectSteps: "Open Content → Connect Google Drive.",
+    connectSteps: "Öppna Kopplingar → Google Drive → Koppla.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Drive scope enabled for your OAuth client).",
   },
   {
@@ -247,7 +247,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
-      "Connect with Canva OAuth, then use Social Media -> Create post image -> Export Canva.",
+      "Öppna Kopplingar → Canva → Koppla. Exportera sedan bilder från Social Media.",
     serverNeeds:
       "CANVA_CLIENT_ID + CANVA_CLIENT_SECRET from a Canva Connect integration. CANVA_ACCESS_TOKEN is still supported as a legacy fallback.",
   },
@@ -258,7 +258,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "OAuth MCP — CRM and assistant tools for your workspace.",
+    connectSteps: "Öppna Kopplingar → Day.ai → Koppla via OAuth MCP.",
     serverNeeds: "Optional env override: DAYAI_CLIENT_ID + DAYAI_CLIENT_SECRET. Otherwise dynamic client registration.",
   },
   {
@@ -267,7 +267,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "OAuth MCP — marketing data connectors via Windsor.",
+    connectSteps: "Öppna Kopplingar → Windsor.ai → Koppla via OAuth MCP.",
     serverNeeds: "Optional: WINDSOR_CLIENT_ID + WINDSOR_CLIENT_SECRET.",
   },
   {
@@ -276,7 +276,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "OAuth MCP — Era context and forge tools.",
+    connectSteps: "Öppna Kopplingar → Era → Koppla via OAuth MCP.",
     serverNeeds: "Optional: ERA_CLIENT_ID + ERA_CLIENT_SECRET.",
   },
   {
@@ -285,7 +285,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "OAuth MCP — SEO data and site tools (apiv3-mcp scope).",
+    connectSteps: "Öppna Kopplingar → Ahrefs → Koppla via OAuth MCP.",
     serverNeeds: "Optional: AHREFS_CLIENT_ID + AHREFS_CLIENT_SECRET.",
   },
   {
@@ -294,7 +294,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "OAuth MCP — broader Canva automation tools (separate from Canva Connect export).",
+    connectSteps: "Öppna Kopplingar → Canva MCP → Koppla via OAuth MCP.",
     serverNeeds: "Optional: CANVA_MCP_CLIENT_ID + CANVA_MCP_CLIENT_SECRET.",
   },
   {
@@ -304,7 +304,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
-      "OAuth MCP — search and act on Superhuman Mail via Ask AI. Requires Business/Enterprise with Ask AI enabled.",
+      "Öppna Kopplingar → Superhuman Mail → Koppla via OAuth MCP.",
     serverNeeds:
       "Optional: SUPERHUMAN_MCP_CLIENT_ID + SUPERHUMAN_MCP_CLIENT_SECRET. Otherwise dynamic client registration.",
   },
@@ -315,7 +315,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
-      "OAuth MCP — marketing data connectors and query tools via Supermetrics. See supermetrics.com/docs/product-api-oauth.",
+      "Öppna Kopplingar → Supermetrics → Koppla via OAuth MCP.",
     serverNeeds:
       "Optional: SUPERMETRICS_MCP_CLIENT_ID + SUPERMETRICS_MCP_CLIENT_SECRET. Otherwise dynamic client registration.",
   },
@@ -325,7 +325,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste your Exa API key — web search MCP.",
+    connectSteps: "Öppna Kopplingar → Exa → ange API-nyckel.",
     serverNeeds: "Exa API key from dashboard.exa.ai.",
   },
   {
@@ -334,7 +334,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste your Klarity API token.",
+    connectSteps: "Öppna Kopplingar → Klarity Architect → ange API-token.",
     serverNeeds: "Klarity Architect API access token.",
   },
   {
@@ -343,7 +343,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste your LunarCrush API key — social/crypto sentiment MCP.",
+    connectSteps: "Öppna Kopplingar → LunarCrush → ange API-nyckel.",
     serverNeeds: "LunarCrush API key.",
   },
   {
@@ -352,7 +352,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste your Peec AI API key.",
+    connectSteps: "Öppna Kopplingar → Peec AI → ange API-nyckel.",
     serverNeeds: "Peec AI API key from app.peec.ai settings.",
   },
   {
@@ -361,7 +361,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Optional API key — server accepts keyless connects.",
+    connectSteps: "Öppna Kopplingar → Sprouts → Koppla (API-nyckel valfri).",
     serverNeeds: "Optional Sprouts API key.",
   },
   {
@@ -370,7 +370,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste your Gamma API key — deck/content MCP.",
+    connectSteps: "Öppna Kopplingar → Gamma → ange API-nyckel.",
     serverNeeds: "Gamma API key from Account settings.",
   },
   {
@@ -379,7 +379,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["intelligence"],
     pageHref: "/connections",
     pageName: "Connections",
-    connectSteps: "Paste GoDaddy API credentials as KEY:SECRET (optional for read-only).",
+    connectSteps: "Öppna Kopplingar → GoDaddy Domains → ange KEY:SECRET.",
     serverNeeds: "GoDaddy developer API key (sso-key format).",
   },
   {
@@ -389,7 +389,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
-      "Enter your shop's .myshopify.com domain. Each store exposes public catalog/cart MCP at /api/mcp — see setup.shopify.com/mcp.",
+      "Öppna Kopplingar → Shopify Storefront MCP → ange .myshopify.com-domän.",
     serverNeeds: "No server credentials — storefront tools are public per shop domain.",
   },
   {
@@ -399,7 +399,7 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/connections",
     pageName: "Connections",
     connectSteps:
-      "One-click connect — semantic search over Twilio API docs and specs. No Twilio account or API key required.",
+      "Öppna Kopplingar → Twilio Docs MCP → Koppla med ett klick.",
     serverNeeds: "No credentials — hosted at mcp.twilio.com/docs.",
   },
 ];

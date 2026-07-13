@@ -22,7 +22,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Connection } from "@/types/connection";
-import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { statusFromConnection } from "./connectionStatus";
 import { connectionFixHint } from "./connectionFixHints";
@@ -177,10 +176,9 @@ export function ConnectionDetailsDrawer({
 
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Hälsa
+                Status
               </h3>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <ConnectionHealthBadge health={connection.health} />
                 <ConnectionStatusBadge status={status} />
               </div>
               <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">

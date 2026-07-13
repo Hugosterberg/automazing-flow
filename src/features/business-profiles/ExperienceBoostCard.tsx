@@ -25,6 +25,8 @@ type SetupItem = {
 type Props = {
   profile?: BusinessProfile | null;
   connectedCount: number;
+  /** Connections that need reconnect/fix — setup is not "done" while > 0. */
+  attentionCount?: number;
   className?: string;
   /** Compact variant for embedding under other home blocks. */
   compact?: boolean;
@@ -37,11 +39,13 @@ type Props = {
 export function ExperienceBoostCard({
   profile,
   connectedCount,
+  attentionCount = 0,
   className,
   compact = false,
 }: Props) {
   const completeness = getBusinessProfileCompleteness(profile);
   const topMissing = completeness.priorities.slice(0, 2);
+  const connectionsHealthy = connectedCount > 0 && attentionCount === 0;
 
   const setupItems: SetupItem[] = [
     {
@@ -61,14 +65,23 @@ export function ExperienceBoostCard({
     },
     {
       id: "connections",
-      done: connectedCount > 0,
-      title: connectedCount > 0 ? `${connectedCount} konton kopplade` : "Koppla dina kanaler",
-      detail:
-        connectedCount > 0
-          ? "Mail, socialt och kalender synkas automatiskt när konton är kopplade."
+      done: connectionsHealthy,
+      title: connectionsHealthy
+        ? `${connectedCount} konton i gott skick`
+        : attentionCount > 0
+          ? `${attentionCount} koppling${attentionCount === 1 ? "" : "ar"} behöver åtgärd`
+          : "Koppla dina kanaler",
+      detail: connectionsHealthy
+        ? "Mail, socialt och kalender synkas automatiskt när konton är kopplade."
+        : attentionCount > 0
+          ? "Koppla om felande konton så inkorg, recensioner och flöden fortsätter fungera."
           : "Utan kopplingar blir inkorg, recensioner och publicering tomma.",
-      to: "/connections",
-      cta: connectedCount > 0 ? "Hantera kopplingar" : "Koppla konton",
+      to: attentionCount > 0 ? "/connections?filter=attention" : "/connections",
+      cta: connectionsHealthy
+        ? "Hantera kopplingar"
+        : attentionCount > 0
+          ? "Fixa kopplingar"
+          : "Koppla konton",
     },
   ];
 

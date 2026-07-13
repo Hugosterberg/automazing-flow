@@ -84,7 +84,11 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   zernio_no_auth_url:
     "Zernio returnerade ingen inloggningslänk. Testa igen eller använd Official API om det finns som alternativ.",
   zernio_gmb_not_supported:
-    "Zernio stöder inte Google Business i detta workspace. Använd Official API för Google Business.",
+    "Zernio stöder inte Google Business i detta workspace. Använd Official API för Google Business från Kopplingar.",
+  zernio_gmb_selection_failed:
+    "Google Business kräver platsval. Öppna Kopplingar och slutför Google Business där, eller använd Official API.",
+  google_business_use_official:
+    "Använd Official API för Google Business från Kopplingar, eller länka platsen via Zernio om det stöds.",
   zernio_init_failed:
     "Zernio kunde inte starta kopplingen. Testa Official API om det finns som alternativ, eller kontrollera ZERNIO_API_KEY och ZERNIO_PROFILE_ID.",
   zernio_fetch_failed:

@@ -28,9 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { AREA_LABELS, type AppArea, type ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
-import { ConnectionHealthBadge } from "./ConnectionHealthBadge";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
-import { aggregateStatus } from "./connectionStatus";
+import { aggregateStatus, statusFromConnection } from "./connectionStatus";
 import { connectionFixHint, connectionTestToastMessage } from "./connectionFixHints";
 import type { ConnectionTestResult } from "./useConnections";
 import { buildConnectUrl } from "./zernioClient";
@@ -365,17 +364,16 @@ export function ConnectionCard({
       <div className="space-y-3 border-t border-border/60 px-3 pb-3 pt-2.5">
         <p className="text-xs text-muted-foreground">{entry.connectSteps}</p>
         {defaultPathOption ? (
-          <div className="flex flex-wrap items-center gap-1.5 text-[10px] leading-none">
-            <span className="text-muted-foreground/70">Paths</span>
-            <span className="rounded-full border border-border bg-muted/30 px-2 py-1 text-muted-foreground">
-              Default: {defaultPathOption.label}
-            </span>
+          <p className="text-[11px] text-muted-foreground">
+            Rekommenderad väg:{" "}
+            <span className="font-medium text-foreground/90">{defaultPathOption.label}</span>
             {extraPathLabels.length > 0 ? (
-              <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-muted-foreground">
-                Extra: {extraPathLabels.join(" / ")}
+              <span className="text-muted-foreground/80">
+                {" "}
+                · Alternativ: {extraPathLabels.join(" / ")}
               </span>
             ) : null}
-          </div>
+          </p>
         ) : null}
         {isMcpPlatform(entry.platform) && mcpReadiness ? (
           <McpReadinessHint readiness={mcpReadiness} />
@@ -423,7 +421,7 @@ export function ConnectionCard({
                   ) : null}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <ConnectionHealthBadge health={c.health} />
+                  <ConnectionStatusBadge status={statusFromConnection(c)} />
                   {onViewDetails ? (
                     <Button
                       type="button"
@@ -476,7 +474,11 @@ export function ConnectionCard({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">Not connected for this business profile yet.</p>
+          <p className="text-xs text-muted-foreground">
+            {active.length === 0
+              ? "Inte kopplat för den här företagsprofilen ännu."
+              : "Konto kopplat för den här företagsprofilen."}
+          </p>
         )}
 
         {firstError ? (
@@ -498,20 +500,30 @@ export function ConnectionCard({
                   size="sm"
                   variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
                   className="gap-1.5"
-                  onClick={() => startConnect("official")}
+                  onClick={() =>
+                    startConnect(
+                      (defaultPathOption?.id === "zernio" || defaultPathOption?.id === "official"
+                        ? defaultPathOption.id
+                        : "official") as "official" | "zernio"
+                    )
+                  }
                 >
                   <PrimaryIcon className="h-3.5 w-3.5" />
-                  Official API
+                  {defaultPathOption?.id === "zernio" ? "Koppla via Zernio" : "Koppla (rekommenderat)"}
                 </Button>
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => startConnect("zernio")}
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={() =>
+                    startConnect(
+                      defaultPathOption?.id === "zernio" ? "official" : "zernio"
+                    )
+                  }
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  Koppla via Zernio
+                  {defaultPathOption?.id === "zernio" ? "Använd Official API" : "Koppla via Zernio"}
                 </Button>
               </>
             ) : (

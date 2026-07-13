@@ -2,6 +2,16 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-13 — Integration UX: one status language, one connect home — **Active**
+
+For multi-integration platforms, end users need a single vocabulary and a
+single place to connect. Connections Center is the home for account linking;
+Preferences “API-nycklar” is for secrets/tests. User-facing surfaces use
+`ConnectionStatus` (`Kopplad` / `Kräver återanslutning` / …), not the DB health
+labels (“Frisk”). Catalog `connectSteps` point to Kopplingar; section
+checklists respect reconnect/error; dual OAuth paths lead with the recommended
+default. Prefer fixing surfacing over inventing parallel connect UIs.
+
 ## 2026-07-13 — Logged-in mobile chrome aims for native app feel — **Active**
 
 On phones: header drops duplicate mode tabs (mode lives in Mer), bottom tabs

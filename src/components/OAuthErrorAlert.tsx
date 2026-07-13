@@ -49,10 +49,10 @@ export function OAuthErrorAlert({ details, message, onDismiss }: OAuthErrorAlert
           Kod: <code className="rounded bg-muted px-1 py-0.5 text-foreground font-mono text-[11px]">{details.code}</code>
         </span>
         <Link to="/connections" className="text-primary underline-offset-2 hover:underline font-medium">
-          Öppna anslutningar
+          Öppna Kopplingar
         </Link>
-        <Link to="/preferences" className="text-primary underline-offset-2 hover:underline font-medium">
-          API-inställningar
+        <Link to="/preferences?tab=api-keys" className="text-muted-foreground underline-offset-2 hover:underline font-medium hover:text-foreground">
+          API-nycklar
         </Link>
       </div>
 

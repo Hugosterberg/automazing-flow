@@ -644,6 +644,7 @@ export default function Index() {
         <ExperienceBoostCard
           profile={businessProfile}
           connectedCount={profileSummary.connectedCount}
+          attentionCount={connectionIssues.length}
         />
       ) : null}
 

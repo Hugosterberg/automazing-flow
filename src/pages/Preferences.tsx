@@ -269,12 +269,12 @@ function StatusBadge({ configured }: { configured: boolean }) {
   return configured ? (
     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700">
       <CheckCircle2 className="h-3.5 w-3.5" />
-      Configured
+      Konfigurerad
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
       <XCircle className="h-3.5 w-3.5" />
-      Missing
+      Saknas
     </span>
   );
 }
@@ -457,7 +457,7 @@ export default function PreferencesPage() {
         tip="Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automationer — inte här."
         liveHintOverride={
           unconfiguredCount > 0
-            ? `${unconfiguredCount} integration${unconfiguredCount === 1 ? "" : "er"} saknar nyckel — fyll i under Integrationer`
+            ? `${unconfiguredCount} nyckel${unconfiguredCount === 1 ? "" : "ar"} saknas — fyll i under API-nycklar`
             : !storeEnabled
               ? "Hemlighetslagret är inte aktiverat på servern."
               : null
@@ -485,7 +485,7 @@ export default function PreferencesPage() {
             <Bot className="h-3.5 w-3.5 mr-1.5" />
             Automationer
           </TabsTrigger>
-          <TabsTrigger value="api-keys">Integrationer</TabsTrigger>
+          <TabsTrigger value="api-keys">API-nycklar</TabsTrigger>
           <TabsTrigger value="help">
             <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
             Hjälp
