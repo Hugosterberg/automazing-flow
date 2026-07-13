@@ -40,12 +40,15 @@ export function LandingPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [authInView, setAuthInView] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     function onScroll() {
-      setShowMobileCta(window.scrollY > 360);
+      const y = window.scrollY;
+      setScrollY(y);
+      setShowMobileCta(y > 360);
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress(docHeight > 0 ? Math.min(window.scrollY / docHeight, 1) : 0);
+      setScrollProgress(docHeight > 0 ? Math.min(y / docHeight, 1) : 0);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -70,23 +73,30 @@ export function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-0 landing-aurora" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-grid-bg opacity-[0.35]" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-noise opacity-60" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-spotlight" />
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="landing-orb absolute -left-32 top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
-        <div
-          className="landing-orb absolute right-0 top-1/4 h-96 w-96 rounded-full bg-info/12 blur-3xl"
-          style={{ animationDelay: "-3s" }}
-        />
-        <div
-          className="landing-orb absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-primary/6 blur-3xl"
-          style={{ animationDelay: "-5s" }}
-        />
+        <div style={{ transform: `translate3d(0, ${scrollY * 0.05}px, 0)` }}>
+          <div className="landing-orb absolute -left-32 top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
+        </div>
+        <div style={{ transform: `translate3d(0, ${scrollY * -0.04}px, 0)` }}>
+          <div
+            className="landing-orb absolute right-0 top-1/4 h-96 w-96 rounded-full bg-info/12 blur-3xl"
+            style={{ animationDelay: "-3s" }}
+          />
+        </div>
+        <div style={{ transform: `translate3d(0, ${scrollY * 0.03}px, 0)` }}>
+          <div
+            className="landing-orb absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-primary/6 blur-3xl"
+            style={{ animationDelay: "-5s" }}
+          />
+        </div>
       </div>
 
       <header className="sticky top-0 z-40 border-b border-border/50 glass safe-top safe-x">
-        <div className="mx-auto flex h-14 min-w-0 max-w-6xl items-center justify-between gap-2 px-6 sm:gap-3 sm:px-8">
+        <div className="landing-page-shell mx-auto flex h-14 min-w-0 max-w-5xl items-center justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
@@ -166,11 +176,11 @@ export function LandingPage() {
         </div>
       </header>
 
-      <div className="relative mx-auto grid min-w-0 max-w-6xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0 px-6 pb-28 pt-7 safe-x sm:px-8 sm:pb-24 sm:pt-9 lg:pb-12 lg:pr-8 lg:pt-10">
-          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-14 sm:space-y-16">
-            <section className="landing-hero-panel min-w-0 space-y-5 rounded-3xl border border-border/50 p-6 backdrop-blur-md sm:space-y-6 sm:p-8">
-              <p className="flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-border/70 bg-card/50 px-3 py-1.5 text-xs leading-snug text-muted-foreground backdrop-blur-sm">
+      <div className="relative mx-auto grid min-w-0 max-w-5xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="landing-page-shell min-w-0 pb-32 pt-8 safe-x sm:pb-28 sm:pt-10 lg:pb-12 lg:pr-0 lg:pt-10">
+          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-16 sm:space-y-20">
+            <section className="landing-hero-panel landing-glow-border min-w-0 space-y-5 rounded-[1.75rem] border border-border/40 p-7 backdrop-blur-md sm:space-y-6 sm:rounded-3xl sm:p-9">
+              <p className="landing-badge-glow flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-border/70 bg-card/50 px-3.5 py-1.5 text-xs leading-snug text-muted-foreground backdrop-blur-sm">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-40" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
@@ -253,10 +263,13 @@ export function LandingPage() {
             </m.div>
 
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">
-                Kopplar till det du redan använder
-              </p>
+            <div className="landing-section-frame space-y-3">
+              <div className="space-y-2">
+                <div aria-hidden className="landing-section-accent" />
+                <p className="landing-title-glow text-sm font-medium text-foreground">
+                  Kopplar till det du redan använder
+                </p>
+              </div>
               <LandingIntegrationsMarquee />
             </div>
             </m.div>
@@ -298,7 +311,7 @@ export function LandingPage() {
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <div
               id="kom-igang"
-              className="scroll-mt-20 rounded-3xl border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-6 landing-premium-card sm:p-7 lg:hidden"
+              className="landing-glow-border scroll-mt-20 rounded-[1.75rem] border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-7 landing-premium-card sm:rounded-3xl sm:p-8 lg:hidden"
             >
               <div className="mb-4 space-y-1">
                 <h2 className="font-display text-xl font-semibold">Redo?</h2>
@@ -331,7 +344,7 @@ export function LandingPage() {
         </aside>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-6 pb-5 safe-bottom safe-x lg:hidden">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 landing-page-shell pb-6 safe-bottom safe-x lg:hidden">
         <div
           className={cn(
             "pointer-events-auto transition-all duration-300",
@@ -339,7 +352,7 @@ export function LandingPage() {
           )}
         >
           <Button
-            className="w-full gap-2 rounded-2xl border border-border/40 shadow-2xl glow-md landing-shine"
+            className="landing-cta-float w-full gap-2 rounded-2xl border border-border/40 bg-background/80 landing-shine"
             size="lg"
             onClick={scrollToAuth}
           >

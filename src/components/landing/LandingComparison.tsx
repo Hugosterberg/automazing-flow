@@ -15,7 +15,7 @@ function ComparisonCard({ side }: { side: ComparisonSide }) {
       className={cn(
         "relative min-w-0 overflow-hidden rounded-2xl border p-5 sm:p-6",
         isAfter
-          ? "border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 landing-premium-card glow-sm"
+          ? "border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 landing-premium-card landing-glow-border glow-sm"
           : "border-border/70 bg-card/30"
       )}
     >
@@ -73,11 +73,11 @@ export function LandingComparison() {
             type="button"
             onClick={() => setActiveSide(side)}
             className={cn(
-              "flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+              "relative flex-1 overflow-hidden rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-300",
               activeSide === side
                 ? side === "after"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card text-foreground shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-md glow-sm"
+                  : "bg-card text-foreground shadow-md"
                 : "text-muted-foreground"
             )}
           >
@@ -115,8 +115,8 @@ export function LandingPillars() {
         <article
           key={pillar.title}
           className={cn(
-            "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all hover-lift interactive landing-premium-card",
-            index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/5"
+            "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all duration-300 hover-lift interactive landing-premium-card",
+            index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/10 landing-glow-border"
           )}
         >
           <div
@@ -124,8 +124,8 @@ export function LandingPillars() {
             className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 landing-grid-bg"
           />
           <div className="relative space-y-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-gradient-to-br from-muted/60 to-card/40">
-              <pillar.icon className="h-5 w-5 text-info" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-gradient-to-br from-info/15 via-muted/40 to-card/40 shadow-[0_0_24px_-10px_hsl(var(--info)/0.5)] transition-shadow duration-300 group-hover:shadow-[0_0_28px_-8px_hsl(var(--info)/0.65)]">
+              <pillar.icon className="h-5 w-5 text-info transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
