@@ -154,6 +154,13 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "05:00",
     enabled: true,
   },
+  "social-stats-snapshot": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "02:30",
+    endTime: "02:30",
+    enabled: true,
+  },
   "publish-scheduled-posts": {
     days: [1, 2, 3, 4, 5, 6, 7],
     timesPerDay: 1,

@@ -259,6 +259,17 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cronKey: "marketing-snapshot",
   },
   {
+    id: "social-stats-snapshot",
+    topic: "insights",
+    title: "Social statistik-snapshot",
+    description:
+      "Sparar dagliga följar- och engagemangssiffror per konto så Social-sidan kan visa trender, inte bara ögonblicksbilder.",
+    cadence: "Konfigurerbart schema",
+    icon: BarChart3,
+    outputHref: "/social-media",
+    cronKey: "social-stats-snapshot",
+  },
+  {
     id: "market-pulse-snapshot",
     topic: "insights",
     title: "Market pulse-snapshot",

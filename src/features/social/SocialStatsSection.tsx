@@ -2,11 +2,14 @@ import { useMemo } from "react";
 import { m } from "framer-motion";
 import { Users, FileText, Heart, Eye, Star, Loader2, ImagePlus } from "lucide-react";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Button } from "@/components/ui/button";
 import type { ConnectedAccount } from "@/types/accounts";
 import type { SocialMediaApiPost } from "./socialApiTypes";
+import { useSocialStatsTrend } from "./useSocialStatsTrend";
+import { formatStatChange, type SocialTrendMetric } from "./socialStatsTrend";
 
 const defaultStats = [
   { label: "Followers", value: "–", change: "", icon: Users, key: "followers" },
@@ -14,6 +17,21 @@ const defaultStats = [
   { label: "Posts", value: "–", change: "", icon: FileText, key: "media" },
   { label: "Engagement", value: "–", change: "", icon: Heart, key: "engagement" },
 ];
+
+/** Which snapshot metric backs each KPI card, keyed by the card's `key`. */
+const TREND_METRIC_BY_STAT_KEY: Record<string, SocialTrendMetric> = {
+  followers: "followers",
+  following: "following",
+  media: "mediaCount",
+  engagement: "engagementRate",
+  "avg-likes": "avgLikes",
+  "avg-views": "avgViews",
+  "gbp-rating": "averageRating",
+  "gbp-reviews": "reviewCount",
+};
+
+/** Decimal metrics get one decimal in the delta; counts stay whole. */
+const DECIMAL_METRICS = new Set<SocialTrendMetric>(["engagementRate", "averageRating"]);
 
 /**
  * Per-account KPI cards + recent posts grid for the Social page, with the
@@ -32,6 +50,7 @@ export function SocialStatsSection({
   posts: SocialMediaApiPost[];
 }) {
   const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
+  const { trend } = useSocialStatsTrend(account?.id ?? null);
 
   const stats = useMemo(() => {
     const s = account?.stats;
@@ -92,6 +111,22 @@ export function SocialStatsSection({
     ];
   }, [account]);
 
+  // Fill each card's change badge from the daily snapshots ("+12 (7d)").
+  // Cards keep their empty change until the cron has two days of history.
+  const statsWithTrend = useMemo(() => {
+    if (!trend) return stats;
+    return stats.map((stat) => {
+      const metric = TREND_METRIC_BY_STAT_KEY[stat.key];
+      const delta = metric ? trend.deltas[metric] : undefined;
+      if (delta == null) return stat;
+      const change = formatStatChange(delta, trend.spanDays, {
+        decimals: DECIMAL_METRICS.has(metric) ? 1 : 0,
+        suffix: metric === "engagementRate" ? "%" : "",
+      });
+      return change ? { ...stat, change } : stat;
+    });
+  }, [stats, trend]);
+
   return (
     <>
       {account && (account.isOAuth || account.isZernio) && (
@@ -119,7 +154,7 @@ export function SocialStatsSection({
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
+        {statsWithTrend.map((stat, i) => (
           <m.div key={stat.key} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.08 }}>
             <Card className="bg-card border-border glow-border hover:glow-sm transition-shadow duration-300">
               <CardContent className="p-5">
@@ -128,7 +163,16 @@ export function SocialStatsSection({
                   {loading && account && i < 3 ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                   ) : (
-                    stat.change && <span className="text-xs text-green-400 font-medium">{stat.change}</span>
+                    stat.change && (
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          stat.change.startsWith("−") ? "text-destructive" : "text-green-400"
+                        )}
+                      >
+                        {stat.change}
+                      </span>
+                    )
                   )}
                 </div>
                 <p className="text-2xl font-bold">{stat.value}</p>

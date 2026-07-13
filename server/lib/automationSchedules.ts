@@ -36,6 +36,7 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "daily-digest", cron: "0 6 * * 1-5", perTenant: true },
   { key: "marketing-alerts", cron: "0 7 * * 1-5", perTenant: true },
   { key: "marketing-snapshot", cron: "0 3 * * *", perTenant: true },
+  { key: "social-stats-snapshot", cron: "30 2 * * *", perTenant: true },
   { key: "market-pulse-snapshot", cron: "15 5 * * *", perTenant: true },
   { key: "weekly-report", cron: "30 7 * * 1", perTenant: true },
 ];
