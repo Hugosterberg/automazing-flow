@@ -83,8 +83,8 @@ export function LandingPage() {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-border/50 glass safe-top safe-x">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex h-14 min-w-0 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden" aria-label="Öppna meny">
@@ -120,11 +120,11 @@ export function LandingPage() {
               </SheetContent>
             </Sheet>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary glow-sm">
                 <Zap className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-bold">automazing</span>
+              <span className="truncate font-display text-base font-bold sm:text-lg">automazing</span>
             </div>
           </div>
 
@@ -141,68 +141,69 @@ export function LandingPage() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={scrollToAuth}>
               Logga in
             </Button>
-            <Button size="sm" className="gap-1.5 glow-sm" onClick={scrollToAuth}>
-              Kom igång
+            <Button size="sm" className="gap-1 px-2.5 text-xs sm:gap-1.5 sm:px-3 sm:text-sm glow-sm" onClick={scrollToAuth}>
+              <span className="max-[360px]:sr-only">Kom igång</span>
+              <span className="hidden max-[360px]:inline">Start</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="relative mx-auto grid max-w-7xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="px-4 pb-24 pt-8 sm:px-6 lg:pb-12 lg:pr-8 lg:pt-10">
-          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="space-y-14 sm:space-y-16">
-            <section className="space-y-6">
-              <p className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/50 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
-                <span className="relative flex h-2 w-2">
+      <div className="relative mx-auto grid min-w-0 max-w-7xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="min-w-0 px-4 pb-24 pt-6 safe-x sm:px-6 sm:pt-8 lg:pb-12 lg:pr-8 lg:pt-10">
+          <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-12 sm:space-y-16">
+            <section className="min-w-0 space-y-5 sm:space-y-6">
+              <p className="flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-border/70 bg-card/50 px-3 py-1.5 text-xs leading-snug text-muted-foreground backdrop-blur-sm">
+                <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-40" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
                 Byggt för företag som växer online
               </p>
 
-              <div className="max-w-2xl space-y-4">
-                <h1 className="font-display text-[2.35rem] font-bold leading-[1.04] tracking-tight sm:text-5xl lg:text-[3.35rem]">
+              <div className="min-w-0 max-w-2xl space-y-3 sm:space-y-4">
+                <h1 className="font-display text-[1.75rem] font-bold leading-[1.08] tracking-tight sm:text-[2.35rem] sm:leading-[1.04] lg:text-[3.35rem]">
                   Sluta jaga flikar.
                   <span className="mt-1 block landing-gradient-text">Kör allt här.</span>
                 </h1>
-                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+                <p className="text-[0.9375rem] leading-relaxed text-muted-foreground sm:text-base sm:leading-relaxed lg:text-lg">
                   Sociala medier, mail, recensioner och sälj — samlat med AI som vet vad som behöver
                   göras idag.
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Button size="lg" className="gap-2 glow-md landing-shine" onClick={scrollToAuth}>
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+                <Button size="lg" className="w-full gap-2 glow-md landing-shine sm:w-auto" onClick={scrollToAuth}>
                   Skapa konto gratis
                   <ArrowRight className="h-4 w-4" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-border/80 bg-card/30" onClick={() => scrollToId("produktdemo")}>
+                <Button size="lg" variant="outline" className="w-full border-border/80 bg-card/30 sm:w-auto" onClick={() => scrollToId("produktdemo")}>
                   Se demo
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:max-w-md sm:gap-3">
+              <div className="grid grid-cols-3 gap-1.5 sm:max-w-md sm:gap-3">
                 {HERO_STATS.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-xl border border-border/60 bg-card/40 px-2 py-2.5 text-center backdrop-blur-sm sm:px-3"
+                    className="min-w-0 rounded-xl border border-border/60 bg-card/40 px-1.5 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5"
                   >
-                    <p className="font-display text-lg font-bold tabular-nums sm:text-xl">{stat.value}</p>
-                    <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground sm:text-[11px]">{stat.label}</p>
+                    <p className="font-display text-base font-bold tabular-nums sm:text-lg lg:text-xl">{stat.value}</p>
+                    <p className="mt-0.5 text-[9px] leading-tight text-muted-foreground sm:text-[11px]">{stat.label}</p>
                   </div>
                 ))}
               </div>
 
-              <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <ul className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                 {LANDING_TRUST_POINTS.map((point) => (
-                  <li key={point} className="inline-flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden />
-                    {point}
+                  <li key={point} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                    <span>{point}</span>
                   </li>
                 ))}
               </ul>

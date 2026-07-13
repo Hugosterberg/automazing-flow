@@ -484,7 +484,7 @@ export function LandingProductDemo() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         {DEMO_SCENES.map((scene, index) => {
           const Icon = SCENE_ICONS[scene.id];
@@ -495,6 +495,7 @@ export function LandingProductDemo() {
               type="button"
               onClick={() => selectScene(index)}
               title={scene.label}
+              aria-label={scene.label}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all sm:px-3",
                 isActive
@@ -503,14 +504,14 @@ export function LandingProductDemo() {
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="max-w-[5rem] truncate sm:max-w-none">{scene.label}</span>
+              <span className="hidden sm:inline">{scene.label}</span>
             </button>
           );
         })}
         <button
           type="button"
           onClick={() => setPaused((p) => !p)}
-          className="ml-auto inline-flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground sm:ml-auto"
           aria-label={paused ? "Fortsätt demo" : "Pausa demo"}
         >
           {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}

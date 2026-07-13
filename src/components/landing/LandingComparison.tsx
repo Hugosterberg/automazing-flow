@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 export function LandingComparison() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <article className="rounded-2xl border border-border/70 bg-card/30 p-5">
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+      <article className="min-w-0 rounded-2xl border border-border/70 bg-card/30 p-4 sm:p-5">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {LANDING_COMPARISON.before.title}
         </p>
@@ -19,7 +19,7 @@ export function LandingComparison() {
         </ul>
       </article>
 
-      <article className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 p-5 landing-premium-card glow-sm hover-lift interactive">
+      <article className="relative min-w-0 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 p-4 landing-premium-card glow-sm hover-lift interactive sm:p-5">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl"
