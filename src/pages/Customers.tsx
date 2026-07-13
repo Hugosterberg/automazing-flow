@@ -296,7 +296,7 @@ export default function CustomersPage() {
                 "Kopiera kontaktuppgifter eller exportera filtrerade rader",
               ]
         }
-        tip="Koppla Day.ai under Kopplingar för att ställa frågor om kunder och affärer härifrån."
+        tip="Koppla Day.ai under Kopplingar för AI-frågor. Fyll i Företag för bättre förslag — Automationer kan synka och påminna."
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.03 }}>

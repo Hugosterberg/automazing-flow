@@ -194,7 +194,7 @@ export function ConnectionsControlPanel({
             onClick={() => void handleRefresh()}
           >
             <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-            Refresh
+            Uppdatera
           </Button>
         </div>
       </CardHeader>
@@ -202,14 +202,14 @@ export function ConnectionsControlPanel({
         {loading ? (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Loading health status…
+            Laddar hälsostatus…
           </p>
         ) : issues.length === 0 ? (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-6 text-center space-y-2">
             <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" aria-hidden />
-            <p className="text-sm font-medium">All clear</p>
+            <p className="text-sm font-medium">Allt ser bra ut</p>
             <p className="text-xs text-muted-foreground">
-              No failed jobs or broken connections detected. MCP queries still require connected providers with valid keys.
+              Inga misslyckade jobb eller trasiga kopplingar upptäcktes. MCP-frågor kräver fortfarande kopplade providers med giltiga nycklar.
             </p>
           </div>
         ) : (

@@ -37,7 +37,7 @@ export function kindForMode(mode: WorkspaceMode): ProfileKind {
 
 /** Heading for the profile list in each workspace (sidebar, switcher, home). */
 export function profilesLabelForMode(mode: WorkspaceMode): string {
-  return mode === "private" ? "Private profiles" : "Business profiles";
+  return mode === "private" ? "Privata profiler" : "Företagsprofiler";
 }
 
 const LAST_PROFILE_PREFIX = "automazing:workspace-last-profile";

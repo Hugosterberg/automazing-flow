@@ -50,27 +50,27 @@ interface Props {
 const COLUMNS: ColumnConfig[] = [
   {
     status: "open",
-    title: "To-do",
-    description: "New tasks start here.",
+    title: "Att göra",
+    description: "Nya uppgifter hamnar här.",
     icon: Clock3,
     accent: "from-sky-500/15 to-sky-500/5 border-sky-500/25",
-    empty: "Create a task above and it will appear here.",
+    empty: "Skapa en uppgift ovan så visas den här.",
   },
   {
     status: "in_progress",
-    title: "In progress",
-    description: "Work that is being handled now.",
+    title: "Pågår",
+    description: "Uppgifter du jobbar med just nu.",
     icon: PlayCircle,
     accent: "from-amber-500/15 to-amber-500/5 border-amber-500/25",
-    empty: "Drag a task here when work starts.",
+    empty: "Tryck Starta på ett kort när du börjar.",
   },
   {
     status: "done",
-    title: "Done",
-    description: "Completed and ready to review.",
+    title: "Klart",
+    description: "Klara uppgifter redo att granskas.",
     icon: CheckCircle2,
     accent: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/25",
-    empty: "Drop finished tasks here.",
+    empty: "Tryck Klar på kortet, eller flytta klara uppgifter hit.",
   },
 ];
 
@@ -133,10 +133,10 @@ function TaskCard({
   // One contextual advance action instead of every possible move — drag or
   // the dialog's status picker covers the rest.
   const advance: { label: string; status: TaskStatus } = completed
-    ? { label: "Reopen", status: "open" }
+    ? { label: "Öppna igen", status: "open" }
     : task.status === "in_progress"
-      ? { label: "Done", status: "done" }
-      : { label: "Start", status: "in_progress" };
+      ? { label: "Klar", status: "done" }
+      : { label: "Starta", status: "in_progress" };
 
   return (
     <article
@@ -199,7 +199,7 @@ function TaskCard({
                   }
                   onClick={(e) => e.stopPropagation()}
                   disabled={isMutating || !onToggleChecklistItem}
-                  aria-label={item.done ? "Mark as not done" : "Mark as done"}
+                  aria-label={item.done ? "Markera som ej klar" : "Markera som klar"}
                   className="h-3.5 w-3.5"
                 />
                 <span
@@ -214,7 +214,7 @@ function TaskCard({
             ))}
             {checklist.length > CARD_CHECKLIST_LIMIT ? (
               <li className="text-[11px] text-muted-foreground">
-                +{checklist.length - CARD_CHECKLIST_LIMIT} more
+                +{checklist.length - CARD_CHECKLIST_LIMIT} till
               </li>
             ) : null}
           </ul>
@@ -244,7 +244,7 @@ function TaskCard({
             <Badge
               variant="outline"
               className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500"
-              title={`AI prepared ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
+              title={`AI förberedde ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
             >
               <Sparkles className="h-3 w-3" />
               AI
@@ -259,7 +259,7 @@ function TaskCard({
               )}
             >
               <CalendarDays className="h-3 w-3" />
-              {overdue ? "Overdue " : ""}
+              {overdue ? "Försenad " : ""}
               {dueDate}
             </Badge>
           ) : null}
@@ -283,8 +283,8 @@ function TaskCard({
                 onAiAssist(task);
               }}
               disabled={isMutating || aiBusy}
-              aria-label="Prepare task with AI"
-              title="Prepare task with AI"
+              aria-label="Förbered uppgift med AI"
+              title="Förbered uppgift med AI"
             >
               {aiBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -316,7 +316,7 @@ function TaskCard({
               onDelete(task.id);
             }}
             disabled={isDeleting}
-            aria-label="Delete task"
+            aria-label="Ta bort uppgift"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -397,7 +397,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
     return (
       <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading tasks…
+        Laddar uppgifter…
       </div>
     );
   }
@@ -453,10 +453,10 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                       className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
                       onClick={onArchiveDone}
                       disabled={isMutating}
-                      title="Move all done tasks to the archive"
+                      title="Arkivera alla klara uppgifter"
                     >
                       <Archive className="h-3 w-3" />
-                      <span className="hidden sm:inline">Archive all</span>
+                      <span className="hidden sm:inline">Arkivera alla</span>
                     </Button>
                   ) : null}
                   <Badge variant="secondary" className="tabular-nums">
@@ -496,7 +496,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
       <div
         className="flex items-center justify-center gap-2 py-1 lg:hidden"
         role="tablist"
-        aria-label="Task lanes"
+        aria-label="Uppgiftskolumner"
       >
         {COLUMNS.map((column) => {
           const active = activeLane === column.status;

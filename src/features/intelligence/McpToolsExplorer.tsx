@@ -134,11 +134,11 @@ export function McpToolsExplorer({ businessProfileId }: { businessProfileId: str
         {statusLoading ? (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Loading accounts…
+            Laddar konton…
           </p>
         ) : readyAccounts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No ready MCP accounts. Connect providers under Connections → MCP with valid API keys or OAuth.
+            Inga MCP-konton redo. Koppla leverantörer under Kopplingar → MCP med giltiga API-nycklar eller OAuth.
           </p>
         ) : (
           <>

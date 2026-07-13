@@ -184,13 +184,13 @@ export function ContentAiImageCard({
           {!canvaConnected ? (
             embedded ? (
               <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                <span>Canva is not connected for this profile.</span>
+                <span>Canva är inte kopplad för den här profilen.</span>
                 <Button variant="link" size="sm" className="h-auto px-0 py-0 text-xs" asChild>
-                  <Link to="/connections">Connect Canva</Link>
+                  <Link to="/connections">Koppla Canva</Link>
                 </Button>
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">Connect Canva under Connections to export designs.</p>
+              <p className="text-[11px] text-muted-foreground">Koppla Canva under Kopplingar för att exportera designs.</p>
             )
           ) : null}
           {embedded ? (

@@ -577,15 +577,30 @@ export default function Index() {
         }
       />
 
-      {!isMobile ? (
       <PageSmartBar
-        title="Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
-        steps={[
-          "Läs dagens brief och kolla Idag-rutorna",
-          "Fyll i Företag och koppla konton för bättre AI",
-          "Öppna Automationer för jobb som kan köra sig själva",
-        ]}
-        tip="Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
+        title={
+          isMobile
+            ? "Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
+            : "Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
+        }
+        steps={
+          isMobile
+            ? [
+                "Beskrivning + webb under Företag",
+                "Koppla mail och sociala konton",
+                "Titta under Automationer vad som kan köras automatiskt",
+              ]
+            : [
+                "Läs dagens brief och kolla Idag-rutorna",
+                "Fyll i Företag och koppla konton för bättre AI",
+                "Öppna Automationer för jobb som kan köra sig själva",
+              ]
+        }
+        tip={
+          isMobile
+            ? "AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
+            : "Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
+        }
         liveHintOverride={
           health.score < 100 && health.topReason
             ? `${health.label} (${health.score}/100) — ${health.topReason}`
@@ -594,25 +609,6 @@ export default function Index() {
               : null
         }
       />
-      ) : (
-        <div className="space-y-2">
-          {health.score < 100 && health.topReason ? (
-            <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-foreground/90">
-              {health.label} · {health.topReason}
-            </p>
-          ) : null}
-          <PageSmartBar
-            title="Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
-            steps={[
-              "Beskrivning + webb under Företag",
-              "Koppla mail och sociala konton",
-              "Titta under Automationer vad som kan köras automatiskt",
-            ]}
-            tip="AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
-            smart={false}
-          />
-        </div>
-      )}
 
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 

@@ -320,7 +320,7 @@ export default function AutomationsPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            <span className="ml-1.5 hidden sm:inline">Refresh status</span>
+            <span className="ml-1.5 hidden sm:inline">Uppdatera status</span>
           </Button>
         }
       />
@@ -389,8 +389,8 @@ export default function AutomationsPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.automations}
-          title="MCP developer tools"
-          description="Documentation search and Era context queries for automation workflows."
+          title="MCP-utvecklarverktyg"
+          description="Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
         />
       </m.div>
 

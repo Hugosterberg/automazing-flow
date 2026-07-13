@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { m } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +47,7 @@ type TabValue = "active" | "accepted" | "dismissed";
 export default function AIRecommendationsPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
+  const { accounts } = legacy;
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
 
   const {
@@ -203,11 +204,14 @@ export default function AIRecommendationsPage() {
       <div className="space-y-4 max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <LightbulbGlowIcon className="h-7 w-7 text-primary" />
-          AI Recommendations
+          AI-rekommendationer
         </h1>
         <p className="text-sm text-muted-foreground">
-          Select a business profile to see its AI recommendations.
+          Välj en företagsprofil under Företag för att se AI-rekommendationer.
         </p>
+        <Button asChild size="sm" variant="outline" className="mt-2">
+          <Link to="/company">Öppna Företag</Link>
+        </Button>
       </div>
     );
   }
@@ -216,8 +220,8 @@ export default function AIRecommendationsPage() {
     <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={<LightbulbGlowIcon className="h-7 w-7 text-primary" />}
-        title="AI Recommendations"
-        description="Data-driven suggestions for this business profile."
+        title="AI-rekommendationer"
+        description="Datadrivna förslag för den här företagsprofilen."
         actions={
           <>
             <Button
@@ -226,27 +230,27 @@ export default function AIRecommendationsPage() {
               onClick={() => void refetch()}
               disabled={isFetching || isGenerating}
               className="text-muted-foreground"
-              title="Reload the list"
+              title="Ladda om listan"
             >
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="ml-1.5 hidden sm:inline">Reload</span>
+              <span className="ml-1.5 hidden sm:inline">Ladda om</span>
             </Button>
             <Button
               size="sm"
               onClick={() => void handleGenerate()}
               disabled={isGenerating}
-              title="Re-run the heuristic producer"
+              title="Kör om heuristikproducenten"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              <span className="ml-1.5">Generate</span>
+              <span className="ml-1.5">Generera</span>
             </Button>
           </>
         }
@@ -273,10 +277,10 @@ export default function AIRecommendationsPage() {
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : "Could not load recommendations."}
+              {error instanceof Error ? error.message : "Kunde inte ladda rekommendationer."}
             </p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Retry
+              Försök igen
             </Button>
           </CardContent>
         </Card>
@@ -286,8 +290,8 @@ export default function AIRecommendationsPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
-          title="MCP context"
-          description="Pull live context from Era MCP to enrich recommendations."
+          title="MCP-kontext"
+          description="Hämta live-kontext från Era MCP för att berika rekommendationer."
         />
       </m.div>
 
@@ -363,6 +367,8 @@ export default function AIRecommendationsPage() {
                     hasKindFilter={kindFilter !== "all"}
                     onGenerate={value === "active" ? () => void handleGenerate() : undefined}
                     isGenerating={isGenerating}
+                    hasConnections={accounts.length > 0}
+                    onShowActive={() => setTab("active")}
                   />
                 ) : (
                   visible[value].map((rec) => (
@@ -390,18 +396,22 @@ function RecommendationsEmpty({
   hasKindFilter,
   onGenerate,
   isGenerating,
+  hasConnections = true,
+  onShowActive,
 }: {
   tab: TabValue;
   hasKindFilter: boolean;
   onGenerate?: () => void;
   isGenerating?: boolean;
+  hasConnections?: boolean;
+  onShowActive?: () => void;
 }) {
   if (hasKindFilter) {
     return (
       <EmptyState
         size="compact"
-        title="No matches"
-        description="No recommendations match the selected kind."
+        title="Inga träffar"
+        description="Inga rekommendationer matchar den valda typen."
       />
     );
   }
@@ -411,19 +421,32 @@ function RecommendationsEmpty({
       return (
         <EmptyState
           icon={Sparkles}
-          title="No active recommendations"
-          description="Run Generate to analyse your connections, tasks, and content for fresh suggestions."
+          title="Inga aktiva rekommendationer"
+          description={
+            hasConnections
+              ? "Klicka Generera för att analysera kopplingar, uppgifter och innehåll efter nya förslag."
+              : "Koppla konton under Kopplingar och fyll i Företag — sedan kan Generera ge meningsfulla förslag."
+          }
           action={
-            onGenerate ? (
+            hasConnections && onGenerate ? (
               <Button size="sm" onClick={onGenerate} disabled={isGenerating}>
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-1.5" aria-hidden />
                 ) : (
                   <Sparkles className="h-4 w-4 mr-1.5" aria-hidden />
                 )}
-                Generate
+                Generera
               </Button>
-            ) : undefined
+            ) : (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/connections">Öppna Kopplingar</Link>
+                </Button>
+                <Button asChild size="sm" variant="ghost">
+                  <Link to="/company">Öppna Företag</Link>
+                </Button>
+              </div>
+            )
           }
         />
       );
@@ -431,15 +454,23 @@ function RecommendationsEmpty({
       return (
         <EmptyState
           size="compact"
-          title="Nothing accepted yet"
-          description="Recommendations you accept will land here so you can look them up later."
+          title="Inget accepterat ännu"
+          description="Rekommendationer du accepterar hamnar här så du kan hitta dem senare."
         />
       );
     case "dismissed":
       return (
         <EmptyState
           size="compact"
-          title="No dismissed recommendations"
+          title="Inga avvisade rekommendationer"
+          description="Det du avvisar sparas här. Gå tillbaka till Aktiva om du vill granska nya förslag."
+          action={
+            onShowActive ? (
+              <Button size="sm" variant="outline" onClick={onShowActive}>
+                Visa aktiva
+              </Button>
+            ) : undefined
+          }
         />
       );
   }

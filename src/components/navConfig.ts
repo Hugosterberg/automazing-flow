@@ -67,7 +67,7 @@ export interface NavItem extends TopNavItem {
 export const topNavItems: TopNavItem[] = [
   {
     key: "company",
-    title: "Company",
+    title: "Företag",
     url: "/company",
     icon: Building2,
     platforms: [] as AccountPlatform[],
@@ -76,7 +76,7 @@ export const topNavItems: TopNavItem[] = [
   },
   {
     key: "connections",
-    title: "Connections",
+    title: "Kopplingar",
     url: "/connections",
     icon: PlugZap,
     platforms: [] as AccountPlatform[],
@@ -92,7 +92,7 @@ export const topNavItems: TopNavItem[] = [
   },
   {
     key: "preferences",
-    title: "Preferences",
+    title: "Inställningar",
     url: "/preferences",
     icon: Settings,
     platforms: [] as AccountPlatform[],
@@ -111,7 +111,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "social-media",
-    title: "Social Media",
+    title: "Socialt",
     url: "/social-media",
     icon: Share2,
     platforms: [
@@ -127,7 +127,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "ecommerce",
-    title: "E-commerce",
+    title: "E-handel",
     url: "/ecommerce",
     icon: ShoppingCart,
     platforms: ["shopify", "notion"] as AccountPlatform[],
@@ -155,7 +155,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "digital-brand",
-    title: "Digital Brand",
+    title: "Digitalt varumärke",
     url: "/digital-brand",
     icon: Globe2,
     platforms: [] as AccountPlatform[],
@@ -165,7 +165,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "customers",
-    title: "Customers",
+    title: "Kunder",
     url: "/customers",
     icon: Users,
     platforms: [] as AccountPlatform[],
@@ -175,7 +175,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "calendar",
-    title: "Calendar",
+    title: "Kalender",
     url: "/calendar",
     icon: CalendarDays,
     platforms: ["google_calendar", "outlook_calendar"] as AccountPlatform[],
@@ -183,7 +183,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "messages",
-    title: "Messages",
+    title: "Meddelanden",
     url: "/messages",
     icon: MessageSquare,
     platforms: ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as AccountPlatform[],
@@ -191,7 +191,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "reviews",
-    title: "Reviews",
+    title: "Recensioner",
     url: "/reviews",
     icon: Star,
     platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
@@ -200,7 +200,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "tasks",
-    title: "Tasks",
+    title: "Uppgifter",
     url: "/tasks",
     icon: ListChecks,
     platforms: [] as AccountPlatform[],
@@ -209,7 +209,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "insights",
-    title: "Insights",
+    title: "Insikter",
     url: "/insights",
     icon: BarChart3,
     platforms: [] as AccountPlatform[],
@@ -218,7 +218,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "activity",
-    title: "Activity",
+    title: "Aktivitet",
     url: "/activity",
     icon: Activity,
     platforms: [] as AccountPlatform[],
@@ -227,7 +227,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "automations",
-    title: "Automations",
+    title: "Automationer",
     url: "/automations",
     icon: Zap,
     platforms: [] as AccountPlatform[],
@@ -236,7 +236,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "ai-recommendations",
-    title: "AI Recommendations",
+    title: "AI-förslag",
     url: "/ai-recommendations",
     icon: LightbulbGlowIcon,
     platforms: [] as AccountPlatform[],

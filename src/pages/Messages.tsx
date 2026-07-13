@@ -8,7 +8,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -777,6 +777,10 @@ export default function MessagesPage() {
   ) : inboxFilter !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxFilterPersisted("all")}>
       Visa alla meddelanden
+    </Button>
+  ) : inboxEmptyState.showConnect ? (
+    <Button asChild type="button" size="sm" variant="outline" className="h-8 text-xs">
+      <Link to="/connections">Öppna Kopplingar</Link>
     </Button>
   ) : undefined;
 

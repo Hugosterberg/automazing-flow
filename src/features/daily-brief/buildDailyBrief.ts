@@ -17,7 +17,7 @@ export interface BriefItem {
   id: string;
   kind: BriefItemKind;
   severity: BriefSeverity;
-  /** Short, scannable headline, e.g. "2 connections need attention". */
+  /** Short, scannable headline, e.g. "2 kopplingar behöver uppmärksamhet". */
   title: string;
   /** One line of supporting detail. */
   description: string;
@@ -63,22 +63,22 @@ export interface DailyBriefInput {
 const SEVERITY_RANK: Record<BriefSeverity, number> = { critical: 0, warning: 1, info: 2 };
 const HARD_HEALTH = new Set(["expired", "failed", "missing"]);
 
-/** "A" · "A and B" · "A, B and 2 more" — keeps descriptions readable. */
+/** "A" · "A och B" · "A, B och 2 till" — keeps descriptions readable. */
 export function joinNames(names: string[], maxShown = 2): string {
   const clean = names.map((n) => n.trim()).filter(Boolean);
   if (clean.length === 0) return "";
   if (clean.length === 1) return clean[0];
   if (clean.length <= maxShown) {
-    return `${clean.slice(0, -1).join(", ")} and ${clean[clean.length - 1]}`;
+    return `${clean.slice(0, -1).join(", ")} och ${clean[clean.length - 1]}`;
   }
-  return `${clean.slice(0, maxShown).join(", ")} and ${clean.length - maxShown} more`;
+  return `${clean.slice(0, maxShown).join(", ")} och ${clean.length - maxShown} till`;
 }
 
 function taskDescription(tasks: Array<{ title: string }>): string {
   const titles = tasks.map((t) => t.title.trim()).filter(Boolean);
   if (titles.length === 0) return "";
   const head = `“${titles[0]}”`;
-  return titles.length > 1 ? `${head} and ${titles.length - 1} more` : head;
+  return titles.length > 1 ? `${head} och ${titles.length - 1} till` : head;
 }
 
 export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
@@ -92,10 +92,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "connections",
       kind: "connection",
       severity: critical ? "critical" : "warning",
-      title: `${n} ${n === 1 ? "connection needs" : "connections need"} attention`,
+      title: n === 1 ? "1 koppling behöver uppmärksamhet" : `${n} kopplingar behöver uppmärksamhet`,
       description: critical
-        ? `${labels} stopped syncing — reconnect to keep data flowing.`
-        : `${labels} could use a quick re-sync.`,
+        ? `${labels} synkar inte — återanslut för att behålla flödet.`
+        : `${labels} behöver en snabb omsynk.`,
       to: "/connections?tab=health",
       count: n,
     });
@@ -107,9 +107,9 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "messages",
       kind: "message",
       severity: "warning",
-      title: `${unreadDms} unread ${unreadDms === 1 ? "message" : "messages"}`,
+      title: unreadDms === 1 ? "1 oläst meddelande" : `${unreadDms} olästa meddelanden`,
       description:
-        unreadDms === 1 ? "A customer is waiting for a reply." : "Customers are waiting for replies.",
+        unreadDms === 1 ? "En kund väntar på svar." : "Kunder väntar på svar.",
       to: "/messages",
       count: unreadDms,
     });
@@ -121,9 +121,11 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "leads-followup",
       kind: "lead",
       severity: "warning",
-      title: `${leadsToFollowUp} ${leadsToFollowUp === 1 ? "lead" : "leads"} to follow up`,
+      title: leadsToFollowUp === 1 ? "1 lead att följa upp" : `${leadsToFollowUp} leads att följa upp`,
       description:
-        leadsToFollowUp === 1 ? "A follow-up is due — don't let it go cold." : "Follow-ups are due — keep deals moving.",
+        leadsToFollowUp === 1
+          ? "En uppföljning är due — låt den inte kallna."
+          : "Uppföljningar väntar — håll affärerna i rörelse.",
       to: "/sales?view=followups",
       count: leadsToFollowUp,
     });
@@ -135,8 +137,11 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "outreach-queue",
       kind: "lead",
       severity: "info",
-      title: `${outreachQueuePending} outreach draft${outreachQueuePending === 1 ? "" : "s"} ready`,
-      description: "Automated follow-up copy is queued — review and send from Sales.",
+      title:
+        outreachQueuePending === 1
+          ? "1 outreach-utkast redo"
+          : `${outreachQueuePending} outreach-utkast redo`,
+      description: "Automatisk uppföljningstext väntar — granska och skicka under Sales.",
       to: "/sales?view=outreach-queue",
       count: outreachQueuePending,
     });
@@ -148,8 +153,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-roas",
       kind: "marketing",
       severity: "warning",
-      title: `Ads are underwater (ROAS ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(underwaterRoas)}×)`,
-      description: "Revenue is below ad spend over the last 7 days — review campaigns on Marketing.",
+      title: `Annonser under vatten (ROAS ${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(underwaterRoas)}×)`,
+      description: "Intäkt under annonskostnad senaste 7 dagarna — granska kampanjerna under Marketing.",
       to: "/marketing",
       count: 1,
     });
@@ -158,8 +163,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-trend",
       kind: "marketing",
       severity: "info",
-      title: "Ad ROAS dipped this week",
-      description: "Week-over-week return on ad spend is down — check what's changed on Marketing.",
+      title: "Annons-ROAS sjönk den här veckan",
+      description: "Vecka-mot-vecka-avkastning är ner — kolla vad som ändrats under Marketing.",
       to: "/marketing",
       count: 1,
     });
@@ -171,8 +176,11 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-inventory",
       kind: "marketing",
       severity: "warning",
-      title: `${inventoryAlertCount} ${inventoryAlertCount === 1 ? "product is" : "products are"} low on stock`,
-      description: "Active ad campaigns may be pointing at items that need restocking.",
+      title:
+        inventoryAlertCount === 1
+          ? "1 produkt har lågt lager"
+          : `${inventoryAlertCount} produkter har lågt lager`,
+      description: "Aktiva annonser kan peka mot varor som behöver påfyllning.",
       to: "/marketing",
       count: inventoryAlertCount,
     });
@@ -185,8 +193,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "automations-failed",
       kind: "automation",
       severity: "critical",
-      title: `${n} ${n === 1 ? "automation" : "automations"} failed on the last run`,
-      description: `${joinNames(failedAutomations.map((a) => a.title))} — review and retry on Automations.`,
+      title: n === 1 ? "1 automation misslyckades senast" : `${n} automationer misslyckades senast`,
+      description: `${joinNames(failedAutomations.map((a) => a.title))} — granska och kör om under Automationer.`,
       to: "/automations",
       count: n,
     });
@@ -198,8 +206,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "reviews-reply",
       kind: "review",
       severity: "warning",
-      title: `${reviewsNeedingReply} ${reviewsNeedingReply === 1 ? "review needs" : "reviews need"} a reply`,
-      description: "Respond to recent customer feedback while it's still fresh.",
+      title: reviewsNeedingReply === 1 ? "1 recension behöver svar" : `${reviewsNeedingReply} recensioner behöver svar`,
+      description: "Svara på färsk kundfeedback medan den fortfarande är aktuell.",
       to: "/reviews?filter=needs_reply",
       count: reviewsNeedingReply,
     });
@@ -211,7 +219,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "tasks-overdue",
       kind: "task",
       severity: "warning",
-      title: `${n} ${n === 1 ? "task is" : "tasks are"} overdue`,
+      title: n === 1 ? "1 uppgift är försenad" : `${n} uppgifter är försenade`,
       description: taskDescription(input.overdueTasks),
       to: "/tasks?view=overdue",
       count: n,
@@ -224,7 +232,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "tasks-due-today",
       kind: "task",
       severity: "info",
-      title: `${n} ${n === 1 ? "task is" : "tasks are"} due today`,
+      title: n === 1 ? "1 uppgift förfaller idag" : `${n} uppgifter förfaller idag`,
       description: taskDescription(input.dueTodayTasks),
       to: "/tasks",
       count: n,
@@ -237,7 +245,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "recommendations",
       kind: "recommendation",
       severity: "info",
-      title: `${n} new ${n === 1 ? "recommendation" : "recommendations"}`,
+      title: n === 1 ? "1 nytt AI-förslag" : `${n} nya AI-förslag`,
       description: taskDescription(input.newRecommendations),
       to: "/ai-recommendations",
       count: n,
@@ -268,8 +276,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       items,
       actionCount: 0,
       allClear: true,
-      headline: "You're all caught up",
-      subline: "Nothing needs your attention right now — nice work.",
+      headline: "Du är ikapp",
+      subline: "Inget behöver din uppmärksamhet just nu — bra jobbat.",
     };
   }
 
@@ -277,7 +285,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     items,
     actionCount,
     allClear: false,
-    headline: `${actionCount} ${actionCount === 1 ? "thing needs" : "things need"} your attention`,
-    subline: "Here's your focus for today, in priority order.",
+    headline: actionCount === 1 ? "1 sak behöver din uppmärksamhet" : `${actionCount} saker behöver din uppmärksamhet`,
+    subline: "Här är dagens fokus, i prioritetsordning.",
   };
 }

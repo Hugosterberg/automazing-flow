@@ -550,7 +550,7 @@ export default function SocialMedia() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={Sparkles}
-        title="Social Media"
+        title="Sociala medier"
         description="Automatisera och hantera dina sociala kanaler — publicera, schemalägg och följ statistik."
       />
 
@@ -574,8 +574,8 @@ export default function SocialMedia() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.social}
-          title="MCP design assist"
-          description="Creative briefs and design direction via Canva MCP for social content."
+          title="MCP-designstöd"
+          description="Kreativa briefs och designriktning via Canva MCP för socialt innehåll."
         />
       </m.div>
 
@@ -646,20 +646,20 @@ export default function SocialMedia() {
                         </p>
                       ) : (
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Not linked for this profile. {entry.connectSteps}
+                          Inte kopplat för den här profilen. {entry.connectSteps}
                         </p>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-3 text-xs">
                       {linkedAccounts.length > 0 ? (
-                        <span className="font-medium text-success">Connected</span>
+                        <span className="font-medium text-success">Kopplat</span>
                       ) : (
                         <Link to="/connections" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
-                          Connect now
+                          Koppla nu
                         </Link>
                       )}
                       <Link to="/preferences" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
-                        API keys
+                        API-nycklar
                       </Link>
                     </div>
                   </div>
@@ -753,17 +753,17 @@ export default function SocialMedia() {
               ) : analysisResult ? (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">About</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Om</p>
                     <p className="text-sm leading-relaxed">{analysisResult.about}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Writes about</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Skriver om</p>
                     <p className="text-sm leading-relaxed">{analysisResult.writes}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Perception</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Uppfattning</p>
                     <p className="text-sm leading-relaxed">{analysisResult.perception}</p>
                   </div>
                 </div>

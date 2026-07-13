@@ -244,7 +244,7 @@ export function ConnectionCard({
     }
   }
 
-  const primaryLabel = active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add / reconnect";
+  const primaryLabel = active.length === 0 ? "Koppla" : reconnectNeeded ? "Koppla om" : "Lägg till / koppla om";
   const PrimaryIcon = active.length === 0 ? Link2 : RefreshCw;
   const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
   const extraPathLabels = pathOptions
@@ -357,7 +357,7 @@ export function ConnectionCard({
           {mcpConnecting && mcpMeta?.auth === "keyless" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : null}
-          {active.length === 0 ? "Connect" : reconnectNeeded ? "Reconnect" : "Add"}
+          {active.length === 0 ? "Koppla" : reconnectNeeded ? "Koppla om" : "Lägg till"}
         </Button>
       </div>
 
@@ -463,7 +463,7 @@ export function ConnectionCard({
                     onClick={() => setRemoveTarget(c)}
                     disabled={isDisconnecting}
                     aria-label={`Disconnect ${c.displayName || c.username}`}
-                    title="Disconnect — removes the account permanently"
+                    title="Koppla från — tar bort kontot permanent"
                   >
                     {isDisconnecting ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -511,7 +511,7 @@ export function ConnectionCard({
                   onClick={() => startConnect("zernio")}
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  Connect via Zernio
+                  Koppla via Zernio
                 </Button>
               </>
             ) : (
@@ -570,14 +570,13 @@ export function ConnectionCard({
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect {removeTarget?.displayName || removeTarget?.username}?</AlertDialogTitle>
+            <AlertDialogTitle>Koppla från {removeTarget?.displayName || removeTarget?.username}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The account will be removed and its stored tokens cleared. You can connect a different
-              account in its place. This cannot be undone.
+              Kontot tas bort och sparade tokens rensas. Du kan koppla ett annat konto i stället. Detta går inte att ångra.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -585,7 +584,7 @@ export function ConnectionCard({
                 setRemoveTarget(null);
               }}
             >
-              Disconnect
+              Koppla från
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -594,7 +593,7 @@ export function ConnectionCard({
     <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Connect Shopify</DialogTitle>
+          <DialogTitle>Koppla Shopify</DialogTitle>
           <DialogDescription>
             Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
           </DialogDescription>
@@ -621,10 +620,10 @@ export function ConnectionCard({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>
-            Cancel
+            Avbryt
           </Button>
           <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
-            Continue
+            Fortsätt
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -632,7 +631,7 @@ export function ConnectionCard({
     <Dialog open={mcpDialogOpen} onOpenChange={setMcpDialogOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Connect {entry.label}</DialogTitle>
+          <DialogTitle>Koppla {entry.label}</DialogTitle>
           <DialogDescription>{entry.connectSteps}</DialogDescription>
         </DialogHeader>
         {mcpMeta?.auth === "shop_domain" ? <ShopifyConnectGuide /> : null}
@@ -655,7 +654,7 @@ export function ConnectionCard({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setMcpDialogOpen(false)} disabled={mcpConnecting}>
-            Cancel
+            Avbryt
           </Button>
           <Button
             onClick={() => void submitMcpManualConnect()}
@@ -665,7 +664,7 @@ export function ConnectionCard({
               (mcpMeta?.auth === "api_key" && entry.platform !== "sprouts" && !mcpCredential.trim())
             }
           >
-            {mcpConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
+            {mcpConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Koppla"}
           </Button>
         </DialogFooter>
       </DialogContent>

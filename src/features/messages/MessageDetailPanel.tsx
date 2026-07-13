@@ -815,10 +815,10 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Handled
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Hanterad
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> Reply
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> Svara
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng

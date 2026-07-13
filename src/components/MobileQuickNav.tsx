@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
 import {
   Activity as ActivityIcon,
+  Building2,
   CalendarDays,
   Film,
   Home,
   ListChecks,
   Menu,
   MessageSquare,
+  PlugZap,
   Share2,
   Star,
   Target,
   Users,
+  Zap,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -35,13 +38,17 @@ const PRIMARY_NAV = [
   { to: "/reviews", label: "Recensioner", icon: Star, match: (path: string) => path.startsWith("/reviews"), badgeKey: "reviews" as const },
 ] as const;
 
+/** Work destinations + permanent setup destinations (always visible when mode allows). */
 const MORE_LINKS = [
   { to: "/content", label: "Content", icon: Film },
   { to: "/calendar", label: "Kalender", icon: CalendarDays },
-  { to: "/social-media", label: "Social", icon: Share2 },
-  { to: "/sales", label: "Sales", icon: Target },
-  { to: "/customers", label: "Kunder", icon: Users },
+  { to: "/social-media", label: "Socialt", icon: Share2 },
+  { to: "/sales", label: "Sales", icon: Target, modes: ["business"] as const },
+  { to: "/customers", label: "Kunder", icon: Users, modes: ["business"] as const },
   { to: "/activity", label: "Aktivitet", icon: ActivityIcon },
+  { to: "/connections", label: "Kopplingar", icon: PlugZap },
+  { to: "/company", label: "Företag", icon: Building2, modes: ["business"] as const },
+  { to: "/automations", label: "Automationer", icon: Zap },
 ] as const;
 
 function BadgeCount({ count }: { count: number }) {
@@ -76,10 +83,19 @@ export function MobileQuickNav() {
   );
 
   const setupHint = useMemo(() => {
-    if (mode !== "business") return null;
+    const connectedCount = accounts.filter((a) => !a.disconnectedAt).length;
+    if (mode === "private") {
+      if (connectedCount === 0) {
+        return {
+          text: "Koppla mail eller sociala konton under Kopplingar för att fylla inkorg och flöden.",
+          to: "/connections" as const,
+          cta: "Öppna Kopplingar",
+        };
+      }
+      return null;
+    }
     const profile = profiles.find((p) => p.id === businessProfileId) ?? profiles[0] ?? null;
     const completeness = getBusinessProfileCompleteness(profile);
-    const connectedCount = accounts.filter((a) => !a.disconnectedAt).length;
     if (!completeness.isStrong) {
       return {
         text: "Fyll i Företag (beskrivning + webb) så AI och automationer blir mer relevanta.",
@@ -110,7 +126,12 @@ export function MobileQuickNav() {
     return true;
   });
 
-  const moreItems = MORE_LINKS.filter((item) => isNavUrlAllowedInMode(item.to, mode));
+  const moreItems = MORE_LINKS.filter((item) => {
+    if ("modes" in item && item.modes && !(item.modes as readonly string[]).includes(mode)) {
+      return false;
+    }
+    return isNavUrlAllowedInMode(item.to, mode);
+  });
   const moreActive = moreItems.some((item) => pathname.startsWith(item.to));
 
   return (

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { m } from "framer-motion";
 import {
@@ -855,6 +855,10 @@ export default function SalesMarketingPage() {
                               onClick={() => document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth" })}
                             >
                               Från leads
+                            </Button>
+                          ) : stage.status === "open" ? (
+                            <Button asChild type="button" size="sm" variant="ghost" className="h-7 text-[11px]">
+                              <Link to="/company">Fyll i Företag för bättre lead-AI</Link>
                             </Button>
                           ) : null}
                         </div>

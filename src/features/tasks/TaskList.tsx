@@ -43,12 +43,12 @@ export function TaskList({
   onDelete,
   isToggling,
   isDeleting,
-  emptyMessage = "No tasks yet.",
+  emptyMessage = "Inga uppgifter ännu.",
 }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading tasks…
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Laddar uppgifter…
       </div>
     );
   }

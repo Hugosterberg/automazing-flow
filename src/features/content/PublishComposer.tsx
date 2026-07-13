@@ -170,7 +170,7 @@ export function PublishComposer({
 
   async function publishNow() {
     if (!businessProfileId) {
-      toast({ title: "Select a business profile first", variant: "destructive" });
+      toast({ title: "Välj en företagsprofil först", variant: "destructive" });
       return;
     }
     if (selectedIds.length === 0 || !caption.trim()) return;

@@ -157,7 +157,7 @@ export function MarketingPerformance() {
   if (isLoading && !performance) {
     return (
       <Card className="border-border border-dashed">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">Loading marketing data…</CardContent>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">Laddar marknadsföringsdata…</CardContent>
       </Card>
     );
   }
@@ -170,23 +170,23 @@ export function MarketingPerformance() {
             <Gauge className="h-4 w-4 text-primary" />
             Marknadsföringsresultat
           </CardTitle>
-          <CardDescription>Connect Shopify and at least one ad platform to see ROAS here.</CardDescription>
+          <CardDescription>Koppla Shopify och minst en annonsplattform för att se ROAS här.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {!connected.shopify ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/ecommerce">Connect Shopify</Link>
+              <Link to="/ecommerce">Koppla Shopify</Link>
             </Button>
           ) : null}
           {!connected.meta_business && !connected.google_ads ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/connections">Connect ads</Link>
+              <Link to="/connections">Koppla annonser</Link>
             </Button>
           ) : null}
           <Button asChild size="sm" variant="ghost">
             <a href="#paid-ads">
               <Plug className="h-3.5 w-3.5 mr-1.5" />
-              Set up paid ads
+              Sätt upp betald annonsering
             </a>
           </Button>
         </CardContent>

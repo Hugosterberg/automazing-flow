@@ -132,28 +132,32 @@ export function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): 
   return channel === "whatsapp" || channel === "wa";
 }
 
-export function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: string } {
+export function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: string; showConnect?: boolean } {
   if (tab === "mail") {
     return {
       title: "Ingen mail ännu",
-      description: "Koppla Gmail eller Outlook för att se e-post här.",
+      description: "Koppla Gmail eller Outlook under Kopplingar för att se e-post här.",
+      showConnect: true,
     };
   }
   if (tab === "instagram") {
     return {
       title: "Inga Instagram-meddelanden",
-      description: "DM:er visas här när Zernio Inbox är kopplad.",
+      description: "DM:er visas här när Zernio Inbox är kopplad under Kopplingar.",
+      showConnect: true,
     };
   }
   if (tab === "messenger") {
     return {
       title: "Inga Messenger-meddelanden",
-      description: "Facebook Messenger-konversationer visas här via Zernio Inbox.",
+      description: "Facebook Messenger visas här via Zernio Inbox — koppla under Kopplingar.",
+      showConnect: true,
     };
   }
   return {
     title: "Inga WhatsApp-meddelanden",
-    description: "WhatsApp-konversationer visas här via Zernio Inbox.",
+    description: "WhatsApp visas här via Zernio Inbox — koppla under Kopplingar.",
+    showConnect: true,
   };
 }
 
@@ -163,7 +167,7 @@ export function inboxEmptyCopy(opts: {
   filter: InboxFilter;
   search: string;
   hasMessagesInTab: boolean;
-}): { title: string; description: string; showClearSearch?: boolean } {
+}): { title: string; description: string; showClearSearch?: boolean; showConnect?: boolean } {
   const query = opts.search.trim();
   if (query) {
     return {
@@ -174,7 +178,7 @@ export function inboxEmptyCopy(opts: {
   }
   if (opts.filter === "open" && opts.hasMessagesInTab) {
     return {
-      title: "Inbox zero",
+      title: "Inget kvar att svara på",
       description: "Alla meddelanden i denna kanal är hanterade. Bra jobbat!",
     };
   }

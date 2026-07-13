@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, m } from "framer-motion";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
@@ -229,6 +230,14 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
       <div className="rounded-lg border border-dashed border-border px-6 py-10 text-center">
         <p className="text-sm font-medium text-foreground">Inga uppföljningar just nu</p>
         <p className="mt-1 text-xs text-muted-foreground">Alla leads är ikapp — bra jobbat.</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <Button asChild size="sm" variant="outline" className="h-8 text-xs">
+            <Link to="/sales">Öppna Sales</Link>
+          </Button>
+          <Button asChild size="sm" variant="ghost" className="h-8 text-xs">
+            <Link to="/company">Fyll i Företag</Link>
+          </Button>
+        </div>
       </div>
     );
   }

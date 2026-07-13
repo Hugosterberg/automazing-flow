@@ -218,7 +218,7 @@ export default function ActivityPage() {
             tip={
               isMobile
                 ? "Här syns vad automationer och synk gjorde — använd filtrer när något ser konstigt ut."
-                : "Genvägar: J/K bläddra · / Search · E Error · W Warning · Esc Close."
+                : "Genvägar: J/K bläddra · / sök · E fel · W varning · Esc stäng."
             }
             liveHintOverride={activityLiveHint}
           />

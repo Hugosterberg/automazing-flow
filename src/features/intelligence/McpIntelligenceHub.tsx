@@ -50,13 +50,13 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
               MCP Intelligence
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              {featureCount} query tools across {platformCount} providers. Each input shows credential status before you run a call.
+              {featureCount} frågeverktyg över {platformCount} leverantörer. Varje fält visar autentiseringsstatus innan du kör ett anrop.
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
             <Link to="/connections?tab=mcp">
               <PlugZap className="h-3.5 w-3.5" aria-hidden />
-              Connect providers
+              Koppla leverantörer
             </Link>
           </Button>
         </div>
@@ -77,7 +77,7 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
 
           <TabsContent value="overview" className="mt-0 space-y-4">
             <p className="text-xs text-muted-foreground">
-              Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs.
+              Status för varje MCP-leverantör. Åtgärda saknade API-nycklar eller utgången OAuth under Kopplingar innan du kör frågor i andra flikar.
             </p>
             <McpProviderStatusList businessProfileId={businessProfileId} />
             <McpDataCatalog businessProfileId={businessProfileId} />

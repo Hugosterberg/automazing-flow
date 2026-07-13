@@ -178,7 +178,7 @@ export function ApiaiBatchPanel({
       </CardHeader>
       <CardContent className="space-y-3">
         {!businessProfileId ? (
-          <p className="text-sm text-muted-foreground">Select a business profile to run batch jobs.</p>
+          <p className="text-sm text-muted-foreground">Välj en företagsprofil för att köra batch-jobb.</p>
         ) : null}
         {imageAssets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">

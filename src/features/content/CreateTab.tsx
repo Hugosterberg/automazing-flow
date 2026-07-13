@@ -477,7 +477,7 @@ export function CreateTab({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>No active profile</AlertTitle>
-              <AlertDescription>Select a business profile before loading apiai.me tools.</AlertDescription>
+              <AlertDescription>Välj en företagsprofil innan du laddar apiai.me-verktyg.</AlertDescription>
             </Alert>
           ) : toolsError ? (
             <Alert variant="destructive">

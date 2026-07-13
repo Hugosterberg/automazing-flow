@@ -114,9 +114,9 @@ type BrandRecommendation = {
 
 const AREA_LABELS: Record<RecommendationArea, string> = {
   seo: "SEO",
-  performance: "Performance",
-  trust: "Trust",
-  channels: "Channels",
+  performance: "Prestanda",
+  trust: "Förtroende",
+  channels: "Kanaler",
 };
 
 const AREA_ICONS: Record<RecommendationArea, ComponentType<{ className?: string }>> = {
@@ -574,7 +574,7 @@ export default function DigitalBrandPage() {
       <PageHeader
         icon={Sparkles}
         title="Digital Brand"
-        description="Live website audit values plus SEO, performance, trust, and channel recommendations."
+        description="Live webbplatsaudit plus SEO-, prestanda-, förtroende- och kanalrekommendationer."
         actions={
           <div className="flex flex-wrap gap-2">
             {websiteUrl ? (
@@ -584,13 +584,13 @@ export default function DigitalBrandPage() {
                 ) : (
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Refresh audit
+                Uppdatera audit
               </Button>
             ) : null}
             <Button type="button" size="sm" variant="outline" asChild>
               <Link to="/connections">
                 <Globe2 className="mr-1.5 h-3.5 w-3.5" />
-                Edit website URL
+                Redigera webbadress
               </Link>
             </Button>
           </div>
@@ -619,15 +619,19 @@ export default function DigitalBrandPage() {
       {!websiteUrl ? (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>No website URL registered</AlertTitle>
+          <AlertTitle>Ingen webbadress registrerad</AlertTitle>
           <AlertDescription>
-            Add the website URL at the top of Connections to run a Digital Brand audit.
+            Lägg till webbadressen under{" "}
+            <Link to="/connections" className="text-primary underline underline-offset-2">
+              Kopplingar
+            </Link>{" "}
+            för att köra en Digital Brand-audit.
           </AlertDescription>
         </Alert>
       ) : auditError ? (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Could not audit website</AlertTitle>
+          <AlertTitle>Kunde inte granska webbplatsen</AlertTitle>
           <AlertDescription>{auditError}</AlertDescription>
         </Alert>
       ) : null}
@@ -637,8 +641,8 @@ export default function DigitalBrandPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS["digital-brand"]}
-          title="MCP brand data"
-          description="SEO overview and domain lookup for your registered website."
+          title="MCP-varumärkesdata"
+          description="SEO-översikt och domänuppslag för din registrerade webbplats."
         />
       </m.div>
 
@@ -647,7 +651,7 @@ export default function DigitalBrandPage() {
         <m.div {...pageFadeUp} className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Primary website</CardTitle>
+              <CardTitle className="text-sm">Primär webbplats</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -664,8 +668,8 @@ export default function DigitalBrandPage() {
                 {audit
                   ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML audit" : "HTML fallback audit"} for ${audit.finalUrl} at ${new Date(audit.checkedAt).toLocaleString()}.`
                   : auditLoading
-                    ? "Running PageSpeed Insights and fetching website HTML, robots.txt, and sitemap.xml..."
-                    : "Run an audit to fetch live SEO and performance values from the website."}
+                    ? "Kör PageSpeed Insights och hämtar HTML, robots.txt och sitemap.xml…"
+                    : "Kör en audit för att hämta live SEO- och prestandavärden från webbplatsen."}
               </p>
               {audit?.pageSpeed?.error ? (
                 <p className="text-xs leading-relaxed text-warning">
@@ -682,13 +686,13 @@ export default function DigitalBrandPage() {
 
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Brand readiness</CardTitle>
+              <CardTitle className="text-sm">Varumärkesberedskap</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-end justify-between">
                 <span className="text-3xl font-semibold tabular-nums">{readinessScore}%</span>
                 <span className="text-xs text-muted-foreground">
-                  {auditLoading ? "Auditing..." : `${highCount} high-priority item${highCount === 1 ? "" : "s"}`}
+                  {auditLoading ? "Granskar…" : `${highCount} högprioriterad${highCount === 1 ? "" : "a"} punkt${highCount === 1 ? "" : "er"}`}
                 </span>
               </div>
               <Progress value={readinessScore} className="h-2" />
@@ -727,7 +731,7 @@ export default function DigitalBrandPage() {
         <Card className="border-border">
           <CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Auditing website...
+            Granskar webbplatsen…
           </CardContent>
         </Card>
       ) : null}
@@ -735,17 +739,17 @@ export default function DigitalBrandPage() {
       <Tabs defaultValue="seo" className="space-y-4">
         <TabsList className="flex h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="seo">SEO</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="trust">Trust</TabsTrigger>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="performance">Prestanda</TabsTrigger>
+          <TabsTrigger value="trust">Förtroende</TabsTrigger>
+          <TabsTrigger value="channels">Kanaler</TabsTrigger>
+          <TabsTrigger value="all">Alla</TabsTrigger>
         </TabsList>
 
         {(["seo", "performance", "trust", "channels"] as RecommendationArea[]).map((area) => (
           <TabsContent key={area} value={area} className="space-y-3">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">{AREA_LABELS[area]} findings</h2>
+              <h2 className="text-sm font-semibold">{AREA_LABELS[area]}-resultat</h2>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {recsFor(area).map((recommendation) => (
@@ -758,7 +762,7 @@ export default function DigitalBrandPage() {
         <TabsContent value="all" className="space-y-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">All findings</h2>
+            <h2 className="text-sm font-semibold">Alla resultat</h2>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {recommendations.map((recommendation) => (

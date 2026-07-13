@@ -455,9 +455,9 @@ export default function TasksPage() {
   if (!businessProfileId) {
     return (
       <div className="space-y-4 max-w-3xl">
-        <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Uppgifter</h1>
         <p className="text-sm text-muted-foreground">
-          Select a business profile to see its tasks.
+          Välj en företagsprofil för att se uppgifter.
         </p>
       </div>
     );
@@ -469,11 +469,11 @@ export default function TasksPage() {
     <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={ListChecks}
-        title="Tasks"
+        title="Uppgifter"
         description={
           isMobile
-            ? "Svep mellan Att göra, Pågår och Klart. Tryck Start/Done för att flytta kort."
-            : "Add a task in seconds, click a card for details, and drag between lanes."
+            ? "Svep mellan Att göra, Pågår och Klart. Tryck Starta/Klar för att flytta kort."
+            : "Lägg till snabbt, öppna kort för detaljer och dra mellan kolumner."
         }
         actions={
           <>
@@ -482,10 +482,10 @@ export default function TasksPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="general">General</SelectItem>
-                <SelectItem value="campaign">Campaign</SelectItem>
+                <SelectItem value="general">Allmänt</SelectItem>
+                <SelectItem value="campaign">Kampanj</SelectItem>
                 <SelectItem value="pipeline">Pipeline</SelectItem>
-                <SelectItem value="all">All modules</SelectItem>
+                <SelectItem value="all">Alla moduler</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -500,7 +500,7 @@ export default function TasksPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            <span className="ml-1.5 hidden sm:inline">Refresh</span>
+            <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
           </Button>
           </>
         }
@@ -509,12 +509,12 @@ export default function TasksPage() {
       <PageSmartBar
         title={
           isMobile
-            ? "Skapa uppgifter, svep mellan kolumner och tryck Start/Done för att flytta dem."
+            ? "Skapa uppgifter, svep mellan kolumner och tryck Starta/Klar för att flytta dem."
             : "Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
         }
         steps={
           isMobile
-            ? ["Skapa en uppgift ovan", "Svep mellan Att göra · Pågår · Klart", "Tryck Start eller Done på kortet"]
+            ? ["Skapa en uppgift ovan", "Svep mellan Att göra · Pågår · Klart", "Tryck Starta eller Klar på kortet"]
             : [
                 "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
                 "Filtrera på försenade eller dagens deadlines när du triagerar",
@@ -606,7 +606,7 @@ export default function TasksPage() {
 
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-4">
           {isMobile ? (
-            <p className="mb-2 text-xs text-muted-foreground">Svep i sidled mellan kolumner · tryck Start/Done för att flytta</p>
+            <p className="mb-2 text-xs text-muted-foreground">Svep i sidled mellan kolumner · tryck Starta/Klar för att flytta</p>
           ) : null}
           <TaskBoard
             tasks={visibleTasks}

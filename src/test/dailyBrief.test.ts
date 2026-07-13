@@ -5,9 +5,9 @@ describe("joinNames", () => {
   it("formats lists for human-readable descriptions", () => {
     expect(joinNames([])).toBe("");
     expect(joinNames(["Instagram"])).toBe("Instagram");
-    expect(joinNames(["Instagram", "Gmail"])).toBe("Instagram and Gmail");
-    expect(joinNames(["Instagram", "Gmail", "X"])).toBe("Instagram, Gmail and 1 more");
-    expect(joinNames(["A", "B", "C", "D"])).toBe("A, B and 2 more");
+    expect(joinNames(["Instagram", "Gmail"])).toBe("Instagram och Gmail");
+    expect(joinNames(["Instagram", "Gmail", "X"])).toBe("Instagram, Gmail och 1 till");
+    expect(joinNames(["A", "B", "C", "D"])).toBe("A, B och 2 till");
   });
 });
 
@@ -19,7 +19,7 @@ describe("buildDailyBrief", () => {
     expect(brief.allClear).toBe(true);
     expect(brief.items).toHaveLength(0);
     expect(brief.actionCount).toBe(0);
-    expect(brief.headline).toMatch(/caught up/i);
+    expect(brief.headline).toMatch(/ikapp/i);
   });
 
   it("ranks critical connection failures above warnings and info", () => {
@@ -48,11 +48,11 @@ describe("buildDailyBrief", () => {
     const single = buildDailyBrief({ ...empty, unreadDms: 1 });
     expect(single.items[0].kind).toBe("message");
     expect(single.items[0].severity).toBe("warning");
-    expect(single.items[0].title).toBe("1 unread message");
-    expect(single.items[0].description).toMatch(/waiting for a reply/i);
+    expect(single.items[0].title).toBe("1 oläst meddelande");
+    expect(single.items[0].description).toMatch(/väntar på svar/i);
 
     const many = buildDailyBrief({ ...empty, unreadDms: 5 });
-    expect(many.items[0].title).toBe("5 unread messages");
+    expect(many.items[0].title).toBe("5 olästa meddelanden");
     expect(many.actionCount).toBe(5);
   });
 
@@ -66,7 +66,7 @@ describe("buildDailyBrief", () => {
     const brief = buildDailyBrief({ ...empty, leadsToFollowUp: 3 });
     expect(brief.items[0].kind).toBe("lead");
     expect(brief.items[0].severity).toBe("warning");
-    expect(brief.items[0].title).toBe("3 leads to follow up");
+    expect(brief.items[0].title).toBe("3 leads att följa upp");
     expect(brief.items[0].to).toBe("/sales?view=followups");
     expect(brief.actionCount).toBe(3);
     expect(buildDailyBrief({ ...empty, leadsToFollowUp: 0 }).allClear).toBe(true);
@@ -86,20 +86,20 @@ describe("buildDailyBrief", () => {
 
     const stock = buildDailyBrief({ ...empty, inventoryAlertCount: 3 });
     expect(stock.items[0].kind).toBe("marketing");
-    expect(stock.items[0].title).toMatch(/low on stock/i);
+    expect(stock.items[0].title).toMatch(/lågt lager/i);
   });
 
   it("nudges when ad ROAS trend is down without being underwater", () => {
     const brief = buildDailyBrief({ ...empty, marketingTrendDown: true, underwaterRoas: 1.2 });
     expect(brief.items[0].kind).toBe("marketing");
-    expect(brief.items[0].title).toMatch(/dipped/i);
+    expect(brief.items[0].title).toMatch(/sjönk/i);
   });
 
   it("warns when marketing ROAS drops below 1× but stays quiet otherwise", () => {
     const underwater = buildDailyBrief({ ...empty, underwaterRoas: 0.7 });
     expect(underwater.items[0].kind).toBe("marketing");
     expect(underwater.items[0].severity).toBe("warning");
-    expect(underwater.items[0].title).toMatch(/underwater/i);
+    expect(underwater.items[0].title).toMatch(/under vatten/i);
     expect(underwater.actionCount).toBe(1);
 
     expect(buildDailyBrief({ ...empty, underwaterRoas: 1.5 }).allClear).toBe(true);
@@ -109,7 +109,7 @@ describe("buildDailyBrief", () => {
   it("treats a disconnected-only connection as a warning, not critical", () => {
     const brief = buildDailyBrief({ ...empty, connectionIssues: [{ label: "X", health: "disconnected" }] });
     expect(brief.items[0].severity).toBe("warning");
-    expect(brief.items[0].title).toBe("1 connection needs attention");
+    expect(brief.items[0].title).toBe("1 koppling behöver uppmärksamhet");
   });
 
   it("pluralises and summarises counts correctly", () => {
@@ -118,8 +118,8 @@ describe("buildDailyBrief", () => {
       overdueTasks: [{ title: "A" }, { title: "B" }, { title: "C" }],
     });
     const item = brief.items[0];
-    expect(item.title).toBe("3 tasks are overdue");
-    expect(item.description).toBe("“A” and 2 more");
+    expect(item.title).toBe("3 uppgifter är försenade");
+    expect(item.description).toBe("“A” och 2 till");
     expect(item.count).toBe(3);
     expect(item.to).toBe("/tasks?view=overdue");
   });

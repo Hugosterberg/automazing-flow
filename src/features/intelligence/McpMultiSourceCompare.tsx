@@ -69,8 +69,8 @@ function SourceAssessmentCard({ source }: { source: McpSourceAssessment }) {
           <p className="text-xs text-muted-foreground rounded-md bg-muted/20 p-3 flex-1">
             {source.message ||
               (source.status === "skipped"
-                ? "Connect this provider under Connections → Intelligence & MCP to include its view."
-                : "No response from this source.")}
+                ? "Koppla den här leverantören under Kopplingar → Intelligence & MCP för att inkludera dess vy."
+                : "Inget svar från den här källan.")}
           </p>
         )}
       </CardContent>
@@ -161,11 +161,11 @@ export function McpMultiSourceCompare({
             </p>
           ) : successSources.length === 1 ? (
             <p className="text-xs text-amber-700 dark:text-amber-400">
-              Only one source responded. Connect more providers to compare different assessments.
+              Endast en källa svarade. Koppla fler leverantörer för att jämföra olika bedömningar.
             </p>
           ) : (
             <p className="text-xs text-amber-700 dark:text-amber-400">
-              No sources responded. Connect MCP providers under Connections and add API keys where required.
+              Inga källor svarade. Koppla MCP-leverantörer under Kopplingar och lägg till API-nycklar där det krävs.
             </p>
           )}
 

@@ -681,7 +681,7 @@ export default function Ecommerce() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={ShoppingCart}
-        title="E-commerce"
+        title="E-handel"
         description={
           shopifyData?.shop.name
             ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
@@ -717,7 +717,7 @@ export default function Ecommerce() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                <span className="ml-1.5 hidden sm:inline">Refresh</span>
+                <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
               </Button>
             </div>
           ) : null
@@ -731,7 +731,7 @@ export default function Ecommerce() {
           "Synka produkter och följ ordrar under Overview",
           "Importera från Alibaba eller hantera katalogen under Products",
         ]}
-        tip="Ordrar som väntar på fulfillment markeras i action-stripen."
+        tip="Dagliga automationer synkar ordrar och lager. Ordrar som väntar på fulfillment markeras i action-stripen."
         liveHintOverride={
           actionNeeded && actionNeeded.total > 0
             ? `${actionNeeded.total} åtgärd${actionNeeded.total === 1 ? "" : "er"} väntar — ordrar eller lågt lager`
@@ -903,7 +903,7 @@ export default function Ecommerce() {
           <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
             Notion kan kopplas via{" "}
             <a href="/connections" className="underline underline-offset-2 hover:text-foreground">
-              Connections
+              Kopplingar
             </a>
             .
           </p>
@@ -916,7 +916,7 @@ export default function Ecommerce() {
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 px-4 flex items-center justify-between">
               <p className="text-sm text-destructive">{error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)}>Stäng</Button>
             </CardContent>
           </Card>
         </m.div>

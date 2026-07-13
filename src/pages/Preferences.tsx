@@ -452,7 +452,7 @@ export default function PreferencesPage() {
           "Lägg till API-nycklar och testa anslutningarna",
           "Justera AI- och automationspreferenser per profil",
         ]}
-        tip="Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automations — inte här."
+        tip="Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automationer — inte här."
         liveHintOverride={
           unconfiguredCount > 0
             ? `${unconfiguredCount} integration${unconfiguredCount === 1 ? "" : "er"} saknar nyckel — fyll i under Integrationer`
@@ -583,7 +583,7 @@ export default function PreferencesPage() {
 
         <TabsContent value="api-keys" className="space-y-5">
           {loading ? (
-            <p className="text-sm text-muted-foreground pt-2">Loading settings...</p>
+            <p className="text-sm text-muted-foreground pt-2">Laddar inställningar…</p>
           ) : (
             <>
               {/* Per-profile secrets (editable) */}
@@ -601,7 +601,7 @@ export default function PreferencesPage() {
                 <CardContent className="space-y-4">
                   {!activeBusinessProfileId ? (
                     <p className="text-sm text-muted-foreground">
-                      Select a business profile to manage its integration keys.
+                      Välj en företagsprofil för att hantera dess integrationsnycklar.
                     </p>
                   ) : !storeEnabled ? (
                     <p className="text-sm text-muted-foreground">

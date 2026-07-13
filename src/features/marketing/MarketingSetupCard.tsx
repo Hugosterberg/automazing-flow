@@ -17,21 +17,21 @@ export function MarketingSetupCard() {
     {
       done: hasShopify,
       label: "Shopify",
-      hint: "Revenue & ROAS from your store",
+      hint: "Intäkter och ROAS från din butik",
       href: "/ecommerce",
       icon: ShoppingBag,
     },
     {
       done: hasAds,
-      label: "Google Ads or Meta",
-      hint: "Track spend and campaign performance",
+      label: "Google Ads eller Meta",
+      hint: "Följ spend och kampanjresultat",
       href: "/connections",
       icon: Megaphone,
     },
     {
       done: hasMetrics,
-      label: "View results",
-      hint: "ROAS appears when store + ads are linked",
+      label: "Se resultat",
+      hint: "ROAS visas när butik och annonser är kopplade",
       href: "#paid-ads",
       icon: Gauge,
     },
@@ -42,10 +42,10 @@ export function MarketingSetupCard() {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <Plug className="h-4 w-4 text-primary" />
-          Connect your marketing stack
+          Koppla din marknadsföringsstack
         </CardTitle>
         <CardDescription>
-          Choose what to connect first — you can run organic content without ads, but ROAS needs Shopify plus at least one ad platform.
+          Välj vad du vill koppla först — organiskt innehåll fungerar utan annonser, men ROAS kräver Shopify plus minst en annonsplattform.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-3">
@@ -64,7 +64,7 @@ export function MarketingSetupCard() {
               <p className="text-[11px] text-muted-foreground mb-2">{step.hint}</p>
               {!step.done ? (
                 <Button asChild size="sm" variant="outline" className="h-7 text-xs w-full">
-                  <Link to={step.href.startsWith("#") ? `/marketing${step.href}` : step.href}>Connect</Link>
+                  <Link to={step.href.startsWith("#") ? `/marketing${step.href}` : step.href}>Koppla</Link>
                 </Button>
               ) : null}
             </div>

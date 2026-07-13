@@ -335,8 +335,13 @@ export default function ConnectionsPage() {
       <div className="max-w-3xl mx-auto py-16">
         <EmptyState
           icon={PlugZap}
-          title="No business profile selected"
-          description="Pick or create a business profile from the context bar above to manage its connections."
+          title="Ingen företagsprofil vald"
+          description="Välj eller skapa en företagsprofil för att hantera anslutningar."
+          action={
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/company">Gå till Företag</Link>
+            </Button>
+          }
         />
       </div>
     );
@@ -351,21 +356,21 @@ export default function ConnectionsPage() {
   const needsAttentionOnly = statusFilter === "needs_attention";
 
   const summary = isLoading
-    ? "Loading connections…"
-    : `${activeCount} connected`;
+    ? "Laddar anslutningar…"
+    : `${activeCount} kopplade`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <PageHeader
         icon={PlugZap}
-        title="Connections"
+        title="Anslutningar"
         description={
           <>
-            All integrations for{" "}
+            Alla integrationer för{" "}
             <span className="font-medium text-foreground">
-              {legacy.activeProfile?.name ?? "this business profile"}
+              {legacy.activeProfile?.name ?? "denna företagsprofil"}
             </span>
-            . Connect or disconnect accounts, see health and re-auth status.
+            . Koppla eller koppla från konton, se hälsa och status för omkoppling.
           </>
         }
         actions={
@@ -380,10 +385,10 @@ export default function ConnectionsPage() {
                 downloadCsv(csv, `anslutningar-${new Date().toISOString().slice(0, 10)}.csv`);
               }}
               disabled={connections.length === 0}
-              title="Export to CSV"
+              title="Exportera till CSV"
             >
               <Download className="h-3.5 w-3.5" />
-              Export
+              Exportera
             </Button>
             <Button
               type="button"
@@ -398,14 +403,14 @@ export default function ConnectionsPage() {
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              Reconcile
+              Uppdatera
             </Button>
           </div>
         }
       />
 
       <PageSmartBar
-        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Messages, Content eller Insights."
+        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Meddelanden, Content eller Insikter."
         steps={[
           "Koppla de kanaler du jobbar med (mail, socialt, recensioner …)",
           "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",

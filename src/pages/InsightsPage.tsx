@@ -22,6 +22,7 @@ import { useSocialInsights, type AccountInsight } from "@/features/insights";
 import { formatStatChange } from "@/features/social/socialStatsTrend";
 import { MarketingTrendChart, useMarketingTrend } from "@/features/marketing";
 import { CompaniesOverview, SiteAnalyticsSection, useTrackingSite } from "@/features/site-analytics";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const followerChartConfig: ChartConfig = {
   followers: {
@@ -149,6 +150,7 @@ function SectionHeading({
  * in the feature components; this page only composes.
  */
 export default function InsightsPage() {
+  const isMobile = useIsMobile();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
@@ -184,17 +186,25 @@ export default function InsightsPage() {
     <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="space-y-6 max-w-5xl w-full">
       <PageHeader
         icon={BarChart3}
-        title="Insights"
+        title="Insikter"
         description="Samlad bild av datan som tankas in från dina källor — som trender, inte ögonblicksbilder."
       />
 
       <PageSmartBar
-        title="Insights samlar trender från alla kopplade källor — följare, marknadsföring och recensioner över tid."
-        steps={[
-          "Koppla konton under Kopplingar om graferna är tomma",
-          "Vänta 1–2 dagar på dagliga snapshots från automationer",
-          "Klicka vidare till Social, Marketing eller Reviews för att agera på datan",
-        ]}
+        title="Insikter samlar trender från alla kopplade källor — följare, marknadsföring och recensioner över tid."
+        steps={
+          isMobile
+            ? [
+                "Koppla konton under Kopplingar om graferna är tomma",
+                "Vänta 1–2 dagar på dagliga snapshots från automationer",
+                "Tryck vidare till Socialt, Marknadsföring eller Recensioner för att agera",
+              ]
+            : [
+                "Koppla konton under Kopplingar om graferna är tomma",
+                "Vänta 1–2 dagar på dagliga snapshots från automationer",
+                "Klicka vidare till Socialt, Marknadsföring eller Recensioner för att agera på datan",
+              ]
+        }
         tip="Webbplatsstatistik kräver att spårningsscriptet är installerat på din sajt."
         liveHintOverride={
           isEmpty
@@ -254,7 +264,7 @@ export default function InsightsPage() {
 
       {socialAccounts.length > 0 || followerSeries.length >= 2 ? (
         <section aria-label="Socialt" className="space-y-2">
-          <SectionHeading icon={Share2} title="Socialt" to="/social-media" linkLabel="Social Media" />
+          <SectionHeading icon={Share2} title="Socialt" to="/social-media" linkLabel="Socialt" />
           <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -330,7 +340,7 @@ export default function InsightsPage() {
 
       {hasMarketing ? (
         <section aria-label="Marknadsföring" className="space-y-2">
-          <SectionHeading icon={Megaphone} title="Marknadsföring & butik" to="/marketing" linkLabel="Marketing" />
+          <SectionHeading icon={Megaphone} title="Marknadsföring & butik" to="/marketing" linkLabel="Marknadsföring" />
           {/* MarketingTrendChart draws its own framed box — no Card wrapper,
               a double border reads as a mistake. */}
           <MarketingTrendChart />
@@ -339,7 +349,7 @@ export default function InsightsPage() {
 
       {reviewAccounts.length > 0 ? (
         <section aria-label="Recensioner" className="space-y-2">
-          <SectionHeading icon={Star} title="Recensioner" to="/reviews" linkLabel="Reviews" />
+          <SectionHeading icon={Star} title="Recensioner" to="/reviews" linkLabel="Recensioner" />
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {reviewAccounts.map((insight) => (
               <AccountRow

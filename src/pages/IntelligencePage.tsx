@@ -18,7 +18,7 @@ export default function IntelligencePage() {
       <PageHeader
         icon={Bot}
         title="MCP Intelligence"
-        description="One place for all MCP providers — status, queries, and clear feedback when API keys or OAuth are missing."
+        description="En plats för alla MCP-leverantörer — status, frågor och tydlig feedback när API-nycklar eller OAuth saknas."
       />
 
       <PageSmartBar

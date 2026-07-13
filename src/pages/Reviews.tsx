@@ -608,7 +608,7 @@ export default function ReviewsPage() {
         <>
       <PageHeader
         icon={Star}
-        title="Reviews"
+        title="Recensioner"
         description={
           isMobile
             ? "Tryck en recension för att läsa och svara."
@@ -644,7 +644,13 @@ export default function ReviewsPage() {
         }
         steps={
           isMobile
-            ? ["Filtrera på betyg eller ”Behöver svar”", "Tryck en recension för att läsa", "Skicka svar och markera hanterad"]
+            ? reviewAccounts.length === 0
+              ? [
+                  "Koppla Google Reviews eller Tripadvisor under Kopplingar",
+                  "Tryck en recension för att läsa när de synkats",
+                  "Skicka svar och markera hanterad",
+                ]
+              : ["Filtrera på betyg eller ”Behöver svar”", "Tryck en recension för att läsa", "Skicka svar och markera hanterad"]
             : [
                 "Koppla Google Reviews eller Tripadvisor under Kopplingar",
                 "Filtrera på betyg eller ”Behöver svar” i workspace",
@@ -652,6 +658,11 @@ export default function ReviewsPage() {
               ]
         }
         tip="AI kan föreslå svar på omdömen — granska och skicka när det känns rätt."
+        extraActions={
+          reviewAccounts.length === 0 && isMobile
+            ? [{ label: "Öppna Kopplingar", to: "/connections" }]
+            : []
+        }
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -663,7 +674,7 @@ export default function ReviewsPage() {
           const match = reviews.find((r) => r.id === item.reviewId);
           if (match) selectReview(match);
           setReplyDraft(item.draft);
-          toast({ title: "Draft applied", description: `Reply for ${item.author} is ready to edit and send.` });
+          toast({ title: "Utkast tillämpat", description: `Svar till ${item.author} är redo att redigera och skicka.` });
         }}
       />
         </>

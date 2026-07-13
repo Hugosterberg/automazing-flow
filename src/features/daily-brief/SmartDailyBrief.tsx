@@ -192,7 +192,7 @@ export function SmartDailyBrief({
               : visibleAllClear
               ? doneCount > 0
                 ? `All ${progressTotal} handled — nice work.`
-                : "You're all caught up for now."
+                : "Du är ikapp för tillfället."
               : brief.subline}
           </p>
         </div>
@@ -229,7 +229,7 @@ export function SmartDailyBrief({
       ) : visibleAllClear ? (
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3 text-sm text-muted-foreground">
           <CheckCircle2 className="h-4 w-4 text-success shrink-0" aria-hidden />
-          <span>Connections are healthy, tasks are under control, and there's nothing new to review.</span>
+          <span>Kopplingarna är friska, uppgifterna är under kontroll och inget nytt att granska.</span>
         </div>
       ) : (
         <>

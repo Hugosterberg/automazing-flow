@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ConnectedAccount } from "@/types/accounts";
 
@@ -51,16 +53,16 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
     <>
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Total overview</span>
+        <span className="text-sm font-medium text-muted-foreground">Total översikt</span>
       </div>
       <Card className="bg-card border-border">
         <CardContent className="py-5 px-6">
           <p className="text-xs text-muted-foreground mb-4">
-            Aggregated social media metrics for all connected accounts in this profile.
+            Samlad statistik för alla kopplade sociala konton i den här profilen.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Connected accounts</p>
+              <p className="text-xs text-muted-foreground">Kopplade konton</p>
               <p className="font-semibold">{numberFmt.format(overviewData.connected)}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
@@ -101,7 +103,12 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
             </div>
             <div className="px-3 py-2 space-y-2">
               {overviewData.byPlatform.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No connected social accounts yet.</p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Inga sociala konton kopplade ännu.</p>
+                  <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                    <Link to="/connections">Öppna Kopplingar</Link>
+                  </Button>
+                </div>
               ) : (
                 overviewData.byPlatform.map(([platform, values]) => (
                   <div key={platform} className="flex items-center justify-between text-xs">

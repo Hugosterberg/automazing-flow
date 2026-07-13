@@ -3,14 +3,14 @@ import { titleForPath } from "@/hooks/useDocumentTitle";
 
 describe("titleForPath", () => {
   it("resolves known top-level routes to their nav title", () => {
-    expect(titleForPath("/ecommerce")).toBe("E-commerce");
+    expect(titleForPath("/ecommerce")).toBe("E-handel");
     expect(titleForPath("/content")).toBe("Content");
-    expect(titleForPath("/connections")).toBe("Connections");
-    expect(titleForPath("/preferences")).toBe("Preferences");
+    expect(titleForPath("/connections")).toBe("Kopplingar");
+    expect(titleForPath("/preferences")).toBe("Inställningar");
   });
 
   it("matches nested routes via their parent prefix", () => {
-    expect(titleForPath("/ecommerce/anything")).toBe("E-commerce");
+    expect(titleForPath("/ecommerce/anything")).toBe("E-handel");
   });
 
   it("returns empty string for unknown routes and the landing page", () => {

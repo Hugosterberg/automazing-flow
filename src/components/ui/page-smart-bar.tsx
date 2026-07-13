@@ -22,8 +22,16 @@ type PageSmartBarProps = {
 /** Hide keyboard-heavy tips on touch-first viewports — footers cover desktop shortcuts. */
 function tipForViewport(tip: string | undefined, isDesktop: boolean) {
   if (!tip || isDesktop) return tip;
-  if (/⌘|Ctrl|Shift|\+|\b[JHKRNQAEO]\b|<kbd/i.test(tip)) return undefined;
+  // Match explicit shortcut tokens only — avoid stripping tips that mention "+" or English "a".
+  if (/⌘|Ctrl\+|Ctrl\b|Shift\+|Shift\b|<kbd|\bEsc\b|\bEnter\b/i.test(tip)) return undefined;
+  if (/\b[JHKRNQAEO]\s*[/·,]/i.test(tip) || /Genväg(ar)?:\s*[A-Z]/i.test(tip)) return undefined;
   return tip;
+}
+
+/** Same filter for live hint overrides that leak desktop shortcuts. */
+function hintForViewport(hint: string | null | undefined, isDesktop: boolean) {
+  if (!hint || isDesktop) return hint ?? null;
+  return tipForViewport(hint, false) ?? null;
 }
 
 /**
@@ -41,7 +49,8 @@ export function PageSmartBar({
 }: PageSmartBarProps) {
   const isDesktop = useIsDesktopWorkspace();
   const hints = usePageSmartHints();
-  const liveHint = liveHintOverride ?? (smart ? hints.liveHint : null);
+  const rawLiveHint = liveHintOverride ?? (smart ? hints.liveHint : null);
+  const liveHint = hintForViewport(rawLiveHint, isDesktop);
   const actions = smart ? [...hints.actions, ...extraActions] : extraActions;
   const showLive = Boolean(liveHint && smart);
   const visibleTip = tipForViewport(tip, isDesktop);

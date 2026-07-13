@@ -264,7 +264,7 @@ export function MessageInboxToolbar({
                     key={opt.value}
                     type="button"
                     onClick={() => onInboxFilterChange(opt.value)}
-                    title={`Genväg: ${opt.shortcut}`}
+                    title={isMobile ? undefined : `Genväg: ${opt.shortcut}`}
                     className={cn(
                       "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                       inboxFilter === opt.value

@@ -489,7 +489,7 @@ export function ReviewDetailPanel({
                 ref={replyRef}
                 value={replyDraft}
                 onChange={(e) => onReplyDraftChange(e.target.value)}
-                placeholder="Write a reply, or generate one with AI…"
+                placeholder="Skriv ett svar, eller generera ett med AI…"
                 className="min-h-[88px] resize-none border-border/80 bg-background text-sm leading-relaxed focus-visible:ring-primary/30"
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
@@ -505,7 +505,7 @@ export function ReviewDetailPanel({
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
                   )}
-                  AI draft
+                  AI-utkast
                 </Button>
                 <ReplyTemplatePicker
                   onInsert={onReplyDraftChange}
@@ -524,10 +524,10 @@ export function ReviewDetailPanel({
                   ) : (
                     <Send className="mr-2 h-4 w-4" />
                   )}
-                  Send reply
+                  Skicka svar
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Tip: Ctrl+Enter to send</p>
+              <p className="hidden text-[11px] text-muted-foreground lg:block">Tips: Ctrl+Enter för att skicka</p>
             </div>
           )}
         </footer>
@@ -554,7 +554,7 @@ export function ReviewDetailPlaceholder() {
       <div className="max-w-sm space-y-1.5">
         <p className="font-display text-base font-semibold">Välj en recension</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Listan stannar kvar till vänster — läs och svara utan att tappa kontexten.
+          Tryck en recension i listan för att läsa och svara.
         </p>
       </div>
     </div>

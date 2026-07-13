@@ -54,13 +54,13 @@ export function MarketPulseCard({ businessProfileId }: { businessProfileId: stri
               <p className="text-xs text-muted-foreground">
                 {pulse.message ||
                   (needsKey
-                    ? "LunarCrush is connected but the API key is missing or expired."
-                    : "Connect LunarCrush under Connections → Intelligence & MCP to see crypto sentiment here.")}
+                    ? "LunarCrush är kopplat men API-nyckeln saknas eller har gått ut."
+                    : "Koppla LunarCrush under Kopplingar → Intelligence & MCP för att se kryptosentiment här.")}
               </p>
             </div>
           </div>
           <Button asChild size="sm" variant="outline">
-            <Link to="/connections?tab=mcp">Connect LunarCrush</Link>
+            <Link to="/connections?tab=mcp">Koppla LunarCrush</Link>
           </Button>
         </CardContent>
         <CardContent className="pt-0 px-4 pb-4">{topicControls}</CardContent>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { loadSelectedContent, saveSelectedContent, assetSelectionKey, type SelectedContentAsset } from "@/lib/contentSelection";
 import { fetchProducts } from "@/lib/productsApi";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -276,6 +277,7 @@ function MediaSection({
 
 export default function ContentPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
   const accessToken = session?.access_token ?? null;
@@ -880,7 +882,7 @@ export default function ContentPage() {
       <PageHeader
         icon={FolderOpen}
         title="Content"
-        description="Pick media from Drive, create with apiai.me, then publish or save a draft — all in one flow."
+        description="Välj media från Drive, skapa med apiai.me och publicera eller spara som utkast — allt i ett flöde."
         actions={
           <>
             <Button
@@ -893,7 +895,7 @@ export default function ContentPage() {
               ) : (
                 <FolderOpen className="h-4 w-4 mr-2" />
               )}
-              Connect Google Drive
+              Koppla Google Drive
             </Button>
             {activeAccount ? (
               <Button
@@ -906,7 +908,7 @@ export default function ContentPage() {
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Refresh
+                Uppdatera
               </Button>
             ) : null}
           </>
@@ -923,9 +925,11 @@ export default function ContentPage() {
         tip="Koppla Google Drive först om Browse är tom. Publicering kan schemaläggas — då går inlägg ut automatiskt."
         liveHintOverride={
           contentTab === "browse" && browseMediaFiles.length > 0
-            ? `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S Select.`
+            ? isMobile
+              ? `${browseMediaFiles.length} mediafiler i vyn — markera det du vill använda.`
+              : `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S välj.`
             : selectedAssets.length > 0
-              ? `${selectedAssets.length} valda — gå till Create eller Post or save.`
+              ? `${selectedAssets.length} valda — gå till Skapa eller Publicera.`
               : null
         }
       />
@@ -941,8 +945,8 @@ export default function ContentPage() {
       <McpFeatureSection
         businessProfileId={createBusinessProfileId}
         featureIds={MCP_PAGE_FEATURE_IDS.content}
-        title="MCP content tools"
-        description="Generate decks (Gamma) or design briefs (Canva MCP). Connect providers under Connections → MCP if status shows a missing key."
+        title="MCP-innehållsverktyg"
+        description="Generera presentationer (Gamma) eller designbriefs (Canva MCP). Koppla leverantörer under Kopplingar → MCP om status visar saknad nyckel."
       />
 
       <ContentFlowGuide
@@ -1233,14 +1237,14 @@ export default function ContentPage() {
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
               >
                 <HardDrive className="h-3.5 w-3.5" />
-                My Drive
+                Min enhet
               </TabsTrigger>
               <TabsTrigger
                 value="shared-with-me"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
               >
                 <Users className="h-3.5 w-3.5" />
-                Shared with me
+                Delat med mig
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -1257,7 +1261,7 @@ export default function ContentPage() {
                 onClick={() => { setFolderStack([]); setCurrentFolderId(null); }}
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
               >
-                {driveView === "shared-with-me" ? "Shared with me" : "My Drive"}
+                {driveView === "shared-with-me" ? "Delat med mig" : "Min enhet"}
               </button>
               {folderStack.map((f, i) => (
                 <React.Fragment key={f.id}>
@@ -1286,8 +1290,8 @@ export default function ContentPage() {
       {driveAccounts.length > 1 && (
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Connected Drive accounts</CardTitle>
-            <CardDescription>Pick which Google Drive connection to browse right now.</CardDescription>
+            <CardTitle className="text-base">Kopplade Drive-konton</CardTitle>
+            <CardDescription>Välj vilket Google Drive-konto du vill bläddra i just nu.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {driveAccounts.map((account) => (
@@ -1307,7 +1311,7 @@ export default function ContentPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Google Drive</CardTitle>
           <CardDescription>
-            Click images or videos to add them to Selected
+            Klicka på bilder eller videor för att lägga till i Valda
             {selectedAssets.length > 0 ? (
               <>
                 {" "}
@@ -1317,7 +1321,7 @@ export default function ContentPage() {
                   className="text-primary hover:underline font-medium"
                   onClick={() => goToTab("selected")}
                 >
-                  {selectedAssets.length} in Selected
+                  {selectedAssets.length} valda
                 </button>
               </>
             ) : null}
@@ -1340,7 +1344,7 @@ export default function ContentPage() {
         <Card className="bg-card border-border">
           <CardContent className="py-10 flex items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading…
+            Laddar…
           </CardContent>
         </Card>
       ) : (
@@ -1352,7 +1356,7 @@ export default function ContentPage() {
                 ref={driveSearchRef}
                 id="driveSearch"
                 type="search"
-                placeholder="Search files by name…"
+                placeholder="Sök filer efter namn…"
                 value={driveSearch}
                 onChange={(e) => setDriveSearch(e.target.value)}
                 className="pl-9 h-9 text-sm"
@@ -1500,12 +1504,12 @@ export default function ContentPage() {
               <CardContent className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
                   {driveQuery
-                    ? `No files matching "${driveSearch.trim()}".`
+                    ? `Inga filer matchar "${driveSearch.trim()}".`
                     : driveView === "shared-with-me"
-                    ? "No files shared with you."
+                    ? "Inga filer delade med dig."
                     : providerData?.currentFolderName
-                    ? `No files in "${providerData.currentFolderName}".`
-                    : "No files found in My Drive. Try browsing into a subfolder — or switch to Shared with me."}
+                    ? `Inga filer i "${providerData.currentFolderName}".`
+                    : "Inga filer i Min enhet. Prova att bläddra i en undermapp — eller byt till Delat med mig."}
                 </p>
               </CardContent>
             </Card>

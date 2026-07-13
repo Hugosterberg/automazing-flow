@@ -517,8 +517,8 @@ export default function CalendarPage() {
         title="Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde."
         steps={[
           "Koppla Google eller Outlook-kalender för synk",
-          "Växla dag/vecka/månad och klicka en dag för detaljer",
-          "Skapa egna händelser eller följ upp från Tasks och Sales",
+          "Växla dag/vecka/månad och öppna en dag för detaljer",
+          "Skapa egna händelser eller följ upp från Uppgifter och Sales",
         ]}
         tip="Uppgifter och leads med datum syns automatiskt i vyn."
         liveHintOverride={
@@ -549,7 +549,7 @@ export default function CalendarPage() {
           <CardContent className="py-3 px-4 flex items-center justify-between">
             <p className="text-sm text-destructive">{providerError}</p>
             <Button variant="ghost" size="sm" onClick={() => void refreshProviderEvents()}>
-              Retry
+              Försök igen
             </Button>
           </CardContent>
         </Card>
@@ -616,7 +616,7 @@ export default function CalendarPage() {
               ))}
             </div>
             <div className="mt-4 space-y-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Connect calendars</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Koppla kalendrar</p>
               <div className="grid grid-cols-1 gap-1">
                 <Button variant="outline" size="sm" onClick={() => connectCalendar("google_calendar", "zernio")} className="justify-start">
                   <Layers className="h-3.5 w-3.5 mr-2" />
@@ -655,7 +655,7 @@ export default function CalendarPage() {
                 onClick={() => void refreshProviderEvents()}
                 disabled={providerLoading}
               >
-                {providerLoading ? "Refreshing..." : "Refresh connected calendar"}
+                {providerLoading ? "Uppdaterar…" : "Uppdatera kopplad kalender"}
               </Button>
             )}
           </CardContent>
@@ -666,7 +666,7 @@ export default function CalendarPage() {
             {providerLoading && activeCalendarAccount ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Loading connected calendar events…
+                Laddar händelser från kopplad kalender…
               </div>
             ) : null}
             {viewMode === "day" && (
@@ -676,7 +676,7 @@ export default function CalendarPage() {
                 </h2>
                 {eventsOnDate(currentDate).length === 0 ? (
                   <p className="text-muted-foreground text-sm py-8">
-                    No activities on this day. Click &quot;Add&quot; to create one.
+                    Inga aktiviteter denna dag. Tryck Lägg till för att skapa en.
                   </p>
                 ) : (
                   <ul className="space-y-2">

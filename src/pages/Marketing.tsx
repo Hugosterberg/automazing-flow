@@ -50,6 +50,7 @@ import type { TaskRow, TaskStatus } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +127,7 @@ function dueAtFromDate(date: string) {
 
 export default function MarketingPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts } = useAccounts();
@@ -384,9 +386,13 @@ export default function MarketingPage() {
         tip="ROAS och spend syns när annonskonton är kopplade och snapshots körs."
         liveHintOverride={
           activeCampaigns.length > 0
-            ? `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — J/K bläddra, N ny kampanj.`
+            ? isMobile
+              ? `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — svep eller tryck för att bläddra.`
+              : `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — J/K bläddra, N ny kampanj.`
             : campaignTasks.length > 0
-              ? `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck N för ny.`
+              ? isMobile
+                ? `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck Ny kampanj.`
+                : `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck N för ny.`
               : null
         }
       />
@@ -408,7 +414,7 @@ export default function MarketingPage() {
           {...marketingContext}
           modes={["channels", "campaigns", "promotions"]}
           defaultMode="channels"
-          title="Marketing ideas"
+          title="Marketingidéer"
           description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
           onUseForCampaign={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));

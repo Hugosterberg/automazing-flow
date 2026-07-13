@@ -29,12 +29,12 @@ function mcpFixHint(provider: McpProviderReadiness): string | null {
   if (provider.status === "ready") return null;
   if (provider.message) return provider.message;
   if (provider.status === "not_connected") {
-    if (provider.auth === "oauth") return "Connect via OAuth under Connections → MCP.";
-    if (provider.auth === "api_key") return `Add credential: ${provider.credentialHint}`;
-    if (provider.auth === "shop_domain") return "Connect and enter your .myshopify.com shop domain.";
-    return "Connect this provider under Connections → MCP.";
+    if (provider.auth === "oauth") return "Koppla via OAuth under Kopplingar → MCP.";
+    if (provider.auth === "api_key") return `Lägg till autentisering: ${provider.credentialHint}`;
+    if (provider.auth === "shop_domain") return "Koppla och ange din .myshopify.com-butiksdomän.";
+    return "Koppla den här leverantören under Kopplingar → MCP.";
   }
-  return provider.credentialHint || "Fix credentials under Connections → MCP.";
+  return provider.credentialHint || "Åtgärda autentisering under Kopplingar → MCP.";
 }
 
 /** Read-only list of all MCP providers and readiness — shared by Connections and Intelligence hub. */
