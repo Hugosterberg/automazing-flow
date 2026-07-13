@@ -121,7 +121,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
       aria-label="Installera app"
       className={cn(
         "fixed inset-x-3 z-50 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur-md safe-x",
-        "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:hidden",
+        "bottom-[calc(var(--app-tab-bar-offset,4.25rem)+0.25rem+env(safe-area-inset-bottom,0px))] md:hidden",
         className
       )}
     >

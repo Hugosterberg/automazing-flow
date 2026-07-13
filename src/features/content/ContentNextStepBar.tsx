@@ -35,7 +35,7 @@ export function ContentNextStepBar({
   const Icon = next?.icon ?? BookmarkCheck;
 
   return (
-    <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-10 flex justify-center px-2 md:bottom-4">
+    <div className="sticky bottom-[calc(var(--app-tab-bar-offset,4.25rem)+0.5rem+env(safe-area-inset-bottom,0px))] z-10 flex justify-center px-2 md:bottom-4">
       <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <span className="text-xs text-muted-foreground hidden sm:inline">
           {selectionCount > 0

@@ -67,9 +67,9 @@ export function PageHeader({
       <div className="flex items-start gap-2 min-w-0">
         {iconNode ? <div className="shrink-0 mt-1">{iconNode}</div> : null}
         <div className="min-w-0">
-          <h1 className="select-none cursor-default text-xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+          <h1 className="select-none cursor-default text-lg font-bold tracking-tight sm:text-3xl">{title}</h1>
           {description ? (
-            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">{description}</p>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-snug sm:mt-1 sm:text-sm sm:leading-normal line-clamp-2 sm:line-clamp-none">{description}</p>
           ) : null}
         </div>
       </div>

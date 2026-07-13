@@ -2,6 +2,14 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-13 — Logged-in mobile chrome aims for native app feel — **Active**
+
+On phones: header drops duplicate mode tabs (mode lives in Mer), bottom tabs
+use press/active affordances, Mer is a launcher-style bottom sheet with
+grabber, and route changes use a short enter motion. Shared
+`--app-tab-bar-offset` / `.pb-tab-bar` keep FAB/content clearance consistent.
+Do not invent a second chrome system — extend Layout + MobileQuickNav + sheets.
+
 ## 2026-07-13 — Pre-login landing is kinetic B&W brand theater — **Active**
 
 The logged-out landing leads with a full-bleed `automazing` brand mark,

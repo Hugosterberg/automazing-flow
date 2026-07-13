@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Home, Menu, Settings2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SheetGrabber } from "@/components/ui/sheet-grabber";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
 import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { useWorkspaceMode, WorkspaceModeTabs } from "@/features/workspace-mode";
@@ -20,8 +21,27 @@ import { cn } from "@/lib/utils";
 function BadgeCount({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold tabular-nums text-primary-foreground">
+    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold tabular-nums text-primary-foreground shadow-sm">
       {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+function TabLabel({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "truncate max-w-full leading-tight transition-all duration-200",
+        active ? "font-semibold opacity-100" : "font-medium opacity-80"
+      )}
+    >
+      {children}
     </span>
   );
 }
@@ -93,30 +113,31 @@ export function MobileQuickNav() {
   const moreItems = moreDestinations.filter((item) => isNavUrlAllowedInMode(item.to.split("?")[0]!, mode));
   const moreActive = moreItems.some((item) => item.match(pathname));
   const columnCount = primaryDestinations.length + 2; // Hem + primaries + Mer
+  const homeActive = pathname === "/";
 
   return (
     <>
       <nav
         aria-label="Snabbnavigering"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 backdrop-blur-md safe-x md:hidden"
-        style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
+        className="mobile-tab-bar fixed inset-x-0 bottom-0 z-40 safe-x md:hidden"
       >
         <ul
-          className="mx-auto grid max-w-lg gap-0.5 px-1 pt-1"
-          style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+          className="mx-auto grid max-w-lg gap-0.5 px-1.5 pb-1 pt-1.5"
+          style={{
+            gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+            paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))",
+          }}
         >
           <li>
             <Link
               to="/"
-              className={cn(
-                "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
-                pathname === "/"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
+              className={cn("mobile-tab-item", homeActive && "mobile-tab-item-active")}
+              aria-current={homeActive ? "page" : undefined}
             >
-              <Home className={cn("h-5 w-5", pathname === "/" && "text-primary")} aria-hidden />
-              <span className="truncate max-w-full leading-tight">Hem</span>
+              <span className="mobile-tab-icon-wrap">
+                <Home className="mobile-tab-icon" aria-hidden />
+              </span>
+              <TabLabel active={homeActive}>Hem</TabLabel>
             </Link>
           </li>
           {primaryDestinations.map((dest) => {
@@ -127,18 +148,14 @@ export function MobileQuickNav() {
               <li key={dest.key}>
                 <Link
                   to={dest.to}
-                  className={cn(
-                    "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  )}
+                  className={cn("mobile-tab-item", active && "mobile-tab-item-active")}
+                  aria-current={active ? "page" : undefined}
                 >
-                  <span className="relative">
-                    <Icon className={cn("h-5 w-5", active && "text-primary")} aria-hidden />
+                  <span className="mobile-tab-icon-wrap relative">
+                    <Icon className="mobile-tab-icon" aria-hidden />
                     <BadgeCount count={count} />
                   </span>
-                  <span className="truncate max-w-full leading-tight">{dest.shortLabel}</span>
+                  <TabLabel active={active}>{dest.shortLabel}</TabLabel>
                 </Link>
               </li>
             );
@@ -148,15 +165,14 @@ export function MobileQuickNav() {
               type="button"
               onClick={() => setMoreOpen(true)}
               className={cn(
-                "relative flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors",
-                moreActive || moreOpen
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                "mobile-tab-item w-full",
+                (moreActive || moreOpen) && "mobile-tab-item-active"
               )}
               aria-label={setupHint ? "Mer — något behöver din uppmärksamhet" : "Mer"}
+              aria-expanded={moreOpen}
             >
-              <span className="relative">
-                <Menu className="h-5 w-5" aria-hidden />
+              <span className="mobile-tab-icon-wrap relative">
+                <Menu className="mobile-tab-icon" aria-hidden />
                 {setupHint ? (
                   <span
                     className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
@@ -164,55 +180,61 @@ export function MobileQuickNav() {
                   />
                 ) : null}
               </span>
-              <span className="leading-tight">Mer</span>
+              <TabLabel active={moreActive || moreOpen}>Mer</TabLabel>
             </button>
           </li>
         </ul>
       </nav>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
-          <SheetHeader className="pb-2 text-left">
-            <SheetTitle className="text-base">Mer</SheetTitle>
+        <SheetContent side="bottom" className="max-h-[88dvh] overflow-y-auto px-4">
+          <SheetGrabber />
+          <SheetHeader className="pb-1 text-left">
+            <SheetTitle className="font-display text-base tracking-tight">Mer</SheetTitle>
           </SheetHeader>
           {setupHint ? (
-            <div className="mb-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5">
+            <div className="mb-3 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2.5">
               <p className="text-xs leading-relaxed text-muted-foreground">{setupHint.text}</p>
               <Link
                 to={setupHint.to}
                 onClick={() => setMoreOpen(false)}
-                className="mt-1.5 inline-flex text-xs font-medium text-primary"
+                className="mt-1.5 inline-flex min-h-10 items-center text-xs font-medium text-primary"
               >
                 {setupHint.cta} →
               </Link>
             </div>
           ) : null}
           <div className="mb-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Läge</p>
-            <WorkspaceModeTabs />
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Läge
+            </p>
+            <WorkspaceModeTabs fullWidth />
           </div>
-          <ul className="grid grid-cols-2 gap-2 pb-2">
+          <ul className="grid grid-cols-3 gap-2 pb-1 sm:grid-cols-4">
             {moreItems.map((dest) => {
               const active = dest.match(pathname);
               const Icon = dest.icon;
+              const highlighted = setupHint?.to === dest.to.split("?")[0];
               return (
                 <li key={dest.key}>
                   <Link
                     to={dest.to}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
-                      "relative flex min-h-12 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                      "relative flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5 text-center transition-transform active:scale-[0.96]",
                       active
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : setupHint?.to === dest.to.split("?")[0]
+                        ? "border-primary/35 bg-primary/10 text-primary"
+                        : highlighted
                           ? "border-primary/25 bg-primary/[0.04] text-foreground"
-                          : "border-border/70 bg-card/40 text-foreground hover:bg-muted/40"
+                          : "border-border/60 bg-card/50 text-foreground"
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">{dest.label}</span>
-                    {setupHint?.to === dest.to.split("?")[0] ? (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                    <span className="line-clamp-2 text-[11px] font-medium leading-tight">
+                      {dest.label}
+                    </span>
+                    {highlighted ? (
+                      <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                     ) : null}
                   </Link>
                 </li>
@@ -225,7 +247,7 @@ export function MobileQuickNav() {
               setMoreOpen(false);
               setCustomizeOpen(true);
             }}
-            className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/30 hover:text-foreground"
+            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border/80 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors active:bg-muted/40"
           >
             <Settings2 className="h-4 w-4" aria-hidden />
             Anpassa genvägar
@@ -234,10 +256,8 @@ export function MobileQuickNav() {
       </Sheet>
 
       <Sheet open={customizeOpen} onOpenChange={setCustomizeOpen}>
-        <SheetContent
-          side="bottom"
-          className="max-h-[90vh] overflow-y-auto rounded-t-2xl px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
-        >
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto px-4">
+          <SheetGrabber />
           <SheetHeader className="sr-only">
             <SheetTitle>Anpassa genvägar</SheetTitle>
           </SheetHeader>

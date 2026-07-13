@@ -45,8 +45,8 @@ export function ActiveProfileContextBar() {
             variant="outline"
             size="sm"
             className={cn(
-              "h-8 shrink min-w-0 bg-muted/30 border-border/50 hover:bg-muted/50",
-              "gap-1.5 px-2 sm:gap-2 sm:px-3"
+              "h-9 shrink min-w-0 bg-muted/30 border-border/50 hover:bg-muted/50 active:scale-[0.98]",
+              "gap-1.5 px-2.5 touch-manipulation sm:h-8 sm:gap-2 sm:px-3"
             )}
             aria-label={`Aktiv profil: ${activeProfile?.name ?? "ingen"}. Klicka för att byta`}
           >

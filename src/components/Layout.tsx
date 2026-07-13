@@ -95,11 +95,11 @@ export default function Layout() {
         <AppSidebar />
         <main className="flex-1 flex flex-col">
           {!readingFocus ? (
-          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 items-center gap-1.5 border-b border-border px-3 min-w-0 sm:h-14 sm:gap-2 sm:px-4">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0 -ml-0.5" />
-            <WorkspaceModeTabs />
+          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 items-center gap-1.5 border-b border-border/70 px-2.5 min-w-0 sm:h-14 sm:gap-2 sm:px-4">
+            <SidebarTrigger className="touch-target text-muted-foreground hover:text-foreground shrink-0 -ml-0.5" />
+            {!isMobile ? <WorkspaceModeTabs /> : null}
             <ActiveProfileContextBar />
-            <div className="ml-auto flex items-center gap-1 shrink-0 sm:gap-2">
+            <div className="ml-auto flex items-center gap-0.5 shrink-0 sm:gap-2">
               <CommandPalette onOpenShortcuts={openShortcuts} />
               <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
               <NotificationsBell />
@@ -108,10 +108,10 @@ export default function Layout() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="flex items-center gap-2 rounded-full border border-border bg-card/40 pl-1 pr-2 py-1 hover:bg-accent/40 transition-colors"
+                      className="flex touch-target items-center justify-center gap-2 rounded-full border border-border bg-card/40 p-0.5 hover:bg-accent/40 transition-colors active:scale-95 sm:pl-1 sm:pr-2 sm:py-1"
                       aria-label="Open account menu"
                     >
-                      <Avatar className="h-7 w-7">
+                      <Avatar className="h-8 w-8 sm:h-7 sm:w-7">
                         <AvatarFallback className="text-[11px] font-semibold">
                           {emailInitial(email)}
                         </AvatarFallback>
@@ -182,7 +182,10 @@ export default function Layout() {
           <div
             id="main-content"
             tabIndex={-1}
-            className="flex-1 overflow-auto app-scroll focus:outline-none safe-bottom safe-x"
+            className={cn(
+              "flex-1 overflow-auto app-scroll focus:outline-none safe-x",
+              isMobile ? "app-scroll-mobile overscroll-y-contain" : "safe-bottom"
+            )}
           >
             <div
               className={cn(
@@ -190,12 +193,17 @@ export default function Layout() {
                 isMobile
                   ? readingFocus
                     ? "px-0 pt-0 pb-0"
-                    : "px-3 pt-3 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]"
+                    : "px-3 pt-2.5 pb-tab-bar"
                   : "p-4 sm:p-5 md:p-6 lg:p-8"
               )}
             >
               <ErrorBoundary resetKey={location.pathname} label="route">
-                <Outlet />
+                <div
+                  key={location.pathname}
+                  className={isMobile && !readingFocus ? "mobile-route-enter" : undefined}
+                >
+                  <Outlet />
+                </div>
               </ErrorBoundary>
             </div>
           </div>
