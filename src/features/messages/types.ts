@@ -19,6 +19,9 @@ export interface UnifiedMessage {
 
 export type MessageChannelTab = "mail" | "instagram" | "messenger" | "whatsapp";
 
+/** Inbox list filter — queue = sectioned work queue, open = unanswered only. */
+export type InboxFilter = "queue" | "open" | "all" | "handled";
+
 export type ThreadMessage = {
   id: string;
   date: string;

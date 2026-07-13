@@ -1,8 +1,8 @@
 import { m } from "framer-motion";
-import { RefreshCw, Loader2, MessageSquare, Search, CheckCheck } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
@@ -10,144 +10,59 @@ import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { apiJson } from "@/lib/apiJson";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   MessageWorkspace,
+  MessageInboxToolbar,
+  MessageInboxStats,
+  MessageStatusBar,
+  MessageAlertsBanner,
   fetchMessageThread,
+  avatarGradient,
+  channelBadge,
+  inboxEmptyCopy,
+  formatMessageDate,
+  formatWaitTime,
+  isUrgentWait,
+  messageMatchesTab,
+  MESSAGE_TABS,
+  providerMessageIdFor,
+  senderInitial,
   type MessageChannelTab,
+  type InboxFilter,
   type ThreadMessage,
   type UnifiedMessage,
 } from "@/features/messages";
+import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
-const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string }> = [
-  { value: "mail", label: "Mail" },
-  { value: "instagram", label: "Instagram" },
-  { value: "messenger", label: "Messenger" },
-  { value: "whatsapp", label: "WhatsApp" },
-];
-
-function formatDate(raw: string): string {
-  if (!raw) return "";
-  try {
-    const d = new Date(raw);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-  } catch {
-    return "";
-  }
-}
-
-function senderInitial(name: string): string {
-  return (name || "?").charAt(0).toUpperCase();
-}
-
-/** Compact "how long has this waited" label for unanswered messages. */
-function formatWaitTime(raw: string): string | null {
-  if (!raw) return null;
-  const ms = Date.now() - Date.parse(raw);
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${Math.max(1, minutes)}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
+/** Background refresh interval while the tab is visible. */
+const INBOX_REFRESH_MS = 120_000;
 
 /** Cap for the persisted handled-ids list so the document stays bounded. */
 const MAX_HANDLED_IDS = 500;
 
-const COLORS = [
-  "bg-blue-500", "bg-purple-500", "bg-green-500", "bg-orange-500",
-  "bg-pink-500", "bg-teal-500", "bg-red-500", "bg-yellow-500",
-];
-function avatarColor(str: string): string {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  return COLORS[Math.abs(h) % COLORS.length];
-}
-
-const DM_CHANNEL_LABELS: Record<string, string> = {
-  instagram: "Instagram",
-  facebook: "Facebook",
-  facebook_messenger: "Messenger",
-  messenger: "Messenger",
-  twitter: "X",
-  x: "X",
-  bluesky: "Bluesky",
-  reddit: "Reddit",
-  telegram: "Telegram",
-  whatsapp: "WhatsApp",
+const FILTER_SHORTCUTS: Record<string, InboxFilter> = {
+  "1": "queue",
+  "2": "open",
+  "3": "all",
+  "4": "handled",
 };
-
-function channelBadge(msg: UnifiedMessage): string {
-  if (msg.kind === "email") {
-    return msg.channel === "gmail" ? "Gmail" : msg.channel === "outlook" ? "Outlook" : msg.channel;
-  }
-  const key = msg.channel.toLowerCase();
-  return DM_CHANNEL_LABELS[key] || msg.channel || "DM";
-}
-
-function providerMessageIdFor(msg: UnifiedMessage): string {
-  return msg.providerMessageId || (msg.kind === "email" ? msg.id : "");
-}
-
-function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): boolean {
-  const channel = msg.channel.toLowerCase();
-  if (tab === "mail") return msg.kind === "email";
-  if (tab === "instagram") return channel === "instagram" || channel === "ig";
-  if (tab === "messenger") return channel === "facebook" || channel === "messenger" || channel === "facebook_messenger";
-  return channel === "whatsapp" || channel === "wa";
-}
-
-function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: string } {
-  if (tab === "mail") {
-    return {
-      title: "No mail yet",
-      description: "Connect Gmail or Outlook to see email here.",
-    };
-  }
-  if (tab === "instagram") {
-    return {
-      title: "No Instagram messages yet",
-      description: "Instagram DMs appear here when Zernio Inbox returns conversations.",
-    };
-  }
-  if (tab === "messenger") {
-    return {
-      title: "No Messenger messages yet",
-      description: "Facebook Messenger conversations appear here when Zernio Inbox is available.",
-    };
-  }
-  return {
-    title: "No WhatsApp messages yet",
-    description: "WhatsApp conversations appear here when Zernio Inbox is available.",
-  };
-}
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
@@ -164,12 +79,17 @@ export default function MessagesPage() {
   const [zernioNote, setZernioNote] = useState<string | null>(null);
   const [mailErrors, setMailErrors] = useState<Array<{ accountId: string; platform: string; error: string }>>([]);
   const [activeTab, setActiveTab] = useState<MessageChannelTab>("mail");
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("queue");
   const [inboxSearch, setInboxSearch] = useState("");
-  const defaultedUnread = useRef(false);
+  const debouncedInboxSearch = useDebouncedValue(inboxSearch, 160);
+  const defaultedFilter = useRef(false);
   const autoSelectedDesktop = useRef(false);
   const autoDraftForId = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const focusReplyRef = useRef<(() => void) | null>(null);
+  const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
+  const prefetchInflight = useRef<Set<string>>(new Set());
+  const replyDraftCache = useRef<Map<string, string>>(new Map());
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [replyDraft, setReplyDraft] = useState("");
@@ -178,11 +98,13 @@ export default function MessagesPage() {
   const [replySent, setReplySent] = useState(false);
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [aiSearchOpen, setAiSearchOpen] = useState(false);
 
   // "Handled" is app-level triage (the providers don't expose mark-as-read):
   // handled ids stop counting as unanswered in this inbox. Persisted per
   // profile so the state follows the user across devices.
   const handledDoc = useProfileDocument<string[]>("messages-handled", []);
+  const inboxPrefsDoc = useProfileDocument<InboxPrefs>("messages-inbox-prefs", {});
   const handledIds = useMemo(
     () => new Set(Array.isArray(handledDoc.data) ? handledDoc.data : []),
     [handledDoc.data]
@@ -196,14 +118,25 @@ export default function MessagesPage() {
       handledDoc.save(next);
       if (opts?.silent) return;
       if (fresh.length === 1) {
-        sonnerToast.success("Marked as handled", {
-          action: { label: "Undo", onClick: () => handledDoc.save(prev) },
+        sonnerToast.success("Markerad som hanterad", {
+          action: { label: "Ångra", onClick: () => handledDoc.save(prev) },
         });
       } else {
-        sonnerToast.success(`Marked ${fresh.length} messages as handled`);
+        sonnerToast.success(`${fresh.length} meddelanden markerade som hanterade`);
       }
     },
     [handledDoc, handledIds]
+  );
+  const unmarkHandled = useCallback(
+    (ids: string[]) => {
+      const remove = new Set(ids);
+      const prev = Array.isArray(handledDoc.data) ? handledDoc.data : [];
+      const next = prev.filter((id) => !remove.has(id));
+      if (next.length === prev.length) return;
+      handledDoc.save(next);
+      sonnerToast.success("Meddelandet är öppet igen");
+    },
+    [handledDoc]
   );
   const isUnanswered = useCallback(
     (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
@@ -256,11 +189,13 @@ export default function MessagesPage() {
     }
   }, [authMode, accessToken]);
 
-  const loadUnified = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setZernioNote(null);
-    setMailErrors([]);
+  const loadUnified = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+      setError(null);
+      setZernioNote(null);
+      setMailErrors([]);
+    }
     try {
       // Scope the inbox to the active business profile so switching profiles
       // never shows another profile's mailboxes/DMs.
@@ -283,12 +218,21 @@ export default function MessagesPage() {
       if (Array.isArray(data.mailErrors) && data.mailErrors.length > 0) setMailErrors(data.mailErrors);
       if (typeof data.zernioNote === "string" && data.zernioNote) setZernioNote(data.zernioNote);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
-      setMessages([]);
+      if (!opts?.silent) {
+        setError(e instanceof Error ? e.message : "Request failed");
+        setMessages([]);
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [ensureBackendSession, activeProfileId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadUnified({ silent: true });
+    }, INBOX_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [loadUnified]);
 
   useEffect(() => {
     void loadUnified();
@@ -372,14 +316,23 @@ export default function MessagesPage() {
     window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
   }
 
-  // Reset the reply box whenever a different message is opened.
+  // Restore reply draft cache and reset transient state when switching messages.
   useEffect(() => {
-    setReplyDraft("");
+    if (!selectedMessage?.id) return;
+    const cached = replyDraftCache.current.get(selectedMessage.id);
+    setReplyDraft(cached ?? "");
     setReplySent(false);
     setDraftBusy(false);
     setSendBusy(false);
     setThreadMessages([]);
+    autoDraftForId.current = cached?.trim() ? selectedMessage.id : null;
   }, [selectedMessage?.id]);
+
+  useEffect(() => {
+    if (!selectedMessage?.id || replySent) return;
+    if (replyDraft.trim()) replyDraftCache.current.set(selectedMessage.id, replyDraft);
+    else replyDraftCache.current.delete(selectedMessage.id);
+  }, [replyDraft, replySent, selectedMessage?.id]);
 
   useEffect(() => {
     if (!selectedMessage) {
@@ -396,11 +349,21 @@ export default function MessagesPage() {
       return;
     }
 
+    const cached = threadPrefetchCache.current.get(selectedMessage.id);
+    if (cached) {
+      setThreadMessages(cached);
+      setThreadLoading(false);
+      return;
+    }
+
     const ac = new AbortController();
     setThreadLoading(true);
     void fetchMessageThread(selectedMessage, activeProfileId, ac.signal)
       .then((rows) => {
-        if (!ac.signal.aborted) setThreadMessages(rows);
+        if (!ac.signal.aborted) {
+          threadPrefetchCache.current.set(selectedMessage.id, rows);
+          setThreadMessages(rows);
+        }
       })
       .catch(() => {
         if (!ac.signal.aborted) setThreadMessages([]);
@@ -412,12 +375,52 @@ export default function MessagesPage() {
     return () => ac.abort();
   }, [selectedMessage, activeProfileId]);
 
+  const prefetchThread = useCallback(
+    (msg: UnifiedMessage) => {
+      if (threadPrefetchCache.current.has(msg.id) || prefetchInflight.current.has(msg.id)) return;
+      const canLoad =
+        (msg.kind === "email" && (msg.threadId || msg.providerMessageId)) ||
+        (msg.kind === "dm" && msg.conversationId);
+      if (!canLoad) return;
+      prefetchInflight.current.add(msg.id);
+      void fetchMessageThread(msg, activeProfileId)
+        .then((rows) => {
+          threadPrefetchCache.current.set(msg.id, rows);
+          prefetchInflight.current.delete(msg.id);
+        })
+        .catch(() => prefetchInflight.current.delete(msg.id));
+    },
+    [activeProfileId]
+  );
+
   useEffect(() => {
-    if (defaultedUnread.current || loading) return;
+    if (defaultedFilter.current || loading || inboxPrefsDoc.isLoading) return;
+    defaultedFilter.current = true;
+    const saved = inboxPrefsDoc.data;
+    if (saved?.tab) setActiveTab(saved.tab);
+    if (saved?.filter) {
+      setInboxFilter(saved.filter);
+      return;
+    }
     const unread = messages.filter(isUnanswered).length;
-    if (unread > 0) setUnreadOnly(true);
-    defaultedUnread.current = true;
-  }, [loading, messages, isUnanswered]);
+    if (unread > 0) setInboxFilter("queue");
+  }, [loading, messages, isUnanswered, inboxPrefsDoc.isLoading, inboxPrefsDoc.data]);
+
+  const setInboxFilterPersisted = useCallback(
+    (filter: InboxFilter) => {
+      setInboxFilter(filter);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, filter });
+    },
+    [inboxPrefsDoc]
+  );
+
+  const setActiveTabPersisted = useCallback(
+    (tab: MessageChannelTab) => {
+      setActiveTab(tab);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab });
+    },
+    [inboxPrefsDoc]
+  );
 
   useEffect(() => {
     if (!selectedMessage || draftBusy || sendBusy || replySent) return;
@@ -442,8 +445,8 @@ export default function MessagesPage() {
       setReplyDraft(String(payload?.draft || ""));
     } catch (e) {
       toast({
-        title: "AI draft failed",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: "AI-utkast misslyckades",
+        description: e instanceof Error ? e.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {
@@ -485,10 +488,14 @@ export default function MessagesPage() {
 
   const hasAnyMailConnected = mailAccounts.length > 0;
   const filteredMessages = useMemo(() => {
-    const q = inboxSearch.trim().toLowerCase();
+    const q = debouncedInboxSearch.trim().toLowerCase();
     const rows = messages
       .filter((msg) => messageMatchesTab(msg, activeTab))
-      .filter((msg) => !unreadOnly || isUnanswered(msg))
+      .filter((msg) => {
+        if (inboxFilter === "open") return isUnanswered(msg);
+        if (inboxFilter === "handled") return handledIds.has(msg.id);
+        return true;
+      })
       .filter((msg) => {
         if (!q) return true;
         const haystack = [
@@ -503,8 +510,6 @@ export default function MessagesPage() {
           .toLowerCase();
         return haystack.includes(q);
       });
-    // Unanswered messages first (longest wait on top), answered/read below
-    // (newest first) — the inbox reads top-to-bottom as a work queue.
     return rows.sort((a, b) => {
       const aOpen = isUnanswered(a);
       const bOpen = isUnanswered(b);
@@ -513,7 +518,7 @@ export default function MessagesPage() {
       const bDate = Date.parse(b.date) || 0;
       return aOpen ? aDate - bDate : bDate - aDate;
     });
-  }, [activeTab, messages, unreadOnly, inboxSearch, isUnanswered]);
+  }, [activeTab, messages, inboxFilter, debouncedInboxSearch, isUnanswered, handledIds]);
 
   const navigateRelative = useCallback(
     (delta: number) => {
@@ -537,10 +542,21 @@ export default function MessagesPage() {
     [filteredMessages, selectedId]
   );
 
-  const unansweredVisible = useMemo(
-    () => filteredMessages.filter(isUnanswered),
-    [filteredMessages, isUnanswered]
+  const unansweredInTab = useMemo(
+    () => messages.filter((msg) => messageMatchesTab(msg, activeTab) && isUnanswered(msg)),
+    [messages, activeTab, isUnanswered]
   );
+
+  const inboxStats = useMemo(() => {
+    const open = unansweredInTab;
+    let oldestWait: string | null = null;
+    if (open.length > 0) {
+      const oldest = open.reduce((a, b) => (Date.parse(a.date) < Date.parse(b.date) ? a : b));
+      oldestWait = formatWaitTime(oldest.date);
+    }
+    const aiReadyCount = open.filter((m) => Boolean(aiSummaries[m.id])).length;
+    return { openCount: open.length, oldestWait, aiReadyCount };
+  }, [unansweredInTab, aiSummaries]);
 
   const advanceToNextMessage = useCallback(
     (fromId: string) => {
@@ -556,13 +572,81 @@ export default function MessagesPage() {
     [filteredMessages, isUnanswered, selectMessage]
   );
 
+  const markHandledAndAdvance = useCallback(
+    (id: string) => {
+      if (handledIds.has(id)) return;
+      markHandled([id]);
+      advanceToNextMessage(id);
+    },
+    [advanceToNextMessage, handledIds, markHandled]
+  );
+
+  const navigateOpenRelative = useCallback(
+    (delta: number) => {
+      const openRows = filteredMessages.filter(isUnanswered);
+      if (openRows.length === 0) return;
+      const currentIndex = selectedId ? openRows.findIndex((m) => m.id === selectedId) : -1;
+      const nextIndex =
+        currentIndex === -1
+          ? delta > 0
+            ? 0
+            : openRows.length - 1
+          : Math.min(openRows.length - 1, Math.max(0, currentIndex + delta));
+      selectMessage(openRows[nextIndex] ?? null);
+    },
+    [filteredMessages, isUnanswered, selectedId, selectMessage]
+  );
+
+  const jumpToOldestOpen = useCallback(() => {
+    if (unansweredInTab.length === 0) return;
+    const oldest = unansweredInTab.reduce((a, b) => (Date.parse(a.date) < Date.parse(b.date) ? a : b));
+    setInboxFilterPersisted("open");
+    selectMessage(oldest);
+  }, [selectMessage, setInboxFilterPersisted, unansweredInTab]);
+
+  const jumpToAiReady = useCallback(() => {
+    const withAi = unansweredInTab.filter((m) => Boolean(aiSummaries[m.id]));
+    if (withAi.length === 0) return;
+    setInboxFilterPersisted("open");
+    selectMessage(withAi[0] ?? null);
+  }, [aiSummaries, selectMessage, setInboxFilterPersisted, unansweredInTab]);
+
+  const startTriage = useCallback(() => {
+    if (unansweredInTab.length === 0) return;
+    setInboxFilterPersisted("open");
+    jumpToOldestOpen();
+  }, [jumpToOldestOpen, setInboxFilterPersisted, unansweredInTab.length]);
+
+  const focusNextOpen = useCallback(() => {
+    const openRows = filteredMessages.filter(isUnanswered);
+    if (openRows.length === 0) return;
+    const idx = selectedId ? openRows.findIndex((m) => m.id === selectedId) : -1;
+    const next = openRows[(idx + 1) % openRows.length];
+    selectMessage(next ?? null);
+  }, [filteredMessages, isUnanswered, selectedId, selectMessage]);
+
+  const cycleTab = useCallback(
+    (delta: number) => {
+      const idx = MESSAGE_TABS.findIndex((t) => t.value === activeTab);
+      const next = MESSAGE_TABS[(idx + delta + MESSAGE_TABS.length) % MESSAGE_TABS.length];
+      if (next) setActiveTabPersisted(next.value);
+    },
+    [activeTab, setActiveTabPersisted]
+  );
+
+  const selectFirstSearchResult = useCallback(() => {
+    if (filteredMessages.length === 0) return;
+    selectMessage(filteredMessages[0] ?? null);
+    searchInputRef.current?.blur();
+  }, [filteredMessages, selectMessage]);
+
   const sendReply = useCallback(async () => {
     if (!selectedMessage || !replyDraft.trim()) return;
     const messageId = providerMessageIdFor(selectedMessage);
     if (selectedMessage.kind === "email" && !messageId) {
       toast({
-        title: "Could not send reply",
-        description: "This email is missing a provider message id. Refresh messages and try again.",
+        title: "Kunde inte skicka svar",
+        description: "E-postmeddelandet saknar provider-id. Uppdatera inkorgen och försök igen.",
         variant: "destructive",
       });
       return;
@@ -581,18 +665,19 @@ export default function MessagesPage() {
         },
       });
       setReplySent(true);
+      replyDraftCache.current.delete(sentId);
       markHandled([sentId], { silent: true });
       void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
       sonnerToast.success(
         selectedMessage.kind === "email"
-          ? `${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"} reply sent`
-          : "Reply sent via Zernio"
+          ? `Svar skickat via ${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"}`
+          : "Svar skickat"
       );
       window.setTimeout(() => advanceToNextMessage(sentId), 500);
     } catch (e) {
       toast({
-        title: "Could not send reply",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: "Kunde inte skicka svar",
+        description: e instanceof Error ? e.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {
@@ -612,11 +697,12 @@ export default function MessagesPage() {
     (msg: UnifiedMessage) => ({
       open: isUnanswered(msg),
       waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
+      urgent: isUnanswered(msg) && isUrgentWait(msg.date),
       channelLabel: channelBadge(msg),
       aiSummary: aiSummaries[msg.id],
-      formattedDate: formatDate(msg.date),
+      formattedDate: formatMessageDate(msg.date),
       senderInitial: senderInitial(msg.from.name || msg.from.email),
-      avatarClass: avatarColor(msg.from.name || msg.from.email || msg.id),
+      avatarGradient: avatarGradient(msg.from.name || msg.from.email || msg.id),
       isHandled: handledIds.has(msg.id),
     }),
     [aiSummaries, handledIds, isUnanswered]
@@ -637,7 +723,32 @@ export default function MessagesPage() {
       ),
     [messages, isUnanswered]
   );
-  const activeEmptyCopy = emptyCopyForTab(activeTab);
+  const hasMessagesInTab = useMemo(
+    () => messages.some((msg) => messageMatchesTab(msg, activeTab)),
+    [messages, activeTab]
+  );
+
+  const inboxEmptyState = useMemo(
+    () =>
+      inboxEmptyCopy({
+        tab: activeTab,
+        filter: inboxFilter,
+        search: debouncedInboxSearch,
+        hasMessagesInTab,
+      }),
+    [activeTab, debouncedInboxSearch, hasMessagesInTab, inboxFilter]
+  );
+
+  const inboxEmptyAction = inboxEmptyState.showClearSearch ? (
+    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxSearch("")}>
+      Rensa sökning
+    </Button>
+  ) : inboxFilter !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
+    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxFilterPersisted("all")}>
+      Visa alla meddelanden
+    </Button>
+  ) : undefined;
+
   const showZernioNote = activeTab !== "mail" && Boolean(zernioNote);
 
   useEffect(() => {
@@ -665,6 +776,11 @@ export default function MessagesPage() {
     }
   }, [loading, selectedId, filteredMessages, isUnanswered, selectMessage]);
 
+  const canReplyToSelected =
+    selectedMessage &&
+    ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
+      (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)));
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -672,14 +788,45 @@ export default function MessagesPage() {
       const tag = target.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
 
-      if (e.key === "j" || e.key === "ArrowDown") {
+      if (e.shiftKey && (e.key === "j" || e.key === "ArrowDown")) {
+        e.preventDefault();
+        navigateOpenRelative(1);
+        return;
+      }
+      if (e.shiftKey && (e.key === "k" || e.key === "ArrowUp")) {
+        e.preventDefault();
+        navigateOpenRelative(-1);
+        return;
+      }
+      if (!e.shiftKey && (e.key === "j" || e.key === "ArrowDown")) {
         e.preventDefault();
         navigateRelative(1);
         return;
       }
-      if (e.key === "k" || e.key === "ArrowUp") {
+      if (!e.shiftKey && (e.key === "k" || e.key === "ArrowUp")) {
         e.preventDefault();
         navigateRelative(-1);
+        return;
+      }
+      if ((e.key === "n" || e.key === "N") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        focusNextOpen();
+        return;
+      }
+      if (e.key === "[" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        cycleTab(-1);
+        return;
+      }
+      if (e.key === "]" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        cycleTab(1);
+        return;
+      }
+      const filterShortcut = FILTER_SHORTCUTS[e.key];
+      if (filterShortcut && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        setInboxFilterPersisted(filterShortcut);
         return;
       }
       if (e.key === "Escape" && selectedId) {
@@ -692,19 +839,31 @@ export default function MessagesPage() {
         searchInputRef.current?.focus();
         return;
       }
+      if ((e.key === "r" || e.key === "R") && selectedMessage && canReplyToSelected) {
+        e.preventDefault();
+        focusReplyRef.current?.();
+        return;
+      }
       if ((e.key === "e" || e.key === "E") && selectedMessage && isUnanswered(selectedMessage)) {
         e.preventDefault();
-        markHandled([selectedMessage.id]);
+        markHandledAndAdvance(selectedMessage.id);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isUnanswered, markHandled, navigateRelative, selectMessage, selectedId, selectedMessage]);
-
-  const canReplyToSelected =
-    selectedMessage &&
-    ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
-      (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)));
+  }, [
+    canReplyToSelected,
+    cycleTab,
+    focusNextOpen,
+    isUnanswered,
+    markHandledAndAdvance,
+    navigateOpenRelative,
+    navigateRelative,
+    selectMessage,
+    selectedId,
+    selectedMessage,
+    setInboxFilterPersisted,
+  ]);
 
   const detailProps = useMemo(() => {
     if (!selectedMessage) return null;
@@ -720,9 +879,14 @@ export default function MessagesPage() {
       replySent,
       canReply: Boolean(canReplyToSelected),
       isHandled: handledIds.has(selectedMessage.id),
+      needsAttention: isUnanswered(selectedMessage),
+      focusReplyRef,
       onDraftReply: () => void draftReply(),
       onSendReply: () => void sendReply(),
-      onMarkHandled: () => markHandled([selectedMessage.id]),
+      onMarkHandled: () => markHandledAndAdvance(selectedMessage.id),
+      onUnmarkHandled: handledIds.has(selectedMessage.id)
+        ? () => unmarkHandled([selectedMessage.id])
+        : undefined,
       onNextAfterSend: () => advanceToNextMessage(selectedMessage.id),
       onBack: () => selectMessage(null),
       navigation:
@@ -744,7 +908,8 @@ export default function MessagesPage() {
     draftBusy,
     filteredMessages.length,
     handledIds,
-    markHandled,
+    isUnanswered,
+    markHandledAndAdvance,
     navigateRelative,
     replyDraft,
     replySent,
@@ -754,223 +919,165 @@ export default function MessagesPage() {
     sendReply,
     threadLoading,
     threadMessages,
+    unmarkHandled,
   ]);
 
+  const openTotal = useMemo(
+    () => messages.filter((msg) => messageMatchesTab(msg, activeTab) && isUnanswered(msg)).length,
+    [messages, activeTab, isUnanswered]
+  );
+
+  const oauthAlertMessage = oauthErrorDetails
+    ? formatOAuthErrorMessage(
+        oauthErrorDetails,
+        {
+          gmail_not_configured:
+            "Gmail är inte konfigurerat. Lägg till GOOGLE_CLIENT_ID och GOOGLE_CLIENT_SECRET i .env.local.",
+          outlook_not_configured:
+            "Outlook är inte konfigurerat. Lägg till MICROSOFT_CLIENT_ID och MICROSOFT_CLIENT_SECRET i .env.local.",
+        },
+        "Inloggning misslyckades"
+      )
+    : null;
+
   return (
-    <div className="space-y-6 max-w-7xl w-full">
+    <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4">
       <PageHeader
         icon={MessageSquare}
-        title="Messages"
-        description="Email from Gmail and Outlook, plus DMs from connected social accounts (via Zernio inbox when available)."
-        actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void loadUnified()}
-            disabled={loading}
-            className="text-muted-foreground shrink-0"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            <span className="ml-1.5 hidden sm:inline">Refresh</span>
-          </Button>
-        }
+        title="Meddelanden"
+        description="Mail, DM och WhatsApp i en inkorg — med AI-sammanfattningar och snabbsvar."
       />
 
-      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <SectionConnectionStatus area="messages" />
-      </m.div>
-
-      <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.02 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS.messages}
-          title="Mail search"
-          description="Search connected mail via Superhuman when OAuth is configured."
-        />
-      </m.div>
-
-      {authMode === "local" && (
-        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-muted/30 border-border">
-            <CardContent className="py-3">
-              <p className="text-sm text-muted-foreground">
-                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
-              </p>
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
-
-      {oauthErrorDetails && (
-        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <OAuthErrorAlert
-            details={oauthErrorDetails}
-            message={formatOAuthErrorMessage(
-              oauthErrorDetails,
-              {
-                gmail_not_configured: "Gmail is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local.",
-                outlook_not_configured: "Outlook is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.local.",
-              },
-              "Login failed"
-            )}
-            onDismiss={clearOauthError}
-          />
-        </m.div>
-      )}
-
-      {showZernioNote && (
-        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-muted/40 border-border">
-            <CardContent className="py-3 text-sm text-muted-foreground">
-              Social DM inbox unavailable: {zernioNote}
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
-
-      {mailErrors.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4">
-              {mailErrors.map((me) => (
-                <div key={`${me.accountId}-${me.platform}`} className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-destructive">
-                    {me.platform === "gmail" ? "Gmail" : "Outlook"} token expired — reconnect to load messages.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
-                    onClick={() => void (me.platform === "gmail" ? connectGmail() : connectOutlook())}
-                  >
-                    Reconnect
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
-
-      {!hasAnyMailConnected && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="flex flex-col sm:flex-row gap-3">
-          <Card className="flex-1 bg-card border-border border-dashed">
-            <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
+      {!hasAnyMailConnected ? (
+        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="grid gap-3 sm:grid-cols-2">
+          <Card className="border-dashed border-border bg-card/40">
+            <CardContent className="flex flex-col items-center gap-3 px-4 py-8 text-center">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
-              <p className="font-medium text-sm">Gmail</p>
-              <Button size="sm" onClick={() => void connectGmail()} className="glow-sm">
-                Connect Gmail
+              <div>
+                <p className="text-sm font-medium">Gmail</p>
+                <p className="mt-1 text-xs text-muted-foreground">Koppla för att se mail i inkorgen.</p>
+              </div>
+              <Button size="sm" className="glow-sm" onClick={() => void connectGmail()}>
+                Koppla Gmail
               </Button>
             </CardContent>
           </Card>
-          <Card className="flex-1 bg-card border-border border-dashed">
-            <CardContent className="py-8 flex flex-col items-center gap-3 text-center px-4">
+          <Card className="border-dashed border-border bg-card/40">
+            <CardContent className="flex flex-col items-center gap-3 px-4 py-8 text-center">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
-              <p className="font-medium text-sm">Outlook</p>
+              <div>
+                <p className="text-sm font-medium">Outlook</p>
+                <p className="mt-1 text-xs text-muted-foreground">Koppla Microsoft 365 / Outlook.</p>
+              </div>
               <Button size="sm" variant="outline" onClick={() => void connectOutlook()}>
-                Connect Outlook
+                Koppla Outlook
               </Button>
             </CardContent>
           </Card>
         </m.div>
-      )}
-
-      {error && (
-        <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="py-3 px-4 flex items-center justify-between gap-2">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
-            </CardContent>
-          </Card>
-        </m.div>
-      )}
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MessageChannelTab)}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList className="h-auto flex-1 justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card/70 p-1">
-          {MESSAGE_TABS.map((tab) => {
-            const counts = tabCounts[tab.value] || { total: 0, unread: 0 };
-            return (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="min-w-fit gap-2 rounded-md px-3 py-2 text-xs data-[state=active]:bg-accent data-[state=active]:shadow-none"
-              >
-                <span>{tab.label}</span>
-                {counts.unread > 0 ? (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground tabular-nums">
-                    {counts.unread > 9 ? "9+" : counts.unread}
-                  </span>
-                ) : counts.total > 0 ? (
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{counts.total}</span>
-                ) : null}
-              </TabsTrigger>
-            );
-          })}
-          </TabsList>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="relative w-full sm:w-48">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                type="search"
-                placeholder="Search inbox…  /"
-                value={inboxSearch}
-                onChange={(e) => setInboxSearch(e.target.value)}
-                className="h-8 pl-8 text-xs"
-              />
-            </div>
-            <Switch
-              id="messages-unread-only"
-              checked={unreadOnly}
-              onCheckedChange={setUnreadOnly}
-            />
-            <Label htmlFor="messages-unread-only" className="text-xs text-muted-foreground cursor-pointer">
-              Unread only
-            </Label>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => markHandled(unansweredVisible.map((msg) => msg.id))}
-              disabled={unansweredVisible.length === 0}
-              title="Mark every unanswered message in this view as handled"
-            >
-              <CheckCheck className="h-3.5 w-3.5 mr-1.5" />
-              Mark handled ({unansweredVisible.length})
-            </Button>
-          </div>
-        </div>
-
-      </Tabs>
+      ) : null}
 
       <m.div
         {...fadeUp}
-        transition={{ duration: 0.35 }}
-        className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-border/40"
-        style={{ height: "min(76vh, 860px)" }}
+        transition={{ duration: 0.35, delay: 0.03 }}
+        className="flex min-h-[min(78vh,880px)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/30 shadow-lg ring-1 ring-border/40"
       >
-        <MessageWorkspace
-          filteredMessages={filteredMessages}
-          selectedMessage={selectedMessage}
-          selectedId={selectedId}
+        <MessageInboxToolbar
+          activeTab={activeTab}
+          onTabChange={setActiveTabPersisted}
+          tabCounts={tabCounts}
+          inboxSearch={inboxSearch}
+          onSearchChange={setInboxSearch}
+          onSearchSubmit={selectFirstSearchResult}
+          searchInputRef={searchInputRef}
+          inboxFilter={inboxFilter}
+          onInboxFilterChange={setInboxFilterPersisted}
+          unansweredCount={unansweredInTab.length}
+          totalVisible={filteredMessages.length}
+          openTotal={openTotal}
           loading={loading}
-          error={error}
-          unreadOnly={unreadOnly}
-          unansweredCount={unansweredVisible.length}
-          emptyTitle={activeEmptyCopy.title}
-          emptyDescription={activeEmptyCopy.description}
-          getRowMeta={getRowMeta}
-          onSelect={selectMessage}
-          onMarkHandled={(id) => markHandled([id])}
-          detailProps={detailProps}
+          onRefresh={() => void loadUnified()}
+          onMarkAllHandled={() => markHandled(unansweredInTab.map((msg) => msg.id))}
+          markAllDisabled={unansweredInTab.length === 0}
+          onToggleAiSearch={() => setAiSearchOpen((v) => !v)}
+          aiSearchOpen={aiSearchOpen}
+          isSearching={Boolean(debouncedInboxSearch.trim())}
         />
+
+        <MessageAlertsBanner
+          error={error}
+          onDismissError={() => setError(null)}
+          mailErrors={mailErrors}
+          onReconnectGmail={() => void connectGmail()}
+          onReconnectOutlook={() => void connectOutlook()}
+          zernioNote={zernioNote}
+          showZernioNote={showZernioNote}
+          oauthMessage={oauthAlertMessage || undefined}
+          onDismissOAuth={oauthErrorDetails ? clearOauthError : undefined}
+        />
+
+        <MessageInboxStats
+          openCount={inboxStats.openCount}
+          oldestWait={inboxStats.oldestWait}
+          aiReadyCount={inboxStats.aiReadyCount}
+          loading={loading}
+          onShowOpen={() => setInboxFilterPersisted("open")}
+          onJumpToOldest={jumpToOldestOpen}
+          onShowAiReady={jumpToAiReady}
+          onStartTriage={startTriage}
+        />
+
+        <div className="min-h-0 flex-1">
+          <MessageWorkspace
+            filteredMessages={filteredMessages}
+            selectedMessage={selectedMessage}
+            selectedId={selectedId}
+            loading={loading}
+            error={error}
+            inboxFilter={inboxFilter}
+            searchQuery={debouncedInboxSearch}
+            emptyTitle={inboxEmptyState.title}
+            emptyDescription={inboxEmptyState.description}
+            emptyAction={inboxEmptyAction}
+            getRowMeta={getRowMeta}
+            onSelect={selectMessage}
+            onMarkHandled={markHandledAndAdvance}
+            onPrefetch={prefetchThread}
+            detailProps={detailProps}
+          />
+        </div>
+
+        <MessageStatusBar
+          selectedLabel={
+            selectedMessage
+              ? selectedMessage.subject || selectedMessage.from.name || selectedMessage.from.email
+              : null
+          }
+        />
+
+        <Collapsible open={aiSearchOpen} onOpenChange={setAiSearchOpen}>
+          <CollapsibleContent className="border-t border-border/60 bg-muted/10 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+            <div className="p-4">
+              <McpFeatureSection
+                businessProfileId={businessProfileId}
+                featureIds={MCP_PAGE_FEATURE_IDS.messages}
+                title="AI-mailsökning"
+                description="Sök i kopplad mail via MCP när OAuth är konfigurerat."
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.06 }}>
+        <SectionConnectionStatus area="messages" className="rounded-xl border-border/60" />
+      </m.div>
+
+      {authMode === "local" ? (
+        <p className="text-xs text-muted-foreground">
+          Lokalt läge — OAuth fungerar för test och data sparas i sessionen.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1,17 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Inbox } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageInboxRow } from "./MessageInboxRow";
-import type { UnifiedMessage } from "./types";
+import type { InboxFilter, UnifiedMessage } from "./types";
 
 type RowMeta = {
   open: boolean;
   waited: string | null;
+  urgent: boolean;
   channelLabel: string;
   aiSummary?: string;
   formattedDate: string;
   senderInitial: string;
-  avatarClass: string;
+  avatarGradient: string;
   isHandled: boolean;
 };
 
@@ -20,99 +21,129 @@ type Props = {
   selectedId: string | null;
   loading: boolean;
   error: string | null;
-  unreadOnly: boolean;
-  unansweredCount?: number;
+  inboxFilter: InboxFilter;
+  searchQuery?: string;
   emptyTitle: string;
   emptyDescription: string;
+  emptyAction?: React.ReactNode;
   getRowMeta: (msg: UnifiedMessage) => RowMeta;
   onSelect: (msg: UnifiedMessage) => void;
   onMarkHandled: (id: string) => void;
+  onPrefetch?: (msg: UnifiedMessage) => void;
 };
+
+function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/40 bg-muted/30 px-3 py-1.5 backdrop-blur-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{children}</p>
+      {count !== undefined ? (
+        <span className="text-[10px] tabular-nums text-muted-foreground">{count}</span>
+      ) : null}
+    </div>
+  );
+}
 
 export function MessageInboxList({
   messages,
   selectedId,
   loading,
   error,
-  unreadOnly,
-  unansweredCount = 0,
+  inboxFilter,
+  searchQuery = "",
   emptyTitle,
   emptyDescription,
+  emptyAction,
   getRowMeta,
   onSelect,
   onMarkHandled,
+  onPrefetch,
 }: Props) {
-  const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const { openMessages, restMessages } = useMemo(() => {
+    const open: UnifiedMessage[] = [];
+    const rest: UnifiedMessage[] = [];
+    for (const msg of messages) {
+      if (getRowMeta(msg).open) open.push(msg);
+      else rest.push(msg);
+    }
+    return { openMessages: open, restMessages: rest };
+  }, [messages, getRowMeta]);
 
   useEffect(() => {
     if (!selectedId) return;
     rowRefs.current.get(selectedId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selectedId, messages.length]);
 
+  function renderRow(msg: UnifiedMessage) {
+    const meta = getRowMeta(msg);
+    return (
+      <MessageInboxRow
+        key={msg.id}
+        ref={(el) => {
+          if (el) rowRefs.current.set(msg.id, el);
+          else rowRefs.current.delete(msg.id);
+        }}
+        message={msg}
+        selected={selectedId === msg.id}
+        open={meta.open}
+        urgent={meta.urgent}
+        channelLabel={meta.channelLabel}
+        aiSummary={meta.aiSummary}
+        waited={meta.waited}
+        formattedDate={meta.formattedDate}
+        senderInitial={meta.senderInitial}
+        avatarGradient={meta.avatarGradient}
+        isHandled={meta.isHandled}
+        searchQuery={searchQuery}
+        onSelect={() => onSelect(msg)}
+        onMarkHandled={() => onMarkHandled(msg.id)}
+        onPrefetch={onPrefetch ? () => onPrefetch(msg) : undefined}
+      />
+    );
+  }
+
+  const showSections = inboxFilter === "queue";
+
   return (
-    <>
-      <div className="shrink-0 border-b border-border bg-muted/20 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-foreground/80">
-            {loading
-              ? "Loading inbox…"
-              : `${messages.length} message${messages.length === 1 ? "" : "s"}`}
-            {unreadOnly ? " · filtered" : ""}
-          </p>
-          {!loading && unansweredCount > 0 ? (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
-              {unansweredCount} open
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto app-scroll">
+    <div className="flex h-full min-h-0 flex-col bg-sidebar/20">
+      <div className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {loading ? (
-          <div className="divide-y divide-border/60">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-3 px-3 py-3">
-                <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+          <div className="divide-y divide-border/40">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 px-3 py-3 shimmer">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-muted/60" />
                 <div className="flex-1 space-y-2 py-0.5">
-                  <div className="h-3 w-2/5 animate-pulse rounded bg-secondary" />
-                  <div className="h-3 w-4/5 animate-pulse rounded bg-secondary/70" />
+                  <div className="h-3 w-2/5 rounded bg-muted/60" />
+                  <div className="h-3 w-4/5 rounded bg-muted/40" />
                 </div>
               </div>
             ))}
           </div>
         ) : messages.length > 0 ? (
-          <div className="divide-y divide-border/60">
-            {messages.map((msg) => {
-              const meta = getRowMeta(msg);
-              return (
-                <MessageInboxRow
-                  key={msg.id}
-                  ref={(el) => {
-                    if (el) rowRefs.current.set(msg.id, el);
-                    else rowRefs.current.delete(msg.id);
-                  }}
-                  message={msg}
-                  selected={selectedId === msg.id}
-                  open={meta.open}
-                  channelLabel={meta.channelLabel}
-                  aiSummary={meta.aiSummary}
-                  waited={meta.waited}
-                  formattedDate={meta.formattedDate}
-                  senderInitial={meta.senderInitial}
-                  avatarClass={meta.avatarClass}
-                  isHandled={meta.isHandled}
-                  onSelect={() => onSelect(msg)}
-                  onMarkHandled={() => onMarkHandled(msg.id)}
-                />
-              );
-            })}
+          <div>
+            {showSections && openMessages.length > 0 ? (
+              <>
+                <SectionLabel count={openMessages.length}>Behöver svar</SectionLabel>
+                {openMessages.map(renderRow)}
+              </>
+            ) : null}
+            {showSections && restMessages.length > 0 ? (
+              <>
+                {openMessages.length > 0 ? (
+                  <SectionLabel count={restMessages.length}>Övriga</SectionLabel>
+                ) : null}
+                {restMessages.map(renderRow)}
+              </>
+            ) : null}
+            {!showSections ? messages.map(renderRow) : null}
           </div>
         ) : !error ? (
-          <div className="p-6">
-            <EmptyState icon={Inbox} title={emptyTitle} description={emptyDescription} />
+          <div className="flex h-full min-h-[240px] items-center justify-center p-6">
+            <EmptyState icon={Inbox} title={emptyTitle} description={emptyDescription} action={emptyAction} size="compact" />
           </div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

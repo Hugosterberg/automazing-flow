@@ -21,6 +21,7 @@ import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { MessageThread } from "./MessageThread";
+import { formatFullMessageDate } from "./messagesUi";
 import type { ThreadMessage, UnifiedMessage } from "./types";
 
 export type MessageDetailPanelProps = {
@@ -39,9 +40,12 @@ export type MessageDetailPanelProps = {
   onDraftReply: () => void;
   onSendReply: () => void;
   onMarkHandled: () => void;
+  onUnmarkHandled?: () => void;
   onNextAfterSend?: () => void;
   onBack?: () => void;
   showBack?: boolean;
+  needsAttention?: boolean;
+  focusReplyRef?: React.MutableRefObject<(() => void) | null>;
   navigation?: {
     index: number;
     total: number;
@@ -51,24 +55,6 @@ export type MessageDetailPanelProps = {
     onNext: () => void;
   };
 };
-
-type Props = MessageDetailPanelProps;
-
-function formatFullDate(raw: string): string {
-  if (!raw) return "";
-  try {
-    return new Date(raw).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return raw;
-  }
-}
 
 export function MessageDetailPanel({
   message,
@@ -86,17 +72,28 @@ export function MessageDetailPanel({
   onDraftReply,
   onSendReply,
   onMarkHandled,
+  onUnmarkHandled,
   onNextAfterSend,
   onBack,
   showBack,
+  needsAttention = false,
+  focusReplyRef,
   navigation,
-}: Props) {
+}: MessageDetailPanelProps) {
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const [summaryOpen, setSummaryOpen] = useState(Boolean(aiSummary));
 
   useEffect(() => {
-    setSummaryOpen(Boolean(aiSummary));
-  }, [message.id, aiSummary]);
+    if (!focusReplyRef) return;
+    focusReplyRef.current = () => replyRef.current?.focus();
+    return () => {
+      focusReplyRef.current = null;
+    };
+  }, [focusReplyRef, message.id]);
+
+  useEffect(() => {
+    setSummaryOpen(Boolean(aiSummary) && (needsAttention || Boolean(aiSummary)));
+  }, [message.id, aiSummary, needsAttention]);
 
   useEffect(() => {
     if (replySent || !canReply || draftBusy) return;
@@ -111,16 +108,16 @@ export function MessageDetailPanel({
     const text = (message.body || message.snippet || "").trim();
     void navigator.clipboard
       .writeText(text)
-      .then(() => toast.success("Message copied."))
-      .catch(() => toast.error("Could not copy."));
+      .then(() => toast.success("Meddelande kopierat."))
+      .catch(() => toast.error("Kunde inte kopiera."));
   }
 
   function copyEmail() {
     if (!fromEmail) return;
     void navigator.clipboard
       .writeText(fromEmail)
-      .then(() => toast.success("Email address copied."))
-      .catch(() => toast.error("Could not copy."));
+      .then(() => toast.success("E-postadress kopierad."))
+      .catch(() => toast.error("Kunde inte kopiera."));
   }
 
   return (
@@ -136,14 +133,14 @@ export function MessageDetailPanel({
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back to inbox</span>
+              <span className="sr-only">Tillbaka till inkorgen</span>
             </Button>
           ) : null}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <h2 className="min-w-0 text-base font-semibold leading-snug tracking-tight sm:text-lg">
-                {message.subject || "(No subject)"}
+                {message.subject || "(Utan ämne)"}
               </h2>
               <div className="flex shrink-0 items-center gap-0.5">
                 {navigation ? (
@@ -155,7 +152,7 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
-                      aria-label="Previous message"
+                      aria-label="Föregående meddelande"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -169,7 +166,7 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
-                      aria-label="Next message"
+                      aria-label="Nästa meddelande"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -177,14 +174,14 @@ export function MessageDetailPanel({
                 ) : null}
                 {message.externalUrl ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                    <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Open in platform">
+                    <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Öppna i plattformen">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : null}
-                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title="Copy message">
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title="Kopiera meddelande">
                   <Copy className="h-4 w-4" />
-                  <span className="sr-only">Copy message</span>
+                  <span className="sr-only">Kopiera meddelande</span>
                 </Button>
                 {!isHandled ? (
                   <Button
@@ -193,19 +190,33 @@ export function MessageDetailPanel({
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={onMarkHandled}
-                    title="Mark handled (E)"
+                    title="Markera hanterad (E)"
                   >
                     <CheckCheck className="h-4 w-4" />
-                    <span className="sr-only">Mark handled</span>
+                    <span className="sr-only">Markera hanterad</span>
                   </Button>
                 ) : (
-                  <Badge
-                    variant="outline"
-                    className="h-7 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600"
-                  >
-                    <CheckCheck className="h-3 w-3" />
-                    Done
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge
+                      variant="outline"
+                      className="h-7 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600"
+                    >
+                      <CheckCheck className="h-3 w-3" />
+                      Klar
+                    </Badge>
+                    {onUnmarkHandled ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-muted-foreground"
+                        onClick={onUnmarkHandled}
+                        title="Flytta tillbaka till öppna"
+                      >
+                        Återöppna
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>
@@ -219,19 +230,19 @@ export function MessageDetailPanel({
               {message.date ? (
                 <>
                   <span aria-hidden>·</span>
-                  <time>{formatFullDate(message.date)}</time>
+                  <time>{formatFullMessageDate(message.date)}</time>
                 </>
               ) : null}
             </div>
 
             <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">From</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Från</span>
               <span className="font-medium text-foreground">{fromName}</span>
               {fromEmail ? (
                 <>
                   <span className="text-muted-foreground">&lt;{fromEmail}&gt;</span>
                   <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={copyEmail}>
-                    Copy
+                    Kopiera
                   </Button>
                 </>
               ) : null}
@@ -239,6 +250,31 @@ export function MessageDetailPanel({
           </div>
         </div>
       </header>
+
+      {needsAttention && canReply && !replySent ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/5 px-4 py-2 sm:px-5">
+          <span className="text-[11px] font-medium text-primary">Snabbåtgärder</span>
+          <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
+            <CheckCheck className="mr-1 h-3 w-3" />
+            Markera klar
+            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">E</kbd>
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onDraftReply} disabled={draftBusy}>
+            {draftBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+            AI-utkast
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => replyRef.current?.focus()}
+          >
+            Skriv svar
+            <kbd className="ml-1.5 rounded border border-border/60 px-1 font-mono text-[9px] opacity-70">R</kbd>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="mx-auto max-w-3xl space-y-4">
@@ -252,7 +288,7 @@ export function MessageDetailPanel({
               >
                 <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   <Sparkles className="h-3 w-3 text-violet-500" />
-                  AI summary
+                  AI-sammanfattning
                 </span>
                 <ChevronDown
                   className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", summaryOpen && "rotate-180")}
@@ -280,17 +316,17 @@ export function MessageDetailPanel({
       </div>
 
       {canReply ? (
-        <footer className="shrink-0 border-t border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm sm:px-5">
+        <footer className="shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-4 py-3 backdrop-blur-md sm:px-5">
           <div className="mx-auto max-w-3xl">
             {replySent ? (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                   <Send className="h-4 w-4" />
-                  Reply sent
+                  Svar skickat
                 </p>
                 {onNextAfterSend ? (
                   <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
-                    Next message
+                    Nästa meddelande
                     <ChevronRight className="ml-1 h-3.5 w-3.5" />
                   </Button>
                 ) : null}
@@ -303,11 +339,11 @@ export function MessageDetailPanel({
                   onChange={(e) => onReplyDraftChange(e.target.value)}
                   placeholder={
                     message.kind === "email"
-                      ? "Write your reply… (AI draft loads automatically)"
-                      : "Write a reply…"
+                      ? "Skriv ditt svar… (AI-utkast laddas automatiskt)"
+                      : "Skriv ett svar…"
                   }
                   className={cn(
-                    "min-h-[84px] resize-none border-border/70 bg-background text-sm leading-relaxed",
+                    "min-h-[88px] resize-none rounded-xl border-border/70 bg-background/80 text-sm leading-relaxed shadow-inner",
                     "focus-visible:ring-primary/30"
                   )}
                   onKeyDown={(e) => {
@@ -324,7 +360,7 @@ export function MessageDetailPanel({
                     ) : (
                       <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    AI draft
+                    AI-utkast
                   </Button>
                   <ReplyTemplatePicker
                     onInsert={onReplyDraftChange}
@@ -334,17 +370,21 @@ export function MessageDetailPanel({
                   <Button
                     type="button"
                     size="sm"
-                    className="ml-auto h-8"
+                    className="ml-auto h-8 gap-1.5 glow-sm"
                     onClick={onSendReply}
                     disabled={sendBusy || !replyDraft.trim()}
                   >
                     {sendBusy ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Send className="mr-1.5 h-3.5 w-3.5" />
+                      <Send className="h-3.5 w-3.5" />
                     )}
-                    Send reply
+                    Skicka svar
                   </Button>
+                  <span className="hidden w-full text-[10px] text-muted-foreground sm:inline sm:w-auto sm:ml-0">
+                    Ctrl+Enter
+                    {replyDraft.trim() ? ` · ${replyDraft.trim().length} tecken` : null}
+                  </span>
                 </div>
               </div>
             )}
@@ -357,40 +397,53 @@ export function MessageDetailPanel({
 
 export function MessageDetailPlaceholder() {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 bg-gradient-to-b from-muted/20 to-background px-6 text-center">
+    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-5 bg-gradient-to-br from-muted/15 via-background to-background px-6 text-center">
       <m.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-2xl border border-dashed border-border/80 bg-card/50 p-6 shadow-sm"
+        className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-8 shadow-sm"
       >
-        <Mail className="mx-auto h-9 w-9 text-muted-foreground/50" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+          <Mail className="h-7 w-7 text-primary/70" />
+        </div>
       </m.div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Select a message</p>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          Pick an item from the inbox to read it here — your list stays visible on the left.
+      <div className="max-w-sm space-y-1.5">
+        <p className="font-display text-base font-semibold">Välj ett meddelande</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten.
         </p>
       </div>
-      <div className="hidden rounded-lg border border-border/60 bg-muted/20 px-4 py-2 text-left lg:block">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Shortcuts</p>
-        <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+      <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
+        <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd> /{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> — next / previous
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> — mark handled
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> markera hanterad
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">/</kbd> — focus search
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Shift</kbd>+<kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd>/<kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> hoppa mellan öppna
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> — close message
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> fokus svar
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Ctrl</kbd>+
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Enter</kbd> — send reply
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">N</kbd> nästa öppna
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">1</kbd>–<kbd className="rounded border border-border px-1 font-mono text-[10px]">4</kbd> filter
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">[</kbd> / <kbd className="rounded border border-border px-1 font-mono text-[10px]">]</kbd> byt kanal
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">/</kbd> fokus sök
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng
           </li>
         </ul>
       </div>

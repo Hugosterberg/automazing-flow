@@ -2,16 +2,17 @@ import { AnimatePresence, m } from "framer-motion";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MessageDetailPanel, MessageDetailPlaceholder, type MessageDetailPanelProps } from "./MessageDetailPanel";
 import { MessageInboxList } from "./MessageInboxList";
-import type { UnifiedMessage } from "./types";
+import type { InboxFilter, UnifiedMessage } from "./types";
 
 type RowMeta = {
   open: boolean;
   waited: string | null;
+  urgent: boolean;
   channelLabel: string;
   aiSummary?: string;
   formattedDate: string;
   senderInitial: string;
-  avatarClass: string;
+  avatarGradient: string;
   isHandled: boolean;
 };
 
@@ -21,21 +22,23 @@ type Props = {
   selectedId: string | null;
   loading: boolean;
   error: string | null;
-  unreadOnly: boolean;
+  inboxFilter: InboxFilter;
+  searchQuery?: string;
   emptyTitle: string;
   emptyDescription: string;
-  unansweredCount: number;
+  emptyAction?: React.ReactNode;
   getRowMeta: (msg: UnifiedMessage) => RowMeta;
   onSelect: (msg: UnifiedMessage | null) => void;
   onMarkHandled: (id: string) => void;
+  onPrefetch?: (msg: UnifiedMessage) => void;
   detailProps: Omit<MessageDetailPanelProps, "message"> | null;
 };
 
 const detailMotion = {
-  initial: { opacity: 0, x: 10 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -8 },
-  transition: { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] as const },
+  initial: { opacity: 0, x: 12, filter: "blur(4px)" },
+  animate: { opacity: 1, x: 0, filter: "blur(0px)" },
+  exit: { opacity: 0, x: -8, filter: "blur(2px)" },
+  transition: { duration: 0.16, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
 function DetailPane({
@@ -62,19 +65,23 @@ function DetailPane({
   );
 }
 
-function InboxPane(props: Omit<Props, "detailProps" | "selectedMessage"> & { className?: string }) {
+function InboxPane(
+  props: Omit<Props, "detailProps" | "selectedMessage"> & { className?: string }
+) {
   const {
     filteredMessages,
     selectedId,
     loading,
     error,
-    unreadOnly,
+    inboxFilter,
+    searchQuery,
     emptyTitle,
     emptyDescription,
-    unansweredCount,
+    emptyAction,
     getRowMeta,
     onSelect,
     onMarkHandled,
+    onPrefetch,
     className,
   } = props;
 
@@ -85,13 +92,15 @@ function InboxPane(props: Omit<Props, "detailProps" | "selectedMessage"> & { cla
         selectedId={selectedId}
         loading={loading}
         error={error}
-        unreadOnly={unreadOnly}
-        unansweredCount={unansweredCount}
+        inboxFilter={inboxFilter}
+        searchQuery={searchQuery}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
+        emptyAction={emptyAction}
         getRowMeta={getRowMeta}
         onSelect={onSelect}
         onMarkHandled={onMarkHandled}
+        onPrefetch={onPrefetch}
       />
     </aside>
   );
@@ -103,13 +112,15 @@ export function MessageWorkspace({
   selectedId,
   loading,
   error,
-  unreadOnly,
+  inboxFilter,
+  searchQuery,
   emptyTitle,
   emptyDescription,
-  unansweredCount,
+  emptyAction,
   getRowMeta,
   onSelect,
   onMarkHandled,
+  onPrefetch,
   detailProps,
 }: Props) {
   return (
@@ -122,45 +133,45 @@ export function MessageWorkspace({
             selectedId={selectedId}
             loading={loading}
             error={error}
-            unreadOnly={unreadOnly}
+            inboxFilter={inboxFilter}
+            searchQuery={searchQuery}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
-            unansweredCount={unansweredCount}
+            emptyAction={emptyAction}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
             onMarkHandled={onMarkHandled}
+            onPrefetch={onPrefetch}
           />
         ) : (
           <section className="flex h-full min-h-0 w-full flex-col bg-background">
-            <DetailPane
-              selectedMessage={selectedMessage}
-              detailProps={detailProps}
-              showBack
-            />
+            <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} showBack />
           </section>
         )}
       </div>
 
       <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
-        <ResizablePanel defaultSize={36} minSize={26} maxSize={48} className="min-h-0 min-w-0">
+        <ResizablePanel defaultSize={34} minSize={24} maxSize={46} className="min-h-0 min-w-0">
           <InboxPane
             className="flex h-full min-h-0 flex-col overflow-hidden"
             filteredMessages={filteredMessages}
             selectedId={selectedId}
             loading={loading}
             error={error}
-            unreadOnly={unreadOnly}
+            inboxFilter={inboxFilter}
+            searchQuery={searchQuery}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
-            unansweredCount={unansweredCount}
+            emptyAction={emptyAction}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
             onMarkHandled={onMarkHandled}
+            onPrefetch={onPrefetch}
           />
         </ResizablePanel>
-        <ResizableHandle withHandle className="bg-border/60" />
-        <ResizablePanel defaultSize={64} minSize={42} className="min-h-0 min-w-0">
-          <section className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+        <ResizableHandle withHandle className="w-px bg-border/50 transition-colors hover:bg-primary/30" />
+        <ResizablePanel defaultSize={66} minSize={44} className="min-h-0 min-w-0">
+          <section className="flex h-full min-h-0 flex-col overflow-hidden border-l border-border/30 bg-background">
             <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
           </section>
         </ResizablePanel>
