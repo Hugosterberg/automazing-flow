@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { resolveActivitySubjectLink } from "./resolveActivitySubjectLink";
 import type { ActivityEventRow } from "./useActivityFeed";
 
@@ -53,6 +54,7 @@ type Props = {
 };
 
 export function ActivityDetailPanel({ event, onBack, showBack, navigation }: Props) {
+  const isStackedWorkspace = useStackedWorkspace();
   const when = formatRelativeTime(event.occurred_at) ?? formatFullDate(event.occurred_at);
   const subjectLink = resolveActivitySubjectLink(event.subject_type, event.subject_id);
   const payload =
@@ -65,9 +67,18 @@ export function ActivityDetailPanel({ event, onBack, showBack, navigation }: Pro
       <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden" onClick={onBack}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
+              onClick={onBack}
+            >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till listan</span>
+              {isStackedWorkspace ? <span>Logg</span> : <span className="sr-only">Tillbaka till listan</span>}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">

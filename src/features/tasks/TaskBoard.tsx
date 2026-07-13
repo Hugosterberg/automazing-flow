@@ -271,13 +271,13 @@ function TaskCard({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           {onAiAssist && !completed ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-violet-500 hover:text-violet-400"
+              className="h-9 w-9 p-0 text-violet-500 hover:text-violet-400 sm:h-7 sm:w-7"
               onClick={(e) => {
                 e.stopPropagation();
                 onAiAssist(task);
@@ -295,9 +295,9 @@ function TaskCard({
           ) : null}
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="h-7 px-2 text-[11px]"
+            className="h-9 px-3 text-xs font-medium sm:h-7 sm:px-2 sm:text-[11px]"
             onClick={(e) => {
               e.stopPropagation();
               onSetStatus(task.id, advance.status);
@@ -310,7 +310,7 @@ function TaskCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive sm:h-7 sm:w-7"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(task.id);
@@ -366,7 +366,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory app-scroll pb-1 -mx-1 px-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:pb-0 lg:px-0">
       {COLUMNS.map((column) => {
         const Icon = column.icon;
         const columnTasks = grouped[column.status];
@@ -386,19 +386,20 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
             }}
             onDrop={(event) => handleDrop(event, column.status)}
             className={cn(
-              "min-h-[420px] rounded-2xl border bg-gradient-to-b p-3 transition-all",
+              "flex w-[min(85vw,320px)] shrink-0 snap-center flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all lg:w-auto lg:min-h-[420px]",
+              "max-h-[min(62vh,560px)] lg:max-h-none",
               column.accent,
               activeDrop && "scale-[1.01] border-primary/60 ring-2 ring-primary/20"
             )}
           >
-            <div className="mb-3 flex items-start justify-between gap-3 px-1">
+            <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
               <div className="flex items-start gap-2">
                 <div className="rounded-xl border border-border/70 bg-background/70 p-2">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold">{column.title}</h2>
-                  <p className="text-xs text-muted-foreground">{column.description}</p>
+                  <p className="hidden text-xs text-muted-foreground sm:block">{column.description}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -413,7 +414,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                     title="Move all done tasks to the archive"
                   >
                     <Archive className="h-3 w-3" />
-                    Archive all
+                    <span className="hidden sm:inline">Archive all</span>
                   </Button>
                 ) : null}
                 <Badge variant="secondary" className="tabular-nums">
@@ -422,7 +423,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto app-scroll pr-0.5">
               {columnTasks.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-background/45 p-4 text-center text-xs text-muted-foreground">
                   {column.empty}

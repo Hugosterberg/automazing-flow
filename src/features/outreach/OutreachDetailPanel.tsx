@@ -2,6 +2,8 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Copy, ExternalLink, Info, Mail, T
 import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import type { OutreachQueueItem } from "./outreachQueueTypes";
 
 type Props = {
@@ -47,14 +49,25 @@ export function OutreachDetailPanel({
   mailtoHref,
   navigation,
 }: Props) {
+  const isStackedWorkspace = useStackedWorkspace();
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
       <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden" onClick={onBack}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
+              onClick={onBack}
+            >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till listan</span>
+              {isStackedWorkspace ? <span>Kön</span> : <span className="sr-only">Tillbaka till listan</span>}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">

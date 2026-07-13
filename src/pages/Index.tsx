@@ -634,7 +634,9 @@ export default function Index() {
       ) : null}
 
       {homeBusinessProfileId ? (
-        <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
+        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag">
+          <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
+        </HomeCollapsibleSection>
       ) : null}
 
       {/* Quick overview widgets */}

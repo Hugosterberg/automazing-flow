@@ -2,6 +2,7 @@ import { ArrowLeft, Copy, ListChecks, MessageSquare, Send, User } from "lucide-r
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { guessPrimaryColumn } from "./customerColumns";
 import { stashContentCaption } from "@/lib/contentCaptionHandoff";
@@ -38,6 +39,7 @@ function copyValue(label: string, value: string) {
 }
 
 export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: Props) {
+  const isStackedWorkspace = useStackedWorkspace();
   const primary = guessPrimaryColumn(columns);
   const title = (primary && row[primary]) || `Kund #${index + 1}`;
   const email = findEmailColumn(columns, row);
@@ -54,9 +56,18 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
       <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden" onClick={onBack}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
+              onClick={onBack}
+            >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till listan</span>
+              {isStackedWorkspace ? <span>Kunder</span> : <span className="sr-only">Tillbaka till listan</span>}
             </Button>
           ) : null}
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">

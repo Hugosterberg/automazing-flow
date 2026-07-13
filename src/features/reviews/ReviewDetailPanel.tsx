@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { ReviewItem } from "./types";
 
@@ -87,6 +88,7 @@ export function ReviewDetailPanel({
   showBack,
   navigation,
 }: ReviewDetailPanelProps) {
+  const isStackedWorkspace = useStackedWorkspace();
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -104,11 +106,14 @@ export function ReviewDetailPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back to list</span>
+              {isStackedWorkspace ? <span>Lista</span> : <span className="sr-only">Tillbaka till listan</span>}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">

@@ -14,6 +14,8 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { customersToCsv, downloadCsv } from "@/lib/exportCsv";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { isShortcutBlocked, isTypingTarget } from "@/lib/keyboardShortcuts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -261,22 +263,40 @@ export default function CustomersPage() {
     return filled;
   }, [rows, columns]);
 
+  const isMobile = useIsMobile();
+  const isStackedWorkspace = useStackedWorkspace();
+  const focusedReading = useFocusedWorkspaceReading(selectedIndex != null);
+
   return (
-    <div className="space-y-6 max-w-7xl w-full">
+    <div className={cn("max-w-7xl w-full", focusedReading ? "space-y-0" : "space-y-6")}>
+      {!focusedReading ? (
+        <>
       <PageHeader
         icon={Users}
         title="Kunder"
-        description="Ladda upp din kundbas, sök och granska varje kund med alla fält på ett ställe."
+        description={
+          isMobile
+            ? "Tryck en kund i listan för att se alla fält."
+            : "Ladda upp din kundbas, sök och granska varje kund med alla fält på ett ställe."
+        }
       />
 
       <PageSmartBar
-        title="Bygg en enkel CRM-vy från din CSV — perfekt för uppföljning, segmentering och AI-frågor via Day.ai."
-        steps={[
-          "Ladda upp en CSV med kolumner som e-post, namn och telefon",
-          "Sök och välj en kund i listan till vänster",
-          "Kopiera kontaktuppgifter eller exportera filtrerade rader",
-        ]}
-        tip="Tips: Koppla Day.ai under Kopplingar för att ställa frågor om kunder och affärer direkt härifrån."
+        title={
+          isMobile
+            ? "Ladda upp CSV, sök och tryck en kund för detaljer."
+            : "Bygg en enkel CRM-vy från din CSV — perfekt för uppföljning, segmentering och AI-frågor via Day.ai."
+        }
+        steps={
+          isMobile
+            ? ["Ladda upp CSV", "Sök och tryck en kund", "Kopiera kontaktuppgifter"]
+            : [
+                "Ladda upp en CSV med kolumner som e-post, namn och telefon",
+                "Sök och välj en kund i listan till vänster",
+                "Kopiera kontaktuppgifter eller exportera filtrerade rader",
+              ]
+        }
+        tip={isMobile ? undefined : "Tips: Koppla Day.ai under Kopplingar för att ställa frågor om kunder och affärer direkt härifrån."}
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
@@ -287,11 +307,21 @@ export default function CustomersPage() {
           description="Ställ frågor om kunder och affärer när Day.ai är kopplat via OAuth."
         />
       </m.div>
+        </>
+      ) : null}
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.04 }} className="app-workspace-shell">
+      <m.div
+        {...pageFadeUp}
+        transition={{ duration: 0.35, delay: focusedReading ? 0 : 0.04 }}
+        className={cn(
+          "app-workspace-shell",
+          focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+        )}
+      >
+        {!focusedReading ? (
         <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
           <label className="inline-flex">
-            <Input type="file" accept=".csv,text/csv" className="h-8 max-w-[220px] text-xs" onChange={(e) => void handleFileChange(e)} />
+            <Input type="file" accept=".csv,text/csv" className={cn("max-w-[220px] text-sm", isMobile ? "h-10" : "h-8 text-xs")} onChange={(e) => void handleFileChange(e)} />
           </label>
           {fileName ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -306,7 +336,10 @@ export default function CustomersPage() {
               placeholder="Sök kunder…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 border-border/60 bg-background/60 pl-8 pr-8 text-xs shadow-sm"
+              className={cn(
+                "border-border/60 bg-background/60 pl-8 pr-8 text-sm shadow-sm",
+                isMobile ? "h-10" : "h-8 text-xs"
+              )}
               disabled={rows.length === 0}
             />
             {search ? (
@@ -320,11 +353,11 @@ export default function CustomersPage() {
               </button>
             ) : null}
           </div>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={exportCustomers} disabled={rows.length === 0}>
+          <Button variant="outline" size="sm" className={cn("text-sm", isMobile ? "h-10" : "h-8 text-xs")} onClick={exportCustomers} disabled={rows.length === 0}>
             <Download className="mr-1.5 h-3.5 w-3.5" />
             Exportera
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={clearData} disabled={rows.length === 0 && !fileName}>
+          <Button variant="outline" size="sm" className={cn("text-sm", isMobile ? "h-10" : "h-8 text-xs")} onClick={clearData} disabled={rows.length === 0 && !fileName}>
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             Rensa
           </Button>
@@ -334,11 +367,13 @@ export default function CustomersPage() {
               : "Ingen fil laddad"}
           </p>
         </div>
+        ) : null}
 
         {error ? (
           <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">{error}</div>
         ) : null}
 
+        {!focusedReading ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kunder</p>
@@ -353,6 +388,7 @@ export default function CustomersPage() {
             <p className="text-xs font-semibold tabular-nums">{filledFieldCount}</p>
           </div>
         </div>
+        ) : null}
 
         <div className="min-h-0 flex-1">
           {rows.length === 0 ? (
@@ -393,7 +429,7 @@ export default function CustomersPage() {
           )}
         </div>
 
-        {filteredRows.length > 0 ? (
+        {filteredRows.length > 0 && !isStackedWorkspace ? (
           <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
             <span className="truncate">
               {selectedIndex != null && filteredRows[selectedIndex] ? (

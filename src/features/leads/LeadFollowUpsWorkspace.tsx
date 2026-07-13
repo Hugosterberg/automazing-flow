@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { dateInputToEndOfDayIso } from "@/lib/localDate";
 import { LeadResearchDialog, type LeadResearchTarget } from "@/features/intelligence";
@@ -293,7 +294,13 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
 
   return (
     <>
-      <div className="flex h-full min-h-[280px] flex-col sm:min-h-[400px] lg:min-h-[480px]">
+      <div
+        className={cn(
+          "flex h-full min-h-[280px] flex-col sm:min-h-[400px] lg:min-h-[480px]",
+          !isDesktopWorkspace && selectedLead && "workspace-reading-focus rounded-none border-0 shadow-none"
+        )}
+      >
+        {isDesktopWorkspace || !selectedLead ? (
         <div className="app-workspace-toolbar flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
           <div className="relative min-w-[180px] max-w-xs flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -303,7 +310,10 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Sök leads…"
-              className="h-8 border-border/60 bg-background/60 pl-8 text-xs shadow-sm"
+              className={cn(
+                "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
+                !isDesktopWorkspace ? "h-10" : "h-8 text-xs"
+              )}
               aria-label="Sök uppföljningar"
             />
           </div>
@@ -312,6 +322,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
             {debouncedSearch.trim() ? " · sök aktiv" : ""}
           </p>
         </div>
+        ) : null}
 
         <div className="min-h-0 flex-1">
           {!isDesktopWorkspace ? (
@@ -357,6 +368,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
           )}
         </div>
 
+        {isDesktopWorkspace ? (
         <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
           <span className="truncate">
             {selectedLead ? (
@@ -372,6 +384,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
           </span>
           <span className="hidden sm:inline">J/K · O Outreach · / Search</span>
         </div>
+        ) : null}
       </div>
 
       <LeadEditDialog

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { isoToLocalDateInputValue } from "@/lib/localDate";
 import {
   LEAD_STATUS_LABELS,
@@ -61,6 +62,7 @@ export function LeadFollowUpDetailPanel({
   onEdit,
   navigation,
 }: Props) {
+  const isStackedWorkspace = useStackedWorkspace();
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
 
@@ -69,9 +71,18 @@ export function LeadFollowUpDetailPanel({
       <header className="shrink-0 border-b border-border/80 bg-card/20 px-4 py-3 backdrop-blur-sm sm:px-5">
         <div className="flex items-start gap-2">
           {showBack && onBack ? (
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 h-8 w-8 shrink-0 p-0 lg:hidden" onClick={onBack}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "shrink-0 lg:hidden",
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+              )}
+              onClick={onBack}
+            >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till listan</span>
+              {isStackedWorkspace ? <span>Leads</span> : <span className="sr-only">Tillbaka till listan</span>}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">
