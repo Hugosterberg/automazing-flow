@@ -30,6 +30,13 @@ const roasChartConfig: ChartConfig = {
   },
 };
 
+const ordersChartConfig: ChartConfig = {
+  orders: {
+    label: "Ordrar",
+    color: "hsl(var(--info))",
+  },
+};
+
 function formatChartDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
@@ -61,6 +68,7 @@ export function MarketingTrendChart() {
           adSpend: s.adSpend,
           revenue: s.revenue,
           roas: s.roas,
+          orders: s.orders,
         })),
     [snapshots]
   );
@@ -70,17 +78,18 @@ export function MarketingTrendChart() {
   const currency = snapshots[0]?.currency ?? null;
   const hasMoney = series.some((s) => s.adSpend != null || s.revenue != null);
   const hasRoas = series.some((s) => s.roas != null);
-  if (!hasMoney && !hasRoas) return null;
+  const hasOrders = series.some((s) => s.orders != null);
+  if (!hasMoney && !hasRoas && !hasOrders) return null;
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-4">
       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <TrendingUp className="h-3.5 w-3.5" aria-hidden />
-        Daglig historik · {series.length} dagar från marknadsförings-snapshotten
+        Snapshot-historik · {series.length} dagar · varje punkt är ett rullande 7-dagarsfönster
       </p>
 
       {hasMoney ? (
-        <ChartContainer config={moneyChartConfig} className="aspect-[16/5] w-full">
+        <ChartContainer config={moneyChartConfig} className="aspect-[16/9] sm:aspect-[16/5] w-full">
           <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
@@ -134,8 +143,47 @@ export function MarketingTrendChart() {
         </ChartContainer>
       ) : null}
 
+      {hasOrders ? (
+        <ChartContainer config={ordersChartConfig} className="aspect-[16/6] sm:aspect-[16/3] w-full">
+          <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatChartDate}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={24}
+            />
+            <YAxis tickLine={false} axisLine={false} width={44} allowDecimals={false} />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(value: string) => formatChartDate(value)}
+                  formatter={(value) => (
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Ordrar (7 d)</span>
+                      <span className="font-mono font-medium tabular-nums">
+                        {Number(value).toLocaleString("sv-SE")}
+                      </span>
+                    </span>
+                  )}
+                />
+              }
+            />
+            <Line
+              type="monotone"
+              dataKey="orders"
+              stroke="var(--color-orders)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+            />
+          </LineChart>
+        </ChartContainer>
+      ) : null}
+
       {hasRoas ? (
-        <ChartContainer config={roasChartConfig} className="aspect-[16/3] w-full">
+        <ChartContainer config={roasChartConfig} className="aspect-[16/6] sm:aspect-[16/3] w-full">
           <LineChart data={series} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis

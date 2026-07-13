@@ -46,6 +46,7 @@ import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
+import { registerTrackingRoutes } from "./routes/trackingRoutes.ts";
 import { registerAutomationRoutes } from "./routes/automationRoutes.ts";
 import { registerDigitalBrandRoutes } from "./routes/digitalBrandRoutes.ts";
 import { registerEcommerceRoutes } from "./routes/ecommerceRoutes.ts";
@@ -497,6 +498,11 @@ registerConnectionsRoutes(app, {
   getSessionUserId,
 });
 registerTeamRoutes(app, {
+  requireMembership,
+  supabaseAdmin: supabaseServiceClient,
+  getSessionUserId,
+});
+registerTrackingRoutes(app, {
   requireMembership,
   supabaseAdmin: supabaseServiceClient,
   getSessionUserId,

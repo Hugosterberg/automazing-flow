@@ -219,7 +219,7 @@ export function AiUsagePanel({
             {(summary.byDay ?? []).some((d) => d.estimatedUsd > 0) ? (
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-foreground">Kostnad per dag</p>
-                <ChartContainer config={dailyCostChartConfig} className="aspect-[16/4] w-full">
+                <ChartContainer config={dailyCostChartConfig} className="aspect-[16/7] sm:aspect-[16/4] w-full">
                   <BarChart data={summary.byDay} margin={{ left: 4, right: 4, top: 4, bottom: 0 }}>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis

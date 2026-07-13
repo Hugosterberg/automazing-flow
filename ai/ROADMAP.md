@@ -22,6 +22,11 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - **First CMA agent live**: `bai-repo-engineer` passed its outcome rubric on
   run 1 (Automations run-status feature; patch in
   `c:\Code\launch-your-agent\my-agent\outputs\`, ready to review/apply).
+- **Visitor & sales tracking** (2026-07-13, PR #26): first-party cookieless
+  website analytics (site key + /api/track.js snippet + hashed pageview
+  ingest), visitor charts and top pages/referrers on /insights, Shopify
+  orders panel in the marketing trend chart, and a cross-company overview
+  (7-day visitors/sales/followers per business profile).
 - **Dashboards & daily-process batch** (2026-07-13): social stats snapshots
   (`social_stats_snapshots` + cron) with week-over-week deltas on the Social
   KPI cards; daily marketing/ROAS charts and AI cost-per-day chart from

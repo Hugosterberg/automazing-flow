@@ -78,7 +78,7 @@ export function SyncFreshnessStrip({
             onClick={() => void resyncStale()}
             disabled={resyncing}
             className={cn(
-              "inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5",
+              "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1",
               "hover:text-foreground hover:border-muted-foreground/60 transition-colors",
               resyncing && "opacity-60"
             )}
