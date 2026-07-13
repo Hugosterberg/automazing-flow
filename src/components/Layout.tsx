@@ -29,7 +29,7 @@ import { GlobalAttentionStrip } from "@/components/GlobalAttentionStrip";
 import { MobileQuickNav } from "@/components/MobileQuickNav";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { useBackgroundDataSync } from "@/hooks/useBackgroundDataSync";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useLiveChangeNotifications } from "@/hooks/useLiveChangeNotifications";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -56,6 +56,7 @@ export default function Layout() {
   const { mode } = useWorkspaceMode();
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const isMobile = useIsMobile();
+  const readingFocus = useMobileReadingFocus();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   useDocumentTitle();
@@ -185,7 +186,9 @@ export default function Layout() {
               className={cn(
                 "mx-auto w-full max-w-screen-2xl",
                 isMobile
-                  ? "px-3 pt-3 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]"
+                  ? readingFocus
+                    ? "px-0 pt-0 pb-0"
+                    : "px-3 pt-3 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]"
                   : "p-4 sm:p-5 md:p-6 lg:p-8"
               )}
             >

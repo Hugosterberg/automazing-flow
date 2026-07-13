@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 
 const MOBILE_BREAKPOINT = 768;
 /** Split-pane inbox workspaces activate at this width (aligns with Tailwind `lg`). */
@@ -37,4 +38,24 @@ export function useStackedWorkspace() {
 /** Hide list chrome and show full-height detail on phones/tablets in portrait. */
 export function useFocusedWorkspaceReading(hasSelection: boolean) {
   return useStackedWorkspace() && hasSelection;
+}
+
+/**
+ * True when the URL indicates a stacked inbox reading a selected item
+ * (Messages/Reviews/Customers). Used to hide bottom tabs and reclaim viewport.
+ */
+export function useMobileReadingFocus() {
+  const stacked = useStackedWorkspace();
+  const { pathname, search } = useLocation();
+
+  return React.useMemo(() => {
+    if (!stacked) return false;
+    const params = new URLSearchParams(search);
+    if (pathname.startsWith("/messages") && params.get("id")) return true;
+    if (pathname.startsWith("/reviews") && params.get("id")) return true;
+    if (pathname.startsWith("/customers") && params.get("index") != null && params.get("index") !== "") {
+      return true;
+    }
+    return false;
+  }, [stacked, pathname, search]);
 }

@@ -52,19 +52,19 @@ export function MessageHtmlBody({ html }: Props) {
   }, [html]);
 
   return (
-    <div className="message-iframe-shell relative max-w-full overflow-x-auto rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
+    <div className="message-iframe-shell relative w-full max-w-full overflow-x-auto rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
       {!loaded ? (
-        <div className="message-iframe-loading absolute inset-x-0 top-0 h-[420px] rounded-lg" aria-hidden />
+        <div className="message-iframe-loading absolute inset-x-0 top-0 h-[min(50vh,420px)] rounded-lg sm:h-[420px]" aria-hidden />
       ) : null}
       <iframe
         ref={iframeRef}
         title="E-postinnehåll"
         sandbox="allow-popups allow-popups-to-escape-sandbox"
         className={cn(
-          "relative min-w-0 border-0 bg-white transition-opacity duration-200",
+          "relative w-full min-w-0 border-0 bg-white transition-opacity duration-200",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        style={{ height }}
+        style={{ height, width: "100%" }}
       />
     </div>
   );

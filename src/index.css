@@ -388,21 +388,41 @@
 
   .workspace-reading-focus,
   .messages-reading-focus {
-    min-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    /* Full viewport under the sticky app header; QuickNav is hidden while reading. */
+    min-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
+    height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 3rem - env(safe-area-inset-top, 0px));
   }
   @media (min-width: 640px) {
     .workspace-reading-focus,
     .messages-reading-focus {
-      min-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-      height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-      max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      min-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
+      height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
+      max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
     }
   }
 
   .message-compose-footer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .message-compose-footer-dock {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (max-width: 1023px) {
+    .message-prose .message-reading-card {
+      border-radius: 1rem;
+      border-color: hsl(var(--border) / 0.4);
+      background: hsl(var(--card) / 0.55);
+      box-shadow: 0 1px 0 hsl(var(--foreground) / 0.03);
+    }
+
+    .message-iframe-shell {
+      border-radius: 1rem;
+      border: none;
+      box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.18);
+    }
   }
 
   .touch-target {

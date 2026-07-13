@@ -37,10 +37,12 @@ export function ReplyTemplatePicker({
   onInsert,
   recipientName,
   disabled,
+  className,
 }: {
   onInsert: (text: string) => void;
   recipientName?: string;
   disabled?: boolean;
+  className?: string;
 }) {
   const { templates, saveTemplate, deleteTemplate } = useReplyTemplates();
   const [manageOpen, setManageOpen] = useState(false);
@@ -60,9 +62,9 @@ export function ReplyTemplatePicker({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={disabled}>
+          <Button variant="outline" size="sm" disabled={disabled} className={className}>
             <BookMarked className="h-4 w-4 mr-2" />
-            Templates
+            Mallar
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">

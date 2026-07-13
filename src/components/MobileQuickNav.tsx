@@ -1,6 +1,6 @@
 import { Home, ListChecks, MessageSquare, Star } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +19,9 @@ export function MobileQuickNav() {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { mode } = useWorkspaceMode();
+  const readingFocus = useMobileReadingFocus();
 
-  if (!isMobile) return null;
+  if (!isMobile || readingFocus) return null;
 
   const items = QUICK_NAV.filter((item) => {
     if (mode === "private" && item.to === "/reviews") return false;

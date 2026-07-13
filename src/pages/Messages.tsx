@@ -1052,7 +1052,7 @@ export default function MessagesPage() {
         transition={{ duration: 0.35, delay: focusedReading ? 0 : 0.03 }}
         className={cn(
           "app-workspace-shell messages-workspace-shell flex flex-col",
-          focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+          focusedReading && "workspace-reading-focus rounded-none border-0 shadow-none"
         )}
       >
         {!focusedReading ? (

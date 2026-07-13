@@ -21,7 +21,7 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
           <p
             key={pi}
             className={cn(
-              "text-[15px] leading-[1.65] text-left",
+              "text-[16px] leading-[1.7] text-left sm:text-[15px] sm:leading-[1.65]",
               quoted ? "text-muted-foreground/80" : "text-foreground"
             )}
           >
@@ -73,21 +73,21 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
     const { main, quoted } = splitEmailBody(raw);
     return (
       <article className="message-prose w-full text-left">
-        <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+        <div className="message-reading-card px-4 py-5 sm:px-5 sm:py-5">
           <FormattedBlock text={main || raw} />
         </div>
         {quoted ? (
-          <div className="mt-4 rounded-lg border border-border/60 bg-muted/20">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-muted/20 sm:rounded-lg">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 w-full justify-between rounded-lg px-3 text-xs text-muted-foreground"
+              className="h-11 w-full justify-between rounded-none px-3.5 text-sm text-muted-foreground sm:h-8 sm:rounded-lg sm:px-3 sm:text-xs"
               onClick={() => setShowQuoted((v) => !v)}
               aria-expanded={showQuoted}
             >
               {showQuoted ? "Dölj citerat" : "Visa citerat"}
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showQuoted && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform sm:h-3.5 sm:w-3.5", showQuoted && "rotate-180")} />
             </Button>
             {showQuoted ? (
               <div className="border-t border-border/60 px-4 py-3 sm:px-5">
@@ -102,7 +102,7 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
 
   return (
     <article className="message-prose w-full text-left">
-      <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+      <div className="message-reading-card px-4 py-5 sm:px-5 sm:py-5">
         <FormattedBlock text={raw} />
       </div>
     </article>
