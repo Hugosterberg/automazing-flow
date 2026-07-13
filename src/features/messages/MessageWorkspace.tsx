@@ -1,5 +1,6 @@
 import { AnimatePresence, m } from "framer-motion";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { MessageDetailPanel, MessageDetailPlaceholder, type MessageDetailPanelProps } from "./MessageDetailPanel";
 import { MessageInboxList } from "./MessageInboxList";
 import type { InboxFilter, UnifiedMessage } from "./types";
@@ -124,9 +125,11 @@ export function MessageWorkspace({
   onPrefetch,
   detailProps,
 }: Props) {
-  return (
-    <>
-      <div className="flex h-full min-h-0 lg:hidden">
+  const isDesktopWorkspace = useIsDesktopWorkspace();
+
+  if (!isDesktopWorkspace) {
+    return (
+      <div className="flex h-full min-h-0">
         {!selectedMessage ? (
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
@@ -145,13 +148,16 @@ export function MessageWorkspace({
             onPrefetch={onPrefetch}
           />
         ) : (
-          <section className="flex h-full min-h-0 w-full flex-col bg-background">
+          <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
             <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} showBack />
           </section>
         )}
       </div>
+    );
+  }
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+  return (
+    <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
         <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
           <InboxPane
             className="flex h-full min-h-0 flex-col overflow-hidden"
@@ -177,6 +183,5 @@ export function MessageWorkspace({
           </section>
         </ResizablePanel>
       </ResizablePanelGroup>
-    </>
   );
 }

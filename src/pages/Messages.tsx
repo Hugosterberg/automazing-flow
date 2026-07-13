@@ -26,7 +26,7 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsDesktopWorkspace, useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
@@ -957,7 +957,8 @@ export default function MessagesPage() {
   );
 
   const isMobile = useIsMobile();
-  const mobileReading = isMobile && Boolean(selectedMessage);
+  const isDesktopWorkspace = useIsDesktopWorkspace();
+  const focusedReading = !isDesktopWorkspace && Boolean(selectedMessage);
 
   const oauthAlertMessage = oauthErrorDetails
     ? formatOAuthErrorMessage(
@@ -976,10 +977,10 @@ export default function MessagesPage() {
     <div
       className={cn(
         "mx-auto flex w-full max-w-[1520px] flex-col",
-        mobileReading ? "gap-0" : "gap-3 sm:gap-4"
+        focusedReading ? "gap-0" : "gap-3 sm:gap-4"
       )}
     >
-      {!mobileReading ? (
+      {!focusedReading ? (
         <>
           <PageHeader
             icon={MessageSquare}
@@ -1048,13 +1049,13 @@ export default function MessagesPage() {
 
       <m.div
         {...fadeUp}
-        transition={{ duration: 0.35, delay: mobileReading ? 0 : 0.03 }}
+        transition={{ duration: 0.35, delay: focusedReading ? 0 : 0.03 }}
         className={cn(
           "app-workspace-shell messages-workspace-shell flex flex-col",
-          mobileReading && "rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+          focusedReading && "messages-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
         )}
       >
-        {!mobileReading ? (
+        {!focusedReading ? (
         <MessageInboxToolbar
           activeTab={activeTab}
           onTabChange={setActiveTabPersisted}
@@ -1078,7 +1079,7 @@ export default function MessagesPage() {
         />
         ) : null}
 
-        {!mobileReading || error || mailErrors.length > 0 || oauthAlertMessage ? (
+        {!focusedReading || error || mailErrors.length > 0 || oauthAlertMessage ? (
         <MessageAlertsBanner
           error={error}
           onDismissError={() => setError(null)}
@@ -1092,7 +1093,7 @@ export default function MessagesPage() {
         />
         ) : null}
 
-        {!mobileReading ? (
+        {!focusedReading ? (
         <MessageInboxStats
           openCount={inboxStats.openCount}
           oldestWait={inboxStats.oldestWait}
@@ -1125,7 +1126,7 @@ export default function MessagesPage() {
           />
         </div>
 
-        {!isMobile ? (
+        {!isDesktopWorkspace ? (
         <MessageStatusBar
           selectedLabel={
             selectedMessage

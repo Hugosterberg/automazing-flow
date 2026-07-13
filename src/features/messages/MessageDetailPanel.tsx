@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsDesktopWorkspace, useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
@@ -82,7 +82,8 @@ export function MessageDetailPanel({
   focusReplyRef,
   navigation,
 }: MessageDetailPanelProps) {
-  const isMobile = useIsMobile();
+  const isDesktopWorkspace = useIsDesktopWorkspace();
+  const isStackedWorkspace = !isDesktopWorkspace;
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const rawBody = (message.body || message.snippet || "").trim();
   const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
@@ -97,8 +98,8 @@ export function MessageDetailPanel({
   }, [focusReplyRef, message.id]);
 
   useEffect(() => {
-    setSummaryOpen(Boolean(aiSummary) && (isMobile || (needsAttention && !htmlEmail)));
-  }, [message.id, aiSummary, needsAttention, htmlEmail, isMobile]);
+    setSummaryOpen(Boolean(aiSummary) && (isStackedWorkspace || (needsAttention && !htmlEmail)));
+  }, [message.id, aiSummary, needsAttention, htmlEmail, isStackedWorkspace]);
 
   useEffect(() => {
     if (replySent || !canReply || draftBusy) return;
@@ -138,12 +139,12 @@ export function MessageDetailPanel({
               size="sm"
               className={cn(
                 "shrink-0 lg:hidden",
-                isMobile ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
+                isStackedWorkspace ? "h-10 gap-1.5 px-2 text-sm font-medium" : "mt-0.5 h-8 w-8 p-0"
               )}
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              {isMobile ? <span>Inkorg</span> : <span className="sr-only">Tillbaka till inkorgen</span>}
+              {isStackedWorkspace ? <span>Inkorg</span> : <span className="sr-only">Tillbaka till inkorgen</span>}
             </Button>
           ) : null}
 
@@ -169,7 +170,7 @@ export function MessageDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isMobile ? "h-9 w-9" : "h-7 w-7", "p-0")}
+                      className={cn(isStackedWorkspace ? "h-9 w-9" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
                       aria-label="Föregående meddelande"
@@ -183,7 +184,7 @@ export function MessageDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isMobile ? "h-9 w-9" : "h-7 w-7", "p-0")}
+                      className={cn(isStackedWorkspace ? "h-9 w-9" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
                       aria-label="Nästa meddelande"
@@ -192,14 +193,14 @@ export function MessageDetailPanel({
                     </Button>
                   </div>
                 ) : null}
-                {!isMobile && message.externalUrl ? (
+                {!isStackedWorkspace && message.externalUrl ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
                     <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Öppna i plattformen">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : null}
-                {!isMobile ? (
+                {!isStackedWorkspace ? (
                 <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title="Kopiera meddelande">
                   <Copy className="h-4 w-4" />
                   <span className="sr-only">Kopiera meddelande</span>
@@ -208,14 +209,14 @@ export function MessageDetailPanel({
                 {!isHandled ? (
                   <Button
                     type="button"
-                    variant={isMobile ? "secondary" : "ghost"}
+                    variant={isStackedWorkspace ? "secondary" : "ghost"}
                     size="sm"
-                    className={cn(isMobile ? "h-9 gap-1 px-2.5 text-xs" : "h-8 w-8 p-0")}
+                    className={cn(isStackedWorkspace ? "h-9 gap-1 px-2.5 text-xs" : "h-8 w-8 p-0")}
                     onClick={onMarkHandled}
                     title="Markera hanterad (E)"
                   >
-                    <CheckCheck className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
-                    {isMobile ? <span>Klar</span> : <span className="sr-only">Markera hanterad</span>}
+                    <CheckCheck className={cn("h-4 w-4", isStackedWorkspace && "h-3.5 w-3.5")} />
+                    {isStackedWorkspace ? <span>Klar</span> : <span className="sr-only">Markera hanterad</span>}
                   </Button>
                 ) : (
                   <div className="flex items-center gap-1">
@@ -273,7 +274,7 @@ export function MessageDetailPanel({
         </div>
       </header>
 
-      {needsAttention && canReply && !replySent && !isMobile ? (
+      {needsAttention && canReply && !replySent && !isStackedWorkspace ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/5 px-4 py-2 sm:px-5">
           <span className="text-[11px] font-medium text-primary">Snabbåtgärder</span>
           <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
@@ -366,7 +367,7 @@ export function MessageDetailPanel({
                   }
                   className={cn(
                     "resize-none rounded-xl border-border/70 bg-background/80 text-sm leading-relaxed shadow-inner",
-                    isMobile ? "min-h-[100px]" : "min-h-[88px]",
+                    isStackedWorkspace ? "min-h-[100px]" : "min-h-[88px]",
                     "focus-visible:ring-primary/30"
                   )}
                   onKeyDown={(e) => {
@@ -376,7 +377,7 @@ export function MessageDetailPanel({
                     }
                   }}
                 />
-                {isMobile ? (
+                {isStackedWorkspace ? (
                   <div className="grid grid-cols-2 gap-2 [&_button]:h-10 [&_button]:w-full [&_button]:text-sm">
                     <Button type="button" variant="outline" className="h-10 text-sm" onClick={onDraftReply} disabled={draftBusy}>
                       {draftBusy ? (
@@ -411,8 +412,8 @@ export function MessageDetailPanel({
                 )}
                 <Button
                   type="button"
-                  size={isMobile ? "default" : "sm"}
-                  className={cn("gap-1.5 glow-sm", isMobile ? "h-11 w-full text-sm" : "ml-auto h-8")}
+                  size={isStackedWorkspace ? "default" : "sm"}
+                  className={cn("gap-1.5 glow-sm", isStackedWorkspace ? "h-11 w-full text-sm" : "ml-auto h-8")}
                   onClick={onSendReply}
                   disabled={sendBusy || !replyDraft.trim()}
                 >
@@ -423,7 +424,7 @@ export function MessageDetailPanel({
                   )}
                   Skicka svar
                 </Button>
-                {!isMobile ? (
+                {!isStackedWorkspace ? (
                   <span className="hidden w-full text-[10px] text-muted-foreground sm:inline sm:w-auto sm:ml-0">
                     Ctrl+Enter
                     {replyDraft.trim() ? ` · ${replyDraft.trim().length} tecken` : null}
