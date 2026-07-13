@@ -153,6 +153,12 @@ export interface AiUsageSummary {
     estimatedUsd: number;
     eventCount: number;
   }>;
+  /** Daily cost series over the window, oldest first; days without events are 0. */
+  byDay: Array<{
+    date: string;
+    estimatedUsd: number;
+    eventCount: number;
+  }>;
   recent: Array<{
     id: string;
     createdAt: string;
@@ -186,6 +192,7 @@ export async function getAiUsageSummary(
     },
     byFeature: [],
     byProvider: [],
+    byDay: [],
     recent: [],
   };
 
@@ -211,6 +218,7 @@ export async function getAiUsageSummary(
       { estimatedUsd: number; eventCount: number; mcpCalls: number; tokens: number }
     >();
     const byProviderMap = new Map<string, { kind: AiUsageKind; estimatedUsd: number; eventCount: number }>();
+    const byDayMap = new Map<string, { estimatedUsd: number; eventCount: number }>();
 
     let estimatedUsd = 0;
     let promptTokens = 0;
@@ -245,6 +253,14 @@ export async function getAiUsageSummary(
       prov.estimatedUsd += usd;
       prov.eventCount += 1;
       byProviderMap.set(provKey, prov);
+
+      const day = String(row.created_at || "").slice(0, 10);
+      if (day) {
+        const dayStats = byDayMap.get(day) ?? { estimatedUsd: 0, eventCount: 0 };
+        dayStats.estimatedUsd += usd;
+        dayStats.eventCount += 1;
+        byDayMap.set(day, dayStats);
+      }
     }
 
     const byFeature = [...byFeatureMap.entries()]
@@ -264,6 +280,20 @@ export async function getAiUsageSummary(
         eventCount: stats.eventCount,
       }))
       .sort((a, b) => b.estimatedUsd - a.estimatedUsd);
+
+    // Fill the window day by day (oldest first) so the client's chart shows
+    // quiet days as 0 instead of skipping them.
+    const byDay: AiUsageSummary["byDay"] = [];
+    const todayMs = Date.parse(new Date().toISOString().slice(0, 10));
+    for (let i = windowDays - 1; i >= 0; i -= 1) {
+      const date = new Date(todayMs - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const stats = byDayMap.get(date);
+      byDay.push({
+        date,
+        estimatedUsd: stats ? Math.round(stats.estimatedUsd * 1_000_000) / 1_000_000 : 0,
+        eventCount: stats?.eventCount ?? 0,
+      });
+    }
 
     const recent = data.slice(0, 40).map((row) => ({
       id: String(row.id),
@@ -294,6 +324,7 @@ export async function getAiUsageSummary(
       },
       byFeature,
       byProvider,
+      byDay,
       recent,
     };
   } catch (err) {

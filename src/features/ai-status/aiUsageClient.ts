@@ -26,6 +26,12 @@ export interface AiUsageSummary {
     estimatedUsd: number;
     eventCount: number;
   }>;
+  /** Daily cost series over the window, oldest first; days without events are 0. */
+  byDay: Array<{
+    date: string;
+    estimatedUsd: number;
+    eventCount: number;
+  }>;
   recent: Array<{
     id: string;
     createdAt: string;

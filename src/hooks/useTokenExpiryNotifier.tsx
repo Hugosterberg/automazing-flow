@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import type { Connection } from "@/types/connection";
 import { useNavigate } from "react-router-dom";
+import { platformLabel } from "@/lib/platformLabels";
 
 const WARNED_KEY = "automazing-token-expiry-warned";
 const WARN_DAYS = 3; // warn if expires within 3 days
@@ -70,12 +71,24 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
     if (failedCount > 0) parts.push(`${failedCount} misslyckad${failedCount > 1 ? "e" : ""} synkronisering${failedCount > 1 ? "ar" : ""}`);
     if (staleCount > 0) parts.push(`${staleCount} inaktiv${staleCount > 1 ? "a" : ""} anslutning${staleCount > 1 ? "ar" : ""}`);
 
+    // Name the platforms so the toast reads as a specific to-do, and when a
+    // single platform is affected deep-link straight to its card (search
+    // pre-filled) instead of the generic Connections page.
+    const platforms = [...new Set(problematic.map((c) => c.platform))];
+    const labels = platforms.map((p) => platformLabel(p));
+    const shownLabels = labels.slice(0, 3).join(", ") + (labels.length > 3 ? "…" : "");
+    const target =
+      platforms.length === 1
+        ? `/connections?filter=attention&q=${encodeURIComponent(labels[0])}`
+        : "/connections?filter=attention";
+    const actionLabel = platforms.length === 1 ? `Åtgärda ${labels[0]}` : "Hantera";
+
     toast({
       title: "Anslutningsproblem upptäckta",
-      description: parts.join(" · "),
+      description: `${parts.join(" · ")} — ${shownLabels}`,
       action: (
-        <ToastAction altText="Hantera" onClick={() => navigate("/connections")}>
-          Hantera
+        <ToastAction altText={actionLabel} onClick={() => navigate(target)}>
+          {actionLabel}
         </ToastAction>
       ),
     });

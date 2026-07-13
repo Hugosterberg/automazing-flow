@@ -6,6 +6,7 @@ export { ScoreBreakdown } from "./ScoreBreakdown";
 export { MarketingCampaigns } from "./MarketingCampaigns";
 export { CampaignFollowUp, type FollowUpCampaign } from "./CampaignFollowUp";
 export { MarketingPerformance } from "./MarketingPerformance";
+export { MarketingTrendChart } from "./MarketingTrendChart";
 export { InventoryAdsAlert } from "./InventoryAdsAlert";
 export { MarketingPathsHub } from "./MarketingPathsHub";
 export { MARKETING_PATHS, MARKETING_PATH_GROUPS, type MarketingPath } from "./marketingPaths";

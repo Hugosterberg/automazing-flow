@@ -18,3 +18,5 @@ export { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 export { ConnectionDetailsDrawer } from "./ConnectionDetailsDrawer";
 export { ConnectionsControlPanel } from "./ConnectionsControlPanel";
 export { useConnectionsHealthIssueCount } from "./connectionsHealthIssues";
+export { SyncFreshnessStrip } from "./SyncFreshnessStrip";
+export { computeSyncFreshness, formatAgoSv, STALE_AFTER_MS } from "./syncFreshness";

@@ -135,7 +135,9 @@ export default function ConnectionsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(() =>
     searchParams.get("filter") === "attention" ? "needs_attention" : "all"
   );
-  const [searchQuery, setSearchQuery] = useState("");
+  // `?q=` lets nudges (e.g. the token-expiry toast) land with the affected
+  // platform already searched for, so the fix is one click away.
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDisconnecting, setIsBulkDisconnecting] = useState(false);
   const [manuallyConnectedPlatforms, setManuallyConnectedPlatforms] = useState<Set<AccountPlatform>>(new Set());

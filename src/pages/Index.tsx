@@ -48,6 +48,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
+import { SyncFreshnessStrip } from "@/features/connections";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
 import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
@@ -392,6 +393,7 @@ export default function Index() {
             Aktivitetsflöde
           </Link>
         </div>
+        <SyncFreshnessStrip businessProfileId={homeBusinessProfileId} />
         <div
           className={cn(
             "grid grid-cols-1 gap-3",
