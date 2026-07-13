@@ -172,7 +172,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           refreshRecent();
           setOpen(true);
         }}
-        className="relative flex items-center gap-2 rounded-md border border-border bg-card/40 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+        className="relative flex h-8 w-8 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-md border border-border bg-card/40 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
         aria-label="Öppna kommandopalett"
       >
         <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />

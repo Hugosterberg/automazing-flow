@@ -16,6 +16,7 @@ import {
   MessageSquare,
   UserPlus,
   ShoppingBag,
+  ChevronDown,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ import {
 } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
@@ -166,6 +168,53 @@ function JumpCard({
         </p>
       </div>
     </Link>
+  );
+}
+
+function HomeCollapsibleSection({
+  title,
+  ariaLabel,
+  defaultOpen = false,
+  actions,
+  children,
+}: {
+  title: string;
+  ariaLabel?: string;
+  defaultOpen?: boolean;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section
+      aria-label={ariaLabel ?? title}
+      className="overflow-hidden rounded-xl border border-border/60 bg-card/20"
+    >
+      <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180"
+            )}
+            aria-hidden
+          />
+          <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
+        </button>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
+      </div>
+      {open ? (
+        <div className="space-y-2 border-t border-border/50 px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
+          {children}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -353,25 +402,20 @@ export default function Index() {
       transition={{ duration: 0.3 }}
       className="flex flex-col space-y-6 max-w-5xl w-full mx-auto"
     >
-      <header className="flex flex-col gap-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Startsida
-        </p>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-          {activeProfile?.name || "Aktiv profil"}
-        </h1>
-        {profileSummary.connectedCount > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {profileSummary.connectedCount} kopplat
-            {profileSummary.connectedCount === 1 ? " konto" : "a konton"}
-            {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Inga kopplingar än. Börja under Kopplingar.
-          </p>
-        )}
-      </header>
+      <PageHeader
+        title={activeProfile?.name || "Startsida"}
+        description={
+          profileSummary.connectedCount > 0 ? (
+            <>
+              {profileSummary.connectedCount} kopplat
+              {profileSummary.connectedCount === 1 ? " konto" : "a konton"}
+              {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
+            </>
+          ) : (
+            "Inga kopplingar än. Börja under Kopplingar."
+          )
+        }
+      />
 
       <PageSmartBar
         title="Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
@@ -390,7 +434,7 @@ export default function Index() {
         }
       />
 
-      <ProfileList />
+      {profiles.length > 2 ? <ProfileList /> : null}
 
       {mode === "business" ? <CompanyProfileNudge profile={businessProfile} /> : null}
 
@@ -498,12 +542,12 @@ export default function Index() {
             onPrefetch={prefetchFor}
           />
           <TodayTile
-            title="Connection issues"
+            title="Kopplingsproblem"
             value={connectionIssues.length}
             hint={
               connectionIssues.length === 0
-                ? "All healthy"
-                : "Reconnect or resync needed"
+                ? "Allt fungerar"
+                : "Återkoppla eller synka om"
             }
             icon={AlertTriangle}
             to="/connections"
@@ -514,11 +558,10 @@ export default function Index() {
       </section>
 
       {activeProfile ? (
-        <section aria-label="Profildetaljer" className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold text-foreground">
-              Profildetaljer
-            </h2>
+        <HomeCollapsibleSection
+          title="Profildetaljer"
+          ariaLabel="Profildetaljer"
+          actions={
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -540,9 +583,10 @@ export default function Index() {
                 </button>
               ) : null}
             </div>
-          </div>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 space-y-2 text-sm">
+          }
+        >
+          <Card className="border-border bg-card">
+            <CardContent className="space-y-2 p-4 text-sm">
               <p className="text-muted-foreground">
                 Profildata laddad från {profileSummary.withLoadedData} av{" "}
                 {profileSummary.connectedCount} kopplat
@@ -586,7 +630,7 @@ export default function Index() {
               )}
             </CardContent>
           </Card>
-        </section>
+        </HomeCollapsibleSection>
       ) : null}
 
       {homeBusinessProfileId ? (
@@ -595,8 +639,7 @@ export default function Index() {
 
       {/* Quick overview widgets */}
       {accounts.length > 0 && (
-        <section aria-label="Snabböversikt" className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">Snabböversikt</h2>
+        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Reviews widget — business-only (the Reviews page is fenced off in Private) */}
             {(() => {
@@ -684,35 +727,34 @@ export default function Index() {
               );
             })()}
           </div>
-        </section>
+        </HomeCollapsibleSection>
       )}
 
-      <section aria-label="Jump to" className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">Jump to</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <JumpCard
             to="/connections"
             icon={PlugZap}
-            title="Connections"
-            description="Linked accounts, health and re-auth"
+            title="Kopplingar"
+            description="Kopplade konton, status och omautentisering"
             onPrefetch={prefetchFor}
           />
           <JumpCard
             to="/social-media"
             icon={Share2}
-            title="Social & analytics"
-            description="Posts, metrics and overview"
+            title="Social & analys"
+            description="Inlägg, statistik och överblick"
             onPrefetch={prefetchFor}
           />
           <JumpCard
             to="/content"
             icon={FolderOpen}
-            title="Content library"
-            description="Drive assets and creation flow"
+            title="Innehållsbibliotek"
+            description="Drive-assets och skapa-flöde"
             onPrefetch={prefetchFor}
           />
         </div>
-      </section>
+      </HomeCollapsibleSection>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">

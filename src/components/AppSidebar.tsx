@@ -235,7 +235,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const prefetchFor = useRoutePrefetch();
   const { mode } = useWorkspaceMode();
-  const visibleTopNavItems = topNavItemsForMode(mode);
+  const visibleTopNavItems = topNavItemsForMode(mode).filter((item) => item.key !== "preferences");
   const visibleNavItems = navItemsForMode(mode);
   const {
     accounts,
@@ -604,7 +604,7 @@ export function AppSidebar() {
                         ) : null}
                       </NavLink>
                     </SidebarMenuButton>
-                    {!item.hideAccounts && (
+                    {!item.hideAccounts && isActive && categoryAccounts.length > 0 ? (
                     <div className="mx-3.5 mt-1 mb-2 border-l border-sidebar-border pl-3 space-y-0.5">
                       {categoryAccounts.map((account) => {
                         const isSelected = selectedAccountId === account.id;
@@ -664,7 +664,7 @@ export function AppSidebar() {
                         );
                       })}
                     </div>
-                    )}
+                    ) : null}
                   </SidebarMenuItem>
                 );
               })}

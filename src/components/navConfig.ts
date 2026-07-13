@@ -37,8 +37,8 @@ import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 export type NavGroup = "work" | "productivity" | "system";
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
-  work: "Work",
-  productivity: "Productivity",
+  work: "Arbete",
+  productivity: "Produktivitet",
   system: "System",
 };
 

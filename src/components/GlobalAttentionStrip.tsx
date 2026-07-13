@@ -38,7 +38,12 @@ const SEVERITY_CLASS = {
 /**
  * Compact global summary — visible on every page except home (which has the
  * full daily brief). Keeps attention items one glance away.
+ *
+ * Hidden on inbox/workspace routes that already surface the same signals via
+ * PageSmartBar so users aren't hit with two attention strips.
  */
+const HIDE_ON_PATH_PREFIXES = ["/messages", "/reviews", "/tasks", "/activity"];
+
 export function GlobalAttentionStrip() {
   const location = useLocation();
   const businessProfileId = useActiveBusinessProfileIdOptional();
@@ -46,7 +51,13 @@ export function GlobalAttentionStrip() {
   const prefetchFor = useRoutePrefetch();
   const [dismissed, setDismissed] = useState(false);
 
-  if (location.pathname === "/" || dismissed || isLoading || brief.allClear) {
+  if (
+    location.pathname === "/" ||
+    dismissed ||
+    isLoading ||
+    brief.allClear ||
+    HIDE_ON_PATH_PREFIXES.some((prefix) => location.pathname.startsWith(prefix))
+  ) {
     return null;
   }
 

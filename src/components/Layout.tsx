@@ -88,7 +88,7 @@ export default function Layout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 sm:h-14 items-center border-b border-border px-2 sm:px-4 gap-1 sm:gap-2 min-w-0">
+          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 sm:h-14 items-center border-b border-border px-3 sm:px-4 gap-1.5 sm:gap-2 min-w-0">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0 -ml-0.5" />
             <WorkspaceModeTabs />
             <ActiveProfileContextBar />
@@ -174,7 +174,7 @@ export default function Layout() {
             tabIndex={-1}
             className="flex-1 overflow-auto app-scroll focus:outline-none safe-bottom safe-x"
           >
-            <div className="mx-auto w-full max-w-screen-2xl p-3 sm:p-4 md:p-6">
+            <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-5 md:p-6 lg:p-8">
               <ErrorBoundary resetKey={location.pathname} label="route">
                 <Outlet />
               </ErrorBoundary>
