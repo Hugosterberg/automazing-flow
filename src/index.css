@@ -397,14 +397,6 @@
     50% { opacity: 0.85; transform: translate3d(2%, -1%, 0) scale(1.04); }
     100% { opacity: 0.6; transform: translate3d(-1%, 1%, 0) scale(1.02); }
   }
-  @keyframes landing-border-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  @keyframes landing-pulse-glow {
-    0%, 100% { opacity: 0.45; transform: scale(1); }
-    50% { opacity: 0.9; transform: scale(1.05); }
-  }
   @keyframes landing-marquee {
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
@@ -549,34 +541,6 @@
       radial-gradient(ellipse 55% 40% at 88% 18%, hsl(var(--glow) / 0.1), transparent 62%),
       radial-gradient(ellipse 45% 35% at 50% 85%, hsl(var(--info) / 0.08), transparent 70%);
     animation: landing-aurora-shift 16s ease-in-out infinite alternate;
-  }
-
-  .landing-glow-border {
-    position: relative;
-    isolation: isolate;
-  }
-  .landing-glow-border::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: conic-gradient(
-      from 0deg,
-      hsl(var(--info) / 0.55),
-      hsl(var(--glow) / 0.35),
-      hsl(var(--info) / 0.15),
-      hsl(var(--glow) / 0.45),
-      hsl(var(--info) / 0.55)
-    );
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.65;
-    animation: landing-border-spin 10s linear infinite;
-    pointer-events: none;
-    z-index: -1;
   }
 
   .landing-badge-glow {

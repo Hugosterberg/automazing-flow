@@ -15,7 +15,7 @@ function ComparisonCard({ side }: { side: ComparisonSide }) {
       className={cn(
         "relative min-w-0 overflow-hidden rounded-2xl border p-5 sm:p-6",
         isAfter
-          ? "border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 landing-premium-card landing-glow-border glow-sm"
+          ? "border-primary/25 bg-gradient-to-br from-primary/10 via-card/50 to-card/20 landing-premium-card glow-sm"
           : "border-border/70 bg-card/30"
       )}
     >
@@ -116,7 +116,7 @@ export function LandingPillars() {
           key={pillar.title}
           className={cn(
             "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all duration-300 hover-lift interactive landing-premium-card",
-            index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/10 landing-glow-border"
+            index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/10"
           )}
         >
           <div

@@ -40,12 +40,10 @@ export function LandingPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [authInView, setAuthInView] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     function onScroll() {
       const y = window.scrollY;
-      setScrollY(y);
       setShowMobileCta(y > 360);
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       setScrollProgress(docHeight > 0 ? Math.min(y / docHeight, 1) : 0);
@@ -72,27 +70,21 @@ export function LandingPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-aurora" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-grid-bg opacity-[0.35]" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-noise opacity-60" />
       <div aria-hidden className="pointer-events-none absolute inset-0 landing-spotlight" />
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div style={{ transform: `translate3d(0, ${scrollY * 0.05}px, 0)` }}>
-          <div className="landing-orb absolute -left-32 top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
-        </div>
-        <div style={{ transform: `translate3d(0, ${scrollY * -0.04}px, 0)` }}>
-          <div
-            className="landing-orb absolute right-0 top-1/4 h-96 w-96 rounded-full bg-info/12 blur-3xl"
-            style={{ animationDelay: "-3s" }}
-          />
-        </div>
-        <div style={{ transform: `translate3d(0, ${scrollY * 0.03}px, 0)` }}>
-          <div
-            className="landing-orb absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-primary/6 blur-3xl"
-            style={{ animationDelay: "-5s" }}
-          />
-        </div>
+        <div className="landing-orb absolute -left-32 top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
+        <div
+          className="landing-orb absolute right-0 top-1/4 h-96 w-96 rounded-full bg-info/12 blur-3xl"
+          style={{ animationDelay: "-3s" }}
+        />
+        <div
+          className="landing-orb absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-primary/6 blur-3xl"
+          style={{ animationDelay: "-5s" }}
+        />
       </div>
 
       <header className="sticky top-0 z-40 border-b border-border/50 glass safe-top safe-x">
@@ -179,7 +171,7 @@ export function LandingPage() {
       <div className="relative mx-auto grid min-w-0 max-w-5xl lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="landing-page-shell min-w-0 pb-32 pt-8 safe-x sm:pb-28 sm:pt-10 lg:pb-12 lg:pr-0 lg:pt-10">
           <m.div {...pageFadeUp} transition={pageFadeUpTransition} className="min-w-0 space-y-16 sm:space-y-20">
-            <section className="landing-hero-panel landing-glow-border min-w-0 space-y-5 rounded-[1.75rem] border border-border/40 p-7 backdrop-blur-md sm:space-y-6 sm:rounded-3xl sm:p-9">
+            <section className="landing-hero-panel min-w-0 space-y-5 overflow-hidden rounded-[1.75rem] border border-border/40 p-7 backdrop-blur-md sm:space-y-6 sm:rounded-3xl sm:p-9">
               <p className="landing-badge-glow flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-border/70 bg-card/50 px-3.5 py-1.5 text-xs leading-snug text-muted-foreground backdrop-blur-sm">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-40" />
@@ -311,7 +303,7 @@ export function LandingPage() {
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
             <div
               id="kom-igang"
-              className="landing-glow-border scroll-mt-20 rounded-[1.75rem] border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-7 landing-premium-card sm:rounded-3xl sm:p-8 lg:hidden"
+              className="scroll-mt-20 rounded-[1.75rem] border border-primary/20 bg-gradient-to-b from-primary/8 to-card/30 p-7 landing-premium-card sm:rounded-3xl sm:p-8 lg:hidden"
             >
               <div className="mb-4 space-y-1">
                 <h2 className="font-display text-xl font-semibold">Redo?</h2>
@@ -347,8 +339,10 @@ export function LandingPage() {
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 landing-page-shell pb-6 safe-bottom safe-x lg:hidden">
         <div
           className={cn(
-            "pointer-events-auto transition-all duration-300",
-            showMobileCta && !authInView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+            "transition-all duration-300",
+            showMobileCta && !authInView
+              ? "pointer-events-auto translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-6 opacity-0"
           )}
         >
           <Button
