@@ -5,6 +5,7 @@ import { Activity as ActivityIcon, Loader2, RefreshCw, Search } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import {
   Select,
   SelectContent,
@@ -142,6 +143,10 @@ export default function ActivityPage() {
         ? `${severityCounts.warning} varningar att granska`
         : null;
 
+  const isMobile = useIsMobile();
+  const isStackedWorkspace = useStackedWorkspace();
+  const focusedReading = useFocusedWorkspaceReading(Boolean(selectedEvent));
+
   if (!businessProfileId) {
     return (
       <div className="space-y-4 max-w-3xl">
@@ -155,37 +160,61 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-7xl">
-      <PageHeader
-        icon={ActivityIcon}
-        title="Aktivitet"
-        description="Granskningslogg för alla ändringar i denna affärsprofil."
-        actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-            className="text-muted-foreground"
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
-          </Button>
-        }
-      />
+    <div className={cn("w-full max-w-7xl", focusedReading ? "space-y-0" : "space-y-6")}>
+      {!focusedReading ? (
+        <>
+          <PageHeader
+            icon={ActivityIcon}
+            title="Aktivitet"
+            description={
+              isMobile
+                ? "Tryck en händelse i listan för att läsa detaljer."
+                : "Granskningslogg för alla ändringar i denna affärsprofil."
+            }
+            actions={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void refetch()}
+                disabled={isFetching}
+                className="text-muted-foreground"
+              >
+                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
+              </Button>
+            }
+          />
 
-      <PageSmartBar
-        title="Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart."
-        steps={[
-          "Filtrera på modul eller allvarlighetsgrad för att hitta rätt händelse",
-          "Välj en rad i listan för att läsa detaljer och metadata",
-          "Använd loggen när något ser fel ut eller du behöver spåra vem som gjorde vad",
-        ]}
-        tip="Genvägar: J/K bläddra · / Search · E Error · W Warning · Esc Close."
-        liveHintOverride={activityLiveHint}
-      />
+          <PageSmartBar
+            title={
+              isMobile
+                ? "Filtrera och tryck en händelse för att se vad som hände."
+                : "Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart."
+            }
+            steps={
+              isMobile
+                ? ["Filtrera på modul eller allvarlighetsgrad", "Tryck en rad för detaljer", "Använd loggen när något ser fel ut"]
+                : [
+                    "Filtrera på modul eller allvarlighetsgrad för att hitta rätt händelse",
+                    "Välj en rad i listan för att läsa detaljer och metadata",
+                    "Använd loggen när något ser fel ut eller du behöver spåra vem som gjorde vad",
+                  ]
+            }
+            tip={isMobile ? undefined : "Genvägar: J/K bläddra · / Search · E Error · W Warning · Esc Close."}
+            liveHintOverride={activityLiveHint}
+          />
+        </>
+      ) : null}
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
+      <m.div
+        {...pageFadeUp}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          "app-workspace-shell",
+          focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+        )}
+      >
+        {!focusedReading ? (
         <div className="app-workspace-toolbar flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
           <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -194,12 +223,15 @@ export default function ActivityPage() {
               value={activitySearch}
               onChange={(e) => setActivitySearch(e.target.value)}
               placeholder="Sök händelser…"
-              className="h-8 border-border/60 bg-background/60 pl-8 text-xs shadow-sm"
+              className={cn(
+                "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
+                isMobile ? "h-10" : "h-8 text-xs"
+              )}
               aria-label="Sök aktivitet"
             />
           </div>
           <Select value={moduleFilter} onValueChange={setModuleFilter}>
-            <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[180px]">
+            <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[180px]", isMobile ? "h-10" : "h-8 text-xs")}>
               <SelectValue placeholder="Modul" />
             </SelectTrigger>
             <SelectContent>
@@ -213,7 +245,7 @@ export default function ActivityPage() {
           </Select>
 
           <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as SeverityFilter)}>
-            <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[160px]">
+            <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[160px]", isMobile ? "h-10" : "h-8 text-xs")}>
               <SelectValue placeholder="Allvarlighet" />
             </SelectTrigger>
             <SelectContent>
@@ -230,7 +262,9 @@ export default function ActivityPage() {
             {debouncedActivitySearch.trim() ? " · sök aktiv" : ""}
           </p>
         </div>
+        ) : null}
 
+        {!focusedReading ? (
         <div className="app-workspace-stats flex flex-wrap gap-2 px-3 py-2 sm:px-4">
           {(
             [
@@ -253,6 +287,7 @@ export default function ActivityPage() {
             </div>
           ))}
         </div>
+        ) : null}
 
         <div className="min-h-0 flex-1">
           <ActivityWorkspace
@@ -282,6 +317,7 @@ export default function ActivityPage() {
           />
         </div>
 
+        {!isStackedWorkspace ? (
         <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
           <span className="truncate">
             {selectedEvent ? (
@@ -299,6 +335,7 @@ export default function ActivityPage() {
           </span>
           <span className="hidden sm:inline">J/K bläddra · / sök</span>
         </div>
+        ) : null}
       </m.div>
     </div>
   );

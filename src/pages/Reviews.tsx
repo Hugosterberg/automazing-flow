@@ -4,6 +4,8 @@ import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -596,15 +598,23 @@ export default function ReviewsPage() {
         ? "Try another star filter or show all ratings."
         : "This account returned no reviews. Try Refresh or check the provider connection.";
 
+  const isMobile = useIsMobile();
+  const isStackedWorkspace = useStackedWorkspace();
+  const focusedReading = useFocusedWorkspaceReading(Boolean(selectedReview));
+
   return (
-    <div className="space-y-8 max-w-7xl w-full">
+    <div className={cn("max-w-7xl w-full", focusedReading ? "space-y-0" : "space-y-8")}>
+      {!focusedReading ? (
+        <>
       <PageHeader
         icon={Star}
         title="Reviews"
         description={
-          displayString(data?.profile?.name)
-            ? `${displayString(data?.profile?.name)}${displayString(data?.profile?.location) ? ` · ${displayString(data?.profile?.location)}` : ""}`
-            : "Connect Google Reviews or Tripadvisor to get started"
+          isMobile
+            ? "Tryck en recension för att läsa och svara."
+            : displayString(data?.profile?.name)
+              ? `${displayString(data?.profile?.name)}${displayString(data?.profile?.location) ? ` · ${displayString(data?.profile?.location)}` : ""}`
+              : "Connect Google Reviews or Tripadvisor to get started"
         }
         actions={
           activeAccount ? (
@@ -627,13 +637,21 @@ export default function ReviewsPage() {
       />
 
       <PageSmartBar
-        title="Recensioner samlar kundfeedback — svara snabbt, håll koll på betyg och prioritera det som behöver svar."
-        steps={[
-          "Koppla Google Reviews eller Tripadvisor under Kopplingar",
-          "Filtrera på betyg eller ”Behöver svar” i workspace",
-          "Skriv svar med AI-utkast och markera hanterade när du är klar",
-        ]}
-        tip="Genvägar: J/K Next · M Mark · D Draft · A/N filter · / Search · Esc Close."
+        title={
+          isMobile
+            ? "Filtrera och tryck en recension — AI hjälper dig skriva svar."
+            : "Recensioner samlar kundfeedback — svara snabbt, håll koll på betyg och prioritera det som behöver svar."
+        }
+        steps={
+          isMobile
+            ? ["Filtrera på betyg eller ”Behöver svar”", "Tryck en recension för att läsa", "Skicka svar och markera hanterad"]
+            : [
+                "Koppla Google Reviews eller Tripadvisor under Kopplingar",
+                "Filtrera på betyg eller ”Behöver svar” i workspace",
+                "Skriv svar med AI-utkast och markera hanterade när du är klar",
+              ]
+        }
+        tip={isMobile ? undefined : "Genvägar: J/K Next · M Mark · D Draft · A/N filter · / Search · Esc Close."}
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -648,6 +666,8 @@ export default function ReviewsPage() {
           toast({ title: "Draft applied", description: `Reply for ${item.author} is ready to edit and send.` });
         }}
       />
+        </>
+      ) : null}
 
       {oauthErrorDetails && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
@@ -828,7 +848,15 @@ export default function ReviewsPage() {
       )}
 
       {!loading && reviews.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell">
+        <m.div
+          {...fadeUp}
+          transition={{ duration: 0.35 }}
+          className={cn(
+            "app-workspace-shell",
+            focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+          )}
+        >
+          {!focusedReading ? (
           <div className="app-workspace-toolbar flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4">
             <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -837,13 +865,16 @@ export default function ReviewsPage() {
                 value={reviewSearch}
                 onChange={(e) => setReviewSearch(e.target.value)}
                 placeholder="Sök recensioner…"
-                className="h-8 border-border/60 bg-background/60 pl-8 text-xs shadow-sm"
+                className={cn(
+                  "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
+                  isMobile ? "h-10" : "h-8 text-xs"
+                )}
                 aria-label="Sök recensioner"
               />
             </div>
             <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
               <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as typeof ratingFilter)}>
-                <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[140px]">
+                <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[140px]", isMobile ? "h-10" : "h-8 text-xs")}>
                   <SelectValue placeholder="Alla betyg" />
                 </SelectTrigger>
                 <SelectContent>
@@ -856,7 +887,7 @@ export default function ReviewsPage() {
                 </SelectContent>
               </Select>
               <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as typeof replyFilter)}>
-                <SelectTrigger className="h-8 w-full border-border/60 bg-background/60 text-xs shadow-sm sm:w-[140px]">
+                <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[140px]", isMobile ? "h-10" : "h-8 text-xs")}>
                   <SelectValue placeholder="Alla" />
                 </SelectTrigger>
                 <SelectContent>
@@ -866,7 +897,9 @@ export default function ReviewsPage() {
               </Select>
             </div>
           </div>
+          ) : null}
 
+          {!focusedReading ? (
           <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
             <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
               <Star className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -889,6 +922,7 @@ export default function ReviewsPage() {
               </div>
             </div>
           </div>
+          ) : null}
 
           <div className="min-h-0 flex-1">
             <ReviewWorkspace
@@ -906,6 +940,7 @@ export default function ReviewsPage() {
             />
           </div>
 
+          {!isStackedWorkspace ? (
           <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">
             <span className="truncate">
               {selectedReview ? (
@@ -921,6 +956,7 @@ export default function ReviewsPage() {
               J/K · M Mark · D Draft · A/N filter · / Search
             </span>
           </div>
+          ) : null}
         </m.div>
       )}
     </div>

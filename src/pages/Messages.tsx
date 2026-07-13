@@ -26,7 +26,7 @@ import { useProfileDocument } from "@/features/profile-documents";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useIsDesktopWorkspace, useIsMobile } from "@/hooks/use-mobile";
+import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
@@ -957,8 +957,8 @@ export default function MessagesPage() {
   );
 
   const isMobile = useIsMobile();
-  const isDesktopWorkspace = useIsDesktopWorkspace();
-  const focusedReading = !isDesktopWorkspace && Boolean(selectedMessage);
+  const isStackedWorkspace = useStackedWorkspace();
+  const focusedReading = useFocusedWorkspaceReading(Boolean(selectedMessage));
 
   const oauthAlertMessage = oauthErrorDetails
     ? formatOAuthErrorMessage(
@@ -1052,7 +1052,7 @@ export default function MessagesPage() {
         transition={{ duration: 0.35, delay: focusedReading ? 0 : 0.03 }}
         className={cn(
           "app-workspace-shell messages-workspace-shell flex flex-col",
-          focusedReading && "messages-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
+          focusedReading && "workspace-reading-focus rounded-none border-x-0 shadow-none sm:rounded-xl sm:border-x"
         )}
       >
         {!focusedReading ? (
@@ -1126,7 +1126,7 @@ export default function MessagesPage() {
           />
         </div>
 
-        {!isDesktopWorkspace ? (
+        {!isStackedWorkspace ? (
         <MessageStatusBar
           selectedLabel={
             selectedMessage

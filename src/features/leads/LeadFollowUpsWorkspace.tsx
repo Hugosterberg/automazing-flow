@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { dateInputToEndOfDayIso } from "@/lib/localDate";
 import { LeadResearchDialog, type LeadResearchTarget } from "@/features/intelligence";
@@ -45,6 +46,7 @@ type Props = {
 };
 
 export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onAddToPipeline }: Props) {
+  const isDesktopWorkspace = useIsDesktopWorkspace();
   const { leads, updateLead, isLoading } = useLeads(businessProfileId);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -312,26 +314,27 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
         </div>
 
         <div className="min-h-0 flex-1">
-          <div className="flex h-full min-h-0 lg:hidden">
-            {!selectedLead ? (
-              <aside className="flex h-full w-full min-h-0 flex-col">
-                <LeadFollowUpInboxList
-                  leads={filtered}
-                  selectedId={selectedId}
-                  emptyTitle="Inga leads matchar"
-                  emptyDescription="Prova ett annat sökord eller rensa filtret."
-                  onSelect={selectLead}
-                  searchQuery={debouncedSearch}
-                />
-              </aside>
-            ) : (
-              <section className="message-reading-pane flex h-full min-h-0 w-full flex-col">
-                {renderDetailPane(true)}
-              </section>
-            )}
-          </div>
-
-          <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+          {!isDesktopWorkspace ? (
+            <div className="flex h-full min-h-0">
+              {!selectedLead ? (
+                <aside className="flex h-full w-full min-h-0 flex-col">
+                  <LeadFollowUpInboxList
+                    leads={filtered}
+                    selectedId={selectedId}
+                    emptyTitle="Inga leads matchar"
+                    emptyDescription="Prova ett annat sökord eller rensa filtret."
+                    onSelect={selectLead}
+                    searchQuery={debouncedSearch}
+                  />
+                </aside>
+              ) : (
+                <section className="message-reading-pane flex h-full min-h-0 w-full flex-col overflow-hidden">
+                  {renderDetailPane(true)}
+                </section>
+              )}
+            </div>
+          ) : (
+          <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
             <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
               <aside className="flex h-full min-h-0 flex-col overflow-hidden">
                 <LeadFollowUpInboxList
@@ -351,6 +354,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
               </section>
             </ResizablePanel>
           </ResizablePanelGroup>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">

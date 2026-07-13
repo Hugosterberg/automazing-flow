@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OutreachDetailPanel, OutreachDetailPlaceholder } from "./OutreachDetailPanel";
@@ -78,6 +79,7 @@ type Props = {
 };
 
 export function OutreachQueueWorkspace({ businessProfileId }: Props) {
+  const isDesktopWorkspace = useIsDesktopWorkspace();
   const doc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
   const pending = useMemo(() => pendingOutreachItems(doc.data), [doc.data]);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -330,27 +332,28 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
       </div>
 
       <div className="min-h-0 flex-1">
-        <div className="flex h-full min-h-0 lg:hidden">
-          {!selectedItem ? (
-            <aside className="flex h-full w-full min-h-0 flex-col">
-              <OutreachInboxList
-                items={filtered}
-                selectedId={selectedId}
-                emptyTitle="Inga utkast matchar"
-                emptyDescription="Prova ett annat sökord eller rensa filtret."
-                getRowMeta={getRowMeta}
-                onSelect={selectItem}
-                searchQuery={debouncedSearch}
-              />
-            </aside>
-          ) : (
-            <section className="message-reading-pane flex h-full min-h-0 w-full flex-col">
-              {renderDetailPane(true)}
-            </section>
-          )}
-        </div>
-
-        <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+        {!isDesktopWorkspace ? (
+          <div className="flex h-full min-h-0">
+            {!selectedItem ? (
+              <aside className="flex h-full w-full min-h-0 flex-col">
+                <OutreachInboxList
+                  items={filtered}
+                  selectedId={selectedId}
+                  emptyTitle="Inga utkast matchar"
+                  emptyDescription="Prova ett annat sökord eller rensa filtret."
+                  getRowMeta={getRowMeta}
+                  onSelect={selectItem}
+                  searchQuery={debouncedSearch}
+                />
+              </aside>
+            ) : (
+              <section className="message-reading-pane flex h-full min-h-0 w-full flex-col overflow-hidden">
+                {renderDetailPane(true)}
+              </section>
+            )}
+          </div>
+        ) : (
+        <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
           <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
             <aside className="flex h-full min-h-0 flex-col overflow-hidden">
               <OutreachInboxList
@@ -371,6 +374,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
             </section>
           </ResizablePanel>
         </ResizablePanelGroup>
+        )}
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4">

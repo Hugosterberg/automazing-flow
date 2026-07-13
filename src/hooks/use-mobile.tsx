@@ -5,7 +5,10 @@ const MOBILE_BREAKPOINT = 768;
 export const DESKTOP_WORKSPACE_BREAKPOINT = 1024;
 
 export function useMediaQuery(query: string) {
-  const [matches, setMatches] = React.useState<boolean | undefined>(undefined);
+  const [matches, setMatches] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  });
 
   React.useEffect(() => {
     const mql = window.matchMedia(query);
@@ -15,7 +18,7 @@ export function useMediaQuery(query: string) {
     return () => mql.removeEventListener("change", onChange);
   }, [query]);
 
-  return !!matches;
+  return matches;
 }
 
 export function useIsMobile() {
@@ -24,4 +27,14 @@ export function useIsMobile() {
 
 export function useIsDesktopWorkspace() {
   return useMediaQuery(`(min-width: ${DESKTOP_WORKSPACE_BREAKPOINT}px)`);
+}
+
+/** Single-pane inbox layout (below lg / 1024px). */
+export function useStackedWorkspace() {
+  return !useIsDesktopWorkspace();
+}
+
+/** Hide list chrome and show full-height detail on phones/tablets in portrait. */
+export function useFocusedWorkspaceReading(hasSelection: boolean) {
+  return useStackedWorkspace() && hasSelection;
 }

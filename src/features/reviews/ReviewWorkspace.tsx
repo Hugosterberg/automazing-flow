@@ -1,5 +1,6 @@
 import { AnimatePresence, m } from "framer-motion";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { ReviewDetailPanel, ReviewDetailPlaceholder, type ReviewDetailPanelProps } from "./ReviewDetailPanel";
 import { ReviewInboxList } from "./ReviewInboxList";
 import type { ReviewItem } from "./types";
@@ -103,9 +104,11 @@ export function ReviewWorkspace({
   detailProps,
   searchQuery = "",
 }: Props) {
-  return (
-    <>
-      <div className="flex h-full min-h-0 lg:hidden">
+  const isDesktopWorkspace = useIsDesktopWorkspace();
+
+  if (!isDesktopWorkspace) {
+    return (
+      <div className="flex h-full min-h-0">
         {!selectedReview ? (
           <InboxPane
             className="flex h-full w-full min-h-0 flex-col"
@@ -120,13 +123,16 @@ export function ReviewWorkspace({
             searchQuery={searchQuery}
           />
         ) : (
-          <section className="message-reading-pane flex h-full min-h-0 w-full flex-col">
+          <section className="message-reading-pane flex h-full min-h-0 w-full flex-col overflow-hidden">
             <DetailPane selectedReview={selectedReview} detailProps={detailProps} showBack />
           </section>
         )}
       </div>
+    );
+  }
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+  return (
+    <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
         <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
           <InboxPane
             className="flex h-full min-h-0 flex-col overflow-hidden"
@@ -148,6 +154,5 @@ export function ReviewWorkspace({
           </section>
         </ResizablePanel>
       </ResizablePanelGroup>
-    </>
   );
 }

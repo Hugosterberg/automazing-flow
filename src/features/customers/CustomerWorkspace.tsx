@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { SearchHighlight } from "@/features/messages/SearchHighlight";
 import { CustomerDetailPanel, CustomerDetailPlaceholder, type CustomerRow } from "./CustomerDetailPanel";
@@ -75,6 +76,7 @@ function CustomerList({
 
 export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, onSelect }: Props) {
   const selectedRow = selectedIndex != null ? rows[selectedIndex] : null;
+  const isDesktopWorkspace = useIsDesktopWorkspace();
 
   if (columns.length === 0) {
     return (
@@ -84,9 +86,9 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
     );
   }
 
-  return (
-    <>
-      <div className="flex h-full min-h-0 lg:hidden">
+  if (!isDesktopWorkspace) {
+    return (
+      <div className="flex h-full min-h-0">
         {!selectedRow || selectedIndex == null ? (
           <CustomerList
             rows={rows}
@@ -96,7 +98,7 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
             onSelect={onSelect}
           />
         ) : (
-          <section className="message-reading-pane flex h-full min-h-0 w-full flex-col">
+          <section className="message-reading-pane flex h-full min-h-0 w-full flex-col overflow-hidden">
             <CustomerDetailPanel
               row={selectedRow}
               columns={columns}
@@ -107,8 +109,11 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
           </section>
         )}
       </div>
+    );
+  }
 
-      <ResizablePanelGroup orientation="horizontal" className="hidden h-full min-h-0 lg:flex">
+  return (
+    <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
         <ResizablePanel defaultSize={36} minSize={28} maxSize={48} className="min-h-0 min-w-[260px] border-r border-border/40">
           <CustomerList
             rows={rows}
@@ -129,6 +134,5 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
           </section>
         </ResizablePanel>
       </ResizablePanelGroup>
-    </>
   );
 }
