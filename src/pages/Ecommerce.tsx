@@ -844,21 +844,7 @@ export default function Ecommerce() {
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
-            message={formatOAuthErrorMessage(
-              oauthErrorDetails,
-              {
-                shopify_not_configured: "Shopify is not configured. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to .env.local.",
-                shopify_public_url_missing: "Shopify requires a public HTTPS host (e.g. a tunnel). Set SHOPIFY_APP_URL in .env.local before connecting.",
-                shopify_public_url_must_be_https: "SHOPIFY_APP_URL must start with https://. Use your tunnel's HTTPS URL.",
-                shopify_invalid_shop: "That store URL isn't a valid Shopify shop. Use the format mystore.myshopify.com (3–60 chars, letters/digits/hyphens).",
-                notion_not_configured: "Notion is not configured. Add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env.local.",
-                notion_public_url_must_be_https: "Notion requires a public HTTPS host. Set NOTION_APP_URL in .env.local to your tunnel URL.",
-                shopify_missing_shop: "No shop domain was provided. Try connecting again.",
-                token_exchange_failed: "OAuth token exchange failed. Check client id/secret and redirect URL in the provider console (Notion integration or Shopify app).",
-                invalid_state: "OAuth state did not match (session or tunnel cookie issue). Try connecting again from the same browser tab.",
-              },
-              "Login failed"
-            )}
+            message={formatOAuthErrorMessage(oauthErrorDetails)}
             onDismiss={clearOauthError}
           />
         </m.div>
@@ -1536,7 +1522,7 @@ export default function Ecommerce() {
                       Notion workspace (valfritt)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {notionData.workspace.name || "Connected workspace"} · {notionData.stats.pagesCount} sidor
+                      {notionData.workspace.name || "Kopplat workspace"} · {notionData.stats.pagesCount} sidor
                     </p>
                   </div>
                   <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${notionOpen ? "rotate-180" : ""}`} />

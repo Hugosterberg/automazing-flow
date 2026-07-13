@@ -119,7 +119,7 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
         [
           {
             id: "manual" as const,
-            label: meta?.auth === "keyless" ? "One-click connect" : "Connect with credentials",
+            label: meta?.auth === "keyless" ? "Koppla med ett klick" : "Koppla med uppgifter",
             isDefault: true,
           },
         ],

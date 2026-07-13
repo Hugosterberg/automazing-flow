@@ -299,7 +299,7 @@ export default function ConnectionsPage() {
     } catch {
       toast({
         title: "Ogiltig webbadress",
-        description: "Enter a valid domain or URL, for example https://example.com.",
+        description: "Ange en giltig domän eller URL, till exempel https://example.com.",
         variant: "destructive",
       });
       return;
@@ -314,7 +314,7 @@ export default function ConnectionsPage() {
       );
       setWebsiteInput(normalized);
       toast({
-        title: normalized ? "Website saved" : "Website removed",
+        title: normalized ? "Webbplats sparad" : "Webbplats borttagen",
         description: normalized
           ? "Digitalt varumärke använder den här URL:en för rekommendationer."
           : "Lägg till en webbadress senare för Digitalt varumärke-rekommendationer.",
@@ -322,7 +322,7 @@ export default function ConnectionsPage() {
     } catch (error) {
       toast({
         title: "Kunde inte spara webbadress",
-        description: error instanceof Error ? error.message : "The profile update failed.",
+        description: error instanceof Error ? error.message : "Profiluppdateringen misslyckades.",
         variant: "destructive",
       });
     } finally {
@@ -435,6 +435,22 @@ export default function ConnectionsPage() {
           message={formatOAuthErrorMessage(oauthErrorDetails)}
           onDismiss={clearOauthError}
         />
+      ) : null}
+
+      {!isLoading && activeCount === 0 ? (
+        <Alert className="border-primary/30 bg-primary/[0.04]">
+          <PlugZap className="h-4 w-4" />
+          <AlertTitle>Kom igång med första kopplingen</AlertTitle>
+          <AlertDescription className="text-sm leading-relaxed">
+            Börja med de kanaler du använder mest (t.ex. Instagram, Gmail eller Google Ads). Öppna
+            ett kort nedan och välj den rekommenderade kopplingsvägen — du kan alltid byta eller
+            lägga till fler senare. API-nycklar och tester finns under{" "}
+            <Link to="/preferences?tab=api-keys" className="font-medium text-primary underline underline-offset-2">
+              Inställningar → API-nycklar
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {searchParams.get("next") === "company" ? (

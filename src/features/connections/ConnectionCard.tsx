@@ -380,7 +380,7 @@ export function ConnectionCard({
         ) : null}
         {entry.platform === "canva" && manuallyConnected ? (
           <div className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-xs text-success">
-            Ready for Canva exports on this business profile.
+            Redo för Canva-exporter från den här företagsprofilen.
           </div>
         ) : rows.length > 0 ? (
           <ul className="space-y-1.5">
@@ -409,7 +409,7 @@ export function ConnectionCard({
                     <span className="text-muted-foreground font-normal"> · @{c.username}</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    Connected{" "}
+                    Kopplad{" "}
                     {c.connectedAt
                       ? formatRelativeTime(c.connectedAt) ?? c.connectedAt.slice(0, 10)
                       : ""}
@@ -429,7 +429,7 @@ export function ConnectionCard({
                       variant="ghost"
                       className="h-7 px-2 text-xs"
                       onClick={() => onViewDetails(c)}
-                      aria-label={`View details for ${c.displayName || c.username}`}
+                      aria-label={`Visa detaljer för ${c.displayName || c.username}`}
                     >
                       <Info className="h-3 w-3" />
                     </Button>
@@ -442,15 +442,15 @@ export function ConnectionCard({
                       className="h-7 px-2 text-[11px] gap-1"
                       onClick={() => void handleTestConnection(c.id)}
                       disabled={isResyncing}
-                      aria-label={`Test connection for ${c.displayName || c.username}`}
-                      title="Test connection"
+                      aria-label={`Testa koppling för ${c.displayName || c.username}`}
+                      title="Testa koppling"
                     >
                       {isResyncing && resyncingId === c.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <PlugZap className="h-3 w-3" />
                       )}
-                      Test
+                      Testa
                     </Button>
                   ) : null}
                   <Button
@@ -460,7 +460,7 @@ export function ConnectionCard({
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
                     onClick={() => setRemoveTarget(c)}
                     disabled={isDisconnecting}
-                    aria-label={`Disconnect ${c.displayName || c.username}`}
+                    aria-label={`Koppla från ${c.displayName || c.username}`}
                     title="Koppla från — tar bort kontot permanent"
                   >
                     {isDisconnecting ? (
@@ -486,7 +486,7 @@ export function ConnectionCard({
         ) : null}
 
         {lastSync ? (
-          <p className="text-[11px] text-muted-foreground">Last sync {lastSync}</p>
+          <p className="text-[11px] text-muted-foreground">Senaste synk {lastSync}</p>
         ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1">

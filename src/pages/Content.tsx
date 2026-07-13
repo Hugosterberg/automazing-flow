@@ -90,12 +90,6 @@ type DriveOAuthPopupMessage = {
   profile_id?: string;
 };
 
-const OAUTH_MESSAGES: Record<string, string> = {
-  google_drive_not_configured: "Google Drive is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local.",
-  backend_unavailable:
-    "Backend server is not reachable. Start the API server on port 3001 before connecting Google Drive.",
-};
-
 function formatBytes(value?: number) {
   if (!value || Number.isNaN(value)) return null;
   if (value < 1024) return `${value} B`;
@@ -1085,7 +1079,7 @@ export default function ContentPage() {
       {combinedOauthError ? (
         <OAuthErrorAlert
           details={combinedOauthError}
-          message={formatOAuthErrorMessage(combinedOauthError, OAUTH_MESSAGES, "Content connect failed")}
+          message={formatOAuthErrorMessage(combinedOauthError)}
           onDismiss={() => {
             setPopupOauthError(null);
             clearOauthError();

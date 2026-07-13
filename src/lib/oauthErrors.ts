@@ -51,10 +51,24 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Google-kontot har ingen åtkomst till någon Google Business-plats. Kontrollera behörigheter och att platsen finns i Business Profile Manager.",
   google_reviews_not_configured:
     "Google Reviews saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och att Google Business Profile API är aktiverat.",
+  google_reviews_no_account_access:
+    "Google OAuth lyckades, men inget Business Profile-konto är tillgängligt för den här Google-användaren. Koppla med ett konto som äger eller administrerar företagsprofilen.",
+  google_reviews_no_location_access:
+    "Business-konto hittades, men inga platser är tillgängliga. Kontrollera att platsen är claimad och delad med den här Google-användaren.",
+  google_reviews_accounts_api_failed:
+    "Google Business Accounts API misslyckades. Kontrollera att Business Profile-API:erna är aktiverade i Google Cloud och att OAuth-appen är godkänd.",
+  google_reviews_locations_api_failed:
+    "Google Business Locations API misslyckades. Kontrollera API-aktivering och behörigheter för Business Profile.",
   tripadvisor_not_configured:
-    "Tripadvisor official saknar API-nyckel eller location-id. Lägg till TRIPADVISOR_API_KEY och TRIPADVISOR_LOCATION_ID i miljön eller under Preferences - API keys.",
+    "Tripadvisor official saknar API-nyckel eller location-id. Lägg till TRIPADVISOR_API_KEY och TRIPADVISOR_LOCATION_ID i miljön eller under Inställningar → API-nycklar.",
   shopify_not_configured:
     "Shopify-kopplingen saknar app-konfiguration. Kontrollera SHOPIFY_API_KEY, SHOPIFY_API_SECRET och callback-URL:en i Shopify-appen.",
+  shopify_public_url_missing:
+    "Shopify kräver en publik HTTPS-host (t.ex. en tunnel). Sätt SHOPIFY_APP_URL i miljön innan du kopplar.",
+  shopify_public_url_must_be_https:
+    "SHOPIFY_APP_URL måste börja med https://. Använd tunnelns HTTPS-URL.",
+  shopify_invalid_shop:
+    "Butiksadressen är inte en giltig Shopify-butik. Använd formatet mystore.myshopify.com (3–60 tecken, bokstäver/siffror/bindestreck).",
   shopify_missing_shop:
     "Shopify kräver en butiksdomän. Ange den som mystore.myshopify.com och försök igen.",
   missing_shopify_permission:
@@ -63,6 +77,10 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Shopify svarade med en annan butiksdomän än den du startade med. Starta kopplingen igen och kontrollera domänen.",
   notion_not_configured:
     "Notion-kopplingen saknar OAuth-konfiguration. Kontrollera NOTION_CLIENT_ID, NOTION_CLIENT_SECRET och callback-URL:en i Notion-integrationen.",
+  notion_public_url_must_be_https:
+    "Notion kräver en publik HTTPS-host. Sätt NOTION_APP_URL i miljön till din tunnel-URL.",
+  backend_unavailable:
+    "Backend-servern går inte att nå. Starta API-servern (port 3001) innan du kopplar integrationen.",
   youtube_not_configured:
     "YouTube-kopplingen saknar Google OAuth-konfiguration. Kontrollera GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET och YouTube-scope/callback.",
   tiktok_not_configured:

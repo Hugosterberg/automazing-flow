@@ -659,10 +659,10 @@ export default function PreferencesPage() {
                                   }
                                   placeholder={
                                     entry.tenantOverride
-                                      ? "•••••• (override set — type to replace)"
+                                      ? "•••••• (profilöverskrivning — skriv för att byta)"
                                       : entry.inputType === "text"
-                                        ? "Enter value"
-                                        : "Paste the secret value"
+                                        ? "Ange värde"
+                                        : "Klistra in hemligheten"
                                   }
                                 />
                               </div>
@@ -672,18 +672,18 @@ export default function PreferencesPage() {
                               <StatusBadge configured={entry.configured} />
                               {entry.tenantOverride ? (
                                 <>
-                                  <span className="text-muted-foreground">Profile override active</span>
+                                  <span className="text-muted-foreground">Profilöverskrivning aktiv</span>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 text-[11px]"
                                     onClick={() => setEdited((cur) => ({ ...cur, [entry.key]: "" }))}
                                   >
-                                    Clear override
+                                    Rensa överskrivning
                                   </Button>
                                 </>
                               ) : entry.configured ? (
-                                <span className="text-muted-foreground">Using platform default</span>
+                                <span className="text-muted-foreground">Använder plattformsstandard</span>
                               ) : null}
                               {entry.key === "APIAI_API_KEY" ? (
                                 <Button
@@ -696,7 +696,7 @@ export default function PreferencesPage() {
                                   {apiaiTesting ? (
                                     <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                                   ) : null}
-                                  Test connection
+                                  Testa koppling
                                 </Button>
                               ) : null}
                             </div>
@@ -719,11 +719,11 @@ export default function PreferencesPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Lock className="h-4 w-4" />
-                    Platform keys (managed by the operator)
+                    Plattformsnycklar (hanteras av operatören)
                   </CardTitle>
                   <CardDescription>
-                    OAuth app credentials and shared keys set as environment variables (locally and
-                    on Vercel). Read-only here — values are never exposed.
+                    OAuth-appuppgifter och delade nycklar som sätts som miljövariabler (lokalt och
+                    på Vercel). Skrivskyddade här — värdena exponeras aldrig.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

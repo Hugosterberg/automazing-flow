@@ -10,7 +10,11 @@ Preferences “API-nycklar” is for secrets/tests. User-facing surfaces use
 `ConnectionStatus` (`Kopplad` / `Kräver återanslutning` / …), not the DB health
 labels (“Frisk”). Catalog `connectSteps` point to Kopplingar; section
 checklists respect reconnect/error; dual OAuth paths lead with the recommended
-default. Prefer fixing surfacing over inventing parallel connect UIs.
+default. Feature pages deep-link to Kopplingar (and `?filter=attention` when
+relevant) instead of maintaining parallel English OAuth copy — defaults live in
+`oauthErrors.ts`. Prefer fixing surfacing over inventing parallel connect UIs.
+Stale sync (24 h) is freshness, not health: point users to attention filter /
+resync, not the Health tab alone.
 
 ## 2026-07-13 — Logged-in mobile chrome aims for native app feel — **Active**
 

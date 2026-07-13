@@ -44,7 +44,7 @@ import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { toast } from "sonner";
 import { SalesPlaybookSection } from "@/features/sales-playbook";
 import { McpMultiSourceCompare, McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
-import { getConnectConfig } from "@/features/connections/connectAuthPath";
+import { getConnectConfig, getConnectionPathOptions } from "@/features/connections/connectAuthPath";
 import { useTasks } from "@/features/tasks";
 import type { TaskRow, TaskStatus } from "@/features/tasks";
 import { pageFadeUp } from "@/lib/motion";
@@ -454,26 +454,7 @@ export default function MarketingPage() {
         <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
-            message={formatOAuthErrorMessage(
-              oauthErrorDetails,
-              {
-                google_ads_not_configured:
-                  "Google Ads is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in API settings.",
-                meta_business_not_configured:
-                  "Meta Business official is not configured. Add META_APP_ID and META_APP_SECRET in API settings.",
-                zernio_fetch_failed:
-                  "Zernio could not be reached from the local server. For local testing, use Meta official or enable the local Zernio TLS workaround.",
-                zernio_connect_failed:
-                  "Zernio could not start the marketing connect flow. Check that this platform is supported in your Zernio workspace.",
-                zernio_platform_not_supported:
-                  "Zernio does not support this marketing platform in your workspace. Use the Official API connection instead.",
-                zernio_no_auth_url:
-                  "Zernio responded without an auth URL for this marketing platform.",
-                zernio_init_failed:
-                  "Zernio could not initialize the marketing connect flow. Use Official API, or check ZERNIO_API_KEY/ZERNIO_PROFILE_ID.",
-              },
-              "Koppling misslyckades"
-            )}
+            message={formatOAuthErrorMessage(oauthErrorDetails)}
             onDismiss={clearOauthError}
           />
         </m.div>
@@ -505,6 +486,13 @@ export default function MarketingPage() {
         <div className="grid gap-3 sm:grid-cols-2">
         {MARKETING_PLATFORMS.map((item) => {
           const connected = accounts.some((account) => account.platform === item.platform);
+          const pathOptions = getConnectionPathOptions(item.platform);
+          const defaultPath = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
+          const alternatePath = pathOptions.find((option) => option.id !== defaultPath?.id);
+          const defaultProvider =
+            defaultPath?.id === "zernio" ? ("zernio" as const) : ("official" as const);
+          const alternateProvider =
+            alternatePath?.id === "zernio" ? ("zernio" as const) : ("official" as const);
           return (
             <Card key={item.platform} className="border-border">
               <CardHeader className="pb-2">
@@ -513,38 +501,36 @@ export default function MarketingPage() {
                   {connected ? "Kopplad för denna profil." : "Koppla för att hämta kampanjdata till Marketing."}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {item.platform === "google_ads" ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant={connected ? "outline" : "default"}
-                      onClick={() => connect(item.platform, "official")}
-                      disabled={!businessProfileId}
-                    >
-                      Google official
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => connect(item.platform, "zernio")}
-                      disabled={!businessProfileId}
-                    >
-                      <Layers className="h-3.5 w-3.5" />
-                      Zernio
-                    </Button>
-                  </>
-                ) : (
+              <CardContent className="flex flex-wrap items-center gap-2">
+                {defaultPath ? (
                   <Button
                     size="sm"
                     variant={connected ? "outline" : "default"}
-                    onClick={() => connect(item.platform, "official")}
+                    onClick={() => connect(item.platform, defaultProvider)}
+                    disabled={!businessProfileId}
+                    className="gap-1.5"
+                  >
+                    {defaultProvider === "zernio" ? <Layers className="h-3.5 w-3.5" /> : null}
+                    {defaultProvider === "zernio" ? "Koppla via Zernio" : "Koppla (rekommenderat)"}
+                  </Button>
+                ) : null}
+                {alternatePath ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1.5 text-muted-foreground"
+                    onClick={() => connect(item.platform, alternateProvider)}
                     disabled={!businessProfileId}
                   >
-                    Meta official
+                    {alternateProvider === "zernio" ? <Layers className="h-3.5 w-3.5" /> : null}
+                    {alternateProvider === "zernio" ? "Koppla via Zernio" : "Använd Official API"}
                   </Button>
-                )}
+                ) : null}
+                <Button size="sm" variant="ghost" className="text-muted-foreground" asChild>
+                  <Link to={`/connections?q=${encodeURIComponent(item.label)}`}>
+                    Kopplingar
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           );

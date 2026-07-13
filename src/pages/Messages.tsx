@@ -969,16 +969,7 @@ export default function MessagesPage() {
   const focusedReading = useFocusedWorkspaceReading(Boolean(selectedMessage));
 
   const oauthAlertMessage = oauthErrorDetails
-    ? formatOAuthErrorMessage(
-        oauthErrorDetails,
-        {
-          gmail_not_configured:
-            "Gmail är inte konfigurerat. Lägg till GOOGLE_CLIENT_ID och GOOGLE_CLIENT_SECRET i .env.local.",
-          outlook_not_configured:
-            "Outlook är inte konfigurerat. Lägg till MICROSOFT_CLIENT_ID och MICROSOFT_CLIENT_SECRET i .env.local.",
-        },
-        "Inloggning misslyckades"
-      )
+    ? formatOAuthErrorMessage(oauthErrorDetails)
     : null;
 
   return (

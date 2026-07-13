@@ -533,14 +533,7 @@ export default function CalendarPage() {
       {oauthErrorDetails && (
         <OAuthErrorAlert
           details={oauthErrorDetails}
-          message={formatOAuthErrorMessage(
-            oauthErrorDetails,
-            {
-              google_calendar_not_configured: "Google Calendar is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
-              outlook_calendar_not_configured: "Outlook Calendar is not configured. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.",
-            },
-            "Calendar connect failed"
-          )}
+          message={formatOAuthErrorMessage(oauthErrorDetails)}
           onDismiss={clearOauthError}
         />
       )}
@@ -618,23 +611,50 @@ export default function CalendarPage() {
             <div className="mt-4 space-y-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Koppla kalendrar</p>
               <div className="grid grid-cols-1 gap-1">
-                <Button variant="outline" size="sm" onClick={() => connectCalendar("google_calendar", "zernio")} className="justify-start">
-                  <Layers className="h-3.5 w-3.5 mr-2" />
-                  Google Calendar via Zernio
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => connectCalendar("google_calendar", "zernio")}
+                  className="justify-start gap-1.5"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Google via Zernio (rekommenderat)
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => connectCalendar("google_calendar", "official")} className="justify-start">
-                  <CalendarDays className="h-3.5 w-3.5 mr-2" />
-                  Google Calendar via Official API
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => connectCalendar("google_calendar", "official")}
+                  className="justify-start gap-1.5 text-muted-foreground"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Google Official API
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => connectCalendar("outlook_calendar", "zernio")} className="justify-start">
-                  <Layers className="h-3.5 w-3.5 mr-2" />
-                  Outlook Calendar via Zernio
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => connectCalendar("outlook_calendar", "zernio")}
+                  className="justify-start gap-1.5"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Outlook via Zernio (rekommenderat)
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => connectCalendar("outlook_calendar", "official")} className="justify-start">
-                  <CalendarDays className="h-3.5 w-3.5 mr-2" />
-                  Outlook Calendar via Official API
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => connectCalendar("outlook_calendar", "official")}
+                  className="justify-start gap-1.5 text-muted-foreground"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Outlook Official API
                 </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Hantera status och omkoppling i{" "}
+                <Link to="/connections?q=calendar" className="underline underline-offset-2 hover:text-foreground">
+                  Kopplingar
+                </Link>
+                .
+              </p>
             </div>
             <div className="flex items-center justify-between mt-3">
               <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navPrev}>

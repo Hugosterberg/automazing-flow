@@ -48,6 +48,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
 import {
+  aggregateStatus,
+  ConnectionStatusBadge,
+  useConnections,
+} from "@/features/connections";
+import type { ConnectionStatus } from "@/features/connections";
+import {
   InstagramIcon,
   TikTokIcon,
   YoutubeIcon,
@@ -141,6 +147,7 @@ export default function SocialMedia() {
     useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
+  const { connections } = useConnections(businessProfileId);
   const { recommendations: aiRecs } = useAiRecommendations(businessProfileId);
   const { tasks: contentTasks } = useTasks(businessProfileId);
   const { profiles: bizProfiles } = useBusinessProfiles();
@@ -604,6 +611,12 @@ export default function SocialMedia() {
           {SOCIAL_CONNECTION_ENTRIES.map((entry) => {
             const platform = entry.platform as SocialPlatform;
             const linkedAccounts = socialAccounts.filter((account) => account.platform === platform);
+            const platformConnections = connections.filter((connection) => connection.platform === platform);
+            const status: ConnectionStatus =
+              linkedAccounts.length > 0 && platformConnections.length === 0
+                ? "connected"
+                : aggregateStatus(platformConnections);
+            const needsAttention = status === "error" || status === "reconnect_required";
             return (
               <TabsContent key={entry.platform} value={entry.platform} className="mt-3">
                 <div className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
@@ -622,15 +635,27 @@ export default function SocialMedia() {
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-3 text-xs">
-                      {linkedAccounts.length > 0 ? (
-                        <span className="font-medium text-success">Kopplat</span>
-                      ) : (
-                        <Link to="/connections" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
+                      <ConnectionStatusBadge status={status} />
+                      {status === "not_connected" ? (
+                        <Link
+                          to={`/connections?q=${encodeURIComponent(entry.label)}`}
+                          className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                        >
                           Koppla nu
                         </Link>
-                      )}
-                      <Link to="/preferences" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                      ) : needsAttention ? (
+                        <Link
+                          to={`/connections?filter=attention&q=${encodeURIComponent(entry.label)}`}
+                          className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                        >
+                          Åtgärda
+                        </Link>
+                      ) : null}
+                      <Link
+                        to="/preferences?tab=api-keys"
+                        className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      >
                         API-nycklar
                       </Link>
                     </div>

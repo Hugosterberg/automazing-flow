@@ -70,7 +70,7 @@ export function SyncFreshnessStrip({
       {staleCount > 0 ? (
         <>
           <span className="text-warning">
-            {staleCount} koppling{staleCount === 1 ? "" : "ar"} äldre än 24 h
+            {staleCount} koppling{staleCount === 1 ? "" : "ar"} inte synkad på 24&nbsp;h
             {staleNames ? ` (${staleNames}${staleCount > 2 ? "…" : ""})` : ""}
           </span>
           <button
@@ -89,7 +89,7 @@ export function SyncFreshnessStrip({
         </>
       ) : null}
       <Link
-        to="/connections?tab=health"
+        to={staleCount > 0 ? "/connections?filter=attention" : "/connections"}
         className="underline-offset-2 hover:underline hover:text-foreground"
       >
         Kopplingar

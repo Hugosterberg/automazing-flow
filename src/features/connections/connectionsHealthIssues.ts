@@ -45,8 +45,8 @@ export function connectionIssues(connections: Connection[]): HealthIssue[] {
       category: "connection",
       title: `${entry.label} — ${CONNECTION_STATUS_LABELS[status]}`,
       message: lastError || entry.connectSteps,
-      actionHref: "/connections?tab=integrations",
-      actionLabel: "Open connections",
+      actionHref: "/connections?filter=attention",
+      actionLabel: "Öppna Kopplingar",
     });
   }
   return issues;
@@ -68,10 +68,10 @@ export function mcpIssues(
       message:
         p.message ||
         (p.status === "not_connected"
-          ? `Required for: ${p.usedBy.slice(0, 2).join(", ")}${p.usedBy.length > 2 ? "…" : ""}`
-          : "MCP calls will fail until this is fixed."),
+          ? `Krävs för: ${p.usedBy.slice(0, 2).join(", ")}${p.usedBy.length > 2 ? "…" : ""}`
+          : "MCP-anrop misslyckas tills detta är åtgärdat."),
       actionHref: "/connections?tab=mcp",
-      actionLabel: "Fix MCP connection",
+      actionLabel: "Åtgärda MCP-koppling",
     }));
 }
 

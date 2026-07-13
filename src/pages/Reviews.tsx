@@ -684,20 +684,7 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <OAuthErrorAlert
             details={oauthErrorDetails}
-            message={formatOAuthErrorMessage(
-              oauthErrorDetails,
-              {
-                google_reviews_not_configured: "Google Reviews is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
-                google_reviews_no_account_access: "Google OAuth succeeded, but no Business Profile account is accessible for this Google user.",
-                google_reviews_no_location_access: "Business account found, but no locations are accessible. Ensure the location is claimed and shared with this Google user.",
-                google_reviews_accounts_api_failed: "Google Business Accounts API failed. Check that Business Profile APIs are enabled in Google Cloud and OAuth app is approved.",
-                google_reviews_locations_api_failed: "Google Business Locations API failed. Check API enablement and permissions for Business Profile.",
-                tripadvisor_not_configured: "Tripadvisor official API is not configured. Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID to .env, or connect via Zernio.",
-                zernio_connect_failed: "Zernio could not start the Tripadvisor/Reviews connect flow. Use Official API, or check that Zernio supports this platform for your workspace.",
-                zernio_init_failed: "Zernio could not initialize the Reviews connect flow. Use Official API, or check ZERNIO_API_KEY/ZERNIO_PROFILE_ID.",
-              },
-              "Koppling misslyckades"
-            )}
+            message={formatOAuthErrorMessage(oauthErrorDetails)}
             onDismiss={clearOauthError}
           />
         </m.div>
@@ -810,7 +797,7 @@ export default function ReviewsPage() {
                 Business information
               </CardTitle>
               <CardDescription>
-                Loaded from {placeInfo.source === "zernio" ? "Zernio" : "the official provider API"}.
+                Hämtat via {placeInfo.source === "zernio" ? "Zernio" : "Official API"}.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
