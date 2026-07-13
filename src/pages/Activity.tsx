@@ -215,7 +215,11 @@ export default function ActivityPage() {
                     "Använd loggen när något ser fel ut eller du behöver spåra vem som gjorde vad",
                   ]
             }
-            tip={isMobile ? undefined : "Genvägar: J/K bläddra · / Search · E Error · W Warning · Esc Close."}
+            tip={
+              isMobile
+                ? "Här syns vad automationer och synk gjorde — använd filtrer när något ser konstigt ut."
+                : "Genvägar: J/K bläddra · / Search · E Error · W Warning · Esc Close."
+            }
             liveHintOverride={activityLiveHint}
           />
         </>

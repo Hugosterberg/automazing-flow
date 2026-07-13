@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -587,16 +587,16 @@ export default function ReviewsPage() {
 
   const emptyTitle =
     replyFilter === "needs_reply" && needsReplyReviews.length === 0
-      ? "All caught up"
+      ? "Inget kvar att svara på"
       : ratingFilter !== "all"
-        ? "No reviews at this rating"
-        : "No reviews yet";
+        ? "Inga recensioner med det betyget"
+        : "Inga recensioner ännu";
   const emptyDescription =
     replyFilter === "needs_reply"
-      ? "Every review in this view has a reply."
+      ? "Alla omdömen i den här vyn har redan svar."
       : ratingFilter !== "all"
-        ? "Try another star filter or show all ratings."
-        : "This account returned no reviews. Try Refresh or check the provider connection.";
+        ? "Prova ett annat stjärnfilter eller visa alla betyg."
+        : "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar.";
 
   const isMobile = useIsMobile();
   const isStackedWorkspace = useStackedWorkspace();
@@ -614,7 +614,7 @@ export default function ReviewsPage() {
             ? "Tryck en recension för att läsa och svara."
             : displayString(data?.profile?.name)
               ? `${displayString(data?.profile?.name)}${displayString(data?.profile?.location) ? ` · ${displayString(data?.profile?.location)}` : ""}`
-              : "Connect Google Reviews or Tripadvisor to get started"
+              : "Koppla Google Reviews eller Tripadvisor under Kopplingar för att komma igång"
         }
         actions={
           activeAccount ? (
@@ -630,7 +630,7 @@ export default function ReviewsPage() {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="ml-1.5 hidden sm:inline">Refresh</span>
+              <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
             </Button>
           ) : null
         }
@@ -758,8 +758,13 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.4 }}>
           <EmptyState
             icon={Star}
-            title="No review account connected"
-            description='Use "Connect more" in the sidebar under Reviews to connect Google Reviews or Tripadvisor.'
+            title="Inget recensionskonto kopplat"
+            description="Koppla Google Reviews eller Tripadvisor under Kopplingar — sedan synkas omdömen hit automatiskt."
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link to="/connections">Öppna Kopplingar</Link>
+              </Button>
+            }
           />
         </m.div>
       )}
@@ -835,12 +840,17 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <EmptyState
             icon={MessageSquare}
-            title="No reviews yet"
-            description="This account returned no reviews. Try Refresh or check the provider connection."
+            title="Inga recensioner ännu"
+            description="Kontot returnerade inga omdömen. Uppdatera, eller kontrollera kopplingen under Kopplingar."
             action={
               <Button variant="outline" size="sm" onClick={() => void refresh()}>
                 <RefreshCw className="h-4 w-4 mr-1.5" aria-hidden />
-                Refresh
+                Uppdatera
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/connections">Kopplingar</Link>
               </Button>
             }
           />

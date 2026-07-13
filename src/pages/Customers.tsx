@@ -296,7 +296,7 @@ export default function CustomersPage() {
                 "Kopiera kontaktuppgifter eller exportera filtrerade rader",
               ]
         }
-        tip={isMobile ? undefined : "Tips: Koppla Day.ai under Kopplingar för att ställa frågor om kunder och affärer direkt härifrån."}
+        tip="Koppla Day.ai under Kopplingar för att ställa frågor om kunder och affärer härifrån."
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
@@ -396,7 +396,7 @@ export default function CustomersPage() {
               <EmptyState
                 icon={Upload}
                 title="Ingen kundbas ännu"
-                description="Ladda upp en CSV-fil ovan. Vi visar alla kolumner och låter dig söka, granska och exportera."
+                description="Ladda upp en CSV ovan. Sök, granska och exportera — koppla Day.ai under Kopplingar för AI-frågor om kunderna."
               />
             </div>
           ) : filteredRows.length === 0 ? (

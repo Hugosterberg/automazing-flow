@@ -720,8 +720,13 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <EmptyState
             icon={Sparkles}
-            title="Select a social account"
-            description="Pick a connected account from the sidebar (Instagram, TikTok, YouTube, X) — or add more via Zernio (Facebook, WhatsApp, Google Business, …)."
+            title="Välj ett socialt konto"
+            description="Välj ett kopplat konto (Instagram, TikTok, YouTube, X) — eller lägg till fler under Kopplingar."
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link to="/connections">Öppna Kopplingar</Link>
+              </Button>
+            }
           />
         </m.div>
       )}
@@ -774,7 +779,9 @@ export default function SocialMedia() {
               ) : selectedZernioNote ? (
                 <p className="text-sm text-muted-foreground py-2">{selectedZernioNote}</p>
               ) : (
-                <p className="text-sm text-muted-foreground py-2">No data available yet.</p>
+                <p className="text-sm text-muted-foreground py-2">
+                  Ingen data ännu. Synka kontot under Kopplingar eller vänta på nästa automatiska hämtning.
+                </p>
               )}
             </CardContent>
           </Card>

@@ -17,7 +17,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
 import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { useWorkspaceMode, WorkspaceModeTabs } from "@/features/workspace-mode";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import {
+  useActiveBusinessProfileIdOptional,
+  useBusinessProfiles,
+  getBusinessProfileCompleteness,
+} from "@/features/business-profiles";
+import { useAccounts } from "@/context/AccountsContext";
 import { useUnreadDmCount } from "@/features/daily-brief";
 import { useReviewReplyState } from "@/features/reviews";
 import { useTasks, isTaskOpen, isTaskOverdue } from "@/features/tasks";
@@ -58,6 +63,8 @@ export function MobileQuickNav() {
   const { mode } = useWorkspaceMode();
   const readingFocus = useMobileReadingFocus();
   const businessProfileId = useActiveBusinessProfileIdOptional();
+  const { profiles } = useBusinessProfiles();
+  const { accounts } = useAccounts();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const { unreadDms } = useUnreadDmCount();
@@ -67,6 +74,28 @@ export function MobileQuickNav() {
     () => tasks.filter((t) => isTaskOpen(t) && isTaskOverdue(t)).length,
     [tasks]
   );
+
+  const setupHint = useMemo(() => {
+    if (mode !== "business") return null;
+    const profile = profiles.find((p) => p.id === businessProfileId) ?? profiles[0] ?? null;
+    const completeness = getBusinessProfileCompleteness(profile);
+    const connectedCount = accounts.filter((a) => !a.disconnectedAt).length;
+    if (!completeness.isStrong) {
+      return {
+        text: "Fyll i Företag (beskrivning + webb) så AI och automationer blir mer relevanta.",
+        to: "/company" as const,
+        cta: "Öppna Företag",
+      };
+    }
+    if (connectedCount === 0) {
+      return {
+        text: "Koppla mail, socialt eller recensioner för att fylla inkorg och flöden.",
+        to: "/connections" as const,
+        cta: "Öppna Kopplingar",
+      };
+    }
+    return null;
+  }, [mode, profiles, businessProfileId, accounts]);
 
   const badges = {
     messages: unreadDms,
@@ -142,6 +171,18 @@ export function MobileQuickNav() {
           <SheetHeader className="pb-2 text-left">
             <SheetTitle className="text-base">Mer</SheetTitle>
           </SheetHeader>
+          {setupHint ? (
+            <div className="mb-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5">
+              <p className="text-xs leading-relaxed text-muted-foreground">{setupHint.text}</p>
+              <Link
+                to={setupHint.to}
+                onClick={() => setMoreOpen(false)}
+                className="mt-1.5 inline-flex text-xs font-medium text-primary"
+              >
+                {setupHint.cta} →
+              </Link>
+            </div>
+          ) : null}
           <div className="mb-4">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Läge</p>
             <WorkspaceModeTabs />

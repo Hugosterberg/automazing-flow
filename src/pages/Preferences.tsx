@@ -452,7 +452,7 @@ export default function PreferencesPage() {
           "Lägg till API-nycklar och testa anslutningarna",
           "Justera AI- och automationspreferenser per profil",
         ]}
-        tip="Team-fliken hanterar vem som har tillgång till profilen."
+        tip="Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automations — inte här."
         liveHintOverride={
           unconfiguredCount > 0
             ? `${unconfiguredCount} integration${unconfiguredCount === 1 ? "" : "er"} saknar nyckel — fyll i under Integrationer`
@@ -552,11 +552,25 @@ export default function PreferencesPage() {
                 Automationer har flyttat
               </CardTitle>
               <CardDescription>
-                Auto-svar, rapporter och AI-jobb hanteras nu samlat på sidan Automations — per ämne,
-                med inställningar och schema på samma ställe.
+                Schemalagda jobb och AI-flöden hanteras på sidan Automations — status, schema och
+                resultat på samma ställe. Här under Inställningar finns bara nycklar och AI-preferenser.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                  <span>Snapshots & digests — synk och summeringar utan manuellt knackande</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                  <span>Påminnelser & AI-jobb — t.ex. uppföljning när något väntar</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                  <span>Publicering schemaläggs under Content → Post (inte här)</span>
+                </li>
+              </ul>
               <Button asChild>
                 <Link to="/automations">
                   Öppna Automations

@@ -1328,11 +1328,11 @@ export default function ContentPage() {
       {driveAccounts.length === 0 ? (
         <EmptyState
           icon={HardDrive}
-          title="No Google Drive account connected yet"
-          description="Connect Drive first, then you can browse folders and mark media here."
+          title="Ingen Google Drive kopplad ännu"
+          description="Koppla Drive först — sedan kan du bläddra mappar, markera media och schemalägga publicering."
           action={
             <Button onClick={() => void connectDrive()} disabled={isConnecting}>
-              {isConnecting ? "Connecting…" : "Connect Google Drive"}
+              {isConnecting ? "Ansluter…" : "Koppla Google Drive"}
             </Button>
           }
         />
