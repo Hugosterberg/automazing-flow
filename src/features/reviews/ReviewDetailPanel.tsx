@@ -128,26 +128,31 @@ export function ReviewDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0"
+                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
                       aria-label="Previous review"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
                     </Button>
-                    <span className="min-w-[3.5rem] px-1 text-center text-[10px] tabular-nums text-muted-foreground">
+                    <span
+                      className={cn(
+                        "min-w-[3.5rem] px-1 text-center tabular-nums text-muted-foreground",
+                        isStackedWorkspace ? "text-xs" : "text-[10px]"
+                      )}
+                    >
                       {navigation.index + 1}/{navigation.total}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0"
+                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
                       aria-label="Next review"
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
                     </Button>
                   </div>
                 ) : null}

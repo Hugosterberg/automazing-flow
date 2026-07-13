@@ -168,7 +168,7 @@ function TaskCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <h3
             className={cn(
-              "text-sm font-semibold leading-snug break-words",
+              "text-[15px] font-semibold leading-snug break-words sm:text-sm",
               completed && "text-muted-foreground line-through"
             )}
           >
@@ -181,7 +181,7 @@ function TaskCard({
           ) : null}
         </div>
         {task.description ? (
-          <p className="line-clamp-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+          <p className="line-clamp-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground sm:text-xs">
             {task.description}
           </p>
         ) : null}
@@ -398,8 +398,8 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold">{column.title}</h2>
-                  <p className="hidden text-xs text-muted-foreground sm:block">{column.description}</p>
+                  <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
+                  <p className="text-xs text-muted-foreground sm:block">{column.description}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">

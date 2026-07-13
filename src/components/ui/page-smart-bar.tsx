@@ -67,15 +67,21 @@ export function PageSmartBar({
               )}
               aria-hidden
             />
-            <p className="text-xs leading-relaxed text-foreground/90">{liveHint}</p>
+            <p className="text-sm leading-relaxed text-foreground/90 sm:text-xs">{liveHint}</p>
           </div>
           {actions.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 shrink-0">
               {actions.slice(0, maxActions).map((action) => (
-                <Button key={action.to + action.label} asChild size="sm" variant="secondary" className="h-7 text-[11px]">
+                <Button
+                  key={action.to + action.label}
+                  asChild
+                  size="sm"
+                  variant="secondary"
+                  className="h-9 gap-1 px-3 text-sm sm:h-7 sm:px-2.5 sm:text-[11px]"
+                >
                   <Link to={action.to}>
                     {action.label}
-                    <ArrowRight className="ml-1 h-3 w-3" />
+                    <ArrowRight className="ml-1 h-3.5 w-3.5 sm:h-3 sm:w-3" />
                   </Link>
                 </Button>
               ))}

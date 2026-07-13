@@ -36,7 +36,7 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
             aria-expanded={expanded}
           >
             {expanded ? "Dölj" : "Guide"}

@@ -963,57 +963,57 @@ export default function ContentPage() {
       />
 
       <div className="app-workspace-shell !min-h-0">
-        <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
+        <div className="app-workspace-toolbar overflow-x-auto px-2 py-2 sm:px-4">
       <Tabs value={contentTab} onValueChange={(value) => goToTab(value as typeof contentTab)}>
-        <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
+        <TabsList className="h-auto w-max min-w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger
             value="browse"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
           >
-            <HardDrive className="h-3.5 w-3.5" />
-            Browse
+            <HardDrive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <span className="sm:inline">Browse</span>
           </TabsTrigger>
           <TabsTrigger
             value="selected"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
           >
-            <BookmarkCheck className="h-3.5 w-3.5" />
+            <BookmarkCheck className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             Selected
             {selectedAssets.length > 0 ? (
-              <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[10px] tabular-nums">
+              <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[11px] tabular-nums sm:text-[10px]">
                 {selectedAssets.length}
               </span>
             ) : null}
           </TabsTrigger>
           <TabsTrigger
             value="create"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
           >
-            <Wand2 className="h-3.5 w-3.5" />
+            <Wand2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             Create
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
           >
-            <History className="h-3.5 w-3.5" />
+            <History className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             History
             {generatedHistory.length > 0 ? (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{generatedHistory.length}</span>
+              <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
             ) : null}
           </TabsTrigger>
           <TabsTrigger
             value="publish"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
+            className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
           >
-            <Send className="h-3.5 w-3.5" />
-            Post or save
+            <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            Post
           </TabsTrigger>
         </TabsList>
       </Tabs>
         </div>
 
-        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Valda</p>
             <p className="text-xs font-semibold tabular-nums">{selectedAssets.length}</p>

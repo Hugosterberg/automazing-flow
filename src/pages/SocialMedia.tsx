@@ -588,7 +588,7 @@ export default function SocialMedia() {
       </m.div>
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell !min-h-0">
-        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Konton</p>
             <p className="text-xs font-semibold tabular-nums">{socialAccounts.length}</p>
@@ -614,7 +614,7 @@ export default function SocialMedia() {
                   <TabsTrigger
                     key={entry.platform}
                     value={entry.platform}
-                    className="min-w-fit gap-2 rounded-md px-3 py-2 text-xs data-[state=active]:bg-accent data-[state=active]:shadow-none"
+                    className="min-h-10 min-w-fit gap-2 rounded-md px-3 py-2.5 text-sm data-[state=active]:bg-accent data-[state=active]:shadow-none sm:min-h-0 sm:py-2 sm:text-xs"
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{entry.label.replace(" Profile", "")}</span>

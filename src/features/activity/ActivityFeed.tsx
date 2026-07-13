@@ -108,9 +108,9 @@ export function ActivityFeed({
   if (listMode) {
     return (
       <div className={cn("flex h-full min-h-0 flex-col", className)}>
-        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
-          <p className="text-[11px] font-medium text-foreground/80">Händelser</p>
-          <span className="text-[10px] tabular-nums text-muted-foreground">{rows.length} st</span>
+        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2.5 sm:py-2">
+          <p className="text-sm font-medium text-foreground/90 sm:text-xs">Händelser</p>
+          <span className="text-xs tabular-nums text-muted-foreground sm:text-[11px]">{rows.length} st</span>
         </div>
         <ul className="min-h-0 flex-1 overflow-y-auto app-scroll">
           {rows.map((e) => {
@@ -126,22 +126,22 @@ export function ActivityFeed({
                   type="button"
                   onClick={() => onSelect?.(e)}
                   className={cn(
-                    "relative w-full border-b border-border/35 px-3 py-2 text-left transition-colors duration-150",
+                    "relative w-full border-b border-border/35 px-3 py-3 text-left transition-colors duration-150 sm:py-2.5",
                     "hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
                     selected && "border-l-[3px] border-l-primary bg-primary/[0.07] pl-[calc(0.75rem-2px)]"
                   )}
                   aria-current={selected ? "true" : undefined}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2.5 sm:gap-2">
                     <SeverityIcon
                       severity={e.severity}
-                      className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", SEVERITY_STYLES[e.severity])}
+                      className={cn("mt-0.5 h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5", SEVERITY_STYLES[e.severity])}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className={cn("truncate text-[13px]", selected ? "font-semibold text-foreground" : "font-medium text-foreground/90")}>
+                      <p className={cn("line-clamp-2 text-[15px] leading-snug sm:line-clamp-1 sm:text-sm", selected ? "font-semibold text-foreground" : "font-medium text-foreground/90")}>
                         <SearchHighlight text={e.summary} query={searchQuery} />
                       </p>
-                      <p className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                      <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground sm:mt-0.5 sm:text-[11px]">
                         <span className="font-mono">
                           <SearchHighlight text={e.module} query={searchQuery} />
                         </span>

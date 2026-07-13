@@ -32,15 +32,16 @@ function CustomerList({
 
   return (
     <div className="message-inbox-pane flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
-        <p className="text-[11px] font-medium text-foreground/80">Kunder</p>
-        <span className="text-[10px] tabular-nums text-muted-foreground">{rows.length} st</span>
+      <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2.5 sm:py-2">
+        <p className="text-sm font-medium text-foreground/90 sm:text-[11px] sm:text-foreground/80">Kunder</p>
+        <span className="text-xs tabular-nums text-muted-foreground sm:text-[10px]">{rows.length} st</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {rows.map((row, index) => {
           const selected = selectedIndex === index;
           const title = (primary && row[primary]) || `Rad ${index + 1}`;
           const sub = secondary ? row[secondary] : "";
+          const initial = String(title).trim().charAt(0).toUpperCase() || "?";
           return (
             <li key={index}>
               <button
@@ -51,20 +52,38 @@ function CustomerList({
                 type="button"
                 onClick={() => onSelect(index)}
                 className={cn(
-                  "relative w-full border-b border-border/35 px-3 py-2 text-left transition-colors duration-150",
+                  "relative w-full border-b border-border/35 px-3 py-3 text-left transition-colors duration-150 sm:py-2.5",
                   "hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
                   selected && "border-l-[3px] border-l-primary bg-primary/[0.07] pl-[calc(0.75rem-2px)]"
                 )}
                 aria-current={selected ? "true" : undefined}
               >
-                <p className={cn("truncate text-[13px]", selected ? "font-semibold text-foreground" : "font-medium text-foreground/90")}>
-                  <SearchHighlight text={title} query={searchQuery} />
-                </p>
-                {sub ? (
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    <SearchHighlight text={sub} query={searchQuery} />
-                  </p>
-                ) : null}
+                <div className="flex items-start gap-2.5 sm:gap-2">
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground/80 ring-2 ring-background sm:h-9 sm:w-9 sm:text-xs",
+                      selected && "bg-primary/15 text-primary ring-primary/25"
+                    )}
+                    aria-hidden
+                  >
+                    {initial}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        "truncate text-[15px] leading-snug sm:text-sm",
+                        selected ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                      )}
+                    >
+                      <SearchHighlight text={title} query={searchQuery} />
+                    </p>
+                    {sub ? (
+                      <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground sm:mt-0.5 sm:line-clamp-1 sm:text-xs">
+                        <SearchHighlight text={sub} query={searchQuery} />
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </button>
             </li>
           );

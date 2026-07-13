@@ -23,7 +23,7 @@ function Stars({ rating }: { rating?: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={cn("h-3 w-3", i < rating ? "fill-current" : "fill-none opacity-30")}
+          className={cn("h-3.5 w-3.5 sm:h-3 sm:w-3", i < rating ? "fill-current" : "fill-none opacity-30")}
           aria-hidden
         />
       ))}
@@ -35,7 +35,7 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
   { review, selected, needsReply, formattedDate, fullDate, senderInitial, avatarClass, onSelect, searchQuery = "" },
   ref
 ) {
-  const snippet = (review.text || "Ingen text").slice(0, 120);
+  const snippet = (review.text || "Ingen text").slice(0, 140);
 
   return (
     <div
@@ -50,7 +50,7 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
         type="button"
         onClick={onSelect}
         className={cn(
-          "relative w-full border-b border-border/35 px-3 py-2 text-left transition-colors duration-150",
+          "relative w-full border-b border-border/35 px-3 py-3 text-left transition-colors duration-150 sm:py-2.5",
           "hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
           selected && "border-l-[3px] border-l-primary bg-primary/[0.07] pl-[calc(0.75rem-2px)]",
           needsReply && !selected && "border-l-2 border-l-primary/45"
@@ -58,47 +58,47 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
         aria-current={selected ? "true" : undefined}
         title={review.author || "Anonym"}
       >
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2.5 sm:gap-2">
           <div
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm ring-2 ring-background",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm ring-2 ring-background sm:h-9 sm:w-9 sm:text-xs",
               avatarClass,
               selected && "ring-primary/30"
             )}
           >
             {senderInitial}
           </div>
-          <div className="min-w-0 flex-1 pr-6">
+          <div className="min-w-0 flex-1 pr-8">
             <div className="flex items-baseline justify-between gap-2">
               <span
                 className={cn(
-                  "truncate text-[13px]",
-                  needsReply ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
+                  "truncate text-[15px] leading-snug sm:text-sm",
+                  needsReply ? "font-semibold text-foreground" : "font-medium text-foreground/85"
                 )}
               >
                 <SearchHighlight text={review.author || "Anonym"} query={searchQuery} />
               </span>
-              <time className="shrink-0 text-[10px] tabular-nums text-muted-foreground" dateTime={review.createdAt} title={fullDate}>
+              <time className="shrink-0 text-xs tabular-nums text-muted-foreground sm:text-[11px]" dateTime={review.createdAt} title={fullDate}>
                 {formattedDate}
               </time>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="mt-1 flex items-center gap-1.5 sm:mt-0.5">
               <Stars rating={review.rating} />
               {review.rating != null ? (
-                <span className="text-[10px] tabular-nums text-muted-foreground">{review.rating}/5</span>
+                <span className="text-xs tabular-nums text-muted-foreground sm:text-[11px]">{review.rating}/5</span>
               ) : null}
             </div>
-            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-muted-foreground/90">
+            <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground sm:mt-0.5 sm:line-clamp-1 sm:text-xs">
               <SearchHighlight text={snippet} query={searchQuery} />
             </p>
-            <div className="mt-1">
+            <div className="mt-1.5 sm:mt-1">
               {needsReply ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
-                  <Circle className="h-2 w-2 fill-primary text-primary" aria-hidden />
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary sm:gap-1 sm:text-[11px]">
+                  <Circle className="h-2.5 w-2.5 fill-primary text-primary sm:h-2 sm:w-2" aria-hidden />
                   Behöver svar
                 </span>
               ) : (
-                <span className="text-[10px] text-emerald-600">Besvarad</span>
+                <span className="text-xs text-emerald-600 sm:text-[11px]">Besvarad</span>
               )}
             </div>
           </div>
@@ -109,11 +109,11 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
           href={review.url}
           target="_blank"
           rel="noreferrer"
-          className="absolute right-1.5 top-2 text-muted-foreground opacity-100 transition-colors hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
+          className="absolute right-1.5 top-3 flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground sm:top-2 sm:h-8 sm:w-8 sm:opacity-0 sm:group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
           aria-label="Öppna recension externt"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
         </a>
       ) : null}
     </div>

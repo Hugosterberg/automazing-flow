@@ -170,26 +170,31 @@ export function MessageDetailPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isStackedWorkspace ? "h-9 w-9" : "h-7 w-7", "p-0")}
+                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
                       aria-label="Föregående meddelande"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
                     </Button>
-                    <span className="min-w-[2.75rem] px-1 text-center text-[10px] tabular-nums text-muted-foreground">
+                    <span
+                      className={cn(
+                        "min-w-[2.75rem] px-1 text-center tabular-nums text-muted-foreground",
+                        isStackedWorkspace ? "text-xs" : "text-[10px]"
+                      )}
+                    >
                       {navigation.index + 1}/{navigation.total}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className={cn(isStackedWorkspace ? "h-9 w-9" : "h-7 w-7", "p-0")}
+                      className={cn(isStackedWorkspace ? "h-10 w-10" : "h-7 w-7", "p-0")}
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
                       aria-label="Nästa meddelande"
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
                     </Button>
                   </div>
                 ) : null}
@@ -211,11 +216,11 @@ export function MessageDetailPanel({
                     type="button"
                     variant={isStackedWorkspace ? "secondary" : "ghost"}
                     size="sm"
-                    className={cn(isStackedWorkspace ? "h-9 gap-1 px-2.5 text-xs" : "h-8 w-8 p-0")}
+                    className={cn(isStackedWorkspace ? "h-10 gap-1.5 px-3 text-sm" : "h-8 w-8 p-0")}
                     onClick={onMarkHandled}
                     title="Markera hanterad (E)"
                   >
-                    <CheckCheck className={cn("h-4 w-4", isStackedWorkspace && "h-3.5 w-3.5")} />
+                    <CheckCheck className="h-4 w-4" />
                     {isStackedWorkspace ? <span>Klar</span> : <span className="sr-only">Markera hanterad</span>}
                   </Button>
                 ) : (

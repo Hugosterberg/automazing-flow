@@ -66,6 +66,7 @@ import {
 import { pageFadeUp } from "@/lib/motion";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageHeader } from "@/components/ui/page-header";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
@@ -115,10 +116,10 @@ function TodayTile({
         <Icon className={cn("h-4 w-4", toneAccent)} />
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
-      <p className="mt-3 text-2xl font-semibold tabular-nums">{value}</p>
-      <p className="text-xs font-medium text-muted-foreground mt-0.5">{title}</p>
+      <p className="mt-3 text-3xl font-semibold tabular-nums sm:text-2xl">{value}</p>
+      <p className="text-sm font-medium text-muted-foreground mt-1 sm:mt-0.5 sm:text-xs">{title}</p>
       {hint ? (
-        <p className="text-[11px] text-muted-foreground/80 mt-1">{hint}</p>
+        <p className="text-xs text-muted-foreground/80 mt-1.5 sm:mt-1 sm:text-[11px]">{hint}</p>
       ) : null}
     </Link>
   );
@@ -229,6 +230,7 @@ export default function Index() {
     [businessProfiles, homeBusinessProfileId]
   );
   const { mode } = useWorkspaceMode();
+  const isMobile = useIsMobile();
   const { connections } = useConnections(homeBusinessProfileId);
   const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -417,6 +419,7 @@ export default function Index() {
         }
       />
 
+      {!isMobile ? (
       <PageSmartBar
         title="Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
         steps={[
@@ -433,26 +436,37 @@ export default function Index() {
               : null
         }
       />
+      ) : health.score < 100 && health.topReason ? (
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-foreground/90">
+          {health.label} · {health.topReason}
+        </p>
+      ) : null}
 
       {profiles.length > 2 ? <ProfileList /> : null}
 
-      {mode === "business" ? <CompanyProfileNudge profile={businessProfile} /> : null}
+      {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
 
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
 
-      {/* Crypto/market sentiment via the tenant's LunarCrush MCP account.
-          Business-only and self-hiding when no provider is connected. */}
-      {mode === "business" ? <MarketPulseCard businessProfileId={homeBusinessProfileId} /> : null}
+      {mode === "business" ? (
+        isMobile ? (
+          <HomeCollapsibleSection title="Marknadspuls" ariaLabel="Marknadspuls">
+            <MarketPulseCard businessProfileId={homeBusinessProfileId} />
+          </HomeCollapsibleSection>
+        ) : (
+          <MarketPulseCard businessProfileId={homeBusinessProfileId} />
+        )
+      ) : null}
 
-      <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-2 p-3 sm:p-4">
+      <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-3 p-3 sm:space-y-2 sm:p-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Idag</h2>
+          <h2 className="text-base font-semibold text-foreground sm:text-sm">Idag</h2>
           <Link
             to="/activity"
-            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1"
+            className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1 sm:text-xs"
           >
-            <ActivityIcon className="h-3 w-3" />
-            Aktivitetsflöde
+            <ActivityIcon className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+            Aktivitet
           </Link>
         </div>
         <SyncFreshnessStrip businessProfileId={homeBusinessProfileId} />

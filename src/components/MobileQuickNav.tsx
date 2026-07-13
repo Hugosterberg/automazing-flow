@@ -44,14 +44,14 @@ export function MobileQuickNav() {
               <Link
                 to={to}
                 className={cn(
-                  "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition-colors",
+                  "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition-colors sm:min-h-11 sm:text-xs",
                   active
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 )}
               >
                 <Icon className={cn("h-5 w-5", active && "text-primary")} aria-hidden />
-                <span className="truncate max-w-full">{label}</span>
+                <span className="truncate max-w-full leading-tight">{label}</span>
               </Link>
             </li>
           );

@@ -102,31 +102,36 @@ export function ActivityDetailPanel({ event, onBack, showBack, navigation }: Pro
             </div>
           </div>
           {navigation ? (
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border/60 bg-muted/20 p-0.5">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className={cn(isStackedWorkspace ? "h-10 w-10" : "h-8 w-8", "p-0")}
                 disabled={!navigation.hasPrev}
                 onClick={navigation.onPrev}
                 aria-label="Föregående händelse"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
               </Button>
-              <span className="min-w-[3rem] text-center text-[11px] tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  "min-w-[3rem] text-center tabular-nums text-muted-foreground",
+                  isStackedWorkspace ? "text-xs" : "text-[11px]"
+                )}
+              >
                 {navigation.index + 1}/{navigation.total}
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className={cn(isStackedWorkspace ? "h-10 w-10" : "h-8 w-8", "p-0")}
                 disabled={!navigation.hasNext}
                 onClick={navigation.onNext}
                 aria-label="Nästa händelse"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className={cn("h-4 w-4", isStackedWorkspace && "h-5 w-5")} />
               </Button>
             </div>
           ) : null}

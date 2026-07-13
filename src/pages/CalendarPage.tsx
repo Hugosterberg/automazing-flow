@@ -563,7 +563,7 @@ export default function CalendarPage() {
       )}
 
       <div className="app-workspace-shell !min-h-[min(72vh,820px)]">
-        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Händelser</p>
             <p className="text-xs font-semibold tabular-nums">{allEvents.length}</p>
@@ -596,21 +596,22 @@ export default function CalendarPage() {
                 hasEvents: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
               }}
             />
-            <div className="flex gap-1 mt-4 rounded-lg border border-border/50 p-0.5 bg-muted/30">
+            <div className="mt-4 flex gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
               {(["day", "week", "month"] as const).map((m) => (
                 <button
                   key={m}
+                  type="button"
                   onClick={() => setViewMode(m)}
                   className={cn(
-                    "flex-1 py-2 text-xs font-medium rounded-md transition-colors",
+                    "min-h-11 flex-1 rounded-lg text-sm font-semibold transition-colors sm:min-h-9 sm:py-2 sm:text-xs sm:font-medium",
                     viewMode === m
-                      ? "bg-background shadow-sm"
+                      ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {m === "day" && "Day"}
-                  {m === "week" && "Week"}
-                  {m === "month" && "Month"}
+                  {m === "day" && "Dag"}
+                  {m === "week" && "Vecka"}
+                  {m === "month" && "Månad"}
                 </button>
               ))}
             </div>
@@ -636,13 +637,13 @@ export default function CalendarPage() {
               </div>
             </div>
             <div className="flex items-center justify-between mt-3">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={navPrev}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navPrev}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-medium capitalize truncate px-2 max-w-[160px]">
                 {navTitle}
               </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={navNext}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navNext}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
