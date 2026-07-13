@@ -156,12 +156,12 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="video-prompt">Extra direction</Label>
+                  <Label htmlFor="video-prompt">Extra vägledning</Label>
                   <Textarea
                     id="video-prompt"
                     value={videoPrompt}
                     onChange={(e) => setVideoPrompt(e.target.value)}
-                    placeholder="Hook angle, target audience, CTA, brand tone, or key points to highlight."
+                    placeholder="Hook-vinkel, målgrupp, CTA, varumärkestonalitet eller viktiga punkter att lyfta."
                     className="bg-secondary border-border min-h-[96px] resize-none"
                   />
                 </div>
@@ -172,11 +172,11 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
                     ) : (
                       <Film className="h-4 w-4 mr-2" />
                     )}
-                    {generating ? "Generating..." : "Generate video draft"}
+                    {generating ? "Skapar…" : "Skapa videoutkast"}
                   </Button>
                   {selectedVideoAsset?.webViewLink && (
                     <Button variant="outline" asChild>
-                      <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">Open source video</a>
+                      <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">Öppna källvideo</a>
                     </Button>
                   )}
                 </div>

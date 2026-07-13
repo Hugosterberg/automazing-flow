@@ -64,7 +64,7 @@ export function ApiaiStatusBar({ businessProfileId }: { businessProfileId: strin
       ) : null}
       <Button variant="ghost" size="sm" className="h-6 px-2 ml-auto" onClick={() => void refresh()} disabled={loading}>
         {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-        <span className="sr-only">Refresh apiai status</span>
+        <span className="sr-only">Uppdatera APIAI-status</span>
       </Button>
     </div>
   );

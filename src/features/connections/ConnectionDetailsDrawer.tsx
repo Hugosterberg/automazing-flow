@@ -170,29 +170,29 @@ export function ConnectionDetailsDrawer({
                     </dd>
                   </>
                 ) : null}
-                <dt className="text-muted-foreground">Connection ID</dt>
+                <dt className="text-muted-foreground">Kopplings-ID</dt>
                 <dd className="col-span-2 font-mono truncate">{connection.id}</dd>
               </dl>
             </section>
 
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Health
+                Hälsa
               </h3>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <ConnectionHealthBadge health={connection.health} />
                 <ConnectionStatusBadge status={status} />
               </div>
               <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
-                <dt className="text-muted-foreground">Connected</dt>
+                <dt className="text-muted-foreground">Kopplad</dt>
                 <dd className="col-span-2">{connectedAgo ?? "—"}</dd>
-                <dt className="text-muted-foreground">Last sync</dt>
+                <dt className="text-muted-foreground">Senaste synk</dt>
                 <dd className="col-span-2">{lastSyncAgo ?? "—"}</dd>
-                <dt className="text-muted-foreground">Last successful sync</dt>
+                <dt className="text-muted-foreground">Senaste lyckade synk</dt>
                 <dd className="col-span-2">{lastOkAgo ?? "—"}</dd>
                 {connection.lastSyncError ? (
                   <>
-                    <dt className="text-muted-foreground">Last error</dt>
+                    <dt className="text-muted-foreground">Senaste fel</dt>
                     <dd className="col-span-2 text-destructive break-words">
                       {connection.lastSyncError}
                     </dd>

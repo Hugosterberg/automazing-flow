@@ -410,7 +410,7 @@ export default function ConnectionsPage() {
       />
 
       <PageSmartBar
-        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Meddelanden, Content eller Insikter."
+        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Meddelanden, Innehåll eller Insikter."
         steps={[
           "Koppla de kanaler du jobbar med (mail, socialt, recensioner …)",
           "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",

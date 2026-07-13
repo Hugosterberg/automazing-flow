@@ -142,7 +142,7 @@ export function ImageAssetPicker({
       {folderAssets.length > 0 ? (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium text-foreground">Add from this folder</p>
+            <p className="text-xs font-medium text-foreground">Lägg till från denna mapp</p>
             <Input
               value={query}
               onChange={(e) => {

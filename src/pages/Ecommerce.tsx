@@ -302,7 +302,7 @@ const fulfillmentColors: Record<string, string> = {
 
 const revenueChartConfig: ChartConfig = {
   revenue: {
-    label: "Revenue",
+    label: "Intäkter",
     color: "hsl(var(--primary, 142 76% 36%))",
   },
 };
@@ -595,13 +595,13 @@ export default function Ecommerce() {
       stats && shopifyData
         ? [
             {
-              label: "Revenue (30 days)",
+              label: "Intäkter (30 dagar)",
               value: formatCurrency(stats.revenue30d, currency),
               icon: DollarSign,
               sub: `${stats.ordersWindow.toLocaleString("en-US")} orders in window`,
             },
             {
-              label: "Avg. order value",
+              label: "Snittordervärde",
               value: formatCurrency(stats.avgOrderValue, currency),
               icon: TrendingUp,
               sub: stats.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}% fulfilled` : "—",
@@ -799,8 +799,8 @@ export default function Ecommerce() {
             <McpFeatureSection
               businessProfileId={activeBusinessProfileId ?? activeProfileId}
               featureIds={MCP_PAGE_FEATURE_IDS.ecommerce}
-              title="Shopify catalog (MCP)"
-              description="Query your connected Shopify store via MCP. Requires shop domain at connect time."
+              title="Shopify-katalog (MCP)"
+              description="Fråga din kopplade Shopify-butik via MCP. Kräver butiksdomän vid koppling."
             />
           </m.div>
           <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -1039,7 +1039,7 @@ export default function Ecommerce() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <TrendingUp className="h-5 w-5" />
-                Revenue trend
+                Intäktstrend
               </CardTitle>
               <CardDescription>
                 Last 30 days · Total {formatCurrencyDetailed(shopifyData.stats.revenue30d, currency)}
@@ -1164,7 +1164,7 @@ export default function Ecommerce() {
                               source: "shopify-customer",
                               status: "qualified",
                               notes: `Lifetime spend: ${formatCurrency(customer.totalSpent, customer.currency || currency)} · ${customer.ordersCount} orders`,
-                            }).then(() => toast.success("Added to leads"));
+                            }).then(() => toast.success("Tillagd i leads"));
                           }}
                         >
                           Add lead
@@ -1230,7 +1230,7 @@ export default function Ecommerce() {
                             target="_blank"
                             rel="noreferrer"
                             className="text-muted-foreground hover:text-foreground"
-                            title="Open recovery link"
+                            title="Öppna återställningslänk"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
@@ -1355,7 +1355,7 @@ export default function Ecommerce() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Select value={orderPaymentFilter} onValueChange={setOrderPaymentFilter}>
                     <SelectTrigger className="h-8 w-[130px] text-xs">
-                      <SelectValue placeholder="Payment" />
+                      <SelectValue placeholder="Betalning" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All payments</SelectItem>
@@ -1368,7 +1368,7 @@ export default function Ecommerce() {
                   </Select>
                   <Select value={orderFulfillmentFilter} onValueChange={setOrderFulfillmentFilter}>
                     <SelectTrigger className="h-8 w-[130px] text-xs">
-                      <SelectValue placeholder="Fulfillment" />
+                      <SelectValue placeholder="Leverans" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All fulfillment</SelectItem>
@@ -1402,8 +1402,8 @@ export default function Ecommerce() {
                       <th className="text-left px-5 py-3 font-medium">Order</th>
                       <th className="text-left px-3 py-3 font-medium">Customer</th>
                       <th className="text-left px-3 py-3 font-medium">Items</th>
-                      <th className="text-left px-3 py-3 font-medium">Payment</th>
-                      <th className="text-left px-3 py-3 font-medium">Fulfillment</th>
+                      <th className="text-left px-3 py-3 font-medium">Betalning</th>
+                      <th className="text-left px-3 py-3 font-medium">Leverans</th>
                       <th className="text-right px-5 py-3 font-medium">Total</th>
                       <th className="text-right px-5 py-3 font-medium">Date</th>
                     </tr>
@@ -1605,7 +1605,7 @@ export default function Ecommerce() {
                         setNotionParentId(id);
                       }}
                     >
-                      <option value="">Select a page or database...</option>
+                      <option value="">Välj en sida eller databas...</option>
                       {notionPageOptions.length > 0 && (
                         <optgroup label={`Pages (${notionPageOptions.length})`}>
                           {notionPageOptions.map((option) => (
@@ -1630,7 +1630,7 @@ export default function Ecommerce() {
                     <Label htmlFor="notion-parent-id">Parent ID</Label>
                     <Input
                       id="notion-parent-id"
-                      placeholder="page or database id"
+                      placeholder="sid- eller databas-id"
                       value={notionParentId}
                       onChange={(e) => setNotionParentId(e.target.value)}
                     />
@@ -1651,7 +1651,7 @@ export default function Ecommerce() {
                     <Label htmlFor="notion-page-title">Title</Label>
                     <Input
                       id="notion-page-title"
-                      placeholder="Weekly planning"
+                      placeholder="Veckoplanering"
                       value={notionTitle}
                       onChange={(e) => setNotionTitle(e.target.value)}
                     />
@@ -1660,7 +1660,7 @@ export default function Ecommerce() {
                     <Label htmlFor="notion-page-content">Content (optional)</Label>
                     <Input
                       id="notion-page-content"
-                      placeholder="First paragraph for the page"
+                      placeholder="Första stycket på sidan"
                       value={notionContent}
                       onChange={(e) => setNotionContent(e.target.value)}
                     />
@@ -1693,7 +1693,7 @@ export default function Ecommerce() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShopifyIcon className="h-4 w-4" />
-              Connect Shopify
+              Koppla Shopify
             </DialogTitle>
             <DialogDescription>
               Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
@@ -1701,7 +1701,7 @@ export default function Ecommerce() {
           </DialogHeader>
           <ShopifyConnectGuide />
           <div className="space-y-2 py-2">
-            <Label htmlFor="ecom-shop-domain">Store domain</Label>
+            <Label htmlFor="ecom-shop-domain">Butiksdomän</Label>
             <Input
               id="ecom-shop-domain"
               placeholder={SHOPIFY_DOMAIN_EXAMPLE}
@@ -1721,10 +1721,10 @@ export default function Ecommerce() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
-              Cancel
+              Avbryt
             </Button>
             <Button onClick={handleConnectSubmit} disabled={!shopDomain.trim()}>
-              Connect
+              Koppla
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -411,7 +411,7 @@ export function SelectedContentPanel({
       {!empty && historyToAdd.length > 0 && onAddFromHistory && !compact ? (
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-medium">Add from saved generations</h3>
+            <h3 className="text-sm font-medium">Lägg till från sparade genereringar</h3>
             <p className="text-xs text-muted-foreground">Recent History items not yet in Selected.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">

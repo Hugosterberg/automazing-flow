@@ -688,7 +688,7 @@ export default function ContentPage() {
   function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
     saveAssetSelection(asset, true);
     recordAsset(asset, options);
-    toast.success("Added to Selected and History");
+    toast.success("Tillagd i Valda och Historik");
   }
 
   function handleBatchIngested(
@@ -754,7 +754,7 @@ export default function ContentPage() {
         added += 1;
       }
       if (added > 0) {
-        toast.success(`${added} file${added === 1 ? "" : "s"} uploaded — added to Selected`);
+        toast.success(`${added} fil${added === 1 ? "" : "er"} uppladdade — tillagda i Valda`);
         goToTab("selected");
       } else {
         toast.message("No image or video files selected");
@@ -772,7 +772,7 @@ export default function ContentPage() {
     if (!asset) return;
     saveAssetSelection(asset, checked);
     if (checked) {
-      toast.message("Added to Selected");
+      toast.message("Tillagd i Valda");
     }
   }
 
@@ -881,7 +881,7 @@ export default function ContentPage() {
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
         icon={FolderOpen}
-        title="Content"
+        title="Innehåll"
         description="Välj media från Drive, skapa med apiai.me och publicera eller spara som utkast — allt i ett flöde."
         actions={
           <>
@@ -916,13 +916,13 @@ export default function ContentPage() {
       />
 
       <PageSmartBar
-        title="Content är hela flödet — välj media, skapa med AI, spara utkast och publicera."
+        title="Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera."
         steps={[
           "Bläddra Drive eller ladda upp — markera det du vill använda",
-          "Skapa eller redigera i Create, spara till Selected eller History",
-          "Publicera eller schemalägg under Post or save",
+          "Skapa eller redigera under Skapa, spara till Valda eller Historik",
+          "Publicera eller schemalägg under Publicera",
         ]}
-        tip="Koppla Google Drive först om Browse är tom. Publicering kan schemaläggas — då går inlägg ut automatiskt."
+        tip="Koppla Google Drive först om Bläddra är tom. Publicering kan schemaläggas — då går inlägg ut automatiskt."
         liveHintOverride={
           contentTab === "browse" && browseMediaFiles.length > 0
             ? isMobile
@@ -968,7 +968,7 @@ export default function ContentPage() {
         onUseIdea={(text) => {
           setPublishCaption(text);
           goToTab("publish");
-          toast.success("Idea added — ready to post or save");
+          toast.success("Idé tillagd — redo att publicera eller spara");
         }}
       />
 
@@ -982,14 +982,14 @@ export default function ContentPage() {
               className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <HardDrive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              <span className="sm:inline">Browse</span>
+              <span className="sm:inline">Bläddra</span>
             </TabsTrigger>
             <TabsTrigger
               value="selected"
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <BookmarkCheck className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Selected
+              Valda
               {selectedAssets.length > 0 ? (
                 <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[11px] tabular-nums sm:text-[10px]">
                   {selectedAssets.length}
@@ -1001,14 +1001,14 @@ export default function ContentPage() {
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <Wand2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Create
+              Skapa
             </TabsTrigger>
             <TabsTrigger
               value="history"
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <History className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              History
+              Historik
               {generatedHistory.length > 0 ? (
                 <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
               ) : null}
@@ -1018,7 +1018,7 @@ export default function ContentPage() {
               className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Post
+              Publicera
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>
@@ -1043,18 +1043,18 @@ export default function ContentPage() {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onSelect={() => goToTab("selected")}>
                 <BookmarkCheck className="mr-2 h-4 w-4" />
-                Selected
+                Valda
                 {selectedAssets.length > 0 ? (
                   <span className="ml-auto tabular-nums text-muted-foreground">{selectedAssets.length}</span>
                 ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("create")}>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Create
+                Skapa
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("history")}>
                 <History className="mr-2 h-4 w-4" />
-                History
+                Historik
                 {generatedHistory.length > 0 ? (
                   <span className="ml-auto tabular-nums text-muted-foreground">{generatedHistory.length}</span>
                 ) : null}
@@ -1126,7 +1126,7 @@ export default function ContentPage() {
           onReorder={reorderSelected}
           onAddFromHistory={(asset) => {
             saveAssetSelection(asset, true);
-            toast.success("Added to Selected");
+            toast.success("Tillagd i Valda");
           }}
           onUploadFiles={handleBrowseUploadFiles}
           uploading={uploadingBrowse}
@@ -1145,17 +1145,17 @@ export default function ContentPage() {
           selectedKeys={selectedIds}
           onAddToSelection={(asset) => {
             saveAssetSelection(asset, true);
-            toast.success("Added to Selected");
+            toast.success("Tillagd i Valda");
           }}
           onAddAllToSelection={(assets) => {
             assets.forEach((asset) => saveAssetSelection(asset, true));
-            toast.success(`${assets.length} added to Selected`);
+            toast.success(`${assets.length} tillagda i Valda`);
             goToTab("selected");
           }}
           onRemove={removeGenerated}
           onClear={() => {
             clearGenerated();
-            toast.message("History cleared");
+            toast.message("Historik rensad");
           }}
         />
       ) : null}
@@ -1167,19 +1167,19 @@ export default function ContentPage() {
               <CardContent className="py-8 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">
                   {generatedHistory.length > 0
-                    ? "Add media from Browse or History to Selected, then post."
-                    : "Select at least one image or video in Browse or Selected first."}
+                    ? "Lägg till media från Bläddra eller Historik till Valda, sedan publicera."
+                    : "Välj minst en bild eller video i Bläddra eller Valda först."}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => goToTab("selected")}>
-                    Open Selected
+                    Öppna Valda
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
-                    Go to Browse
+                    Gå till Bläddra
                   </Button>
                   {generatedHistory.length > 0 ? (
                     <Button variant="outline" size="sm" onClick={() => goToTab("history")}>
-                      Open History
+                      Öppna Historik
                     </Button>
                   ) : null}
                 </div>

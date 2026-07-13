@@ -740,7 +740,7 @@ export default function SocialMedia() {
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
               <Sparkles className="h-3.5 w-3.5" />
-              AI Analysis
+              AI-analys
             </div>
           </div>
           <Card className="bg-card border-border">
@@ -748,7 +748,7 @@ export default function SocialMedia() {
               {analyzing ? (
                 <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                  <span>Analyzing account content…</span>
+                  <span>Analyserar kontoinnehåll…</span>
                 </div>
               ) : analysisResult ? (
                 <div className="space-y-5">
@@ -772,8 +772,8 @@ export default function SocialMedia() {
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   <span>
                     {selectedAccount.platform === "google_business"
-                      ? "Fetching Business Profile…"
-                      : "Fetching posts…"}
+                      ? "Hämtar företagsprofil…"
+                      : "Hämtar inlägg…"}
                   </span>
                 </div>
               ) : selectedZernioNote ? (

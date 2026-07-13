@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 import type { ContentFlowStep } from "./contentFlow";
 
 const STEPS: { id: ContentFlowStep; label: string; hint: string; icon: typeof FolderOpen }[] = [
-  { id: "browse", label: "1. Pick media", hint: "Mark Drive files or upload from your computer.", icon: FolderOpen },
-  { id: "selected", label: "2. Selected", hint: "Review your picks — add from History or Drive anytime.", icon: BookmarkCheck },
-  { id: "create", label: "3. Create", hint: "Generate or transform using your Selected media.", icon: Wand2 },
-  { id: "publish", label: "4. Post or save", hint: "Moderation runs automatically; accounts pre-selected.", icon: Send },
+  { id: "browse", label: "1. Bläddra", hint: "Markera Drive-filer eller ladda upp från datorn.", icon: FolderOpen },
+  { id: "selected", label: "2. Valda", hint: "Granska dina val — lägg till från Historik eller Drive när som helst.", icon: BookmarkCheck },
+  { id: "create", label: "3. Skapa", hint: "Generera eller transformera med vald media.", icon: Wand2 },
+  { id: "publish", label: "4. Publicera", hint: "Moderering körs automatiskt; konton är förvalda.", icon: Send },
 ];
 
 export function ContentFlowGuide({
@@ -22,7 +22,7 @@ export function ContentFlowGuide({
 
   return (
     <div className="rounded-xl border border-border bg-muted/20 p-4">
-      <p className="mb-3 text-sm font-medium text-foreground">How it works</p>
+      <p className="mb-3 text-sm font-medium text-foreground">Så fungerar det</p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((step, index) => {
           const Icon = step.icon;
@@ -57,7 +57,7 @@ export function ContentFlowGuide({
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.hint}</p>
               {step.id === "selected" && selectionCount > 0 ? (
-                <p className="mt-1 text-[11px] font-medium text-primary">{selectionCount} in Selected</p>
+                <p className="mt-1 text-[11px] font-medium text-primary">{selectionCount} i Valda</p>
               ) : null}
             </button>
           );

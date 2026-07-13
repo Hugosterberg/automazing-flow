@@ -144,25 +144,25 @@ export function GeneratedHistoryPanel({
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="ghost" size="sm">
-                Clear history
+                Rensa historik
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Clear generation history?</AlertDialogTitle>
+                <AlertDialogTitle>Rensa genereringshistorik?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This removes the list from your profile. Server files may remain until they expire.
+                  Detta tar bort listan från din profil. Serverfiler kan finnas kvar tills de löper ut.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Avbryt</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     onClear();
                     setConfirmOpen(false);
                   }}
                 >
-                  Clear
+                  Rensa
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

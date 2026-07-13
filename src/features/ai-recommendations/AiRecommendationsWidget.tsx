@@ -109,7 +109,7 @@ export function AiRecommendationsWidget({
             </div>
 
             {isLoading ? (
-              <p className="text-xs text-muted-foreground">Loading…</p>
+              <p className="text-xs text-muted-foreground">Laddar…</p>
             ) : activeCount === 0 ? (
               <p className="text-xs text-muted-foreground">
                 No active suggestions yet.{" "}

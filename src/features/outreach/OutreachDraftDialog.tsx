@@ -89,7 +89,7 @@ export function OutreachDraftDialog({
     options?: { force?: boolean; switchTab?: boolean }
   ) {
     if (!businessProfileId) {
-      toast.error("Select a business profile first.");
+      toast.error("Välj en företagsprofil först.");
       return;
     }
     if (!options?.force && draftByChannel[nextChannel]) {
@@ -146,7 +146,7 @@ export function OutreachDraftDialog({
         {!businessProfileId ? (
           <Alert variant="destructive">
             <AlertTitle>No active profile</AlertTitle>
-            <AlertDescription>Select a business profile before generating outreach drafts.</AlertDescription>
+            <AlertDescription>Välj en företagsprofil innan du genererar outreach-utkast.</AlertDescription>
           </Alert>
         ) : null}
 

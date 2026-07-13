@@ -419,12 +419,12 @@ export default function MarketingPage() {
           onUseForCampaign={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));
             openNewCampaign();
-            toast.success("Idea loaded into new campaign");
+            toast.success("Idé laddad i ny kampanj");
           }}
           onUseForContent={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join("\n\n"));
             navigate("/content?tab=create");
-            toast.success("Idea ready in Content");
+            toast.success("Idé klar i Innehåll");
           }}
           onOpenEcommerce={() => navigate("/ecommerce")}
         />
@@ -432,15 +432,15 @@ export default function MarketingPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Megaphone className="h-4 w-4 text-primary" />
-              Content that attracts customers
+              Innehåll som attraherar kunder
             </CardTitle>
             <CardDescription>
-              Post ideas that warm up potential buyers live in Content — social posts and outreach angles in one place.
+              Inläggsidéer som värmer upp potentiella köpare finns i Innehåll — sociala inlägg och outreach-vinklar på ett ställe.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" size="sm">
-              <Link to="/content">Open Content ideas →</Link>
+              <Link to="/content">Öppna innehållsidéer →</Link>
             </Button>
           </CardContent>
         </Card>
@@ -472,7 +472,7 @@ export default function MarketingPage() {
                 zernio_init_failed:
                   "Zernio could not initialize the marketing connect flow. Use Official API, or check ZERNIO_API_KEY/ZERNIO_PROFILE_ID.",
               },
-              "Connect failed"
+              "Koppling misslyckades"
             )}
             onDismiss={clearOauthError}
           />
@@ -497,9 +497,9 @@ export default function MarketingPage() {
           </div>
         </div>
         <div>
-          <h2 className="text-sm font-semibold">Paid advertising</h2>
+          <h2 className="text-sm font-semibold">Betald annonsering</h2>
           <p className="text-xs text-muted-foreground">
-            Connect Google Ads and Meta to track spend, ROAS and live campaigns.
+            Koppla Google Ads och Meta för att följa spend, ROAS och aktiva kampanjer.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -510,7 +510,7 @@ export default function MarketingPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{item.label}</CardTitle>
                 <CardDescription>
-                  {connected ? "Connected for this profile." : "Connect to bring campaign data into Marketing."}
+                  {connected ? "Kopplad för denna profil." : "Koppla för att hämta kampanjdata till Marketing."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
@@ -564,8 +564,8 @@ export default function MarketingPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.marketing}
-          title="MCP intelligence"
-          description="SEO, marketing data, and competitive research via connected MCP providers."
+          title="MCP-intelligens"
+          description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
         />
       </m.div>
 
@@ -584,7 +584,7 @@ export default function MarketingPage() {
             onUseCampaignCta={(cta, title) => {
               stashContentCaption(`${title}: ${cta}`);
               navigate("/content?tab=publish");
-              toast.success("Campaign CTA ready in Content");
+              toast.success("Kampanj-CTA klar i Innehåll");
             }}
           />
         </m.div>

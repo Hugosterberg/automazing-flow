@@ -160,7 +160,7 @@ function bytesLabel(bytes: number) {
 }
 
 function statusLabel(status: number | null) {
-  return status == null ? "Not found" : String(status);
+  return status == null ? "Hittades inte" : String(status);
 }
 
 function priorityForPass(pass: boolean, warning = false): RecommendationPriority {
@@ -176,12 +176,12 @@ function scorePriority(score: number | null | undefined): RecommendationPriority
 }
 
 function scoreLabel(score: number | null | undefined) {
-  return score == null ? "No data" : `${score}/100`;
+  return score == null ? "Ingen data" : `${score}/100`;
 }
 
 function metricDisplay(metric: PageSpeedMetric | undefined) {
-  if (!metric) return "No data";
-  return metric.displayValue || (metric.numericValue != null ? String(Math.round(metric.numericValue)) : "No data");
+  if (!metric) return "Ingen data";
+  return metric.displayValue || (metric.numericValue != null ? String(Math.round(metric.numericValue)) : "Ingen data");
 }
 
 function buildRecommendations(params: {
@@ -195,9 +195,9 @@ function buildRecommendations(params: {
       {
         area: "seo",
         priority: "high",
-        title: "Register your primary website",
-        value: "No URL",
-        detail: "Add the canonical website URL in Connections before running a Digital Brand audit.",
+        title: "Registrera er primära webbplats",
+        value: "Ingen URL",
+        detail: "Lägg till webbadressen under Kopplingar innan du kör en Digital Brand-audit.",
       },
     ];
   }
@@ -228,47 +228,47 @@ function buildRecommendations(params: {
       ? {
           area: "performance",
           priority: scorePriority(mobilePsi?.scores.performance ?? desktopPsi?.scores.performance),
-          title: "PageSpeed performance score",
+          title: "PageSpeed-prestandapoäng",
           value: scoreLabel(mobilePsi?.scores.performance ?? desktopPsi?.scores.performance),
           detail: mobilePsi
-            ? `Mobile Lighthouse performance is ${scoreLabel(mobilePsi.scores.performance)}. Desktop is ${scoreLabel(desktopPsi?.scores.performance)}.`
-            : `Desktop Lighthouse performance is ${scoreLabel(desktopPsi?.scores.performance)}.`,
+            ? `Mobil Lighthouse-prestanda är ${scoreLabel(mobilePsi.scores.performance)}. Desktop är ${scoreLabel(desktopPsi?.scores.performance)}.`
+            : `Desktop Lighthouse-prestanda är ${scoreLabel(desktopPsi?.scores.performance)}.`,
         }
       : {
           area: "performance",
           priority: "medium",
-          title: "PageSpeed Insights unavailable",
-          value: audit.pageSpeed?.apiKeyConfigured ? "No PSI result" : "No API key",
-          detail: audit.pageSpeed?.error || "Add PAGESPEED_API_KEY or GOOGLE_PAGESPEED_API_KEY to use Lighthouse values.",
+          title: "PageSpeed Insights otillgängligt",
+          value: audit.pageSpeed?.apiKeyConfigured ? "Inget PSI-resultat" : "Ingen API-nyckel",
+          detail: audit.pageSpeed?.error || "Lägg till PAGESPEED_API_KEY eller GOOGLE_PAGESPEED_API_KEY för Lighthouse-värden.",
         },
     primaryPsi
       ? {
           area: "seo",
           priority: scorePriority(mobilePsi?.scores.seo ?? desktopPsi?.scores.seo),
-          title: "Lighthouse SEO score",
+          title: "Lighthouse SEO-poäng",
           value: scoreLabel(mobilePsi?.scores.seo ?? desktopPsi?.scores.seo),
           detail:
-            "This is the real Lighthouse SEO category score from PageSpeed Insights for the registered URL.",
+            "Detta är Lighthouse SEO-kategoripoängen från PageSpeed Insights för den registrerade URL:en.",
         }
       : null,
     primaryPsi
       ? {
           area: "trust",
           priority: scorePriority(mobilePsi?.scores.accessibility ?? desktopPsi?.scores.accessibility),
-          title: "Accessibility score",
+          title: "Tillgänglighetspoäng",
           value: scoreLabel(mobilePsi?.scores.accessibility ?? desktopPsi?.scores.accessibility),
           detail:
-            "Accessibility issues often also hurt conversion, usability, and perceived brand quality.",
+            "Tillgänglighetsproblem påverkar ofta konvertering, användbarhet och upplevd varumärkeskvalitet.",
         }
       : null,
     primaryPsi
       ? {
           area: "trust",
           priority: scorePriority(mobilePsi?.scores.bestPractices ?? desktopPsi?.scores.bestPractices),
-          title: "Best practices score",
+          title: "Poäng för bästa praxis",
           value: scoreLabel(mobilePsi?.scores.bestPractices ?? desktopPsi?.scores.bestPractices),
           detail:
-            "Lighthouse best-practices checks cover security, browser compatibility, and implementation quality signals.",
+            "Lighthouse best-practices kontrollerar säkerhet, webbläsarkompatibilitet och implementeringskvalitet.",
         }
       : null,
     primaryPsi
@@ -278,7 +278,7 @@ function buildRecommendations(params: {
           title: "Largest Contentful Paint",
           value: metricDisplay(mobilePsi?.metrics.largestContentfulPaint ?? desktopPsi?.metrics.largestContentfulPaint),
           detail:
-            "LCP measures how quickly the main visible content loads. Optimize hero media, server response, and render-blocking resources.",
+            "LCP mäter hur snabbt huvudinnehållet laddas. Optimera hero-media, serversvar och render-blockande resurser.",
         }
       : null,
     primaryPsi
@@ -288,94 +288,94 @@ function buildRecommendations(params: {
           title: "Cumulative Layout Shift",
           value: metricDisplay(mobilePsi?.metrics.cumulativeLayoutShift ?? desktopPsi?.metrics.cumulativeLayoutShift),
           detail:
-            "CLS measures visual stability. Reserve image/ad space and avoid late-loading UI that pushes content around.",
+            "CLS mäter visuell stabilitet. Reservera utrymme för bilder/annonser och undvik sent laddat UI som flyttar innehåll.",
         }
       : null,
     {
       area: "performance",
       priority: priorityForPass(audit.ok),
-      title: "Homepage response status",
+      title: "Startsida HTTP-status",
       value: `${audit.status}`,
       detail: audit.ok
-        ? `The homepage returned HTTP ${audit.status}.`
-        : `The homepage returned HTTP ${audit.status}; fix this before optimizing SEO content.`,
+        ? `Startsidan returnerade HTTP ${audit.status}.`
+        : `Startsidan returnerade HTTP ${audit.status}; åtgärda detta innan du optimerar SEO-innehåll.`,
     },
     {
       area: "performance",
       priority: priorityForPass(audit.responseTimeMs <= 1200, audit.responseTimeMs <= 2500),
-      title: "Server response time",
+      title: "Serversvarstid",
       value: `${audit.responseTimeMs} ms`,
       detail:
         audit.responseTimeMs <= 1200
-          ? "Initial server response is in a healthy range."
-          : "Reduce redirects, server work, and blocking upstream calls to improve the initial response.",
+          ? "Det initiala serversvaret ligger inom ett hälsosamt intervall."
+          : "Minska omdirigeringar, serverarbete och blockerande uppströmsanrop för att förbättra det initiala svaret.",
     },
     {
       area: "performance",
       priority: priorityForPass(audit.pageSizeBytes <= 350_000, audit.pageSizeBytes <= 900_000),
-      title: "Downloaded HTML size",
+      title: "Nedladdad HTML-storlek",
       value: bytesLabel(audit.pageSizeBytes),
       detail:
         audit.pageSizeBytes <= 350_000
-          ? "The HTML payload is reasonably small."
-          : "The HTML payload is large; reduce inline scripts, embedded data, and unused markup.",
+          ? "HTML-payloaden är rimligt liten."
+          : "HTML-payloaden är stor; minska inline-skript, inbäddad data och oanvänd markup.",
     },
     {
       area: "seo",
       priority: priorityForPass(titleOk, Boolean(audit.title)),
-      title: "Title tag length",
-      value: audit.title ? `${audit.titleLength} chars` : "Missing",
+      title: "Title-taggens längd",
+      value: audit.title ? `${audit.titleLength} tecken` : "Saknas",
       detail: audit.title
-        ? `Current title: "${audit.title}". Aim for a descriptive 25-65 character title.`
-        : "Add a unique title tag that names the brand, offer, and main search intent.",
+        ? `Nuvarande title: "${audit.title}". Sikta på en beskrivande title på 25–65 tecken.`
+        : "Lägg till en unik title-tagg som namnger varumärke, erbjudande och huvudsaklig sökintention.",
     },
     {
       area: "seo",
       priority: priorityForPass(metaOk, Boolean(audit.metaDescription)),
-      title: "Meta description",
-      value: audit.metaDescription ? `${audit.metaDescriptionLength} chars` : "Missing",
+      title: "Metabeskrivning",
+      value: audit.metaDescription ? `${audit.metaDescriptionLength} tecken` : "Saknas",
       detail: audit.metaDescription
-        ? `Current meta description length is ${audit.metaDescriptionLength} characters. Aim for 70-160.`
-        : "Add a meta description that summarizes the offer and gives searchers a reason to click.",
+        ? `Nuvarande metabeskrivning är ${audit.metaDescriptionLength} tecken. Sikta på 70–160.`
+        : "Lägg till en metabeskrivning som sammanfattar erbjudandet och ger sökare en anledning att klicka.",
     },
     {
       area: "seo",
       priority: priorityForPass(h1Ok, audit.h1Texts.length > 0),
-      title: "H1 structure",
+      title: "H1-struktur",
       value: `${audit.h1Texts.length} H1`,
       detail:
         audit.h1Texts.length === 1
-          ? `Primary H1: "${audit.h1Texts[0]}".`
-          : "Use exactly one clear H1 on the homepage so search engines and users understand the page topic.",
+          ? `Primär H1: "${audit.h1Texts[0]}".`
+          : "Använd exakt en tydlig H1 på startsidan så sökmotorer och besökare förstår sidans ämne.",
     },
     {
       area: "seo",
       priority: priorityForPass(Boolean(audit.canonical), true),
-      title: "Canonical URL",
-      value: audit.canonical ? "Present" : "Missing",
+      title: "Kanonisk URL",
+      value: audit.canonical ? "Finns" : "Saknas",
       detail: audit.canonical
-        ? `Canonical points to ${audit.canonical}.`
-        : "Add a canonical URL to prevent duplicate homepage variants from competing in search.",
+        ? `Kanonisk pekar på ${audit.canonical}.`
+        : "Lägg till en kanonisk URL för att förhindra att duplicerade startsidevarianter konkurrerar i sök.",
     },
     {
       area: "seo",
       priority: priorityForPass(audit.structuredDataCount > 0, true),
-      title: "Structured data",
-      value: `${audit.structuredDataCount} JSON-LD block${audit.structuredDataCount === 1 ? "" : "s"}`,
+      title: "Strukturerad data",
+      value: `${audit.structuredDataCount} JSON-LD-block`,
       detail:
         audit.structuredDataCount > 0
-          ? "Structured data is present on the page."
-          : "Add Organization, LocalBusiness, FAQ, Product, or Review schema where relevant.",
+          ? "Strukturerad data finns på sidan."
+          : "Lägg till Organization-, LocalBusiness-, FAQ-, Product- eller Review-schema där det är relevant.",
     },
     {
       area: "seo",
       priority: priorityForPass(audit.sitemapXmlStatus != null && audit.sitemapXmlStatus < 400, true),
-      title: "Sitemap probe",
+      title: "Sitemap-kontroll",
       value: statusLabel(audit.sitemapXmlStatus),
       detail:
         audit.sitemapXmlStatus != null && audit.sitemapXmlStatus < 400
-          ? "/sitemap.xml is reachable."
-          : "Expose /sitemap.xml so search engines can discover important pages faster.",
+          ? "/sitemap.xml är nåbar."
+          : "Exponera /sitemap.xml så sökmotorer kan hitta viktiga sidor snabbare.",
     },
     {
       area: "trust",
@@ -383,73 +383,73 @@ function buildRecommendations(params: {
       title: "HTTPS",
       value: websiteUrl.startsWith("https://") ? "HTTPS" : "HTTP",
       detail: websiteUrl.startsWith("https://")
-        ? "The registered website uses HTTPS."
-        : "Switch the registered URL to HTTPS and redirect HTTP to HTTPS.",
+        ? "Den registrerade webbplatsen använder HTTPS."
+        : "Byt den registrerade URL:en till HTTPS och omdirigera HTTP till HTTPS.",
     },
     {
       area: "trust",
       priority: priorityForPass(Boolean(audit.viewport), true),
-      title: "Mobile viewport",
-      value: audit.viewport ? "Present" : "Missing",
+      title: "Mobil viewport",
+      value: audit.viewport ? "Finns" : "Saknas",
       detail: audit.viewport
         ? `Viewport meta: ${audit.viewport}.`
-        : "Add a viewport meta tag so the site renders predictably on mobile devices.",
+        : "Lägg till en viewport meta-tagg så sidan renderas förutsägbart på mobila enheter.",
     },
     {
       area: "trust",
       priority: priorityForPass(altMissingRate <= 0.15, altMissingRate <= 0.35),
-      title: "Image alt text coverage",
-      value: `${audit.imagesMissingAlt}/${audit.imageCount} missing`,
+      title: "Alt-text för bilder",
+      value: `${audit.imagesMissingAlt}/${audit.imageCount} saknas`,
       detail:
         audit.imageCount === 0
-          ? "No images were detected in the fetched HTML."
-          : "Add descriptive alt text to important images and empty alt text to decorative images.",
+          ? "Inga bilder hittades i den hämtade HTML:en."
+          : "Lägg till beskrivande alt-text på viktiga bilder och tom alt-text på dekorativa bilder.",
     },
     {
       area: "trust",
       priority: priorityForPass(Boolean(audit.ogTitle && audit.ogDescription), true),
-      title: "Social preview metadata",
-      value: audit.ogTitle && audit.ogDescription ? "Complete" : "Incomplete",
+      title: "Förhandsvisning i sociala medier",
+      value: audit.ogTitle && audit.ogDescription ? "Komplett" : "Ofullständig",
       detail:
         audit.ogTitle && audit.ogDescription
-          ? "Open Graph title and description are present."
-          : "Add Open Graph title and description so shared links render clearly in social channels.",
+          ? "Open Graph title och description finns."
+          : "Lägg till Open Graph title och description så delade länkar visas tydligt i sociala kanaler.",
     },
     {
       area: "channels",
       priority: priorityForPass(hasGoogleBusiness, true),
-      title: "Google Business connection",
-      value: hasGoogleBusiness ? "Connected" : "Not connected",
+      title: "Google Business-koppling",
+      value: hasGoogleBusiness ? "Kopplad" : "Ej kopplad",
       detail: hasGoogleBusiness
-        ? "Google Business is connected, so local brand signals can be compared with the website."
-        : "Connect Google Business to align website content with maps, categories, hours, and reviews.",
+        ? "Google Business är kopplat så lokala varumärkessignaler kan jämföras med webbplatsen."
+        : "Koppla Google Business för att synka webbinnehåll med kartor, kategorier, öppettider och recensioner.",
     },
     {
       area: "channels",
       priority: priorityForPass(hasReviews, true),
-      title: "Review sources",
-      value: hasReviews ? "Connected" : "Not connected",
+      title: "Recensionskällor",
+      value: hasReviews ? "Kopplad" : "Ej kopplad",
       detail: hasReviews
-        ? "Review sources are connected and can inform trust messaging."
-        : "Connect Google Reviews or Tripadvisor to use real review themes in website optimization.",
+        ? "Recensionskällor är kopplade och kan informera förtroendemeddelanden."
+        : "Koppla Google Reviews eller Tripadvisor för att använda verkliga recensionsteman i webboptimering.",
     },
     {
       area: "channels",
       priority: priorityForPass(hasSocial, true),
-      title: "Social channels",
-      value: hasSocial ? "Connected" : "Not connected",
+      title: "Sociala kanaler",
+      value: hasSocial ? "Kopplad" : "Ej kopplad",
       detail: hasSocial
-        ? "Social channels are connected and can be checked against website messaging."
-        : "Connect active social profiles to compare brand positioning across channels.",
+        ? "Sociala kanaler är kopplade och kan jämföras med webbplatsens budskap."
+        : "Koppla aktiva sociala profiler för att jämföra varumärkespositionering mellan kanaler.",
     },
     {
       area: "channels",
       priority: priorityForPass(hasAds, true),
-      title: "Paid media channels",
-      value: hasAds ? "Connected" : "Not connected",
+      title: "Betalda mediakanaler",
+      value: hasAds ? "Kopplad" : "Ej kopplad",
       detail: hasAds
-        ? "Paid channels are connected, useful for landing-page and CTA alignment."
-        : "Connect Google Ads or Meta Business before campaign-specific landing-page optimization.",
+        ? "Betalkanalerna är kopplade, användbara för landningssida- och CTA-anpassning."
+        : "Koppla Google Ads eller Meta Business innan kampanjspecifik landningssideoptimering.",
     },
   ].filter((item): item is BrandRecommendation => Boolean(item));
 }
@@ -660,25 +660,25 @@ export default function DigitalBrandPage() {
                 <Button type="button" size="sm" variant="ghost" className="h-7 px-2" asChild>
                   <a href={websiteUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    <span className="sr-only">Open website</span>
+                    <span className="sr-only">Öppna webbplatsen</span>
                   </a>
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {audit
-                  ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML audit" : "HTML fallback audit"} for ${audit.finalUrl} at ${new Date(audit.checkedAt).toLocaleString()}.`
+                  ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML-audit" : "HTML fallback-audit"} för ${audit.finalUrl} ${new Date(audit.checkedAt).toLocaleString()}.`
                   : auditLoading
                     ? "Kör PageSpeed Insights och hämtar HTML, robots.txt och sitemap.xml…"
                     : "Kör en audit för att hämta live SEO- och prestandavärden från webbplatsen."}
               </p>
               {audit?.pageSpeed?.error ? (
                 <p className="text-xs leading-relaxed text-warning">
-                  PageSpeed note: {audit.pageSpeed.error}
+                  PageSpeed-meddelande: {audit.pageSpeed.error}
                 </p>
               ) : null}
               {audit?.htmlFallbackError ? (
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  HTML fallback note: {audit.htmlFallbackError}
+                  HTML fallback-meddelande: {audit.htmlFallbackError}
                 </p>
               ) : null}
             </CardContent>
@@ -704,28 +704,28 @@ export default function DigitalBrandPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {mobilePageSpeed ? (
             <>
-              <MetricCard title="Mobile PageSpeed" value={scoreLabel(mobilePageSpeed.scores.performance)} hint="Lighthouse performance score from PageSpeed Insights." icon={Gauge} />
-              <MetricCard title="Mobile SEO" value={scoreLabel(mobilePageSpeed.scores.seo)} hint="Lighthouse SEO score from PageSpeed Insights." icon={Search} />
-              <MetricCard title="Mobile LCP" value={metricDisplay(mobilePageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint from Lighthouse." icon={RefreshCw} />
-              <MetricCard title="Mobile CLS" value={metricDisplay(mobilePageSpeed.metrics.cumulativeLayoutShift)} hint="Cumulative Layout Shift from Lighthouse." icon={ShieldCheck} />
+              <MetricCard title="Mobil PageSpeed" value={scoreLabel(mobilePageSpeed.scores.performance)} hint="Lighthouse prestandapoäng från PageSpeed Insights." icon={Gauge} />
+              <MetricCard title="Mobil SEO" value={scoreLabel(mobilePageSpeed.scores.seo)} hint="Lighthouse SEO-poäng från PageSpeed Insights." icon={Search} />
+              <MetricCard title="Mobil LCP" value={metricDisplay(mobilePageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint från Lighthouse." icon={RefreshCw} />
+              <MetricCard title="Mobil CLS" value={metricDisplay(mobilePageSpeed.metrics.cumulativeLayoutShift)} hint="Cumulative Layout Shift från Lighthouse." icon={ShieldCheck} />
             </>
           ) : null}
           {desktopPageSpeed ? (
             <>
-              <MetricCard title="Desktop PageSpeed" value={scoreLabel(desktopPageSpeed.scores.performance)} hint="Desktop Lighthouse performance score." icon={Gauge} />
-              <MetricCard title="Accessibility" value={scoreLabel(desktopPageSpeed.scores.accessibility)} hint="Desktop Lighthouse accessibility score." icon={ShieldCheck} />
-              <MetricCard title="Best practices" value={scoreLabel(desktopPageSpeed.scores.bestPractices)} hint="Desktop Lighthouse implementation-quality score." icon={CheckCircle2} />
-              <MetricCard title="Desktop LCP" value={metricDisplay(desktopPageSpeed.metrics.largestContentfulPaint)} hint="Desktop Largest Contentful Paint." icon={RefreshCw} />
+              <MetricCard title="Desktop PageSpeed" value={scoreLabel(desktopPageSpeed.scores.performance)} hint="Lighthouse prestandapoäng (desktop) från PageSpeed Insights." icon={Gauge} />
+              <MetricCard title="Tillgänglighet" value={scoreLabel(desktopPageSpeed.scores.accessibility)} hint="Lighthouse tillgänglighetspoäng (desktop)." icon={ShieldCheck} />
+              <MetricCard title="Bästa praxis" value={scoreLabel(desktopPageSpeed.scores.bestPractices)} hint="Lighthouse poäng för implementeringskvalitet (desktop)." icon={CheckCircle2} />
+              <MetricCard title="Desktop LCP" value={metricDisplay(desktopPageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint (desktop)." icon={RefreshCw} />
             </>
           ) : null}
-          <MetricCard title="HTTP status" value={String(audit.status)} hint={audit.ok ? "Homepage is reachable." : "Homepage returned an error."} icon={Gauge} />
-          <MetricCard title="Response time" value={`${audit.responseTimeMs} ms`} hint="Measured by the server-side audit fetch." icon={RefreshCw} />
-          <MetricCard title="Title length" value={`${audit.titleLength} chars`} hint={audit.title || "No title tag found."} icon={Search} />
-          <MetricCard title="Meta description" value={`${audit.metaDescriptionLength} chars`} hint={audit.metaDescription || "No meta description found."} icon={FileText} />
-          <MetricCard title="H1 count" value={String(audit.h1Texts.length)} hint={audit.h1Texts[0] || "No H1 found."} icon={CheckCircle2} />
-          <MetricCard title="Structured data" value={String(audit.structuredDataCount)} hint="JSON-LD blocks found in HTML." icon={ShieldCheck} />
-          <MetricCard title="Images missing alt" value={`${audit.imagesMissingAlt}/${audit.imageCount}`} hint="Based on img tags in fetched HTML." icon={FileText} />
-          <MetricCard title="Sitemap status" value={statusLabel(audit.sitemapXmlStatus)} hint="Probe result for /sitemap.xml." icon={Globe2} />
+          <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
+          <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
+          <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
+          <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+          <MetricCard title="Antal H1" value={String(audit.h1Texts.length)} hint={audit.h1Texts[0] || "Ingen H1 hittades."} icon={CheckCircle2} />
+          <MetricCard title="Strukturerad data" value={String(audit.structuredDataCount)} hint="JSON-LD-block hittade i HTML." icon={ShieldCheck} />
+          <MetricCard title="Bilder utan alt" value={`${audit.imagesMissingAlt}/${audit.imageCount}`} hint="Baserat på img-taggar i hämtad HTML." icon={FileText} />
+          <MetricCard title="Sitemap-status" value={statusLabel(audit.sitemapXmlStatus)} hint="Svar vid kontroll av /sitemap.xml." icon={Globe2} />
         </div>
       ) : auditLoading ? (
         <Card className="border-border">

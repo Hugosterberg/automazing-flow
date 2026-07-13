@@ -68,10 +68,10 @@ type IntegrationHelp = {
 };
 
 const overviewFeatures = [
-  { icon: Bell, title: "Notifications", desc: "Manage reminders and alerts" },
-  { icon: Palette, title: "Appearance", desc: "Theme and visual settings" },
-  { icon: Globe, title: "Language", desc: "Language and region" },
-  { icon: Shield, title: "Security", desc: "Password and two-factor authentication" },
+  { icon: Bell, title: "Aviseringar", desc: "Hantera påminnelser och varningar" },
+  { icon: Palette, title: "Utseende", desc: "Tema och visuella inställningar" },
+  { icon: Globe, title: "Språk", desc: "Språk och region" },
+  { icon: Shield, title: "Säkerhet", desc: "Lösenord och tvåfaktorsautentisering" },
 ];
 
 const featureRequirements: FeatureRequirement[] = [
@@ -339,7 +339,7 @@ export default function PreferencesPage() {
   const loadGlobal = useCallback(async () => {
     const payload = await apiJson<{ entries?: unknown }>(
       "/api/settings/api-keys",
-      "Could not load platform keys."
+      "Kunde inte ladda plattformsnycklar."
     );
     setGlobalEntries(Array.isArray(payload.entries) ? payload.entries : []);
   }, []);
@@ -347,7 +347,7 @@ export default function PreferencesPage() {
   const loadTenant = useCallback(async (businessProfileId: string) => {
     const payload = await apiJson<{ storeEnabled?: unknown; entries?: unknown }>(
       `/api/settings/secrets?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-      "Could not load profile secrets."
+      "Kunde inte ladda profilnycklar."
     );
     setStoreEnabled(Boolean(payload.storeEnabled));
     setTenantEntries(Array.isArray(payload.entries) ? payload.entries : []);
@@ -368,7 +368,7 @@ export default function PreferencesPage() {
       } catch (error) {
         if (!ignore) {
           toast({
-            title: "Could not load settings",
+            title: "Kunde inte ladda inställningar",
             description: error instanceof Error ? error.message : "Unknown error",
             variant: "destructive",
           });
@@ -397,7 +397,7 @@ export default function PreferencesPage() {
       setEdited({});
       await loadTenant(activeBusinessProfileId);
       toast({
-        title: "Profile secrets saved",
+        title: "Profilnycklar sparade",
         description: "Encrypted and stored for this business profile.",
       });
     } catch (error) {
@@ -477,12 +477,12 @@ export default function PreferencesPage() {
           </TabsTrigger>
           <TabsTrigger value="automation">
             <Bot className="h-3.5 w-3.5 mr-1.5" />
-            Automation
+            Automationer
           </TabsTrigger>
           <TabsTrigger value="api-keys">Integrationer</TabsTrigger>
           <TabsTrigger value="help">
             <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
-            Help
+            Hjälp
           </TabsTrigger>
         </TabsList>
         </div>
@@ -591,11 +591,11 @@ export default function PreferencesPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <KeyRound className="h-5 w-5" />
-                    Your integration keys (this profile)
+                    Dina integrationsnycklar (denna profil)
                   </CardTitle>
                   <CardDescription>
-                    Bring-your-own keys for the active business profile. Stored encrypted and used
-                    before the platform defaults. Leave empty to use the platform default.
+                    Egna nycklar för den aktiva företagsprofilen. Lagras krypterat och används före
+                    plattformsstandarderna. Lämna tomt för att använda standardvärden.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -605,10 +605,10 @@ export default function PreferencesPage() {
                     </p>
                   ) : !storeEnabled ? (
                     <p className="text-sm text-muted-foreground">
-                      The secret store is not configured on the server (needs
-                      <code className="text-xs mx-1">SECRETS_ENCRYPTION_KEY</code> and
-                      <code className="text-xs mx-1">SUPABASE_SERVICE_ROLE_KEY</code>). Platform
-                      defaults from environment variables are used.
+                      Hemlighetslagret är inte konfigurerat på servern (behöver
+                      <code className="text-xs mx-1">SECRETS_ENCRYPTION_KEY</code> och
+                      <code className="text-xs mx-1">SUPABASE_SERVICE_ROLE_KEY</code>). Plattformens
+                      standardvärden från miljövariabler används.
                     </p>
                   ) : (
                     <>

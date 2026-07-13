@@ -38,7 +38,7 @@ export function McpDataCatalog({ businessProfileId }: { businessProfileId: strin
       </CardHeader>
       <CardContent className="pt-0">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading catalog…</p>
+          <p className="text-sm text-muted-foreground">Laddar katalog…</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
             {rows.map((row) => (

@@ -142,10 +142,10 @@ export function SocialStatsSection({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                Loading...
+                Laddar…
               </>
             ) : (
-              "Refresh stats"
+              "Uppdatera statistik"
             )}
           </Button>
           <span className="text-xs text-muted-foreground">
