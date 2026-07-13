@@ -340,13 +340,20 @@ export function MessageDetailPanel({
           </h2>
         </header>
 
-        <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4">{bodyContent}</div>
+        <div
+          className={cn(
+            "message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4",
+            composeOpen && "py-3 [&_.message-prose_p]:text-[13px] [&_.message-prose_p]:leading-snug"
+          )}
+        >
+          {bodyContent}
+        </div>
 
         {canReply ? (
           <footer
             className={cn(
               "shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md",
-              composeOpen || replySent ? "message-compose-footer px-3 py-3" : "message-compose-footer-dock px-3 py-2"
+              composeOpen || replySent ? "message-compose-footer px-3 py-2.5" : "message-compose-footer-dock px-3 py-2"
             )}
           >
             {replySent ? (
@@ -363,14 +370,14 @@ export function MessageDetailPanel({
                 ) : null}
               </div>
             ) : composeOpen ? (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground/80">Svara</p>
+                  <p className="text-xs font-medium text-foreground/80">Svara</p>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-2 text-sm text-muted-foreground"
+                    className="h-8 px-2 text-xs text-muted-foreground"
                     onClick={() => setComposeOpen(false)}
                   >
                     Dölj
@@ -385,7 +392,7 @@ export function MessageDetailPanel({
                       ? "Skriv ditt svar…"
                       : "Skriv ett svar…"
                   }
-                  className="min-h-[120px] resize-none rounded-2xl border-border/70 bg-muted/20 px-3.5 py-3 text-[16px] leading-relaxed shadow-none focus-visible:ring-primary/30"
+                  className="min-h-[72px] max-h-[28vh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
                       e.preventDefault();
@@ -393,23 +400,23 @@ export function MessageDetailPanel({
                     }
                   }}
                 />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 text-[15px]"
+                    className="h-9 text-xs"
                     onClick={onDraftReply}
                     disabled={draftBusy}
                   >
                     {draftBusy ? (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Sparkles className="mr-1.5 h-4 w-4" />
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                     )}
                     AI-utkast
                   </Button>
                   <ReplyTemplatePicker
-                    className="h-11 w-full text-[15px]"
+                    className="h-9 w-full text-xs"
                     onInsert={(text) => {
                       onReplyDraftChange(text);
                       openCompose();
@@ -420,7 +427,7 @@ export function MessageDetailPanel({
                 </div>
                 <Button
                   type="button"
-                  className="h-12 w-full gap-1.5 text-[15px] font-semibold glow-sm"
+                  className="h-10 w-full gap-1.5 text-sm font-semibold glow-sm"
                   onClick={onSendReply}
                   disabled={sendBusy || !replyDraft.trim()}
                 >
