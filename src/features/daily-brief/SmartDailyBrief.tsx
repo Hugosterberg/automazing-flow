@@ -29,7 +29,7 @@ import { useReviewReplyState } from "@/features/reviews";
 import { useAutomationRuns, automationTitleForCronKey } from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 import { buildDailyBrief, type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
-import { dismissBriefItem, getDismissedBriefIds } from "./dailyBriefDismiss";
+import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
 const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string }>> = {
@@ -52,11 +52,13 @@ const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {
 function BriefRow({
   item,
   onPrefetch,
-  onDismiss,
+  onDone,
+  onSnooze,
 }: {
   item: BriefItem;
   onPrefetch?: (to: string) => void;
-  onDismiss?: (id: string) => void;
+  onDone?: (id: string) => void;
+  onSnooze?: (id: string) => void;
 }) {
   const Icon = KIND_ICON[item.kind];
   const styles = SEVERITY_STYLES[item.severity];
@@ -77,14 +79,28 @@ function BriefRow({
         </div>
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
       </Link>
-      {onDismiss ? (
+      {onDone ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Mark as done"
+          title="Mark as done"
+          onClick={() => onDone(item.id)}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </Button>
+      ) : null}
+      {onSnooze ? (
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label="Dismiss for today"
-          onClick={() => onDismiss(item.id)}
+          aria-label="Snooze until tomorrow"
+          title="Snooze until tomorrow"
+          onClick={() => onSnooze(item.id)}
         >
           <X className="h-3.5 w-3.5" />
         </Button>
@@ -106,7 +122,11 @@ export function SmartDailyBrief({
   businessProfileId: string | null | undefined;
 }) {
   const prefetchFor = useRoutePrefetch();
-  const [dismissedIds, setDismissedIds] = useState(() => getDismissedBriefIds());
+  const [dayState, setDayState] = useState(() => getBriefDayState());
+  const dismissedIds = useMemo(
+    () => new Set([...dayState.done, ...dayState.snoozed]),
+    [dayState]
+  );
   const { connections, isLoading: connectionsLoading } = useConnections(businessProfileId);
   const { tasks, isLoading: tasksLoading } = useTasks(businessProfileId);
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
@@ -166,9 +186,20 @@ export function SmartDailyBrief({
   const visibleActionCount = visibleItems.reduce((sum, item) => sum + item.count, 0);
   const visibleAllClear = visibleItems.length === 0;
 
-  function handleDismiss(id: string) {
-    dismissBriefItem(id);
-    setDismissedIds((prev) => new Set([...prev, id]));
+  // Progress: how many of today's brief items were marked done. Only ids that
+  // exist in today's brief count, so stale localStorage ids don't inflate it.
+  const briefIds = useMemo(() => new Set(brief.items.map((i) => i.id)), [brief.items]);
+  const doneCount = dayState.done.filter((id) => briefIds.has(id)).length;
+  const progressTotal = visibleItems.length + doneCount;
+
+  function handleDone(id: string) {
+    markBriefItemDone(id);
+    setDayState(getBriefDayState());
+  }
+
+  function handleSnooze(id: string) {
+    snoozeBriefItem(id);
+    setDayState(getBriefDayState());
   }
 
   // Avoid flashing "all caught up" before the first data lands.
@@ -200,16 +231,32 @@ export function SmartDailyBrief({
             {isInitialLoading
               ? "Putting together your brief…"
               : visibleAllClear
-              ? "You're all caught up for now."
+              ? doneCount > 0
+                ? `All ${progressTotal} handled — nice work.`
+                : "You're all caught up for now."
               : brief.subline}
           </p>
         </div>
+        {!isInitialLoading && doneCount > 0 && !visibleAllClear ? (
+          <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success tabular-nums shrink-0">
+            {doneCount} of {progressTotal} done
+          </span>
+        ) : null}
         {!visibleAllClear && !isInitialLoading ? (
           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular-nums shrink-0">
             {visibleActionCount}
           </span>
         ) : null}
       </div>
+
+      {!isInitialLoading && progressTotal > 0 && doneCount > 0 ? (
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+          <div
+            className="h-full rounded-full bg-success transition-all"
+            style={{ width: `${Math.round((doneCount / progressTotal) * 100)}%` }}
+          />
+        </div>
+      ) : null}
 
       {isInitialLoading ? (
         <div className="mt-4 space-y-2" aria-hidden>
@@ -225,7 +272,12 @@ export function SmartDailyBrief({
         <ul className="mt-4 space-y-2">
           {visibleItems.map((item) => (
             <li key={item.id}>
-              <BriefRow item={item} onPrefetch={prefetchFor} onDismiss={handleDismiss} />
+              <BriefRow
+                item={item}
+                onPrefetch={prefetchFor}
+                onDone={handleDone}
+                onSnooze={handleSnooze}
+              />
             </li>
           ))}
         </ul>
