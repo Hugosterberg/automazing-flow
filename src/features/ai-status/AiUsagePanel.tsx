@@ -1,11 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 import { Coins, Loader2, RefreshCw, Sparkles, Wrench, Zap } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { fetchAiUsage, type AiUsageSummary } from "./aiUsageClient";
+
+const dailyCostChartConfig: ChartConfig = {
+  estimatedUsd: {
+    label: "Kostnad",
+    color: "hsl(var(--warning))",
+  },
+};
+
+function formatChartDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+}
 
 function formatUsd(value: number): string {
   if (value <= 0) return "$0.00";
@@ -195,6 +215,47 @@ export function AiUsagePanel({
                 accent="bg-emerald-500"
               />
             </div>
+
+            {(summary.byDay ?? []).some((d) => d.estimatedUsd > 0) ? (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Kostnad per dag</p>
+                <ChartContainer config={dailyCostChartConfig} className="aspect-[16/4] w-full">
+                  <BarChart data={summary.byDay} margin={{ left: 4, right: 4, top: 4, bottom: 0 }}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatChartDay}
+                      tickLine={false}
+                      axisLine={false}
+                      minTickGap={28}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          labelFormatter={(value: string) => formatChartDay(value)}
+                          formatter={(value, _name, item) => (
+                            <span className="flex w-full items-center justify-between gap-3">
+                              <span className="text-muted-foreground">
+                                {Number(item?.payload?.eventCount ?? 0)} körningar
+                              </span>
+                              <span className="font-mono font-medium tabular-nums">
+                                {formatUsd(Number(value))}
+                              </span>
+                            </span>
+                          )}
+                        />
+                      }
+                    />
+                    <Bar
+                      dataKey="estimatedUsd"
+                      fill="var(--color-estimatedUsd)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={18}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
+            ) : null}
 
             {summary.byFeature.length > 0 ? (
               <div className="space-y-2">

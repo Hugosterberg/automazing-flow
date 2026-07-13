@@ -10,25 +10,35 @@ export const MARKETING_TREND_KEY = ["marketing-trend"] as const;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag the migration
 type SnapshotsClient = { from: (table: string) => any };
 
+interface MarketingTrendData {
+  trend: MarketingTrend;
+  /** Raw daily series, newest first — the trend chart reverses it for plotting. */
+  snapshots: MarketingSnapshot[];
+}
+
 /**
- * Week-over-week marketing trend, read from the daily marketing_snapshots the
- * cron writes (member-scoped via RLS). Silent + cached: a missing table (before
- * the migration) just yields an empty trend.
+ * Week-over-week marketing trend plus the raw daily series, read from the daily
+ * marketing_snapshots the cron writes (member-scoped via RLS). Silent + cached:
+ * a missing table (before the migration) just yields an empty trend.
  */
-export function useMarketingTrend(): { trend: MarketingTrend | null; isLoading: boolean } {
+export function useMarketingTrend(): {
+  trend: MarketingTrend | null;
+  snapshots: MarketingSnapshot[];
+  isLoading: boolean;
+} {
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const { enabled, user } = useAuth();
-  const query = useQuery<MarketingTrend>({
+  const query = useQuery<MarketingTrendData>({
     queryKey: [...MARKETING_TREND_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
-      if (!supabase || !businessProfileId) return computeMarketingTrend([]);
+      if (!supabase || !businessProfileId) return { trend: computeMarketingTrend([]), snapshots: [] };
       const { data, error } = await (supabase as unknown as SnapshotsClient)
         .from("marketing_snapshots")
         .select("snapshot_date, ad_spend, revenue, orders, roas, currency, portfolio_score, portfolio_grade, campaigns_poor")
         .eq("business_profile_id", businessProfileId)
         .order("snapshot_date", { ascending: false })
         .limit(30);
-      if (error) return computeMarketingTrend([]);
+      if (error) return { trend: computeMarketingTrend([]), snapshots: [] };
       const snapshots: MarketingSnapshot[] = (Array.isArray(data) ? data : []).map((r: Record<string, unknown>) => ({
         snapshotDate: String(r.snapshot_date || ""),
         adSpend: r.ad_spend == null ? null : Number(r.ad_spend),
@@ -40,11 +50,15 @@ export function useMarketingTrend(): { trend: MarketingTrend | null; isLoading: 
         portfolioGrade: (r.portfolio_grade as string | null) ?? null,
         campaignsPoor: r.campaigns_poor == null ? null : Number(r.campaigns_poor),
       }));
-      return computeMarketingTrend(snapshots);
+      return { trend: computeMarketingTrend(snapshots), snapshots };
     },
     enabled: Boolean(supabase && enabled && businessProfileId),
     staleTime: 5 * 60_000,
     meta: { silent: true },
   });
-  return { trend: query.data ?? null, isLoading: query.isLoading };
+  return {
+    trend: query.data?.trend ?? null,
+    snapshots: query.data?.snapshots ?? [],
+    isLoading: query.isLoading,
+  };
 }

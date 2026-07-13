@@ -9,6 +9,7 @@ import { formatMoney, formatNumber, formatPct, formatRoas } from "./format";
 import { MarketingGradeBadge } from "./MarketingGradeBadge";
 import { portfolioGradeTone } from "./gradeTone";
 import { MarketingRecommendations } from "./MarketingRecommendations";
+import { MarketingTrendChart } from "./MarketingTrendChart";
 
 function pct(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -409,6 +410,8 @@ export function MarketingPerformance() {
         ) : null}
 
         <TrendStrip />
+
+        <MarketingTrendChart />
 
         {hasAdSpend ? <ChannelMix performance={p} /> : null}
 
