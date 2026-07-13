@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { m } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, BarChart3, Megaphone, Share2, Star, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Globe2, Megaphone, Share2, Star, Users } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,6 +20,7 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useSocialInsights, type AccountInsight } from "@/features/insights";
 import { formatStatChange } from "@/features/social/socialStatsTrend";
 import { MarketingTrendChart, useMarketingTrend } from "@/features/marketing";
+import { CompaniesOverview, SiteAnalyticsSection, useTrackingSite } from "@/features/site-analytics";
 
 const followerChartConfig: ChartConfig = {
   followers: {
@@ -148,6 +149,7 @@ export default function InsightsPage() {
 
   const { followerSeries, accounts, isLoading } = useSocialInsights(businessProfileId);
   const { snapshots: marketingSnapshots } = useMarketingTrend();
+  const { site: trackingSite } = useTrackingSite(businessProfileId);
 
   const usernameByAccountId = useMemo(() => {
     const map = new Map<string, string>();
@@ -162,8 +164,14 @@ export default function InsightsPage() {
     (a) => REVIEW_PLATFORMS.has(a.platform) && a.latest?.averageRating != null
   );
   const hasMarketing = mode === "business" && marketingSnapshots.length >= 2;
+  // The website section always renders its own setup/empty state, so the
+  // page-level empty card only covers the snapshot-driven sections.
   const isEmpty =
-    !isLoading && socialAccounts.length === 0 && reviewAccounts.length === 0 && !hasMarketing;
+    !isLoading &&
+    socialAccounts.length === 0 &&
+    reviewAccounts.length === 0 &&
+    !hasMarketing &&
+    !trackingSite?.siteKey;
 
   return (
     <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="space-y-6 max-w-5xl w-full">
@@ -172,6 +180,18 @@ export default function InsightsPage() {
         title="Insights"
         description="Samlad bild av datan som tankas in från dina källor — som trender, inte ögonblicksbilder."
       />
+
+      <CompaniesOverview />
+
+      {businessProfileId ? (
+        <section aria-label="Webbplats" className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Globe2 className="h-4 w-4 text-muted-foreground" aria-hidden />
+            Webbplats
+          </h2>
+          <SiteAnalyticsSection businessProfileId={businessProfileId} />
+        </section>
+      ) : null}
 
       {isEmpty ? (
         <Card className="border-dashed border-border bg-muted/10">
