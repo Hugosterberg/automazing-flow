@@ -9,10 +9,13 @@ type Props = {
 /**
  * Renders HTML email in a sandboxed iframe so marketing templates display
  * correctly without injecting raw markup into the app DOM.
+ *
+ * Media (hero images, videos, embeds) is capped in the iframe stylesheet so
+ * opening a template does not dominate the reading pane.
  */
 export function MessageHtmlBody({ html }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(420);
+  const [height, setHeight] = useState(280);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -28,7 +31,9 @@ export function MessageHtmlBody({ html }: Props) {
         const doc = iframe.contentDocument;
         const nextHeight = doc?.documentElement?.scrollHeight ?? doc?.body?.scrollHeight;
         if (nextHeight) {
-          setHeight(Math.min(Math.max(nextHeight + 16, 200), 6000));
+          // Media is already capped in the stylesheet; keep a soft ceiling so a
+          // broken layout cannot stretch the reading pane indefinitely.
+          setHeight(Math.min(Math.max(nextHeight + 12, 160), 2400));
         }
       } catch {
         /* cross-origin should not happen with srcdoc */
@@ -52,19 +57,19 @@ export function MessageHtmlBody({ html }: Props) {
   }, [html]);
 
   return (
-    <div className="message-iframe-shell relative w-full max-w-full overflow-x-auto rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
+    <div className="message-iframe-shell relative w-full max-w-full overflow-x-hidden overflow-y-auto rounded-lg border border-border/60 bg-white shadow-sm ring-1 ring-black/5">
       {!loaded ? (
-        <div className="message-iframe-loading absolute inset-x-0 top-0 h-[min(50vh,420px)] rounded-lg sm:h-[420px]" aria-hidden />
+        <div className="message-iframe-loading absolute inset-x-0 top-0 h-[min(40vh,280px)] rounded-lg sm:h-[280px]" aria-hidden />
       ) : null}
       <iframe
         ref={iframeRef}
         title="E-postinnehåll"
         sandbox="allow-popups allow-popups-to-escape-sandbox"
         className={cn(
-          "relative w-full min-w-0 border-0 bg-white transition-opacity duration-200",
+          "relative w-full min-w-0 max-w-full border-0 bg-white transition-opacity duration-200",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        style={{ height, width: "100%" }}
+        style={{ height, width: "100%", maxHeight: 2400 }}
       />
     </div>
   );
