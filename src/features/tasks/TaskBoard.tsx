@@ -109,6 +109,7 @@ function TaskCard({
   focused,
   isMutating,
   isDeleting,
+  compact = false,
 }: {
   task: TaskRow;
   onSetStatus: (id: string, status: TaskStatus) => void;
@@ -120,6 +121,7 @@ function TaskCard({
   focused?: boolean;
   isMutating?: boolean;
   isDeleting?: boolean;
+  compact?: boolean;
 }) {
   const overdue = isTaskOverdue(task);
   const dueDate = formatDueDate(task.due_at);
@@ -127,7 +129,7 @@ function TaskCard({
   const checklist = getTaskChecklist(task);
   const doneCount = checklist.filter((item) => item.done).length;
   const commentCount = getTaskComments(task).length;
-  const visibleChecklist = checklist.slice(0, CARD_CHECKLIST_LIMIT);
+  const visibleChecklist = checklist.slice(0, compact ? 2 : CARD_CHECKLIST_LIMIT);
   const aiState = getTaskAi(task);
   const checklistPct = checklist.length > 0 ? Math.round((doneCount / checklist.length) * 100) : 0;
 
@@ -142,7 +144,7 @@ function TaskCard({
   return (
     <article
       data-task-id={task.id}
-      draggable={!isMutating}
+      draggable={!isMutating && !compact}
       tabIndex={onEdit ? 0 : undefined}
       onKeyDown={(event) => {
         if (!onEdit || isMutating) return;
@@ -158,7 +160,8 @@ function TaskCard({
       }}
       onClick={() => onEdit?.(task)}
       className={cn(
-        "group space-y-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group space-y-2 rounded-xl border border-border bg-card/95 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact ? "pressable space-y-1.5 p-2.5" : "p-3 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
         onEdit && "cursor-pointer",
         focused && "ring-2 ring-primary/60 border-primary/40",
         overdue && "border-destructive/40",
@@ -169,7 +172,8 @@ function TaskCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <h3
             className={cn(
-              "text-[15px] font-semibold leading-snug break-words sm:text-sm",
+              "font-semibold leading-snug break-words",
+              compact ? "text-sm" : "text-[15px] sm:text-sm",
               completed && "text-muted-foreground line-through"
             )}
           >
@@ -182,13 +186,18 @@ function TaskCard({
           ) : null}
         </div>
         {task.description ? (
-          <p className="line-clamp-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground sm:text-xs">
+          <p
+            className={cn(
+              "whitespace-pre-wrap break-words leading-relaxed text-muted-foreground",
+              compact ? "line-clamp-1 text-xs" : "line-clamp-2 text-sm sm:text-xs"
+            )}
+          >
             {task.description}
           </p>
         ) : null}
       </div>
 
-      {checklist.length > 0 ? (
+      {checklist.length > 0 && !compact ? (
         <div className="space-y-1.5">
           <ul className="space-y-1">
             {visibleChecklist.map((item) => (
@@ -234,9 +243,24 @@ function TaskCard({
             </span>
           </div>
         </div>
+      ) : checklist.length > 0 && compact ? (
+        <div className="flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                checklistPct === 100 ? "bg-emerald-500" : "bg-primary/60"
+              )}
+              style={{ width: `${checklistPct}%` }}
+            />
+          </div>
+          <span className="text-[10px] tabular-nums text-muted-foreground">
+            {doneCount}/{checklist.length}
+          </span>
+        </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className={cn("flex gap-2", compact ? "flex-col" : "items-center justify-between")}>
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", PRIORITY_STYLES[task.priority])}>
             {TASK_PRIORITY_LABELS[task.priority]}
@@ -272,13 +296,23 @@ function TaskCard({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-1",
+            compact
+              ? "justify-stretch"
+              : "opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          )}
+        >
           {onAiAssist && !completed ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9 w-9 p-0 text-violet-500 hover:text-violet-400 sm:h-7 sm:w-7"
+              className={cn(
+                "p-0 text-violet-500 hover:text-violet-400",
+                compact ? "h-9 w-9" : "h-9 w-9 sm:h-7 sm:w-7"
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 onAiAssist(task);
@@ -298,7 +332,10 @@ function TaskCard({
             type="button"
             variant="secondary"
             size="sm"
-            className="h-9 px-3 text-xs font-medium sm:h-7 sm:px-2 sm:text-[11px]"
+            className={cn(
+              "text-xs font-medium",
+              compact ? "h-9 min-w-0 flex-1 px-3" : "h-9 px-3 sm:h-7 sm:px-2 sm:text-[11px]"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onSetStatus(task.id, advance.status);
@@ -311,7 +348,10 @@ function TaskCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive sm:h-7 sm:w-7"
+            className={cn(
+              "p-0 text-muted-foreground hover:text-destructive",
+              compact ? "h-9 w-9" : "h-9 w-9 sm:h-7 sm:w-7"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(task.id);
@@ -376,11 +416,12 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
     <div className="min-w-0 space-y-2">
       {!isDesktopBoard ? (
         <div
-          className="grid grid-cols-3 gap-1 rounded-xl border border-border/70 bg-background/50 p-1"
+          className="grid grid-cols-3 gap-0.5 rounded-xl border border-border/70 bg-background/50 p-0.5"
           role="tablist"
           aria-label="Uppgiftskolumner"
         >
           {COLUMNS.map((column) => {
+            const Icon = column.icon;
             const active = activeLane === column.status;
             const count = grouped[column.status].length;
             return (
@@ -391,14 +432,22 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                 aria-selected={active}
                 onClick={() => setActiveLane(column.status)}
                 className={cn(
-                  "min-h-10 min-w-0 rounded-lg px-1.5 py-2 text-center transition-colors",
+                  "pressable flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center transition-colors",
                   active
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <span className="block truncate text-xs font-semibold sm:text-sm">{column.title}</span>
-                <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                  <span className="truncate text-xs font-semibold">{column.title}</span>
+                </span>
+                <span
+                  className={cn(
+                    "text-[10px] tabular-nums",
+                    active ? "text-foreground/70" : "text-muted-foreground"
+                  )}
+                >
                   {count}
                 </span>
               </button>
@@ -417,11 +466,17 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
           const Icon = column.icon;
           const columnTasks = grouped[column.status];
           const activeDrop = dragOverStatus === column.status;
+          const showMobileArchive =
+            !isDesktopBoard &&
+            column.status === "done" &&
+            onArchiveDone &&
+            columnTasks.length > 0;
           return (
             <section
               key={column.status}
               data-task-lane={column.status}
               onDragOver={(event) => {
+                if (!isDesktopBoard) return;
                 event.preventDefault();
                 event.dataTransfer.dropEffect = "move";
                 setDragOverStatus(column.status);
@@ -431,46 +486,65 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                   setDragOverStatus(null);
                 }
               }}
-              onDrop={(event) => handleDrop(event, column.status)}
+              onDrop={(event) => {
+                if (!isDesktopBoard) return;
+                handleDrop(event, column.status);
+              }}
               className={cn(
-                "flex w-full min-w-0 flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all",
+                "flex w-full min-w-0 flex-col transition-all",
                 isDesktopBoard
-                  ? "min-h-[420px]"
-                  : "max-h-[min(58vh,520px)]",
-                column.accent,
+                  ? "min-h-[420px] rounded-2xl border bg-gradient-to-b p-3"
+                  : "max-h-[min(68vh,640px)] rounded-xl border border-border/50 bg-background/30 p-2",
+                isDesktopBoard && column.accent,
                 activeDrop && "border-primary/60 ring-2 ring-primary/20"
               )}
             >
-              <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
-                <div className="flex min-w-0 items-start gap-2">
-                  <div className="rounded-xl border border-border/70 bg-background/70 p-2">
-                    <Icon className="h-4 w-4" />
+              {isDesktopBoard ? (
+                <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <div className="rounded-xl border border-border/70 bg-background/70 p-2">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
+                      <p className="text-xs text-muted-foreground">{column.description}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
-                    <p className="text-xs text-muted-foreground">{column.description}</p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                        onClick={onArchiveDone}
+                        disabled={isMutating}
+                        title="Arkivera alla klara uppgifter"
+                      >
+                        <Archive className="h-3 w-3" />
+                        <span className="hidden sm:inline">Arkivera alla</span>
+                      </Button>
+                    ) : null}
+                    <Badge variant="secondary" className="tabular-nums">
+                      {columnTasks.length}
+                    </Badge>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                      onClick={onArchiveDone}
-                      disabled={isMutating}
-                      title="Arkivera alla klara uppgifter"
-                    >
-                      <Archive className="h-3 w-3" />
-                      <span className="hidden sm:inline">Arkivera alla</span>
-                    </Button>
-                  ) : null}
-                  <Badge variant="secondary" className="tabular-nums">
-                    {columnTasks.length}
-                  </Badge>
+              ) : showMobileArchive ? (
+                <div className="mb-1.5 flex shrink-0 justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 px-2 text-xs text-muted-foreground"
+                    onClick={onArchiveDone}
+                    disabled={isMutating}
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    Arkivera alla
+                  </Button>
                 </div>
-              </div>
+              ) : null}
 
               <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto app-scroll pr-0.5">
                 {columnTasks.length === 0 ? (
@@ -491,6 +565,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                       focused={focusedTaskId === task.id}
                       isMutating={isMutating}
                       isDeleting={isDeleting}
+                      compact={!isDesktopBoard}
                     />
                   ))
                 )}

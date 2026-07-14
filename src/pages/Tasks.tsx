@@ -465,13 +465,18 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl min-w-0 space-y-6 overflow-x-hidden">
+    <div
+      className={cn(
+        "w-full max-w-7xl min-w-0 overflow-x-hidden",
+        isMobile ? "space-y-3" : "space-y-6"
+      )}
+    >
       <PageHeader
         icon={ListChecks}
         title="Uppgifter"
         description={
           isMobile
-            ? "Byt kolumn med flikarna. Tryck Starta/Klar för att flytta kort."
+            ? undefined
             : "Lägg till snabbt, öppna kort för detaljer och dra mellan kolumner."
         }
         actions={
@@ -492,40 +497,31 @@ export default function TasksPage() {
               size="sm"
               onClick={() => void refetch()}
               disabled={isFetching}
-              className="text-muted-foreground"
+              className="h-8 w-8 shrink-0 p-0 text-muted-foreground sm:h-8 sm:w-auto sm:px-3"
+              aria-label="Uppdatera"
             >
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
-          </Button>
+              {isFetching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
+            </Button>
           </>
         }
       />
 
-      <PageSmartBar
-        title={
-          isMobile
-            ? "Skapa uppgifter, byt kolumn med flikarna och tryck Starta/Klar för att flytta dem."
-            : "Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
-        }
-        steps={
-          isMobile
-            ? ["Skapa en uppgift ovan", "Byt flik: Att göra · Pågår · Klart", "Tryck Starta eller Klar på kortet"]
-            : [
-                "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
-                "Filtrera på försenade eller dagens deadlines när du triagerar",
-                "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
-              ]
-        }
-        tip={
-          isMobile
-            ? "Flikarna byter kolumn utan att sidan scrollar i sidled. Automationer kan påminna om försenade — se Automationer."
-            : "Dra mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
-        }
-      />
+      {!isMobile ? (
+        <PageSmartBar
+          title="Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
+          steps={[
+            "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
+            "Filtrera på försenade eller dagens deadlines när du triagerar",
+            "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
+          ]}
+          tip="Dra mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
+        />
+      ) : null}
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
         <TaskForm
@@ -533,26 +529,36 @@ export default function TasksPage() {
           disabled={isCreating}
           initialTitle={prefillTitle}
           titleInputRef={taskTitleRef}
+          compact={isMobile}
         />
       </m.div>
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
-        <div className="app-workspace-toolbar flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+      <m.div
+        {...pageFadeUp}
+        transition={{ duration: 0.3 }}
+        className={cn("app-workspace-shell", isMobile && "!min-h-0")}
+      >
+        <div
+          className={cn(
+            "app-workspace-toolbar flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:px-4",
+            isMobile ? "px-2.5 py-2" : "px-3 py-2.5"
+          )}
+        >
           <div className="relative w-full min-w-0 flex-1 sm:max-w-sm">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Sök uppgifter…"
+              placeholder="Sök…"
               className={cn(
-                "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
-                isMobile ? "h-10" : "h-8 text-xs"
+                "border-border/60 bg-background/60 pl-8 shadow-sm",
+                isMobile ? "h-9 text-sm" : "h-8 text-xs"
               )}
               aria-label="Sök uppgifter"
             />
           </div>
-          <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-lg border border-border/60 bg-background/40 p-1 sm:flex sm:w-auto sm:overflow-visible">
+          <div className="grid w-full min-w-0 grid-cols-3 gap-0.5 rounded-lg border border-border/60 bg-background/40 p-0.5 sm:flex sm:w-auto sm:gap-1 sm:p-1 sm:overflow-visible">
             {(
               [
                 { id: "all", label: "Alla", count: null, activeClass: "bg-primary text-primary-foreground shadow-sm" },
@@ -566,8 +572,8 @@ export default function TasksPage() {
                 onClick={() => setQuickFilter(chip.id)}
                 aria-pressed={quickFilter === chip.id}
                 className={cn(
-                  "min-w-0 rounded-md px-2 font-medium transition-colors sm:shrink-0 sm:px-3",
-                  isMobile ? "min-h-9 py-2 text-sm" : "px-2.5 py-1 text-[11px]",
+                  "pressable min-w-0 rounded-md px-1.5 font-medium transition-colors sm:shrink-0 sm:px-3",
+                  isMobile ? "min-h-9 py-1.5 text-xs" : "px-2.5 py-1 text-[11px]",
                   quickFilter === chip.id ? chip.activeClass : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -583,36 +589,38 @@ export default function TasksPage() {
           </p>
         </div>
 
-        <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
-          <div className="flex items-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/5 px-2.5 py-1.5">
-            <Circle className="h-3.5 w-3.5 text-sky-500" />
-            <div>
-              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Att göra</p>
-              <p className="text-xs font-semibold tabular-nums">{stats.todo}</p>
+        {!isMobile ? (
+          <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
+            <div className="flex items-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/5 px-2.5 py-1.5">
+              <Circle className="h-3.5 w-3.5 text-sky-500" />
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Att göra</p>
+                <p className="text-xs font-semibold tabular-nums">{stats.todo}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5">
+              <PlayCircle className="h-3.5 w-3.5 text-amber-500" />
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Pågår</p>
+                <p className="text-xs font-semibold tabular-nums">{stats.inProgress}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <div>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Klara</p>
+                <p className="text-xs font-semibold tabular-nums">{stats.done}</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5">
-            <PlayCircle className="h-3.5 w-3.5 text-amber-500" />
-            <div>
-              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Pågår</p>
-              <p className="text-xs font-semibold tabular-nums">{stats.inProgress}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-            <div>
-              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Klara</p>
-              <p className="text-xs font-semibold tabular-nums">{stats.done}</p>
-            </div>
-          </div>
-        </div>
+        ) : null}
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-hidden p-3 sm:p-4">
-          {isMobile ? (
-            <p className="mb-2 text-xs text-muted-foreground">
-              Byt flik för kolumn · tryck Starta/Klar för att flytta
-            </p>
-          ) : null}
+        <div
+          className={cn(
+            "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-hidden",
+            isMobile ? "p-2.5 pt-2" : "p-3 sm:p-4"
+          )}
+        >
           <TaskBoard
             tasks={visibleTasks}
             isLoading={isLoading}
