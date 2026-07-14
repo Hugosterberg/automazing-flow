@@ -13,10 +13,10 @@ import { useSocialStatsTrend } from "./useSocialStatsTrend";
 import { formatStatChange, type SocialTrendMetric } from "./socialStatsTrend";
 
 const defaultStats = [
-  { label: "Followers", value: "–", change: "", icon: Users, key: "followers" },
-  { label: "Following", value: "–", change: "", icon: Users, key: "following" },
-  { label: "Posts", value: "–", change: "", icon: FileText, key: "media" },
-  { label: "Engagement", value: "–", change: "", icon: Heart, key: "engagement" },
+  { label: "Följare", value: "–", change: "", icon: Users, key: "followers" },
+  { label: "Följer", value: "–", change: "", icon: Users, key: "following" },
+  { label: "Inlägg", value: "–", change: "", icon: FileText, key: "media" },
+  { label: "Engagemang", value: "–", change: "", icon: Heart, key: "engagement" },
 ];
 
 /** Which snapshot metric backs each KPI card, keyed by the card's `key`. */
@@ -61,7 +61,7 @@ export function SocialStatsSection({
         {
           ...defaultStats[0],
           key: "gbp-rating",
-          label: "Avg. rating",
+          label: "Snittbetyg",
           value: s.averageRating != null ? s.averageRating.toFixed(1) : "–",
           change: "",
           icon: Star,
@@ -69,13 +69,13 @@ export function SocialStatsSection({
         {
           ...defaultStats[1],
           key: "gbp-reviews",
-          label: "Reviews",
+          label: "Recensioner",
           value: s.reviewCount != null ? formatNumber(s.reviewCount) : "–",
           change: "",
           icon: FileText,
         },
-        { ...defaultStats[2], key: "gbp-posts", label: "Posts", value: "–" },
-        { ...defaultStats[3], key: "gbp-engagement", label: "Engagement", value: "–" },
+        { ...defaultStats[2], key: "gbp-posts", label: "Inlägg", value: "–" },
+        { ...defaultStats[3], key: "gbp-engagement", label: "Engagemang", value: "–" },
       ];
     }
     const isX = account.platform === "x";
@@ -84,9 +84,9 @@ export function SocialStatsSection({
 
     const avgLikesStat =
       isInstagram && s.avgViews != null
-        ? { key: "avg-views", label: "Avg. views", value: formatNumber(s.avgViews), change: "", icon: Eye }
+        ? { key: "avg-views", label: "Snitt visningar", value: formatNumber(s.avgViews), change: "", icon: Eye }
         : s.avgLikes != null
-        ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
+        ? { key: "avg-likes", label: "Snitt gilla", value: String(s.avgLikes), change: "", icon: Heart }
         : s.followingCount != null
           ? { ...defaultStats[1], value: formatNumber(s.followingCount) }
           : { ...defaultStats[1], value: "–" };
@@ -104,7 +104,7 @@ export function SocialStatsSection({
       avgLikesStat,
       {
         ...defaultStats[2],
-        label: isX ? "Tweets" : isWhatsApp ? "Templates" : "Posts",
+        label: isX ? "Tweets" : isWhatsApp ? "Mallar" : "Inlägg",
         value: s.mediaCount != null ? formatNumber(s.mediaCount) : "–",
       },
       engagementStat,
@@ -130,7 +130,7 @@ export function SocialStatsSection({
   return (
     <>
       {account && (account.isOAuth || account.isZernio) && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -148,8 +148,8 @@ export function SocialStatsSection({
               "Uppdatera statistik"
             )}
           </Button>
-          <span className="text-xs text-muted-foreground">
-            Showing data for {account.username}
+          <span className="text-xs text-muted-foreground truncate">
+            Data för {account.username}
           </span>
         </div>
       )}
@@ -197,14 +197,14 @@ export function SocialStatsSection({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-5 w-5" />
-                {account?.platform === "whatsapp" ? "WhatsApp templates" : "Recent posts"}
+                {account?.platform === "whatsapp" ? "WhatsApp-mallar" : "Senaste inlägg"}
               </CardTitle>
               <CardDescription>
                 {account?.platform === "whatsapp"
-                  ? "Approved templates from your WhatsApp Business account (via Zernio)"
+                  ? "Godkända mallar från ditt WhatsApp Business-konto (via Zernio)"
                   : account?.platform === "instagram"
-                    ? "Views, likes and comments per post"
-                    : "Likes and comments per post"}
+                    ? "Visningar, gilla och kommentarer per inlägg"
+                    : "Gilla och kommentarer per inlägg"}
               </CardDescription>
             </CardHeader>
             <CardContent>

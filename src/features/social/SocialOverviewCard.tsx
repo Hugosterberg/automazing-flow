@@ -55,50 +55,50 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
         <span className="text-sm font-medium text-muted-foreground">Total översikt</span>
       </div>
       <Card className="bg-card border-border">
-        <CardContent className="py-5 px-6">
+        <CardContent className="px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-xs text-muted-foreground mb-4">
             Samlad statistik för alla kopplade sociala konton i den här profilen.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Kopplade konton</p>
               <p className="font-semibold">{formatNumber(overviewData.connected)}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Total followers</p>
+              <p className="text-xs text-muted-foreground">Följare totalt</p>
               <p className="font-semibold">{overviewData.hasFollowers ? formatNumber(overviewData.followers) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Total posts/templates</p>
+              <p className="text-xs text-muted-foreground">Inlägg/mallar totalt</p>
               <p className="font-semibold">{overviewData.hasPosts ? formatNumber(overviewData.posts) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Average engagement rate</p>
+              <p className="text-xs text-muted-foreground">Snittengagemang</p>
               <p className="font-semibold">
                 {overviewData.engagementCount > 0 ? `${(overviewData.engagementSum / overviewData.engagementCount).toFixed(1)}%` : "–"}
               </p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Total likes</p>
+              <p className="text-xs text-muted-foreground">Gilla-markeringar totalt</p>
               <p className="font-semibold">{overviewData.hasTotalLikes ? formatNumber(overviewData.totalLikes) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Total comments</p>
+              <p className="text-xs text-muted-foreground">Kommentarer totalt</p>
               <p className="font-semibold">{overviewData.hasTotalComments ? formatNumber(overviewData.totalComments) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Average likes/account</p>
+              <p className="text-xs text-muted-foreground">Snitt gilla/konto</p>
               <p className="font-semibold">{overviewData.avgLikes != null ? overviewData.avgLikes.toFixed(1) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Average comments/account</p>
+              <p className="text-xs text-muted-foreground">Snitt kommentarer/konto</p>
               <p className="font-semibold">{overviewData.avgComments != null ? overviewData.avgComments.toFixed(1) : "–"}</p>
             </div>
           </div>
 
           <div className="rounded-md border border-border mt-4">
             <div className="px-3 py-2 border-b border-border">
-              <p className="text-xs font-medium text-muted-foreground">Breakdown by platform</p>
+              <p className="text-xs font-medium text-muted-foreground">Per plattform</p>
             </div>
             <div className="px-3 py-2 space-y-2">
               {overviewData.byPlatform.length === 0 ? (
@@ -110,10 +110,10 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
                 </div>
               ) : (
                 overviewData.byPlatform.map(([platform, values]) => (
-                  <div key={platform} className="flex items-center justify-between text-xs">
-                    <span className="capitalize">{platform.replace("_", " ")}</span>
-                    <span className="text-muted-foreground">
-                      {values.accounts} acc · {formatNumber(values.followers)} followers · {formatNumber(values.posts)} posts
+                  <div key={platform} className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between text-xs">
+                    <span className="capitalize font-medium">{platform.replace("_", " ")}</span>
+                    <span className="text-muted-foreground sm:text-right">
+                      {values.accounts} konto{values.accounts === 1 ? "" : "n"} · {formatNumber(values.followers)} följare · {formatNumber(values.posts)} inlägg
                     </span>
                   </div>
                 ))

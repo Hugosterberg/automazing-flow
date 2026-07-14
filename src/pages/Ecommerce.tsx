@@ -284,6 +284,29 @@ const fulfillmentColors: Record<string, string> = {
   restocked: "bg-muted text-muted-foreground",
 };
 
+/**
+ * Swedish labels for the raw Shopify status values shown in order badges
+ * and filter dropdowns. Unknown values fall back to the raw string so new
+ * Shopify statuses never render blank.
+ */
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  paid: "Betald",
+  pending: "Väntar",
+  refunded: "Återbetald",
+  voided: "Annullerad",
+  partially_paid: "Delbetald",
+};
+
+const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
+  fulfilled: "Skickad",
+  unfulfilled: "Ej skickad",
+  partial: "Delvis skickad",
+  restocked: "Återlagd",
+};
+
+const paymentStatusLabel = (status: string) => PAYMENT_STATUS_LABELS[status] ?? status;
+const fulfillmentStatusLabel = (status: string) => FULFILLMENT_STATUS_LABELS[status] ?? status;
+
 const revenueChartConfig: ChartConfig = {
   revenue: {
     label: "Intäkter",
@@ -348,7 +371,7 @@ export default function Ecommerce() {
       const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(d, "Could not fetch store data."));
+        throw new Error(apiErrorMessage(d, "Kunde inte hämta butiksdata."));
       }
       return res.json();
     },
@@ -582,28 +605,28 @@ export default function Ecommerce() {
               label: "Intäkter (30 dagar)",
               value: formatCurrency(stats.revenue30d, currency),
               icon: DollarSign,
-              sub: `${formatNumber(stats.ordersWindow)} orders in window`,
+              sub: `${formatNumber(stats.ordersWindow)} ordrar i perioden`,
             },
             {
               label: "Snittordervärde",
               value: formatCurrency(stats.avgOrderValue, currency),
               icon: TrendingUp,
-              sub: stats.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}% fulfilled` : "—",
+              sub: stats.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}% levererade` : "—",
             },
             {
-              label: "Customers",
+              label: "Kunder",
               value: formatNumber(stats.customersCount),
               icon: Users,
-              sub: `+${formatNumber(stats.newCustomers30d)} new in 30 days`,
+              sub: `+${formatNumber(stats.newCustomers30d)} nya på 30 dagar`,
             },
             {
-              label: "Products",
+              label: "Produkter",
               value: formatNumber(stats.productsCount),
               icon: Package,
               sub:
                 stats.lowStockCount > 0
-                  ? `${stats.lowStockCount} low-stock variant${stats.lowStockCount === 1 ? "" : "s"}`
-                  : "Inventory healthy",
+                  ? `${stats.lowStockCount} variant${stats.lowStockCount === 1 ? "" : "er"} med lågt lager`
+                  : "Lagret ser bra ut",
             },
           ]
         : null,
@@ -615,9 +638,9 @@ export default function Ecommerce() {
       notionData
         ? notionData.pages.map((page) => ({
             id: page.id,
-            title: page.title || "Untitled page",
+            title: page.title || "Namnlös sida",
             type: "page_id" as const,
-            lastEditedLabel: page.lastEditedTime ? formatDate(page.lastEditedTime) : "Unknown date",
+            lastEditedLabel: page.lastEditedTime ? formatDate(page.lastEditedTime) : "Okänt datum",
           }))
         : [],
     [notionData]
@@ -628,9 +651,9 @@ export default function Ecommerce() {
       notionData
         ? notionData.databases.map((db) => ({
             id: db.id,
-            title: db.title || "Untitled database",
+            title: db.title || "Namnlös databas",
             type: "database_id" as const,
-            lastEditedLabel: db.lastEditedTime ? formatDate(db.lastEditedTime) : "Unknown date",
+            lastEditedLabel: db.lastEditedTime ? formatDate(db.lastEditedTime) : "Okänt datum",
           }))
         : [],
     [notionData]
@@ -641,7 +664,7 @@ export default function Ecommerce() {
     setNotionSaving(true);
     setNotionWriteMessage(null);
     try {
-      await apiJson(`/api/notion/${activeNotion.id}/pages`, "Could not create Notion page.", {
+      await apiJson(`/api/notion/${activeNotion.id}/pages`, "Kunde inte skapa Notion-sida.", {
         body: {
           parentId: notionParentId.trim(),
           parentType: notionParentType,
@@ -650,12 +673,12 @@ export default function Ecommerce() {
           business_profile_id: activeBusinessProfileId ?? activeProfileId,
         },
       });
-      setNotionWriteMessage("Page created in Notion.");
+      setNotionWriteMessage("Sidan skapades i Notion.");
       setNotionTitle("");
       setNotionContent("");
       void refresh();
     } catch (err) {
-      setNotionWriteMessage(err instanceof Error ? err.message : "Could not create Notion page.");
+      setNotionWriteMessage(err instanceof Error ? err.message : "Kunde inte skapa Notion-sida.");
     } finally {
       setNotionSaving(false);
     }
@@ -685,7 +708,7 @@ export default function Ecommerce() {
                 >
                   <a href={shopifyData.shop.adminUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-4 w-4" />
-                    <span className="ml-1.5 hidden sm:inline">Open admin</span>
+                    <span className="ml-1.5 hidden sm:inline">Öppna admin</span>
                   </a>
                 </Button>
               )}
@@ -712,8 +735,8 @@ export default function Ecommerce() {
         title="E-handel samlar Shopify, produkter och ordrar — från lager till åtgärder som kräver uppmärksamhet."
         steps={[
           "Koppla Shopify under Kopplingar",
-          "Synka produkter och följ ordrar under Overview",
-          "Importera från Alibaba eller hantera katalogen under Products",
+          "Synka produkter och följ ordrar under Översikt",
+          "Importera från Alibaba eller hantera katalogen under Produkter",
         ]}
         tip="Dagliga automationer synkar ordrar och lager. Ordrar som väntar på leverans markeras i åtgärdsraden."
         liveHintOverride={
@@ -741,7 +764,7 @@ export default function Ecommerce() {
           }`}
         >
           <LayoutDashboard className="h-3.5 w-3.5" />
-          Overview
+          Översikt
         </button>
         <button
           type="button"
@@ -753,7 +776,7 @@ export default function Ecommerce() {
           }`}
         >
           <Boxes className="h-3.5 w-3.5" />
-          Products
+          Produkter
           {products.length > 0 ? (
             <span className="ml-0.5 text-xs text-muted-foreground">({products.length})</span>
           ) : null}
@@ -771,7 +794,7 @@ export default function Ecommerce() {
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Flik</p>
-            <p className="text-xs font-semibold capitalize">{tab}</p>
+            <p className="text-xs font-semibold">{tab === "overview" ? "Översikt" : "Produkter"}</p>
           </div>
         </div>
 
@@ -1012,7 +1035,7 @@ export default function Ecommerce() {
                 Intäktstrend
               </CardTitle>
               <CardDescription>
-                Last 30 days · Total {formatCurrency(shopifyData.stats.revenue30d, currency, { detailed: true })}
+                Senaste 30 dagarna · Totalt {formatCurrency(shopifyData.stats.revenue30d, currency, { detailed: true })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1069,9 +1092,9 @@ export default function Ecommerce() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Box className="h-5 w-5" />
-                    Top products
+                    Toppsäljare
                   </CardTitle>
-                  <CardDescription>By revenue, last 30 days</CardDescription>
+                  <CardDescription>Efter intäkt, senaste 30 dagarna</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {shopifyData.topProducts.map((product, i) => (
@@ -1082,7 +1105,7 @@ export default function Ecommerce() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{product.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatNumber(product.quantity)} sold
+                          {formatNumber(product.quantity)} sålda
                         </p>
                       </div>
                       <p className="text-sm font-semibold tabular-nums">
@@ -1101,9 +1124,9 @@ export default function Ecommerce() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5" />
-                    Top customers
+                    Toppkunder
                   </CardTitle>
-                  <CardDescription>By lifetime spend</CardDescription>
+                  <CardDescription>Efter totalt spenderat</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {shopifyData.topCustomers.map((customer) => (
@@ -1114,7 +1137,7 @@ export default function Ecommerce() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{customer.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {customer.email || `${customer.ordersCount} orders`}
+                          {customer.email || `${customer.ordersCount} ordrar`}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1133,11 +1156,11 @@ export default function Ecommerce() {
                               email: customer.email,
                               source: "shopify-customer",
                               status: "qualified",
-                              notes: `Lifetime spend: ${formatCurrency(customer.totalSpent, customer.currency || currency)} · ${customer.ordersCount} orders`,
+                              notes: `Totalt spenderat: ${formatCurrency(customer.totalSpent, customer.currency || currency)} · ${customer.ordersCount} ordrar`,
                             }).then(() => toast.success("Tillagd i leads"));
                           }}
                         >
-                          Add lead
+                          Lägg till lead
                         </Button>
                       </div>
                     </div>
@@ -1160,10 +1183,10 @@ export default function Ecommerce() {
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <Receipt className="h-5 w-5 text-orange-500" />
-                        Abandoned checkouts
+                        Övergivna varukorgar
                       </CardTitle>
                       <CardDescription>
-                        {shopifyData.stats.abandonedCheckouts30d} carts · {formatCurrency(shopifyData.stats.abandonedValue30d, currency, { detailed: true })} at risk
+                        {shopifyData.stats.abandonedCheckouts30d} varukorgar · {formatCurrency(shopifyData.stats.abandonedValue30d, currency, { detailed: true })} i riskzonen
                       </CardDescription>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
@@ -1180,7 +1203,7 @@ export default function Ecommerce() {
                       className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{checkout.email || "Anonymous"}</p>
+                        <p className="text-sm font-medium truncate">{checkout.email || "Anonym"}</p>
                         <p className="text-xs text-muted-foreground">{formatDate(checkout.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1221,9 +1244,9 @@ export default function Ecommerce() {
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                        Low stock
+                        Lågt lager
                       </CardTitle>
-                      <CardDescription>Variants at or below 5 units in stock</CardDescription>
+                      <CardDescription>Varianter med högst 5 enheter i lager</CardDescription>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
                       <a href={shopifyData.adminLinks.products} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -1241,7 +1264,7 @@ export default function Ecommerce() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{item.productTitle}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {[item.variantTitle, item.sku].filter(Boolean).join(" · ") || "Default variant"}
+                          {[item.variantTitle, item.sku].filter(Boolean).join(" · ") || "Standardvariant"}
                         </p>
                       </div>
                       <span
@@ -1253,7 +1276,7 @@ export default function Ecommerce() {
                               : "bg-yellow-500/15 text-yellow-600"
                         }`}
                       >
-                        {item.quantity} left
+                        {item.quantity} kvar
                       </span>
                     </div>
                   ))}
@@ -1273,9 +1296,9 @@ export default function Ecommerce() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Tag className="h-5 w-5" />
-                    Active promotions
+                    Aktiva kampanjer
                   </CardTitle>
-                  <CardDescription>{shopifyData.stats.activePromotions} price rules currently live</CardDescription>
+                  <CardDescription>{shopifyData.stats.activePromotions} aktiva prisregler</CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" asChild>
                   <a href={shopifyData.adminLinks.discounts} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -1293,8 +1316,8 @@ export default function Ecommerce() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{promo.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {promo.targetType || "order"} · used {formatNumber(promo.usageCount)} time{promo.usageCount === 1 ? "" : "s"}
-                      {promo.endsAt ? ` · ends ${formatDate(promo.endsAt)}` : ""}
+                      {promo.targetType || "order"} · använd {formatNumber(promo.usageCount)} {promo.usageCount === 1 ? "gång" : "gånger"}
+                      {promo.endsAt ? ` · slutar ${formatDate(promo.endsAt)}` : ""}
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums text-green-600">
@@ -1316,42 +1339,42 @@ export default function Ecommerce() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <ShoppingCart className="h-5 w-5" />
-                    Recent orders
+                    Senaste ordrar
                   </CardTitle>
                   <CardDescription>
-                    {filteredOrders.length} shown · {shopifyData.orders.length} loaded
+                    {filteredOrders.length} visas · {shopifyData.orders.length} laddade
                   </CardDescription>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <Select value={orderPaymentFilter} onValueChange={setOrderPaymentFilter}>
-                    <SelectTrigger className="h-8 w-[130px] text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs sm:w-[130px]">
                       <SelectValue placeholder="Betalning" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All payments</SelectItem>
+                      <SelectItem value="all">Alla betalningar</SelectItem>
                       {orderPaymentOptions.map((status) => (
                         <SelectItem key={status} value={status}>
-                          {status}
+                          {paymentStatusLabel(status)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Select value={orderFulfillmentFilter} onValueChange={setOrderFulfillmentFilter}>
-                    <SelectTrigger className="h-8 w-[130px] text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs sm:w-[130px]">
                       <SelectValue placeholder="Leverans" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All fulfillment</SelectItem>
+                      <SelectItem value="all">Alla leveranser</SelectItem>
                       {orderFulfillmentOptions.map((status) => (
                         <SelectItem key={status} value={status}>
-                          {status}
+                          {fulfillmentStatusLabel(status)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Button variant="outline" size="sm" onClick={exportOrders} disabled={filteredOrders.length === 0}>
                     <Download className="h-4 w-4 mr-1.5" />
-                    Export CSV
+                    Exportera CSV
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
                     <a href={shopifyData.adminLinks.orders} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -1364,18 +1387,18 @@ export default function Ecommerce() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 {filteredOrders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No orders match these filters.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">Inga ordrar matchar filtren.</p>
                 ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground text-xs">
                       <th className="text-left px-5 py-3 font-medium">Order</th>
-                      <th className="text-left px-3 py-3 font-medium">Customer</th>
-                      <th className="text-left px-3 py-3 font-medium">Items</th>
+                      <th className="text-left px-3 py-3 font-medium">Kund</th>
+                      <th className="text-left px-3 py-3 font-medium">Rader</th>
                       <th className="text-left px-3 py-3 font-medium">Betalning</th>
                       <th className="text-left px-3 py-3 font-medium">Leverans</th>
-                      <th className="text-right px-5 py-3 font-medium">Total</th>
-                      <th className="text-right px-5 py-3 font-medium">Date</th>
+                      <th className="text-right px-5 py-3 font-medium">Totalt</th>
+                      <th className="text-right px-5 py-3 font-medium">Datum</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1407,12 +1430,12 @@ export default function Ecommerce() {
                             <td className="px-3 py-3 text-muted-foreground">{order.lineItemCount}</td>
                             <td className="px-3 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[order.status] ?? "bg-muted text-muted-foreground"}`}>
-                                {order.status}
+                                {paymentStatusLabel(order.status)}
                               </span>
                             </td>
                             <td className="px-3 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${fulfillmentColors[order.fulfillment] ?? "bg-muted text-muted-foreground"}`}>
-                                {order.fulfillment || "unfulfilled"}
+                                {fulfillmentStatusLabel(order.fulfillment || "unfulfilled")}
                               </span>
                             </td>
                             <td className="px-5 py-3 text-right font-medium">
@@ -1474,18 +1497,18 @@ export default function Ecommerce() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
           <Card className="bg-card border-border">
             <CardContent className="py-4 px-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span><span className="text-foreground font-medium">Store:</span> {shopifyData.shop.name}</span>
+              <span><span className="text-foreground font-medium">Butik:</span> {shopifyData.shop.name}</span>
               <span>
-                <span className="text-foreground font-medium">Domain:</span>{" "}
+                <span className="text-foreground font-medium">Domän:</span>{" "}
                 <a href={shopifyData.shop.storefrontUrl} target="_blank" rel="noreferrer" className="hover:text-foreground">
                   {shopifyData.shop.domain}
                 </a>
               </span>
               {shopifyData.shop.plan && <span><span className="text-foreground font-medium">Plan:</span> {shopifyData.shop.plan}</span>}
-              {shopifyData.shop.currency && <span><span className="text-foreground font-medium">Currency:</span> {shopifyData.shop.currency}</span>}
-              {shopifyData.shop.country && <span><span className="text-foreground font-medium">Country:</span> {shopifyData.shop.country}</span>}
-              {shopifyData.shop.timezone && <span><span className="text-foreground font-medium">Timezone:</span> {shopifyData.shop.timezone}</span>}
-              {shopifyData.shop.email && <span><span className="text-foreground font-medium">Email:</span> {shopifyData.shop.email}</span>}
+              {shopifyData.shop.currency && <span><span className="text-foreground font-medium">Valuta:</span> {shopifyData.shop.currency}</span>}
+              {shopifyData.shop.country && <span><span className="text-foreground font-medium">Land:</span> {shopifyData.shop.country}</span>}
+              {shopifyData.shop.timezone && <span><span className="text-foreground font-medium">Tidszon:</span> {shopifyData.shop.timezone}</span>}
+              {shopifyData.shop.email && <span><span className="text-foreground font-medium">E-post:</span> {shopifyData.shop.email}</span>}
             </CardContent>
           </Card>
         </m.div>
@@ -1515,11 +1538,11 @@ export default function Ecommerce() {
               <CollapsibleContent className="space-y-4 px-6 pb-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="rounded-lg border border-border p-4">
-                    <p className="text-muted-foreground">Pages found</p>
+                    <p className="text-muted-foreground">Sidor hittade</p>
                     <p className="text-2xl font-bold">{notionData.stats.pagesCount}</p>
                   </div>
                   <div className="rounded-lg border border-border p-4">
-                    <p className="text-muted-foreground">Databases found</p>
+                    <p className="text-muted-foreground">Databaser hittade</p>
                     <p className="text-2xl font-bold">{notionData.stats.databasesCount}</p>
                   </div>
                 </div>
@@ -1528,7 +1551,7 @@ export default function Ecommerce() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium flex items-center gap-2">
                       <FileText className="h-4 w-4" />
-                      Recent Notion pages
+                      Senaste Notion-sidorna
                     </p>
                     {notionData.pages.map((page) => (
                       <a
@@ -1539,9 +1562,9 @@ export default function Ecommerce() {
                         className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors"
                       >
                         <div className="min-w-0">
-                          <p className="font-medium truncate">{page.title || "Untitled"}</p>
+                          <p className="font-medium truncate">{page.title || "Namnlös"}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {page.lastEditedTime ? formatDate(page.lastEditedTime) : "Unknown date"}
+                            {page.lastEditedTime ? formatDate(page.lastEditedTime) : "Okänt datum"}
                           </p>
                         </div>
                         <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -1554,14 +1577,14 @@ export default function Ecommerce() {
                   <div>
                     <p className="text-sm font-medium flex items-center gap-2">
                       <Database className="h-4 w-4" />
-                      Create Notion page
+                      Skapa Notion-sida
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Share the parent page/database with your integration first.
+                      Dela först föräldersidan/databasen med din integration i Notion.
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="notion-parent-select">Pick parent (optional)</Label>
+                    <Label htmlFor="notion-parent-select">Välj förälder (valfritt)</Label>
                     <select
                       id="notion-parent-select"
                       className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -1577,7 +1600,7 @@ export default function Ecommerce() {
                     >
                       <option value="">Välj en sida eller databas...</option>
                       {notionPageOptions.length > 0 && (
-                        <optgroup label={`Pages (${notionPageOptions.length})`}>
+                        <optgroup label={`Sidor (${notionPageOptions.length})`}>
                           {notionPageOptions.map((option) => (
                             <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
                               {option.title} - {option.lastEditedLabel}
@@ -1586,7 +1609,7 @@ export default function Ecommerce() {
                         </optgroup>
                       )}
                       {notionDatabaseOptions.length > 0 && (
-                        <optgroup label={`Databases (${notionDatabaseOptions.length})`}>
+                        <optgroup label={`Databaser (${notionDatabaseOptions.length})`}>
                           {notionDatabaseOptions.map((option) => (
                             <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>
                               {option.title} - {option.lastEditedLabel}
@@ -1597,7 +1620,7 @@ export default function Ecommerce() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="notion-parent-id">Parent ID</Label>
+                    <Label htmlFor="notion-parent-id">Förälder-ID</Label>
                     <Input
                       id="notion-parent-id"
                       placeholder="sid- eller databas-id"
@@ -1606,19 +1629,19 @@ export default function Ecommerce() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="notion-parent-type">Parent type</Label>
+                    <Label htmlFor="notion-parent-type">Föräldertyp</Label>
                     <select
                       id="notion-parent-type"
                       className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                       value={notionParentType}
                       onChange={(e) => setNotionParentType(e.target.value === "database_id" ? "database_id" : "page_id")}
                     >
-                      <option value="page_id">Page</option>
-                      <option value="database_id">Database</option>
+                      <option value="page_id">Sida</option>
+                      <option value="database_id">Databas</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="notion-page-title">Title</Label>
+                    <Label htmlFor="notion-page-title">Titel</Label>
                     <Input
                       id="notion-page-title"
                       placeholder="Veckoplanering"
@@ -1627,7 +1650,7 @@ export default function Ecommerce() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="notion-page-content">Content (optional)</Label>
+                    <Label htmlFor="notion-page-content">Innehåll (valfritt)</Label>
                     <Input
                       id="notion-page-content"
                       placeholder="Första stycket på sidan"
@@ -1640,7 +1663,7 @@ export default function Ecommerce() {
                       onClick={handleCreateNotionPage}
                       disabled={notionSaving || !notionParentId.trim() || !notionTitle.trim() || !activeNotion}
                     >
-                      {notionSaving ? "Creating..." : "Create in Notion"}
+                      {notionSaving ? "Skapar…" : "Skapa i Notion"}
                     </Button>
                     {notionWriteMessage ? (
                       <p className="text-xs text-muted-foreground">{notionWriteMessage}</p>
