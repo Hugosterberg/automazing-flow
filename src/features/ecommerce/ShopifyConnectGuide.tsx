@@ -16,6 +16,21 @@ export function ShopifyConnectGuide() {
         <li>Klistra in domänen här. Använd inte en egen publik domän som bara pekar till butiken.</li>
         <li>Tryck Continue/Connect och godkänn åtkomsten i Shopify.</li>
       </ol>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        Får du <span className="font-medium text-foreground">missing_shopify_permission</span> (t.ex.{" "}
+        <span className="font-mono text-foreground">customer_read_quick_sale</span>)? Det betyder att Shopify-appen
+        begär en rättighet som inte är godkänd. Öppna{" "}
+        <a
+          href="https://partners.shopify.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary hover:underline"
+        >
+          Partner Dashboard
+        </a>
+        , gå till din app → Configuration → Access scopes, ta bort ogodkända <span className="font-mono">customer_*</span>
+        -scopes och spara. Koppla om butiken — standard är bara <span className="font-mono">read_products</span>.
+      </p>
       <div className="mt-3 flex flex-wrap gap-3 text-xs">
         <a
           href="https://admin.shopify.com/"

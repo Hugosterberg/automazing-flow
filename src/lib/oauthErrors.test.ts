@@ -30,7 +30,16 @@ describe("formatOAuthErrorMessage", () => {
       hint: "customer_read_quick_sale",
     });
     expect(msg).toContain("Shopify nekade");
-    expect(msg).toContain("permission");
+    expect(msg).toContain("Partner Dashboard");
     expect(msg).toContain("customer_read_quick_sale");
+  });
+
+  it("normalizes unknown permission codes to scope_not_granted messaging", () => {
+    const msg = formatOAuthErrorMessage({
+      ...details("invalid_scope"),
+      hint: "read_orders",
+    });
+    expect(msg).toContain("behörigheter");
+    expect(msg).toContain("read_orders");
   });
 });

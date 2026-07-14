@@ -1,4 +1,9 @@
 import { isNonEmptyString } from "@/lib/utils";
+import {
+  extractOAuthPermissionDetail,
+  isOAuthPermissionError,
+  normalizeOAuthErrorCode,
+} from "@/lib/oauthPermissionErrors";
 
 export type OAuthErrorDetails = {
   code: string;
@@ -72,7 +77,7 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   shopify_missing_shop:
     "Shopify kräver en butiksdomän. Ange den som mystore.myshopify.com och försök igen.",
   missing_shopify_permission:
-    "Shopify nekade en app-permission som OAuth-kopplingen bad om. Be app-operatören ta bort icke godkända Shopify-scopes eller godkänna permissionen i Shopify Partner Dashboard.",
+    "Shopify nekade en behörighet som inte är godkänd för appen. Ta bort customer_*-scopes och andra ogodkända rättigheter i Shopify Partner Dashboard (App setup → Access scopes) och i SHOPIFY_EXTRA_SCOPES. Koppla med read_products först; lägg till read_orders/read_customers först efter att Shopify godkänt dem.",
   shopify_shop_mismatch:
     "Shopify svarade med en annan butiksdomän än den du startade med. Starta kopplingen igen och kontrollera domänen.",
   notion_not_configured:
@@ -113,6 +118,22 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "Servern kunde inte nå Zernios connect-endpoint. Det kan bero på Zernio-driftstörning, fel ZERNIO_API_BASE eller att plattformen inte stöds i ditt Zernio-konto. Testa Official API för Meta Business om Zernio fortsätter misslyckas.",
   zernio_platform_not_supported:
     "Zernio stödjer inte den här plattformen i ditt workspace. Använd official API-kopplingen istället.",
+  instagram_not_configured:
+    "Instagram official saknar OAuth-konfiguration. Kontrollera INSTAGRAM_CLIENT_ID, INSTAGRAM_CLIENT_SECRET och callback-URL:en.",
+  shopify_hmac_invalid:
+    "Shopify kunde inte verifiera callback-signaturen. Kontrollera SHOPIFY_API_SECRET och att callback-URL:en matchar appen.",
+  zernio_no_account:
+    "Zernio returnerade inget kopplat konto efter inloggning. Kontrollera Zernio-profilen och försök koppla igen.",
+  zernio_fetch_accounts_failed:
+    "Kunde inte hämta konton från Zernio efter inloggning. Testa igen eller använd Official API.",
+  meta_profile_failed:
+    "Meta OAuth lyckades delvis men kunde inte läsa företagsprofilen. Kontrollera Meta-appens permissions och Business Manager-åtkomst.",
+  unknown_platform:
+    "Okänd OAuth-plattform. Välj integrationen igen från Kopplingar.",
+  client_registration_failed:
+    "MCP OAuth-registrering misslyckades hos leverantören. Kontrollera MCP-klientuppgifter och scopes.",
+  invalid_scope:
+    "OAuth-appen begärde scopes som inte är godkända eller tillåtna. Kontrollera leverantörens developer-portal och miljövariabler för extra scopes.",
 };
 
 export function parseOAuthErrorDetails(searchParams: URLSearchParams): OAuthErrorDetails | null {
@@ -141,13 +162,27 @@ export function formatOAuthErrorMessage(
   fallbackPrefix = "Koppling misslyckades"
 ) {
   const merged = { ...DEFAULT_OAUTH_ERROR_MESSAGES, ...(messages || {}) };
-  if (merged[details.code]) {
-    if (details.code === "missing_shopify_permission" && details.hint) {
-      return `${merged[details.code]} Shopify rapporterade: ${details.hint}.`;
+  const lookupCode = normalizeOAuthErrorCode(details.code, details.hint);
+  const baseMessage = merged[lookupCode] ?? merged[details.code];
+
+  if (baseMessage) {
+    if (isOAuthPermissionError(details.code, details.hint)) {
+      const detail = extractOAuthPermissionDetail(details.hint, details.code);
+      if (detail && !baseMessage.includes(detail)) {
+        return `${baseMessage} Leverantören nämnde: ${detail}.`;
+      }
     }
-    return merged[details.code];
+    return baseMessage;
   }
-  // Humanize the error code for the fallback
+
+  if (isOAuthPermissionError(details.code, details.hint)) {
+    const detail = extractOAuthPermissionDetail(details.hint, details.code);
+    const permissionFallback =
+      merged.scope_not_granted ||
+      "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och godkänn alla efterfrågade rättigheter.";
+    return detail ? `${permissionFallback} Leverantören nämnde: ${detail}.` : permissionFallback;
+  }
+
   const humanCode = details.code.replace(/_/g, " ");
   return `${fallbackPrefix}: ${humanCode}`;
 }

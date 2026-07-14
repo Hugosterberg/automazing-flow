@@ -1,5 +1,6 @@
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection, ConnectionHealth } from "@/types/connection";
+import { connectionSyncPermissionFix } from "@/lib/oauthPermissionErrors";
 
 /**
  * Client-side fix-it hint for an unhealthy connection row.
@@ -12,7 +13,11 @@ export function connectionFixHint(
   if (connection.health === "healthy") return null;
 
   if (connection.lastSyncError) {
+    const permissionFix = connectionSyncPermissionFix(connection.platform, connection.lastSyncError);
     const envHint = catalogEntry?.serverNeeds;
+    if (permissionFix) {
+      return envHint ? `${permissionFix} — Server: ${envHint}` : permissionFix;
+    }
     if (connection.health === "failed" && envHint) {
       return `${connection.lastSyncError} — Server: ${envHint}`;
     }

@@ -44,6 +44,19 @@ describe("connectionFixHint", () => {
       connectionFixHint({ ...baseConnection, health: "failed" }, catalogEntry)
     ).toContain("GOOGLE_CLIENT_ID");
   });
+
+  it("prioritizes permission fix hints for scope-related sync errors", () => {
+    expect(
+      connectionFixHint(
+        {
+          ...baseConnection,
+          health: "failed",
+          lastSyncError: "403 forbidden — insufficient scope gmail.send",
+        },
+        catalogEntry
+      )
+    ).toMatch(/Google-behörighet|Saknad Google-behörighet/i);
+  });
 });
 
 describe("connectionTestToastMessage", () => {

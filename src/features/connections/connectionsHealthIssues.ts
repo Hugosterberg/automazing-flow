@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from "react";
+import { connectionSyncLooksLikePermissionError } from "@/lib/oauthPermissionErrors";
 import { useMcpProvidersStatus, mcpStatusLabel } from "@/features/intelligence/useMcpProvidersStatus";
 import { CONNECTION_CATALOG } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
@@ -39,11 +40,12 @@ export function connectionIssues(connections: Connection[]): HealthIssue[] {
     seen.add(entry.platform);
 
     const lastError = rows.find((r) => r.lastSyncError)?.lastSyncError;
+    const permissionIssue = lastError ? connectionSyncLooksLikePermissionError(lastError) : false;
     issues.push({
       id: `connection-${entry.platform}`,
       severity: status === "error" ? "error" : "warning",
       category: "connection",
-      title: `${entry.label} — ${CONNECTION_STATUS_LABELS[status]}`,
+      title: `${entry.label} — ${permissionIssue ? "Behörighet saknas" : CONNECTION_STATUS_LABELS[status]}`,
       message: lastError || entry.connectSteps,
       actionHref: "/connections?filter=attention",
       actionLabel: "Öppna Kopplingar",

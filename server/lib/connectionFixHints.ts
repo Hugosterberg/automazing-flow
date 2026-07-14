@@ -3,6 +3,11 @@
  * Kept server-side so POST /api/connections/:id/resync can return them.
  */
 
+import {
+  connectionSyncLooksLikePermissionError,
+  connectionSyncPermissionFix,
+} from "./oauthPermissionErrors.ts";
+
 const PLATFORM_SERVER_NEEDS: Record<string, string> = {
   instagram: "Set ZERNIO_API_KEY or INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET.",
   facebook: "Set ZERNIO_API_KEY or connect via Meta official OAuth.",
@@ -14,7 +19,7 @@ const PLATFORM_SERVER_NEEDS: Record<string, string> = {
   youtube: "Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET or ZERNIO_API_KEY.",
   outlook: "Set MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET.",
   outlook_calendar: "Set MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET.",
-  shopify: "Set SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET (or connect with shop domain).",
+  shopify: "Set SHOPIFY_API_KEY + SHOPIFY_API_SECRET (or connect with shop domain).",
   meta_business: "Set META_APP_ID + META_APP_SECRET or ZERNIO_API_KEY.",
   tiktok: "Set TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET or ZERNIO_API_KEY.",
   x: "Connect via ZERNIO_API_KEY.",
@@ -48,9 +53,13 @@ export function connectionTestFeedback(args: {
   }
 
   if (health === "failed") {
+    const permissionFix =
+      lastSyncError && connectionSyncLooksLikePermissionError(lastSyncError)
+        ? connectionSyncPermissionFix(platform, lastSyncError)
+        : null;
     return {
       message: lastSyncError || "Last sync failed at the provider.",
-      fix: envFix ? `Check server config: ${envFix}` : "Review integration settings under Preferences.",
+      fix: permissionFix || (envFix ? `Check server config: ${envFix}` : "Review integration settings under Preferences."),
     };
   }
 

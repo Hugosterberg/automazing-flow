@@ -19,7 +19,8 @@ import {
   pruneDuplicateAccountEntries,
 } from "../lib/accountIdentity.ts";
 import { exchangeForLongLivedInstagramToken } from "../providers/instagram.ts";
-import { getShopifyScopes } from "../lib/shopifyScopes.ts";
+import { getShopifyScopes, getShopifyScopeDiagnostics } from "../lib/shopifyScopes.ts";
+import { buildOAuthCallbackErrorQuery } from "../lib/oauthPermissionErrors.ts";
 import { exchangeCanvaOAuthCode, fetchCanvaUserIdentity } from "../providers/canva.ts";
 import {
   OAUTH_MCP_DIRECTORY,
@@ -1291,12 +1292,17 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   registerZernioOAuthPlatformRoute("whatsapp");
 
   app.get("/api/auth/google_ads/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirectTo(base, "google_ads",`oauth_error=${encodeURIComponent(String(error))}`)
+        oauthRedirectTo(
+          base,
+          "google_ads",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "google_ads"),
+          pending?.oauthReturnPage
+        )
       );
     }
 
@@ -1408,7 +1414,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
         oauthRedirectTo(
           base,
           "meta_business",
-          `oauth_error=${encodeURIComponent(String(errorDescription || error))}`,
+          buildOAuthCallbackErrorQuery(error, errorDescription, "meta_business"),
           pending?.oauthReturnPage
         )
       );
@@ -1897,11 +1903,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/tiktok/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirectTo(base, "tiktok",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "tiktok",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "tiktok"),
+          pending?.oauthReturnPage
+        )
+      );
     }
     if (!pending) {
       return res.redirect(oauthRedirectTo(base, "tiktok","oauth_error=invalid_state"));
@@ -2029,10 +2042,19 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/x/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
-    if (error) return res.redirect(oauthRedirectTo(base, "x",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+    if (error) {
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "x",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "x"),
+          pending?.oauthReturnPage
+        )
+      );
+    }
     if (!pending) return res.redirect(oauthRedirectTo(base, "x","oauth_error=invalid_state"));
     const callbackUserId = getSessionUserId(req);
     if (!isAllowedOAuthCallbackUser(pending, callbackUserId)) {
@@ -2139,11 +2161,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/youtube/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirectTo(base, "youtube",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "youtube",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "youtube"),
+          pending?.oauthReturnPage
+        )
+      );
     }
     if (!pending) {
       return res.redirect(oauthRedirectTo(base, "youtube","oauth_error=invalid_state"));
@@ -2267,6 +2296,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     });
     const redirectUri = `${shopifyPublicBase}/api/auth/shopify/callback`;
     const shopHandle = shop.replace(/\.myshopify\.com$/, "");
+    const scopeDiagnostics = getShopifyScopeDiagnostics();
+    if (scopeDiagnostics.removed.length > 0) {
+      console.warn(
+        "[shopify-oauth] Ignored invalid Customer Account scopes from SHOPIFY_EXTRA_SCOPES:",
+        scopeDiagnostics.removed.join(", ")
+      );
+    }
     const url = `https://${shopHandle}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${encodeURIComponent(SHOPIFY_SCOPES)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     res.redirect(url);
   });
@@ -2300,12 +2336,11 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      const hint = errorDescription ? `&oauth_hint=${encodeURIComponent(String(errorDescription))}` : "";
       return res.redirect(
         oauthRedirectTo(
           base,
           "shopify",
-          `oauth_error=${encodeURIComponent(String(error))}${hint}`,
+          buildOAuthCallbackErrorQuery(error, errorDescription, "shopify"),
           pending?.oauthReturnPage
         )
       );
@@ -2350,9 +2385,13 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       });
       const data = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || data.error || !data.access_token) {
-        const errorCode = String(data.error_description || data.error || "token_exchange_failed");
         return res.redirect(
-          oauthRedirectTo(base, "shopify",`oauth_error=${encodeURIComponent(errorCode)}`, pending.oauthReturnPage)
+          oauthRedirectTo(
+            base,
+            "shopify",
+            buildOAuthCallbackErrorQuery(data.error || "token_exchange_failed", data.error_description, "shopify"),
+            pending.oauthReturnPage
+          )
         );
       }
       const shopName = shopUrl.replace(/\.myshopify\.com$/, "");
@@ -2416,12 +2455,17 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/notion/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirectTo(base, "notion",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(
+          base,
+          "notion",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "notion"),
+          pending?.oauthReturnPage
+        )
       );
     }
     if (!pending || pending.platform !== "notion") {
@@ -2592,11 +2636,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/google-calendar/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirectTo(base, "google_calendar",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "google_calendar",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "google_calendar"),
+          pending?.oauthReturnPage
+        )
+      );
     }
     if (!pending) {
       return res.redirect(oauthRedirectTo(base, "google_calendar","oauth_error=invalid_state"));
@@ -2749,11 +2800,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/outlook-calendar/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirectTo(base, "outlook_calendar",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "outlook_calendar",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "outlook_calendar"),
+          pending?.oauthReturnPage
+        )
+      );
     }
     if (!pending) {
       return res.redirect(oauthRedirectTo(base, "outlook_calendar","oauth_error=invalid_state"));
@@ -2909,12 +2967,17 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/google-reviews/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
       return res.redirect(
-        oauthRedirectTo(base, "google_reviews",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage)
+        oauthRedirectTo(
+          base,
+          "google_reviews",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "google_reviews"),
+          pending?.oauthReturnPage
+        )
       );
     }
     if (!pending) {
@@ -3151,11 +3214,18 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/api/auth/google_business/callback", async (req, res) => {
-    const { code, state, error } = req.query;
+    const { code, state, error, error_description: errorDescription } = req.query;
     const pending = await oauthPendingStore.get(state);
     const base = postOauthBaseUrl(pending);
     if (error) {
-      return res.redirect(oauthRedirectTo(base, "google_business",`oauth_error=${encodeURIComponent(String(error))}`, pending?.oauthReturnPage));
+      return res.redirect(
+        oauthRedirectTo(
+          base,
+          "google_business",
+          buildOAuthCallbackErrorQuery(error, errorDescription, "google_business"),
+          pending?.oauthReturnPage
+        )
+      );
     }
     if (!pending) {
       return res.redirect(oauthRedirectTo(base, "google_business","oauth_error=invalid_state"));

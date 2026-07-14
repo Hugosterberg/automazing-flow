@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
+import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -1078,7 +1079,16 @@ export default function MessagesPage() {
         />
         ) : null}
 
-        {!focusedReading || error || mailErrors.length > 0 || oauthAlertMessage ? (
+        {!focusedReading && oauthErrorDetails ? (
+          <OAuthErrorAlert
+            details={oauthErrorDetails}
+            message={oauthAlertMessage ?? formatOAuthErrorMessage(oauthErrorDetails)}
+            onDismiss={clearOauthError}
+            platform={searchParams.get("platform")}
+          />
+        ) : null}
+
+        {!focusedReading || error || mailErrors.length > 0 ? (
         <MessageAlertsBanner
           error={error}
           onDismissError={() => setError(null)}
@@ -1087,8 +1097,6 @@ export default function MessagesPage() {
           onReconnectOutlook={() => void connectOutlook()}
           zernioNote={zernioNote}
           showZernioNote={showZernioNote}
-          oauthMessage={oauthAlertMessage || undefined}
-          onDismissOAuth={oauthErrorDetails ? clearOauthError : undefined}
         />
         ) : null}
 

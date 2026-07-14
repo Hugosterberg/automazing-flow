@@ -853,6 +853,7 @@ export default function Ecommerce() {
             details={oauthErrorDetails}
             message={formatOAuthErrorMessage(oauthErrorDetails)}
             onDismiss={clearOauthError}
+            platform="shopify"
           />
         </m.div>
       )}
