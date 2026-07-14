@@ -91,7 +91,7 @@ export function TaskForm({ onSubmit, disabled, initialTitle, titleInputRef }: Pr
           disabled={busy}
           autoComplete="off"
           aria-label="Uppgiftstitel"
-          className="flex-1"
+          className="min-w-0 flex-1"
         />
         <Button
           type="submit"

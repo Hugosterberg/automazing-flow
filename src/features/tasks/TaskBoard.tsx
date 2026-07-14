@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { Archive, CalendarDays, CheckCircle2, Clock3, Loader2, MessageSquare, PlayCircle, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
@@ -327,9 +328,9 @@ function TaskCard({
 }
 
 export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onToggleChecklistItem, onAiAssist, aiBusyTaskId, focusedTaskId, onArchiveDone, isMutating, isDeleting }: Props) {
+  const isDesktopBoard = useIsDesktopWorkspace();
   const [dragOverStatus, setDragOverStatus] = useState<BoardStatus | null>(null);
   const [activeLane, setActiveLane] = useState<BoardStatus>("open");
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const grouped = useMemo(() => {
     const next: Record<BoardStatus, TaskRow[]> = {
       open: [],
@@ -347,41 +348,6 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
     next.in_progress.sort((a, b) => compareTasksByUrgency(a, b, nowMs));
     return next;
   }, [tasks]);
-
-  useEffect(() => {
-    const root = scrollerRef.current;
-    if (!root) return;
-
-    const lanes = root.querySelectorAll<HTMLElement>("[data-task-lane]");
-    if (lanes.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let best: { status: BoardStatus; ratio: number } | null = null;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const status = entry.target.getAttribute("data-task-lane") as BoardStatus | null;
-          if (!status) continue;
-          if (!best || entry.intersectionRatio > best.ratio) {
-            best = { status, ratio: entry.intersectionRatio };
-          }
-        }
-        if (best) setActiveLane(best.status);
-      },
-      { root, threshold: [0.35, 0.5, 0.65] }
-    );
-
-    lanes.forEach((lane) => observer.observe(lane));
-    return () => observer.disconnect();
-  }, [isLoading]);
-
-  function scrollToLane(status: BoardStatus) {
-    const root = scrollerRef.current;
-    if (!root) return;
-    const lane = root.querySelector<HTMLElement>(`[data-task-lane="${status}"]`);
-    lane?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    setActiveLane(status);
-  }
 
   function handleDrop(event: DragEvent<HTMLElement>, status: BoardStatus) {
     event.preventDefault();
@@ -402,13 +368,52 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
     );
   }
 
+  const visibleColumns = isDesktopBoard
+    ? COLUMNS
+    : COLUMNS.filter((column) => column.status === activeLane);
+
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
+      {!isDesktopBoard ? (
+        <div
+          className="grid grid-cols-3 gap-1 rounded-xl border border-border/70 bg-background/50 p-1"
+          role="tablist"
+          aria-label="Uppgiftskolumner"
+        >
+          {COLUMNS.map((column) => {
+            const active = activeLane === column.status;
+            const count = grouped[column.status].length;
+            return (
+              <button
+                key={column.status}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveLane(column.status)}
+                className={cn(
+                  "min-h-10 min-w-0 rounded-lg px-1.5 py-2 text-center transition-colors",
+                  active
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="block truncate text-xs font-semibold sm:text-sm">{column.title}</span>
+                <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div
-        ref={scrollerRef}
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory app-scroll pb-1 -mx-1 px-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:pb-0 lg:px-0"
+        className={cn(
+          "min-w-0",
+          isDesktopBoard ? "grid grid-cols-3 gap-4" : "block"
+        )}
       >
-        {COLUMNS.map((column) => {
+        {visibleColumns.map((column) => {
           const Icon = column.icon;
           const columnTasks = grouped[column.status];
           const activeDrop = dragOverStatus === column.status;
@@ -428,23 +433,25 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
               }}
               onDrop={(event) => handleDrop(event, column.status)}
               className={cn(
-                "flex w-[min(85vw,320px)] shrink-0 snap-center flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all lg:w-auto lg:min-h-[420px]",
-                "max-h-[min(62vh,560px)] lg:max-h-none",
+                "flex w-full min-w-0 flex-col rounded-2xl border bg-gradient-to-b p-3 transition-all",
+                isDesktopBoard
+                  ? "min-h-[420px]"
+                  : "max-h-[min(58vh,520px)]",
                 column.accent,
-                activeDrop && "scale-[1.01] border-primary/60 ring-2 ring-primary/20"
+                activeDrop && "border-primary/60 ring-2 ring-primary/20"
               )}
             >
               <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
-                <div className="flex items-start gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <div className="rounded-xl border border-border/70 bg-background/70 p-2">
                     <Icon className="h-4 w-4" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-base font-semibold sm:text-sm">{column.title}</h2>
-                    <p className="text-xs text-muted-foreground sm:block">{column.description}</p>
+                    <p className="text-xs text-muted-foreground">{column.description}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   {column.status === "done" && onArchiveDone && columnTasks.length > 0 ? (
                     <Button
                       type="button"
@@ -465,7 +472,7 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto app-scroll pr-0.5">
+              <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto app-scroll pr-0.5">
                 {columnTasks.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border bg-background/45 p-4 text-center text-xs text-muted-foreground">
                     {column.empty}
@@ -489,30 +496,6 @@ export function TaskBoard({ tasks, isLoading, onSetStatus, onDelete, onEdit, onT
                 )}
               </div>
             </section>
-          );
-        })}
-      </div>
-
-      <div
-        className="flex items-center justify-center gap-2 py-1 lg:hidden"
-        role="tablist"
-        aria-label="Uppgiftskolumner"
-      >
-        {COLUMNS.map((column) => {
-          const active = activeLane === column.status;
-          return (
-            <button
-              key={column.status}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={column.title}
-              onClick={() => scrollToLane(column.status)}
-              className={cn(
-                "h-2.5 rounded-full transition-all",
-                active ? "w-6 bg-primary" : "w-2.5 bg-muted-foreground/35 hover:bg-muted-foreground/55"
-              )}
-            />
           );
         })}
       </div>

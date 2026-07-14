@@ -77,6 +77,7 @@ export default function TasksPage() {
   const legacy = useAccounts();
   const { user } = useAuth();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
+  const isMobile = useIsMobile();
 
   // `?view=overdue|today` deep links come from the sidebar badge, the home
   // dashboard tile and the daily brief. The quick-filter chips read and
@@ -463,22 +464,20 @@ export default function TasksPage() {
     );
   }
 
-  const isMobile = useIsMobile();
-
   return (
-    <div className="space-y-6 max-w-7xl w-full">
+    <div className="w-full max-w-7xl min-w-0 space-y-6 overflow-x-hidden">
       <PageHeader
         icon={ListChecks}
         title="Uppgifter"
         description={
           isMobile
-            ? "Svep mellan Att göra, Pågår och Klart. Tryck Starta/Klar för att flytta kort."
+            ? "Byt kolumn med flikarna. Tryck Starta/Klar för att flytta kort."
             : "Lägg till snabbt, öppna kort för detaljer och dra mellan kolumner."
         }
         actions={
           <>
             <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as ModuleFilter)}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 w-[min(100%,130px)] max-w-[130px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -509,19 +508,23 @@ export default function TasksPage() {
       <PageSmartBar
         title={
           isMobile
-            ? "Skapa uppgifter, svep mellan kolumner och tryck Starta/Klar för att flytta dem."
+            ? "Skapa uppgifter, byt kolumn med flikarna och tryck Starta/Klar för att flytta dem."
             : "Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
         }
         steps={
           isMobile
-            ? ["Skapa en uppgift ovan", "Svep mellan Att göra · Pågår · Klart", "Tryck Starta eller Klar på kortet"]
+            ? ["Skapa en uppgift ovan", "Byt flik: Att göra · Pågår · Klart", "Tryck Starta eller Klar på kortet"]
             : [
                 "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
                 "Filtrera på försenade eller dagens deadlines när du triagerar",
                 "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
               ]
         }
-        tip="Svep mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
+        tip={
+          isMobile
+            ? "Flikarna byter kolumn utan att sidan scrollar i sidled. Automationer kan påminna om försenade — se Automationer."
+            : "Dra mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
+        }
       />
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
@@ -549,7 +552,7 @@ export default function TasksPage() {
               aria-label="Sök uppgifter"
             />
           </div>
-          <div className="flex min-w-0 items-center overflow-x-auto rounded-lg border border-border/60 bg-background/40 p-1 app-scroll">
+          <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-lg border border-border/60 bg-background/40 p-1 sm:flex sm:w-auto sm:overflow-visible">
             {(
               [
                 { id: "all", label: "Alla", count: null, activeClass: "bg-primary text-primary-foreground shadow-sm" },
@@ -563,12 +566,12 @@ export default function TasksPage() {
                 onClick={() => setQuickFilter(chip.id)}
                 aria-pressed={quickFilter === chip.id}
                 className={cn(
-                  "shrink-0 rounded-md px-3 font-medium transition-colors",
+                  "min-w-0 rounded-md px-2 font-medium transition-colors sm:shrink-0 sm:px-3",
                   isMobile ? "min-h-9 py-2 text-sm" : "px-2.5 py-1 text-[11px]",
                   quickFilter === chip.id ? chip.activeClass : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {chip.label}
+                <span className="truncate">{chip.label}</span>
                 {chip.count !== null && chip.count > 0 ? (
                   <span className="ml-1 tabular-nums">{chip.count}</span>
                 ) : null}
@@ -604,9 +607,11 @@ export default function TasksPage() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-4">
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-hidden p-3 sm:p-4">
           {isMobile ? (
-            <p className="mb-2 text-xs text-muted-foreground">Svep i sidled mellan kolumner · tryck Starta/Klar för att flytta</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Byt flik för kolumn · tryck Starta/Klar för att flytta
+            </p>
           ) : null}
           <TaskBoard
             tasks={visibleTasks}
