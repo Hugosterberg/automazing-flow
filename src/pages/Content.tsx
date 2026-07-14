@@ -51,6 +51,7 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/featu
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/format";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 type DriveBrowserItem = {
@@ -1402,7 +1403,7 @@ export default function ContentPage() {
                       <p className="text-xs font-medium truncate">{folder.name}</p>
                       {folder.modifiedTime && (
                         <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                          {new Date(folder.modifiedTime).toLocaleDateString()}
+                          {formatShortDate(folder.modifiedTime)}
                         </p>
                       )}
                     </div>

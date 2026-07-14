@@ -3,6 +3,7 @@ import { Download, FolderPlus, History, ImageIcon, Loader2, Trash2 } from "lucid
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTimeMedium } from "@/lib/format";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -208,7 +209,7 @@ export function GeneratedHistoryPanel({
               <CardHeader className="p-3 pb-1">
                 <CardTitle className="text-xs truncate">{item.name}</CardTitle>
                 <CardDescription className="text-[10px]">
-                  {new Date(item.createdAt).toLocaleString()}
+                  {formatDateTimeMedium(item.createdAt)}
                   {item.toolName ? ` · ${item.toolName}` : ""}
                 </CardDescription>
               </CardHeader>

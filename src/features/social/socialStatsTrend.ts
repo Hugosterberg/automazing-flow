@@ -3,6 +3,7 @@
  * daily social_stats_snapshots the cron writes. Pure — the hook feeds it rows
  * and the component formats the deltas.
  */
+import { formatNumber } from "@/lib/format";
 
 export interface SocialStatsSnapshotPoint {
   /** ISO date (YYYY-MM-DD). */
@@ -108,7 +109,7 @@ export function formatStatChange(
   const decimals = options.decimals ?? 0;
   const rounded = Number(delta.toFixed(decimals));
   if (rounded === 0) return "";
-  const abs = Math.abs(rounded).toLocaleString("en-US", {
+  const abs = formatNumber(Math.abs(rounded), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });

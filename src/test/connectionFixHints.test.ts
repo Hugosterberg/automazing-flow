@@ -36,7 +36,7 @@ describe("connectionFixHint", () => {
   it("suggests reconnect for expired tokens", () => {
     expect(
       connectionFixHint({ ...baseConnection, health: "expired" }, catalogEntry)
-    ).toMatch(/Reconnect/i);
+    ).toMatch(/Koppla om/i);
   });
 
   it("includes server needs for failed sync without provider error", () => {
@@ -49,7 +49,7 @@ describe("connectionFixHint", () => {
 describe("connectionTestToastMessage", () => {
   it("returns success for healthy test", () => {
     const msg = connectionTestToastMessage({ health: "healthy", message: "OK" });
-    expect(msg.title).toBe("Connection OK");
+    expect(msg.title).toBe("Koppling OK");
     expect(msg.variant).toBeUndefined();
   });
 

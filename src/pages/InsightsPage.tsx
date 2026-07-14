@@ -15,6 +15,7 @@ import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
+import { formatNumber, formatShortDate } from "@/lib/format";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useWorkspaceMode } from "@/features/workspace-mode";
@@ -34,9 +35,7 @@ const followerChartConfig: ChartConfig = {
 const REVIEW_PLATFORMS = new Set(["google_reviews", "tripadvisor", "google_business"]);
 
 function formatChartDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+  return formatShortDate(`${iso}T00:00:00`) || iso;
 }
 
 /** "12,3k" instead of "12 345" so the y-axis stays narrow on mobile. */
@@ -80,11 +79,11 @@ function AccountRow({
       ? `${latest.averageRating.toFixed(1)} ★`
       : "–"
     : latest?.followers != null
-      ? latest.followers.toLocaleString("sv-SE")
+      ? formatNumber(latest.followers)
       : "–";
   const sub = isReview
     ? latest?.reviewCount != null
-      ? `${latest.reviewCount.toLocaleString("sv-SE")} recensioner`
+      ? `${formatNumber(latest.reviewCount)} recensioner`
       : ""
     : "följare";
   return (

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/format";
 import { isTaskOverdue, compareTasksByUrgency } from "./taskFilters";
 import {
   getTaskAi,
@@ -91,9 +92,7 @@ function columnForTask(task: TaskRow): BoardStatus | null {
 
 function formatDueDate(iso: string | null): string | null {
   if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
-  return date.toLocaleDateString("sv-SE", { month: "short", day: "numeric" });
+  return formatShortDate(iso) || iso.slice(0, 10);
 }
 
 const CARD_CHECKLIST_LIMIT = 3;
@@ -269,7 +268,7 @@ function TaskCard({
             <Badge
               variant="outline"
               className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500"
-              title={`AI förberedde ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
+              title={`AI förberedde ${formatShortDate(aiState.enrichedAt)}`}
             >
               <Sparkles className="h-3 w-3" />
               AI

@@ -9,6 +9,7 @@
  * feeds it from the existing React Query hooks. New signal sources (unread
  * DMs, pending reviews, …) plug in by adding another block here.
  */
+import { formatNumber } from "@/lib/format";
 
 export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation" | "review" | "automation";
 export type BriefSeverity = "critical" | "warning" | "info";
@@ -153,7 +154,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-roas",
       kind: "marketing",
       severity: "warning",
-      title: `Annonser under vatten (ROAS ${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(underwaterRoas)}×)`,
+      title: `Annonser under vatten (ROAS ${formatNumber(underwaterRoas, { maximumFractionDigits: 1 })}×)`,
       description: "Intäkt under annonskostnad senaste 7 dagarna — granska kampanjerna under Marketing.",
       to: "/marketing",
       count: 1,

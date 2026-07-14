@@ -29,6 +29,7 @@ import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "
 import { apiUrl } from "@/lib/apiBase";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { formatDateTimeMedium } from "@/lib/format";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type RecommendationArea = "seo" | "performance" | "trust" | "channels";
@@ -666,7 +667,7 @@ export default function DigitalBrandPage() {
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {audit
-                  ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML-audit" : "HTML fallback-audit"} för ${audit.finalUrl} ${new Date(audit.checkedAt).toLocaleString()}.`
+                  ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML-audit" : "HTML fallback-audit"} för ${audit.finalUrl} ${formatDateTimeMedium(audit.checkedAt)}.`
                   : auditLoading
                     ? "Kör PageSpeed Insights och hämtar HTML, robots.txt och sitemap.xml…"
                     : "Kör en audit för att hämta live SEO- och prestandavärden från webbplatsen."}

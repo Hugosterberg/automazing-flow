@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/format";
 import { isoToLocalDateInputValue } from "@/lib/localDate";
 import {
   newChecklistItem,
@@ -98,14 +99,7 @@ function dateInputValueFromToday(daysAhead: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function formatDueLabel(date: Date): string {
-  const sameYear = date.getFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString("sv-SE", {
-    day: "numeric",
-    month: "short",
-    ...(sameYear ? {} : { year: "numeric" }),
-  });
-}
+const formatDueLabel = formatShortDate;
 
 /**
  * Popover calendar for the optional due date. Value is a `YYYY-MM-DD`

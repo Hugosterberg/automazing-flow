@@ -7,6 +7,7 @@ import {
   WhatsAppIcon,
 } from "@/components/platform-icons";
 import type { InboxFilter, MessageChannelTab, UnifiedMessage } from "./types";
+import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 
 export const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string; shortLabel: string }> = [
   { value: "mail", label: "Mail", shortLabel: "Mail" },
@@ -47,41 +48,8 @@ export function senderInitial(name: string): string {
   return (name || "?").charAt(0).toUpperCase();
 }
 
-export function formatMessageDate(raw: string): string {
-  if (!raw) return "";
-  try {
-    const d = new Date(raw);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) {
-      return d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
-    }
-    if (diffDays === 1) return "Igår";
-    if (diffDays < 7) {
-      return d.toLocaleDateString("sv-SE", { weekday: "short" });
-    }
-    return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
-  } catch {
-    return "";
-  }
-}
-
-export function formatFullMessageDate(raw: string): string {
-  if (!raw) return "";
-  try {
-    return new Date(raw).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return raw;
-  }
-}
+export const formatMessageDate = formatSmartDate;
+export const formatFullMessageDate = formatFullDateTime;
 
 /** Compact wait label for unanswered messages. */
 export function formatWaitTime(raw: string): string | null {

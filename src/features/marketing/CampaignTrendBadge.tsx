@@ -1,5 +1,6 @@
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 import type { CampaignTrend } from "./campaignTrend";
 
 export function CampaignTrendBadge({ trend }: { trend: CampaignTrend | undefined }) {
@@ -18,7 +19,7 @@ export function CampaignTrendBadge({ trend }: { trend: CampaignTrend | undefined
     trend.scoreDelta != null
       ? `${trend.scoreDelta > 0 ? "+" : ""}${Math.round(trend.scoreDelta)} p`
       : trend.roasDelta != null
-        ? `${trend.roasDelta > 0 ? "+" : ""}${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(trend.roasDelta)}× ROAS`
+        ? `${trend.roasDelta > 0 ? "+" : ""}${formatNumber(trend.roasDelta, { maximumFractionDigits: 1 })}× ROAS`
         : null;
 
   if (!scoreText) return null;

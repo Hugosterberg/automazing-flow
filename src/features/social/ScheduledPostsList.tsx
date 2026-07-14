@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatDateTimeMedium } from "@/lib/format";
 import { platformLabel } from "@/lib/platformLabels";
 import { useScheduledPosts } from "./useScheduledPosts";
 import { SCHEDULED_POST_STATUS_LABELS, type ScheduledPost, type ScheduledPostStatus } from "./scheduledPosts";
@@ -15,10 +16,7 @@ const STATUS_TONE: Record<ScheduledPostStatus, string> = {
 };
 
 function formatWhen(iso: string | null): string {
-  if (!iso) return "Ingen tid satt";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Ingen tid satt";
-  return date.toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTimeMedium(iso) || "Ingen tid satt";
 }
 
 /**

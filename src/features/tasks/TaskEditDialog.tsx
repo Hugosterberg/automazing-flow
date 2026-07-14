@@ -17,6 +17,7 @@ import { formatRelativeTime } from "@/lib/relativeTime";
 import { dateInputToEndOfDayIso, isoToLocalDateInputValue } from "@/lib/localDate";
 import { ChecklistEditor, DueDatePicker, PriorityPicker } from "./TaskMetaControls";
 import { cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/format";
 import {
   getTaskAi,
   getTaskChecklist,
@@ -248,7 +249,7 @@ export function TaskEditDialog({
                   <Badge
                     variant="outline"
                     className="gap-1 border-violet-500/40 text-[10px] uppercase tracking-wide text-violet-500"
-                    title={`AI prepared ${new Date(aiState.enrichedAt).toLocaleDateString("sv-SE")}`}
+                    title={`AI förberedde ${formatShortDate(aiState.enrichedAt)}`}
                   >
                     <Sparkles className="h-3 w-3" />
                     AI

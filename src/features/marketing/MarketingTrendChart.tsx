@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/chart";
 import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney } from "./format";
+import { formatNumber, formatShortDate } from "@/lib/format";
 
 const moneyChartConfig: ChartConfig = {
   revenue: {
@@ -38,9 +39,7 @@ const ordersChartConfig: ChartConfig = {
 };
 
 function formatChartDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+  return formatShortDate(`${iso}T00:00:00`) || iso;
 }
 
 /** Compact axis money ("12k" instead of "12 345,00 kr") to keep the axis quiet. */
@@ -163,7 +162,7 @@ export function MarketingTrendChart() {
                     <span className="flex w-full items-center justify-between gap-3">
                       <span className="text-muted-foreground">Ordrar (7 d)</span>
                       <span className="font-mono font-medium tabular-nums">
-                        {Number(value).toLocaleString("sv-SE")}
+                        {formatNumber(Number(value))}
                       </span>
                     </span>
                   )}

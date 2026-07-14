@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { CalendarClock } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateCustom, formatShortDate } from "@/lib/format";
 import { LeadFollowUpInboxRow } from "./LeadFollowUpInboxRow";
 import type { Lead } from "./leadsService";
 
@@ -15,20 +16,12 @@ type Props = {
 
 function formatFollowUpDate(iso: string | null): { short: string; full: string } {
   if (!iso) return { short: "—", full: "" };
-  try {
-    const d = new Date(iso);
-    return {
-      short: d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" }),
-      full: d.toLocaleString("sv-SE", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-    };
-  } catch {
-    return { short: iso.slice(0, 10), full: iso };
-  }
+  return {
+    short: formatShortDate(iso) || iso.slice(0, 10),
+    full:
+      formatDateCustom(iso, { weekday: "short", day: "numeric", month: "short", year: "numeric" }) ||
+      iso,
+  };
 }
 
 export function LeadFollowUpInboxList({

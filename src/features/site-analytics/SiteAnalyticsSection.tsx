@@ -13,6 +13,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+import { formatNumber, formatShortDate } from "@/lib/format";
 import { buildTrackingSnippet } from "./siteAnalyticsService";
 import { useTrackingSite, useTrackingSummary } from "./useSiteAnalytics";
 
@@ -28,9 +29,7 @@ const visitorsChartConfig: ChartConfig = {
 };
 
 function formatChartDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+  return formatShortDate(`${iso}T00:00:00`) || iso;
 }
 
 function SnippetBlock({ siteKey }: { siteKey: string }) {
@@ -83,7 +82,7 @@ function TopList({ title, rows }: { title: string; rows: Array<{ label: string; 
             />
             <div className="relative flex items-center justify-between gap-2 text-xs">
               <span className="truncate">{row.label}</span>
-              <span className="tabular-nums text-muted-foreground shrink-0">{row.count.toLocaleString("sv-SE")}</span>
+              <span className="tabular-nums text-muted-foreground shrink-0">{formatNumber(row.count)}</span>
             </div>
           </li>
         ))}
@@ -126,7 +125,7 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
               {hasData && summary
-                ? `${summary.totals.visitors.toLocaleString("sv-SE")} besökare · ${summary.totals.pageviews.toLocaleString("sv-SE")} sidvisningar senaste ${summary.windowDays} dagarna`
+                ? `${formatNumber(summary.totals.visitors)} besökare · ${formatNumber(summary.totals.pageviews)} sidvisningar senaste ${summary.windowDays} dagarna`
                 : "Cookiefri, egenhostad spårning — inga externa verktyg."}
             </CardDescription>
           </div>

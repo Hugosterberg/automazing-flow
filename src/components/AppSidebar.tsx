@@ -85,6 +85,7 @@ import {
 } from "@/components/navConfig";
 import { profilesLabelForMode, useWorkspaceMode } from "@/features/workspace-mode";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { formatNumber } from "@/lib/format";
 
 function GenericMcpIcon(props: { className?: string }) {
   return <Bot className={props.className} aria-hidden />;
@@ -626,10 +627,10 @@ export function AppSidebar() {
                               {account.stats?.followersCount != null && (
                                 <span
                                   className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 shrink-0 tabular-nums"
-                                  aria-label={`${account.stats.followersCount.toLocaleString("en-US")} followers`}
+                                  aria-label={`${formatNumber(account.stats.followersCount)} följare`}
                                 >
                                   <Users className="h-2.5 w-2.5" aria-hidden />
-                                  {account.stats.followersCount.toLocaleString("en-US")}
+                                  {formatNumber(account.stats.followersCount)}
                                 </span>
                               )}
                             </button>

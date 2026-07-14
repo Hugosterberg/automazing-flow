@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { formatFullDateTime } from "@/lib/format";
 import type { OutreachQueueItem } from "./outreachQueueTypes";
 
 type Props = {
@@ -24,20 +25,7 @@ type Props = {
   };
 };
 
-function formatFullDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+const formatFullDate = formatFullDateTime;
 
 export function OutreachDetailPanel({
   item,

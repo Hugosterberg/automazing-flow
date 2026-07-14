@@ -34,6 +34,7 @@ import {
   type SocialMediaApiResponse,
 } from "@/features/social";
 import { apiUrl } from "@/lib/apiBase";
+import { formatShortDate } from "@/lib/format";
 import { toast } from "sonner";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { useAccountData } from "@/hooks/useAccountData";
@@ -989,7 +990,7 @@ export default function SocialMedia() {
                       <p className="text-sm font-medium truncate">{task.title}</p>
                       {task.due_at && (
                         <p className="text-xs text-muted-foreground">
-                          Deadline: {new Date(task.due_at).toLocaleDateString("sv-SE")}
+                          Deadline: {formatShortDate(task.due_at)}
                         </p>
                       )}
                     </div>

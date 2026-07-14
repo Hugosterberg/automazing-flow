@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/format";
 import { fetchAiUsage, type AiUsageSummary } from "./aiUsageClient";
 
 const dailyCostChartConfig: ChartConfig = {
@@ -22,9 +23,7 @@ const dailyCostChartConfig: ChartConfig = {
 };
 
 function formatChartDay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+  return formatShortDate(`${iso}T00:00:00`) || iso;
 }
 
 function formatUsd(value: number): string {

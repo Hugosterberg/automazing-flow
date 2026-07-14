@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProfileDocument } from "@/features/profile-documents";
+import { formatShortDate } from "@/lib/format";
 import { outreachDraftToMailto } from "./outreachClient";
 import {
   OUTREACH_QUEUE_DOC_KEY,
@@ -78,7 +79,7 @@ export function OutreachQueueSection({
                 ) : null}
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {new Date(item.createdAt).toLocaleDateString()}
+                {formatShortDate(item.createdAt)}
               </span>
             </div>
             {item.subject ? (

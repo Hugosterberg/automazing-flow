@@ -8,6 +8,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OutreachDetailPanel, OutreachDetailPlaceholder } from "./OutreachDetailPanel";
@@ -39,34 +40,8 @@ function avatarColor(seed: string): string {
   return AVATAR_COLORS[hash] ?? AVATAR_COLORS[0];
 }
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const now = new Date();
-    const sameDay = d.toDateString() === now.toDateString();
-    if (sameDay) {
-      return d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
-    }
-    return d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
-
-function formatFullDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+const formatDate = formatSmartDate;
+const formatFullDate = formatFullDateTime;
 
 const detailMotion = {
   initial: { opacity: 0, x: 12, filter: "blur(4px)" },

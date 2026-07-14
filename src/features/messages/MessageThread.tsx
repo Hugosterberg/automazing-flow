@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDateCustom } from "@/lib/format";
 import { MessageBody } from "./MessageBody";
 import type { ThreadMessage, UnifiedMessage } from "./types";
 
@@ -11,17 +12,7 @@ type Props = {
 };
 
 function formatThreadDate(raw: string): string {
-  if (!raw) return "";
-  try {
-    return new Date(raw).toLocaleString("sv-SE", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return raw;
-  }
+  return formatDateCustom(raw, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function threadMessageAsUnified(msg: ThreadMessage, kind: UnifiedMessage["kind"]): UnifiedMessage {

@@ -67,6 +67,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
+import { formatNumber } from "@/lib/format";
 import { useMarketingCampaigns } from "@/features/marketing";
 import { useQuickNavPrefs } from "@/features/quick-nav";
 
@@ -184,6 +185,49 @@ function JumpCard({
           {description}
         </p>
       </div>
+    </Link>
+  );
+}
+
+/**
+ * One stat card in the "Snabböversikt" strip. The three cards (reviews,
+ * calendars, mail) share this exact frame; keeping it in one place also
+ * gives them the same hover/press language and route prefetch as the
+ * Today tiles above.
+ */
+function QuickOverviewCard({
+  to,
+  icon: Icon,
+  iconClass,
+  value,
+  label,
+  hint,
+  onPrefetch,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconClass: string;
+  value: React.ReactNode;
+  label: string;
+  hint: string;
+  onPrefetch?: (to: string) => void;
+}) {
+  return (
+    <Link
+      to={to}
+      onPointerEnter={() => onPrefetch?.(to)}
+      onFocus={() => onPrefetch?.(to)}
+      className="group pressable block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
+    >
+      <div className="flex items-center justify-between">
+        <Icon className={cn("h-4 w-4", iconClass)} />
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      <p className="mt-3 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
+      <p className="mt-1 truncate text-[11px] text-muted-foreground/80" title={hint}>
+        {hint}
+      </p>
     </Link>
   );
 }
@@ -543,6 +587,79 @@ export default function Index() {
     connectionIssues.length,
   ]);
 
+  /**
+   * Data for the "Snabböversikt" strip. Cards only appear when the user has
+   * accounts in that area, so the strip never renders empty frames.
+   */
+  const quickOverviewCards = useMemo(() => {
+    type QuickCard = {
+      key: string;
+      to: string;
+      icon: React.ComponentType<{ className?: string }>;
+      iconClass: string;
+      value: React.ReactNode;
+      label: string;
+      hint: string;
+    };
+    const cards: QuickCard[] = [];
+
+    // Reviews are business-only (the Reviews page is fenced off in Private).
+    if (mode !== "private") {
+      const reviewAccounts = accounts.filter(
+        (a) => a.platform === "google_reviews" || a.platform === "tripadvisor"
+      );
+      if (reviewAccounts.length > 0) {
+        const ratings = reviewAccounts
+          .map((a) => a.stats?.averageRating)
+          .filter((r): r is number => typeof r === "number");
+        const avgRating =
+          ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : 0;
+        const totalReviews = reviewAccounts.reduce((s, a) => s + (a.stats?.reviewCount ?? 0), 0);
+        cards.push({
+          key: "reviews",
+          to: "/reviews",
+          icon: Star,
+          iconClass: "text-yellow-500",
+          value: avgRating > 0 ? avgRating.toFixed(1) : "–",
+          label: "Snittbetyg",
+          hint: totalReviews > 0 ? `${formatNumber(totalReviews)} recensioner` : "Inga recensioner än",
+        });
+      }
+    }
+
+    const calAccounts = accounts.filter(
+      (a) => a.platform === "google_calendar" || a.platform === "outlook_calendar"
+    );
+    if (calAccounts.length > 0) {
+      cards.push({
+        key: "calendar",
+        to: "/calendar",
+        icon: CalendarDays,
+        iconClass: "text-blue-500",
+        value: calAccounts.length,
+        label: calAccounts.length === 1 ? "Kalender" : "Kalendrar",
+        hint: calAccounts.map((a) => a.username).join(", "),
+      });
+    }
+
+    const mailAccounts = accounts.filter(
+      (a) => a.platform === "gmail" || a.platform === "outlook"
+    );
+    if (mailAccounts.length > 0) {
+      cards.push({
+        key: "mail",
+        to: "/messages",
+        icon: MessageSquare,
+        iconClass: "text-primary",
+        value: mailAccounts.length,
+        label: mailAccounts.length === 1 ? "E-postkonto" : "E-postkonton",
+        hint: mailAccounts.map((a) => (a.platform === "gmail" ? "Gmail" : "Outlook")).join(", "),
+      });
+    }
+
+    return cards;
+  }, [accounts, mode]);
+
   const { primaryTodayTiles, moreTodayTiles } = useMemo(() => {
     if (!isMobile) {
       return { primaryTodayTiles: todayTiles, moreTodayTiles: [] as typeof todayTiles };
@@ -791,98 +908,24 @@ export default function Index() {
         </HomeCollapsibleSection>
       ) : null}
 
-      {/* Quick overview widgets */}
-      {accounts.length > 0 && (
+      {quickOverviewCards.length > 0 ? (
         <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Reviews widget — business-only (the Reviews page is fenced off in Private) */}
-            {(() => {
-              if (mode === "private") return null;
-              const reviewAccounts = accounts.filter(
-                (a) => a.platform === "google_reviews" || a.platform === "tripadvisor"
-              );
-              if (reviewAccounts.length === 0) return null;
-              const avgRating = reviewAccounts
-                .map((a) => a.stats?.averageRating)
-                .filter((r): r is number => typeof r === "number")
-                .reduce((sum, r, _, arr) => sum + r / arr.length, 0);
-              const totalReviews = reviewAccounts
-                .map((a) => a.stats?.reviewCount ?? 0)
-                .reduce((s, n) => s + n, 0);
-              return (
-                <Link
-                  to="/reviews"
-                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
-                >
-                  <div className="flex items-center justify-between">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold tabular-nums">
-                    {avgRating > 0 ? avgRating.toFixed(1) : "–"}
-                  </p>
-                  <p className="text-xs font-medium text-muted-foreground mt-0.5">Snittbetyg</p>
-                  <p className="text-[11px] text-muted-foreground/80 mt-1">
-                    {totalReviews > 0 ? `${totalReviews} recensioner` : "Inga recensioner än"}
-                  </p>
-                </Link>
-              );
-            })()}
-
-            {/* Calendar widget */}
-            {(() => {
-              const calAccounts = accounts.filter(
-                (a) => a.platform === "google_calendar" || a.platform === "outlook_calendar"
-              );
-              if (calAccounts.length === 0) return null;
-              return (
-                <Link
-                  to="/calendar"
-                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
-                >
-                  <div className="flex items-center justify-between">
-                    <CalendarDays className="h-4 w-4 text-blue-500" />
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold tabular-nums">{calAccounts.length}</p>
-                  <p className="text-xs font-medium text-muted-foreground mt-0.5">
-                    {calAccounts.length === 1 ? "Kalender" : "Kalendrar"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground/80 mt-1">
-                    {calAccounts.map((a) => a.username).join(", ")}
-                  </p>
-                </Link>
-              );
-            })()}
-
-            {/* Messages widget */}
-            {(() => {
-              const mailAccounts = accounts.filter(
-                (a) => a.platform === "gmail" || a.platform === "outlook"
-              );
-              if (mailAccounts.length === 0) return null;
-              return (
-                <Link
-                  to="/messages"
-                  className="group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-accent/40"
-                >
-                  <div className="flex items-center justify-between">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold tabular-nums">{mailAccounts.length}</p>
-                  <p className="text-xs font-medium text-muted-foreground mt-0.5">
-                    {mailAccounts.length === 1 ? "E-postkonto" : "E-postkonton"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground/80 mt-1">
-                    {mailAccounts.map((a) => a.platform === "gmail" ? "Gmail" : "Outlook").join(", ")}
-                  </p>
-                </Link>
-              );
-            })()}
+            {quickOverviewCards.map((card) => (
+              <QuickOverviewCard
+                key={card.key}
+                to={card.to}
+                icon={card.icon}
+                iconClass={card.iconClass}
+                value={card.value}
+                label={card.label}
+                hint={card.hint}
+                onPrefetch={prefetchFor}
+              />
+            ))}
           </div>
         </HomeCollapsibleSection>
-      )}
+      ) : null}
 
       <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

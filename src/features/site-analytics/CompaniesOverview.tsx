@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, Eye, ShoppingBag, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/features/marketing/format";
+import { formatNumber } from "@/lib/format";
 import { useCompaniesOverview } from "./useSiteAnalytics";
 
 function Metric({
@@ -59,8 +60,8 @@ export function CompaniesOverview() {
                 <Metric
                   icon={Eye}
                   label="Besökare"
-                  value={company.visitors7d.toLocaleString("sv-SE")}
-                  hint={`${company.pageviews7d.toLocaleString("sv-SE")} sidvisningar`}
+                  value={formatNumber(company.visitors7d)}
+                  hint={`${formatNumber(company.pageviews7d)} sidvisningar`}
                 />
                 <Metric
                   icon={ShoppingBag}
@@ -68,14 +69,14 @@ export function CompaniesOverview() {
                   value={company.revenue != null ? formatMoney(company.revenue, company.currency) : "—"}
                   hint={
                     company.orders != null
-                      ? `${company.orders.toLocaleString("sv-SE")} ordrar`
+                      ? `${formatNumber(company.orders)} ordrar`
                       : undefined
                   }
                 />
                 <Metric
                   icon={Users}
                   label="Följare"
-                  value={company.followers != null ? company.followers.toLocaleString("sv-SE") : "—"}
+                  value={company.followers != null ? formatNumber(company.followers) : "—"}
                 />
               </div>
             </CardContent>

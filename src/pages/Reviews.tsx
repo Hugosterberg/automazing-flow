@@ -40,6 +40,7 @@ import {
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { LIVE_SYNC_REVIEWS } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
+import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
@@ -113,37 +114,6 @@ function displayNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
-}
-
-function formatFullDate(raw?: string): string {
-  if (!raw) return "";
-  try {
-    return new Date(raw).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return raw;
-  }
-}
-
-function formatDate(raw?: string): string {
-  if (!raw) return "";
-  try {
-    const d = new Date(raw);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-    if (diffDays === 0) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-  } catch {
-    return "";
-  }
 }
 
 function senderInitial(name: string): string {
@@ -482,8 +452,8 @@ export default function ReviewsPage() {
   const getRowMeta = useCallback(
     (review: ReviewItem) => ({
       needsReply: !repliedIds.has(review.id),
-      formattedDate: formatDate(review.createdAt),
-      fullDate: formatFullDate(review.createdAt),
+      formattedDate: formatSmartDate(review.createdAt),
+      fullDate: formatFullDateTime(review.createdAt),
       senderInitial: senderInitial(review.author),
       avatarClass: avatarColor(review.author || review.id),
     }),

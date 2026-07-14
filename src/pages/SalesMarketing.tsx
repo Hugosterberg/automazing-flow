@@ -59,6 +59,7 @@ import type { TaskRow, TaskStatus } from "@/features/tasks/tasksService";
 import { pageFadeUp } from "@/lib/motion";
 import { stashContentCaption } from "@/lib/contentCaptionHandoff";
 import { cn } from "@/lib/utils";
+import { formatNumber, formatShortDate } from "@/lib/format";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
 
 // Pipeline stages - mapped to task statuses
@@ -154,7 +155,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
       </div>
       {task.due_at && (
         <p className="text-[11px] text-muted-foreground">
-          Deadline: {new Date(task.due_at).toLocaleDateString("sv-SE")}
+          Deadline: {formatShortDate(task.due_at)}
         </p>
       )}
     </div>
@@ -194,9 +195,9 @@ function GoalCard({ goal, onUpdate }: {
       </div>
       <Progress value={pct} className="h-2" />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{goal.current.toLocaleString("sv-SE")} {goal.unit}</span>
+        <span>{formatNumber(goal.current)} {goal.unit}</span>
         <span className={cn("font-medium", pct >= 100 ? "text-green-600" : "text-foreground")}>
-          {pct}% av {goal.target.toLocaleString("sv-SE")}
+          {pct}% av {formatNumber(goal.target)}
         </span>
       </div>
 

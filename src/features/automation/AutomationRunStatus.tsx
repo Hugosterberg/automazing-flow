@@ -8,6 +8,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatDateTimeMedium } from "@/lib/format";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { AutomationRunStatus as AutomationRunStatusData } from "./automationService";
 
@@ -59,12 +60,7 @@ export function AutomationRunStatus({
   retrying?: boolean;
 }) {
   const nextRunRelative = run?.nextRunAt ? formatRelativeTime(run.nextRunAt) : null;
-  const nextRunAbsolute = run?.nextRunAt
-    ? new Date(run.nextRunAt).toLocaleString("sv-SE", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : null;
+  const nextRunAbsolute = run?.nextRunAt ? formatDateTimeMedium(run.nextRunAt) : null;
 
   const nextRunLine =
     run && nextRunRelative ? (

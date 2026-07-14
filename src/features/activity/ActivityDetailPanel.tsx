@@ -4,6 +4,7 @@ import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatFullDateTime } from "@/lib/format";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { resolveActivitySubjectLink } from "./resolveActivitySubjectLink";
@@ -23,21 +24,7 @@ const SEVERITY_BADGE: Record<ActivityEventRow["severity"], string> = {
   error: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 
-function formatFullDate(iso: string | null): string {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+const formatFullDate = formatFullDateTime;
 
 type Props = {
   event: ActivityEventRow;

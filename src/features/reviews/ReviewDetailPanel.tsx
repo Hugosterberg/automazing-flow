@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ReplyTemplatePicker } from "@/features/reply-templates";
 import { useKeyboardInset, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { formatFullDateTime } from "@/lib/format";
 import type { ReviewItem } from "./types";
 
 export type ReviewDetailPanelProps = {
@@ -48,21 +49,7 @@ export type ReviewDetailPanelProps = {
   };
 };
 
-function formatFullDate(raw?: string): string {
-  if (!raw) return "";
-  try {
-    return new Date(raw).toLocaleString("sv-SE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return raw;
-  }
-}
+const formatFullDate = formatFullDateTime;
 
 function Stars({ rating }: { rating?: number }) {
   if (rating == null) return <span className="text-sm text-muted-foreground">Inget betyg</span>;

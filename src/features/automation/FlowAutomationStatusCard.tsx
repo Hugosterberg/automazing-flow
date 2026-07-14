@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Mail, MessageSquare, ShoppingCart, Sparkles, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProfileDocument } from "@/features/profile-documents";
+import { formatDateTimeShort } from "@/lib/format";
 import { pendingOutreachItems, type OutreachQueueItem } from "@/features/outreach/outreachQueueTypes";
 
 type ReviewReplyQueueItem = {
@@ -30,10 +31,7 @@ type ContentPipelineItem = {
 };
 
 function formatWhen(iso?: string): string {
-  if (!iso) return "—";
-  const d = Date.parse(iso);
-  if (!Number.isFinite(d)) return "—";
-  return new Date(d).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+  return formatDateTimeShort(iso) || "—";
 }
 
 export function FlowAutomationStatusCard({ businessProfileId }: { businessProfileId: string | null }) {

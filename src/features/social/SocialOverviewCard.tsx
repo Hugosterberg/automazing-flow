@@ -3,12 +3,11 @@ import { useMemo } from "react";
 import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDateTimeMedium, formatNumber } from "@/lib/format";
 import type { ConnectedAccount } from "@/types/accounts";
 
 /** Aggregated metrics across all connected social accounts in the profile. */
 export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] }) {
-  const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
-
   const overviewData = useMemo(() => {
     const summary = accounts.reduce(
       (acc, a) => {
@@ -63,15 +62,15 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Kopplade konton</p>
-              <p className="font-semibold">{numberFmt.format(overviewData.connected)}</p>
+              <p className="font-semibold">{formatNumber(overviewData.connected)}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Total followers</p>
-              <p className="font-semibold">{overviewData.hasFollowers ? numberFmt.format(overviewData.followers) : "–"}</p>
+              <p className="font-semibold">{overviewData.hasFollowers ? formatNumber(overviewData.followers) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Total posts/templates</p>
-              <p className="font-semibold">{overviewData.hasPosts ? numberFmt.format(overviewData.posts) : "–"}</p>
+              <p className="font-semibold">{overviewData.hasPosts ? formatNumber(overviewData.posts) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Average engagement rate</p>
@@ -81,11 +80,11 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Total likes</p>
-              <p className="font-semibold">{overviewData.hasTotalLikes ? numberFmt.format(overviewData.totalLikes) : "–"}</p>
+              <p className="font-semibold">{overviewData.hasTotalLikes ? formatNumber(overviewData.totalLikes) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Total comments</p>
-              <p className="font-semibold">{overviewData.hasTotalComments ? numberFmt.format(overviewData.totalComments) : "–"}</p>
+              <p className="font-semibold">{overviewData.hasTotalComments ? formatNumber(overviewData.totalComments) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Average likes/account</p>
@@ -114,7 +113,7 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
                   <div key={platform} className="flex items-center justify-between text-xs">
                     <span className="capitalize">{platform.replace("_", " ")}</span>
                     <span className="text-muted-foreground">
-                      {values.accounts} acc · {numberFmt.format(values.followers)} followers · {numberFmt.format(values.posts)} posts
+                      {values.accounts} acc · {formatNumber(values.followers)} followers · {formatNumber(values.posts)} posts
                     </span>
                   </div>
                 ))
@@ -123,10 +122,8 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
           </div>
 
           <p className="text-xs text-muted-foreground mt-3">
-            Last update:{" "}
-            {overviewData.lastUpdatedIso
-              ? new Date(overviewData.lastUpdatedIso).toLocaleString("sv-SE")
-              : "No stats timestamp available"}
+            Senast uppdaterad:{" "}
+            {formatDateTimeMedium(overviewData.lastUpdatedIso) || "Ingen tidsstämpel tillgänglig"}
           </p>
         </CardContent>
       </Card>

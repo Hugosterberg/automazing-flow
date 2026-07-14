@@ -3,6 +3,7 @@ import { m } from "framer-motion";
 import { Users, FileText, Heart, Eye, Star, Loader2, ImagePlus } from "lucide-react";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,6 @@ export function SocialStatsSection({
   onRefresh: () => void;
   posts: SocialMediaApiPost[];
 }) {
-  const numberFmt = useMemo(() => new Intl.NumberFormat("en-US"), []);
   const { trend } = useSocialStatsTrend(account?.id ?? null);
 
   const stats = useMemo(() => {
@@ -70,7 +70,7 @@ export function SocialStatsSection({
           ...defaultStats[1],
           key: "gbp-reviews",
           label: "Reviews",
-          value: s.reviewCount != null ? s.reviewCount.toLocaleString("en-US") : "–",
+          value: s.reviewCount != null ? formatNumber(s.reviewCount) : "–",
           change: "",
           icon: FileText,
         },
@@ -84,11 +84,11 @@ export function SocialStatsSection({
 
     const avgLikesStat =
       isInstagram && s.avgViews != null
-        ? { key: "avg-views", label: "Avg. views", value: s.avgViews.toLocaleString("en-US"), change: "", icon: Eye }
+        ? { key: "avg-views", label: "Avg. views", value: formatNumber(s.avgViews), change: "", icon: Eye }
         : s.avgLikes != null
         ? { key: "avg-likes", label: "Avg. likes", value: String(s.avgLikes), change: "", icon: Heart }
         : s.followingCount != null
-          ? { ...defaultStats[1], value: s.followingCount.toLocaleString("en-US") }
+          ? { ...defaultStats[1], value: formatNumber(s.followingCount) }
           : { ...defaultStats[1], value: "–" };
 
     const engagementStat =
@@ -99,13 +99,13 @@ export function SocialStatsSection({
     return [
       {
         ...defaultStats[0],
-        value: s.followersCount != null ? s.followersCount.toLocaleString("en-US") : "–",
+        value: s.followersCount != null ? formatNumber(s.followersCount) : "–",
       },
       avgLikesStat,
       {
         ...defaultStats[2],
         label: isX ? "Tweets" : isWhatsApp ? "Templates" : "Posts",
-        value: s.mediaCount != null ? s.mediaCount.toLocaleString("en-US") : "–",
+        value: s.mediaCount != null ? formatNumber(s.mediaCount) : "–",
       },
       engagementStat,
     ];
@@ -237,7 +237,7 @@ export function SocialStatsSection({
                         {account?.platform === "instagram" && (
                           <div className="flex items-center gap-1 text-white text-xs">
                             <Eye className="h-3.5 w-3.5" />
-                            {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                            {post.viewCount != null ? formatNumber(post.viewCount) : "–"}
                           </div>
                         )}
                         <div className="flex items-center gap-1 text-white text-xs">
@@ -251,7 +251,7 @@ export function SocialStatsSection({
                         </span>
                         {account?.platform === "instagram" && (
                           <span className="bg-black/70 text-white text-[11px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                            <Eye className="h-2.5 w-2.5" />{post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                            <Eye className="h-2.5 w-2.5" />{post.viewCount != null ? formatNumber(post.viewCount) : "–"}
                           </span>
                         )}
                       </div>
@@ -275,7 +275,7 @@ export function SocialStatsSection({
                           {account?.platform === "instagram" && (
                             <span className="flex items-center gap-1">
                               <Eye className="h-3.5 w-3.5" />
-                              {post.viewCount != null ? numberFmt.format(post.viewCount) : "–"}
+                              {post.viewCount != null ? formatNumber(post.viewCount) : "–"}
                             </span>
                           )}
                           <span className="flex items-center gap-1">

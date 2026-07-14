@@ -116,11 +116,12 @@ describe("computeSocialStatsTrend", () => {
 });
 
 describe("formatStatChange", () => {
-  it("formats signed deltas with the window", () => {
+  it("formats signed deltas with the window (sv-SE notation)", () => {
     expect(formatStatChange(12, 7)).toBe("+12 (7d)");
     expect(formatStatChange(-3, 7)).toBe("−3 (7d)");
-    expect(formatStatChange(0.42, 7, { decimals: 1, suffix: "%" })).toBe("+0.4% (7d)");
-    expect(formatStatChange(1234, 7)).toBe("+1,234 (7d)");
+    expect(formatStatChange(0.42, 7, { decimals: 1, suffix: "%" })).toBe("+0,4% (7d)");
+    // sv-SE groups thousands with a (non-breaking) space.
+    expect(formatStatChange(1234, 7)).toMatch(/^\+1\s234 \(7d\)$/);
   });
 
   it("returns empty for deltas that round to zero", () => {

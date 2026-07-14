@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useMarketingCampaigns, type MarketingPerformance as Performance } from "./useMarketingCampaigns";
 import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney, formatNumber, formatPct, formatRoas } from "./format";
+import { formatNumber as formatNumberIntl } from "@/lib/format";
 import { MarketingGradeBadge } from "./MarketingGradeBadge";
 import { portfolioGradeTone } from "./gradeTone";
 import { MarketingRecommendations } from "./MarketingRecommendations";
@@ -33,7 +34,7 @@ function TrendStrip() {
         : "text-muted-foreground";
   const roasDelta =
     trend.roasDelta != null
-      ? `${trend.roasDelta > 0 ? "+" : ""}${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(trend.roasDelta)}×`
+      ? `${trend.roasDelta > 0 ? "+" : ""}${formatNumberIntl(trend.roasDelta, { maximumFractionDigits: 1 })}×`
       : null;
 
   const ScoreIcon =

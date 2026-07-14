@@ -65,6 +65,7 @@ import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 
 import { apiUrl } from "@/lib/apiBase";
+import { formatCurrency, formatNumber, formatShortDate, formatSmartDate } from "@/lib/format";
 import type { ConnectedAccount } from "@/types/accounts";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
@@ -252,29 +253,12 @@ function isNotionData(data: OrganizationData): data is NotionData {
   return Boolean(data && "workspace" in data && "pages" in data);
 }
 
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount);
-}
-
-function formatCurrencyDetailed(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD" }).format(amount);
-}
-
 function formatDate(iso: string | undefined) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (diff === 0) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-  if (diff === 1) return "Yesterday";
-  if (diff < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
-  return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  return formatSmartDate(iso) || "—";
 }
 
 function formatChartDate(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  return formatShortDate(iso) || iso;
 }
 
 function formatPromoValue(value: string | null, valueType: string | null) {
@@ -598,7 +582,7 @@ export default function Ecommerce() {
               label: "Intäkter (30 dagar)",
               value: formatCurrency(stats.revenue30d, currency),
               icon: DollarSign,
-              sub: `${stats.ordersWindow.toLocaleString("en-US")} orders in window`,
+              sub: `${formatNumber(stats.ordersWindow)} orders in window`,
             },
             {
               label: "Snittordervärde",
@@ -608,13 +592,13 @@ export default function Ecommerce() {
             },
             {
               label: "Customers",
-              value: stats.customersCount.toLocaleString("en-US"),
+              value: formatNumber(stats.customersCount),
               icon: Users,
-              sub: `+${stats.newCustomers30d.toLocaleString("en-US")} new in 30 days`,
+              sub: `+${formatNumber(stats.newCustomers30d)} new in 30 days`,
             },
             {
               label: "Products",
-              value: stats.productsCount.toLocaleString("en-US"),
+              value: formatNumber(stats.productsCount),
               icon: Package,
               sub:
                 stats.lowStockCount > 0
@@ -1028,7 +1012,7 @@ export default function Ecommerce() {
                 Intäktstrend
               </CardTitle>
               <CardDescription>
-                Last 30 days · Total {formatCurrencyDetailed(shopifyData.stats.revenue30d, currency)}
+                Last 30 days · Total {formatCurrency(shopifyData.stats.revenue30d, currency, { detailed: true })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1058,7 +1042,7 @@ export default function Ecommerce() {
                     content={
                       <ChartTooltipContent
                         labelFormatter={(value) => formatChartDate(String(value))}
-                        formatter={(value) => formatCurrencyDetailed(Number(value), currency)}
+                        formatter={(value) => formatCurrency(Number(value), currency, { detailed: true })}
                       />
                     }
                   />
@@ -1098,7 +1082,7 @@ export default function Ecommerce() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{product.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {product.quantity.toLocaleString("en-US")} sold
+                          {formatNumber(product.quantity)} sold
                         </p>
                       </div>
                       <p className="text-sm font-semibold tabular-nums">
@@ -1179,7 +1163,7 @@ export default function Ecommerce() {
                         Abandoned checkouts
                       </CardTitle>
                       <CardDescription>
-                        {shopifyData.stats.abandonedCheckouts30d} carts · {formatCurrencyDetailed(shopifyData.stats.abandonedValue30d, currency)} at risk
+                        {shopifyData.stats.abandonedCheckouts30d} carts · {formatCurrency(shopifyData.stats.abandonedValue30d, currency, { detailed: true })} at risk
                       </CardDescription>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
@@ -1309,7 +1293,7 @@ export default function Ecommerce() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{promo.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {promo.targetType || "order"} · used {promo.usageCount.toLocaleString("en-US")} time{promo.usageCount === 1 ? "" : "s"}
+                      {promo.targetType || "order"} · used {formatNumber(promo.usageCount)} time{promo.usageCount === 1 ? "" : "s"}
                       {promo.endsAt ? ` · ends ${formatDate(promo.endsAt)}` : ""}
                     </p>
                   </div>
@@ -1459,7 +1443,7 @@ export default function Ecommerce() {
                                           ) : null}
                                         </span>
                                         <span className="shrink-0 tabular-nums text-muted-foreground">
-                                          {item.quantity} × {formatCurrencyDetailed(item.price, order.currency)}
+                                          {item.quantity} × {formatCurrency(item.price, order.currency, { detailed: true })}
                                         </span>
                                       </div>
                                     ))}

@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { Users, Mail, Sigma } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { summarizeCustomers } from "./customerInsights";
+import { formatNumber as formatNumberBase } from "@/lib/format";
 
 function formatNumber(n: number): string {
-  return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: n % 1 === 0 ? 0 : 2 }).format(n);
+  return formatNumberBase(n, { maximumFractionDigits: n % 1 === 0 ? 0 : 2 });
 }
 
 /** At-a-glance insights over the uploaded customer list (totals, emails, sums). */
