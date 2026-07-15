@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CollapsibleMailBody } from "./CollapsibleMailBody";
 import { MessageHtmlBody } from "./MessageHtmlBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
 import { segmentLinks, splitEmailBody, splitEmailParagraphs } from "./messageBodyFormat";
@@ -14,14 +15,14 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
   }
 
   return (
-    <div className={cn("space-y-4 text-left", quoted && "text-muted-foreground/80")}>
+    <div className={cn("space-y-2 text-left lg:space-y-1.5", quoted && "text-muted-foreground/80")}>
       {paragraphs.map((paragraph, pi) => {
         const segments = segmentLinks(paragraph);
         return (
           <p
             key={pi}
             className={cn(
-              "text-[16px] leading-[1.7] text-left sm:text-[15px] sm:leading-[1.65]",
+              "text-[13px] leading-[1.45] text-left sm:text-[12.5px] sm:leading-[1.4] lg:text-[12px] lg:leading-[1.38]",
               quoted ? "text-muted-foreground/80" : "text-foreground"
             )}
           >
@@ -51,8 +52,8 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
 }
 
 /**
- * Renders message body with mail-friendly typography: readable line height,
- * linkified URLs, and collapsible quoted reply history.
+ * Renders message body with dense mail typography, linkified URLs,
+ * collapsible quoted history, and a height clamp for long emails.
  */
 export function MessageBody({ message }: { message: UnifiedMessage }) {
   const [showQuoted, setShowQuoted] = useState(false);
@@ -65,7 +66,9 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
     if (isHtmlEmailContent(raw)) {
       return (
         <article className="message-prose w-full text-left">
-          <MessageHtmlBody html={raw} />
+          <CollapsibleMailBody contentKey={message.id}>
+            <MessageHtmlBody html={raw} />
+          </CollapsibleMailBody>
         </article>
       );
     }
@@ -73,24 +76,26 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
     const { main, quoted } = splitEmailBody(raw);
     return (
       <article className="message-prose w-full text-left">
-        <div className="message-reading-card px-4 py-5 sm:px-5 sm:py-5">
-          <FormattedBlock text={main || raw} />
-        </div>
+        <CollapsibleMailBody contentKey={message.id}>
+          <div className="message-reading-card px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-2.5 lg:py-2">
+            <FormattedBlock text={main || raw} />
+          </div>
+        </CollapsibleMailBody>
         {quoted ? (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-muted/20 sm:rounded-lg">
+          <div className="mt-2 overflow-hidden rounded-xl border border-border/60 bg-muted/20 sm:rounded-lg">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 w-full justify-between rounded-none px-3.5 text-sm text-muted-foreground sm:h-8 sm:rounded-lg sm:px-3 sm:text-xs"
+              className="h-8 w-full justify-between rounded-none px-3 text-xs text-muted-foreground sm:h-7 sm:rounded-lg sm:px-2.5 sm:text-[11px]"
               onClick={() => setShowQuoted((v) => !v)}
               aria-expanded={showQuoted}
             >
               {showQuoted ? "Dölj citerat" : "Visa citerat"}
-              <ChevronDown className={cn("h-4 w-4 transition-transform sm:h-3.5 sm:w-3.5", showQuoted && "rotate-180")} />
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showQuoted && "rotate-180")} />
             </Button>
             {showQuoted ? (
-              <div className="border-t border-border/60 px-4 py-3 sm:px-5">
+              <div className="border-t border-border/60 px-3 py-2 sm:px-3.5">
                 <FormattedBlock text={quoted} quoted />
               </div>
             ) : null}
@@ -102,9 +107,11 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
 
   return (
     <article className="message-prose w-full text-left">
-      <div className="message-reading-card px-4 py-5 sm:px-5 sm:py-5">
-        <FormattedBlock text={raw} />
-      </div>
+      <CollapsibleMailBody contentKey={message.id}>
+        <div className="message-reading-card px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-2.5 lg:py-2">
+          <FormattedBlock text={raw} />
+        </div>
+      </CollapsibleMailBody>
     </article>
   );
 }

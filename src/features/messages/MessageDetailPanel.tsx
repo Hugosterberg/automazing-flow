@@ -1,26 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Archive,
   CheckCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
   ExternalLink,
+  Folder,
+  FolderInput,
   Loader2,
   Mail,
   MoreHorizontal,
   Send,
   Sparkles,
+  Star,
+  Trash2,
 } from "lucide-react";
 import { m } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +50,8 @@ import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
 import { MessageThread } from "./MessageThread";
 import { avatarGradient, formatFullMessageDate, formatMessageDate, senderInitial } from "./messagesUi";
-import type { ThreadMessage, UnifiedMessage } from "./types";
+import type { MailFolder, ThreadMessage, UnifiedMessage } from "./types";
+import type { MailMessageAction } from "./mailActionsClient";
 
 export type MessageDetailPanelProps = {
   message: UnifiedMessage;
@@ -63,6 +83,11 @@ export type MessageDetailPanelProps = {
     onPrev: () => void;
     onNext: () => void;
   };
+  mailFolders?: MailFolder[];
+  onMoveToFolder?: (folderId: string) => void;
+  moveBusy?: boolean;
+  onMailAction?: (action: MailMessageAction) => void;
+  mailActionBusy?: boolean;
 };
 
 export function MessageDetailPanel({
@@ -88,15 +113,21 @@ export function MessageDetailPanel({
   needsAttention = false,
   focusReplyRef,
   navigation,
+  mailFolders = [],
+  onMoveToFolder,
+  moveBusy = false,
+  onMailAction,
+  mailActionBusy = false,
 }: MessageDetailPanelProps) {
   const isDesktopWorkspace = useIsDesktopWorkspace();
   const isStackedWorkspace = !isDesktopWorkspace;
   const keyboardInset = useKeyboardInset();
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const rawBody = (message.body || message.snippet || "").trim();
   const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
-  const [summaryOpen, setSummaryOpen] = useState(Boolean(aiSummary) && needsAttention && !htmlEmail);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const userOpenedComposeRef = useRef(false);
 
@@ -113,20 +144,13 @@ export function MessageDetailPanel({
   }, [focusReplyRef, message.id]);
 
   useEffect(() => {
-    setSummaryOpen(Boolean(aiSummary) && (isStackedWorkspace ? false : needsAttention && !htmlEmail));
+    setSummaryOpen(false);
   }, [message.id, aiSummary, needsAttention, htmlEmail, isStackedWorkspace]);
 
   useEffect(() => {
     userOpenedComposeRef.current = false;
     setComposeOpen(false);
   }, [message.id]);
-
-  useEffect(() => {
-    if (isStackedWorkspace) return;
-    if (replySent || !canReply || draftBusy) return;
-    const timer = window.setTimeout(() => replyRef.current?.focus(), 140);
-    return () => window.clearTimeout(timer);
-  }, [message.id, draftBusy, replySent, canReply, isStackedWorkspace]);
 
   useEffect(() => {
     if (!isStackedWorkspace || !composeOpen || replySent) return;
@@ -151,6 +175,148 @@ export function MessageDetailPanel({
   const headerAvatarGradient = avatarGradient(fromName || fromEmail || message.id);
   const relativeDate = message.date ? formatMessageDate(message.date) : "";
   const hasDraft = Boolean(replyDraft.trim());
+  const accountFolders = mailFolders.filter((folder) => folder.accountId === message.accountId);
+  const isStarred = Boolean(message.isStarred);
+  const showMailActions = message.kind === "email" && Boolean(onMailAction);
+
+  function renderMoveSubmenu() {
+    if (message.kind !== "email" || !onMoveToFolder || accountFolders.length === 0) return null;
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger disabled={moveBusy}>Flytta till mapp</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+          {accountFolders.map((folder) => (
+            <DropdownMenuItem key={folder.id} onSelect={() => onMoveToFolder(folder.id)}>
+              {folder.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    );
+  }
+
+  function renderMailActionMenuItems() {
+    if (!showMailActions) return null;
+    return (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={mailActionBusy}
+          onSelect={() => onMailAction?.(isStarred ? "unflag" : "flag")}
+        >
+          <Star className={cn("mr-2 h-4 w-4", isStarred && "fill-amber-400 text-amber-500")} />
+          {isStarred ? "Ta bort flagga" : "Flagga"}
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={mailActionBusy} onSelect={() => onMailAction?.("archive")}>
+          <Archive className="mr-2 h-4 w-4" />
+          Arkivera
+        </DropdownMenuItem>
+        {renderMoveSubmenu()}
+        <DropdownMenuItem
+          disabled={mailActionBusy}
+          className="text-destructive focus:text-destructive"
+          onSelect={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Radera
+        </DropdownMenuItem>
+      </>
+    );
+  }
+
+  function renderMailActionBar(compact?: boolean) {
+    if (!showMailActions) return null;
+    return (
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1 rounded-lg border border-border/50 bg-muted/15 p-0.5",
+          compact ? "mt-2" : "mt-2 lg:mt-1.5"
+        )}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn("h-7 gap-1 px-2 text-[11px]", isStarred && "text-amber-600 hover:text-amber-700")}
+          disabled={mailActionBusy}
+          onClick={() => onMailAction?.(isStarred ? "unflag" : "flag")}
+        >
+          <Star className={cn("h-3.5 w-3.5", isStarred && "fill-current")} />
+          {isStarred ? "Flaggad" : "Flagga"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-[11px]"
+          disabled={mailActionBusy}
+          onClick={() => onMailAction?.("archive")}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Arkivera
+        </Button>
+        {onMoveToFolder && accountFolders.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 px-2 text-[11px]"
+                disabled={mailActionBusy || moveBusy}
+              >
+                <FolderInput className="h-3.5 w-3.5" />
+                Flytta
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+              {accountFolders.map((folder) => (
+                <DropdownMenuItem key={folder.id} onSelect={() => onMoveToFolder(folder.id)}>
+                  <Folder className="mr-2 h-4 w-4" />
+                  {folder.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={mailActionBusy}
+          onClick={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Radera
+        </Button>
+        {mailActionBusy ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+      </div>
+    );
+  }
+
+  const deleteDialog = (
+    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Radera mailet?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Mailet flyttas till papperskorgen i {message.channel === "gmail" ? "Gmail" : "Outlook"}. Detta kan inte
+            ångras härifrån.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => onMailAction?.("delete")}
+          >
+            Radera
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   function copyBody() {
     const text = (message.body || message.snippet || "").trim();
@@ -174,32 +340,32 @@ export function MessageDetailPanel({
   }
 
   const bodyContent = (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-2 lg:space-y-1.5">
       {aiSummary ? (
-        <div className="overflow-hidden rounded-2xl border border-violet-500/20 bg-violet-500/[0.04]">
+        <div className="overflow-hidden rounded-xl border border-violet-500/20 bg-violet-500/[0.04] lg:rounded-lg">
           <button
             type="button"
-            className="flex min-h-11 w-full items-center justify-between gap-2 px-3.5 py-3 text-left transition-colors hover:bg-violet-500/[0.06] sm:min-h-0 sm:px-3 sm:py-2.5"
+            className="flex min-h-9 w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-violet-500/[0.06] lg:min-h-0 lg:px-2 lg:py-1"
             onClick={() => setSummaryOpen((v) => !v)}
             aria-expanded={summaryOpen}
           >
-            <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">
-              <Sparkles className="h-3.5 w-3.5 text-violet-500 sm:h-3 sm:w-3" />
+            <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-violet-500" />
               AI-sammanfattning
             </span>
             <ChevronDown
-              className={cn("h-4 w-4 text-muted-foreground transition-transform sm:h-3.5 sm:w-3.5", summaryOpen && "rotate-180")}
+              className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", summaryOpen && "rotate-180")}
             />
           </button>
           {summaryOpen ? (
-            <p className="border-t border-border/60 px-3.5 pb-3.5 pt-2.5 text-[15px] leading-relaxed text-foreground/90 sm:px-3 sm:pb-3 sm:pt-2 sm:text-sm sm:text-muted-foreground">
+            <p className="border-t border-border/60 px-2.5 pb-2 pt-1.5 text-[13px] leading-snug text-muted-foreground lg:px-2 lg:pb-1.5 lg:pt-1 lg:text-[12px]">
               {aiSummary}
             </p>
           ) : null}
         </div>
       ) : null}
 
-      {threadMessages.length > 1 || threadLoading ? (
+      {threadMessages.length > 1 ? (
         <MessageThread
           messages={threadMessages}
           loading={threadLoading}
@@ -207,7 +373,15 @@ export function MessageDetailPanel({
           kind={message.kind}
         />
       ) : (
-        <MessageBody message={message} />
+        <div className="relative">
+          {threadLoading ? (
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Hämtar tråd…
+            </p>
+          ) : null}
+          <MessageBody message={message} />
+        </div>
       )}
     </div>
   );
@@ -326,6 +500,7 @@ export function MessageDetailPanel({
                         Kopiera e-post
                       </DropdownMenuItem>
                     ) : null}
+                    {renderMailActionMenuItems()}
                     {message.externalUrl ? (
                       <DropdownMenuItem asChild>
                         <a href={message.externalUrl} target="_blank" rel="noreferrer">
@@ -381,6 +556,7 @@ export function MessageDetailPanel({
               <h2 className="mt-3 px-2 text-[20px] font-semibold leading-snug tracking-tight">
                 {message.subject || "(Utan ämne)"}
               </h2>
+              {showMailActions ? <div className="px-2">{renderMailActionBar(true)}</div> : null}
             </>
           ) : null}
         </header>
@@ -548,14 +724,15 @@ export function MessageDetailPanel({
             )}
           </footer>
         ) : null}
+        {deleteDialog}
       </div>
     );
   }
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b border-border/80 bg-card/20 px-3 py-2.5 backdrop-blur-sm sm:px-5 sm:py-3">
-        <div className="flex w-full items-start gap-2 sm:gap-3">
+      <header className="shrink-0 border-b border-border/80 bg-card/20 px-3 py-2 backdrop-blur-sm lg:px-3 lg:py-1.5">
+        <div className="flex w-full items-start gap-2">
           {showBack && onBack ? (
             <Button
               type="button"
@@ -571,7 +748,7 @@ export function MessageDetailPanel({
 
           <div
             className={cn(
-              "hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white shadow-sm ring-2 ring-background sm:flex",
+              "hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white shadow-sm ring-2 ring-background lg:flex",
               headerAvatarGradient
             )}
             aria-hidden
@@ -580,8 +757,8 @@ export function MessageDetailPanel({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="min-w-0 text-lg font-semibold leading-snug tracking-tight">
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="min-w-0 text-base font-semibold leading-snug tracking-tight lg:text-[15px]">
                 {message.subject || "(Utan ämne)"}
               </h2>
               <div className="flex shrink-0 items-center gap-0.5">
@@ -626,7 +803,7 @@ export function MessageDetailPanel({
                   <span className="sr-only">Kopiera meddelande</span>
                 </Button>
                 {!isHandled ? (
-                  <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onMarkHandled} title="Markera hanterad (E)">
+                  <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onMarkHandled} title="Markera hanterad (H)">
                     <CheckCheck className="h-4 w-4" />
                     <span className="sr-only">Markera hanterad</span>
                   </Button>
@@ -656,60 +833,55 @@ export function MessageDetailPanel({
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px] uppercase tracking-wide">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground lg:mt-0.5">
+              <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[9px] uppercase tracking-wide">
                 {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
                 {channelLabel}
               </Badge>
-              {message.accountLabel ? <span>{message.accountLabel}</span> : null}
+              <span className="font-medium text-foreground/90">{fromName}</span>
+              {fromEmail ? <span className="truncate text-muted-foreground">&lt;{fromEmail}&gt;</span> : null}
+              {message.accountLabel ? <span className="hidden xl:inline">{message.accountLabel}</span> : null}
               {message.date ? (
                 <>
                   <span aria-hidden>·</span>
-                  <time>{formatFullMessageDate(message.date)}</time>
+                  <time className="tabular-nums">{formatFullMessageDate(message.date)}</time>
                 </>
               ) : null}
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Från</span>
-              <span className="font-medium text-foreground">{fromName}</span>
               {fromEmail ? (
-                <>
-                  <span className="text-muted-foreground">&lt;{fromEmail}&gt;</span>
-                  <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={copyEmail}>
-                    Kopiera
-                  </Button>
-                </>
+                <Button type="button" variant="link" className="h-auto p-0 text-[11px]" onClick={copyEmail}>
+                  Kopiera
+                </Button>
               ) : null}
             </div>
+            {showMailActions ? renderMailActionBar() : null}
           </div>
         </div>
       </header>
 
       {needsAttention && canReply && !replySent ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/5 px-4 py-2 sm:px-5">
-          <span className="text-[11px] font-medium text-primary">Snabbåtgärder</span>
-          <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={onMarkHandled}>
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-primary/15 bg-primary/5 px-3 py-1.5 lg:px-3 lg:py-1">
+          <span className="text-[10px] font-medium text-primary">Snabbåtgärder</span>
+          <Button type="button" size="sm" variant="secondary" className="h-6 px-2 text-[11px]" onClick={onMarkHandled}>
             <CheckCheck className="mr-1 h-3 w-3" />
-            Markera klar
-            <kbd className="ml-1.5 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">H</kbd>
+            Klar
+            <kbd className="ml-1 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">H</kbd>
           </Button>
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onDraftReply} disabled={draftBusy}>
+          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onDraftReply} disabled={draftBusy}>
             {draftBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
-            AI-utkast
+            AI
           </Button>
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => replyRef.current?.focus()}>
-            Skriv svar
-            <kbd className="ml-1.5 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">R</kbd>
+          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => replyRef.current?.focus()}>
+            Svara
+            <kbd className="ml-1 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">R</kbd>
           </Button>
         </div>
       ) : null}
 
-      <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-5">{bodyContent}</div>
+      <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-2 lg:px-3 lg:py-2">{bodyContent}</div>
 
       {canReply ? (
-        <footer className="message-compose-footer shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-3 py-3 backdrop-blur-md sm:px-5">
-          <div className="mx-auto w-full">
+        <footer className="message-compose-footer shrink-0 border-t border-border/80 bg-gradient-to-t from-card to-card/80 px-3 py-2 backdrop-blur-md lg:px-3">
+          <div className="w-full">
             {replySent ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
@@ -724,7 +896,7 @@ export function MessageDetailPanel({
                 ) : null}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Textarea
                   ref={replyRef}
                   value={replyDraft}
@@ -734,7 +906,7 @@ export function MessageDetailPanel({
                       ? "Skriv ditt svar… (AI-utkast laddas automatiskt)"
                       : "Skriv ett svar…"
                   }
-                  className="min-h-[88px] resize-none rounded-xl border-border/70 bg-background/80 text-sm leading-relaxed shadow-inner focus-visible:ring-primary/30"
+                  className="min-h-[72px] resize-none rounded-lg border-border/70 bg-background/80 text-[13px] leading-snug shadow-inner focus-visible:ring-primary/30 lg:min-h-[64px]"
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
                       e.preventDefault();
@@ -742,8 +914,8 @@ export function MessageDetailPanel({
                     }
                   }}
                 />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" className="h-8" onClick={onDraftReply} disabled={draftBusy}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={onDraftReply} disabled={draftBusy}>
                     {draftBusy ? (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     ) : (
@@ -759,12 +931,12 @@ export function MessageDetailPanel({
                   <Button
                     type="button"
                     size="sm"
-                    className="ml-auto h-8 gap-1.5 glow-sm"
+                    className="ml-auto h-7 gap-1 text-[11px] glow-sm"
                     onClick={onSendReply}
                     disabled={sendBusy || !replyDraft.trim()}
                   >
-                    {sendBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Skicka svar
+                    {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Skicka
                   </Button>
                   <span className="hidden text-[10px] text-muted-foreground lg:inline">
                     Ctrl+Enter
@@ -776,6 +948,7 @@ export function MessageDetailPanel({
           </div>
         </footer>
       ) : null}
+      {deleteDialog}
     </div>
   );
 }
@@ -815,7 +988,10 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Hanterad
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Klar
+          </li>
+          <li>
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> Arkivera
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> Svara

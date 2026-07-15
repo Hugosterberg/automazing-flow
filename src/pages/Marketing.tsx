@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
@@ -232,12 +233,30 @@ export default function MarketingPage() {
   // create dialog directly. The param is consumed (removed) so refresh or
   // back navigation doesn't re-open the dialog.
   const [searchParams, setSearchParams] = useSearchParams();
+
+  type MarketingTab = "paths" | "campaigns" | "ads" | "ideas";
+  const MARKETING_TAB_VALUES: MarketingTab[] = ["paths", "campaigns", "ads", "ideas"];
+  const rawMarketingTab = searchParams.get("tab");
+  const marketingTab: MarketingTab =
+    rawMarketingTab && (MARKETING_TAB_VALUES as string[]).includes(rawMarketingTab)
+      ? (rawMarketingTab as MarketingTab)
+      : "paths";
+
+  function setMarketingTab(tab: MarketingTab) {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "paths") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
   useEffect(() => {
     if (searchParams.get("new") !== "campaign") return;
+    setMarketingTab("campaigns");
     setEditingCampaignId(null);
     setCampaignOpen(true);
     const next = new URLSearchParams(searchParams);
     next.delete("new");
+    next.set("tab", "campaigns");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -266,6 +285,7 @@ export default function MarketingPage() {
   }
 
   function openNewCampaign() {
+    setMarketingTab("campaigns");
     resetCampaignForm();
     setCampaignOpen(true);
   }
@@ -403,11 +423,26 @@ export default function MarketingPage() {
         label="AI-insikter för marketing"
       />
 
+      <PageModeTabs
+        value={marketingTab}
+        aria-label="Marketing-flikar"
+        onChange={setMarketingTab}
+        options={[
+          { value: "paths", label: "Vägar" },
+          { value: "campaigns", label: "Kampanjer", count: campaignTasks.length },
+          { value: "ads", label: "Betald" },
+          { value: "ideas", label: "Idéer" },
+        ]}
+      />
+
+      {marketingTab === "paths" ? (
       <m.div {...pageFadeUp}>
         <MarketingSetupCard />
         <MarketingPathsHub pathStatus={pathStatus} />
       </m.div>
+      ) : null}
 
+      {marketingTab === "ideas" ? (
       <m.div {...pageFadeUp} transition={{ delay: 0.02 }} id="marketing-ideas" className="space-y-4">
         <SalesPlaybookSection
           businessProfileId={businessProfileId}
@@ -445,10 +480,13 @@ export default function MarketingPage() {
           </CardContent>
         </Card>
       </m.div>
+      ) : null}
 
+      {marketingTab === "paths" || marketingTab === "ads" ? (
       <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
         <SectionConnectionStatus area="marketing" />
       </m.div>
+      ) : null}
 
       {oauthErrorDetails ? (
         <m.div {...pageFadeUp} transition={{ duration: 0.3 }}>
@@ -460,6 +498,8 @@ export default function MarketingPage() {
         </m.div>
       ) : null}
 
+      {marketingTab === "ads" ? (
+      <>
       <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="app-workspace-shell !min-h-0 scroll-mt-24 space-y-4 p-3 sm:p-4" id="paid-ads">
         <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
@@ -562,7 +602,11 @@ export default function MarketingPage() {
       <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
         <MarketingCampaigns />
       </m.div>
+      </>
+      ) : null}
 
+      {marketingTab === "campaigns" ? (
+      <>
       {activeCampaigns.length > 0 ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.07 }}>
           <CampaignFollowUp
@@ -679,6 +723,8 @@ export default function MarketingPage() {
           </div>
         ) : null}
       </m.section>
+      </>
+      ) : null}
 
       <Dialog open={campaignOpen} onOpenChange={handleCampaignDialogChange}>
         <DialogContent className="sm:max-w-2xl">

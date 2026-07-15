@@ -163,8 +163,8 @@ function extractGmailBody(payload?: GmailMessage["payload"]): string {
     if (!plain && chunk.plain) plain = chunk.plain;
     if (!html && chunk.html) html = chunk.html;
   }
+  if (html.trim()) return html;
   if (plain.trim()) return plain;
-  if (html.trim()) return stripHtmlToText(html);
   return "";
 }
 
@@ -226,12 +226,17 @@ export async function fetchGmailAccountData({
   stored,
   googleClientId,
   googleClientSecret,
-}: GmailFetchArgs) {
+  labelId = "INBOX",
+}: GmailFetchArgs & { labelId?: string }) {
   async function fetchMessagesList(token: string) {
-    const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX", {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(15_000),
-    });
+    const label = encodeURIComponent(labelId || "INBOX");
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=${label}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
     debugLog("pre-fix", "H5", "gmail.ts:fetchMessagesList", "Gmail list response status", {
       status: listRes.status,
       ok: listRes.ok,
@@ -365,6 +370,7 @@ export async function fetchGmailAccountData({
         snippet: msg.snippet || "",
         body: body || msg.snippet || "",
         isUnread: (msg.labelIds || []).includes("UNREAD"),
+        isStarred: (msg.labelIds || []).includes("STARRED"),
       };
     });
 
@@ -540,4 +546,160 @@ export async function sendGmailReply({
 async function providerError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}));
   return String(body?.error?.message || body?.error || "provider_send_failed");
+}
+
+export type GmailLabel = {
+  id: string;
+  name: string;
+  type: string;
+  messagesTotal?: number;
+  messagesUnread?: number;
+};
+
+async function withGmailToken<T>(
+  args: GmailFetchArgs,
+  run: (token: string) => Promise<Response>
+): Promise<{ ok: true; token: string; res: Response } | { ok: false; status: number; error: string }> {
+  let token = args.accessToken;
+  let res = await run(token);
+  if (res.status === 401 && args.refreshToken) {
+    const refreshed = await refreshGmailToken({
+      refreshToken: args.refreshToken,
+      googleClientId: args.googleClientId,
+      googleClientSecret: args.googleClientSecret,
+    });
+    if (refreshed.accessToken) {
+      token = refreshed.accessToken;
+      await args.tokenStore.set(args.accountId, { ...args.stored, accessToken: refreshed.accessToken });
+      res = await run(token);
+    } else {
+      return { ok: false as const, status: 401, error: "gmail_reconnect_required" };
+    }
+  }
+  if (!res.ok) {
+    return { ok: false as const, status: res.status, error: await providerError(res) };
+  }
+  return { ok: true as const, token, res };
+}
+
+export async function listGmailUserLabels(args: GmailFetchArgs) {
+  const result = await withGmailToken(args, (token) =>
+    fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { error: result.error, status: result.status };
+  const data = (await result.res.json().catch(() => ({}))) as {
+    labels?: Array<{ id?: string; name?: string; type?: string; messagesTotal?: number; messagesUnread?: number }>;
+  };
+  const folders: GmailLabel[] = (data.labels || [])
+    .filter((label) => String(label.type || "").toLowerCase() === "user")
+    .map((label) => ({
+      id: String(label.id || ""),
+      name: String(label.name || ""),
+      type: String(label.type || "user"),
+      messagesTotal: typeof label.messagesTotal === "number" ? label.messagesTotal : undefined,
+      messagesUnread: typeof label.messagesUnread === "number" ? label.messagesUnread : undefined,
+    }))
+    .filter((label) => label.id && label.name)
+    .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  return { folders };
+}
+
+export async function createGmailUserLabel(args: GmailFetchArgs & { name: string }) {
+  const cleanName = String(args.name || "").trim();
+  if (!cleanName) return { ok: false as const, status: 400, error: "folder_name_required" };
+  const result = await withGmailToken(args, (token) =>
+    fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: cleanName,
+        labelListVisibility: "labelShow",
+        messageListVisibility: "show",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  const data = (await result.res.json().catch(() => ({}))) as { id?: string; name?: string; type?: string };
+  return {
+    ok: true as const,
+    folder: {
+      id: String(data.id || ""),
+      name: String(data.name || cleanName),
+      type: String(data.type || "user"),
+    },
+  };
+}
+
+export async function moveGmailMessageToLabel(
+  args: GmailFetchArgs & { messageId: string; labelId: string; removeFromInbox?: boolean }
+) {
+  const messageId = String(args.messageId || "").trim();
+  const labelId = String(args.labelId || "").trim();
+  if (!messageId || !labelId) return { ok: false as const, status: 400, error: "message_and_folder_required" };
+  const removeFromInbox = args.removeFromInbox !== false;
+  const result = await withGmailToken(args, (token) =>
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/modify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        addLabelIds: [labelId],
+        ...(removeFromInbox ? { removeLabelIds: ["INBOX"] } : {}),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
+}
+
+export async function deleteGmailMessage(args: GmailFetchArgs & { messageId: string }) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const result = await withGmailToken(args, (token) =>
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/trash`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
+}
+
+export async function archiveGmailMessage(args: GmailFetchArgs & { messageId: string }) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const result = await withGmailToken(args, (token) =>
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/modify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ removeLabelIds: ["INBOX"] }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
+}
+
+export async function setGmailMessageStarred(
+  args: GmailFetchArgs & { messageId: string; starred: boolean }
+) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const result = await withGmailToken(args, (token) =>
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/modify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(
+        args.starred ? { addLabelIds: ["STARRED"] } : { removeLabelIds: ["STARRED"] }
+      ),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
 }

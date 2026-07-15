@@ -125,7 +125,7 @@ const CANVA_AUTH = "https://www.canva.com/api/oauth/authorize";
 const YOUTUBE_SCOPES =
   "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile";
 const GMAIL_SCOPES =
-  "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
+  "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
 const GOOGLE_DRIVE_SCOPES =
   "openid email profile https://www.googleapis.com/auth/drive.readonly";
 const GOOGLE_CALENDAR_SCOPES =
@@ -3980,7 +3980,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
       oauthReturnPage: parseOauthReturnPage(req) || undefined,
     });
     const redirectUri = oauthCallbackUrl(req, "/api/auth/outlook/callback");
-    const scope = "offline_access openid profile email User.Read Mail.Read Mail.Send";
+    const scope = "offline_access openid profile email User.Read Mail.ReadWrite Mail.Send";
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&response_mode=query`;
     res.redirect(url);
   });

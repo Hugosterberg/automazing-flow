@@ -72,8 +72,8 @@ export function MessageInboxStats({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border/40 bg-gradient-to-r from-muted/15 via-background/40 to-muted/15 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
-      <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+    <div className="flex flex-col gap-1.5 border-b border-border/40 bg-gradient-to-r from-muted/15 via-background/40 to-muted/15 px-3 py-1.5 lg:flex-row lg:items-center lg:px-3 lg:py-1">
+      <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 lg:gap-1">
         <StatPill
           icon={Zap}
           label="Öppna"
@@ -136,7 +136,7 @@ function StatPill({
       onClick={onClick}
       title={title}
       className={cn(
-        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-all duration-150",
+        "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-left transition-all duration-150 lg:gap-1 lg:px-1.5 lg:py-0.5",
         highlight ? "border-primary/25 bg-primary/[0.06] shadow-sm" : "border-border/50 bg-background/40",
         interactive &&
           "cursor-pointer hover:-translate-y-px hover:border-primary/35 hover:bg-primary/10 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0"

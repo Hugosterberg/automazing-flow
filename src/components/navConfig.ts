@@ -83,14 +83,6 @@ export const topNavItems: TopNavItem[] = [
     hideAccounts: true,
   },
   {
-    key: "intelligence",
-    title: "MCP Intelligence",
-    url: "/intelligence",
-    icon: Bot,
-    platforms: [] as AccountPlatform[],
-    hideAccounts: true,
-  },
-  {
     key: "preferences",
     title: "Inställningar",
     url: "/preferences",
@@ -242,6 +234,15 @@ export const navItems: NavItem[] = [
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
     group: "productivity",
+  },
+  {
+    key: "intelligence",
+    title: "MCP Intelligence",
+    url: "/intelligence",
+    icon: Bot,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+    group: "system",
   },
 ];
 

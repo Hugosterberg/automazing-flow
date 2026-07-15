@@ -32,7 +32,7 @@ const FILTER_OPTIONS: Array<{ value: InboxFilter; label: string; shortcut: strin
   { value: "queue", label: "Kö", shortcut: "Q" },
   { value: "open", label: "Öppna", shortcut: "O" },
   { value: "all", label: "Alla", shortcut: "A" },
-  { value: "handled", label: "Hanterade", shortcut: "H" },
+  { value: "handled", label: "Hanterade", shortcut: "" },
 ];
 
 type MessageInboxToolbarProps = {
@@ -264,7 +264,9 @@ export function MessageInboxToolbar({
                     key={opt.value}
                     type="button"
                     onClick={() => onInboxFilterChange(opt.value)}
-                    title={isMobile ? undefined : `Genväg: ${opt.shortcut}`}
+                    title={
+                      isMobile || !opt.shortcut ? undefined : `Genväg: ${opt.shortcut}`
+                    }
                     className={cn(
                       "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                       inboxFilter === opt.value

@@ -370,8 +370,14 @@
   }
 
   .message-iframe-shell {
-    transition: height 0.2s ease;
+    transition: opacity 0.2s ease;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Fade at bottom when a long mail body is clamped (collapsed). */
+  .mask-mail-fade {
+    mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
   }
 
   .messages-workspace-shell {
@@ -410,6 +416,20 @@
 
   .message-compose-footer-dock {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 1024px) {
+    .messages-workspace-shell {
+      min-height: min(82vh, 920px);
+    }
+
+    .message-prose .message-reading-card {
+      border-radius: 0.5rem;
+    }
+
+    .message-reading-pane .message-iframe-shell {
+      border-radius: 0.5rem;
+    }
   }
 
   @media (max-width: 1023px) {

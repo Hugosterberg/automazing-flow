@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { m } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, BarChart3, Globe2, Megaphone, Share2, Star, Users } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/chart";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
@@ -181,6 +182,22 @@ export default function InsightsPage() {
     !hasMarketing &&
     !trackingSite?.siteKey;
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  type InsightsTab = "overview" | "social" | "marketing" | "reviews" | "website";
+  const INSIGHTS_TAB_VALUES: InsightsTab[] = ["overview", "social", "marketing", "reviews", "website"];
+  const rawInsightsTab = searchParams.get("tab");
+  const insightsTab: InsightsTab =
+    rawInsightsTab && (INSIGHTS_TAB_VALUES as string[]).includes(rawInsightsTab)
+      ? (rawInsightsTab as InsightsTab)
+      : "overview";
+
+  function setInsightsTab(tab: InsightsTab) {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "overview") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
   return (
     <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="space-y-6 max-w-5xl w-full">
       <PageHeader
@@ -213,7 +230,21 @@ export default function InsightsPage() {
         extraActions={isEmpty ? [{ label: "Öppna kopplingar", to: "/connections" }] : []}
       />
 
+      <PageModeTabs
+        value={insightsTab}
+        aria-label="Insiktsflikar"
+        onChange={setInsightsTab}
+        options={[
+          { value: "overview", label: "Översikt" },
+          { value: "social", label: "Socialt", count: socialAccounts.length },
+          { value: "marketing", label: "Marknadsföring" },
+          { value: "reviews", label: "Recensioner", count: reviewAccounts.length },
+          { value: "website", label: "Webb" },
+        ]}
+      />
+
       <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
+        {insightsTab === "overview" ? (
         <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Socialt</p>
@@ -232,10 +263,11 @@ export default function InsightsPage() {
             <p className="text-xs font-semibold tabular-nums">{trackingSite?.siteKey ? "Ja" : "—"}</p>
           </div>
         </div>
+        ) : null}
 
-      <CompaniesOverview />
+      {insightsTab === "overview" ? <CompaniesOverview /> : null}
 
-      {businessProfileId ? (
+      {insightsTab === "website" && businessProfileId ? (
         <section aria-label="Webbplats" className="space-y-2">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <Globe2 className="h-4 w-4 text-muted-foreground" aria-hidden />
@@ -245,7 +277,7 @@ export default function InsightsPage() {
         </section>
       ) : null}
 
-      {isEmpty ? (
+      {insightsTab === "overview" && isEmpty ? (
         <Card className="border-dashed border-border bg-muted/10">
           <CardContent className="py-10 text-center space-y-2">
             <BarChart3 className="h-8 w-8 text-muted-foreground/40 mx-auto" aria-hidden />
@@ -261,7 +293,7 @@ export default function InsightsPage() {
         </Card>
       ) : null}
 
-      {socialAccounts.length > 0 || followerSeries.length >= 2 ? (
+      {(insightsTab === "social") && (socialAccounts.length > 0 || followerSeries.length >= 2) ? (
         <section aria-label="Socialt" className="space-y-2">
           <SectionHeading icon={Share2} title="Socialt" to="/social-media" linkLabel="Socialt" />
           <Card className="border-border">
@@ -337,7 +369,7 @@ export default function InsightsPage() {
         </section>
       ) : null}
 
-      {hasMarketing ? (
+      {insightsTab === "marketing" && hasMarketing ? (
         <section aria-label="Marknadsföring" className="space-y-2">
           <SectionHeading icon={Megaphone} title="Marknadsföring & butik" to="/marketing" linkLabel="Marknadsföring" />
           {/* MarketingTrendChart draws its own framed box — no Card wrapper,
@@ -346,7 +378,7 @@ export default function InsightsPage() {
         </section>
       ) : null}
 
-      {reviewAccounts.length > 0 ? (
+      {insightsTab === "reviews" && reviewAccounts.length > 0 ? (
         <section aria-label="Recensioner" className="space-y-2">
           <SectionHeading icon={Star} title="Recensioner" to="/reviews" linkLabel="Recensioner" />
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -359,6 +391,19 @@ export default function InsightsPage() {
             ))}
           </ul>
         </section>
+      ) : null}
+
+      {insightsTab === "social" && socialAccounts.length === 0 && followerSeries.length < 2 ? (
+        <p className="text-sm text-muted-foreground">Ingen social trenddata ännu. Koppla konton under Kopplingar.</p>
+      ) : null}
+      {insightsTab === "marketing" && !hasMarketing ? (
+        <p className="text-sm text-muted-foreground">Ingen marknadsföringsdata ännu. Koppla annonskonton under Marketing.</p>
+      ) : null}
+      {insightsTab === "reviews" && reviewAccounts.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Inga recensionskonton med betyg ännu.</p>
+      ) : null}
+      {insightsTab === "website" && !businessProfileId ? (
+        <p className="text-sm text-muted-foreground">Välj ett företag för att se webbplatsstatistik.</p>
       ) : null}
       </div>
     </m.div>

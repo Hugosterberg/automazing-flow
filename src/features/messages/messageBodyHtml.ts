@@ -37,16 +37,27 @@ export function buildEmailIframeDocument(bodyHtml: string): string {
   }
   *, *::before, *::after { box-sizing: border-box; }
   body {
-    padding: 14px 16px;
+    padding: 8px 10px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 12.5px;
+    line-height: 1.4;
     color: #1a1a1a;
     word-wrap: break-word;
     overflow-wrap: anywhere;
   }
+  @media (min-width: 900px) {
+    body {
+      padding: 6px 8px;
+      font-size: 12px;
+      line-height: 1.38;
+      zoom: 0.86;
+    }
+    img, video, iframe, embed, object {
+      max-height: min(22vh, 160px) !important;
+    }
+  }
   @media (max-width: 640px) {
-    body { padding: 12px 12px; font-size: 15px; }
+    body { padding: 8px 10px; font-size: 13px; line-height: 1.4; }
   }
   /* Marketing templates ship huge hero / attachment images — keep them readable. */
   img, video, iframe, embed, object, svg {
@@ -54,7 +65,7 @@ export function buildEmailIframeDocument(bodyHtml: string): string {
     height: auto !important;
   }
   img, video, iframe, embed, object {
-    max-height: min(42vh, 320px) !important;
+    max-height: min(28vh, 200px) !important;
     object-fit: contain !important;
   }
   table {
@@ -62,14 +73,30 @@ export function buildEmailIframeDocument(bodyHtml: string): string {
   }
   td, th {
     word-break: break-word;
+    font-size: inherit;
   }
+  p, li, td, th, div {
+    font-size: inherit;
+    line-height: inherit;
+  }
+  h1 { font-size: 1.15em !important; margin: 0.35em 0 !important; }
+  h2 { font-size: 1.08em !important; margin: 0.3em 0 !important; }
+  h3, h4 { font-size: 1.02em !important; margin: 0.25em 0 !important; }
   pre, code {
     max-width: 100%;
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-word;
+    font-size: 0.92em;
   }
   a { color: #2563eb; }
+  blockquote {
+    margin: 0.4em 0;
+    padding-left: 0.65em;
+    border-left: 2px solid #d4d4d8;
+    color: #52525b;
+    font-size: 0.95em;
+  }
 </style>
 </head>
 <body>${bodyHtml}</body>

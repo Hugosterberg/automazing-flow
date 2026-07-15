@@ -6,7 +6,9 @@ import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummar
 
 export type SmartHintAction = {
   label: string;
-  to: string;
+  /** Navigate to a route. Prefer `onClick` for same-page actions. */
+  to?: string;
+  onClick?: () => void;
 };
 
 export type PageSmartHints = {

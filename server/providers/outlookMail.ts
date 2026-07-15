@@ -24,6 +24,9 @@ type GraphMessage = {
   bodyPreview?: string;
   receivedDateTime?: string;
   isRead?: boolean;
+  flag?: {
+    flagStatus?: string;
+  };
   from?: {
     emailAddress?: {
       name?: string;
@@ -57,7 +60,9 @@ function formatOutlookGraphMessage(m: GraphMessage, mailboxEmail: string): Outlo
   const addr = m.from?.emailAddress;
   const name = String(addr?.name || addr?.address || "Unknown");
   const email = String(addr?.address || "");
-  const bodyText = stripHtmlBody(m.body?.content);
+  const rawBody = typeof m.body?.content === "string" ? m.body.content : "";
+  const isHtml = String(m.body?.contentType || "").toLowerCase() === "html";
+  const bodyText = isHtml && rawBody.trim() ? rawBody : stripHtmlBody(rawBody);
   const mailbox = mailboxEmail.trim().toLowerCase();
   return {
     id: String(m.id || crypto.randomUUID()),
@@ -102,7 +107,64 @@ export async function refreshMicrosoftToken({
   };
 }
 
-export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
+export type OutlookMailFolder = {
+  id: string;
+  name: string;
+  parentFolderId?: string;
+  totalItemCount?: number;
+  unreadItemCount?: number;
+};
+
+const OUTLOOK_SYSTEM_FOLDER_NAMES = new Set([
+  "archive",
+  "clutter",
+  "conflicts",
+  "conversation history",
+  "deleted items",
+  "drafts",
+  "inbox",
+  "junk email",
+  "local failures",
+  "outbox",
+  "recoverable items deletions",
+  "scheduled",
+  "search folders",
+  "sent items",
+  "sync issues",
+]);
+
+async function withOutlookToken<T>(
+  args: OutlookMailFetchArgs,
+  run: (token: string) => Promise<Response>
+): Promise<{ ok: true; token: string; res: Response } | { ok: false; status: number; error: string }> {
+  let token = args.accessToken;
+  let res = await run(token);
+  if (res.status === 401 && args.refreshToken) {
+    const refreshed = await refreshMicrosoftToken({
+      refreshToken: args.refreshToken,
+      microsoftClientId: args.microsoftClientId,
+      microsoftClientSecret: args.microsoftClientSecret,
+    });
+    if (!refreshed) {
+      return { ok: false as const, status: 401, error: "outlook_reconnect_required" };
+    }
+    token = refreshed.accessToken;
+    await args.tokenStore.set(args.accountId, {
+      ...args.stored,
+      accessToken: refreshed.accessToken,
+      ...(refreshed.refreshToken ? { refreshToken: refreshed.refreshToken } : {}),
+    });
+    res = await run(token);
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const error = String((body as { error?: { message?: string } })?.error?.message || "outlook_request_failed");
+    return { ok: false as const, status: res.status, error };
+  }
+  return { ok: true as const, token, res };
+}
+
+export async function fetchOutlookMailData(args: OutlookMailFetchArgs & { folderId?: string }) {
   const {
     accessToken,
     refreshToken,
@@ -111,13 +173,15 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
     stored,
     microsoftClientId,
     microsoftClientSecret,
+    folderId,
   } = args;
   let token = accessToken;
   const headers = (t: string) => ({ Authorization: `Bearer ${t}` });
 
-  const listUrl =
-    "https://graph.microsoft.com/v1.0/me/messages?" +
-    "$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,body";
+  const listUrl = folderId
+    ? `https://graph.microsoft.com/v1.0/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag,body`
+    : "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?" +
+      "$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag,body";
 
   async function fetchList(t: string) {
     return fetch(listUrl, { headers: headers(t), signal: AbortSignal.timeout(15_000) });
@@ -168,6 +232,7 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs) {
       snippet: formatted.snippet,
       body: formatted.body,
       isUnread: m.isRead === false,
+      isStarred: String(m.flag?.flagStatus || "").toLowerCase() === "flagged",
     };
   });
 
@@ -302,4 +367,145 @@ export async function sendOutlookMailReply({
     return { ok: false, status: res.status, error };
   }
   return { ok: true, status: res.status, data: {} };
+}
+
+export async function listOutlookUserMailFolders(args: OutlookMailFetchArgs) {
+  const result = await withOutlookToken(args, (token) =>
+    fetch(
+      "https://graph.microsoft.com/v1.0/me/mailFolders?$top=100&$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount,wellKnownName",
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) }
+    )
+  );
+  if (result.ok === false) return { error: result.error, status: result.status };
+  const data = (await result.res.json().catch(() => ({}))) as {
+    value?: Array<{
+      id?: string;
+      displayName?: string;
+      parentFolderId?: string;
+      totalItemCount?: number;
+      unreadItemCount?: number;
+      wellKnownName?: string;
+    }>;
+  };
+  const folders: OutlookMailFolder[] = (data.value || [])
+    .filter((folder) => {
+      const name = String(folder.displayName || "").trim().toLowerCase();
+      if (!folder.id || !name) return false;
+      if (folder.wellKnownName) return false;
+      if (OUTLOOK_SYSTEM_FOLDER_NAMES.has(name)) return false;
+      return true;
+    })
+    .map((folder) => ({
+      id: String(folder.id || ""),
+      name: String(folder.displayName || ""),
+      parentFolderId: folder.parentFolderId ? String(folder.parentFolderId) : undefined,
+      totalItemCount: typeof folder.totalItemCount === "number" ? folder.totalItemCount : undefined,
+      unreadItemCount: typeof folder.unreadItemCount === "number" ? folder.unreadItemCount : undefined,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  return { folders };
+}
+
+export async function createOutlookMailFolder(args: OutlookMailFetchArgs & { name: string }) {
+  const cleanName = String(args.name || "").trim();
+  if (!cleanName) return { ok: false as const, status: 400, error: "folder_name_required" };
+
+  const inboxResult = await withOutlookToken(args, (token) =>
+    fetch("https://graph.microsoft.com/v1.0/me/mailFolders/inbox", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (inboxResult.ok === false) return { ok: false as const, status: inboxResult.status, error: inboxResult.error };
+  const inbox = (await inboxResult.res.json().catch(() => ({}))) as { id?: string };
+  const inboxId = String(inbox.id || "");
+  if (!inboxId) return { ok: false as const, status: 502, error: "outlook_inbox_not_found" };
+
+  const createResult = await withOutlookToken(args, (token) =>
+    fetch(`https://graph.microsoft.com/v1.0/me/mailFolders/${encodeURIComponent(inboxId)}/childFolders`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: cleanName }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (createResult.ok === false) return { ok: false as const, status: createResult.status, error: createResult.error };
+  const data = (await createResult.res.json().catch(() => ({}))) as { id?: string; displayName?: string };
+  return {
+    ok: true as const,
+    folder: {
+      id: String(data.id || ""),
+      name: String(data.displayName || cleanName),
+      parentFolderId: inboxId,
+    },
+  };
+}
+
+export async function moveOutlookMessageToFolder(
+  args: OutlookMailFetchArgs & { messageId: string; folderId: string }
+) {
+  const messageId = String(args.messageId || "").trim();
+  const folderId = String(args.folderId || "").trim();
+  if (!messageId || !folderId) return { ok: false as const, status: 400, error: "message_and_folder_required" };
+  const result = await withOutlookToken(args, (token) =>
+    fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/move`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ destinationId: folderId }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
+}
+
+export async function deleteOutlookMessage(args: OutlookMailFetchArgs & { messageId: string }) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const result = await withOutlookToken(args, (token) =>
+    fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
+}
+
+export async function archiveOutlookMessage(args: OutlookMailFetchArgs & { messageId: string }) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const archiveResult = await withOutlookToken(args, (token) =>
+    fetch("https://graph.microsoft.com/v1.0/me/mailFolders/archive", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (archiveResult.ok === false) {
+    return { ok: false as const, status: archiveResult.status, error: archiveResult.error };
+  }
+  const archive = (await archiveResult.res.json().catch(() => ({}))) as { id?: string };
+  const archiveId = String(archive.id || "");
+  if (!archiveId) return { ok: false as const, status: 502, error: "outlook_archive_not_found" };
+  return moveOutlookMessageToFolder({ ...args, messageId, folderId: archiveId });
+}
+
+export async function setOutlookMessageFlagged(
+  args: OutlookMailFetchArgs & { messageId: string; flagged: boolean }
+) {
+  const messageId = String(args.messageId || "").trim();
+  if (!messageId) return { ok: false as const, status: 400, error: "message_id_required" };
+  const result = await withOutlookToken(args, (token) =>
+    fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flag: { flagStatus: args.flagged ? "flagged" : "notFlagged" },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  );
+  if (result.ok === false) return { ok: false as const, status: result.status, error: result.error };
+  return { ok: true as const };
 }

@@ -33,7 +33,7 @@ function threadMessageAsUnified(msg: ThreadMessage, kind: UnifiedMessage["kind"]
 }
 
 export function MessageThread({ messages, loading, highlightId, kind }: Props) {
-  if (loading) {
+  if (loading && messages.length === 0) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -48,10 +48,17 @@ export function MessageThread({ messages, loading, highlightId, kind }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">
-        Konversation · {messages.length} meddelanden
-      </p>
-      <ol className="space-y-3 sm:space-y-3">
+      {loading ? (
+        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Uppdaterar tråd…
+        </p>
+      ) : (
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">
+          Konversation · {messages.length} meddelanden
+        </p>
+      )}
+      <ol className="space-y-2 sm:space-y-2">
         {messages.map((msg) => {
           const highlighted = highlightId === msg.id;
           const outgoing = Boolean(msg.isOutgoing);
@@ -59,21 +66,21 @@ export function MessageThread({ messages, loading, highlightId, kind }: Props) {
             <li
               key={msg.id}
               className={cn(
-                "message-reading-card px-4 py-3.5 transition-colors sm:px-4 sm:py-3",
+                "message-reading-card px-3 py-2.5 transition-colors sm:px-3 sm:py-2",
                 highlighted ? "border-primary/40 bg-primary/5 ring-1 ring-primary/15" : "",
-                outgoing && "ml-4 border-primary/20 bg-primary/[0.03] sm:ml-10"
+                outgoing && "ml-3 border-primary/20 bg-primary/[0.03] sm:ml-8"
               )}
             >
-              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 sm:mb-2">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 sm:mb-1">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold sm:text-sm sm:font-medium">
+                  <p className="text-[13px] font-semibold sm:text-xs sm:font-medium">
                     {msg.isOutgoing ? "Du" : msg.from.name || "Kontakt"}
                   </p>
                   {kind === "email" && msg.subject ? (
-                    <p className="truncate text-sm text-muted-foreground sm:text-xs">{msg.subject}</p>
+                    <p className="truncate text-[11px] text-muted-foreground sm:text-[10px]">{msg.subject}</p>
                   ) : null}
                 </div>
-                <time className="shrink-0 text-xs tabular-nums text-muted-foreground sm:text-[11px]">
+                <time className="shrink-0 text-[11px] tabular-nums text-muted-foreground sm:text-[10px]">
                   {formatThreadDate(msg.date)}
                 </time>
               </div>

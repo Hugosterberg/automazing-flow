@@ -54,7 +54,14 @@ import {
   type InboxFilter,
   type ThreadMessage,
   type UnifiedMessage,
+  type MailFolder,
+  type MailFolderSelection,
+  type MailSortOrder,
+  type MailViewFilter,
+  MessageMailToolbar,
 } from "@/features/messages";
+import { moveMessageToFolder } from "@/features/messages/mailFoldersClient";
+import { performMailAction, type MailMessageAction } from "@/features/messages/mailActionsClient";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
@@ -109,6 +116,12 @@ export default function MessagesPage() {
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
+  const [selectedMailFolder, setSelectedMailFolderState] = useState<MailFolderSelection | null>(null);
+  const [mailFolders, setMailFolders] = useState<MailFolder[]>([]);
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [mailActionBusy, setMailActionBusy] = useState(false);
+  const [mailViewFilter, setMailViewFilterState] = useState<MailViewFilter>("all");
+  const [mailSort, setMailSortState] = useState<MailSortOrder>("triage");
 
   // "Handled" is app-level triage (the providers don't expose mark-as-read):
   // handled ids stop counting as unanswered in this inbox. Persisted per
@@ -167,6 +180,13 @@ export default function MessagesPage() {
     [readDoc, readIds]
   );
   const isUnanswered = useCallback(
+    // Stay in the open/queue until explicitly marked handled — opening to read
+    // must not empty the triage list (local readIds only softens the unread badge).
+    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
+    [handledIds]
+  );
+
+  const isVisuallyUnread = useCallback(
     (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id) && !readIds.has(msg.id),
     [handledIds, readIds]
   );
@@ -195,6 +215,40 @@ export default function MessagesPage() {
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
     [accounts]
+  );
+
+  const mailFolderAccounts = useMemo(
+    () =>
+      mailAccounts.map((account) => ({
+        id: account.id,
+        label: account.displayName || account.username || (account.platform === "gmail" ? "Gmail" : "Outlook"),
+        platform: account.platform as "gmail" | "outlook",
+      })),
+    [mailAccounts]
+  );
+
+  const setSelectedMailFolder = useCallback(
+    (folder: MailFolderSelection | null) => {
+      setSelectedMailFolderState(folder);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailFolder: folder });
+    },
+    [inboxPrefsDoc]
+  );
+
+  const setMailViewFilter = useCallback(
+    (filter: MailViewFilter) => {
+      setMailViewFilterState(filter);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailViewFilter: filter });
+    },
+    [inboxPrefsDoc]
+  );
+
+  const setMailSort = useCallback(
+    (sort: MailSortOrder) => {
+      setMailSortState(sort);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailSort: sort });
+    },
+    [inboxPrefsDoc]
   );
 
   const ensureBackendSession = useCallback(async () => {
@@ -227,11 +281,14 @@ export default function MessagesPage() {
     try {
       // Scope the inbox to the active business profile so switching profiles
       // never shows another profile's mailboxes/DMs.
-      const unifiedUrl = apiUrl(
-        `/api/messages/unified${
-          activeProfileId ? `?business_profile_id=${encodeURIComponent(activeProfileId)}` : ""
-        }`,
-      );
+      const params = new URLSearchParams();
+      if (activeProfileId) params.set("business_profile_id", activeProfileId);
+      if (activeTab === "mail" && selectedMailFolder) {
+        params.set("mailAccountId", selectedMailFolder.accountId);
+        params.set("mailFolderId", selectedMailFolder.folderId);
+      }
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const unifiedUrl = apiUrl(`/api/messages/unified${query}`);
       let res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
       if (res.status === 401) {
         await ensureBackendSession();
@@ -239,7 +296,7 @@ export default function MessagesPage() {
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(d, "Could not load messages."));
+        throw new Error(apiErrorMessage(d, "Kunde inte ladda meddelanden."));
       }
       const data = await res.json();
       setMessages(Array.isArray(data.messages) ? data.messages : []);
@@ -247,13 +304,13 @@ export default function MessagesPage() {
       if (typeof data.zernioNote === "string" && data.zernioNote) setZernioNote(data.zernioNote);
     } catch (e) {
       if (!opts?.silent) {
-        setError(e instanceof Error ? e.message : "Request failed");
+        setError(e instanceof Error ? e.message : "Något gick fel");
         setMessages([]);
       }
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [ensureBackendSession, activeProfileId]);
+  }, [ensureBackendSession, activeProfileId, activeTab, selectedMailFolder]);
 
   useEffect(() => {
     function handleLiveSync() {
@@ -355,12 +412,21 @@ export default function MessagesPage() {
     setReplySent(false);
     setDraftBusy(false);
     setSendBusy(false);
-    setThreadMessages([]);
+    // Prefer cached thread; otherwise keep prior body visible until the new
+    // fetch lands (avoid blanking the reading pane on every J/K hop).
+    const threadCached = threadPrefetchCache.current.get(selectedMessage.id);
+    if (threadCached) {
+      setThreadMessages(threadCached);
+      setThreadLoading(false);
+    } else {
+      // Avoid briefly showing the previous message's thread under the new selection.
+      setThreadMessages([]);
+    }
     autoDraftForId.current = cached?.trim() ? selectedMessage.id : null;
   }, [selectedMessage?.id]);
 
-  // Opening a message in the reading pane counts as reading it: clear its
-  // unread state so the inbox list stops showing it as open immediately.
+  // Opening a message counts as seen for the unread badge, but the item stays
+  // in the open queue until Klar / send / archive.
   useEffect(() => {
     if (!selectedMessage?.id || !selectedMessage.isUnread) return;
     markRead(selectedMessage.id);
@@ -436,6 +502,9 @@ export default function MessagesPage() {
     defaultedFilter.current = true;
     const saved = inboxPrefsDoc.data;
     if (saved?.tab) setActiveTab(saved.tab);
+    if (saved?.mailFolder) setSelectedMailFolderState(saved.mailFolder);
+    if (saved?.mailViewFilter) setMailViewFilterState(saved.mailViewFilter);
+    if (saved?.mailSort) setMailSortState(saved.mailSort);
     if (saved?.filter) {
       setInboxFilter(saved.filter);
       return;
@@ -455,10 +524,29 @@ export default function MessagesPage() {
   const setActiveTabPersisted = useCallback(
     (tab: MessageChannelTab) => {
       setActiveTab(tab);
+      if (tab !== "mail") {
+        setSelectedMailFolderState(null);
+        inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab, mailFolder: null });
+        return;
+      }
       inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab });
     },
     [inboxPrefsDoc]
   );
+
+  const removeMessageFromInbox = useCallback(
+    (messageId: string) => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    },
+    []
+  );
+
+  const handleMailFoldersChange = useCallback((folders: MailFolder[]) => {
+    setMailFolders(folders);
+  }, []);
+
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selectedId;
 
   useEffect(() => {
     if (!selectedMessage || draftBusy || sendBusy || replySent) return;
@@ -469,23 +557,35 @@ export default function MessagesPage() {
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
       return;
     }
-    autoDraftForId.current = selectedMessage.id;
-    void draftReply();
+    // Debounce so rapid J/K navigation doesn't spam AI draft requests.
+    const messageId = selectedMessage.id;
+    const authorName = selectedMessage.from.name || selectedMessage.subject;
+    const kind = selectedMessage.kind === "email" ? "email" : "dm";
+    const bodyText = selectedMessage.body || selectedMessage.snippet;
+    const timer = window.setTimeout(() => {
+      if (autoDraftForId.current === messageId) return;
+      if (selectedIdRef.current !== messageId) return;
+      autoDraftForId.current = messageId;
+      void draftReplyFor(messageId, kind, authorName, bodyText);
+    }, 550);
+    return () => window.clearTimeout(timer);
   }, [selectedMessage?.id, draftBusy, sendBusy, replySent]);
 
-  async function draftReply() {
-    if (!selectedMessage) return;
+  async function draftReplyFor(
+    forId: string,
+    kind: "email" | "dm",
+    authorName: string,
+    text: string
+  ) {
     setDraftBusy(true);
     try {
-      const payload = await apiJson<{ draft?: unknown }>("/api/ai/reply-draft", "Could not draft a reply", {
-        body: {
-          kind: selectedMessage.kind === "email" ? "email" : "dm",
-          authorName: selectedMessage.from.name || selectedMessage.subject,
-          text: selectedMessage.body || selectedMessage.snippet,
-        },
+      const payload = await apiJson<{ draft?: unknown }>("/api/ai/reply-draft", "Kunde inte skapa AI-utkast", {
+        body: { kind, authorName, text },
       });
+      if (selectedIdRef.current !== forId) return;
       setReplyDraft(String(payload?.draft || ""));
     } catch (e) {
+      if (selectedIdRef.current !== forId) return;
       toast({
         title: "AI-utkast misslyckades",
         description: e instanceof Error ? e.message : "Okänt fel",
@@ -494,6 +594,17 @@ export default function MessagesPage() {
     } finally {
       setDraftBusy(false);
     }
+  }
+
+  async function draftReply() {
+    if (!selectedMessage) return;
+    autoDraftForId.current = selectedMessage.id;
+    await draftReplyFor(
+      selectedMessage.id,
+      selectedMessage.kind === "email" ? "email" : "dm",
+      selectedMessage.from.name || selectedMessage.subject,
+      selectedMessage.body || selectedMessage.snippet
+    );
   }
 
   const summaryPayload = useMemo(
@@ -539,6 +650,12 @@ export default function MessagesPage() {
         return true;
       })
       .filter((msg) => {
+        if (activeTab !== "mail" || mailViewFilter === "all") return true;
+        if (mailViewFilter === "unread") return isVisuallyUnread(msg);
+        if (mailViewFilter === "starred") return Boolean(msg.isStarred);
+        return true;
+      })
+      .filter((msg) => {
         if (!q) return true;
         const haystack = [
           msg.subject,
@@ -553,6 +670,11 @@ export default function MessagesPage() {
         return haystack.includes(q);
       });
     return rows.sort((a, b) => {
+      if (activeTab === "mail" && mailSort !== "triage") {
+        const aDate = Date.parse(a.date) || 0;
+        const bDate = Date.parse(b.date) || 0;
+        return mailSort === "oldest" ? aDate - bDate : bDate - aDate;
+      }
       const aOpen = isUnanswered(a);
       const bOpen = isUnanswered(b);
       if (aOpen !== bOpen) return aOpen ? -1 : 1;
@@ -560,7 +682,7 @@ export default function MessagesPage() {
       const bDate = Date.parse(b.date) || 0;
       return aOpen ? aDate - bDate : bDate - aDate;
     });
-  }, [activeTab, messages, inboxFilter, debouncedInboxSearch, isUnanswered, handledIds]);
+  }, [activeTab, messages, inboxFilter, debouncedInboxSearch, isUnanswered, isVisuallyUnread, handledIds, mailViewFilter, mailSort]);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -617,27 +739,113 @@ export default function MessagesPage() {
     return parts.join(" · ");
   }, [inboxStats]);
 
+  const pickNextAfter = useCallback(
+    (fromId: string, list: UnifiedMessage[]) => {
+      const idx = list.findIndex((m) => m.id === fromId);
+      if (idx === -1) {
+        return list.find((m) => isUnanswered(m) && m.id !== fromId) ?? list.find((m) => m.id !== fromId) ?? null;
+      }
+      return (
+        list.slice(idx + 1).find((m) => isUnanswered(m) && m.id !== fromId) ??
+        list.slice(0, idx).find((m) => isUnanswered(m) && m.id !== fromId) ??
+        list.slice(idx + 1).find((m) => m.id !== fromId) ??
+        list.slice(0, idx).find((m) => m.id !== fromId) ??
+        null
+      );
+    },
+    [isUnanswered]
+  );
+
   const advanceToNextMessage = useCallback(
     (fromId: string) => {
-      const idx = filteredMessages.findIndex((m) => m.id === fromId);
-      if (idx === -1) return;
-      const next =
-        filteredMessages.slice(idx + 1).find((m) => isUnanswered(m)) ??
-        filteredMessages.slice(0, idx).find((m) => isUnanswered(m)) ??
-        filteredMessages[idx + 1] ??
-        null;
-      selectMessage(next);
+      selectMessage(pickNextAfter(fromId, filteredMessages));
     },
-    [filteredMessages, isUnanswered, selectMessage]
+    [filteredMessages, pickNextAfter, selectMessage]
+  );
+
+  const dismissMailAndAdvance = useCallback(
+    (messageId: string) => {
+      const next = pickNextAfter(messageId, filteredMessages);
+      // Select next before removing so the "missing id" effect never clears selection.
+      selectMessage(next);
+      removeMessageFromInbox(messageId);
+    },
+    [filteredMessages, pickNextAfter, removeMessageFromInbox, selectMessage]
   );
 
   const markHandledAndAdvance = useCallback(
     (id: string) => {
       if (handledIds.has(id)) return;
+      const next = pickNextAfter(id, filteredMessages);
+      selectMessage(next);
       markHandled([id]);
-      advanceToNextMessage(id);
     },
-    [advanceToNextMessage, handledIds, markHandled]
+    [filteredMessages, handledIds, markHandled, pickNextAfter, selectMessage]
+  );
+
+  const moveMessageToMailFolder = useCallback(
+    async (folderId: string) => {
+      if (!selectedMessage || selectedMessage.kind !== "email") return;
+      const providerMessageId = providerMessageIdFor(selectedMessage);
+      if (!providerMessageId) {
+        sonnerToast.error("Kunde inte flytta — saknar meddelande-id hos leverantören.");
+        return;
+      }
+      setMoveBusy(true);
+      try {
+        await moveMessageToFolder({
+          accountId: selectedMessage.accountId,
+          messageId: providerMessageId,
+          folderId,
+          businessProfileId,
+        });
+        sonnerToast.success("Mailet flyttades till mappen.");
+        dismissMailAndAdvance(selectedMessage.id);
+      } catch (error) {
+        sonnerToast.error(error instanceof Error ? error.message : "Kunde inte flytta mailet.");
+      } finally {
+        setMoveBusy(false);
+      }
+    },
+    [businessProfileId, dismissMailAndAdvance, selectedMessage]
+  );
+
+  const performSelectedMailAction = useCallback(
+    async (action: MailMessageAction) => {
+      if (!selectedMessage || selectedMessage.kind !== "email") return;
+      const providerMessageId = providerMessageIdFor(selectedMessage);
+      if (!providerMessageId) {
+        sonnerToast.error("Kunde inte utföra åtgärden — saknar meddelande-id.");
+        return;
+      }
+      setMailActionBusy(true);
+      try {
+        const result = await performMailAction({
+          accountId: selectedMessage.accountId,
+          messageId: providerMessageId,
+          action,
+          businessProfileId,
+        });
+        if (action === "delete") {
+          sonnerToast.success("Mailet raderades.");
+          dismissMailAndAdvance(selectedMessage.id);
+        } else if (action === "archive") {
+          sonnerToast.success("Mailet arkiverades.");
+          dismissMailAndAdvance(selectedMessage.id);
+        } else if (action === "flag" || action === "unflag") {
+          const starred = result.starred ?? action === "flag";
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === selectedMessage.id ? { ...msg, isStarred: starred } : msg))
+          );
+          sonnerToast.success(starred ? "Mailet flaggades." : "Flaggan togs bort.");
+        }
+      } catch (error) {
+        sonnerToast.error(error instanceof Error ? error.message : "Kunde inte utföra åtgärden.");
+      } finally {
+        setMailActionBusy(false);
+      }
+    },
+    [businessProfileId, dismissMailAndAdvance, selectedMessage]
   );
 
   const navigateOpenRelative = useCallback(
@@ -712,9 +920,10 @@ export default function MessagesPage() {
     }
     if (selectedMessage.kind === "dm" && !selectedMessage.conversationId) return;
     const sentId = selectedMessage.id;
+    const nextAfterSend = pickNextAfter(sentId, filteredMessages);
     setSendBusy(true);
     try {
-      await apiJson("/api/messages/reply", "Could not send reply", {
+      await apiJson("/api/messages/reply", "Kunde inte skicka svar", {
         body: {
           accountId: selectedMessage.accountId,
           conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
@@ -725,6 +934,7 @@ export default function MessagesPage() {
       });
       setReplySent(true);
       replyDraftCache.current.delete(sentId);
+      selectMessage(nextAfterSend);
       markHandled([sentId], { silent: true });
       void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
       sonnerToast.success(
@@ -732,7 +942,6 @@ export default function MessagesPage() {
           ? `Svar skickat via ${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"}`
           : "Svar skickat"
       );
-      window.setTimeout(() => advanceToNextMessage(sentId), 500);
     } catch (e) {
       toast({
         title: "Kunde inte skicka svar",
@@ -744,10 +953,12 @@ export default function MessagesPage() {
     }
   }, [
     activeProfileId,
-    advanceToNextMessage,
+    filteredMessages,
     markHandled,
+    pickNextAfter,
     queryClient,
     replyDraft,
+    selectMessage,
     selectedMessage,
     toast,
   ]);
@@ -755,6 +966,7 @@ export default function MessagesPage() {
   const getRowMeta = useCallback(
     (msg: UnifiedMessage) => ({
       open: isUnanswered(msg),
+      visuallyUnread: isVisuallyUnread(msg),
       waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
       urgent: isUnanswered(msg) && isUrgentWait(msg.date),
       channelLabel: channelBadge(msg),
@@ -765,7 +977,7 @@ export default function MessagesPage() {
       avatarGradient: avatarGradient(msg.from.name || msg.from.email || msg.id),
       isHandled: handledIds.has(msg.id),
     }),
-    [aiSummaries, handledIds, isUnanswered]
+    [aiSummaries, handledIds, isUnanswered, isVisuallyUnread]
   );
 
   const tabCounts = useMemo(
@@ -818,6 +1030,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!selectedId || loading) return;
     if (messages.some((m) => m.id === selectedId)) return;
+    // Message was removed (archive/delete) — only clear if nothing else selected it yet.
     selectMessage(null);
   }, [loading, messages, selectedId, selectMessage]);
 
@@ -886,10 +1099,15 @@ export default function MessagesPage() {
       }
       if (matchesKey(e, "h") && isPlainLetterShortcut(e)) {
         e.preventDefault();
-        if (selectedMessage && isUnanswered(selectedMessage)) {
+        if (selectedMessage && !handledIds.has(selectedMessage.id)) {
           markHandledAndAdvance(selectedMessage.id);
-        } else {
-          setInboxFilterPersisted("handled");
+        }
+        return;
+      }
+      if (matchesKey(e, "e") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        if (selectedMessage?.kind === "email" && !mailActionBusy) {
+          void performSelectedMailAction("archive");
         }
         return;
       }
@@ -921,10 +1139,12 @@ export default function MessagesPage() {
     canReplyToSelected,
     cycleTab,
     focusNextOpen,
-    isUnanswered,
+    handledIds,
+    mailActionBusy,
     markHandledAndAdvance,
     navigateOpenRelative,
     navigateRelative,
+    performSelectedMailAction,
     selectMessage,
     selectedId,
     selectedMessage,
@@ -955,6 +1175,11 @@ export default function MessagesPage() {
         : undefined,
       onNextAfterSend: () => advanceToNextMessage(selectedMessage.id),
       onBack: () => selectMessage(null),
+      mailFolders: selectedMessage.kind === "email" ? mailFolders : undefined,
+      onMoveToFolder: selectedMessage.kind === "email" ? moveMessageToMailFolder : undefined,
+      moveBusy,
+      onMailAction: selectedMessage.kind === "email" ? performSelectedMailAction : undefined,
+      mailActionBusy,
       navigation:
         filteredMessages.length > 1 && selectedIndex >= 0
           ? {
@@ -976,6 +1201,11 @@ export default function MessagesPage() {
     handledIds,
     isUnanswered,
     markHandledAndAdvance,
+    mailFolders,
+    mailActionBusy,
+    moveBusy,
+    moveMessageToMailFolder,
+    performSelectedMailAction,
     navigateRelative,
     replyDraft,
     replySent,
@@ -1016,33 +1246,30 @@ export default function MessagesPage() {
             description={
               isMobile
                 ? "Välj ett meddelande — AI hjälper dig sammanfatta och svara."
-                : "Mail, DM och WhatsApp i en inkorg — med AI-sammanfattningar och snabbsvar."
+                : "Mail, DM och WhatsApp · J/K bläddra · H Klar · E arkivera · R svara"
             }
           />
 
-          <PageSmartBar
-            title={
-              isMobile
-                ? "Tryck Börja triage för att gå igenom öppna meddelanden i ordning."
-                : "Meddelanden är din triage-inkorg — läs, svara och markera hanterade utan att tappa kontext."
-            }
-            steps={
-              isMobile
-                ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
-                : [
-                    "Välj kanal och filter (Kö / Öppna) för att fokusera på det viktiga",
-                    "Använd J/K för att bläddra och H för Handled",
-                    "Låt AI sammanfatta och skriva utkast — du redigerar innan du skickar",
-                  ]
-            }
-            tip="AI hjälper dig sammanfatta och föreslå svar — du godkänner innan du skickar. Börja med öppna i kön."
-            liveHintOverride={inboxLiveHint}
-            extraActions={
-              inboxStats.openCount > 0
-                ? [{ label: isMobile ? "Börja triage" : "Starta triage", to: "/messages" }]
-                : []
-            }
-          />
+          {inboxStats.openCount === 0 ? (
+            <PageSmartBar
+              title={
+                isMobile
+                  ? "Inkorgen är ikapp — koppla fler kanaler eller vänta på nya meddelanden."
+                  : "Meddelanden är din triage-inkorg — när något dyker upp: läs, svara och markera Klar."
+              }
+              steps={
+                isMobile
+                  ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
+                  : [
+                      "Välj kanal och filter (Kö / Öppna)",
+                      "J/K bläddra · H Klar · E arkivera · R svara",
+                      "AI sammanfattar och skriver utkast — du godkänner innan du skickar",
+                    ]
+              }
+              tip="Öppna meddelanden stannar i kön tills du trycker Klar (H)."
+              liveHintOverride={inboxLiveHint}
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -1098,13 +1325,28 @@ export default function MessagesPage() {
           totalVisible={filteredMessages.length}
           openTotal={openTotal}
           loading={loading}
-          onRefresh={() => void loadUnified()}
+          onRefresh={() => void loadUnified({ silent: true })}
           onMarkAllHandled={() => markHandled(unansweredInTab.map((msg) => msg.id))}
           markAllDisabled={unansweredInTab.length === 0}
           onToggleAiSearch={() => setAiSearchOpen((v) => !v)}
           aiSearchOpen={aiSearchOpen}
           isSearching={Boolean(debouncedInboxSearch.trim())}
         />
+        ) : null}
+
+        {!focusedReading && activeTab === "mail" && mailFolderAccounts.length > 0 ? (
+          <MessageMailToolbar
+            mailAccounts={mailFolderAccounts}
+            selectedFolder={selectedMailFolder}
+            onSelectFolder={setSelectedMailFolder}
+            mailViewFilter={mailViewFilter}
+            onMailViewFilterChange={setMailViewFilter}
+            mailSort={mailSort}
+            onMailSortChange={setMailSort}
+            businessProfileId={businessProfileId}
+            disabled={loading}
+            onFoldersChange={handleMailFoldersChange}
+          />
         ) : null}
 
         {!focusedReading && oauthErrorDetails ? (

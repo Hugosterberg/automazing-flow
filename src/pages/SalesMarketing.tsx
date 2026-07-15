@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
@@ -233,11 +234,29 @@ export default function SalesMarketingPage() {
   const focusedFilterChrome =
     isStackedWorkspace && (showFollowUpsOnly || showOutreachQueue);
 
+  type SalesTab = "overview" | "leads" | "outreach" | "pipeline" | "discover" | "goals";
+  const SALES_TAB_VALUES: SalesTab[] = ["overview", "leads", "outreach", "pipeline", "discover", "goals"];
+  const rawSalesTab = searchParams.get("tab");
+  const salesTab: SalesTab =
+    rawSalesTab && (SALES_TAB_VALUES as string[]).includes(rawSalesTab)
+      ? (rawSalesTab as SalesTab)
+      : "overview";
+
   function clearViewFilter() {
     const next = new URLSearchParams(searchParams);
     next.delete("view");
     setSearchParams(next, { replace: true });
   }
+
+  function setSalesTab(tab: SalesTab) {
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    if (tab === "overview") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
+  const showSalesChrome = !showFollowUpsOnly && !showOutreachQueue && !focusedFilterChrome;
   const { profiles } = useBusinessProfiles();
   const activeProfile = profiles.find((p) => p.id === businessProfileId);
   const [productNames, setProductNames] = useState<string[]>([]);
@@ -344,8 +363,11 @@ export default function SalesMarketingPage() {
   }, []);
 
   function openAddLeadDialog() {
-    document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    window.setTimeout(() => openAddLeadRef.current?.(), 280);
+    setSalesTab("leads");
+    window.setTimeout(() => {
+      document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      openAddLeadRef.current?.();
+    }, 120);
   }
 
   // Deep link: /sales?new=lead | ?new=deal opens CRM dialogs.
@@ -355,6 +377,7 @@ export default function SalesMarketingPage() {
     if (action === "lead") {
       openAddLeadDialog();
     } else {
+      setSalesTab("pipeline");
       setPipelineOpen(true);
     }
     const next = new URLSearchParams(searchParams);
@@ -386,6 +409,7 @@ export default function SalesMarketingPage() {
   }
 
   function openPipelineFromLead(lead: Lead) {
+    setSalesTab("pipeline");
     setPipelineTitle(lead.company);
     const contact = [lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ");
     const desc = [contact, lead.notes?.trim()].filter(Boolean).join("\n");
@@ -449,6 +473,7 @@ export default function SalesMarketingPage() {
   useEffect(() => {
     const leadId = searchParams.get("lead");
     if (!leadId || searchParams.get("view")) return;
+    setSalesTab("leads");
     window.setTimeout(() => {
       document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
@@ -568,11 +593,25 @@ export default function SalesMarketingPage() {
           />
 
           <CompanyProfileNudge profile={activeProfile} />
+
+          <PageModeTabs
+            value={salesTab}
+            aria-label="Sales-flikar"
+            onChange={setSalesTab}
+            options={[
+              { value: "overview", label: "Översikt" },
+              { value: "leads", label: "Leads", count: activeLeads },
+              { value: "outreach", label: "Outreach", count: pendingOutreachCount },
+              { value: "pipeline", label: "Pipeline", count: pipelineTasks.length },
+              { value: "discover", label: "Upptäck" },
+              { value: "goals", label: "Mål" },
+            ]}
+          />
         </>
       )}
 
       <div className={cn("app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4", focusedFilterChrome && "rounded-none border-0 p-0 shadow-none sm:p-0")}>
-      {!focusedFilterChrome ? (
+      {showSalesChrome && salesTab === "overview" ? (
         <>
           <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
             <SalesActionHub
@@ -584,15 +623,21 @@ export default function SalesMarketingPage() {
               shopifyRevenueLabel={shopifyRevenueLabel}
               onFollowUps={() => navigate("/sales?view=followups")}
               onAddLead={openAddLeadDialog}
-              onAddDeal={() => setPipelineOpen(true)}
+              onAddDeal={() => {
+                setSalesTab("pipeline");
+                setPipelineOpen(true);
+              }}
               onDraftDueLeads={startDueLeadDrafts}
-              onDiscover={() => document.getElementById("brand-discovery")?.scrollIntoView({ behavior: "smooth" })}
-              onSuggestLeads={() => document.getElementById("lead-suggestions")?.scrollIntoView({ behavior: "smooth" })}
+              onDiscover={() => setSalesTab("discover")}
+              onSuggestLeads={() => setSalesTab("leads")}
               onOpenContent={() => {
                 stashContentCaption("");
                 navigate("/content?tab=create");
               }}
-              onSyncGoals={syncGoalsFromShopify}
+              onSyncGoals={() => {
+                setSalesTab("goals");
+                syncGoalsFromShopify();
+              }}
             />
           </m.div>
 
@@ -612,33 +657,47 @@ export default function SalesMarketingPage() {
               </Card>
             ))}
           </m.div>
+
+          <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
+            <OutreachQueueSection businessProfileId={businessProfileId} compact />
+          </m.div>
         </>
       ) : null}
 
-      {(showOutreachQueue || (!showFollowUpsOnly && !focusedFilterChrome)) && (
+      {showOutreachQueue ? (
         <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
-          {showOutreachQueue ? (
-            <>
-              {!focusedFilterChrome ? (
-                <Card className="border-info/30 bg-info/5 mb-3">
-                  <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
-                    <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
-                    <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
-                      <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                      Visa hela Sales
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : null}
-              <div className={cn(!focusedFilterChrome && "app-workspace-shell")}>
-                <OutreachQueueWorkspace businessProfileId={businessProfileId} />
-              </div>
-            </>
-          ) : (
-            <OutreachQueueSection businessProfileId={businessProfileId} compact />
-          )}
+          {!focusedFilterChrome ? (
+            <Card className="border-info/30 bg-info/5 mb-3">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
+                <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
+                  <X className="h-3.5 w-3.5 mr-1" aria-hidden />
+                  Visa hela Sales
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+          <div className={cn(!focusedFilterChrome && "app-workspace-shell")}>
+            <OutreachQueueWorkspace businessProfileId={businessProfileId} />
+          </div>
         </m.div>
-      )}
+      ) : null}
+
+      {showSalesChrome && salesTab === "outreach" ? (
+        <m.div {...pageFadeUp} transition={{ delay: 0.037 }} className="space-y-4">
+          <OutreachQueueSection businessProfileId={businessProfileId} />
+          <OutreachContentCard
+            businessProfileId={businessProfileId}
+            context={{
+              ...marketingContext,
+              description: marketingContext.notes,
+              targetAudience: activeProfile?.location ? `Buyers in ${activeProfile.location}` : undefined,
+              idealCustomer: leadSuggestionInput.description,
+            }}
+            onUseIdea={handoffContentIdea}
+          />
+        </m.div>
+      ) : null}
 
       {/* Leads — register + follow up, with AI outreach suggestions */}
       {showFollowUpsOnly ? (
@@ -670,36 +729,36 @@ export default function SalesMarketingPage() {
           </div>
         </m.div>
       ) : null}
-      {!showFollowUpsOnly && !focusedFilterChrome ? (
-        <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
-          <LeadSuggestionsSection
-            businessProfileId={businessProfileId}
-            profile={activeProfile}
-            suggestionInput={leadSuggestionInput}
-            onCreateLead={createLead}
-          />
-        </m.div>
-      ) : null}
-      {!showFollowUpsOnly && !focusedFilterChrome ? (
-        <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
-          <LeadsSection
-            businessProfileId={businessProfileId}
-            context={leadSuggestionInput}
-            hideSuggestionPanel
-            sellerContext={marketingContext}
-            onRegisterAddOpener={registerAddLeadOpener}
-            onAddToPipeline={openPipelineFromLead}
-            onDraftOutreach={(target) => {
-              setOutreachDraftTarget(target);
-              setDraftLeadId(null);
-              setOutreachDraftOpen(true);
-            }}
-            onDraftDueLeads={startDueLeadDrafts}
-          />
-        </m.div>
+      {showSalesChrome && salesTab === "leads" ? (
+        <>
+          <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
+            <LeadSuggestionsSection
+              businessProfileId={businessProfileId}
+              profile={activeProfile}
+              suggestionInput={leadSuggestionInput}
+              onCreateLead={createLead}
+            />
+          </m.div>
+          <m.div {...pageFadeUp} transition={{ delay: 0.04 }} id="leads-section">
+            <LeadsSection
+              businessProfileId={businessProfileId}
+              context={leadSuggestionInput}
+              hideSuggestionPanel
+              sellerContext={marketingContext}
+              onRegisterAddOpener={registerAddLeadOpener}
+              onAddToPipeline={openPipelineFromLead}
+              onDraftOutreach={(target) => {
+                setOutreachDraftTarget(target);
+                setDraftLeadId(null);
+                setOutreachDraftOpen(true);
+              }}
+              onDraftDueLeads={startDueLeadDrafts}
+            />
+          </m.div>
+        </>
       ) : null}
 
-      {!focusedFilterChrome ? (
+      {showSalesChrome && salesTab === "discover" ? (
         <>
       <m.div {...pageFadeUp} transition={{ delay: 0.042 }} id="brand-discovery">
         <BrandDiscoverySection
@@ -754,19 +813,6 @@ export default function SalesMarketingPage() {
           onOpenEcommerce={() => navigate("/ecommerce")}
         />
       </m.div>
-
-      <m.div {...pageFadeUp} transition={{ delay: 0.044 }}>
-        <OutreachContentCard
-          businessProfileId={businessProfileId}
-          context={{
-            ...marketingContext,
-            description: marketingContext.notes,
-            targetAudience: activeProfile?.location ? `Buyers in ${activeProfile.location}` : undefined,
-            idealCustomer: leadSuggestionInput.description,
-          }}
-          onUseIdea={handoffContentIdea}
-        />
-      </m.div>
         </>
       ) : null}
 
@@ -785,8 +831,7 @@ export default function SalesMarketingPage() {
         onMarkContacted={draftLeadId ? () => void markLeadContactedAndContinue() : undefined}
       />
 
-      {!focusedFilterChrome ? (
-        <>
+      {showSalesChrome && salesTab === "discover" ? (
       <m.div {...pageFadeUp} transition={{ delay: 0.045 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
@@ -795,8 +840,9 @@ export default function SalesMarketingPage() {
           description="Företagsresearch och konkurrentanalys via Exa, Sprouts och Peec AI."
         />
       </m.div>
+      ) : null}
 
-      {/* Pipeline kanban */}
+      {showSalesChrome && salesTab === "pipeline" ? (
       <m.section {...pageFadeUp} transition={{ delay: 0.05 }}>
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -853,7 +899,7 @@ export default function SalesMarketingPage() {
                               size="sm"
                               variant="ghost"
                               className="h-7 text-[11px]"
-                              onClick={() => document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth" })}
+                              onClick={() => setSalesTab("leads")}
                             >
                               Från leads
                             </Button>
@@ -872,9 +918,9 @@ export default function SalesMarketingPage() {
           </div>
         )}
       </m.section>
+      ) : null}
 
-
-      {/* Goals */}
+      {showSalesChrome && salesTab === "goals" ? (
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -893,7 +939,6 @@ export default function SalesMarketingPage() {
           ))}
         </div>
       </m.section>
-        </>
       ) : null}
 
       </div>

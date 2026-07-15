@@ -80,20 +80,34 @@ export function PageSmartBar({
           </div>
           {actions.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 shrink-0">
-              {actions.slice(0, maxActions).map((action) => (
-                <Button
-                  key={action.to + action.label}
-                  asChild
-                  size="sm"
-                  variant="secondary"
-                  className="h-9 gap-1 px-3 text-sm sm:h-7 sm:px-2.5 sm:text-[11px]"
-                >
-                  <Link to={action.to}>
+              {actions.slice(0, maxActions).map((action) =>
+                action.onClick ? (
+                  <Button
+                    key={`action:${action.label}`}
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-9 gap-1 px-3 text-sm sm:h-7 sm:px-2.5 sm:text-[11px]"
+                    onClick={action.onClick}
+                  >
                     {action.label}
                     <ArrowRight className="ml-1 h-3.5 w-3.5 sm:h-3 sm:w-3" />
-                  </Link>
-                </Button>
-              ))}
+                  </Button>
+                ) : action.to ? (
+                  <Button
+                    key={action.to + action.label}
+                    asChild
+                    size="sm"
+                    variant="secondary"
+                    className="h-9 gap-1 px-3 text-sm sm:h-7 sm:px-2.5 sm:text-[11px]"
+                  >
+                    <Link to={action.to}>
+                      {action.label}
+                      <ArrowRight className="ml-1 h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                    </Link>
+                  </Button>
+                ) : null
+              )}
             </div>
           ) : null}
         </div>

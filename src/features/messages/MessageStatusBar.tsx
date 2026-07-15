@@ -38,6 +38,9 @@ export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarP
           <Kbd>H</Kbd> Klar
         </span>
         <span className="inline-flex items-center gap-1">
+          <Kbd>E</Kbd> Arkivera
+        </span>
+        <span className="inline-flex items-center gap-1">
           <Kbd>Shift</Kbd>+<Kbd>J</Kbd>/<Kbd>K</Kbd> Öppna
         </span>
         <span className="inline-flex items-center gap-1">
@@ -50,7 +53,7 @@ export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarP
           <Kbd>N</Kbd> Nästa öppen
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>Q</Kbd>/<Kbd>O</Kbd>/<Kbd>A</Kbd>/<Kbd>H</Kbd> Filter
+          <Kbd>Q</Kbd>/<Kbd>O</Kbd>/<Kbd>A</Kbd> Filter
         </span>
         <span className="inline-flex items-center gap-1">
           <Kbd>[</Kbd>/<Kbd>]</Kbd> Kanal

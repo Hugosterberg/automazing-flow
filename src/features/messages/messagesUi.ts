@@ -166,5 +166,6 @@ export function inboxEmptyCopy(opts: {
 }
 
 export function providerMessageIdFor(msg: UnifiedMessage): string {
-  return msg.providerMessageId || (msg.kind === "email" ? msg.id : "");
+  // Never fall back to the composite unified id (email:gmail:…) — providers reject it.
+  return msg.providerMessageId || "";
 }

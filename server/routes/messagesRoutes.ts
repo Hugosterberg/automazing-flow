@@ -1,5 +1,5 @@
-import { fetchGmailAccountData, fetchGmailThread, sendGmailReply } from "../providers/gmail.ts";
-import { fetchOutlookMailData, fetchOutlookMailThread, sendOutlookMailReply } from "../providers/outlookMail.ts";
+import { fetchGmailAccountData, fetchGmailThread, sendGmailReply, listGmailUserLabels, createGmailUserLabel, moveGmailMessageToLabel, deleteGmailMessage, archiveGmailMessage, setGmailMessageStarred } from "../providers/gmail.ts";
+import { fetchOutlookMailData, fetchOutlookMailThread, sendOutlookMailReply, listOutlookUserMailFolders, createOutlookMailFolder, moveOutlookMessageToFolder, deleteOutlookMessage, archiveOutlookMessage, setOutlookMessageFlagged } from "../providers/outlookMail.ts";
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
 import {
   parseZernioConversationList,
@@ -61,6 +61,7 @@ type UnifiedMessage = {
   snippet: string;
   body: string;
   isUnread: boolean;
+  isStarred?: boolean;
   externalUrl?: string;
   conversationId?: string;
   providerMessageId?: string;
@@ -94,6 +95,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     // Scope every mailbox and DM account to the caller's active business
     // profile, so profiles under the same user never see each other's inbox.
     const businessProfileId = readRequestBusinessProfileId(req);
+    const mailAccountId = String(req.query.mailAccountId || "").trim();
+    const mailFolderId = String(req.query.mailFolderId || "").trim();
+    const folderScoped = Boolean(mailAccountId && mailFolderId);
 
     const unified: UnifiedMessage[] = [];
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
@@ -149,6 +153,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
     for (const { accountId, stored } of mailCandidates.values()) {
       const platform = String(stored.platform || "");
+      if (folderScoped && accountId !== mailAccountId) continue;
+      const gmailLabelId = folderScoped && platform === "gmail" ? mailFolderId : undefined;
+      const outlookFolderId = folderScoped && platform === "outlook" ? mailFolderId : undefined;
       mailTasks.push(
         (async () => {
           try {
@@ -161,6 +168,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 stored,
                 googleClientId: process.env.GOOGLE_CLIENT_ID,
                 googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                labelId: gmailLabelId || "INBOX",
               });
               if (data && "error" in data && data.error) {
                 mailErrors.push({ accountId, platform, error: String(data.error) });
@@ -185,6 +193,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   snippet: String(m.snippet || ""),
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
+                  isStarred: Boolean(m.isStarred),
                   providerMessageId: mid,
                   threadId: m.threadId ? String(m.threadId) : undefined,
                   profileId: stored.profileId ? String(stored.profileId) : null,
@@ -202,6 +211,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 stored,
                 microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
                 microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+                folderId: outlookFolderId,
               });
               if (data && "error" in data && data.error) {
                 mailErrors.push({ accountId, platform, error: String(data.error) });
@@ -226,6 +236,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                   snippet: String(m.snippet || ""),
                   body: String(m.body || m.snippet || ""),
                   isUnread: Boolean(m.isUnread),
+                  isStarred: Boolean(m.isStarred),
                   providerMessageId: mid,
                   threadId: m.threadId ? String(m.threadId) : undefined,
                   conversationId: m.conversationId ? String(m.conversationId) : undefined,
@@ -722,5 +733,305 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     }
 
     return res.status(400).json({ error: "Unsupported account platform for thread fetch" });
+  });
+
+  async function resolveMailAccount(req: import("express").Request, res: import("express").Response, accountId: string) {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return null;
+    }
+    const stored = await tokenStore.get(accountId);
+    if (!stored) {
+      res.status(404).json({ error: "Account not connected" });
+      return null;
+    }
+    const access = getStoredAccountAccess(stored as StoredAccount, userId);
+    if (!access.allowed) {
+      res.status(404).json({ error: "Account not connected" });
+      return null;
+    }
+    if (access.migrate) {
+      await tokenStore.set(accountId, { ...stored, ownerUserId: userId });
+    }
+    const businessProfileId =
+      readRequestBodyBusinessProfileId(req) || readRequestBusinessProfileId(req) ||
+      ((stored as StoredAccount).profileId ? String((stored as StoredAccount).profileId) : null);
+    if (!businessProfileId) {
+      res.status(400).json({ error: "business_profile_id is required" });
+      return null;
+    }
+    if (!accountInBusinessProfile(stored as StoredAccount, businessProfileId)) {
+      res.status(404).json({ error: "Account not connected for this business profile" });
+      return null;
+    }
+    const platform = String((stored as StoredAccount).platform || "");
+    if (platform !== "gmail" && platform !== "outlook") {
+      res.status(400).json({ error: "Folders are only supported for Gmail and Outlook" });
+      return null;
+    }
+    return { stored: stored as StoredAccount, platform, businessProfileId };
+  }
+
+  app.get("/api/messages/folders", async (req, res) => {
+    const accountId = String(req.query.accountId || "").trim();
+    if (!accountId) {
+      return res.status(400).json({ error: "accountId is required" });
+    }
+    const resolved = await resolveMailAccount(req, res, accountId);
+    if (!resolved) return;
+    const { stored, platform } = resolved;
+    const commonArgs = {
+      accessToken: String(stored.accessToken || ""),
+      refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+      accountId,
+      tokenStore,
+      stored,
+    };
+
+    if (platform === "gmail") {
+      const data = await listGmailUserLabels({
+        ...commonArgs,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+      if ("error" in data && data.error) {
+        return res.status(typeof data.status === "number" ? data.status : 502).json({ error: String(data.error) });
+      }
+      return res.json({
+        folders: (data.folders || []).map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          accountId,
+          provider: "gmail",
+          messageCount: folder.messagesTotal,
+          unreadCount: folder.messagesUnread,
+        })),
+      });
+    }
+
+    const data = await listOutlookUserMailFolders({
+      ...commonArgs,
+      microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+      microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+    });
+    if ("error" in data && data.error) {
+      return res.status(typeof data.status === "number" ? data.status : 502).json({ error: String(data.error) });
+    }
+    return res.json({
+      folders: (data.folders || []).map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        accountId,
+        provider: "outlook",
+        messageCount: folder.totalItemCount,
+        unreadCount: folder.unreadItemCount,
+      })),
+    });
+  });
+
+  app.post("/api/messages/folders", async (req, res) => {
+    const body = (req.body ?? {}) as { accountId?: string; name?: string; business_profile_id?: string };
+    const accountId = String(body.accountId || "").trim();
+    const name = String(body.name || "").trim();
+    if (!accountId || !name) {
+      return res.status(400).json({ error: "accountId and name are required" });
+    }
+    const resolved = await resolveMailAccount(req, res, accountId);
+    if (!resolved) return;
+    const { stored, platform } = resolved;
+    const commonArgs = {
+      accessToken: String(stored.accessToken || ""),
+      refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+      accountId,
+      tokenStore,
+      stored,
+      name,
+    };
+
+    if (platform === "gmail") {
+      const result = await createGmailUserLabel({
+        ...commonArgs,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+      if (!result.ok) {
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({ error: result.error });
+      }
+      return res.json({
+        folder: {
+          id: result.folder.id,
+          name: result.folder.name,
+          accountId,
+          provider: "gmail",
+        },
+      });
+    }
+
+    const result = await createOutlookMailFolder({
+      ...commonArgs,
+      microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+      microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+    });
+    if (!result.ok) {
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({ error: result.error });
+    }
+    return res.json({
+      folder: {
+        id: result.folder.id,
+        name: result.folder.name,
+        accountId,
+        provider: "outlook",
+      },
+    });
+  });
+
+  app.post("/api/messages/move", async (req, res) => {
+    const body = (req.body ?? {}) as {
+      accountId?: string;
+      messageId?: string;
+      folderId?: string;
+      business_profile_id?: string;
+    };
+    const accountId = String(body.accountId || "").trim();
+    const messageId = String(body.messageId || "").trim();
+    const folderId = String(body.folderId || "").trim();
+    if (!accountId || !messageId || !folderId) {
+      return res.status(400).json({ error: "accountId, messageId and folderId are required" });
+    }
+    const resolved = await resolveMailAccount(req, res, accountId);
+    if (!resolved) return;
+    const { stored, platform } = resolved;
+    const commonArgs = {
+      accessToken: String(stored.accessToken || ""),
+      refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+      accountId,
+      tokenStore,
+      stored,
+      messageId,
+    };
+
+    if (platform === "gmail") {
+      const result = await moveGmailMessageToLabel({
+        ...commonArgs,
+        labelId: folderId,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+      if (!result.ok) {
+        const reconnect =
+          result.status === 401 ||
+          result.status === 403 ||
+          String(result.error || "").toLowerCase().includes("insufficient");
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+          error: reconnect ? "gmail_reconnect_required" : "gmail_move_failed",
+          message: reconnect
+            ? "Koppla om Gmail och godkänn behörighet att flytta mail (gmail.modify)."
+            : String(result.error || "Could not move Gmail message."),
+        });
+      }
+      return res.json({ ok: true });
+    }
+
+    const result = await moveOutlookMessageToFolder({
+      ...commonArgs,
+      folderId,
+      microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+      microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+    });
+    if (!result.ok) {
+      const reconnect =
+        result.status === 401 ||
+        result.status === 403 ||
+        String(result.error || "").toLowerCase().includes("permission");
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+        error: reconnect ? "outlook_reconnect_required" : "outlook_move_failed",
+        message: reconnect
+          ? "Koppla om Outlook och godkänn Mail.ReadWrite för att flytta mail."
+          : String(result.error || "Could not move Outlook message."),
+      });
+    }
+    return res.json({ ok: true });
+  });
+
+  app.post("/api/messages/action", async (req, res) => {
+    const body = (req.body ?? {}) as {
+      accountId?: string;
+      messageId?: string;
+      action?: string;
+      business_profile_id?: string;
+    };
+    const accountId = String(body.accountId || "").trim();
+    const messageId = String(body.messageId || "").trim();
+    const action = String(body.action || "").trim().toLowerCase();
+    if (!accountId || !messageId || !action) {
+      return res.status(400).json({ error: "accountId, messageId and action are required" });
+    }
+    if (!["delete", "archive", "flag", "unflag"].includes(action)) {
+      return res.status(400).json({ error: "Unsupported action" });
+    }
+    const resolved = await resolveMailAccount(req, res, accountId);
+    if (!resolved) return;
+    const { stored, platform } = resolved;
+    const commonArgs = {
+      accessToken: String(stored.accessToken || ""),
+      refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+      accountId,
+      tokenStore,
+      stored,
+      messageId,
+    };
+
+    if (platform === "gmail") {
+      const gmailArgs = {
+        ...commonArgs,
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      };
+      const result =
+        action === "delete"
+          ? await deleteGmailMessage(gmailArgs)
+          : action === "archive"
+            ? await archiveGmailMessage(gmailArgs)
+            : await setGmailMessageStarred({ ...gmailArgs, starred: action === "flag" });
+      if (!result.ok) {
+        const reconnect =
+          result.status === 401 ||
+          result.status === 403 ||
+          String(result.error || "").toLowerCase().includes("insufficient");
+        return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+          error: reconnect ? "gmail_reconnect_required" : `gmail_${action}_failed`,
+          message: reconnect
+            ? "Koppla om Gmail och godkänn behörighet att hantera mail (gmail.modify)."
+            : String(result.error || `Could not ${action} Gmail message.`),
+        });
+      }
+      return res.json({ ok: true, starred: action === "flag" ? true : action === "unflag" ? false : undefined });
+    }
+
+    const outlookArgs = {
+      ...commonArgs,
+      microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+      microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+    };
+    const result =
+      action === "delete"
+        ? await deleteOutlookMessage(outlookArgs)
+        : action === "archive"
+          ? await archiveOutlookMessage(outlookArgs)
+          : await setOutlookMessageFlagged({ ...outlookArgs, flagged: action === "flag" });
+    if (!result.ok) {
+      const reconnect =
+        result.status === 401 ||
+        result.status === 403 ||
+        String(result.error || "").toLowerCase().includes("permission");
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+        error: reconnect ? "outlook_reconnect_required" : `outlook_${action}_failed`,
+        message: reconnect
+          ? "Koppla om Outlook och godkänn Mail.ReadWrite för att hantera mail."
+          : String(result.error || `Could not ${action} Outlook message.`),
+      });
+    }
+    return res.json({ ok: true, starred: action === "flag" ? true : action === "unflag" ? false : undefined });
   });
 }

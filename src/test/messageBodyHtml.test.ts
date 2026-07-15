@@ -25,9 +25,11 @@ describe("messageBodyHtml", () => {
 
   it("constrains images and embeds in the iframe stylesheet", () => {
     const doc = buildEmailIframeDocument("<img src='hero.png' width='1600' height='900'>");
-    expect(doc).toContain("max-height: min(42vh, 320px)");
+    expect(doc).toContain("max-height: min(28vh, 200px)");
     expect(doc).toContain("object-fit: contain");
     expect(doc).toContain("img, video, iframe, embed, object");
     expect(doc).toContain("overflow-x: hidden");
+    expect(doc).toContain("font-size: 12.5px");
+    expect(doc).toContain("zoom: 0.86");
   });
 });
