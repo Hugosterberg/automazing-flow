@@ -133,7 +133,7 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
-        <ResizablePanel defaultSize={36} minSize={28} maxSize={48} className="min-h-0 min-w-[260px] border-r border-border/40">
+        <ResizablePanel defaultSize="36" minSize="28" maxSize="48" className="min-h-0 min-w-[260px] border-r border-border/40">
           <CustomerList
             rows={rows}
             columns={columns}
@@ -143,7 +143,7 @@ export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, o
           />
         </ResizablePanel>
         <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35" />
-        <ResizablePanel defaultSize={64} minSize={40} className="min-h-0 min-w-0">
+        <ResizablePanel defaultSize="64" minSize="40" className="min-h-0 min-w-0">
           <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden">
             {selectedRow && selectedIndex != null ? (
               <CustomerDetailPanel row={selectedRow} columns={columns} index={selectedIndex} />

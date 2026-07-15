@@ -355,7 +355,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
             </div>
           ) : (
           <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
-            <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
+            <ResizablePanel defaultSize="38" minSize="28" maxSize="48" className="min-h-0 min-w-[280px] border-r border-border/40">
               <aside className="flex h-full min-h-0 flex-col overflow-hidden">
                 <LeadFollowUpInboxList
                   leads={filtered}
@@ -368,7 +368,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
               </aside>
             </ResizablePanel>
             <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35" />
-            <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+            <ResizablePanel defaultSize="62" minSize="40" className="min-h-0 min-w-0">
               <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden">
                 {renderDetailPane()}
               </section>

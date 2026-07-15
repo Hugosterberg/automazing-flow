@@ -60,7 +60,7 @@ export function ActivityWorkspace({
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="flex h-full min-h-0">
-        <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40">
+        <ResizablePanel defaultSize="38" minSize="28" maxSize="48" className="min-h-0 min-w-[280px] border-r border-border/40">
           <aside className="message-inbox-pane flex h-full min-h-0 flex-col overflow-hidden">
             <ActivityFeed
               events={events}
@@ -74,7 +74,7 @@ export function ActivityWorkspace({
           </aside>
         </ResizablePanel>
         <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35" />
-        <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+        <ResizablePanel defaultSize="62" minSize="40" className="min-h-0 min-w-0">
           <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden">
             {selectedEvent ? (
               <ActivityDetailPanel event={selectedEvent} navigation={navigation} />

@@ -45,6 +45,10 @@ export function useCommandPaletteEntities(paletteOpen = false): CommandEntity[] 
   const { tasks } = useTasks(businessProfileId);
   const { leads } = useLeads(businessProfileId);
   const outreachDoc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
+  // Same handled/read triage as the Messages inbox (src/pages/Messages.tsx) so
+  // the "Oläst" label here doesn't disagree with what the inbox itself shows.
+  const messagesHandledDoc = useProfileDocument<string[]>("messages-handled", []);
+  const messagesReadDoc = useProfileDocument<string[]>("messages-read", []);
   const customersDoc = useProfileDocument<CustomerStoragePayload>("customers", {
     columns: [],
     rows: [],
@@ -145,11 +149,16 @@ export function useCommandPaletteEntities(paletteOpen = false): CommandEntity[] 
       if (rows.filter((r) => r.kind === "automation").length >= 4) break;
     }
 
+    const dealtWithMessageIds = new Set([
+      ...(Array.isArray(messagesHandledDoc.data) ? messagesHandledDoc.data : []),
+      ...(Array.isArray(messagesReadDoc.data) ? messagesReadDoc.data : []),
+    ]);
     for (const msg of inboxMessages) {
+      const stillUnread = msg.isUnread && !dealtWithMessageIds.has(msg.id);
       rows.push({
         id: `msg-${msg.id}`,
         label: msg.subject || msg.from?.name || "Meddelande",
-        description: msg.isUnread ? `Oläst · ${msg.channel}` : msg.channel,
+        description: stillUnread ? `Oläst · ${msg.channel}` : msg.channel,
         to: `/messages?id=${encodeURIComponent(msg.id)}`,
         kind: "message",
       });
@@ -236,5 +245,18 @@ export function useCommandPaletteEntities(paletteOpen = false): CommandEntity[] 
     }
 
     return rows.slice(0, 40);
-  }, [tasks, leads, outreachDoc.data, customersDoc.data, inboxMessages, reviewsPending, reviewPreviews, automationRuns.byKey, calendarDoc.data, scheduledPosts]);
+  }, [
+    tasks,
+    leads,
+    outreachDoc.data,
+    customersDoc.data,
+    inboxMessages,
+    reviewsPending,
+    reviewPreviews,
+    automationRuns.byKey,
+    calendarDoc.data,
+    scheduledPosts,
+    messagesHandledDoc.data,
+    messagesReadDoc.data,
+  ]);
 }

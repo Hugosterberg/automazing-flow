@@ -65,6 +65,9 @@ const INBOX_REFRESH_MS = 60_000;
 /** Cap for the persisted handled-ids list so the document stays bounded. */
 const MAX_HANDLED_IDS = 500;
 
+/** Cap for the persisted read-ids list so the document stays bounded. */
+const MAX_READ_IDS = 1000;
+
 const FILTER_SHORTCUTS: Record<string, InboxFilter> = {
   q: "queue",
   o: "open",
@@ -145,9 +148,27 @@ export default function MessagesPage() {
     },
     [handledDoc]
   );
+
+  // Providers don't expose mark-as-read either, so track locally which
+  // unread messages have been opened in the reading pane: keeps the inbox
+  // list's unread badge/bold state in sync with what the user has actually
+  // seen, instead of only clearing once a message is explicitly "Handled".
+  const readDoc = useProfileDocument<string[]>("messages-read", []);
+  const readIds = useMemo(
+    () => new Set(Array.isArray(readDoc.data) ? readDoc.data : []),
+    [readDoc.data]
+  );
+  const markRead = useCallback(
+    (id: string) => {
+      if (readIds.has(id)) return;
+      const prev = Array.isArray(readDoc.data) ? readDoc.data : [];
+      readDoc.save([...prev, id].slice(-MAX_READ_IDS));
+    },
+    [readDoc, readIds]
+  );
   const isUnanswered = useCallback(
-    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
-    [handledIds]
+    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id) && !readIds.has(msg.id),
+    [handledIds, readIds]
   );
 
   const selectedId = searchParams.get("id");
@@ -337,6 +358,13 @@ export default function MessagesPage() {
     setThreadMessages([]);
     autoDraftForId.current = cached?.trim() ? selectedMessage.id : null;
   }, [selectedMessage?.id]);
+
+  // Opening a message in the reading pane counts as reading it: clear its
+  // unread state so the inbox list stops showing it as open immediately.
+  useEffect(() => {
+    if (!selectedMessage?.id || !selectedMessage.isUnread) return;
+    markRead(selectedMessage.id);
+  }, [selectedMessage?.id, selectedMessage?.isUnread, markRead]);
 
   useEffect(() => {
     if (!selectedMessage?.id || replySent) return;

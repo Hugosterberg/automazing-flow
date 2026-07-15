@@ -166,7 +166,7 @@ export function MessageWorkspace({
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0">
-      <ResizablePanel defaultSize={38} minSize={28} maxSize={48} className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
+      <ResizablePanel defaultSize="38" minSize="28" maxSize="48" className="min-h-0 min-w-[280px] border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]">
         <InboxPane
           className="flex h-full min-h-0 flex-col overflow-hidden"
           filteredMessages={filteredMessages}
@@ -185,7 +185,7 @@ export function MessageWorkspace({
         />
       </ResizablePanel>
       <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35 data-[resize-handle-active]:bg-primary/50" />
-      <ResizablePanel defaultSize={62} minSize={40} className="min-h-0 min-w-0">
+      <ResizablePanel defaultSize="62" minSize="40" className="min-h-0 min-w-0">
         <section className="message-reading-pane flex h-full min-h-0 flex-col overflow-hidden bg-background">
           <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
         </section>

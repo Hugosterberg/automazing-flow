@@ -40,6 +40,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAccounts } from "@/context/AccountsContext";
 import type { AccountSection } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useProfileDocument } from "@/features/profile-documents";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks, isTaskOverdue } from "@/features/tasks";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
@@ -294,7 +295,21 @@ export function AppSidebar() {
     const nowMs = Date.now();
     return tasks.filter((t) => isTaskOverdue(t, nowMs)).length;
   }, [tasks]);
-  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  // Raw unread ids from the provider, refetched on mount/account/profile
+  // change only. The badge count itself is derived below by subtracting
+  // handled/read ids, so marking a message read never triggers a refetch.
+  const [unreadMessageIds, setUnreadMessageIds] = useState<string[]>([]);
+  // Same "handled"/"read" triage the Messages inbox uses (src/pages/Messages.tsx)
+  // so this badge doesn't keep counting messages the user already dealt with —
+  // providers expose no mark-as-read/mark-as-replied signal of their own.
+  const messagesHandledDoc = useProfileDocument<string[]>("messages-handled", []);
+  const messagesReadDoc = useProfileDocument<string[]>("messages-read", []);
+  const messagesUnreadCount = useMemo(() => {
+    const handledIds = Array.isArray(messagesHandledDoc.data) ? messagesHandledDoc.data : [];
+    const readIds = Array.isArray(messagesReadDoc.data) ? messagesReadDoc.data : [];
+    const dealtWith = new Set([...handledIds, ...readIds]);
+    return unreadMessageIds.filter((id) => !dealtWith.has(id)).length;
+  }, [unreadMessageIds, messagesHandledDoc.data, messagesReadDoc.data]);
   const messagesAccountKey = useMemo(
     () =>
       accounts
@@ -310,7 +325,7 @@ export function AppSidebar() {
 
     async function loadUnreadCount() {
       if (!messagesAccountKey) {
-        setMessagesUnreadCount(0);
+        setUnreadMessageIds([]);
         return;
       }
 
@@ -326,10 +341,12 @@ export function AppSidebar() {
         if (!res.ok) return;
         const data = await res.json().catch(() => ({}));
         const rows = Array.isArray(data.messages) ? data.messages : [];
-        const unread = rows.filter((m: { isUnread?: unknown }) => Boolean(m.isUnread)).length;
-        if (!ignore) setMessagesUnreadCount(unread);
+        const ids = rows
+          .filter((m: { isUnread?: unknown }) => Boolean(m.isUnread))
+          .map((m: { id?: string }) => m.id ?? "");
+        if (!ignore) setUnreadMessageIds(ids);
       } catch {
-        if (!ignore) setMessagesUnreadCount(0);
+        if (!ignore) setUnreadMessageIds([]);
       }
     }
 
