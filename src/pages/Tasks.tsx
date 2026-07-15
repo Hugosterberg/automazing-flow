@@ -93,12 +93,15 @@ export default function TasksPage() {
   const taskTitleRef = useRef<HTMLInputElement>(null);
   const [prefillTitle, setPrefillTitle] = useState("");
 
-  function setQuickFilter(filter: QuickFilter) {
-    const next = new URLSearchParams(searchParams);
-    if (filter === "all") next.delete("view");
-    else next.set("view", filter);
-    setSearchParams(next, { replace: true });
-  }
+  const setQuickFilter = useCallback(
+    (filter: QuickFilter) => {
+      const next = new URLSearchParams(searchParams);
+      if (filter === "all") next.delete("view");
+      else next.set("view", filter);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   const {
     tasks,
