@@ -242,16 +242,23 @@ export default function MarketingPage() {
       ? (rawMarketingTab as MarketingTab)
       : "campaigns";
 
-  function setMarketingTab(tab: MarketingTab) {
-    const next = new URLSearchParams(searchParams);
-    if (tab === "campaigns") next.delete("tab");
-    else next.set("tab", tab);
-    setSearchParams(next, { replace: true });
-  }
+  const setMarketingTab = useCallback(
+    (tab: MarketingTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "campaigns") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   useEffect(() => {
     if (searchParams.get("new") !== "campaign") return;
-    setMarketingTab("campaigns");
     setEditingCampaignId(null);
     setCampaignOpen(true);
     const next = new URLSearchParams(searchParams);
@@ -270,7 +277,7 @@ export default function MarketingPage() {
     });
   }
 
-  function resetCampaignForm() {
+  const resetCampaignForm = useCallback(() => {
     setEditingCampaignId(null);
     setCampaignTitle("");
     setCampaignObjective("leads");
@@ -282,15 +289,15 @@ export default function MarketingPage() {
     setCampaignCta("");
     setCampaignNotes("");
     setCampaignStatus("open");
-  }
+  }, []);
 
-  function openNewCampaign() {
+  const openNewCampaign = useCallback(() => {
     setMarketingTab("campaigns");
     resetCampaignForm();
     setCampaignOpen(true);
-  }
+  }, [setMarketingTab, resetCampaignForm]);
 
-  function openEditCampaign(task: TaskRow) {
+  const openEditCampaign = useCallback((task: TaskRow) => {
     setEditingCampaignId(task.id);
     setCampaignTitle(task.title || "");
     setCampaignObjective(optionValue(CAMPAIGN_OBJECTIVES, campaignField(task.description, "Mål"), "leads"));
@@ -310,7 +317,7 @@ export default function MarketingPage() {
     );
     setCampaignStatus(task.status);
     setCampaignOpen(true);
-  }
+  }, []);
 
   function handleCampaignDialogChange(open: boolean) {
     setCampaignOpen(open);

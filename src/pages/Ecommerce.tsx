@@ -105,12 +105,20 @@ export default function Ecommerce() {
         ? (rawEcommerceTab as EcommerceTab)
         : "orders";
 
-  function setTab(next: EcommerceTab) {
-    const params = new URLSearchParams(searchParams);
-    if (next === "orders") params.delete("tab");
-    else params.set("tab", next);
-    setSearchParams(params, { replace: true });
-  }
+  const setTab = useCallback(
+    (next: EcommerceTab) => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (next === "orders") params.delete("tab");
+          else params.set("tab", next);
+          return params;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   const [orderPaymentFilter, setOrderPaymentFilter] = useState<string>(
     () => readPersistedOrderFilters(activeBusinessProfileId ?? activeProfileId).payment
@@ -289,7 +297,7 @@ export default function Ecommerce() {
       await handleCreateProduct(alibabaImportToInput(imported));
       setTab("products");
     },
-    [handleCreateProduct]
+    [handleCreateProduct, setTab]
   );
 
   const currency = shopifyData?.stats.currency || "USD";
