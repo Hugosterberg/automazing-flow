@@ -15,14 +15,14 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
   }
 
   return (
-    <div className={cn("space-y-2 text-left lg:space-y-1.5", quoted && "text-muted-foreground/80")}>
+    <div className={cn("space-y-2.5 text-left lg:space-y-2", quoted && "text-muted-foreground/80")}>
       {paragraphs.map((paragraph, pi) => {
         const segments = segmentLinks(paragraph);
         return (
           <p
             key={pi}
             className={cn(
-              "text-[13px] leading-[1.45] text-left sm:text-[12.5px] sm:leading-[1.4] lg:text-[12px] lg:leading-[1.38]",
+              "text-[15px] leading-[1.55] text-left sm:text-[14.5px] sm:leading-[1.5] lg:text-[14px] lg:leading-[1.5]",
               quoted ? "text-muted-foreground/80" : "text-foreground"
             )}
           >
@@ -77,7 +77,7 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
     return (
       <article className="message-prose w-full text-left">
         <CollapsibleMailBody contentKey={message.id}>
-          <div className="message-reading-card px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-2.5 lg:py-2">
+          <div className="message-reading-card px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-4 lg:py-3.5">
             <FormattedBlock text={main || raw} />
           </div>
         </CollapsibleMailBody>
@@ -108,7 +108,7 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
   return (
     <article className="message-prose w-full text-left">
       <CollapsibleMailBody contentKey={message.id}>
-        <div className="message-reading-card px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-2.5 lg:py-2">
+        <div className="message-reading-card px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-4 lg:py-3.5">
           <FormattedBlock text={raw} />
         </div>
       </CollapsibleMailBody>

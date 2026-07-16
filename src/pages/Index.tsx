@@ -54,6 +54,7 @@ import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { useReviewReplyState } from "@/features/reviews";
 import { MarketPulseCard } from "@/features/intelligence";
+import { FlowAutomationStatusCard } from "@/features/automation";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import {
   useTasks,
@@ -933,6 +934,10 @@ export default function Index() {
           </div>
         </HomeCollapsibleSection>
       ) : null}
+
+      <HomeCollapsibleSection title="Automationer som jobbar" ariaLabel="Automationer som jobbar">
+        <FlowAutomationStatusCard businessProfileId={homeBusinessProfileId} />
+      </HomeCollapsibleSection>
 
       <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

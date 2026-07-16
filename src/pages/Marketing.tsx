@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
+import { AutomationEnableHint } from "@/features/automation";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { useAccounts } from "@/context/AccountsContext";
@@ -519,6 +520,14 @@ export default function MarketingPage() {
 
       {marketingTab === "ads" ? (
       <>
+      <AutomationEnableHint
+        compact
+        tab="insights"
+        focus="marketing-actions"
+        title="Låt annonser justeras automatiskt"
+        description="Marketing-actions och alerts kan pausa svaga Meta-kampanjer och varna om ROAS — mindre manuell kontroll varje morgon."
+        ctaLabel="Öppna marketing-automationer"
+      />
       <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="app-workspace-shell !min-h-0 scroll-mt-24 space-y-4 p-3 sm:p-4" id="paid-ads">
         <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">

@@ -37,27 +37,26 @@ export function buildEmailIframeDocument(bodyHtml: string): string {
   }
   *, *::before, *::after { box-sizing: border-box; }
   body {
-    padding: 8px 10px;
+    padding: 12px 14px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 12.5px;
-    line-height: 1.4;
+    font-size: 15px;
+    line-height: 1.55;
     color: #1a1a1a;
     word-wrap: break-word;
     overflow-wrap: anywhere;
   }
   @media (min-width: 900px) {
     body {
-      padding: 6px 8px;
-      font-size: 12px;
-      line-height: 1.38;
-      zoom: 0.86;
+      padding: 14px 16px;
+      font-size: 14.5px;
+      line-height: 1.55;
     }
     img, video, iframe, embed, object {
-      max-height: min(22vh, 160px) !important;
+      max-height: min(40vh, 320px) !important;
     }
   }
   @media (max-width: 640px) {
-    body { padding: 8px 10px; font-size: 13px; line-height: 1.4; }
+    body { padding: 12px 14px; font-size: 15px; line-height: 1.55; }
   }
   /* Marketing templates ship huge hero / attachment images — keep them readable. */
   img, video, iframe, embed, object, svg {
@@ -65,7 +64,7 @@ export function buildEmailIframeDocument(bodyHtml: string): string {
     height: auto !important;
   }
   img, video, iframe, embed, object {
-    max-height: min(28vh, 200px) !important;
+    max-height: min(42vh, 360px) !important;
     object-fit: contain !important;
   }
   table {

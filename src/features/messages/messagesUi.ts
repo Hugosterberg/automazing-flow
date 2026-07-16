@@ -135,7 +135,13 @@ export function inboxEmptyCopy(opts: {
   filter: InboxFilter;
   search: string;
   hasMessagesInTab: boolean;
-}): { title: string; description: string; showClearSearch?: boolean; showConnect?: boolean } {
+}): {
+  title: string;
+  description: string;
+  showClearSearch?: boolean;
+  showConnect?: boolean;
+  showAutomations?: boolean;
+} {
   const query = opts.search.trim();
   if (query) {
     return {
@@ -147,7 +153,9 @@ export function inboxEmptyCopy(opts: {
   if (opts.filter === "open" && opts.hasMessagesInTab) {
     return {
       title: "Inget kvar att svara på",
-      description: "Alla meddelanden i denna kanal är hanterade. Bra jobbat!",
+      description:
+        "Alla meddelanden i denna kanal är hanterade. Slå på auto-svar under Automationer så utkast skapas åt dig när nya DM:er kommer.",
+      showAutomations: true,
     };
   }
   if (opts.filter === "handled") {
@@ -159,7 +167,9 @@ export function inboxEmptyCopy(opts: {
   if (opts.filter === "queue" && opts.hasMessagesInTab) {
     return {
       title: "Kön är tom",
-      description: "Inget behöver svar just nu. Byt till Alla för att se hela inkorgen.",
+      description:
+        "Inget behöver svar just nu. Aktivera auto-svar och uppföljning under Automationer så köarbetet minskar över tid.",
+      showAutomations: true,
     };
   }
   return emptyCopyForTab(opts.tab);

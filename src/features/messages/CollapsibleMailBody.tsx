@@ -3,10 +3,10 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Collapsed email body — keeps compose footer in view for long messages. */
-export const MAIL_BODY_COLLAPSED_MAX = "min(46vh, 400px)";
+/** Collapsed email body — tall enough that typical mail is readable without expand. */
+export const MAIL_BODY_COLLAPSED_MAX = "min(72vh, 780px)";
 /** Expanded still capped so the reading pane cannot run away. */
-export const MAIL_BODY_EXPANDED_MAX = "min(70vh, 680px)";
+export const MAIL_BODY_EXPANDED_MAX = "min(92vh, 1200px)";
 
 type Props = {
   children: ReactNode;
@@ -33,8 +33,8 @@ export function CollapsibleMailBody({ children, className, contentKey }: Props) 
     if (!el) return;
 
     const measure = () => {
-      // Compare scrollHeight to collapsed CSS max (~400px / 46vh).
-      const collapsedPx = Math.min(window.innerHeight * 0.46, 400);
+      // Compare scrollHeight to collapsed CSS max (~780px / 72vh).
+      const collapsedPx = Math.min(window.innerHeight * 0.72, 780);
       setOverflows(el.scrollHeight > collapsedPx + 8);
     };
 

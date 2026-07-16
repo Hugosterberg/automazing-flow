@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
+import { AutomationEnableHint } from "@/features/automation";
 import { cn } from "@/lib/utils";
 import { pageFadeUp } from "@/lib/motion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -548,6 +549,17 @@ export default function TasksPage() {
           { value: "all", label: "Alla" },
         ]}
       />
+
+      {quickFilter === "overdue" && overdueCount > 0 ? (
+        <AutomationEnableHint
+          compact
+          tab="reports"
+          focus="task-reminder"
+          title="Påminn automatiskt om försenade"
+          description="Task-reminder cron mailar dig om öppna deadlines — så du slipper jaga listan manuellt."
+          ctaLabel="Aktivera uppgifts-påminnelser"
+        />
+      ) : null}
 
       <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
         <TaskForm

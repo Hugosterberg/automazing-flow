@@ -18,6 +18,7 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
+import { AutomationEnableHint } from "@/features/automation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
@@ -1152,6 +1153,14 @@ export default function ContentPage() {
 
       {contentTab === "publish" ? (
         <div className="space-y-4">
+          <AutomationEnableHint
+            compact
+            tab="content"
+            focus="publish-scheduled-posts"
+            title="Schemaläggning körs automatiskt"
+            description="När du schemalägger inlägg publicerar cron dem var 15:e minut. Content-pipeline kan också köa utkast åt dig."
+            ctaLabel="Se content-automationer"
+          />
           {selectedAssets.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-8 text-center space-y-3">

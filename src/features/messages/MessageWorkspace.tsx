@@ -169,9 +169,9 @@ export function MessageWorkspace({
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 min-w-0 overflow-hidden">
       <ResizablePanel
-        defaultSize="30"
-        minSize="22"
-        maxSize="42"
+        defaultSize="26"
+        minSize="18"
+        maxSize="38"
         className="min-h-0 min-w-0 overflow-hidden border-r border-border/40 shadow-[inset_-1px_0_0_hsl(var(--border)/0.35)]"
       >
         <InboxPane
@@ -192,7 +192,7 @@ export function MessageWorkspace({
         />
       </ResizablePanel>
       <ResizableHandle withHandle className="w-px bg-border/40 transition-colors hover:bg-primary/35 data-[resize-handle-active]:bg-primary/50" />
-      <ResizablePanel defaultSize="70" minSize="50" className="min-h-0 min-w-0 overflow-hidden">
+      <ResizablePanel defaultSize="74" minSize="55" className="min-h-0 min-w-0 overflow-hidden">
         <section className="message-reading-pane flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
           <DetailPane selectedMessage={selectedMessage} detailProps={detailProps} />
         </section>

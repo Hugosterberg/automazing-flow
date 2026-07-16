@@ -1183,6 +1183,10 @@ export default function MessagesPage() {
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxFilterPersisted("all")}>
       Visa alla meddelanden
     </Button>
+  ) : inboxEmptyState.showAutomations ? (
+    <Button asChild type="button" size="sm" variant="outline" className="h-8 text-xs">
+      <Link to="/automations?tab=messages&focus=auto-reply">Öppna Automationer</Link>
+    </Button>
   ) : inboxEmptyState.showConnect ? (
     <Button asChild type="button" size="sm" variant="outline" className="h-8 text-xs">
       <Link to="/connections">Öppna Kopplingar</Link>

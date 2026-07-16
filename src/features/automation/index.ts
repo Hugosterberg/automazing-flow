@@ -3,6 +3,7 @@ export { AutomatedUpdatesCard } from "./AutomatedUpdatesCard";
 export { AutomationRunStatus } from "./AutomationRunStatus";
 export { AutomationScheduleEditor } from "./AutomationScheduleEditor";
 export { FlowAutomationStatusCard } from "./FlowAutomationStatusCard";
+export { AutomationEnableHint } from "./AutomationEnableHint";
 export { useAutomationRuns } from "./useAutomationRuns";
 export { useAutomationSchedules } from "./useAutomationSchedules";
 export type { AutomationRunsState } from "./useAutomationRuns";

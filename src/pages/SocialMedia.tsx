@@ -32,6 +32,7 @@ import {
   type SocialMediaApiPost,
   type SocialMediaApiResponse,
 } from "@/features/social";
+import { AutomationEnableHint } from "@/features/automation";
 import { apiUrl } from "@/lib/apiBase";
 import { formatShortDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -880,6 +881,13 @@ export default function SocialMedia() {
 
       {socialMode === "more" ? (
       <>
+      <AutomationEnableHint
+        tab="content"
+        focus="publish-scheduled-posts"
+        title="Låt schema och pipeline köra själva"
+        description="Publicering av schemalagda inlägg, content-pipeline och sociala snapshots kan köras automatiskt — så du slipper klicka manuellt varje dag."
+        ctaLabel="Öppna content-automationer"
+      />
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}

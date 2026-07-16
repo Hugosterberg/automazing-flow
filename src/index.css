@@ -381,18 +381,18 @@
   }
 
   .messages-workspace-shell {
-    min-height: min(72dvh, 100%);
+    min-height: min(78dvh, 100%);
     max-width: 100%;
     overflow-x: hidden;
   }
   @media (min-width: 640px) {
     .messages-workspace-shell {
-      min-height: min(58vh, 680px);
+      min-height: min(68vh, 780px);
     }
   }
   @media (min-width: 1024px) {
     .messages-workspace-shell {
-      min-height: min(78vh, 880px);
+      min-height: min(86vh, 980px);
     }
   }
 
@@ -422,11 +422,12 @@
 
   @media (min-width: 1024px) {
     .messages-workspace-shell {
-      min-height: min(82vh, 920px);
+      min-height: min(88vh, 1040px);
     }
 
     .message-prose .message-reading-card {
       border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
     }
 
     .message-reading-pane .message-iframe-shell {

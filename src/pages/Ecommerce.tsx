@@ -50,6 +50,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { AutomationEnableHint } from "@/features/automation";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
@@ -1194,6 +1195,15 @@ export default function Ecommerce() {
                       </a>
                     </Button>
                   </div>
+                  <AutomationEnableHint
+                    className="mt-3"
+                    compact
+                    tab="reports"
+                    focus="cart-recovery"
+                    title="Automatisera återvinning"
+                    description="Cart-recovery cron skickar återhämtningsmail på schema — du slipper klicka per varukorg."
+                    ctaLabel="Slå på cart-recovery"
+                  />
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {shopifyData.abandonedCheckouts.map((checkout) => (

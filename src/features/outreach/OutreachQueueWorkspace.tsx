@@ -10,6 +10,7 @@ import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
+import { AutomationEnableHint } from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OutreachDetailPanel, OutreachDetailPlaceholder } from "./OutreachDetailPanel";
 import { OutreachInboxList } from "./OutreachInboxList";
@@ -257,11 +258,14 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
 
   if (pending.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border px-6 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">Outreach-kön är tom</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Aktivera automatisk outreach under Automationer — utkast hamnar här när uppföljningar ska göras.
-        </p>
+      <div className="mx-auto max-w-lg px-4 py-8">
+        <AutomationEnableHint
+          tab="messages"
+          focus="sales-outreach-auto"
+          title="Outreach-kön är tom"
+          description="Aktivera automatisk outreach — utkast hamnar här när uppföljningar ska göras. Du granskar och skickar själv."
+          ctaLabel="Aktivera outreach-automation"
+        />
       </div>
     );
   }

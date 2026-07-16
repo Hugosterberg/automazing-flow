@@ -40,6 +40,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
+import { AutomationEnableHint } from "@/features/automation";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge } from "@/features/business-profiles";
 import { LeadsSection, LeadSuggestionsSection, LeadFollowUpsWorkspace, useLeads, buildLeadSuggestionContext, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday, type Lead } from "@/features/leads";
@@ -707,6 +708,16 @@ export default function SalesMarketingPage() {
       ) : null}
       {showSalesChrome && salesTab === "leads" ? (
         <>
+          {dueLeadsList.length > 0 ? (
+            <AutomationEnableHint
+              compact
+              tab="reports"
+              focus="lead-reminder"
+              title="Automatisera lead-påminnelser"
+              description={`${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} behöver uppföljning. Lead-reminder cron håller dig uppdaterad utan manuell checklista.`}
+              ctaLabel="Aktivera lead-påminnelser"
+            />
+          ) : null}
           <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
             <LeadSuggestionsSection
               businessProfileId={businessProfileId}

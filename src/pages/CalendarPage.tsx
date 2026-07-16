@@ -53,6 +53,7 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
+import { AutomationEnableHint } from "@/features/automation";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -1025,6 +1026,14 @@ export default function CalendarPage() {
                 </Button>
               ))}
             </div>
+            <AutomationEnableHint
+              compact
+              tab="reports"
+              focus="lead-reminder"
+              title="Påminn om uppföljningar automatiskt"
+              description="Lead- och task-reminder cron mailar dig om deadlines — så kalendern inte blir den enda platsen du måste kolla."
+              ctaLabel="Aktivera påminnelser"
+            />
           </CardContent>
         </Card>
       )}
@@ -1032,7 +1041,7 @@ export default function CalendarPage() {
       {upcomingEvents.length > 0 && (
         <Card className="rounded-xl">
           <CardContent className="py-4">
-            <h2 className="text-sm font-semibold mb-3">Upcoming events</h2>
+            <h2 className="text-sm font-semibold mb-3">Kommande händelser</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {upcomingEvents.map((ev: CalendarItem) => (
                 <div

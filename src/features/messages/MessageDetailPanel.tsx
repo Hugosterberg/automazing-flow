@@ -615,8 +615,8 @@ export function MessageDetailPanel({
           className={cn(
             "message-scroll min-h-0 flex-1 overflow-y-auto px-3",
             composeOpen
-              ? "py-2 [&_.message-prose_p]:text-[13px] [&_.message-prose_p]:leading-snug"
-              : "py-4"
+              ? "py-2 [&_.message-prose_p]:text-[14px] [&_.message-prose_p]:leading-relaxed"
+              : "py-4 sm:py-5"
           )}
         >
           {bodyContent}

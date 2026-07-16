@@ -33,6 +33,7 @@ import {
 } from "@/features/automation";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
+import { cn } from "@/lib/utils";
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
 function AutomationFailuresStrip({
@@ -168,12 +169,13 @@ function ScheduleList({
         return (
           <Card
             key={entry.id}
-            id={
-              cronKey && runs.byKey[cronKey]?.lastRun?.status === "failed"
-                ? `automation-${cronKey}`
-                : undefined
-            }
-            className="border-border bg-card"
+            id={cronKey ? `automation-${cronKey}` : undefined}
+            className={cn(
+              "border-border bg-card scroll-mt-24",
+              cronKey &&
+                runs.byKey[cronKey]?.lastRun?.status === "failed" &&
+                "ring-1 ring-destructive/40"
+            )}
           >
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -321,6 +323,19 @@ export default function AutomationsPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [runStats.failed]);
+
+  const focusCron = searchParams.get("focus");
+  useEffect(() => {
+    if (!focusCron) return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(`automation-${focusCron}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary/50");
+      window.setTimeout(() => el.classList.remove("ring-2", "ring-primary/50"), 2200);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [focusCron, automationTab]);
 
   return (
     <m.div {...pageFadeUp} className="space-y-8 max-w-5xl w-full mx-auto">

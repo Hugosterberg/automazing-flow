@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AutomationEnableHint } from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 
 export type ReviewReplyQueueItem = {
@@ -24,7 +25,17 @@ export function ReviewReplyQueueSection({
   const doc = useProfileDocument<ReviewReplyQueueItem[]>("review-reply-queue", []);
   const pending = doc.data.filter((item) => item.status === "draft" || !item.status);
 
-  if (pending.length === 0) return null;
+  if (pending.length === 0) {
+    return (
+      <AutomationEnableHint
+        tab="messages"
+        focus="review-reply-auto"
+        title="Inga review-utkast ännu"
+        description="Slå på automatiska recensionssvar — cron förbereder utkast så du bara granskar och skickar."
+        ctaLabel="Aktivera review-automation"
+      />
+    );
+  }
 
   function dismiss(id: string) {
     doc.save(doc.data.map((item) => (item.id === id ? { ...item, status: "sent" as const } : item)));
@@ -54,10 +65,10 @@ export function ReviewReplyQueueSection({
             </div>
             <div className="flex gap-2 shrink-0">
               <Button type="button" size="sm" className="h-8 text-xs" onClick={() => onUseDraft(item)}>
-                Use draft
+                Använd utkast
               </Button>
               <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => dismiss(item.id)}>
-                Dismiss
+                Avfärda
               </Button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AutomationEnableHint } from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatShortDate } from "@/lib/format";
 import { outreachDraftToMailto } from "./outreachClient";
@@ -25,14 +26,13 @@ export function OutreachQueueSection({
   if (!businessProfileId || pending.length === 0) {
     if (compact) return null;
     return (
-      <Card className="border-border">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Outreach-kö</CardTitle>
-          <CardDescription>
-            Aktivera automatisk outreach under Automationer — utkast hamnar här när uppföljningar ska göras.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <AutomationEnableHint
+        tab="messages"
+        focus="sales-outreach-auto"
+        title="Automatisera lead-uppföljning"
+        description="Slå på automatisk outreach — utkast skapas i kön när leads behöver följas upp. Du godkänner innan något skickas."
+        ctaLabel="Aktivera outreach-automation"
+      />
     );
   }
 
