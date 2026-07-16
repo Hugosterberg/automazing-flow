@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "overview": {
+      "label": "Status",
+      "description": "Connection and key status for all MCP providers."
+    },
+    "compare": {
+      "label": "Compare",
+      "description": "Run the same domain or company through every connected MCP lens and compare assessments side by side."
+    },
+    "research": {
+      "label": "Research",
+      "description": "Market pulse, lead research and competitor analysis."
+    },
+    "marketing": {
+      "label": "Marketing",
+      "description": "SEO and marketing data."
+    },
+    "content": {
+      "label": "Content",
+      "description": "Presentations and design help."
+    },
+    "commerce": {
+      "label": "Commerce",
+      "description": "Queries against your Shopify store."
+    },
+    "crm-mail": {
+      "label": "CRM & mail",
+      "description": "CRM assistant and mail search."
+    },
+    "catalog": {
+      "label": "Catalog",
+      "description": "All MCP providers and which data types each can fetch."
+    },
+    "tools": {
+      "label": "Tools",
+      "description": "Browse and call raw tools from any connected MCP server."
+    },
+    "developer": {
+      "label": "Developer",
+      "description": "Documentation, domains, architecture and context tools."
+    }
+  },
+  "features": {
+    "market-pulse": {
+      "title": "Market pulse",
+      "description": "Crypto/social sentiment for a topic on your home page.",
+      "placeholder": "e.g. bitcoin, ethereum, solana",
+      "buttonLabel": "Fetch pulse",
+      "unavailable": "Market pulse is unavailable — connect LunarCrush with an API key."
+    },
+    "lead-research": {
+      "title": "Lead research",
+      "description": "Company overview from your connected research provider (Exa first, Sprouts as backup).",
+      "placeholder": "Company name, person or website",
+      "buttonLabel": "Research"
+    },
+    "competitive-research": {
+      "title": "Competitor analysis",
+      "description": "Research on competitors and market positioning.",
+      "placeholder": "e.g. Acme Corp vs our positioning",
+      "buttonLabel": "Research"
+    },
+    "seo-overview": {
+      "title": "SEO overview",
+      "description": "Domain or URL overview via Ahrefs OAuth MCP.",
+      "placeholder": "e.g. automazing.life",
+      "buttonLabel": "Analyze"
+    },
+    "marketing-query": {
+      "title": "Marketing data",
+      "description": "Ask for campaign or channel figures (Supermetrics first, Windsor as backup).",
+      "placeholder": "e.g. Meta ad spend last 7 days",
+      "buttonLabel": "Ask"
+    },
+    "deck-generation": {
+      "title": "Create presentation",
+      "description": "Generate a presentation outline or deck from a prompt.",
+      "placeholder": "e.g. Q3 marketing results for stakeholders",
+      "buttonLabel": "Generate"
+    },
+    "design-assist": {
+      "title": "Design help",
+      "description": "Design briefs and creative direction via Canva OAuth MCP.",
+      "placeholder": "e.g. Instagram carousel for product launch",
+      "buttonLabel": "Help me"
+    },
+    "shop-catalog": {
+      "title": "Store catalog",
+      "description": "Search products in your connected Shopify store (shop domain required at connect).",
+      "placeholder": "e.g. bestsellers tagged summer",
+      "buttonLabel": "Search"
+    },
+    "crm-query": {
+      "title": "CRM assistant",
+      "description": "Ask about customers, deals and pipeline via Day.ai OAuth MCP.",
+      "placeholder": "e.g. open deals over 50k this quarter",
+      "buttonLabel": "Ask CRM"
+    },
+    "mail-search": {
+      "title": "Mail search",
+      "description": "Search mail via Superhuman when OAuth is configured.",
+      "placeholder": "e.g. invoices from Acme last week",
+      "buttonLabel": "Search mail"
+    },
+    "doc-search": {
+      "title": "Documentation search",
+      "description": "Search developer docs (Twilio keyless MCP first, Exa as backup).",
+      "placeholder": "e.g. How do I send SMS with Twilio?",
+      "buttonLabel": "Search"
+    },
+    "domain-lookup": {
+      "title": "Domain lookup",
+      "description": "Look up domain availability or DNS via GoDaddy API key.",
+      "placeholder": "e.g. automazing.life",
+      "buttonLabel": "Look up"
+    },
+    "architecture-docs": {
+      "title": "Architecture docs",
+      "description": "Search architecture documentation via Klarity API key.",
+      "placeholder": "e.g. event-driven order pipeline",
+      "buttonLabel": "Search"
+    },
+    "context-query": {
+      "title": "Context tools",
+      "description": "Context and integration questions via Era OAuth MCP.",
+      "placeholder": "e.g. summarize connected integrations",
+      "buttonLabel": "Ask"
+    }
+  }
+}

@@ -1,13 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  AI_REC_KIND_LABELS,
-  type AiRecommendationKind,
-  type AiRecommendationRow,
-} from "./aiRecommendationsService";
+import type { AiRecommendationKind, AiRecommendationRow } from "./aiRecommendationsService";
 
 interface Props {
   rec: AiRecommendationRow;
@@ -49,6 +46,7 @@ export function AiRecommendationCard({
   onMarkSeen,
   isBusy,
 }: Props) {
+  const { t } = useTranslation("aiRecommendations");
   const resolved = rec.status === "accepted" || rec.status === "dismissed";
   const createdAgo = safeRelative(rec.created_at);
   const confidence = formatConfidence(rec.confidence);
@@ -68,16 +66,16 @@ export function AiRecommendationCard({
               variant="outline"
               className={cn("text-[11px] uppercase", KIND_STYLES[rec.kind])}
             >
-              {AI_REC_KIND_LABELS[rec.kind]}
+              {t(`kinds.${rec.kind}`)}
             </Badge>
             {confidence ? (
               <span className="text-[11px] text-muted-foreground tabular-nums">
-                {confidence} confidence
+                {t("card.confidence", { percent: confidence })}
               </span>
             ) : null}
             {rec.status === "accepted" ? (
               <Badge className="text-[11px] bg-success/15 text-success border-success/40">
-                Accepted
+                {t("status.accepted")}
               </Badge>
             ) : null}
             {rec.status === "dismissed" ? (
@@ -85,12 +83,12 @@ export function AiRecommendationCard({
                 variant="outline"
                 className="text-[11px] border-border text-muted-foreground"
               >
-                Dismissed
+                {t("status.dismissed")}
               </Badge>
             ) : null}
             {rec.status === "new" ? (
               <Badge className="text-[11px] bg-primary/15 text-primary border-primary/40">
-                New
+                {t("status.new")}
               </Badge>
             ) : null}
           </div>
@@ -107,7 +105,7 @@ export function AiRecommendationCard({
       {rec.rationale ? (
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
-            Why this suggestion?
+            {t("card.whySummary")}
           </summary>
           <p className="mt-1.5 text-muted-foreground whitespace-pre-wrap break-words">
             {rec.rationale}
@@ -117,7 +115,7 @@ export function AiRecommendationCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <span className="text-[11px] text-muted-foreground tabular-nums">
-          {createdAgo ? `Created ${createdAgo}` : null}
+          {createdAgo ? t("card.created", { time: createdAgo }) : null}
         </span>
         {!resolved && (onAccept || onDismiss || onMarkSeen) ? (
           <div className="flex items-center gap-1.5">
@@ -130,7 +128,7 @@ export function AiRecommendationCard({
                 onClick={() => onMarkSeen(rec.id)}
                 disabled={isBusy}
               >
-                Mark seen
+                {t("card.markSeen")}
               </Button>
             ) : null}
             {onDismiss ? (
@@ -147,7 +145,7 @@ export function AiRecommendationCard({
                 ) : (
                   <X className="h-3 w-3" />
                 )}
-                Dismiss
+                {t("card.dismiss")}
               </Button>
             ) : null}
             {onAccept ? (
@@ -163,7 +161,7 @@ export function AiRecommendationCard({
                 ) : (
                   <Check className="h-3 w-3" />
                 )}
-                Accept
+                {t("card.accept")}
               </Button>
             ) : null}
           </div>

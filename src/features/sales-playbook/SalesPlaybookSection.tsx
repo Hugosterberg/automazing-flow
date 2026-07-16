@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Copy,
   Loader2,
@@ -21,48 +22,16 @@ import {
   type SalesPlaybookMode,
 } from "./salesPlaybookClient";
 
-const ALL_PLAYBOOK_MODES: {
+const PLAYBOOK_MODE_IDS: {
   id: SalesPlaybookMode;
-  label: string;
-  description: string;
   icon: typeof Sparkles;
 }[] = [
-  {
-    id: "pitch-angles",
-    label: "Pitch",
-    description: "Värdeerbjudanden och hisspitchar som säljer ditt erbjudande.",
-    icon: Target,
-  },
-  {
-    id: "cold-outreach",
-    label: "Outreach",
-    description: "Mail- och LinkedIn-öppningar som startar samtal.",
-    icon: MessageSquareQuote,
-  },
-  {
-    id: "objections",
-    label: "Invändningar",
-    description: "Svar när köpare tvekar på pris, timing eller passform.",
-    icon: Zap,
-  },
-  {
-    id: "campaigns",
-    label: "Kampanjer",
-    description: "Marknadskampanjer på 30–90 dagar som driver försäljning.",
-    icon: Megaphone,
-  },
-  {
-    id: "channels",
-    label: "Kanaler",
-    description: "Var du bör marknadsföra och sälja dina produkter.",
-    icon: TrendingUp,
-  },
-  {
-    id: "promotions",
-    label: "Erbjudanden",
-    description: "Erbjudanden, paket och krokar som konverterar.",
-    icon: Tag,
-  },
+  { id: "pitch-angles", icon: Target },
+  { id: "cold-outreach", icon: MessageSquareQuote },
+  { id: "objections", icon: Zap },
+  { id: "campaigns", icon: Megaphone },
+  { id: "channels", icon: TrendingUp },
+  { id: "promotions", icon: Tag },
 ];
 
 type SalesPlaybookSectionProps = {
@@ -98,16 +67,28 @@ export function SalesPlaybookSection({
   notes,
   modes,
   defaultMode,
-  title = "Sälj- & marknadsföringsplaybook",
-  description = "AI-idéer för pitch, outreach, invändningar, kampanjer, kanalval och erbjudanden.",
+  title,
+  description,
   onUseForOutreach,
   onUseForCampaign,
   onUseForContent,
   onOpenEcommerce,
 }: SalesPlaybookSectionProps) {
+  const { t } = useTranslation("sales");
+
+  const allPlaybookModes = useMemo(
+    () =>
+      PLAYBOOK_MODE_IDS.map((mode) => ({
+        ...mode,
+        label: t(`playbook.modes.${mode.id}.label`),
+        description: t(`playbook.modes.${mode.id}.description`),
+      })),
+    [t]
+  );
+
   const visibleModes = modes?.length
-    ? ALL_PLAYBOOK_MODES.filter((m) => modes.includes(m.id))
-    : ALL_PLAYBOOK_MODES;
+    ? allPlaybookModes.filter((m) => modes.includes(m.id))
+    : allPlaybookModes;
   const initialMode = defaultMode && visibleModes.some((m) => m.id === defaultMode)
     ? defaultMode
     : visibleModes[0]?.id ?? "pitch-angles";
@@ -118,6 +99,8 @@ export function SalesPlaybookSection({
   const [loading, setLoading] = useState(false);
 
   const activeItems = cache[mode] ?? [];
+  const resolvedTitle = title ?? t("playbook.title");
+  const resolvedDescription = description ?? t("playbook.description");
 
   async function loadItems(nextMode: SalesPlaybookMode) {
     setLoading(true);
@@ -134,9 +117,9 @@ export function SalesPlaybookSection({
       });
       setCache((prev) => ({ ...prev, [nextMode]: result.items }));
       setSource(result.source);
-      if (result.items.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
+      if (result.items.length === 0) toast.message(t("toasts.playbookEmpty"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kunde inte ladda idéer.");
+      toast.error(error instanceof Error ? error.message : t("toasts.playbookLoadError"));
     } finally {
       setLoading(false);
     }
@@ -144,7 +127,7 @@ export function SalesPlaybookSection({
 
   function copyItem(item: SalesPlaybookItem) {
     void navigator.clipboard.writeText(itemText(item));
-    toast.success("Kopierat");
+    toast.success(t("toasts.copied"));
   }
 
   const activeMeta = visibleModes.find((m) => m.id === mode);
@@ -156,9 +139,9 @@ export function SalesPlaybookSection({
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Sparkles className="h-4 w-4 text-primary" />
-              {title}
+              {resolvedTitle}
             </CardTitle>
-            <CardDescription className="max-w-2xl">{description}</CardDescription>
+            <CardDescription className="max-w-2xl">{resolvedDescription}</CardDescription>
           </div>
           <Button type="button" size="sm" onClick={() => void loadItems(mode)} disabled={loading || !businessProfileId}>
             {loading ? (
@@ -166,7 +149,7 @@ export function SalesPlaybookSection({
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            Generera idéer
+            {t("playbook.generate")}
           </Button>
         </div>
       </CardHeader>
@@ -197,7 +180,7 @@ export function SalesPlaybookSection({
               <PlaybookList
                 items={cache[tab.id] ?? []}
                 mode={tab.id}
-                emptyText={`Klicka på "Generera idéer" för ${tab.label.toLowerCase()} anpassade till din verksamhet.`}
+                emptyText={t("playbook.emptyHint", { mode: tab.label.toLowerCase() })}
                 onCopy={copyItem}
                 onUseForOutreach={onUseForOutreach}
                 onUseForCampaign={onUseForCampaign}
@@ -210,9 +193,11 @@ export function SalesPlaybookSection({
 
         {source && activeItems.length > 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            Källa: {source === "ai" ? "AI" : "generella idéer"}
-            {activeMeta ? ` · ${activeMeta.label}` : ""}
-            {` · ${activeItems.length} idéer`}
+            {t("playbook.sourceLine", {
+              source: source === "ai" ? t("playbook.sourceAi") : t("playbook.sourceGeneric"),
+              mode: activeMeta?.label ?? "",
+              count: activeItems.length,
+            })}
           </p>
         ) : null}
       </CardContent>
@@ -239,6 +224,8 @@ function PlaybookList({
   onUseForContent?: (item: SalesPlaybookItem) => void;
   onOpenEcommerce?: () => void;
 }) {
+  const { t } = useTranslation("sales");
+
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyText}</p>;
   }
@@ -264,27 +251,27 @@ function PlaybookList({
             <div className="flex flex-wrap gap-1 shrink-0">
               {mode === "cold-outreach" && onUseForOutreach ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForOutreach(item)}>
-                  Skriv outreach-utkast
+                  {t("playbook.actions.draftOutreach")}
                 </Button>
               ) : null}
               {mode === "campaigns" && onUseForCampaign ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForCampaign(item)}>
-                  Planera kampanj
+                  {t("playbook.actions.planCampaign")}
                 </Button>
               ) : null}
               {(mode === "pitch-angles" || mode === "channels") && onUseForContent ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForContent(item)}>
-                  Använd i Innehåll
+                  {t("playbook.actions.useInContent")}
                 </Button>
               ) : null}
               {mode === "promotions" && onOpenEcommerce ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={onOpenEcommerce}>
-                  Butikserbjudanden
+                  {t("playbook.actions.storeOffers")}
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="ghost" className="h-8 shrink-0 px-2" onClick={() => onCopy(item)}>
                 <Copy className="h-3.5 w-3.5" />
-                <span className="sr-only">Kopiera</span>
+                <span className="sr-only">{t("playbook.copySrOnly")}</span>
               </Button>
             </div>
           </div>

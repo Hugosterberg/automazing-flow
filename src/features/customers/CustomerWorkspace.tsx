@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ function CustomerList({
   searchQuery,
   onSelect,
 }: Props) {
+  const { t } = useTranslation("customers");
   const primary = guessPrimaryColumn(columns);
   const secondary = guessSecondaryColumn(columns, primary);
   const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -33,13 +35,13 @@ function CustomerList({
   return (
     <div className="message-inbox-pane flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2.5 sm:py-2">
-        <p className="text-sm font-medium text-foreground/90 sm:text-[11px] sm:text-foreground/80">Kunder</p>
-        <span className="text-xs tabular-nums text-muted-foreground sm:text-[10px]">{rows.length} st</span>
+        <p className="text-sm font-medium text-foreground/90 sm:text-[11px] sm:text-foreground/80">{t("list.title")}</p>
+        <span className="text-xs tabular-nums text-muted-foreground sm:text-[10px]">{t("list.count", { count: rows.length })}</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto app-scroll">
         {rows.map((row, index) => {
           const selected = selectedIndex === index;
-          const title = (primary && row[primary]) || `Rad ${index + 1}`;
+          const title = (primary && row[primary]) || t("list.rowFallback", { number: index + 1 });
           const sub = secondary ? row[secondary] : "";
           const initial = String(title).trim().charAt(0).toUpperCase() || "?";
           return (
@@ -94,13 +96,14 @@ function CustomerList({
 }
 
 export function CustomerWorkspace({ rows, columns, selectedIndex, searchQuery, onSelect }: Props) {
+  const { t } = useTranslation("customers");
   const selectedRow = selectedIndex != null ? rows[selectedIndex] : null;
   const isDesktopWorkspace = useIsDesktopWorkspace();
 
   if (columns.length === 0) {
     return (
       <div className="flex h-full min-h-[240px] items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        Ladda upp en CSV-fil för att börja.
+        {t("list.uploadPrompt")}
       </div>
     );
   }

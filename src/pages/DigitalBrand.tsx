@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import {
   AlertTriangle,
@@ -32,6 +33,7 @@ import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { formatDateTimeMedium } from "@/lib/format";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { t } from "@/lib/i18n";
 
 type RecommendationArea = "seo" | "performance" | "trust" | "channels";
 type RecommendationPriority = "high" | "medium" | "low";
@@ -114,12 +116,10 @@ type BrandRecommendation = {
   value: string;
 };
 
-const AREA_LABELS: Record<RecommendationArea, string> = {
-  seo: "SEO",
-  performance: "Prestanda",
-  trust: "Förtroende",
-  channels: "Kanaler",
-};
+/** Translated recommendation area label (follows active UI language). */
+function areaLabel(area: RecommendationArea): string {
+  return t(`digitalBrand:areas.${area}`);
+}
 
 const AREA_ICONS: Record<RecommendationArea, ComponentType<{ className?: string }>> = {
   seo: Search,
@@ -156,13 +156,15 @@ function websiteHostname(url: string | null) {
 }
 
 function bytesLabel(bytes: number) {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${bytes} B`;
+  if (bytes >= 1024 * 1024) {
+    return t("digitalBrand:helpers.bytesMb", { value: (bytes / 1024 / 1024).toFixed(1) });
+  }
+  if (bytes >= 1024) return t("digitalBrand:helpers.bytesKb", { value: Math.round(bytes / 1024) });
+  return t("digitalBrand:helpers.bytesB", { value: bytes });
 }
 
 function statusLabel(status: number | null) {
-  return status == null ? "Hittades inte" : String(status);
+  return status == null ? t("digitalBrand:helpers.notFound") : String(status);
 }
 
 function priorityForPass(pass: boolean, warning = false): RecommendationPriority {
@@ -178,12 +180,15 @@ function scorePriority(score: number | null | undefined): RecommendationPriority
 }
 
 function scoreLabel(score: number | null | undefined) {
-  return score == null ? "Ingen data" : `${score}/100`;
+  return score == null ? t("digitalBrand:helpers.noData") : t("digitalBrand:helpers.scoreFormat", { score });
 }
 
 function metricDisplay(metric: PageSpeedMetric | undefined) {
-  if (!metric) return "Ingen data";
-  return metric.displayValue || (metric.numericValue != null ? String(Math.round(metric.numericValue)) : "Ingen data");
+  if (!metric) return t("digitalBrand:helpers.noData");
+  return (
+    metric.displayValue ||
+    (metric.numericValue != null ? String(Math.round(metric.numericValue)) : t("digitalBrand:helpers.noData"))
+  );
 }
 
 function buildRecommendations(params: {
@@ -197,9 +202,11 @@ function buildRecommendations(params: {
       {
         area: "seo",
         priority: "high",
-        title: "Registrera er primära webbplats",
-        value: "Ingen URL",
-        detail: "Lägg till webbadressen under Kopplingar innan du kör en Digital Brand-audit.",
+        title: t("digitalBrand:recommendations.registerWebsite.title"),
+        value: t("digitalBrand:helpers.noUrl"),
+        detail: t("digitalBrand:recommendations.registerWebsite.detail", {
+          connections: t("common:nav.connections"),
+        }),
       },
     ];
   }
@@ -230,228 +237,239 @@ function buildRecommendations(params: {
       ? {
           area: "performance",
           priority: scorePriority(mobilePsi?.scores.performance ?? desktopPsi?.scores.performance),
-          title: "PageSpeed-prestandapoäng",
+          title: t("digitalBrand:recommendations.pageSpeedScore.title"),
           value: scoreLabel(mobilePsi?.scores.performance ?? desktopPsi?.scores.performance),
           detail: mobilePsi
-            ? `Mobil Lighthouse-prestanda är ${scoreLabel(mobilePsi.scores.performance)}. Desktop är ${scoreLabel(desktopPsi?.scores.performance)}.`
-            : `Desktop Lighthouse-prestanda är ${scoreLabel(desktopPsi?.scores.performance)}.`,
+            ? t("digitalBrand:recommendations.pageSpeedScore.detailMobileDesktop", {
+                mobileScore: scoreLabel(mobilePsi.scores.performance),
+                desktopScore: scoreLabel(desktopPsi?.scores.performance),
+              })
+            : t("digitalBrand:recommendations.pageSpeedScore.detailDesktopOnly", {
+                desktopScore: scoreLabel(desktopPsi?.scores.performance),
+              }),
         }
       : {
           area: "performance",
           priority: "medium",
-          title: "PageSpeed Insights otillgängligt",
-          value: audit.pageSpeed?.apiKeyConfigured ? "Inget PSI-resultat" : "Ingen API-nyckel",
-          detail: audit.pageSpeed?.error || "Lägg till PAGESPEED_API_KEY eller GOOGLE_PAGESPEED_API_KEY för Lighthouse-värden.",
+          title: t("digitalBrand:recommendations.pageSpeedUnavailable.title"),
+          value: audit.pageSpeed?.apiKeyConfigured
+            ? t("digitalBrand:recommendations.pageSpeedUnavailable.valueNoResult")
+            : t("digitalBrand:recommendations.pageSpeedUnavailable.valueNoApiKey"),
+          detail:
+            audit.pageSpeed?.error || t("digitalBrand:recommendations.pageSpeedUnavailable.detailFallback"),
         },
     primaryPsi
       ? {
           area: "seo",
           priority: scorePriority(mobilePsi?.scores.seo ?? desktopPsi?.scores.seo),
-          title: "Lighthouse SEO-poäng",
+          title: t("digitalBrand:recommendations.lighthouseSeoScore.title"),
           value: scoreLabel(mobilePsi?.scores.seo ?? desktopPsi?.scores.seo),
-          detail:
-            "Detta är Lighthouse SEO-kategoripoängen från PageSpeed Insights för den registrerade URL:en.",
+          detail: t("digitalBrand:recommendations.lighthouseSeoScore.detail"),
         }
       : null,
     primaryPsi
       ? {
           area: "trust",
           priority: scorePriority(mobilePsi?.scores.accessibility ?? desktopPsi?.scores.accessibility),
-          title: "Tillgänglighetspoäng",
+          title: t("digitalBrand:recommendations.accessibilityScore.title"),
           value: scoreLabel(mobilePsi?.scores.accessibility ?? desktopPsi?.scores.accessibility),
-          detail:
-            "Tillgänglighetsproblem påverkar ofta konvertering, användbarhet och upplevd varumärkeskvalitet.",
+          detail: t("digitalBrand:recommendations.accessibilityScore.detail"),
         }
       : null,
     primaryPsi
       ? {
           area: "trust",
           priority: scorePriority(mobilePsi?.scores.bestPractices ?? desktopPsi?.scores.bestPractices),
-          title: "Poäng för bästa praxis",
+          title: t("digitalBrand:recommendations.bestPracticesScore.title"),
           value: scoreLabel(mobilePsi?.scores.bestPractices ?? desktopPsi?.scores.bestPractices),
-          detail:
-            "Lighthouse best-practices kontrollerar säkerhet, webbläsarkompatibilitet och implementeringskvalitet.",
+          detail: t("digitalBrand:recommendations.bestPracticesScore.detail"),
         }
       : null,
     primaryPsi
       ? {
           area: "performance",
           priority: scorePriority(mobilePsi?.metrics.largestContentfulPaint.score ?? desktopPsi?.metrics.largestContentfulPaint.score),
-          title: "Largest Contentful Paint",
+          title: t("digitalBrand:recommendations.lcp.title"),
           value: metricDisplay(mobilePsi?.metrics.largestContentfulPaint ?? desktopPsi?.metrics.largestContentfulPaint),
-          detail:
-            "LCP mäter hur snabbt huvudinnehållet laddas. Optimera hero-media, serversvar och render-blockande resurser.",
+          detail: t("digitalBrand:recommendations.lcp.detail"),
         }
       : null,
     primaryPsi
       ? {
           area: "performance",
           priority: scorePriority(mobilePsi?.metrics.cumulativeLayoutShift.score ?? desktopPsi?.metrics.cumulativeLayoutShift.score),
-          title: "Cumulative Layout Shift",
+          title: t("digitalBrand:recommendations.cls.title"),
           value: metricDisplay(mobilePsi?.metrics.cumulativeLayoutShift ?? desktopPsi?.metrics.cumulativeLayoutShift),
-          detail:
-            "CLS mäter visuell stabilitet. Reservera utrymme för bilder/annonser och undvik sent laddat UI som flyttar innehåll.",
+          detail: t("digitalBrand:recommendations.cls.detail"),
         }
       : null,
     {
       area: "performance",
       priority: priorityForPass(audit.ok),
-      title: "Startsida HTTP-status",
+      title: t("digitalBrand:recommendations.homepageHttpStatus.title"),
       value: `${audit.status}`,
       detail: audit.ok
-        ? `Startsidan returnerade HTTP ${audit.status}.`
-        : `Startsidan returnerade HTTP ${audit.status}; åtgärda detta innan du optimerar SEO-innehåll.`,
+        ? t("digitalBrand:recommendations.homepageHttpStatus.detailOk", { status: audit.status })
+        : t("digitalBrand:recommendations.homepageHttpStatus.detailFail", { status: audit.status }),
     },
     {
       area: "performance",
       priority: priorityForPass(audit.responseTimeMs <= 1200, audit.responseTimeMs <= 2500),
-      title: "Serversvarstid",
-      value: `${audit.responseTimeMs} ms`,
+      title: t("digitalBrand:recommendations.serverResponseTime.title"),
+      value: t("digitalBrand:helpers.milliseconds", { ms: audit.responseTimeMs }),
       detail:
         audit.responseTimeMs <= 1200
-          ? "Det initiala serversvaret ligger inom ett hälsosamt intervall."
-          : "Minska omdirigeringar, serverarbete och blockerande uppströmsanrop för att förbättra det initiala svaret.",
+          ? t("digitalBrand:recommendations.serverResponseTime.detailOk")
+          : t("digitalBrand:recommendations.serverResponseTime.detailSlow"),
     },
     {
       area: "performance",
       priority: priorityForPass(audit.pageSizeBytes <= 350_000, audit.pageSizeBytes <= 900_000),
-      title: "Nedladdad HTML-storlek",
+      title: t("digitalBrand:recommendations.htmlDownloadSize.title"),
       value: bytesLabel(audit.pageSizeBytes),
       detail:
         audit.pageSizeBytes <= 350_000
-          ? "HTML-payloaden är rimligt liten."
-          : "HTML-payloaden är stor; minska inline-skript, inbäddad data och oanvänd markup.",
+          ? t("digitalBrand:recommendations.htmlDownloadSize.detailOk")
+          : t("digitalBrand:recommendations.htmlDownloadSize.detailLarge"),
     },
     {
       area: "seo",
       priority: priorityForPass(titleOk, Boolean(audit.title)),
-      title: "Title-taggens längd",
-      value: audit.title ? `${audit.titleLength} tecken` : "Saknas",
+      title: t("digitalBrand:recommendations.titleTagLength.title"),
+      value: audit.title ? t("digitalBrand:helpers.characters", { count: audit.titleLength }) : t("digitalBrand:helpers.missing"),
       detail: audit.title
-        ? `Nuvarande title: "${audit.title}". Sikta på en beskrivande title på 25–65 tecken.`
-        : "Lägg till en unik title-tagg som namnger varumärke, erbjudande och huvudsaklig sökintention.",
+        ? t("digitalBrand:recommendations.titleTagLength.detailPresent", { title: audit.title })
+        : t("digitalBrand:recommendations.titleTagLength.detailMissing"),
     },
     {
       area: "seo",
       priority: priorityForPass(metaOk, Boolean(audit.metaDescription)),
-      title: "Metabeskrivning",
-      value: audit.metaDescription ? `${audit.metaDescriptionLength} tecken` : "Saknas",
+      title: t("digitalBrand:recommendations.metaDescription.title"),
+      value: audit.metaDescription
+        ? t("digitalBrand:helpers.characters", { count: audit.metaDescriptionLength })
+        : t("digitalBrand:helpers.missing"),
       detail: audit.metaDescription
-        ? `Nuvarande metabeskrivning är ${audit.metaDescriptionLength} tecken. Sikta på 70–160.`
-        : "Lägg till en metabeskrivning som sammanfattar erbjudandet och ger sökare en anledning att klicka.",
+        ? t("digitalBrand:recommendations.metaDescription.detailPresent", { count: audit.metaDescriptionLength })
+        : t("digitalBrand:recommendations.metaDescription.detailMissing"),
     },
     {
       area: "seo",
       priority: priorityForPass(h1Ok, audit.h1Texts.length > 0),
-      title: "H1-struktur",
-      value: `${audit.h1Texts.length} H1`,
+      title: t("digitalBrand:recommendations.h1Structure.title"),
+      value: t("digitalBrand:helpers.h1Count", { count: audit.h1Texts.length }),
       detail:
         audit.h1Texts.length === 1
-          ? `Primär H1: "${audit.h1Texts[0]}".`
-          : "Använd exakt en tydlig H1 på startsidan så sökmotorer och besökare förstår sidans ämne.",
+          ? t("digitalBrand:recommendations.h1Structure.detailSingle", { h1: audit.h1Texts[0] })
+          : t("digitalBrand:recommendations.h1Structure.detailMultiple"),
     },
     {
       area: "seo",
       priority: priorityForPass(Boolean(audit.canonical), true),
-      title: "Kanonisk URL",
-      value: audit.canonical ? "Finns" : "Saknas",
+      title: t("digitalBrand:recommendations.canonicalUrl.title"),
+      value: audit.canonical ? t("digitalBrand:helpers.present") : t("digitalBrand:helpers.missing"),
       detail: audit.canonical
-        ? `Kanonisk pekar på ${audit.canonical}.`
-        : "Lägg till en kanonisk URL för att förhindra att duplicerade startsidevarianter konkurrerar i sök.",
+        ? t("digitalBrand:recommendations.canonicalUrl.detailPresent", { canonical: audit.canonical })
+        : t("digitalBrand:recommendations.canonicalUrl.detailMissing"),
     },
     {
       area: "seo",
       priority: priorityForPass(audit.structuredDataCount > 0, true),
-      title: "Strukturerad data",
-      value: `${audit.structuredDataCount} JSON-LD-block`,
+      title: t("digitalBrand:recommendations.structuredData.title"),
+      value: t("digitalBrand:helpers.jsonLdBlocks", { count: audit.structuredDataCount }),
       detail:
         audit.structuredDataCount > 0
-          ? "Strukturerad data finns på sidan."
-          : "Lägg till Organization-, LocalBusiness-, FAQ-, Product- eller Review-schema där det är relevant.",
+          ? t("digitalBrand:recommendations.structuredData.detailPresent")
+          : t("digitalBrand:recommendations.structuredData.detailMissing"),
     },
     {
       area: "seo",
       priority: priorityForPass(audit.sitemapXmlStatus != null && audit.sitemapXmlStatus < 400, true),
-      title: "Sitemap-kontroll",
+      title: t("digitalBrand:recommendations.sitemapCheck.title"),
       value: statusLabel(audit.sitemapXmlStatus),
       detail:
         audit.sitemapXmlStatus != null && audit.sitemapXmlStatus < 400
-          ? "/sitemap.xml är nåbar."
-          : "Exponera /sitemap.xml så sökmotorer kan hitta viktiga sidor snabbare.",
+          ? t("digitalBrand:recommendations.sitemapCheck.detailOk")
+          : t("digitalBrand:recommendations.sitemapCheck.detailMissing"),
     },
     {
       area: "trust",
       priority: priorityForPass(websiteUrl.startsWith("https://")),
-      title: "HTTPS",
-      value: websiteUrl.startsWith("https://") ? "HTTPS" : "HTTP",
+      title: t("digitalBrand:recommendations.https.title"),
+      value: websiteUrl.startsWith("https://") ? t("digitalBrand:helpers.https") : t("digitalBrand:helpers.http"),
       detail: websiteUrl.startsWith("https://")
-        ? "Den registrerade webbplatsen använder HTTPS."
-        : "Byt den registrerade URL:en till HTTPS och omdirigera HTTP till HTTPS.",
+        ? t("digitalBrand:recommendations.https.detailOk")
+        : t("digitalBrand:recommendations.https.detailHttp"),
     },
     {
       area: "trust",
       priority: priorityForPass(Boolean(audit.viewport), true),
-      title: "Mobil viewport",
-      value: audit.viewport ? "Finns" : "Saknas",
+      title: t("digitalBrand:recommendations.mobileViewport.title"),
+      value: audit.viewport ? t("digitalBrand:helpers.present") : t("digitalBrand:helpers.missing"),
       detail: audit.viewport
-        ? `Viewport meta: ${audit.viewport}.`
-        : "Lägg till en viewport meta-tagg så sidan renderas förutsägbart på mobila enheter.",
+        ? t("digitalBrand:recommendations.mobileViewport.detailPresent", { viewport: audit.viewport })
+        : t("digitalBrand:recommendations.mobileViewport.detailMissing"),
     },
     {
       area: "trust",
       priority: priorityForPass(altMissingRate <= 0.15, altMissingRate <= 0.35),
-      title: "Alt-text för bilder",
-      value: `${audit.imagesMissingAlt}/${audit.imageCount} saknas`,
+      title: t("digitalBrand:recommendations.imageAltText.title"),
+      value: t("digitalBrand:helpers.imagesMissing", {
+        missing: audit.imagesMissingAlt,
+        total: audit.imageCount,
+      }),
       detail:
         audit.imageCount === 0
-          ? "Inga bilder hittades i den hämtade HTML:en."
-          : "Lägg till beskrivande alt-text på viktiga bilder och tom alt-text på dekorativa bilder.",
+          ? t("digitalBrand:recommendations.imageAltText.detailNoImages")
+          : t("digitalBrand:recommendations.imageAltText.detailMissing"),
     },
     {
       area: "trust",
       priority: priorityForPass(Boolean(audit.ogTitle && audit.ogDescription), true),
-      title: "Förhandsvisning i sociala medier",
-      value: audit.ogTitle && audit.ogDescription ? "Komplett" : "Ofullständig",
+      title: t("digitalBrand:recommendations.socialPreview.title"),
+      value:
+        audit.ogTitle && audit.ogDescription
+          ? t("digitalBrand:helpers.complete")
+          : t("digitalBrand:helpers.incomplete"),
       detail:
         audit.ogTitle && audit.ogDescription
-          ? "Open Graph title och description finns."
-          : "Lägg till Open Graph title och description så delade länkar visas tydligt i sociala kanaler.",
+          ? t("digitalBrand:recommendations.socialPreview.detailComplete")
+          : t("digitalBrand:recommendations.socialPreview.detailIncomplete"),
     },
     {
       area: "channels",
       priority: priorityForPass(hasGoogleBusiness, true),
-      title: "Google Business-koppling",
-      value: hasGoogleBusiness ? "Kopplad" : "Ej kopplad",
+      title: t("digitalBrand:recommendations.googleBusinessConnection.title"),
+      value: hasGoogleBusiness ? t("digitalBrand:helpers.connected") : t("digitalBrand:helpers.notConnected"),
       detail: hasGoogleBusiness
-        ? "Google Business är kopplat så lokala varumärkessignaler kan jämföras med webbplatsen."
-        : "Koppla Google Business för att synka webbinnehåll med kartor, kategorier, öppettider och recensioner.",
+        ? t("digitalBrand:recommendations.googleBusinessConnection.detailConnected")
+        : t("digitalBrand:recommendations.googleBusinessConnection.detailNotConnected"),
     },
     {
       area: "channels",
       priority: priorityForPass(hasReviews, true),
-      title: "Recensionskällor",
-      value: hasReviews ? "Kopplad" : "Ej kopplad",
+      title: t("digitalBrand:recommendations.reviewSources.title"),
+      value: hasReviews ? t("digitalBrand:helpers.connected") : t("digitalBrand:helpers.notConnected"),
       detail: hasReviews
-        ? "Recensionskällor är kopplade och kan informera förtroendemeddelanden."
-        : "Koppla Google Reviews eller Tripadvisor för att använda verkliga recensionsteman i webboptimering.",
+        ? t("digitalBrand:recommendations.reviewSources.detailConnected")
+        : t("digitalBrand:recommendations.reviewSources.detailNotConnected"),
     },
     {
       area: "channels",
       priority: priorityForPass(hasSocial, true),
-      title: "Sociala kanaler",
-      value: hasSocial ? "Kopplad" : "Ej kopplad",
+      title: t("digitalBrand:recommendations.socialChannels.title"),
+      value: hasSocial ? t("digitalBrand:helpers.connected") : t("digitalBrand:helpers.notConnected"),
       detail: hasSocial
-        ? "Sociala kanaler är kopplade och kan jämföras med webbplatsens budskap."
-        : "Koppla aktiva sociala profiler för att jämföra varumärkespositionering mellan kanaler.",
+        ? t("digitalBrand:recommendations.socialChannels.detailConnected")
+        : t("digitalBrand:recommendations.socialChannels.detailNotConnected"),
     },
     {
       area: "channels",
       priority: priorityForPass(hasAds, true),
-      title: "Betalda mediakanaler",
-      value: hasAds ? "Kopplad" : "Ej kopplad",
+      title: t("digitalBrand:recommendations.paidMediaChannels.title"),
+      value: hasAds ? t("digitalBrand:helpers.connected") : t("digitalBrand:helpers.notConnected"),
       detail: hasAds
-        ? "Betalkanalerna är kopplade, användbara för landningssida- och CTA-anpassning."
-        : "Koppla Google Ads eller Meta Business innan kampanjspecifik landningssideoptimering.",
+        ? t("digitalBrand:recommendations.paidMediaChannels.detailConnected")
+        : t("digitalBrand:recommendations.paidMediaChannels.detailNotConnected"),
     },
   ].filter((item): item is BrandRecommendation => Boolean(item));
 }
@@ -473,7 +491,7 @@ async function fetchAudit(websiteUrl: string): Promise<WebsiteAudit> {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || "Kunde inte granska webbplatsen.");
+    throw new Error(payload?.message || payload?.error || t("digitalBrand:errors.auditFailed"));
   }
   return payload as WebsiteAudit;
 }
@@ -513,7 +531,7 @@ function RecommendationCard({ recommendation }: { recommendation: BrandRecommend
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-foreground">{recommendation.title}</h3>
             <Badge variant="outline" className={cn("text-[10px] capitalize", PRIORITY_CLASS[recommendation.priority])}>
-              {recommendation.priority}
+              {t(`digitalBrand:priority.${recommendation.priority}`)}
             </Badge>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
               {recommendation.value}
@@ -527,6 +545,8 @@ function RecommendationCard({ recommendation }: { recommendation: BrandRecommend
 }
 
 export default function DigitalBrandPage() {
+  const { t, i18n } = useTranslation("digitalBrand");
+  const { t: tCommon } = useTranslation("common");
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfile, accounts, activeProfileId } = useAccounts();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
@@ -546,7 +566,7 @@ export default function DigitalBrandPage() {
       setAudit(await fetchAudit(websiteUrl));
     } catch (error) {
       setAudit(null);
-      setAuditError(error instanceof Error ? error.message : "Kunde inte granska webbplatsen.");
+      setAuditError(error instanceof Error ? error.message : t("errors.auditFailed"));
     } finally {
       setAuditLoading(false);
     }
@@ -561,7 +581,7 @@ export default function DigitalBrandPage() {
 
   const recommendations = useMemo(
     () => buildRecommendations({ websiteUrl, audit, connectedPlatforms }),
-    [websiteUrl, audit, connectedPlatforms]
+    [websiteUrl, audit, connectedPlatforms, i18n.language]
   );
   const highCount = recommendations.filter((item) => item.priority === "high").length;
   const readinessScore = calculateReadiness(audit, recommendations);
@@ -610,8 +630,8 @@ export default function DigitalBrandPage() {
     <div className="max-w-6xl space-y-6">
       <PageHeader
         icon={Sparkles}
-        title="Digitalt varumärke"
-        description="Live webbplatsaudit plus SEO-, prestanda-, förtroende- och kanalrekommendationer."
+        title={t("page.title")}
+        description={t("page.description")}
         actions={
           <div className="flex flex-wrap gap-2">
             {websiteUrl ? (
@@ -621,13 +641,13 @@ export default function DigitalBrandPage() {
                 ) : (
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Uppdatera audit
+                {t("page.refreshAudit")}
               </Button>
             ) : null}
             <Button type="button" size="sm" variant="outline" asChild>
               <Link to="/company">
                 <Globe2 className="mr-1.5 h-3.5 w-3.5" />
-                Redigera webbadress
+                {t("page.editWebsite")}
               </Link>
             </Button>
           </div>
@@ -635,54 +655,50 @@ export default function DigitalBrandPage() {
       />
 
       <PageSmartBar
-        title="Digitalt varumärke granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer."
-        steps={[
-          "Registrera webbadress under Företag",
-          "Kör audit och granska PageSpeed- och HTML-värden",
-          "Prioritera höga rekommendationer under fliken Rekommendationer",
-        ]}
-        tip="Auditen körs server-side — ingen kod behöver installeras på sidan."
+        title={t("smartBar.title")}
+        steps={[t("smartBar.step1"), t("smartBar.step2"), t("smartBar.step3")]}
+        tip={t("smartBar.tip")}
         liveHintOverride={
           !websiteUrl
-            ? "Lägg till webbadress under Företag för att köra audit."
+            ? t("smartBar.liveHintNoWebsite")
             : highCount > 0
-              ? `${highCount} högprioriterad${highCount === 1 ? "" : "e"} rekommendation${highCount === 1 ? "" : "er"} — öppna Rekommendationer`
+              ? t("smartBar.liveHintHighPriority", { count: highCount })
               : audit
-                ? "Auditen ser bra ut — inga kritiska punkter just nu."
+                ? t("smartBar.liveHintOk")
                 : null
         }
         extraActions={
-          highCount > 0 ? [{ label: "Visa rekommendationer", onClick: () => setBrandTab("recs") }] : []
+          highCount > 0 ? [{ label: t("smartBar.actionShowRecs"), onClick: () => setBrandTab("recs") }] : []
         }
       />
 
       <PageModeTabs
         value={brandTab}
-        aria-label="Digitalt varumärke-flikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setBrandTab}
         options={[
-          { value: "overview", label: "Översikt" },
-          { value: "recs", label: "Rekommendationer", count: highCount },
-          { value: "research", label: "Research" },
+          { value: "overview", label: t("tabs.overview") },
+          { value: "recs", label: t("tabs.recs"), count: highCount },
+          { value: "research", label: t("tabs.research") },
         ]}
       />
 
       {!websiteUrl ? (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Ingen webbadress registrerad</AlertTitle>
+          <AlertTitle>{t("alerts.noWebsiteTitle")}</AlertTitle>
           <AlertDescription>
-            Lägg till webbadressen under{" "}
+            {t("alerts.noWebsiteDescPrefix")}{" "}
             <Link to="/company" className="text-primary underline underline-offset-2">
-              Företag
+              {tCommon("nav.company")}
             </Link>{" "}
-            för att köra en Digital Brand-audit.
+            {t("alerts.noWebsiteDescSuffix")}
           </AlertDescription>
         </Alert>
       ) : auditError ? (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Kunde inte granska webbplatsen</AlertTitle>
+          <AlertTitle>{t("alerts.auditErrorTitle")}</AlertTitle>
           <AlertDescription>{auditError}</AlertDescription>
         </Alert>
       ) : null}
@@ -693,8 +709,8 @@ export default function DigitalBrandPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS["digital-brand"]}
-          title="MCP-varumärkesdata"
-          description="SEO-översikt och domänuppslag för din registrerade webbplats."
+          title={t("research.mcpTitle")}
+          description={t("research.mcpDescription")}
         />
       </m.div>
       ) : null}
@@ -704,7 +720,7 @@ export default function DigitalBrandPage() {
         <m.div {...pageFadeUp} className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Primär webbplats</CardTitle>
+              <CardTitle className="text-sm">{t("overview.primaryWebsite")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -713,25 +729,28 @@ export default function DigitalBrandPage() {
                 <Button type="button" size="sm" variant="ghost" className="h-7 px-2" asChild>
                   <a href={websiteUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    <span className="sr-only">Öppna webbplatsen</span>
+                    <span className="sr-only">{t("overview.openWebsiteSr")}</span>
                   </a>
                 </Button>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {audit
-                  ? `${audit.auditSource === "pagespeed" ? "PageSpeed Insights + HTML-audit" : "HTML fallback-audit"} för ${audit.finalUrl} ${formatDateTimeMedium(audit.checkedAt)}.`
+                  ? t(audit.auditSource === "pagespeed" ? "overview.auditDonePagespeed" : "overview.auditDoneHtmlFallback", {
+                      url: audit.finalUrl,
+                      checkedAt: formatDateTimeMedium(audit.checkedAt),
+                    })
                   : auditLoading
-                    ? "Kör PageSpeed Insights och hämtar HTML, robots.txt och sitemap.xml…"
-                    : "Kör en audit för att hämta live SEO- och prestandavärden från webbplatsen."}
+                    ? t("overview.auditLoading")
+                    : t("overview.auditIdle")}
               </p>
               {audit?.pageSpeed?.error ? (
                 <p className="text-xs leading-relaxed text-warning">
-                  PageSpeed-meddelande: {audit.pageSpeed.error}
+                  {t("overview.pageSpeedMessage", { message: audit.pageSpeed.error })}
                 </p>
               ) : null}
               {audit?.htmlFallbackError ? (
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  HTML fallback-meddelande: {audit.htmlFallbackError}
+                  {t("overview.htmlFallbackMessage", { message: audit.htmlFallbackError })}
                 </p>
               ) : null}
             </CardContent>
@@ -739,19 +758,19 @@ export default function DigitalBrandPage() {
 
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Varumärkesberedskap</CardTitle>
+              <CardTitle className="text-sm">{t("overview.readiness")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-end justify-between">
                 <span className="text-3xl font-semibold tabular-nums">{readinessScore}%</span>
                 <span className="text-xs text-muted-foreground">
-                  {auditLoading ? "Granskar…" : `${highCount} högprioriterad${highCount === 1 ? "" : "a"} punkt${highCount === 1 ? "" : "er"}`}
+                  {auditLoading ? t("overview.auditing") : t("overview.highPriorityPoints", { count: highCount })}
                 </span>
               </div>
               <Progress value={readinessScore} className="h-2" />
               {highCount > 0 ? (
                 <Button type="button" size="sm" variant="outline" onClick={() => setBrandTab("recs")}>
-                  Öppna rekommendationer
+                  {t("overview.openRecs")}
                 </Button>
               ) : null}
             </CardContent>
@@ -763,17 +782,17 @@ export default function DigitalBrandPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {mobilePageSpeed ? (
             <>
-              <MetricCard title="Mobil PageSpeed" value={scoreLabel(mobilePageSpeed.scores.performance)} hint="Lighthouse prestandapoäng från PageSpeed Insights." icon={Gauge} />
-              <MetricCard title="Mobil SEO" value={scoreLabel(mobilePageSpeed.scores.seo)} hint="Lighthouse SEO-poäng från PageSpeed Insights." icon={Search} />
-              <MetricCard title="Mobil LCP" value={metricDisplay(mobilePageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint från Lighthouse." icon={RefreshCw} />
-              <MetricCard title="Mobil CLS" value={metricDisplay(mobilePageSpeed.metrics.cumulativeLayoutShift)} hint="Cumulative Layout Shift från Lighthouse." icon={ShieldCheck} />
+              <MetricCard title={t("metrics.mobilePageSpeed")} value={scoreLabel(mobilePageSpeed.scores.performance)} hint={t("metrics.mobilePageSpeedHint")} icon={Gauge} />
+              <MetricCard title={t("metrics.mobileSeo")} value={scoreLabel(mobilePageSpeed.scores.seo)} hint={t("metrics.mobileSeoHint")} icon={Search} />
+              <MetricCard title={t("metrics.mobileLcp")} value={metricDisplay(mobilePageSpeed.metrics.largestContentfulPaint)} hint={t("metrics.mobileLcpHint")} icon={RefreshCw} />
+              <MetricCard title={t("metrics.mobileCls")} value={metricDisplay(mobilePageSpeed.metrics.cumulativeLayoutShift)} hint={t("metrics.mobileClsHint")} icon={ShieldCheck} />
             </>
           ) : (
             <>
-              <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
-              <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
-              <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
-              <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+              <MetricCard title={t("metrics.httpStatus")} value={String(audit.status)} hint={audit.ok ? t("metrics.httpStatusHintOk") : t("metrics.httpStatusHintFail")} icon={Gauge} />
+              <MetricCard title={t("metrics.responseTime")} value={t("helpers.milliseconds", { ms: audit.responseTimeMs })} hint={t("metrics.responseTimeHint")} icon={RefreshCw} />
+              <MetricCard title={t("metrics.titleLength")} value={t("helpers.characters", { count: audit.titleLength })} hint={audit.title || t("metrics.titleLengthHintNone")} icon={Search} />
+              <MetricCard title={t("metrics.metaDescription")} value={t("helpers.characters", { count: audit.metaDescriptionLength })} hint={audit.metaDescription || t("metrics.metaDescriptionHintNone")} icon={FileText} />
             </>
           )}
         </div>
@@ -781,24 +800,24 @@ export default function DigitalBrandPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {desktopPageSpeed ? (
             <>
-              <MetricCard title="Desktop PageSpeed" value={scoreLabel(desktopPageSpeed.scores.performance)} hint="Lighthouse prestandapoäng (desktop) från PageSpeed Insights." icon={Gauge} />
-              <MetricCard title="Tillgänglighet" value={scoreLabel(desktopPageSpeed.scores.accessibility)} hint="Lighthouse tillgänglighetspoäng (desktop)." icon={ShieldCheck} />
-              <MetricCard title="Bästa praxis" value={scoreLabel(desktopPageSpeed.scores.bestPractices)} hint="Lighthouse poäng för implementeringskvalitet (desktop)." icon={CheckCircle2} />
-              <MetricCard title="Desktop LCP" value={metricDisplay(desktopPageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint (desktop)." icon={RefreshCw} />
+              <MetricCard title={t("metrics.desktopPageSpeed")} value={scoreLabel(desktopPageSpeed.scores.performance)} hint={t("metrics.desktopPageSpeedHint")} icon={Gauge} />
+              <MetricCard title={t("metrics.accessibility")} value={scoreLabel(desktopPageSpeed.scores.accessibility)} hint={t("metrics.accessibilityHint")} icon={ShieldCheck} />
+              <MetricCard title={t("metrics.bestPractices")} value={scoreLabel(desktopPageSpeed.scores.bestPractices)} hint={t("metrics.bestPracticesHint")} icon={CheckCircle2} />
+              <MetricCard title={t("metrics.desktopLcp")} value={metricDisplay(desktopPageSpeed.metrics.largestContentfulPaint)} hint={t("metrics.desktopLcpHint")} icon={RefreshCw} />
             </>
           ) : null}
           {mobilePageSpeed ? (
             <>
-              <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
-              <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
-              <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
-              <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+              <MetricCard title={t("metrics.httpStatus")} value={String(audit.status)} hint={audit.ok ? t("metrics.httpStatusHintOk") : t("metrics.httpStatusHintFail")} icon={Gauge} />
+              <MetricCard title={t("metrics.responseTime")} value={t("helpers.milliseconds", { ms: audit.responseTimeMs })} hint={t("metrics.responseTimeHint")} icon={RefreshCw} />
+              <MetricCard title={t("metrics.titleLength")} value={t("helpers.characters", { count: audit.titleLength })} hint={audit.title || t("metrics.titleLengthHintNone")} icon={Search} />
+              <MetricCard title={t("metrics.metaDescription")} value={t("helpers.characters", { count: audit.metaDescriptionLength })} hint={audit.metaDescription || t("metrics.metaDescriptionHintNone")} icon={FileText} />
             </>
           ) : null}
-          <MetricCard title="Antal H1" value={String(audit.h1Texts.length)} hint={audit.h1Texts[0] || "Ingen H1 hittades."} icon={CheckCircle2} />
-          <MetricCard title="Strukturerad data" value={String(audit.structuredDataCount)} hint="JSON-LD-block hittade i HTML." icon={ShieldCheck} />
-          <MetricCard title="Bilder utan alt" value={`${audit.imagesMissingAlt}/${audit.imageCount}`} hint="Baserat på img-taggar i hämtad HTML." icon={FileText} />
-          <MetricCard title="Sitemap-status" value={statusLabel(audit.sitemapXmlStatus)} hint="Svar vid kontroll av /sitemap.xml." icon={Globe2} />
+          <MetricCard title={t("metrics.h1Count")} value={String(audit.h1Texts.length)} hint={audit.h1Texts[0] || t("metrics.h1CountHintNone")} icon={CheckCircle2} />
+          <MetricCard title={t("metrics.structuredData")} value={String(audit.structuredDataCount)} hint={t("metrics.structuredDataHint")} icon={ShieldCheck} />
+          <MetricCard title={t("metrics.imagesMissingAlt")} value={`${audit.imagesMissingAlt}/${audit.imageCount}`} hint={t("metrics.imagesMissingAltHint")} icon={FileText} />
+          <MetricCard title={t("metrics.sitemapStatus")} value={statusLabel(audit.sitemapXmlStatus)} hint={t("metrics.sitemapStatusHint")} icon={Globe2} />
         </div>
         ) : null}
         <Button
@@ -808,14 +827,14 @@ export default function DigitalBrandPage() {
           className="text-xs text-muted-foreground"
           onClick={() => setShowAllBrandMetrics((v) => !v)}
         >
-          {showAllBrandMetrics ? "Visa färre mätvärden" : "Visa alla mätvärden"}
+          {showAllBrandMetrics ? t("metrics.showFewer") : t("metrics.showAll")}
         </Button>
         </div>
       ) : auditLoading ? (
         <Card className="border-border">
           <CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Granskar webbplatsen…
+            {t("overview.auditingWebsite")}
           </CardContent>
         </Card>
       ) : null}
@@ -826,18 +845,18 @@ export default function DigitalBrandPage() {
         <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
       <Tabs value={recArea} onValueChange={(v) => setRecArea(v as RecAreaTab)} className="space-y-4">
         <TabsList className="flex h-auto w-full flex-wrap justify-start">
-          <TabsTrigger value="seo">SEO</TabsTrigger>
-          <TabsTrigger value="performance">Prestanda</TabsTrigger>
-          <TabsTrigger value="trust">Förtroende</TabsTrigger>
-          <TabsTrigger value="channels">Kanaler</TabsTrigger>
-          <TabsTrigger value="all">Alla</TabsTrigger>
+          <TabsTrigger value="seo">{areaLabel("seo")}</TabsTrigger>
+          <TabsTrigger value="performance">{areaLabel("performance")}</TabsTrigger>
+          <TabsTrigger value="trust">{areaLabel("trust")}</TabsTrigger>
+          <TabsTrigger value="channels">{areaLabel("channels")}</TabsTrigger>
+          <TabsTrigger value="all">{t("areas.all")}</TabsTrigger>
         </TabsList>
 
         {(["seo", "performance", "trust", "channels"] as RecommendationArea[]).map((area) => (
           <TabsContent key={area} value={area} className="space-y-3">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">{AREA_LABELS[area]}-resultat</h2>
+              <h2 className="text-sm font-semibold">{t("recs.areaResults", { area: areaLabel(area) })}</h2>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {recsFor(area).map((recommendation) => (
@@ -850,7 +869,7 @@ export default function DigitalBrandPage() {
         <TabsContent value="all" className="space-y-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Alla resultat</h2>
+            <h2 className="text-sm font-semibold">{t("recs.allResults")}</h2>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {recommendations.map((recommendation) => (

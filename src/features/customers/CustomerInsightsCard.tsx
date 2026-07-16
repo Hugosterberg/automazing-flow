@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Users, Mail, Sigma } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { summarizeCustomers } from "./customerInsights";
@@ -16,6 +17,7 @@ export function CustomerInsightsCard({
   columns: string[];
   rows: Array<Record<string, string>>;
 }) {
+  const { t } = useTranslation("customers");
   const insights = useMemo(() => summarizeCustomers(columns, rows), [columns, rows]);
   if (insights.total === 0) return null;
 
@@ -26,21 +28,21 @@ export function CustomerInsightsCard({
           <div>
             <Users className="h-4 w-4 text-primary mb-1.5" aria-hidden />
             <p className="text-2xl font-semibold tabular-nums">{formatNumber(insights.total)}</p>
-            <p className="text-xs text-muted-foreground">Customers</p>
+            <p className="text-xs text-muted-foreground">{t("insights.customers")}</p>
           </div>
           {insights.emailColumn ? (
             <div>
               <Mail className="h-4 w-4 text-info mb-1.5" aria-hidden />
               <p className="text-2xl font-semibold tabular-nums">{formatNumber(insights.emailCount)}</p>
-              <p className="text-xs text-muted-foreground">With email</p>
+              <p className="text-xs text-muted-foreground">{t("insights.withEmail")}</p>
             </div>
           ) : null}
           {insights.numericColumns.slice(0, insights.emailColumn ? 2 : 3).map((c) => (
             <div key={c.name}>
               <Sigma className="h-4 w-4 text-success mb-1.5" aria-hidden />
               <p className="text-2xl font-semibold tabular-nums">{formatNumber(c.sum)}</p>
-              <p className="text-xs text-muted-foreground truncate" title={`${c.name} (avg ${formatNumber(c.avg)})`}>
-                Σ {c.name}
+              <p className="text-xs text-muted-foreground truncate" title={t("insights.sumColumnTitle", { name: c.name, avg: formatNumber(c.avg) })}>
+                {t("insights.sumColumn", { name: c.name })}
               </p>
             </div>
           ))}

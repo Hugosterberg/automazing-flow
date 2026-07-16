@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Copy,
@@ -38,6 +39,7 @@ type Props = {
 };
 
 export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveAsProduct }: Props) {
+  const { t } = useTranslation("ecommerce");
   const [alibabaUrl, setAlibabaUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -46,8 +48,6 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
   const [creatingDraft, setCreatingDraft] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // The last imported product persists per business profile in the DB (synced
-  // across devices), migrating any device-local draft on first load.
   const importDoc = useProfileDocument<AlibabaProductImport | null>("alibaba-import", null, {
     legacyRead: () => loadAlibabaImport(businessProfileId) ?? undefined,
     legacyWrite: (_bpId, value) => saveAlibabaImport(businessProfileId, value),
@@ -80,24 +80,25 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(apiErrorMessage(payload, "Kunde inte importera produkten."));
+        throw new Error(apiErrorMessage(payload, t("alibaba.importFailed")));
       }
       setProduct(payload.product as AlibabaProductImport);
     } catch (err) {
       setProduct(null);
-      setError(err instanceof Error ? err.message : "Kunde inte importera produkten.");
+      setError(err instanceof Error ? err.message : t("alibaba.importFailed"));
     } finally {
       setLoading(false);
     }
   }
 
-  async function copyText(label: string, value: string) {
+  async function copyText(labelKey: "titleLabel" | "descriptionLabel", value: string) {
     if (!value.trim()) return;
+    const label = t(`alibaba.${labelKey}`);
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(`${label} kopierad`);
+      toast.success(t("toasts.copiedLabel", { label }));
     } catch {
-      toast.error("Kunde inte kopiera till urklipp");
+      toast.error(t("toasts.copyFailed"));
     }
   }
 
@@ -113,7 +114,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(payload, "Kunde inte skapa zip-fil."));
+        throw new Error(apiErrorMessage(payload, t("alibaba.zipFailed")));
       }
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -123,7 +124,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       anchor.click();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte ladda ner bilder.");
+      toast.error(err instanceof Error ? err.message : t("alibaba.downloadFailed"));
     } finally {
       setDownloadingZip(false);
     }
@@ -148,14 +149,14 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(apiErrorMessage(payload, "Kunde inte skapa Shopify-utkast."));
+        throw new Error(apiErrorMessage(payload, t("toasts.shopifyDraftFailed")));
       }
-      toast.success("Utkast skapat i Shopify");
+      toast.success(t("toasts.shopifyDraftCreated"));
       if (payload?.product?.adminUrl) {
         window.open(payload.product.adminUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte skapa Shopify-utkast.");
+      toast.error(err instanceof Error ? err.message : t("toasts.shopifyDraftFailed"));
     } finally {
       setCreatingDraft(false);
     }
@@ -171,11 +172,9 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Link2 className="h-5 w-5" />
-          Importera från Alibaba
+          {t("alibaba.title")}
         </CardTitle>
-        <CardDescription>
-          Klistra in en Alibaba- eller 1688-länk för att hämta titel, beskrivning, specifikationer och produktbilder.
-        </CardDescription>
+        <CardDescription>{t("alibaba.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -184,17 +183,17 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
             onChange={(e) => setAlibabaUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void handleImport()}
             placeholder="https://www.alibaba.com/product-detail/..."
-            aria-label="Alibaba produktlänk"
+            aria-label={t("alibaba.urlAriaLabel")}
             className="flex-1"
           />
           <Button onClick={() => void handleImport()} disabled={loading || !alibabaUrl.trim()}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Hämtar...
+                {t("alibaba.fetching")}
               </>
             ) : (
-              "Importera produkt"
+              t("alibaba.importProduct")
             )}
           </Button>
         </div>
@@ -218,14 +217,14 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
               <div className="min-w-0 space-y-2 flex-1">
                 <div className="flex flex-wrap items-start gap-2">
                   <p className="text-base font-semibold flex-1">{product.title}</p>
-                  <Button variant="ghost" size="sm" onClick={() => void copyText("Titel", product.title)}>
+                  <Button variant="ghost" size="sm" onClick={() => void copyText("titleLabel", product.title)}>
                     <Copy className="h-3.5 w-3.5 mr-1" />
-                    Kopiera titel
+                    {t("alibaba.copyTitle")}
                   </Button>
                 </div>
                 {product.price ? (
                   <p className="text-sm text-muted-foreground">
-                    Pris: {product.price}
+                    {t("alibaba.priceLabel")} {product.price}
                     {product.currency ? ` ${product.currency}` : ""}
                   </p>
                 ) : null}
@@ -238,17 +237,17 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                         className="text-xs text-primary hover:underline"
                         onClick={() => setShowFullDescription((value) => !value)}
                       >
-                        {showFullDescription ? "Visa mindre" : "Visa mer"}
+                        {showFullDescription ? t("alibaba.showLess") : t("alibaba.showMore")}
                       </button>
                     ) : null}
                     <Button
                       variant="ghost"
                       size="sm"
                       className="px-0 h-auto text-xs"
-                      onClick={() => void copyText("Beskrivning", product.description)}
+                      onClick={() => void copyText("descriptionLabel", product.description)}
                     >
                       <Copy className="h-3.5 w-3.5 mr-1" />
-                      Kopiera beskrivning
+                      {t("alibaba.copyDescription")}
                     </Button>
                   </div>
                 ) : null}
@@ -258,7 +257,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                 >
-                  Visa källsida
+                  {t("alibaba.viewSource")}
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </div>
@@ -271,9 +270,9 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                       setSavingProduct(true);
                       try {
                         await onSaveAsProduct(product);
-                        toast.success("Sparad som produkt");
+                        toast.success(t("toasts.alibabaSavedAsProduct"));
                       } catch (err) {
-                        toast.error(err instanceof Error ? err.message : "Kunde inte spara produkten.");
+                        toast.error(err instanceof Error ? err.message : t("toasts.alibabaSaveFailed"));
                       } finally {
                         setSavingProduct(false);
                       }
@@ -284,7 +283,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                     ) : (
                       <PackagePlus className="h-4 w-4 mr-2" />
                     )}
-                    Spara som produkt
+                    {t("alibaba.saveAsProduct")}
                   </Button>
                 ) : null}
                 {product.images.length > 0 ? (
@@ -294,7 +293,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                     ) : (
                       <Download className="h-4 w-4 mr-2" />
                     )}
-                    Ladda ner bilder (zip)
+                    {t("alibaba.downloadImagesZip")}
                   </Button>
                 ) : null}
                 {shopifyAccountId ? (
@@ -304,7 +303,7 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                     ) : (
                       <ShoppingCart className="h-4 w-4 mr-2" />
                     )}
-                    Skapa Shopify-utkast
+                    {t("alibaba.createShopifyDraft")}
                   </Button>
                 ) : null}
               </div>
@@ -338,21 +337,21 @@ export function AlibabaImportCard({ businessProfileId, shopifyAccountId, onSaveA
                     <div className="flex items-center justify-between gap-2 px-2 py-1.5">
                       <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                         <ImageIcon className="h-3 w-3" />
-                        Bild {index + 1}
+                        {t("alibaba.imageLabel", { index: index + 1 })}
                       </span>
                       <a
                         href={downloadImageUrl(imageUrl)}
                         download={`${slugifyFilename(product.title)}-${index + 1}.jpg`}
                         className="text-[11px] text-primary hover:underline"
                       >
-                        Ladda ner
+                        {t("alibaba.download")}
                       </a>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Inga produktbilder hittades på sidan.</p>
+              <p className="text-sm text-muted-foreground">{t("alibaba.noImagesFound")}</p>
             )}
           </div>
         ) : null}

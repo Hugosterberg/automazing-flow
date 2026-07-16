@@ -26,7 +26,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AREA_LABELS, type AppArea, type ConnectionCatalogEntry } from "@/lib/connectionCatalog";
+import {
+  AREA_LABELS,
+  catalogConnectSteps,
+  catalogPageName,
+  type AppArea,
+  type ConnectionCatalogEntry,
+} from "@/lib/connectionCatalog";
+import { t } from "@/lib/i18n";
 import type { Connection } from "@/types/connection";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { aggregateStatus, statusFromConnection } from "./connectionStatus";
@@ -332,7 +339,9 @@ export function ConnectionCard({
           <span className="ml-auto flex shrink-0 items-center gap-2 pr-1">
             {otherAreas.length > 0 ? (
               <span className="hidden lg:inline text-[10px] text-muted-foreground/70">
-                Also in {otherAreas.map((area) => AREA_LABELS[area]).join(", ")}
+                {t("catalog:alsoIn", {
+                  areas: otherAreas.map((area) => AREA_LABELS[area]).join(", "),
+                })}
               </span>
             ) : null}
             {lastSync ? (
@@ -362,7 +371,7 @@ export function ConnectionCard({
 
       {expanded ? (
       <div className="space-y-3 border-t border-border/60 px-3 pb-3 pt-2.5">
-        <p className="text-xs text-muted-foreground">{entry.connectSteps}</p>
+        <p className="text-xs text-muted-foreground">{catalogConnectSteps(entry)}</p>
         {defaultPathOption ? (
           <p className="text-[11px] text-muted-foreground">
             Rekommenderad väg:{" "}
@@ -563,7 +572,7 @@ export function ConnectionCard({
             >
               <Link to={entry.pageHref}>
                 <PrimaryIcon className="h-3.5 w-3.5" />
-                Setup in {entry.pageName}
+                {t("catalog:setupIn", { page: catalogPageName(entry) })}
               </Link>
             </Button>
           )}
@@ -644,7 +653,7 @@ export function ConnectionCard({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Koppla {entry.label}</DialogTitle>
-          <DialogDescription>{entry.connectSteps}</DialogDescription>
+          <DialogDescription>{catalogConnectSteps(entry)}</DialogDescription>
         </DialogHeader>
         {mcpMeta?.auth === "shop_domain" ? <ShopifyConnectGuide /> : null}
         <div className="space-y-2">

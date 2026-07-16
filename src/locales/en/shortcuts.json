@@ -1,0 +1,101 @@
+{
+  "sections": {
+    "global": "Global",
+    "messages": "Messages",
+    "reviews": "Reviews",
+    "activity": "Activity",
+    "sales": "Sales",
+    "tasks": "Tasks",
+    "customers": "Customers",
+    "content": "Content",
+    "automations": "Automations",
+    "marketing": "Marketing",
+    "calendar": "Calendar"
+  },
+  "global": {
+    "palette": "Command palette",
+    "home": "Go to Home",
+    "tasks": "Go to Tasks",
+    "messages": "Go to Messages",
+    "sales": "Go to Sales (business mode)",
+    "company": "Go to Company (business mode)",
+    "intelligence": "Go to MCP Intelligence",
+    "preferences": "Go to Preferences",
+    "help": "Show shortcut list",
+    "sidebar": "Show/hide sidebar"
+  },
+  "messages": {
+    "next": "Next message",
+    "prev": "Previous message",
+    "handled": "Mark as handled (or Handled filter with no message selected)",
+    "reply": "Reply (focus)",
+    "nextOpen": "Next open",
+    "filterQueue": "Filter: Queue",
+    "filterOpen": "Filter: Open",
+    "filterAll": "Filter: All",
+    "search": "Search",
+    "close": "Close",
+    "send": "Send reply"
+  },
+  "reviews": {
+    "next": "Next review",
+    "prev": "Previous review",
+    "markReplied": "Mark as replied",
+    "aiDraft": "AI draft",
+    "filterAll": "Filter: All",
+    "filterNeeds": "Filter: Needs reply",
+    "search": "Search",
+    "close": "Close"
+  },
+  "activity": {
+    "next": "Next event",
+    "prev": "Previous event",
+    "search": "Search",
+    "filterError": "Filter: Errors",
+    "filterWarn": "Filter: Warnings",
+    "close": "Close"
+  },
+  "sales": {
+    "search": "Search",
+    "next": "Next (outreach / follow-up)",
+    "prev": "Previous (outreach / follow-up)",
+    "markSent": "Mark as sent (outreach queue)",
+    "outreachDraft": "Outreach draft (follow-ups)"
+  },
+  "tasks": {
+    "search": "Search",
+    "new": "New task",
+    "next": "Next card",
+    "prev": "Previous card",
+    "edit": "Edit focused card",
+    "filterAll": "Filter: All",
+    "filterOverdue": "Filter: Overdue",
+    "filterToday": "Filter: Today"
+  },
+  "customers": {
+    "next": "Next customer",
+    "prev": "Previous customer",
+    "search": "Search",
+    "close": "Close"
+  },
+  "content": {
+    "next": "Next file (Browse)",
+    "prev": "Previous file (Browse)",
+    "search": "Search (Browse)",
+    "select": "Select / toggle file"
+  },
+  "automations": {
+    "failed": "Failed runs (scroll to list)"
+  },
+  "marketing": {
+    "next": "Next campaign",
+    "prev": "Previous campaign",
+    "new": "New campaign",
+    "edit": "Edit focused campaign"
+  },
+  "calendar": {
+    "next": "Next event (selected day)",
+    "prev": "Previous event (selected day)",
+    "open": "Open focused event"
+  }
+}

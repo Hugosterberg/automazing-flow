@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Loader2, Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LandingPage } from "@/components/landing/LandingPage";
@@ -13,6 +14,7 @@ import {
 import { storePendingOAuthReturn } from "@/lib/oauthCallbackState";
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const { t } = useTranslation("landing");
   const { user, loading, enabled, authMode, setAuthMode } = useAuth();
   const allowLocal = isLocalDevHost();
 
@@ -50,28 +52,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border mb-1">
               <Shield className="h-5 w-5 text-muted-foreground" aria-hidden />
             </div>
-            <CardTitle className="text-xl">Cloud-inloggning ej tillgänglig</CardTitle>
+            <CardTitle className="text-xl">{t("gate.unavailableTitle")}</CardTitle>
             <CardDescription className="text-sm leading-relaxed">
-              Supabase-miljövariabler saknas. Lägg till{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> och{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code>{" "}
-              för att aktivera inloggning.
+              {t("gate.unavailableDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
             {allowLocal ? (
               <>
                 <Button variant="default" className="w-full" onClick={() => setAuthMode("local")}>
-                  Fortsätt i lokalt läge
+                  {t("gate.continueLocal")}
                 </Button>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Profiler och kopplade kanaler sparas i den här webbläsaren.
+                  {t("gate.localHint")}
                 </p>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Konfigurera variablerna på din host (t.ex. Vercel) och driftsätt på nytt.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("gate.configureHost")}</p>
             )}
           </CardContent>
         </Card>
@@ -90,7 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-sm">
           <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" aria-hidden />
         </div>
-        <span className="text-sm text-muted-foreground">Kontrollerar inloggning…</span>
+        <span className="text-sm text-muted-foreground">{t("gate.loading")}</span>
       </div>
     );
   }

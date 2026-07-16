@@ -1,0 +1,14 @@
+{
+  "title": "Home",
+  "smartBarTitle": "Today’s status",
+  "sections": {
+    "moreToday": "More today",
+    "profileDetails": "Profile details",
+    "aiSuggestions": "AI suggestions",
+    "quickOverview": "Quick overview",
+    "automationsWorking": "Automations at work",
+    "goTo": "Go to"
+  },
+  "editProfile": "Edit profile",
+  "editProfileDesc": "Quick edit here — for a guided field-by-field walkthrough, go to"
+}

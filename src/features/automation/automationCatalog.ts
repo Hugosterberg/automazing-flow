@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { BarChart3, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 /**
  * Catalog of everything the app runs automatically, grouped by topic.
@@ -329,7 +330,32 @@ export function catalogEntriesForTopic(
   );
 }
 
+/** Localized topic chrome (icon stays from the catalog). */
+export function localizeAutomationTopic(topic: AutomationTopic): AutomationTopicInfo {
+  const base = AUTOMATION_TOPICS[topic];
+  return {
+    ...base,
+    title: t(`automations:topics.${topic}.title`),
+    description: t(`automations:topics.${topic}.description`),
+  };
+}
+
+/** Localized entry strings for UI (ids/icons/cron keys stay stable). */
+export function localizeAutomationEntry(entry: AutomationCatalogEntry): AutomationCatalogEntry {
+  const base = `automations:entries.${entry.id}`;
+  return {
+    ...entry,
+    title: t(`${base}.title`),
+    description: t(`${base}.description`),
+    cadence: t("automations:shared.configurableCadence"),
+    explainer: entry.explainer ? t(`${base}.explainer`) : undefined,
+    exampleDraft: entry.exampleDraft ? t(`${base}.exampleDraft`) : undefined,
+    trustNote: entry.trustNote ? t(`${base}.trustNote`) : undefined,
+  };
+}
+
 /** Display title for a scheduled job's cron key, falling back to the raw key. */
 export function automationTitleForCronKey(cronKey: string): string {
-  return automationCatalog.find((entry) => entry.cronKey === cronKey)?.title ?? cronKey;
+  const entry = automationCatalog.find((item) => item.cronKey === cronKey);
+  return entry ? t(`automations:entries.${entry.id}.title`) : cronKey;
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AnimatePresence, m } from "framer-motion";
 import {
   ArrowRight,
@@ -58,6 +59,7 @@ function BriefRow({
   onDone?: (id: string) => void;
   onSnooze?: (id: string) => void;
 }) {
+  const { t } = useTranslation("dailyBrief");
   const Icon = KIND_ICON[item.kind];
   const styles = SEVERITY_STYLES[item.severity];
   return (
@@ -83,8 +85,8 @@ function BriefRow({
           variant="ghost"
           size="icon"
           className="h-9 w-9 shrink-0 text-muted-foreground hover:text-success opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label="Markera klar"
-          title="Markera klar"
+          aria-label={t("markDone")}
+          title={t("markDone")}
           onClick={() => onDone(item.id)}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -96,8 +98,8 @@ function BriefRow({
           variant="ghost"
           size="icon"
           className="h-9 w-9 shrink-0 text-muted-foreground opacity-100 sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
-          aria-label="Skjut upp till imorgon"
-          title="Skjut upp till imorgon"
+          aria-label={t("snooze")}
+          title={t("snooze")}
           onClick={() => onSnooze(item.id)}
         >
           <X className="h-3.5 w-3.5" />
@@ -119,6 +121,8 @@ export function SmartDailyBrief({
 }: {
   businessProfileId: string | null | undefined;
 }) {
+  const { t } = useTranslation("dailyBrief");
+  const { t: tNav } = useTranslation();
   const prefetchFor = useRoutePrefetch();
   const [dayState, setDayState] = useState(() => getBriefDayState());
   const dismissedIds = useMemo(
@@ -190,7 +194,7 @@ export function SmartDailyBrief({
 
   return (
     <section
-      aria-label="Dagens brief"
+      aria-label={t("ariaLabel")}
       className="mobile-brief-shell p-4 sm:rounded-2xl sm:border sm:border-border sm:bg-gradient-to-br sm:from-card sm:to-card/60 sm:p-5 sm:shadow-none sm:[backdrop-filter:none]"
     >
       <div className="flex items-start gap-3">
@@ -207,21 +211,21 @@ export function SmartDailyBrief({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-foreground">Dagens brief</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isInitialLoading
-              ? "Samlar dagens fokus…"
+              ? t("loading")
               : visibleAllClear
               ? doneCount > 0
-                ? `Alla ${progressTotal} hanterade — bra jobbat.`
-                : "Du är ikapp för tillfället."
+                ? t("allHandled", { count: progressTotal })
+                : t("caughtUpShort")
               : brief.subline}
           </p>
         </div>
         {!isInitialLoading && doneCount > 0 && !visibleAllClear ? (
           <span
             className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success tabular-nums shrink-0"
-            title={`${doneCount} av ${progressTotal} klara idag`}
+            title={t("progressTitle", { done: doneCount, total: progressTotal })}
           >
             {doneCount}/{progressTotal}
             <CheckCircle2 className="inline h-3 w-3 ml-1 align-[-1.5px]" aria-hidden />
@@ -258,49 +262,42 @@ export function SmartDailyBrief({
         >
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <CheckCircle2 className="mt-0.5 h-4 w-4 text-success shrink-0" aria-hidden />
-            <span>
-              Tyst morgon — det är bra. Kopplingarna är friska, inget i Idag-kön och inga utkast som väntar.
-              Digests mejlas bara när det finns något att göra.
-            </span>
+            <span>{t("quiet.body")}</span>
           </div>
           <ul className="space-y-1 pl-6 text-[11px] text-muted-foreground">
             {syncFreshness.total > 0 ? (
               <li>
                 {syncFreshness.latestSyncedAt
-                  ? `Data synkad ${formatAgoSv(syncFreshness.latestSyncedAt)}`
-                  : "Kopplingar finns — väntar på första synk"}
+                  ? t("quiet.synced", { ago: formatAgoSv(syncFreshness.latestSyncedAt) })
+                  : t("quiet.waitingSync")}
                 {syncFreshness.stale.length > 0
-                  ? ` · ${syncFreshness.stale.length} inaktiva (kolla Kopplingar)`
+                  ? t("quiet.stale", { count: syncFreshness.stale.length })
                   : ""}
               </li>
             ) : (
               <li>
-                Inga kopplingar än —{" "}
+                {t("quiet.noConnections")}{" "}
                 <Link to="/connections?wizard=1" className="text-primary underline-offset-2 hover:underline">
-                  starta wizarden
+                  {t("quiet.startWizard")}
                 </Link>{" "}
-                eller prova demoläge.
+                {t("quiet.orDemo")}
               </li>
             )}
             {overnightOkCount > 0 ? (
-              <li>
-                {overnightOkCount === 1
-                  ? "1 automation körde OK senaste dygnet"
-                  : `${overnightOkCount} automationer körde OK senaste dygnet`}
-              </li>
+              <li>{t("quiet.overnight", { count: overnightOkCount })}</li>
             ) : null}
             <li>
-              Fortsätt med{" "}
+              {t("quiet.continueWith")}{" "}
               <Link to="/messages?bucket=today" className="text-primary underline-offset-2 hover:underline">
-                Meddelanden
+                {tNav("nav.messages")}
               </Link>
               {" · "}
               <Link to="/automations" className="text-primary underline-offset-2 hover:underline">
-                Automationer
+                {tNav("nav.automations")}
               </Link>
               {" · "}
               <Link to="/activity" className="text-primary underline-offset-2 hover:underline">
-                Aktivitet
+                {tNav("nav.activity")}
               </Link>
             </li>
           </ul>
@@ -311,7 +308,7 @@ export function SmartDailyBrief({
             <div className="mt-4 space-y-2">
               <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 <History className="h-3 w-3" />
-                Fortsätt där du slutade
+                {t("continue.title")}
               </p>
               <AnimatePresence mode="popLayout" initial={false}>
                 <m.div

@@ -1,0 +1,25 @@
+{
+  "empty": {
+    "mailTitle": "No mail yet",
+    "mailDesc": "Connect Gmail or Outlook under Connections to see email here.",
+    "igTitle": "No Instagram messages",
+    "igDesc": "DMs appear here when Zernio Inbox is connected under Connections.",
+    "messengerTitle": "No Messenger messages",
+    "messengerDesc": "Facebook Messenger appears here via Zernio Inbox — connect under Connections.",
+    "waTitle": "No WhatsApp messages",
+    "waDesc": "WhatsApp appears here via Zernio Inbox — connect under Connections.",
+    "noHits": "No matches",
+    "noHitsDesc": "Nothing matched «{{query}}». Try fewer words or clear the search.",
+    "allHandled": "Nothing left to reply to",
+    "allHandledDesc": "All messages in this channel are handled. Turn on auto-reply under Automations so drafts are created when new DMs arrive.",
+    "noHistory": "No history yet",
+    "noHistoryDesc": "Messages you mark as handled land here.",
+    "queueEmpty": "The queue is empty",
+    "queueEmptyDesc": "Nothing needs a reply right now. Enable auto-reply and follow-up under Automations to reduce queue work over time."
+  },
+  "wait": {
+    "minutes": "{{count}} min",
+    "hours": "{{count}} h",
+    "days": "{{count}} d"
+  }
+}

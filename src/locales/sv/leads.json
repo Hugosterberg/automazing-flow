@@ -1,0 +1,53 @@
+{
+  "status": {
+    "new": "Ny",
+    "contacted": "Kontaktad",
+    "qualified": "Kvalificerad",
+    "won": "Vunnen",
+    "lost": "Förlorad"
+  },
+  "section": {
+    "title": "Leads",
+    "openCount": "{{count}} öppna",
+    "followUps_one": " · {{count}} uppföljning att göra",
+    "followUps_other": " · {{count}} uppföljningar att göra",
+    "import": "Importera",
+    "importTitle": "Importera leads från CSV",
+    "export": "Exportera",
+    "exportTitle": "Exportera leads till CSV",
+    "suggest": "Föreslå segment",
+    "draftDue": "Utkast ({{count}})",
+    "add": "Ny lead",
+    "search": "Sök leads",
+    "emptyTitle": "Leads som faktiskt blir uppföljda",
+    "emptyDesc": "Lägg till en lead, importera CSV, eller låt AI föreslå utifrån bolagsprofilen. Due-datum och outreach-utkast håller dig i rörelse.",
+    "emptyCta": "Lägg till första lead",
+    "noMatch": "Inga leads matchar filtren.",
+    "noContact": "Inga kontaktuppgifter än",
+    "dueToday": "Idag",
+    "overdue": "Försenad"
+  },
+  "toast": {
+    "importEmpty": "Inga leads hittades i filen. Förväntar en rubrikrad med kolumn för företag.",
+    "importOk_one": "Importerade {{count}} lead",
+    "importOk_other": "Importerade {{count}} leads",
+    "importSkipped": " ({{skipped}} hoppades över)",
+    "importFail": "Kunde inte importera filen.",
+    "noData": "Ingen data hittades.",
+    "enrichOk": "Ifyllt från uppslag",
+    "enrichSources_one": "Hämtade från {{count}} källa",
+    "enrichSources_other": "Hämtade från {{count}} källor",
+    "enrichFail": "Uppslag misslyckades.",
+    "added": "Lead tillagd",
+    "updated": "Lead uppdaterad.",
+    "deleted": "Lead borttagen",
+    "deleteFail": "Kunde inte ta bort lead.",
+    "addFail": "Kunde inte lägga till lead.",
+    "noSuggestions": "Inga förslag — försök igen eller fyll i mer under Företag.",
+    "suggestionsFail": "Kunde inte hämta förslag.",
+    "followUpAuto": "Uppföljningsdatum sattes automatiskt.",
+    "followUpFail": "Kunde inte uppdatera uppföljningsdatum.",
+    "updateFail": "Kunde inte uppdatera lead.",
+    "suggestionAdded": "Tillagd som lead"
+  }
+}

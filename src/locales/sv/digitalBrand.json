@@ -1,0 +1,252 @@
+{
+  "page": {
+    "title": "Digitalt varumärke",
+    "description": "Live webbplatsaudit plus SEO-, prestanda-, förtroende- och kanalrekommendationer.",
+    "refreshAudit": "Uppdatera audit",
+    "editWebsite": "Redigera webbadress"
+  },
+  "smartBar": {
+    "title": "Digitalt varumärke granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer.",
+    "step1": "Registrera webbadress under Företag",
+    "step2": "Kör audit och granska PageSpeed- och HTML-värden",
+    "step3": "Prioritera höga rekommendationer under fliken Rekommendationer",
+    "tip": "Auditen körs server-side — ingen kod behöver installeras på sidan.",
+    "liveHintNoWebsite": "Lägg till webbadress under Företag för att köra audit.",
+    "liveHintHighPriority_one": "{{count}} högprioriterad rekommendation — öppna Rekommendationer",
+    "liveHintHighPriority_other": "{{count}} högprioriterade rekommendationer — öppna Rekommendationer",
+    "liveHintOk": "Auditen ser bra ut — inga kritiska punkter just nu.",
+    "actionShowRecs": "Visa rekommendationer"
+  },
+  "tabs": {
+    "ariaLabel": "Digitalt varumärke-flikar",
+    "overview": "Översikt",
+    "recs": "Rekommendationer",
+    "research": "Research"
+  },
+  "alerts": {
+    "noWebsiteTitle": "Ingen webbadress registrerad",
+    "noWebsiteDescPrefix": "Lägg till webbadressen under",
+    "noWebsiteDescSuffix": "för att köra en Digital Brand-audit.",
+    "auditErrorTitle": "Kunde inte granska webbplatsen"
+  },
+  "research": {
+    "mcpTitle": "MCP-varumärkesdata",
+    "mcpDescription": "SEO-översikt och domänuppslag för din registrerade webbplats."
+  },
+  "overview": {
+    "primaryWebsite": "Primär webbplats",
+    "openWebsiteSr": "Öppna webbplatsen",
+    "auditLoading": "Kör PageSpeed Insights och hämtar HTML, robots.txt och sitemap.xml…",
+    "auditIdle": "Kör en audit för att hämta live SEO- och prestandavärden från webbplatsen.",
+    "auditDonePagespeed": "PageSpeed Insights + HTML-audit för {{url}} {{checkedAt}}.",
+    "auditDoneHtmlFallback": "HTML fallback-audit för {{url}} {{checkedAt}}.",
+    "pageSpeedMessage": "PageSpeed-meddelande: {{message}}",
+    "htmlFallbackMessage": "HTML fallback-meddelande: {{message}}",
+    "readiness": "Varumärkesberedskap",
+    "auditing": "Granskar…",
+    "highPriorityPoints_one": "{{count}} högprioriterad punkt",
+    "highPriorityPoints_other": "{{count}} högprioriterade punkter",
+    "openRecs": "Öppna rekommendationer",
+    "auditingWebsite": "Granskar webbplatsen…"
+  },
+  "metrics": {
+    "mobilePageSpeed": "Mobil PageSpeed",
+    "mobilePageSpeedHint": "Lighthouse prestandapoäng från PageSpeed Insights.",
+    "mobileSeo": "Mobil SEO",
+    "mobileSeoHint": "Lighthouse SEO-poäng från PageSpeed Insights.",
+    "mobileLcp": "Mobil LCP",
+    "mobileLcpHint": "Largest Contentful Paint från Lighthouse.",
+    "mobileCls": "Mobil CLS",
+    "mobileClsHint": "Cumulative Layout Shift från Lighthouse.",
+    "httpStatus": "HTTP-status",
+    "httpStatusHintOk": "Startsidan är nåbar.",
+    "httpStatusHintFail": "Startsidan returnerade fel.",
+    "responseTime": "Svarstid",
+    "responseTimeHint": "Mätt av server-side audit-hämtningen.",
+    "titleLength": "Titelns längd",
+    "titleLengthHintNone": "Ingen title-tagg hittades.",
+    "metaDescription": "Metabeskrivning",
+    "metaDescriptionHintNone": "Ingen metabeskrivning hittades.",
+    "desktopPageSpeed": "Desktop PageSpeed",
+    "desktopPageSpeedHint": "Lighthouse prestandapoäng (desktop) från PageSpeed Insights.",
+    "accessibility": "Tillgänglighet",
+    "accessibilityHint": "Lighthouse tillgänglighetspoäng (desktop).",
+    "bestPractices": "Bästa praxis",
+    "bestPracticesHint": "Lighthouse poäng för implementeringskvalitet (desktop).",
+    "desktopLcp": "Desktop LCP",
+    "desktopLcpHint": "Largest Contentful Paint (desktop).",
+    "h1Count": "Antal H1",
+    "h1CountHintNone": "Ingen H1 hittades.",
+    "structuredData": "Strukturerad data",
+    "structuredDataHint": "JSON-LD-block hittade i HTML.",
+    "imagesMissingAlt": "Bilder utan alt",
+    "imagesMissingAltHint": "Baserat på img-taggar i hämtad HTML.",
+    "sitemapStatus": "Sitemap-status",
+    "sitemapStatusHint": "Svar vid kontroll av /sitemap.xml.",
+    "showAll": "Visa alla mätvärden",
+    "showFewer": "Visa färre mätvärden"
+  },
+  "recs": {
+    "allResults": "Alla resultat",
+    "areaResults": "{{area}}-resultat"
+  },
+  "areas": {
+    "seo": "SEO",
+    "performance": "Prestanda",
+    "trust": "Förtroende",
+    "channels": "Kanaler",
+    "all": "Alla"
+  },
+  "priority": {
+    "high": "hög",
+    "medium": "medel",
+    "low": "låg"
+  },
+  "helpers": {
+    "noData": "Ingen data",
+    "notFound": "Hittades inte",
+    "noUrl": "Ingen URL",
+    "missing": "Saknas",
+    "present": "Finns",
+    "complete": "Komplett",
+    "incomplete": "Ofullständig",
+    "connected": "Kopplad",
+    "notConnected": "Ej kopplad",
+    "https": "HTTPS",
+    "http": "HTTP",
+    "characters": "{{count}} tecken",
+    "h1Count": "{{count}} H1",
+    "jsonLdBlocks": "{{count}} JSON-LD-block",
+    "imagesMissing": "{{missing}}/{{total}} saknas",
+    "scoreFormat": "{{score}}/100",
+    "bytesMb": "{{value}} MB",
+    "bytesKb": "{{value}} KB",
+    "bytesB": "{{value}} B",
+    "milliseconds": "{{ms}} ms"
+  },
+  "errors": {
+    "auditFailed": "Kunde inte granska webbplatsen."
+  },
+  "recommendations": {
+    "registerWebsite": {
+      "title": "Registrera er primära webbplats",
+      "detail": "Lägg till webbadressen under {{connections}} innan du kör en Digital Brand-audit."
+    },
+    "pageSpeedScore": {
+      "title": "PageSpeed-prestandapoäng",
+      "detailMobileDesktop": "Mobil Lighthouse-prestanda är {{mobileScore}}. Desktop är {{desktopScore}}.",
+      "detailDesktopOnly": "Desktop Lighthouse-prestanda är {{desktopScore}}."
+    },
+    "pageSpeedUnavailable": {
+      "title": "PageSpeed Insights otillgängligt",
+      "valueNoResult": "Inget PSI-resultat",
+      "valueNoApiKey": "Ingen API-nyckel",
+      "detailFallback": "Lägg till PAGESPEED_API_KEY eller GOOGLE_PAGESPEED_API_KEY för Lighthouse-värden."
+    },
+    "lighthouseSeoScore": {
+      "title": "Lighthouse SEO-poäng",
+      "detail": "Detta är Lighthouse SEO-kategoripoängen från PageSpeed Insights för den registrerade URL:en."
+    },
+    "accessibilityScore": {
+      "title": "Tillgänglighetspoäng",
+      "detail": "Tillgänglighetsproblem påverkar ofta konvertering, användbarhet och upplevd varumärkeskvalitet."
+    },
+    "bestPracticesScore": {
+      "title": "Poäng för bästa praxis",
+      "detail": "Lighthouse best-practices kontrollerar säkerhet, webbläsarkompatibilitet och implementeringskvalitet."
+    },
+    "lcp": {
+      "title": "Largest Contentful Paint",
+      "detail": "LCP mäter hur snabbt huvudinnehållet laddas. Optimera hero-media, serversvar och render-blockande resurser."
+    },
+    "cls": {
+      "title": "Cumulative Layout Shift",
+      "detail": "CLS mäter visuell stabilitet. Reservera utrymme för bilder/annonser och undvik sent laddat UI som flyttar innehåll."
+    },
+    "homepageHttpStatus": {
+      "title": "Startsida HTTP-status",
+      "detailOk": "Startsidan returnerade HTTP {{status}}.",
+      "detailFail": "Startsidan returnerade HTTP {{status}}; åtgärda detta innan du optimerar SEO-innehåll."
+    },
+    "serverResponseTime": {
+      "title": "Serversvarstid",
+      "detailOk": "Det initiala serversvaret ligger inom ett hälsosamt intervall.",
+      "detailSlow": "Minska omdirigeringar, serverarbete och blockerande uppströmsanrop för att förbättra det initiala svaret."
+    },
+    "htmlDownloadSize": {
+      "title": "Nedladdad HTML-storlek",
+      "detailOk": "HTML-payloaden är rimligt liten.",
+      "detailLarge": "HTML-payloaden är stor; minska inline-skript, inbäddad data och oanvänd markup."
+    },
+    "titleTagLength": {
+      "title": "Title-taggens längd",
+      "detailPresent": "Nuvarande title: \"{{title}}\". Sikta på en beskrivande title på 25–65 tecken.",
+      "detailMissing": "Lägg till en unik title-tagg som namnger varumärke, erbjudande och huvudsaklig sökintention."
+    },
+    "metaDescription": {
+      "title": "Metabeskrivning",
+      "detailPresent": "Nuvarande metabeskrivning är {{count}} tecken. Sikta på 70–160.",
+      "detailMissing": "Lägg till en metabeskrivning som sammanfattar erbjudandet och ger sökare en anledning att klicka."
+    },
+    "h1Structure": {
+      "title": "H1-struktur",
+      "detailSingle": "Primär H1: \"{{h1}}\".",
+      "detailMultiple": "Använd exakt en tydlig H1 på startsidan så sökmotorer och besökare förstår sidans ämne."
+    },
+    "canonicalUrl": {
+      "title": "Kanonisk URL",
+      "detailPresent": "Kanonisk pekar på {{canonical}}.",
+      "detailMissing": "Lägg till en kanonisk URL för att förhindra att duplicerade startsidevarianter konkurrerar i sök."
+    },
+    "structuredData": {
+      "title": "Strukturerad data",
+      "detailPresent": "Strukturerad data finns på sidan.",
+      "detailMissing": "Lägg till Organization-, LocalBusiness-, FAQ-, Product- eller Review-schema där det är relevant."
+    },
+    "sitemapCheck": {
+      "title": "Sitemap-kontroll",
+      "detailOk": "/sitemap.xml är nåbar.",
+      "detailMissing": "Exponera /sitemap.xml så sökmotorer kan hitta viktiga sidor snabbare."
+    },
+    "https": {
+      "title": "HTTPS",
+      "detailOk": "Den registrerade webbplatsen använder HTTPS.",
+      "detailHttp": "Byt den registrerade URL:en till HTTPS och omdirigera HTTP till HTTPS."
+    },
+    "mobileViewport": {
+      "title": "Mobil viewport",
+      "detailPresent": "Viewport meta: {{viewport}}.",
+      "detailMissing": "Lägg till en viewport meta-tagg så sidan renderas förutsägbart på mobila enheter."
+    },
+    "imageAltText": {
+      "title": "Alt-text för bilder",
+      "detailNoImages": "Inga bilder hittades i den hämtade HTML:en.",
+      "detailMissing": "Lägg till beskrivande alt-text på viktiga bilder och tom alt-text på dekorativa bilder."
+    },
+    "socialPreview": {
+      "title": "Förhandsvisning i sociala medier",
+      "detailComplete": "Open Graph title och description finns.",
+      "detailIncomplete": "Lägg till Open Graph title och description så delade länkar visas tydligt i sociala kanaler."
+    },
+    "googleBusinessConnection": {
+      "title": "Google Business-koppling",
+      "detailConnected": "Google Business är kopplat så lokala varumärkessignaler kan jämföras med webbplatsen.",
+      "detailNotConnected": "Koppla Google Business för att synka webbinnehåll med kartor, kategorier, öppettider och recensioner."
+    },
+    "reviewSources": {
+      "title": "Recensionskällor",
+      "detailConnected": "Recensionskällor är kopplade och kan informera förtroendemeddelanden.",
+      "detailNotConnected": "Koppla Google Reviews eller Tripadvisor för att använda verkliga recensionsteman i webboptimering."
+    },
+    "socialChannels": {
+      "title": "Sociala kanaler",
+      "detailConnected": "Sociala kanaler är kopplade och kan jämföras med webbplatsens budskap.",
+      "detailNotConnected": "Koppla aktiva sociala profiler för att jämföra varumärkespositionering mellan kanaler."
+    },
+    "paidMediaChannels": {
+      "title": "Betalda mediakanaler",
+      "detailConnected": "Betalkanalerna är kopplade, användbara för landningssida- och CTA-anpassning.",
+      "detailNotConnected": "Koppla Google Ads eller Meta Business innan kampanjspecifik landningssideoptimering."
+    }
+  }
+}

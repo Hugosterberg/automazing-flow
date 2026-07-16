@@ -1,0 +1,94 @@
+{
+  "page": {
+    "title": "Customers",
+    "descriptionMobile": "Tap a customer in the list to see all fields.",
+    "descriptionDesktop": "Upload your customer base, search and review each customer with all fields in one place."
+  },
+  "smartBar": {
+    "titleMobile": "Upload CSV, search and tap a customer for details.",
+    "titleDesktop": "Build a simple CRM view from your CSV — perfect for follow-ups, segmentation and AI questions via Day.ai.",
+    "step1Mobile": "Upload CSV",
+    "step2Mobile": "Search and tap a customer",
+    "step3Mobile": "Copy contact details",
+    "step1Desktop": "Upload a CSV with columns like email, name and phone",
+    "step2Desktop": "Search and select a customer in the list on the left",
+    "step3Desktop": "Copy contact details or export filtered rows",
+    "tip": "Connect Day.ai under Connections for AI questions. Fill in Company for better suggestions — Automations can sync and remind."
+  },
+  "tabs": {
+    "ariaLabel": "Customer tabs",
+    "list": "List",
+    "assistant": "Assistant"
+  },
+  "mcp": {
+    "title": "CRM assistant (Day.ai MCP)",
+    "description": "Ask about customers and deals when Day.ai is connected via OAuth."
+  },
+  "toolbar": {
+    "searchPlaceholder": "Search customers…",
+    "clearSearch": "Clear search",
+    "export": "Export",
+    "clear": "Clear",
+    "stats": "{{shown}} shown · {{total}} total · {{columns}} columns",
+    "noFile": "No file loaded"
+  },
+  "stats": {
+    "customers": "Customers",
+    "columns": "Columns",
+    "filledFields": "Filled fields"
+  },
+  "empty": {
+    "title": "No customer base yet",
+    "description": "Upload a CSV above. Search, review and export. For AI questions about customers: connect Day.ai under Connections → MCP.",
+    "uploadCsv": "Upload CSV",
+    "connectDayAi": "Connect Day.ai"
+  },
+  "noResults": {
+    "title": "No matches",
+    "description": "Try another search term or clear the filter."
+  },
+  "footer": {
+    "selected": "Selected:",
+    "rowFallback": "Row {{number}}",
+    "selectPrompt": "Select a customer in the list",
+    "shortcuts": "J/K browse · / search"
+  },
+  "errors": {
+    "csvOnly": "Only CSV files are supported.",
+    "readFailed": "Could not read the file."
+  },
+  "columnFallback": "Column {{number}}",
+  "exportFilenamePrefix": "customers",
+  "list": {
+    "title": "Customers",
+    "count": "{{count}}",
+    "rowFallback": "Row {{number}}",
+    "uploadPrompt": "Upload a CSV file to get started."
+  },
+  "detail": {
+    "titleFallback": "Customer #{{number}}",
+    "rowMeta": "Row {{number}} in customer base",
+    "backLabel": "Customers",
+    "backToList": "Back to list",
+    "searchInbox": "Search inbox",
+    "createTask": "Create task",
+    "taskTitle": "Follow up: {{name}}",
+    "toContent": "To Content",
+    "copy": "Copy"
+  },
+  "placeholder": {
+    "title": "Select a customer",
+    "description": "Click a row in the list to see all fields — email and phone can be copied with one click."
+  },
+  "toast": {
+    "copied": "{{label}} copied.",
+    "copyFailed": "Could not copy.",
+    "handoffContent": "Customer info sent to Content — ready to publish."
+  },
+  "insights": {
+    "customers": "Customers",
+    "withEmail": "With email",
+    "sumColumn": "Σ {{name}}",
+    "sumColumnTitle": "{{name}} (avg {{avg}})"
+  }
+}

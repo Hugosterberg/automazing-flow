@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,9 +122,10 @@ function LeadRow({
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
   const staleDays = leadStaleDays(lead);
+  const { t } = useTranslation("leads");
   const contactLine =
     [lead.contactName, lead.email, lead.phone].filter(Boolean).join(" · ") ||
-    (lead.notes ? lead.notes.slice(0, 80) : "Inga kontaktuppgifter än");
+    (lead.notes ? lead.notes.slice(0, 80) : t("section.noContact"));
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
@@ -237,6 +239,7 @@ export function LeadsSection({
   onDraftDueLeads,
   onRegisterAddOpener,
 }: Props) {
+  const { t } = useTranslation("leads");
   const { leads, isLoading, createLead, updateLead, deleteLead, importLeads, isImporting } =
     useLeads(businessProfileId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -250,13 +253,15 @@ export function LeadsSection({
       const text = await file.text();
       const { leads: parsed, skipped } = parseLeadsCsv(text);
       if (parsed.length === 0) {
-        toast.error("Inga leads hittades i filen. Förväntar en rubrikrad med kolumn för företag.");
+        toast.error(t("toast.importEmpty"));
         return;
       }
       const count = await importLeads(parsed);
-      toast.success(`Importerade ${count} lead${count === 1 ? "" : "s"}${skipped ? ` (${skipped} hoppades över)` : ""}`);
+      toast.success(
+        `${t("toast.importOk", { count })}${skipped ? t("toast.importSkipped", { skipped }) : ""}`
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte importera filen.");
+      toast.error(err instanceof Error ? err.message : t("toast.importFail"));
     }
   }
 
@@ -301,12 +306,12 @@ export function LeadsSection({
       setForm((f) => applyEnrichmentToLeadForm(f, meta));
       const sources = meta.sources?.filter((s) => s.status === "success").length ?? 0;
       if (!meta.company && !meta.description && sources === 0) {
-        toast.message("Ingen data hittades.");
+        toast.message(t("toast.noData"));
       } else {
-        toast.success(sources > 0 ? `Hämtade från ${sources} källa${sources === 1 ? "" : "r"}` : "Ifyllt från uppslag");
+        toast.success(sources > 0 ? t("toast.enrichSources", { count: sources }) : t("toast.enrichOk"));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Uppslag misslyckades.");
+      toast.error(e instanceof Error ? e.message : t("toast.enrichFail"));
     } finally {
       setEnriching(false);
     }
@@ -352,9 +357,9 @@ export function LeadsSection({
       });
       setForm({ ...EMPTY_FORM });
       setAddOpen(false);
-      toast.success("Lead tillagd");
+      toast.success(t("toast.added"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte lägga till lead.");
+      toast.error(e instanceof Error ? e.message : t("toast.addFail"));
     } finally {
       setSaving(false);
     }
@@ -369,9 +374,9 @@ export function LeadsSection({
       });
       setSuggestions(result.suggestions);
       setSuggestSource(result.source);
-      if (result.suggestions.length === 0) toast.message("Inga förslag — försök igen eller fyll i mer under Företag.");
+      if (result.suggestions.length === 0) toast.message(t("toast.noSuggestions"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte hämta förslag.");
+      toast.error(e instanceof Error ? e.message : t("toast.suggestionsFail"));
     } finally {
       setSuggesting(false);
     }
@@ -394,10 +399,10 @@ export function LeadsSection({
     try {
       await updateLead({ id: lead.id, patch });
       if (patch.nextFollowUpAt) {
-        toast.message("Uppföljningsdatum sattes automatiskt.");
+        toast.message(t("toast.followUpAuto"));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte uppdatera lead.");
+      toast.error(e instanceof Error ? e.message : t("toast.updateFail"));
     }
   }
 
@@ -410,9 +415,9 @@ export function LeadsSection({
         status: "new",
       });
       setSuggestions((prev) => prev.filter((x) => x.target !== s.target));
-      toast.success("Tillagd som lead");
+      toast.success(t("toast.suggestionAdded"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte lägga till lead.");
+      toast.error(e instanceof Error ? e.message : t("toast.addFail"));
     }
   }
 
@@ -423,11 +428,11 @@ export function LeadsSection({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <UserPlus className="h-4 w-4 text-primary" />
-              Leads
+              {t("section.title")}
             </CardTitle>
             <CardDescription>
-              {openCount} öppna
-              {followUpDue > 0 ? ` · ${followUpDue} uppföljning${followUpDue === 1 ? "" : "ar"} att göra` : ""}
+              {t("section.openCount", { count: openCount })}
+              {followUpDue > 0 ? t("section.followUps", { count: followUpDue }) : ""}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -443,15 +448,15 @@ export function LeadsSection({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isImporting || !businessProfileId}
-              title="Importera leads från CSV"
+              title={t("section.importTitle")}
             >
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              <span className="ml-1.5 hidden sm:inline">Importera</span>
+              <span className="ml-1.5 hidden sm:inline">{t("section.import")}</span>
             </Button>
             {leads.length > 0 ? (
-              <Button size="sm" variant="ghost" onClick={exportCsv} title="Exportera leads till CSV">
+              <Button size="sm" variant="ghost" onClick={exportCsv} title={t("section.exportTitle")}>
                 <Download className="h-3.5 w-3.5" />
-                <span className="ml-1.5 hidden sm:inline">Exportera</span>
+                <span className="ml-1.5 hidden sm:inline">{t("section.export")}</span>
               </Button>
             ) : null}
             <Button
@@ -471,17 +476,17 @@ export function LeadsSection({
               ) : (
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Föreslå segment
+              {t("section.suggest")}
             </Button>
             {followUpDue > 0 && onDraftDueLeads ? (
               <Button size="sm" variant="default" onClick={onDraftDueLeads}>
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
-                Utkast ({followUpDue})
+                {t("section.draftDue", { count: followUpDue })}
               </Button>
             ) : null}
             <Button size="sm" onClick={() => setAddOpen(true)} disabled={!businessProfileId}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Ny lead
+              {t("section.add")}
             </Button>
           </div>
         </div>
@@ -545,14 +550,14 @@ export function LeadsSection({
         ) : sortedLeads.length === 0 ? (
           <ValueSellEmpty
             icon={Target}
-            title="Leads som faktiskt blir uppföljda"
-            description="Lägg till en lead, importera CSV, eller låt AI föreslå utifrån bolagsprofilen. Due-datum och outreach-utkast håller dig i rörelse."
+            title={t("section.emptyTitle")}
+            description={t("section.emptyDesc")}
             trust="Ingen outreach skickas utan dig. Koppla mail under Kopplingar när du vill skicka från samma arbetsyta."
             primary={{ label: "Fyll i Företag", to: "/company" }}
             secondary={{ label: "Koppla mail", to: "/connections?wizard=1&q=gmail" }}
           />
         ) : filteredLeads.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Inga leads matchar filtren.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">{t("section.noMatch")}</p>
         ) : (
           <div className="space-y-2">
             {filteredLeads.map((lead) => (
@@ -568,7 +573,7 @@ export function LeadsSection({
                       patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
                     });
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Kunde inte uppdatera uppföljningsdatum.");
+                    toast.error(error instanceof Error ? error.message : t("toast.followUpFail"));
                   }
                 }}
                 onDelete={() => setLeadToDelete(lead)}
@@ -618,7 +623,7 @@ export function LeadsSection({
         onOpenChange={setEditOpen}
         onSave={async (id, patch) => {
           await updateLead({ id, patch });
-          toast.success("Lead uppdaterad.");
+          toast.success(t("toast.updated"));
         }}
       />
 
@@ -636,8 +641,8 @@ export function LeadsSection({
               onClick={() => {
                 if (!leadToDelete) return;
                 void deleteLead(leadToDelete.id)
-                  .then(() => toast.success("Lead borttagen"))
-                  .catch((error) => toast.error(error instanceof Error ? error.message : "Kunde inte ta bort lead."));
+                  .then(() => toast.success(t("toast.deleted")))
+                  .catch((error) => toast.error(error instanceof Error ? error.message : t("toast.deleteFail")));
                 setLeadToDelete(null);
               }}
             >

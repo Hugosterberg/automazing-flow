@@ -10,6 +10,7 @@
  * DMs, pending reviews, …) plug in by adding another block here.
  */
 import { formatNumber } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
 export type BriefItemKind =
   | "connection"
@@ -27,7 +28,7 @@ export interface BriefItem {
   id: string;
   kind: BriefItemKind;
   severity: BriefSeverity;
-  /** Short, scannable headline, e.g. "2 kopplingar behöver uppmärksamhet". */
+  /** Short, scannable headline, e.g. "2 connections need attention". */
   title: string;
   /** One line of supporting detail. */
   description: string;
@@ -82,22 +83,22 @@ export interface DailyBriefInput {
 const SEVERITY_RANK: Record<BriefSeverity, number> = { critical: 0, warning: 1, info: 2 };
 const HARD_HEALTH = new Set(["expired", "failed", "missing"]);
 
-/** "A" · "A och B" · "A, B och 2 till" — keeps descriptions readable. */
+/** "A" · "A and B" · "A, B and 2 more" — keeps descriptions readable. */
 export function joinNames(names: string[], maxShown = 2): string {
   const clean = names.map((n) => n.trim()).filter(Boolean);
   if (clean.length === 0) return "";
   if (clean.length === 1) return clean[0];
   if (clean.length <= maxShown) {
-    return `${clean.slice(0, -1).join(", ")} och ${clean[clean.length - 1]}`;
+    return `${clean.slice(0, -1).join(", ")} ${t("dailyBrief:joinAnd")} ${clean[clean.length - 1]}`;
   }
-  return `${clean.slice(0, maxShown).join(", ")} och ${clean.length - maxShown} till`;
+  return `${clean.slice(0, maxShown).join(", ")} ${t("dailyBrief:joinAndMore", { count: clean.length - maxShown })}`;
 }
 
 function taskDescription(tasks: Array<{ title: string }>): string {
-  const titles = tasks.map((t) => t.title.trim()).filter(Boolean);
+  const titles = tasks.map((item) => item.title.trim()).filter(Boolean);
   if (titles.length === 0) return "";
-  const head = `“${titles[0]}”`;
-  return titles.length > 1 ? `${head} och ${titles.length - 1} till` : head;
+  if (titles.length === 1) return t("dailyBrief:taskOne", { title: titles[0] });
+  return t("dailyBrief:taskMore", { title: titles[0], count: titles.length - 1 });
 }
 
 export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
@@ -111,10 +112,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "connections",
       kind: "connection",
       severity: critical ? "critical" : "warning",
-      title: n === 1 ? "1 koppling behöver uppmärksamhet" : `${n} kopplingar behöver uppmärksamhet`,
+      title: t("dailyBrief:signals.connections", { count: n }),
       description: critical
-        ? `${labels} synkar inte — återanslut för att behålla flödet.`
-        : `${labels} behöver en snabb omsynk.`,
+        ? t("dailyBrief:signals.connectionsCritical", { names: labels })
+        : t("dailyBrief:signals.connectionsWarn", { names: labels }),
       to: "/connections?tab=health",
       count: n,
     });
@@ -130,17 +131,13 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       kind: "message",
       severity: "warning",
       title: usingTriage
-        ? messageSignal === 1
-          ? "1 meddelande att hantera idag/denna vecka"
-          : `${messageSignal} meddelanden att hantera idag/denna vecka`
-        : messageSignal === 1
-          ? "1 oläst meddelande"
-          : `${messageSignal} olästa meddelanden`,
+        ? t("dailyBrief:signals.messagesTriage", { count: messageSignal })
+        : t("dailyBrief:signals.messagesUnread", { count: messageSignal }),
       description: usingTriage
-        ? "Triage: Idag och Denna vecka — FYI/Brus räknas inte här."
+        ? t("dailyBrief:signals.messagesTriageDesc")
         : messageSignal === 1
-          ? "Öppna triage-hinken Idag och svara."
-          : "Börja med triage-hinken Idag — svara det viktiga först.",
+          ? t("dailyBrief:signals.messagesUnreadOneDesc")
+          : t("dailyBrief:signals.messagesUnreadManyDesc"),
       to: "/messages?bucket=today",
       count: messageSignal,
     });
@@ -152,11 +149,11 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "leads-followup",
       kind: "lead",
       severity: "warning",
-      title: leadsToFollowUp === 1 ? "1 lead att följa upp" : `${leadsToFollowUp} leads att följa upp`,
+      title: t("dailyBrief:signals.leads", { count: leadsToFollowUp }),
       description:
         leadsToFollowUp === 1
-          ? "En uppföljning är due — låt den inte kallna."
-          : "Uppföljningar väntar — håll affärerna i rörelse.",
+          ? t("dailyBrief:signals.leadsDescOne")
+          : t("dailyBrief:signals.leadsDescMany"),
       to: "/sales?view=followups",
       count: leadsToFollowUp,
     });
@@ -168,11 +165,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "outreach-queue",
       kind: "lead",
       severity: "info",
-      title:
-        outreachQueuePending === 1
-          ? "1 outreach-utkast redo"
-          : `${outreachQueuePending} outreach-utkast redo`,
-      description: "Automatisk uppföljningstext väntar — granska och skicka under Sales.",
+      title: t("dailyBrief:signals.outreach", { count: outreachQueuePending }),
+      description: t("dailyBrief:signals.outreachDesc"),
       to: "/sales?view=outreach-queue",
       count: outreachQueuePending,
     });
@@ -184,8 +178,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "dm-drafts",
       kind: "message",
       severity: "warning",
-      title: pendingDmDrafts === 1 ? "1 DM-utkast att godkänna" : `${pendingDmDrafts} DM-utkast att godkänna`,
-      description: "Auto-svar i utkastläge — granska och skicka under Meddelanden.",
+      title: t("dailyBrief:signals.dmDrafts", { count: pendingDmDrafts }),
+      description: t("dailyBrief:signals.dmDraftsDesc"),
       to: "/messages?tab=instagram",
       count: pendingDmDrafts,
     });
@@ -197,8 +191,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-roas",
       kind: "marketing",
       severity: "warning",
-      title: `Annonser under vatten (ROAS ${formatNumber(underwaterRoas, { maximumFractionDigits: 1 })}×)`,
-      description: "Intäkt under annonskostnad senaste 7 dagarna — granska kampanjerna under Marketing.",
+      title: t("dailyBrief:signals.roasUnderwater", {
+        roas: formatNumber(underwaterRoas, { maximumFractionDigits: 1 }),
+      }),
+      description: t("dailyBrief:signals.roasUnderwaterDesc"),
       to: "/marketing",
       count: 1,
     });
@@ -207,8 +203,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-trend",
       kind: "marketing",
       severity: "info",
-      title: "Annons-ROAS sjönk den här veckan",
-      description: "Vecka-mot-vecka-avkastning är ner — kolla vad som ändrats under Marketing.",
+      title: t("dailyBrief:signals.roasDown"),
+      description: t("dailyBrief:signals.roasDownDesc"),
       to: "/marketing",
       count: 1,
     });
@@ -220,11 +216,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "marketing-inventory",
       kind: "marketing",
       severity: "warning",
-      title:
-        inventoryAlertCount === 1
-          ? "1 produkt har lågt lager"
-          : `${inventoryAlertCount} produkter har lågt lager`,
-      description: "Aktiva annonser kan peka mot varor som behöver påfyllning.",
+      title: t("dailyBrief:signals.inventory", { count: inventoryAlertCount }),
+      description: t("dailyBrief:signals.inventoryDesc"),
       to: "/marketing",
       count: inventoryAlertCount,
     });
@@ -237,8 +230,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "automations-failed",
       kind: "automation",
       severity: "critical",
-      title: n === 1 ? "1 automation misslyckades senast" : `${n} automationer misslyckades senast`,
-      description: `${joinNames(failedAutomations.map((a) => a.title))} — granska och kör om under Automationer.`,
+      title: t("dailyBrief:signals.automations", { count: n }),
+      description: t("dailyBrief:signals.automationsDesc", {
+        names: joinNames(failedAutomations.map((a) => a.title)),
+      }),
       to: "/automations",
       count: n,
     });
@@ -250,8 +245,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "reviews-reply",
       kind: "review",
       severity: "warning",
-      title: reviewsNeedingReply === 1 ? "1 recension behöver svar" : `${reviewsNeedingReply} recensioner behöver svar`,
-      description: "Svara på färsk kundfeedback medan den fortfarande är aktuell.",
+      title: t("dailyBrief:signals.reviews", { count: reviewsNeedingReply }),
+      description: t("dailyBrief:signals.reviewsDesc"),
       to: "/reviews?filter=needs_reply",
       count: reviewsNeedingReply,
     });
@@ -263,7 +258,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "tasks-overdue",
       kind: "task",
       severity: "warning",
-      title: n === 1 ? "1 uppgift är försenad" : `${n} uppgifter är försenade`,
+      title: t("dailyBrief:signals.overdueTasks", { count: n }),
       description: taskDescription(input.overdueTasks),
       to: "/tasks?view=overdue",
       count: n,
@@ -276,7 +271,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "tasks-due-today",
       kind: "task",
       severity: "info",
-      title: n === 1 ? "1 uppgift förfaller idag" : `${n} uppgifter förfaller idag`,
+      title: t("dailyBrief:signals.dueTodayTasks", { count: n }),
       description: taskDescription(input.dueTodayTasks),
       to: "/tasks",
       count: n,
@@ -289,7 +284,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "recommendations",
       kind: "recommendation",
       severity: "info",
-      title: n === 1 ? "1 nytt AI-förslag" : `${n} nya AI-förslag`,
+      title: t("dailyBrief:signals.ai", { count: n }),
       description: taskDescription(input.newRecommendations),
       to: "/ai-recommendations",
       count: n,
@@ -303,7 +298,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       id: "agent-updates",
       kind: "agent",
       severity: "info",
-      title: n === 1 ? "1 agentresultat att granska" : `${n} agentresultat att granska`,
+      title: t("dailyBrief:signals.agents", { count: n }),
       description: taskDescription(agentUpdates),
       to: "/activity?module=agent",
       count: n,
@@ -336,8 +331,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       items,
       actionCount: 0,
       allClear: true,
-      headline: "Du är ikapp",
-      subline: "Inget behöver din uppmärksamhet just nu — bra jobbat.",
+      headline: t("dailyBrief:caughtUp.headline"),
+      subline: t("dailyBrief:caughtUp.subline"),
     };
   }
 
@@ -345,7 +340,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     items,
     actionCount,
     allClear: false,
-    headline: actionCount === 1 ? "1 sak behöver din uppmärksamhet" : `${actionCount} saker behöver din uppmärksamhet`,
-    subline: "Här är dagens fokus, i prioritetsordning.",
+    headline: t("dailyBrief:focus.headline", { count: actionCount }),
+    subline: t("dailyBrief:focus.subline"),
   };
 }

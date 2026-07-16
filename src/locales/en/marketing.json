@@ -1,0 +1,379 @@
+{
+  "tabs": {
+    "ariaLabel": "Marketing tabs",
+    "campaigns": "Campaigns",
+    "ads": "Paid",
+    "ideas": "Ideas",
+    "paths": "Paths"
+  },
+  "objectives": {
+    "awareness": "Brand awareness",
+    "traffic": "Traffic",
+    "leads": "Leads",
+    "sales": "Sales",
+    "retention": "Repeat purchase"
+  },
+  "channels": {
+    "google_search": "Google Search",
+    "google_pmax": "Google Performance Max",
+    "google_display": "Google Display",
+    "meta_social": "Meta Facebook/Instagram",
+    "social_organic": "Organic social",
+    "email_newsletter": "Email / newsletter",
+    "seo_content": "SEO & content",
+    "influencer": "Influencer / UGC",
+    "marketplace": "Marketplace / e-commerce",
+    "pr_events": "PR / event",
+    "referral": "Referral / partners",
+    "cross_channel": "Cross-channel"
+  },
+  "platforms": {
+    "google_ads": "Google Ads",
+    "meta_business": "Meta Business"
+  },
+  "pathKinds": {
+    "paid": "Paid",
+    "organic": "Organic",
+    "owned": "Owned channels",
+    "partnership": "Partnership"
+  },
+  "pathGroups": {
+    "paid": {
+      "title": "Paid growth",
+      "description": "Use budget to reach buyers quickly via ads and marketplaces."
+    },
+    "organic": {
+      "title": "Organic reach",
+      "description": "Earn attention through content, SEO, social media and local presence."
+    },
+    "owned": {
+      "title": "Owned channels",
+      "description": "Channels you control — email, website, CRM and direct sales."
+    },
+    "partnership": {
+      "title": "Partnerships",
+      "description": "Grow through others' audiences, referrals and co-marketing."
+    }
+  },
+  "paths": {
+    "paid-ads": {
+      "title": "Paid advertising",
+      "description": "Google Ads and Meta campaigns for traffic, leads and product sales.",
+      "actions": {
+        "connectAccounts": "Connect ad accounts",
+        "trackRoas": "Track ROAS",
+        "planTasks": "Plan campaign tasks"
+      }
+    },
+    "social": {
+      "title": "Social media",
+      "description": "Organic posts, scheduling and community on Instagram, Facebook and LinkedIn.",
+      "actions": {
+        "publish": "Publish posts",
+        "calendar": "Content calendar",
+        "engage": "Engage followers"
+      }
+    },
+    "content": {
+      "title": "Content studio",
+      "description": "Long-form content, images and video drafts for your brand and products.",
+      "actions": {
+        "write": "Write articles",
+        "generateImages": "Generate images",
+        "repurpose": "Repurpose for social media"
+      }
+    },
+    "seo-brand": {
+      "title": "SEO & digital brand",
+      "description": "Website audit, search visibility and a consistent brand presence online.",
+      "actions": {
+        "runAudit": "Run website audit",
+        "fixSeo": "Fix SEO gaps",
+        "monitorReputation": "Monitor reputation"
+      }
+    },
+    "email-crm": {
+      "title": "Email & customers",
+      "description": "Newsletters, follow-ups and customer relationships that drive repeat sales.",
+      "actions": {
+        "sendCampaigns": "Send campaigns",
+        "replyFaster": "Reply faster",
+        "segment": "Segment customers"
+      }
+    },
+    "sales-outreach": {
+      "title": "Sales & outreach",
+      "description": "Leads, cold outreach, prospecting and pipeline all the way to close.",
+      "actions": {
+        "findLeads": "Find leads",
+        "outreachCopy": "Outreach copy",
+        "drivePipeline": "Drive the pipeline forward"
+      }
+    },
+    "ecommerce": {
+      "title": "E-commerce & stores",
+      "description": "Shopify and product listings — assortment, offers and store performance.",
+      "actions": {
+        "productPages": "Product pages",
+        "campaigns": "Campaigns",
+        "storeAnalytics": "Store analytics"
+      }
+    },
+    "reviews-local": {
+      "title": "Reviews & local",
+      "description": "Google reviews, local listings and trust signals that convert visitors.",
+      "actions": {
+        "collectReviews": "Collect reviews",
+        "replyPublicly": "Reply publicly",
+        "boostLocalSeo": "Boost local SEO"
+      }
+    },
+    "partners": {
+      "title": "Partners & community",
+      "description": "Referrals, co-marketing, influencers and B2B partnerships.",
+      "actions": {
+        "partnerOutreach": "Partner outreach",
+        "referralOffers": "Referral offers",
+        "jointCampaigns": "Joint campaigns"
+      }
+    }
+  },
+  "pathsHub": {
+    "title": "Marketing paths",
+    "description": "Several ways to reach customers — pick a path for paid ads, organic content, email, e-commerce, local reviews or partnerships. You don't need every channel; start with one or two that fit.",
+    "openHere": "Open here",
+    "open": "Open"
+  },
+  "pathStatus": {
+    "shopifyConnected": "Shopify connected",
+    "grade": "Grade {{grade}} · {{label}}",
+    "roas": "ROAS {{roas}}",
+    "adsConnected": "Ads connected"
+  },
+  "setup": {
+    "title": "Connect your marketing stack",
+    "description": "Choose what to connect first — organic content works without ads, but ROAS requires Shopify plus at least one ad platform.",
+    "steps": {
+      "shopify": {
+        "label": "Shopify",
+        "hint": "Revenue and ROAS from your store"
+      },
+      "ads": {
+        "label": "Google Ads or Meta",
+        "hint": "Track spend and campaign results"
+      },
+      "results": {
+        "label": "See results",
+        "hint": "ROAS appears when store and ads are connected"
+      }
+    },
+    "connect": "Connect"
+  },
+  "ideas": {
+    "aiStripLabel": "AI insights for marketing",
+    "playbookTitle": "Marketing ideas",
+    "playbookDescription": "AI suggestions for channels, campaigns and offers tailored to your company and products.",
+    "contentCardTitle": "Content that attracts customers",
+    "contentCardDescription": "Post ideas that warm up potential buyers live in Content — social posts and outreach angles in one place.",
+    "openContentIdeas": "Open content ideas →"
+  },
+  "mcp": {
+    "researchSummary": "MCP research (optional)",
+    "intelligenceTitle": "MCP intelligence",
+    "intelligenceDescription": "SEO, marketing data and competitor research via connected MCP providers."
+  },
+  "automationHint": {
+    "title": "Let ads adjust automatically",
+    "description": "Marketing automations can pause weak Meta campaigns and warn about ROAS — less manual control every morning.",
+    "cta": "Open marketing automations"
+  },
+  "ads": {
+    "statsCampaigns": "Campaigns",
+    "statsActive": "Active",
+    "statsAdvertising": "Advertising",
+    "title": "Paid advertising",
+    "description": "Connect Google Ads and Meta to track spend, ROAS and active campaigns.",
+    "connected": "Connected for this profile.",
+    "notConnected": "Connect to pull campaign data into Marketing.",
+    "connectRecommended": "Connect (recommended)",
+    "connectZernio": "Connect via Zernio",
+    "useOfficialApi": "Use Official API",
+    "connections": "Connections"
+  },
+  "campaigns": {
+    "sectionTitle": "Campaigns",
+    "sectionDescription": "Plan, create and edit campaigns with channel, goal, budget and period.",
+    "newCampaign": "New campaign",
+    "empty": "No campaigns yet",
+    "unnamed": "Untitled campaign",
+    "focus": "Focus:",
+    "keyboardBrowse": "J/K browse campaigns",
+    "keyboardHints": "E Edit · N New",
+    "editAria": "Edit campaign",
+    "deleteAria": "Delete campaign",
+    "dialogEditTitle": "Edit campaign",
+    "dialogNewTitle": "New campaign",
+    "fieldTitle": "Campaign name",
+    "fieldObjective": "Goal",
+    "fieldChannel": "Channel",
+    "fieldBudget": "Budget",
+    "fieldStatus": "Status",
+    "fieldStart": "Start",
+    "fieldEnd": "End",
+    "fieldAudience": "Audience",
+    "fieldCta": "CTA",
+    "fieldNotes": "Notes",
+    "budgetPlaceholder": "E.g. 5,000 kr/month",
+    "audiencePlaceholder": "E.g. local businesses, new customers",
+    "ctaPlaceholder": "E.g. Book a demo",
+    "cancel": "Cancel",
+    "saveChanges": "Save changes",
+    "create": "Create campaign",
+    "activeTitle": "Active campaigns",
+    "activeDescription": "Live ads, spend and grades (A–F) from Meta & Google Ads.",
+    "refreshSr": "Refresh campaigns",
+    "needsAction_one": "{{count}} campaign needs action — sorted weakest first.",
+    "needsAction_other": "{{count}} campaigns need action — sorted weakest first.",
+    "noActiveCampaigns": "No active campaigns right now.",
+    "platformSpend": "{{amount}} last 7 days",
+    "statusActive": "Active",
+    "budgetPerDay": "/day",
+    "budgetLifetime": " total",
+    "daysShort": "7 d",
+    "clicks": "clicks",
+    "roasTitle": "ROAS = sales {{sales}} ÷ spend {{spend}}"
+  },
+  "status": {
+    "open": "Planned",
+    "in_progress": "Active",
+    "blocked": "Paused",
+    "done": "Completed"
+  },
+  "followUp": {
+    "title": "Follow-up – active campaigns",
+    "descriptionWithPerformance": "Results for the last {{days}} days (all ad channels combined).",
+    "descriptionNoData": "No ad data yet for the recent period.",
+    "descriptionNotConnected": "Connect Google Ads or Meta to see results against your campaigns.",
+    "spend": "spend",
+    "revenue": "revenue",
+    "orders": "orders",
+    "missingDetails": "Campaign details missing",
+    "periodEnded": "End date passed — time to evaluate",
+    "daysLeft_one": "1 day left",
+    "daysLeft_other": "{{count}} days left",
+    "dayCount": "Day {{day}} · no end date",
+    "noPeriod": "No period set",
+    "createPost": "Create post"
+  },
+  "inventoryAlert": {
+    "title": "Ads running but shelves are empty",
+    "body_one": "{{activeCampaigns}} active campaign is running while {{stockParts}}.",
+    "body_other": "{{activeCampaigns}} active campaigns are running while {{stockParts}}.",
+    "examples": " E.g. {{examples}}.",
+    "footer": "Pause or restock so you don't burn budget.",
+    "calculation": "Calculated: active campaigns (Meta/Google) × Shopify products with tracked inventory at or below the threshold.",
+    "viewEcommerce": "View in E-commerce",
+    "reviewCampaigns": "Review campaigns",
+    "outOfStock_one": "{{count}} out of stock",
+    "outOfStock_other": "{{count}} out of stock",
+    "lowStock_one": "{{count}} low in stock (≤ {{threshold}})",
+    "lowStock_other": "{{count}} low in stock (≤ {{threshold}})",
+    "and": " and "
+  },
+  "recommendations": {
+    "title": "Recommended actions",
+    "description": "Based on Meta/Google data and Shopify ROAS — prioritized for you.",
+    "severity": {
+      "critical": "Urgent",
+      "warning": "Warning",
+      "opportunity": "Opportunity"
+    }
+  },
+  "performance": {
+    "loading": "Loading marketing data…",
+    "title": "Marketing results",
+    "emptyDescription": "Connect Shopify and at least one ad platform to see ROAS here.",
+    "connectShopify": "Connect Shopify",
+    "connectAds": "Connect ads",
+    "setupPaid": "Set up paid advertising",
+    "shopifyWaiting": "Shopify connected — waiting for ad spend data.",
+    "shopifyForRevenue": "Connect Shopify for the revenue side of ROAS.",
+    "connectMetaGoogle": "Connect Meta or Google Ads",
+    "windowDescription": "Ad spend and store revenue combined · last {{days}} days",
+    "gradeTitle": "Marketing grade · last {{days}} days",
+    "campaignGood": "{{count}} good",
+    "campaignOk": "{{count}} ok",
+    "campaignPoor": "{{count}} weak",
+    "platformMetaGoogle": "Meta {{metaGrade}} · Google {{googleGrade}}",
+    "platformGoogle": "Google {{grade}}",
+    "metrics": {
+      "roas": "ROAS",
+      "costPerOrder": "Cost per order",
+      "adSpend": "Ad spend",
+      "revenue": "Revenue",
+      "ctr": "CTR (avg)",
+      "cpc": "CPC (avg)",
+      "cpm": "CPM (avg)",
+      "conversionRate": "Conversion rate",
+      "costPerConversion": "Cost per conv."
+    },
+    "formulas": {
+      "roasCalc": "Revenue {{revenue}} ÷ ad spend {{spend}}",
+      "roasNeedsShopify": "Connect Shopify to calculate ROAS",
+      "roasNeedsAds": "Connect Meta/Google Ads to calculate ROAS",
+      "cpoCalc": "Ad spend {{spend}} ÷ {{orders}} orders",
+      "cpoNeedsSpend": "Requires ad spend",
+      "cpoNeedsOrders": "Requires Shopify orders",
+      "spendSum": "Sum of active campaigns",
+      "spendNone": "No ad platform connected",
+      "revenueCalc": "Shopify gross · {{orders}} orders · avg {{aov}}",
+      "revenueNone": "No Shopify store connected",
+      "ctrCalc": "{{clicks}} clicks ÷ {{impressions}} impressions",
+      "ctrNeeds": "Requires impressions from Meta/Google",
+      "cpcCalc": "{{spend}} ÷ {{clicks}} clicks",
+      "cpcNeeds": "Requires click data",
+      "cpmCalc": "{{spend}} ÷ {{impressions}} impressions × 1000",
+      "cpmNeeds": "Requires impressions",
+      "cvrCalc": "{{conversions}} conv. ÷ {{clicks}} clicks",
+      "cvrNeeds": "Requires conversions from Meta/Google",
+      "cpconvCalc": "{{spend}} ÷ {{conversions}} conv.",
+      "cpconvNeeds": "Requires conversion data"
+    },
+    "trend": {
+      "roasVsWeek": "ROAS {{delta}} vs last week",
+      "gradeDelta": "Grade {{delta}} p{{gradeHint}}",
+      "gradeHint": " (now {{grade}})",
+      "spend": "Spend {{pct}}",
+      "revenue": "Revenue {{pct}}"
+    },
+    "channelMix": {
+      "title": "Channel mix (share of ad spend)",
+      "formula": "share = channel spend ÷ {{total}}"
+    },
+    "sourcesNote": "Sources: ad spend from Meta & Google Ads, revenue from Shopify (gross sales, excl. cancelled orders). All figures cover the same {{days}}-day window.",
+    "currencyMismatch": " Note: ad spend and revenue are reported in different currencies — ROAS is approximate."
+  },
+  "trendChart": {
+    "title": "Snapshot history · {{days}} days · each point is a rolling 7-day window",
+    "revenue": "Revenue",
+    "adSpend": "Ad spend",
+    "roas": "ROAS",
+    "orders": "Orders",
+    "ordersTooltip": "Orders (7 d)"
+  },
+  "scoreBreakdown": {
+    "scale": "Scale"
+  },
+  "campaignTrend": {
+    "title": "Vs ~7 days ago{{gradeHint}}",
+    "gradeHint": " · grade {{grades}}"
+  },
+  "toasts": {
+    "ideaLoadedCampaign": "Idea loaded into new campaign",
+    "ideaReadyContent": "Idea ready in Content",
+    "campaignCtaReady": "Campaign CTA ready in Content"
+  },
+  "aiStrip": {
+    "label": "AI insights for marketing"
+  }
+}

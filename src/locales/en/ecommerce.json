@@ -1,0 +1,327 @@
+{
+  "tabs": {
+    "ariaLabel": "E-commerce tabs",
+    "orders": "Orders",
+    "products": "Products",
+    "insights": "Insights",
+    "tools": "Tools"
+  },
+  "statsStrip": {
+    "products": "Products",
+    "orders": "Orders",
+    "actions": "Actions"
+  },
+  "headerActions": {
+    "openAdmin": "Open admin",
+    "refresh": "Refresh"
+  },
+  "platforms": {
+    "shopify": "Shopify",
+    "notion": "Notion"
+  },
+  "workspaceSuffix": "Notion workspace",
+  "localMode": {
+    "message": "Local mode is active. OAuth/connection is enabled for local testing and data stays in your current session."
+  },
+  "valueSell": {
+    "title": "Orders, inventory and cart — in one workspace",
+    "trust": "Automations won't send without you — drafts before sending in sensitive flows.",
+    "primary": "Connect Shopify",
+    "secondary": "Open Connections",
+    "description": {
+      "tools": "Connect Shopify for orders and inventory. Import from Alibaba or use Notion under Tools.",
+      "insights": "See revenue, top sellers and campaign data when the store is connected — without jumping to admin.",
+      "default": "Connect Shopify so orders and inventory appear here. Cart recovery runs as drafts you approve."
+    }
+  },
+  "empty": {
+    "shopifyHome": {
+      "title": "Shopify is home for e-commerce here",
+      "description": "Connections is the only place for integrations. Notion is also connected there.",
+      "action": "Go to Connections"
+    }
+  },
+  "errors": {
+    "fetchStoreData": "Could not fetch store data.",
+    "loadProducts": "Could not load products.",
+    "noActiveProfile": "No active profile selected.",
+    "importShopify": "Could not import from Shopify."
+  },
+  "toasts": {
+    "shopifySync": "Synced Shopify: {{imported}} new, {{updated}} updated.",
+    "productCreated": "Product created",
+    "productCreateFailed": "Could not create the product.",
+    "productSaved": "Product saved",
+    "productSaveFailed": "Could not save the product.",
+    "productDeleted": "Product removed",
+    "productDeleteFailed": "Could not remove the product.",
+    "imageAlreadyOnProduct": "Image is already on the product",
+    "addedToLeads": "Added to leads",
+    "copied": "Copied",
+    "copiedLabel": "{{label}} copied",
+    "copyFailed": "Could not copy to clipboard",
+    "alibabaSavedAsProduct": "Saved as product",
+    "alibabaSaveFailed": "Could not save the product.",
+    "shopifyDraftCreated": "Draft created in Shopify",
+    "shopifyDraftFailed": "Could not create Shopify draft.",
+    "recoveryDraftFailed": "Could not create recovery email"
+  },
+  "shopInfo": {
+    "store": "Store:",
+    "domain": "Domain:",
+    "plan": "Plan:",
+    "currency": "Currency:",
+    "country": "Country:",
+    "timezone": "Timezone:",
+    "email": "Email:"
+  },
+  "mcp": {
+    "title": "Shopify catalog (MCP)",
+    "description": "Query your connected Shopify store via MCP. Requires shop domain when connecting."
+  },
+  "sources": {
+    "manual": "Manual",
+    "alibaba": "Alibaba",
+    "shopify": "Shopify",
+    "content": "Content"
+  },
+  "products": {
+    "title": "Products",
+    "emptyDescription": "Register the products you sell and their different versions.",
+    "countInCatalog_one": "{{count}} product in your catalog.",
+    "countInCatalog_other": "{{count}} products in your catalog.",
+    "importFromShopify": "Import from Shopify",
+    "newProduct": "New product",
+    "searchPlaceholder": "Search product, brand or tag…",
+    "searchAriaLabel": "Search products",
+    "filterAll": "All",
+    "sortUpdated": "Last updated",
+    "sortName": "Name (A–Z)",
+    "sortPrice": "Price (low first)",
+    "sortAriaLabel": "Sort products",
+    "emptyTitle": "No products yet",
+    "emptyDescriptionLong": "Create a product manually, import from Alibaba above, fetch your Shopify catalog, or tag an image you marked in Content.",
+    "createProduct": "Create product",
+    "noMatch": "No products match your search or filter.",
+    "clearFilters": "Clear filters",
+    "productImageAlt": "Product image",
+    "editProductAria": "Edit {{name}}",
+    "versionCount_one": "{{count}} version",
+    "versionCount_other": "{{count}} versions",
+    "dialog": {
+      "newTitle": "New product",
+      "newDescription": "Give the product a name. You can add images and versions later.",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Bamboo toothbrush",
+      "descriptionLabel": "Description (optional)",
+      "descriptionEditLabel": "Description",
+      "descriptionPlaceholder": "Short product description",
+      "editTitle": "Edit product",
+      "editDescription": "Adjust name and description, add images from Content and tag versions.",
+      "priceLabel": "Price",
+      "pricePlaceholder": "e.g. 199",
+      "currencyLabel": "Currency",
+      "currencyPlaceholder": "e.g. SEK",
+      "descriptionEditPlaceholder": "Describe the product. Imported text from Alibaba or Shopify can be edited freely here.",
+      "openInShopify": "Open in Shopify",
+      "sourceLink": "Source",
+      "specsTitle": "Specifications",
+      "imagesTitle": "Images",
+      "noImages": "No images yet.",
+      "removeImageAria": "Remove image",
+      "versionsTitle": "Versions",
+      "versionsHint": "Tag an image from Content and give it a name to create a version.",
+      "removeVersionAria": "Remove version",
+      "versionNamePlaceholder": "Version name (e.g. Red / Large)",
+      "contentImagesHint": "Images marked in Content — pick one (optional)",
+      "noContentImages": "Mark images in the Content tab and they will appear here as taggable versions.",
+      "addVersion": "Add version",
+      "addTaggedToGallery": "Add marked image to gallery",
+      "delete": "Delete"
+    }
+  },
+  "orders": {
+    "allClear": "All under control — no orders or stock levels need action right now.",
+    "actionsNeeded_one": "{{count}} item needs action",
+    "actionsNeeded_other": "{{count}} items need action",
+    "staleUnfulfilled": "{{count}} unshipped >{{days}} days",
+    "pendingPayments": "{{count}} pending payments",
+    "lowStockVariants": "{{count}} variants with low stock",
+    "abandonedCarts": {
+      "title": "Abandoned carts",
+      "description": "{{count}} carts · {{value}} at risk",
+      "anonymous": "Anonymous",
+      "recoveryLinkTitle": "Open recovery link"
+    },
+    "automationHint": {
+      "title": "Automate recovery",
+      "description": "Cart recovery sends recovery emails on schedule — you don't have to click per cart.",
+      "cta": "Turn on cart recovery"
+    },
+    "lowStock": {
+      "title": "Low stock",
+      "description": "Variants with at most 5 units in stock",
+      "defaultVariant": "Default variant",
+      "remaining": "{{count}} left"
+    },
+    "noOrdersYet": "No orders fetched yet. Refresh or check the Shopify connection.",
+    "recentOrders": {
+      "title": "Recent orders",
+      "showing": "{{filtered}} shown · {{total}} loaded"
+    },
+    "filters": {
+      "paymentPlaceholder": "Payment",
+      "fulfillmentPlaceholder": "Fulfillment",
+      "allPayments": "All payments",
+      "allFulfillment": "All fulfillment",
+      "exportCsv": "Export CSV",
+      "noMatch": "No orders match the filters."
+    },
+    "table": {
+      "order": "Order",
+      "customer": "Customer",
+      "lines": "Lines",
+      "payment": "Payment",
+      "fulfillment": "Fulfillment",
+      "total": "Total",
+      "date": "Date",
+      "missingLineItems": "Line details are missing for this order — refresh the page to fetch them.",
+      "moreLines": "+{{count}} more lines — see the order in Shopify admin."
+    },
+    "paymentStatus": {
+      "paid": "Paid",
+      "pending": "Pending",
+      "refunded": "Refunded",
+      "voided": "Voided",
+      "partially_paid": "Partially paid"
+    },
+    "fulfillmentStatus": {
+      "fulfilled": "Shipped",
+      "unfulfilled": "Unshipped",
+      "partial": "Partially shipped",
+      "restocked": "Restocked"
+    }
+  },
+  "insights": {
+    "revenue30d": "Revenue (30 days)",
+    "ordersInPeriod_one": "{{count}} order in period",
+    "ordersInPeriod_other": "{{count}} orders in period",
+    "avgOrderValue": "Average order value",
+    "fulfillmentRate": "{{rate}}% fulfilled",
+    "customers": "Customers",
+    "newCustomers30d": "+{{count}} new in 30 days",
+    "products": "Products",
+    "lowStockVariants_one": "{{count}} variant with low stock",
+    "lowStockVariants_other": "{{count}} variants with low stock",
+    "stockLooksGood": "Stock looks good",
+    "leadNotes": "Total spent: {{amount}} · {{count}} orders",
+    "topProducts": {
+      "title": "Top sellers",
+      "description": "By revenue, last 30 days",
+      "sold_one": "{{count}} sold",
+      "sold_other": "{{count}} sold"
+    },
+    "topCustomers": {
+      "title": "Top customers",
+      "description": "By total spent",
+      "ordersCount_one": "{{count}} order",
+      "ordersCount_other": "{{count}} orders",
+      "addLead": "Add lead"
+    },
+    "promotions": {
+      "title": "Active campaigns",
+      "description": "{{count}} active price rules",
+      "targetOrder": "order",
+      "used_one": "used {{count}} time",
+      "used_other": "used {{count}} times",
+      "endsAt": " · ends {{date}}"
+    }
+  },
+  "revenueChart": {
+    "label": "Revenue",
+    "title": "Revenue trend",
+    "description": "Last 30 days · Total {{total}}"
+  },
+  "alibaba": {
+    "title": "Import from Alibaba",
+    "description": "Paste an Alibaba or 1688 link to fetch title, description, specs and product images.",
+    "urlAriaLabel": "Alibaba product link",
+    "fetching": "Fetching…",
+    "importProduct": "Import product",
+    "importFailed": "Could not import the product.",
+    "copyTitle": "Copy title",
+    "copyDescription": "Copy description",
+    "titleLabel": "Title",
+    "descriptionLabel": "Description",
+    "priceLabel": "Price:",
+    "showLess": "Show less",
+    "showMore": "Show more",
+    "viewSource": "View source page",
+    "saveAsProduct": "Save as product",
+    "downloadImagesZip": "Download images (zip)",
+    "createShopifyDraft": "Create Shopify draft",
+    "zipFailed": "Could not create zip file.",
+    "downloadFailed": "Could not download images.",
+    "imageLabel": "Image {{index}}",
+    "download": "Download",
+    "noImagesFound": "No product images found on the page."
+  },
+  "notion": {
+    "panelTitle": "Notion workspace (optional)",
+    "connectedWorkspace": "Connected workspace",
+    "pagesCount_one": "{{count}} page",
+    "pagesCount_other": "{{count}} pages",
+    "pagesFound": "Pages found",
+    "databasesFound": "Databases found",
+    "recentPages": "Recent Notion pages",
+    "untitledPage": "Untitled page",
+    "untitledDatabase": "Untitled database",
+    "untitled": "Untitled",
+    "unknownDate": "Unknown date",
+    "createPage": {
+      "title": "Create Notion page",
+      "hint": "First share the parent page/database with your integration in Notion.",
+      "parentSelectLabel": "Choose parent (optional)",
+      "parentSelectPlaceholder": "Choose a page or database…",
+      "pagesGroup": "Pages ({{count}})",
+      "databasesGroup": "Databases ({{count}})",
+      "parentIdLabel": "Parent ID",
+      "parentIdPlaceholder": "page or database id",
+      "parentTypeLabel": "Parent type",
+      "typePage": "Page",
+      "typeDatabase": "Database",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Weekly planning",
+      "contentLabel": "Content (optional)",
+      "contentPlaceholder": "First paragraph on the page",
+      "creating": "Creating…",
+      "submit": "Create in Notion",
+      "success": "Page created in Notion.",
+      "failed": "Could not create Notion page."
+    }
+  },
+  "shopifyGuide": {
+    "title": "How to find the right Shopify domain",
+    "steps": {
+      "openAdmin": "Open Shopify Admin for the store you want to connect.",
+      "goToDomains": "Go to Settings → Domains.",
+      "copyDomain": "Copy the domain ending in .myshopify.com, for example {{example}}.",
+      "pasteDomain": "Paste the domain here. Do not use a custom public domain that only points to the store.",
+      "approveAccess": "Press Continue/Connect and approve access in Shopify."
+    },
+    "permissionHint": "Getting missing_shopify_permission (e.g. customer_read_quick_sale)? That means the Shopify app requests a permission that isn't approved. Open Partner Dashboard, go to your app → Configuration → Access scopes, remove unapproved customer_* scopes and save. Reconnect the store — default is only read_products.",
+    "openShopifyAdmin": "Open Shopify Admin",
+    "domainsGuide": "Shopify guide on Domains"
+  },
+  "recovery": {
+    "selectProfileFirst": "Select a business profile first.",
+    "defaultSubject": "Complete your order",
+    "createEmail": "Create recovery email",
+    "dialogTitle": "Cart recovery email",
+    "draftTo": "Draft to {{email}}",
+    "anonymousCart": "Anonymous cart — copy and send manually.",
+    "subjectPrefix": "Subject:",
+    "copy": "Copy",
+    "openInEmail": "Open in email"
+  }
+}

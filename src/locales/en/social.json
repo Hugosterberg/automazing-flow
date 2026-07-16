@@ -1,0 +1,264 @@
+{
+  "page": {
+    "title": "Social media",
+    "description": "Automate and manage your social channels — publish, schedule and track stats."
+  },
+  "smartBar": {
+    "titleEmpty": "Social is your publishing hub — pick an account, write posts and schedule or publish directly.",
+    "step1": "Connect accounts under Connections",
+    "step2": "Under Publish: choose platform and account",
+    "step3": "Write, add media and publish or schedule",
+    "tip": "Stats and schedule have their own tabs — keep Publish for sending.",
+    "liveHintNoAccounts": "No social accounts connected — start under Connections.",
+    "connectAccount": "Connect account",
+    "titleActive": "Social",
+    "liveHintQueued": "{{count}} queued or scheduled — see Schedule & more."
+  },
+  "tabs": {
+    "ariaLabel": "Social tabs",
+    "publish": "Publish",
+    "stats": "Stats",
+    "more": "Schedule & more"
+  },
+  "connections": {
+    "needsAttention": " — needs attention",
+    "connectNow": "Connect now",
+    "fix": "Fix",
+    "apiKeys": "API keys"
+  },
+  "localMode": "Local mode is active. OAuth/connections are enabled for local testing and data stays in your current session.",
+  "stats": {
+    "loadError": "Could not load social stats: {{error}}",
+    "fetchError": "Could not fetch account stats ({{status}})",
+    "retry": "Try again",
+    "close": "Close",
+    "refresh": "Refresh stats",
+    "loading": "Loading…",
+    "dataFor": "Data for {{username}}",
+    "followers": "Followers",
+    "following": "Following",
+    "posts": "Posts",
+    "engagement": "Engagement",
+    "avgRating": "Average rating",
+    "reviews": "Reviews",
+    "avgViews": "Avg views",
+    "avgLikes": "Avg likes",
+    "tweets": "Tweets",
+    "templates": "Templates",
+    "recentPosts": "Recent posts",
+    "whatsappTemplates": "WhatsApp templates",
+    "recentPostsDescWhatsapp": "Approved templates from your WhatsApp Business account (via Zernio)",
+    "recentPostsDescInstagram": "Views, likes and comments per post",
+    "recentPostsDescDefault": "Likes and comments per post"
+  },
+  "analysis": {
+    "aiAnalysis": "AI analysis",
+    "analyzing": "Analyzing account content…",
+    "about": "About",
+    "writes": "Writes about",
+    "perception": "Perception",
+    "loadingProfile": "Loading business profile…",
+    "loadingPosts": "Loading posts…",
+    "noData": "No data yet. Sync the account under Connections or wait for the next automatic fetch."
+  },
+  "empty": {
+    "selectAccountTitle": "Pick a social account",
+    "selectAccountDesc": "Pick a connected account (Instagram, TikTok, YouTube, X) — or add more under Connections.",
+    "openConnections": "Open Connections"
+  },
+  "toasts": {
+    "uploadSuccess": "Upload saved to Selected — ready to publish",
+    "uploadPreviewOnly": "Preview only — upload failed. Generate with AI or pick from Content instead.",
+    "savedToHistory": "Saved to History and selected",
+    "analysisFailed": "Account analysis failed."
+  },
+  "more": {
+    "automationHintTitle": "Let schedule and pipeline run themselves",
+    "automationHintDesc": "Publishing scheduled posts, content pipeline and social snapshots can run automatically — so you don't have to click manually every day.",
+    "automationHintCta": "Open content automations",
+    "mcpTitle": "MCP design support",
+    "mcpDesc": "Creative briefs and design direction via Canva MCP for social content.",
+    "imageCardTitle": "Create image for post",
+    "imageCardDescPrefix": "Generate with AI or export from Canva. Media is managed under",
+    "imageCardDescLink": "Content → Selected",
+    "imageCardDescSuffix": ".",
+    "campaignsTitle": "Active campaigns",
+    "campaignsManage": "Manage →",
+    "campaignsEmpty": "No active campaigns.",
+    "campaignsCreate": "Create campaign",
+    "campaignDeadline": "Deadline: {{date}}",
+    "campaignStatusOpen": "Planned",
+    "campaignStatusActive": "Active",
+    "campaignStatusPaused": "Paused"
+  },
+  "overview": {
+    "title": "Total overview",
+    "description": "Combined stats for all connected social accounts in this profile.",
+    "connectedAccounts": "Connected accounts",
+    "totalFollowers": "Total followers",
+    "totalPosts": "Total posts/templates",
+    "avgEngagement": "Avg engagement",
+    "totalLikes": "Total likes",
+    "totalComments": "Total comments",
+    "avgLikesPerAccount": "Avg likes/account",
+    "avgCommentsPerAccount": "Avg comments/account",
+    "perPlatform": "Per platform",
+    "noAccounts": "No social accounts connected yet.",
+    "openConnections": "Open Connections",
+    "platformRow_one": "{{accounts}} account · {{followers}} followers · {{posts}} posts",
+    "platformRow_other": "{{accounts}} accounts · {{followers}} followers · {{posts}} posts",
+    "lastUpdated": "Last updated:",
+    "noTimestamp": "No timestamp available"
+  },
+  "schedule": {
+    "title": "Publishing pipeline",
+    "descriptionPrefix": "Drafts and scheduled posts — scheduled ones also appear in the",
+    "calendarLink": "calendar",
+    "descriptionSuffix": "and can be moved from there.",
+    "emptyCaption": "(empty post)",
+    "noTime": "No time set",
+    "editPost": "Edit post",
+    "removePost": "Remove post",
+    "status": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "published": "Published",
+      "failed": "Failed"
+    }
+  },
+  "automation": {
+    "title": "Social media automation flows",
+    "description": "Enable flows — saved in the cloud and drives the content-pipeline cron.",
+    "activeCount": "{{count}} active",
+    "enableAria": "Enable {{title}}",
+    "weekPlanTitle": "Generate week plan to calendar",
+    "weekPlanDesc": "Creates calendar activities and drafts in the publishing queue based on active flows.",
+    "weekPlanButton": "Create automation week",
+    "pipelineTitle": "Content pipeline to automate",
+    "pipelineDesc": "A simple framework to automate the full content flow from idea to analysis.",
+    "calendarEventPrefix": "Auto: {{title}}",
+    "draftCaption": "[Auto] {{title}} — {{summary}}",
+    "toasts": {
+      "enableOne": "Enable at least one automation flow",
+      "enableOneDesc": "Pick one or more flows above to create a week plan.",
+      "weekPlanCreated": "Week plan created",
+      "weekPlanCreatedDesc": "{{count}} activities in the calendar and drafts in the publishing queue.",
+      "weekPlanFailed": "Could not create week plan",
+      "weekPlanFailedDesc": "Check storage and try again."
+    },
+    "flows": {
+      "repurpose-weekly-hero": {
+        "title": "Repurpose weekly hero content",
+        "summary": "One long video or blog post is split into multiple channels with AI copy.",
+        "cadence": "2×/week",
+        "value": "Saves production time",
+        "steps": [
+          "Identify the week's hero content",
+          "Generate 3 short formats (Reels/TikTok/Shorts)",
+          "Create platform-tailored copy"
+        ]
+      },
+      "caption-hashtag-optimizer": {
+        "title": "Caption + hashtag optimization",
+        "summary": "AI creates caption variants and hashtag packs based on goal (reach, leads, community).",
+        "cadence": "Every publish",
+        "value": "Higher organic reach",
+        "steps": [
+          "Analyze format and audience",
+          "Create 3 caption variants in different tones",
+          "Add relevant hashtags per channel"
+        ]
+      },
+      "content-gap-filler": {
+        "title": "Calendar gap filler",
+        "summary": "Finds empty days in the publishing schedule and fills them with AI ideas automatically.",
+        "cadence": "Every 2 days",
+        "value": "Consistent presence",
+        "steps": [
+          "Count scheduled posts in the next 72h",
+          "Generate ideas when fewer than 2 posts are queued",
+          "Queue to content pipeline"
+        ]
+      },
+      "evergreen-repost": {
+        "title": "Evergreen replay",
+        "summary": "Republishes your best older content when the week is empty — without digging through the archive.",
+        "cadence": "Every 2 weeks",
+        "value": "More output, less work",
+        "steps": [
+          "Find published content older than 30 days",
+          "Queue replay if nothing is scheduled next week",
+          "Schedule with a new intro line"
+        ]
+      },
+      "engagement-followup": {
+        "title": "Engagement follow-up flow",
+        "summary": "Critical comments and questions are captured and routed to quick reply templates.",
+        "cadence": "Daily",
+        "value": "Higher reply rate",
+        "steps": [
+          "Filter comments with purchase intent or questions",
+          "Send notification and reply suggestions",
+          "Tag hot leads for follow-up"
+        ]
+      },
+      "weekly-insight-digest": {
+        "title": "Weekly insight report",
+        "summary": "Automatic summary of what worked best and what to test next week.",
+        "cadence": "Once/week",
+        "value": "Data-driven decisions faster",
+        "steps": [
+          "Fetch top posts per channel",
+          "Summarize engagement patterns",
+          "Generate 3 new test ideas for the week"
+        ]
+      }
+    },
+    "pipeline": {
+      "research": {
+        "title": "1. Research",
+        "tasks": ["Trend scouting", "Audience analysis", "Content angles"]
+      },
+      "production": {
+        "title": "2. Production",
+        "tasks": ["Create master content", "AI copy", "Image/video variants"]
+      },
+      "distribution": {
+        "title": "3. Distribution",
+        "tasks": ["Platform adaptation", "Scheduling", "Automatic publishing"]
+      },
+      "followup": {
+        "title": "4. Follow-up",
+        "tasks": ["Engagement replies", "Lead tagging", "Weekly report"]
+      }
+    }
+  },
+  "videoDraft": {
+    "title": "AI Video Draft",
+    "description": "Choose a selected Google Drive video and generate a reusable short-form video concept, shot list and caption.",
+    "empty": "No selected Google Drive videos yet. Mark one in the Content tab to generate a video draft here.",
+    "sourceVideo": "Source video",
+    "platform": "Platform",
+    "platformPlaceholder": "Instagram Reels",
+    "objective": "Objective",
+    "objectivePlaceholder": "e.g. A short product teaser",
+    "objectiveDefault": "Create a short video for social media",
+    "guidance": "Extra guidance",
+    "guidancePlaceholder": "Hook angle, audience, CTA, brand tone or key points to highlight.",
+    "generating": "Creating…",
+    "generate": "Create video draft",
+    "openSource": "Open source video",
+    "generateError": "Could not generate video draft",
+    "badgeAi": "AI-generated",
+    "badgeFallback": "Fallback draft",
+    "builtFrom": "Built from {{name}}",
+    "fields": {
+      "title": "Title",
+      "hook": "Hook",
+      "concept": "Concept",
+      "shotList": "Shot list",
+      "caption": "Caption",
+      "cta": "CTA"
+    }
+  }
+}

@@ -35,7 +35,6 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import {
-  NAV_GROUP_LABELS,
   navItemsForMode,
   topNavItemsForMode,
   type NavGroup,
@@ -47,8 +46,10 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   getRecentPages,
   modKeyLabel,
+  titleForRecentPage,
   type RecentPage,
 } from "@/lib/keyboardShortcuts";
+import { useTranslation } from "react-i18next";
 import { briefItemsForRoute } from "@/features/daily-brief/briefForRoute";
 import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -64,6 +65,7 @@ type CommandPaletteProps = {
  * and the ? shortcuts dialog via Layout.
  */
 export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
   const navigate = useNavigate();
@@ -81,37 +83,37 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
     const path = location.pathname;
     const rows: Array<{ label: string; url: string; icon: typeof Sparkles }> = [];
     if (path.startsWith("/messages")) {
-      rows.push({ label: "Filtrera: endast öppna", url: "/messages", icon: MessageSquare });
+      rows.push({ label: t("commandPalette.ctxFilterOpen"), url: "/messages", icon: MessageSquare });
     }
     if (path.startsWith("/tasks")) {
-      rows.push({ label: "Visa försenade uppgifter", url: "/tasks?view=overdue", icon: ListChecks });
-      rows.push({ label: "Visa dagens uppgifter", url: "/tasks?view=today", icon: ListChecks });
+      rows.push({ label: t("commandPalette.ctxOverdueTasks"), url: "/tasks?view=overdue", icon: ListChecks });
+      rows.push({ label: t("commandPalette.ctxTodayTasks"), url: "/tasks?view=today", icon: ListChecks });
     }
     if (path.startsWith("/reviews")) {
-      rows.push({ label: "Recensioner som behöver svar", url: "/reviews?filter=needs_reply", icon: Target });
+      rows.push({ label: t("commandPalette.ctxReviewsNeeds"), url: "/reviews?filter=needs_reply", icon: Target });
     }
     if (path.startsWith("/content")) {
-      rows.push({ label: "Content: publicera", url: "/content?tab=publish", icon: Megaphone });
-      rows.push({ label: "Content: valda filer", url: "/content?tab=selected", icon: Sparkles });
+      rows.push({ label: t("commandPalette.ctxContentPublish"), url: "/content?tab=publish", icon: Megaphone });
+      rows.push({ label: t("commandPalette.ctxContentSelected"), url: "/content?tab=selected", icon: Sparkles });
     }
     if (path.startsWith("/sales")) {
-      rows.push({ label: "Leads att följa upp", url: "/sales?view=followups", icon: Target });
-      rows.push({ label: "Outreach-kö", url: "/sales?view=outreach-queue", icon: TrendingUp });
+      rows.push({ label: t("commandPalette.ctxLeadFollowups"), url: "/sales?view=followups", icon: Target });
+      rows.push({ label: t("commandPalette.ctxOutreachQueue"), url: "/sales?view=outreach-queue", icon: TrendingUp });
     }
     if (path.startsWith("/activity")) {
-      rows.push({ label: "Filtrera: fel", url: "/activity?severity=error", icon: Activity });
+      rows.push({ label: t("commandPalette.ctxFilterErrors"), url: "/activity?severity=error", icon: Activity });
     }
     if (path.startsWith("/connections")) {
-      rows.push({ label: "Kopplingshälsa", url: "/connections?tab=health", icon: Link2 });
+      rows.push({ label: t("commandPalette.ctxConnectionHealth"), url: "/connections?tab=health", icon: Link2 });
     }
     if (path.startsWith("/calendar")) {
-      rows.push({ label: "Skapa händelse", url: "/calendar", icon: CalendarDays });
+      rows.push({ label: t("commandPalette.ctxCreateEvent"), url: "/calendar", icon: CalendarDays });
     }
     if (path.startsWith("/company")) {
-      rows.push({ label: "Företagsprofil", url: "/company", icon: Building2 });
+      rows.push({ label: t("commandPalette.ctxCompanyProfile"), url: "/company", icon: Building2 });
     }
     return rows;
-  }, [location.pathname]);
+  }, [location.pathname, t]);
   const { authMode, signOut } = useAuth();
   const { mode, setMode } = useWorkspaceMode();
   const { items: pulseItems } = useAppPulse();
@@ -121,7 +123,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
     const modeNavItems = navItemsForMode(mode);
     return {
       pageGroups: (["work", "productivity"] as NavGroup[]).map((group) => ({
-        label: NAV_GROUP_LABELS[group],
+        group,
         items: modeNavItems.filter((item) => item.group === group),
       })),
       systemItems: topNavItemsForMode(mode),
@@ -171,10 +173,10 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           setOpen(true);
         }}
         className="pressable relative flex h-9 w-9 items-center justify-center gap-2 rounded-full border border-border bg-card/40 px-0 text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground sm:h-auto sm:w-auto sm:rounded-md sm:px-2 sm:py-1.5"
-        aria-label="Öppna kommandopalett"
+        aria-label={t("commandPalette.open")}
       >
         <Search className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-        <span className="hidden sm:inline">Sök…</span>
+        <span className="hidden sm:inline">{t("commandPalette.search")}</span>
         {pulseItems.length > 0 ? (
           <span
             className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.7)]"
@@ -186,18 +188,18 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
         </kbd>
       </button>
 
-      <CommandDialog open={open} onOpenChange={setOpen} title="Kommandopalett">
-        <CommandInput placeholder="Sök sidor och åtgärder…" />
+      <CommandDialog open={open} onOpenChange={setOpen} title={t("commandPalette.title")}>
+        <CommandInput placeholder={t("commandPalette.placeholder")} />
         <CommandList>
-          <CommandEmpty>Inget hittades.</CommandEmpty>
+          <CommandEmpty>{t("commandPalette.empty")}</CommandEmpty>
 
           {contextualActions.length > 0 ? (
             <>
-              <CommandGroup heading="Snabbval här">
+              <CommandGroup heading={t("commandPalette.contextual")}>
                 {contextualActions.map((action) => (
                   <CommandItem
                     key={action.url + action.label}
-                    value={`Snabbval ${action.label}`}
+                    value={`${t("commandPalette.contextual")} ${action.label}`}
                     onSelect={() => goTo(action.url)}
                     onPointerEnter={() => prefetchFor(action.url.split("?")[0] ?? action.url)}
                   >
@@ -212,7 +214,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
 
           {entities.length > 0 ? (
             <>
-              <CommandGroup heading="Objekt">
+              <CommandGroup heading={t("commandPalette.entities")}>
                 {entities.slice(0, 12).map((entity) => (
                   <CommandItem
                     key={entity.id}
@@ -250,11 +252,11 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
 
           {routeBriefItems.length > 0 ? (
             <>
-              <CommandGroup heading="På den här sidan">
+              <CommandGroup heading={t("commandPalette.onThisPage")}>
                 {routeBriefItems.slice(0, 4).map((item) => (
                   <CommandItem
                     key={`route-${item.id}`}
-                    value={`Sida ${item.title} ${item.description}`}
+                    value={`${t("commandPalette.onThisPage")} ${item.title} ${item.description}`}
                     onSelect={() => goTo(item.to)}
                     onPointerEnter={() => prefetchFor(item.to.split("?")[0] ?? item.to)}
                   >
@@ -272,11 +274,11 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
 
           {pulseItems.length > 0 ? (
             <>
-              <CommandGroup heading="Behöver uppmärksamhet">
+              <CommandGroup heading={t("commandPalette.needsAttention")}>
                 {pulseItems.map((item) => (
                   <CommandItem
                     key={item.id}
-                    value={`Prioritet ${item.label} ${item.description}`}
+                    value={`${t("commandPalette.needsAttention")} ${item.label} ${item.description}`}
                     onSelect={() => goTo(item.url)}
                     onPointerEnter={() => prefetchFor(item.url.split("?")[0] ?? item.url)}
                   >
@@ -297,34 +299,43 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
 
           {recentPages.length > 0 ? (
             <>
-              <CommandGroup heading="Senast besökt">
-                {recentPages.map((page) => (
-                  <CommandItem
-                    key={page.pathname}
-                    value={`Senast ${page.title} ${page.pathname}`}
-                    onSelect={() => goTo(page.pathname)}
-                    onPointerEnter={() => prefetchFor(page.pathname)}
-                  >
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {page.title}
-                  </CommandItem>
-                ))}
+              <CommandGroup heading={t("commandPalette.recent")}>
+                {recentPages.map((page) => {
+                  // Re-derive the title so recents follow the active language
+                  // (the stored title is from visit time).
+                  const title = titleForRecentPage(page.pathname) || page.title;
+                  return (
+                    <CommandItem
+                      key={page.pathname}
+                      value={`${t("commandPalette.recent")} ${title} ${page.pathname}`}
+                      onSelect={() => goTo(page.pathname)}
+                      onPointerEnter={() => prefetchFor(page.pathname)}
+                    >
+                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {title}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
               <CommandSeparator />
             </>
           ) : null}
 
-          <CommandGroup heading="Åtgärder">
+          <CommandGroup heading={t("commandPalette.actions")}>
             <CommandItem
-              value="Visa tangentbordsgenvägar hjälp"
+              value={t("commandPalette.showShortcuts")}
               onSelect={openShortcuts}
             >
               <Keyboard className="mr-2 h-4 w-4 text-muted-foreground" />
-              Visa genvägar
+              {t("commandPalette.showShortcuts")}
               <CommandShortcut>?</CommandShortcut>
             </CommandItem>
             <CommandItem
-              value={mode === "private" ? "Byt till företagsläge" : "Byt till privat läge"}
+              value={
+                mode === "private"
+                  ? t("commandPalette.switchToBusiness")
+                  : t("commandPalette.switchToPrivate")
+              }
               onSelect={switchWorkspace}
             >
               {mode === "private" ? (
@@ -332,124 +343,126 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
               ) : (
                 <User className="mr-2 h-4 w-4 text-muted-foreground" />
               )}
-              {mode === "private" ? "Byt till företagsläge" : "Byt till privat läge"}
+              {mode === "private"
+                ? t("commandPalette.switchToBusiness")
+                : t("commandPalette.switchToPrivate")}
             </CommandItem>
             <CommandItem
-              value="Meddelanden triage inkorg"
+              value={t("commandPalette.messageTriage")}
               onSelect={() => goTo("/messages")}
               onPointerEnter={() => prefetchFor("/messages")}
             >
               <Sparkles className="mr-2 h-4 w-4 text-muted-foreground" />
-              Meddelande-triage
+              {t("commandPalette.messageTriage")}
               <CommandShortcut>G M</CommandShortcut>
             </CommandItem>
             <CommandItem
-              value="Ny uppgift"
+              value={t("commandPalette.newTask")}
               onSelect={() => goTo("/tasks")}
               onPointerEnter={() => prefetchFor("/tasks")}
             >
               <ListPlus className="mr-2 h-4 w-4 text-muted-foreground" />
-              Ny uppgift
+              {t("commandPalette.newTask")}
               <CommandShortcut>G T</CommandShortcut>
             </CommandItem>
             {mode === "business" ? (
               <>
                 <CommandItem
-                  value="Ny lead"
+                  value={t("commandPalette.newLead")}
                   onSelect={() => goTo("/sales?new=lead")}
                   onPointerEnter={() => prefetchFor("/sales")}
                 >
                   <Target className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Ny lead
+                  {t("commandPalette.newLead")}
                 </CommandItem>
                 <CommandItem
-                  value="Ny affär"
+                  value={t("commandPalette.newDeal")}
                   onSelect={() => goTo("/sales?new=deal")}
                   onPointerEnter={() => prefetchFor("/sales")}
                 >
                   <TrendingUp className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Ny affär
+                  {t("commandPalette.newDeal")}
                 </CommandItem>
                 <CommandItem
-                  value="Ny kampanj"
+                  value={t("commandPalette.newCampaign")}
                   onSelect={() => goTo("/marketing?new=campaign")}
                   onPointerEnter={() => prefetchFor("/marketing")}
                 >
                   <Megaphone className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Ny kampanj
+                  {t("commandPalette.newCampaign")}
                 </CommandItem>
                 <CommandItem
-                  value="Företagsprofil"
+                  value={t("commandPalette.companyProfile")}
                   onSelect={() => goTo("/company")}
                   onPointerEnter={() => prefetchFor("/company")}
                 >
                   <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Företagsprofil
+                  {t("commandPalette.companyProfile")}
                   <CommandShortcut>G C</CommandShortcut>
                 </CommandItem>
               </>
             ) : null}
             <CommandItem
-              value="MCP Intelligence"
+              value={t("commandPalette.mcpIntelligence")}
               onSelect={() => goTo("/intelligence")}
               onPointerEnter={() => prefetchFor("/intelligence")}
             >
               <Bot className="mr-2 h-4 w-4 text-muted-foreground" />
-              MCP Intelligence
+              {t("commandPalette.mcpIntelligence")}
               <CommandShortcut>G I</CommandShortcut>
             </CommandItem>
             <CommandItem
-              value="AI-inställningar"
+              value={t("commandPalette.aiSettings")}
               onSelect={() => goTo("/preferences?tab=ai")}
               onPointerEnter={() => prefetchFor("/preferences")}
             >
               <Sparkles className="mr-2 h-4 w-4 text-muted-foreground" />
-              AI-inställningar
+              {t("commandPalette.aiSettings")}
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
 
-          {pageGroups.map((group) => (
-            <CommandGroup key={group.label} heading={group.label}>
-              {group.items.map((item) => (
+          {pageGroups.map(({ group, items }) => (
+            <CommandGroup key={group} heading={t(`navGroups.${group}`)}>
+              {items.map((item) => (
                 <CommandItem
                   key={item.key}
-                  value={item.title}
+                  value={t(`nav.${item.key}`)}
                   onSelect={() => goTo(item.url)}
                   onPointerEnter={() => prefetchFor(item.url)}
                 >
                   <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {item.title}
+                  {t(`nav.${item.key}`)}
                 </CommandItem>
               ))}
             </CommandGroup>
           ))}
-          <CommandGroup heading="System">
+          <CommandGroup heading={t("navGroups.system")}>
             {systemItems.map((item) => (
               <CommandItem
                 key={item.key}
-                value={item.title}
+                value={t(`nav.${item.key}`)}
                 onSelect={() => goTo(item.url)}
                 onPointerEnter={() => prefetchFor(item.url)}
               >
                 <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                {item.title}
+                {t(`nav.${item.key}`)}
               </CommandItem>
             ))}
           </CommandGroup>
           {authMode === "cloud" ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading="Konto">
+              <CommandGroup heading={t("commandPalette.account")}>
                 <CommandItem
-                  value="Logga ut"
+                  value={t("commandPalette.signOut")}
                   onSelect={() => {
                     setOpen(false);
                     void signOut();
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Logga ut
+                  {t("commandPalette.signOut")}
                 </CommandItem>
               </CommandGroup>
             </>

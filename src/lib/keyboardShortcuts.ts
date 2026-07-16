@@ -1,4 +1,5 @@
 import { navItems, topNavItems, type TopNavItem } from "@/components/navConfig";
+import { t } from "@/lib/i18n";
 
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
@@ -16,7 +17,6 @@ export interface RecentPage {
 export interface GoNavTarget {
   key: string;
   url: string;
-  title: string;
   modes?: WorkspaceMode[];
 }
 
@@ -34,13 +34,13 @@ export interface ShortcutSection {
 }
 
 export const GO_NAV_TARGETS: GoNavTarget[] = [
-  { key: "h", url: "/", title: "Hem" },
-  { key: "t", url: "/tasks", title: "Uppgifter" },
-  { key: "m", url: "/messages", title: "Meddelanden" },
-  { key: "s", url: "/sales", title: "Försäljning", modes: ["business"] },
-  { key: "c", url: "/company", title: "Företag", modes: ["business"] },
-  { key: "i", url: "/intelligence", title: "MCP Intelligence" },
-  { key: "p", url: "/preferences", title: "Inställningar" },
+  { key: "h", url: "/" },
+  { key: "t", url: "/tasks" },
+  { key: "m", url: "/messages" },
+  { key: "s", url: "/sales", modes: ["business"] },
+  { key: "c", url: "/company", modes: ["business"] },
+  { key: "i", url: "/intelligence" },
+  { key: "p", url: "/preferences" },
 ];
 
 export function isMacLike(): boolean {
@@ -75,13 +75,13 @@ export function isPlainLetterShortcut(event: KeyboardEvent): boolean {
 }
 
 export function titleForRecentPage(pathname: string): string {
-  if (pathname === "/") return "Hem";
+  if (pathname === "/") return t("nav.home");
   const item = ALL_NAV.find((entry) => entry.url === pathname);
-  if (item) return item.title;
+  if (item) return t(`nav.${item.key}`);
   const prefix = ALL_NAV.find(
     (entry) => entry.url !== "/" && pathname.startsWith(`${entry.url}/`)
   );
-  return prefix ? prefix.title : pathname;
+  return prefix ? t(`nav.${prefix.key}`) : pathname;
 }
 
 export function recordRecentPage(pathname: string, title?: string): void {
@@ -126,142 +126,142 @@ export function buildShortcutSections(modKey: string): ShortcutSection[] {
   return [
     {
       id: "global",
-      title: "Globalt",
+      title: t("shortcuts:sections.global"),
       shortcuts: [
-        { keys: [`${modKey}`, "K"], description: "Kommandopalett" },
-        { keys: ["G", "H"], description: "Gå till Startsida" },
-        { keys: ["G", "T"], description: "Gå till Uppgifter" },
-        { keys: ["G", "M"], description: "Gå till Meddelanden" },
-        { keys: ["G", "S"], description: "Gå till Försäljning (företagsläge)" },
-        { keys: ["G", "C"], description: "Gå till Företag (företagsläge)" },
-        { keys: ["G", "I"], description: "Gå till MCP Intelligence" },
-        { keys: ["G", "P"], description: "Gå till Inställningar" },
-        { keys: ["?"], description: "Visa genvägslista" },
-        { keys: [`${modKey}`, "B"], description: "Visa/dölj sidopanelen" },
+        { keys: [`${modKey}`, "K"], description: t("shortcuts:global.palette") },
+        { keys: ["G", "H"], description: t("shortcuts:global.home") },
+        { keys: ["G", "T"], description: t("shortcuts:global.tasks") },
+        { keys: ["G", "M"], description: t("shortcuts:global.messages") },
+        { keys: ["G", "S"], description: t("shortcuts:global.sales") },
+        { keys: ["G", "C"], description: t("shortcuts:global.company") },
+        { keys: ["G", "I"], description: t("shortcuts:global.intelligence") },
+        { keys: ["G", "P"], description: t("shortcuts:global.preferences") },
+        { keys: ["?"], description: t("shortcuts:global.help") },
+        { keys: [`${modKey}`, "B"], description: t("shortcuts:global.sidebar") },
       ],
     },
     {
       id: "messages",
-      title: "Meddelanden",
+      title: t("shortcuts:sections.messages"),
       routes: ["/messages"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa meddelande" },
-        { keys: ["K"], description: "Föregående meddelande" },
-        { keys: ["H"], description: "Markera som hanterad (eller filtret Hanterade utan valt meddelande)" },
-        { keys: ["R"], description: "Svara (fokus)" },
-        { keys: ["N"], description: "Nästa öppna" },
-        { keys: ["Q"], description: "Filter: Kö" },
-        { keys: ["O"], description: "Filter: Öppna" },
-        { keys: ["A"], description: "Filter: Alla" },
-        { keys: ["/"], description: "Sök" },
-        { keys: ["Esc"], description: "Stäng" },
-        { keys: [`${modKey}`, "Enter"], description: "Skicka svar" },
+        { keys: ["J"], description: t("shortcuts:messages.next") },
+        { keys: ["K"], description: t("shortcuts:messages.prev") },
+        { keys: ["H"], description: t("shortcuts:messages.handled") },
+        { keys: ["R"], description: t("shortcuts:messages.reply") },
+        { keys: ["N"], description: t("shortcuts:messages.nextOpen") },
+        { keys: ["Q"], description: t("shortcuts:messages.filterQueue") },
+        { keys: ["O"], description: t("shortcuts:messages.filterOpen") },
+        { keys: ["A"], description: t("shortcuts:messages.filterAll") },
+        { keys: ["/"], description: t("shortcuts:messages.search") },
+        { keys: ["Esc"], description: t("shortcuts:messages.close") },
+        { keys: [`${modKey}`, "Enter"], description: t("shortcuts:messages.send") },
       ],
     },
     {
       id: "reviews",
-      title: "Recensioner",
+      title: t("shortcuts:sections.reviews"),
       routes: ["/reviews"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa recension" },
-        { keys: ["K"], description: "Föregående recension" },
-        { keys: ["M"], description: "Markera som besvarad" },
-        { keys: ["D"], description: "AI-utkast" },
-        { keys: ["A"], description: "Filter: Alla" },
-        { keys: ["N"], description: "Filter: Behöver svar" },
-        { keys: ["/"], description: "Sök" },
-        { keys: ["Esc"], description: "Stäng" },
+        { keys: ["J"], description: t("shortcuts:reviews.next") },
+        { keys: ["K"], description: t("shortcuts:reviews.prev") },
+        { keys: ["M"], description: t("shortcuts:reviews.markReplied") },
+        { keys: ["D"], description: t("shortcuts:reviews.aiDraft") },
+        { keys: ["A"], description: t("shortcuts:reviews.filterAll") },
+        { keys: ["N"], description: t("shortcuts:reviews.filterNeeds") },
+        { keys: ["/"], description: t("shortcuts:reviews.search") },
+        { keys: ["Esc"], description: t("shortcuts:reviews.close") },
       ],
     },
     {
       id: "activity",
-      title: "Aktivitet",
+      title: t("shortcuts:sections.activity"),
       routes: ["/activity"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa händelse" },
-        { keys: ["K"], description: "Föregående händelse" },
-        { keys: ["/"], description: "Sök" },
-        { keys: ["E"], description: "Filter: Fel" },
-        { keys: ["W"], description: "Filter: Varningar" },
-        { keys: ["Esc"], description: "Stäng" },
+        { keys: ["J"], description: t("shortcuts:activity.next") },
+        { keys: ["K"], description: t("shortcuts:activity.prev") },
+        { keys: ["/"], description: t("shortcuts:activity.search") },
+        { keys: ["E"], description: t("shortcuts:activity.filterError") },
+        { keys: ["W"], description: t("shortcuts:activity.filterWarn") },
+        { keys: ["Esc"], description: t("shortcuts:activity.close") },
       ],
     },
     {
       id: "sales",
-      title: "Sales",
+      title: t("shortcuts:sections.sales"),
       routes: ["/sales"],
       shortcuts: [
-        { keys: ["/"], description: "Sök" },
-        { keys: ["J"], description: "Nästa (outreach / uppföljning)" },
-        { keys: ["K"], description: "Föregående (outreach / uppföljning)" },
-        { keys: ["S"], description: "Markera som skickad (outreach-kö)" },
-        { keys: ["O"], description: "Outreach-utkast (uppföljningar)" },
+        { keys: ["/"], description: t("shortcuts:sales.search") },
+        { keys: ["J"], description: t("shortcuts:sales.next") },
+        { keys: ["K"], description: t("shortcuts:sales.prev") },
+        { keys: ["S"], description: t("shortcuts:sales.markSent") },
+        { keys: ["O"], description: t("shortcuts:sales.outreachDraft") },
       ],
     },
     {
       id: "tasks",
-      title: "Uppgifter",
+      title: t("shortcuts:sections.tasks"),
       routes: ["/tasks"],
       shortcuts: [
-        { keys: ["/"], description: "Sök" },
-        { keys: ["N"], description: "Ny uppgift" },
-        { keys: ["J"], description: "Nästa kort" },
-        { keys: ["K"], description: "Föregående kort" },
-        { keys: ["E"], description: "Redigera fokuserat kort" },
-        { keys: ["A"], description: "Filter: Alla" },
-        { keys: ["O"], description: "Filter: Försenade" },
-        { keys: ["T"], description: "Filter: Idag" },
+        { keys: ["/"], description: t("shortcuts:tasks.search") },
+        { keys: ["N"], description: t("shortcuts:tasks.new") },
+        { keys: ["J"], description: t("shortcuts:tasks.next") },
+        { keys: ["K"], description: t("shortcuts:tasks.prev") },
+        { keys: ["E"], description: t("shortcuts:tasks.edit") },
+        { keys: ["A"], description: t("shortcuts:tasks.filterAll") },
+        { keys: ["O"], description: t("shortcuts:tasks.filterOverdue") },
+        { keys: ["T"], description: t("shortcuts:tasks.filterToday") },
       ],
     },
     {
       id: "customers",
-      title: "Kunder",
+      title: t("shortcuts:sections.customers"),
       routes: ["/customers"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa kund" },
-        { keys: ["K"], description: "Föregående kund" },
-        { keys: ["/"], description: "Sök" },
-        { keys: ["Esc"], description: "Stäng" },
+        { keys: ["J"], description: t("shortcuts:customers.next") },
+        { keys: ["K"], description: t("shortcuts:customers.prev") },
+        { keys: ["/"], description: t("shortcuts:customers.search") },
+        { keys: ["Esc"], description: t("shortcuts:customers.close") },
       ],
     },
     {
       id: "content",
-      title: "Innehåll",
+      title: t("shortcuts:sections.content"),
       routes: ["/content"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa fil (Bläddra)" },
-        { keys: ["K"], description: "Föregående fil (Bläddra)" },
-        { keys: ["/"], description: "Sök (Bläddra)" },
-        { keys: ["S"], description: "Välj / växla fil" },
+        { keys: ["J"], description: t("shortcuts:content.next") },
+        { keys: ["K"], description: t("shortcuts:content.prev") },
+        { keys: ["/"], description: t("shortcuts:content.search") },
+        { keys: ["S"], description: t("shortcuts:content.select") },
       ],
     },
     {
       id: "automations",
-      title: "Automationer",
+      title: t("shortcuts:sections.automations"),
       routes: ["/automations"],
       shortcuts: [
-        { keys: ["F"], description: "Misslyckade körningar (scrolla till listan)" },
+        { keys: ["F"], description: t("shortcuts:automations.failed") },
       ],
     },
     {
       id: "marketing",
-      title: "Marknadsföring",
+      title: t("shortcuts:sections.marketing"),
       routes: ["/marketing"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa kampanj" },
-        { keys: ["K"], description: "Föregående kampanj" },
-        { keys: ["N"], description: "Ny kampanj" },
-        { keys: ["E"], description: "Redigera fokuserad kampanj" },
+        { keys: ["J"], description: t("shortcuts:marketing.next") },
+        { keys: ["K"], description: t("shortcuts:marketing.prev") },
+        { keys: ["N"], description: t("shortcuts:marketing.new") },
+        { keys: ["E"], description: t("shortcuts:marketing.edit") },
       ],
     },
     {
       id: "calendar",
-      title: "Kalender",
+      title: t("shortcuts:sections.calendar"),
       routes: ["/calendar"],
       shortcuts: [
-        { keys: ["J"], description: "Nästa händelse (vald dag)" },
-        { keys: ["K"], description: "Föregående händelse (vald dag)" },
-        { keys: ["O"], description: "Öppna fokuserad händelse" },
+        { keys: ["J"], description: t("shortcuts:calendar.next") },
+        { keys: ["K"], description: t("shortcuts:calendar.prev") },
+        { keys: ["O"], description: t("shortcuts:calendar.open") },
       ],
     },
   ];

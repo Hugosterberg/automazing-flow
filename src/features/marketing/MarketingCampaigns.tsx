@@ -1,4 +1,5 @@
 import { BarChart3, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,11 +14,6 @@ import { MarketingGradeBadge, MarketingVerdictDot } from "./MarketingGradeBadge"
 import { ScoreBreakdown } from "./ScoreBreakdown";
 import { CampaignTrendBadge } from "./CampaignTrendBadge";
 import { campaignTrendKey, useMarketingCampaignTrends } from "./useMarketingCampaignTrends";
-
-const PLATFORM_LABEL: Record<AdAccountCampaigns["platform"], string> = {
-  meta_business: "Meta",
-  google_ads: "Google Ads",
-};
 
 /** "OUTCOME_SALES" / "SEARCH" → "Sales" / "Search". */
 function prettyObjective(value: string | undefined): string {
@@ -40,8 +36,14 @@ function CampaignRow({
   currency?: string;
   trend?: CampaignTrend;
 }) {
+  const { t } = useTranslation("marketing");
   const budget = campaign.dailyBudget ?? campaign.lifetimeBudget;
-  const budgetLabel = campaign.dailyBudget != null ? "/dag" : campaign.lifetimeBudget != null ? " totalt" : "";
+  const budgetLabel =
+    campaign.dailyBudget != null
+      ? t("campaigns.budgetPerDay")
+      : campaign.lifetimeBudget != null
+        ? t("campaigns.budgetLifetime")
+        : "";
   const metrics = campaign.metrics;
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3">
@@ -56,7 +58,7 @@ function CampaignRow({
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">
           {[
-            isRunning(campaign.status) ? "Aktiv" : campaign.status.toLowerCase(),
+            isRunning(campaign.status) ? t("campaigns.statusActive") : campaign.status.toLowerCase(),
             prettyObjective(campaign.objective),
             budget != null ? `${formatMoney(budget, currency)}${budgetLabel}` : null,
             metrics?.ctr != null ? `CTR ${formatPct(metrics.ctr)}` : null,
@@ -89,16 +91,17 @@ function CampaignRow({
               "text-[11px] font-medium tabular-nums",
               (metrics?.roas ?? campaign.roas7d)! >= 1 ? "text-success" : "text-warning"
             )}
-            title={`ROAS = försäljning ${formatMoney(campaign.conversionValue7d, currency)} ÷ spend ${formatMoney(
-              campaign.spend7d,
-              currency
-            )}`}
+            title={t("campaigns.roasTitle", {
+              sales: formatMoney(campaign.conversionValue7d, currency),
+              spend: formatMoney(campaign.spend7d, currency),
+            })}
           >
             ROAS {formatRoas(metrics?.roas ?? campaign.roas7d)}
           </p>
         ) : (
           <p className="text-[11px] text-muted-foreground">
-            7 dgr{campaign.clicks7d != null ? ` · ${formatCount(campaign.clicks7d)} klick` : ""}
+            {t("campaigns.daysShort")}
+            {campaign.clicks7d != null ? ` · ${formatCount(campaign.clicks7d)} ${t("campaigns.clicks")}` : ""}
           </p>
         )}
       </div>
@@ -122,17 +125,19 @@ function PlatformGroup({
   group: AdAccountCampaigns;
   trends: ReturnType<typeof useMarketingCampaignTrends>["trends"];
 }) {
+  const { t } = useTranslation("marketing");
+  const platformLabel = t(`platforms.${group.platform}`);
   const totalSpend = group.campaigns.reduce((sum, c) => sum + (c.spend7d ?? 0), 0);
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-semibold text-foreground">
-          {PLATFORM_LABEL[group.platform]}
+          {platformLabel}
           <span className="text-muted-foreground font-normal"> · {group.accountName}</span>
         </p>
         {group.campaigns.length > 0 ? (
           <p className="text-xs text-muted-foreground tabular-nums">
-            {formatMoney(totalSpend, group.currency)} senaste 7 dgr
+            {t("campaigns.platformSpend", { amount: formatMoney(totalSpend, group.currency) })}
           </p>
         ) : null}
       </div>
@@ -149,7 +154,7 @@ function PlatformGroup({
         </div>
       ) : (
         <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border px-3.5 py-3">
-          {group.note ?? "Inga aktiva kampanjer just nu."}
+          {group.note ?? t("campaigns.noActiveCampaigns")}
         </p>
       )}
     </div>
@@ -163,6 +168,7 @@ function PlatformGroup({
  * of the way for users who only do organic marketing.
  */
 export function MarketingCampaigns() {
+  const { t } = useTranslation("marketing");
   const { platforms, connected, analytics, isLoading, refetch } = useMarketingCampaigns();
   const { trends } = useMarketingCampaignTrends();
   const anyConnected = connected.meta_business || connected.google_ads;
@@ -178,11 +184,9 @@ export function MarketingCampaigns() {
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              Aktiva kampanjer
+              {t("campaigns.activeTitle")}
             </CardTitle>
-            <CardDescription>
-              Pågående annonsering, spend och betyg (A–F) från Meta &amp; Google Ads.
-            </CardDescription>
+            <CardDescription>{t("campaigns.activeDescription")}</CardDescription>
           </div>
           <Button
             size="sm"
@@ -192,15 +196,14 @@ export function MarketingCampaigns() {
             className="shrink-0"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-            <span className="sr-only">Uppdatera kampanjer</span>
+            <span className="sr-only">{t("campaigns.refreshSr")}</span>
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
         {analytics && analytics.campaignsPoor > 0 ? (
           <p className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
-            {analytics.campaignsPoor} kampanj{analytics.campaignsPoor === 1 ? "" : "er"} behöver åtgärd — sorterade
-            svagast först.
+            {t("campaigns.needsAction", { count: analytics.campaignsPoor })}
           </p>
         ) : null}
         {isLoading && platforms.length === 0 ? (

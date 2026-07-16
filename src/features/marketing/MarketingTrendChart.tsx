@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { TrendingUp } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import {
@@ -12,31 +13,6 @@ import {
 import { useMarketingTrend } from "./useMarketingTrend";
 import { formatMoney } from "./format";
 import { formatNumber, formatShortDate } from "@/lib/format";
-
-const moneyChartConfig: ChartConfig = {
-  revenue: {
-    label: "Intäkter",
-    color: "hsl(var(--success))",
-  },
-  adSpend: {
-    label: "Annonsspend",
-    color: "hsl(var(--info))",
-  },
-};
-
-const roasChartConfig: ChartConfig = {
-  roas: {
-    label: "ROAS",
-    color: "hsl(var(--primary))",
-  },
-};
-
-const ordersChartConfig: ChartConfig = {
-  orders: {
-    label: "Ordrar",
-    color: "hsl(var(--info))",
-  },
-};
 
 function formatChartDate(iso: string): string {
   return formatShortDate(`${iso}T00:00:00`) || iso;
@@ -55,7 +31,42 @@ function formatAxisMoney(value: number): string {
  * Renders nothing until the snapshot cron has at least two days of history.
  */
 export function MarketingTrendChart() {
+  const { t } = useTranslation("marketing");
   const { snapshots } = useMarketingTrend();
+
+  const moneyChartConfig: ChartConfig = useMemo(
+    () => ({
+      revenue: {
+        label: t("trendChart.revenue"),
+        color: "hsl(var(--success))",
+      },
+      adSpend: {
+        label: t("trendChart.adSpend"),
+        color: "hsl(var(--info))",
+      },
+    }),
+    [t],
+  );
+
+  const roasChartConfig: ChartConfig = useMemo(
+    () => ({
+      roas: {
+        label: t("trendChart.roas"),
+        color: "hsl(var(--primary))",
+      },
+    }),
+    [t],
+  );
+
+  const ordersChartConfig: ChartConfig = useMemo(
+    () => ({
+      orders: {
+        label: t("trendChart.orders"),
+        color: "hsl(var(--info))",
+      },
+    }),
+    [t],
+  );
 
   const series = useMemo(
     () =>
@@ -69,7 +80,7 @@ export function MarketingTrendChart() {
           roas: s.roas,
           orders: s.orders,
         })),
-    [snapshots]
+    [snapshots],
   );
 
   if (series.length < 2) return null;
@@ -84,7 +95,7 @@ export function MarketingTrendChart() {
     <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-4">
       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <TrendingUp className="h-3.5 w-3.5" aria-hidden />
-        Snapshot-historik · {series.length} dagar · varje punkt är ett rullande 7-dagarsfönster
+        {t("trendChart.title", { days: series.length })}
       </p>
 
       {hasMoney ? (
@@ -98,12 +109,7 @@ export function MarketingTrendChart() {
               axisLine={false}
               minTickGap={24}
             />
-            <YAxis
-              tickFormatter={formatAxisMoney}
-              tickLine={false}
-              axisLine={false}
-              width={44}
-            />
+            <YAxis tickFormatter={formatAxisMoney} tickLine={false} axisLine={false} width={44} />
             <ChartTooltip
               content={
                 <ChartTooltipContent
@@ -160,10 +166,8 @@ export function MarketingTrendChart() {
                   labelFormatter={(value: string) => formatChartDate(value)}
                   formatter={(value) => (
                     <span className="flex w-full items-center justify-between gap-3">
-                      <span className="text-muted-foreground">Ordrar (7 d)</span>
-                      <span className="font-mono font-medium tabular-nums">
-                        {formatNumber(Number(value))}
-                      </span>
+                      <span className="text-muted-foreground">{t("trendChart.ordersTooltip")}</span>
+                      <span className="font-mono font-medium tabular-nums">{formatNumber(Number(value))}</span>
                     </span>
                   )}
                 />
@@ -199,7 +203,6 @@ export function MarketingTrendChart() {
               width={44}
               domain={[0, "auto"]}
             />
-            {/* Break-even: below 1× every ad-krona loses money. */}
             <ReferenceLine y={1} strokeDasharray="4 4" stroke="hsl(var(--warning))" />
             <ChartTooltip
               content={
@@ -207,10 +210,8 @@ export function MarketingTrendChart() {
                   labelFormatter={(value: string) => formatChartDate(value)}
                   formatter={(value) => (
                     <span className="flex w-full items-center justify-between gap-3">
-                      <span className="text-muted-foreground">ROAS</span>
-                      <span className="font-mono font-medium tabular-nums">
-                        {Number(value).toFixed(2)}×
-                      </span>
+                      <span className="text-muted-foreground">{t("trendChart.roas")}</span>
+                      <span className="font-mono font-medium tabular-nums">{Number(value).toFixed(2)}×</span>
                     </span>
                   )}
                 />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Copy, Loader2, Megaphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ export function OutreachContentCard({
   context: Omit<OutreachContentInput, "business_profile_id">;
   onUseIdea?: (text: string) => void;
 }) {
+  const { t } = useTranslation("outreach");
   const navigate = useNavigate();
   const [ideas, setIdeas] = useState<OutreachContentIdea[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,7 @@ export function OutreachContentCard({
   function openInContent(text: string) {
     stashContentCaption(text);
     navigate("/content?tab=publish");
-    toast.success("Idén är klar i Innehåll — publicera eller spara");
+    toast.success(t("content.ideaReadyToast"));
   }
 
   async function generate() {
@@ -41,9 +43,9 @@ export function OutreachContentCard({
       });
       setIdeas(result.ideas);
       setSource(result.source);
-      if (result.ideas.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
+      if (result.ideas.length === 0) toast.message(t("content.noIdeas"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kunde inte ladda innehållsidéer för outreach.");
+      toast.error(error instanceof Error ? error.message : t("toast.ideasFail"));
     } finally {
       setLoading(false);
     }
@@ -56,24 +58,24 @@ export function OutreachContentCard({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Megaphone className="h-4 w-4 text-primary" />
-              Innehåll som attraherar kunder
+              {t("content.title")}
             </CardTitle>
             <CardDescription>
-              Inläggs- och materialidéer som värmer upp potentiella köpare — inte bara inlägg för befintliga följare.
+              {t("content.description")}
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading || !businessProfileId}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-            {ideas.length > 0 ? "Generera om" : "Hämta idéer"}
+            {ideas.length > 0 ? t("content.regenerate") : t("content.fetch")}
           </Button>
         </div>
       </CardHeader>
       {ideas.length === 0 ? (
         <CardContent className="pt-0">
           <p className="text-xs text-muted-foreground">
-            Fler publiceringsflöden — bildtexter, media och säkerhetskontroller — finns under{" "}
+            {t("content.emptyLink")}{" "}
             <Link to="/content" className="text-primary hover:underline">
-              Innehåll
+              {t("content.contentPage")}
             </Link>
             .
           </p>
@@ -82,7 +84,7 @@ export function OutreachContentCard({
       {ideas.length > 0 ? (
         <CardContent className="space-y-2">
           {source === "heuristic" ? (
-            <p className="text-[11px] text-muted-foreground">Generella förslag — lägg in en OpenAI-nyckel för idéer anpassade till din målgrupp.</p>
+            <p className="text-[11px] text-muted-foreground">{t("content.heuristicHint")}</p>
           ) : null}
           {ideas.map((idea, index) => (
             <div
@@ -104,7 +106,7 @@ export function OutreachContentCard({
               <div className="flex shrink-0 gap-1">
                 {onUseIdea ? (
                   <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onUseIdea(ideaText(idea))}>
-                    Använd
+                    {t("actions.use")}
                   </Button>
                 ) : (
                   <Button
@@ -113,12 +115,12 @@ export function OutreachContentCard({
                     className="h-7 px-2 text-xs"
                     onClick={() => openInContent(ideaText(idea))}
                   >
-                    Skapa →
+                    {t("content.create")}
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void navigator.clipboard.writeText(ideaText(idea)).then(() => toast.success("Kopierat"))}>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void navigator.clipboard.writeText(ideaText(idea)).then(() => toast.success(t("actions.copied")))}>
                   <Copy className="h-3.5 w-3.5" />
-                  <span className="sr-only">Kopiera</span>
+                  <span className="sr-only">{t("actions.copy")}</span>
                 </Button>
               </div>
             </div>

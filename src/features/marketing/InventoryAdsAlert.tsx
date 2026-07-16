@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { PackageX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMarketingCampaigns } from "./useMarketingCampaigns";
@@ -9,13 +10,18 @@ import { useMarketingCampaigns } from "./useMarketingCampaigns";
  * to products people can't buy. Only shown when both conditions hold.
  */
 export function InventoryAdsAlert() {
+  const { t } = useTranslation("marketing");
   const { inventoryAlert } = useMarketingCampaigns();
   if (!inventoryAlert) return null;
   const { activeCampaigns, outOfStock, lowStock, threshold, examples } = inventoryAlert;
 
   const stockParts: string[] = [];
-  if (outOfStock > 0) stockParts.push(`${outOfStock} slutsåld${outOfStock === 1 ? "" : "a"}`);
-  if (lowStock > 0) stockParts.push(`${lowStock} lågt i lager (≤ ${threshold})`);
+  if (outOfStock > 0) {
+    stockParts.push(t("inventoryAlert.outOfStock", { count: outOfStock }));
+  }
+  if (lowStock > 0) {
+    stockParts.push(t("inventoryAlert.lowStock", { count: lowStock, threshold }));
+  }
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/5 px-4 py-3">
@@ -23,21 +29,23 @@ export function InventoryAdsAlert() {
         <PackageX className="h-4 w-4 text-warning" aria-hidden />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground">Annonser igång men hyllorna är tomma</p>
+        <p className="text-sm font-semibold text-foreground">{t("inventoryAlert.title")}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {activeCampaigns} aktiv{activeCampaigns === 1 ? " kampanj" : "a kampanjer"} körs medan {stockParts.join(" och ")}.
-          {examples.length > 0 ? ` T.ex. ${examples.join(", ")}.` : ""} Pausa eller fyll på lagret för att inte
-          bränna budget.
+          {t("inventoryAlert.body", {
+            count: activeCampaigns,
+            activeCampaigns,
+            stockParts: stockParts.join(t("inventoryAlert.and")),
+          })}
+          {examples.length > 0 ? t("inventoryAlert.examples", { examples: examples.join(", ") }) : ""}
+          {t("inventoryAlert.footer")}
         </p>
-        <p className="text-[11px] text-muted-foreground/80 mt-1">
-          Beräknas: aktiva kampanjer (Meta/Google) × Shopify-produkter med spårat lager på eller under tröskeln.
-        </p>
+        <p className="text-[11px] text-muted-foreground/80 mt-1">{t("inventoryAlert.calculation")}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-            <Link to="/ecommerce">Visa i E-handel</Link>
+            <Link to="/ecommerce">{t("inventoryAlert.viewEcommerce")}</Link>
           </Button>
           <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-            <Link to="/marketing?tab=ads">Granska kampanjer</Link>
+            <Link to="/marketing?tab=ads">{t("inventoryAlert.reviewCampaigns")}</Link>
           </Button>
         </div>
       </div>

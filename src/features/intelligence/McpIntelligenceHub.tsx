@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Bot, PlugZap } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { McpQueryBox } from "./McpQueryBox";
 import { McpProviderStatusList } from "./McpProviderStatusList";
 import {
+  localizeMcpFeature,
+  localizeMcpHubTab,
   MCP_FEATURE_DEFINITIONS,
   MCP_HUB_TABS,
   MCP_PLATFORMS_WITH_UI,
@@ -17,9 +20,9 @@ import { McpMultiSourceCompare } from "./McpMultiSourceCompare";
 import { McpDataCatalog } from "./McpDataCatalog";
 import { McpToolsExplorer } from "./McpToolsExplorer";
 
-const QUERY_TABS = MCP_HUB_TABS.filter(
-  (t) => !["overview", "compare", "catalog", "tools"].includes(t.id)
-);
+const QUERY_TAB_IDS = MCP_HUB_TABS.filter(
+  (tab) => !["overview", "compare", "catalog", "tools"].includes(tab.id)
+).map((tab) => tab.id);
 
 type Props = {
   businessProfileId: string | null;
@@ -40,6 +43,7 @@ export function McpIntelligenceHub({
   onTabChange,
   hideTabList = false,
 }: Props) {
+  const { t } = useTranslation("pages");
   const [internalTab, setInternalTab] = useState<McpHubTabId>("compare");
   const tab = controlledTab ?? internalTab;
 
@@ -50,14 +54,18 @@ export function McpIntelligenceHub({
 
   const featureCount = MCP_FEATURE_DEFINITIONS.length;
   const platformCount = MCP_PLATFORMS_WITH_UI.length;
+  const hubTabs = useMemo(() => MCP_HUB_TABS.map(localizeMcpHubTab), [t]);
 
   const tabContent = useMemo(
     () =>
-      QUERY_TABS.map((hubTab) => ({
-        ...hubTab,
-        features: mcpFeaturesForTab(hubTab.id as Exclude<McpHubTabId, "overview">),
-      })),
-    []
+      QUERY_TAB_IDS.map((id) => {
+        const hubTab = localizeMcpHubTab(MCP_HUB_TABS.find((item) => item.id === id)!);
+        return {
+          ...hubTab,
+          features: mcpFeaturesForTab(id as Exclude<McpHubTabId, "overview">).map(localizeMcpFeature),
+        };
+      }),
+    [t]
   );
 
   return (
@@ -67,16 +75,16 @@ export function McpIntelligenceHub({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Bot className="h-4 w-4 text-muted-foreground" aria-hidden />
-              MCP Intelligence
+              {t("intelligence.title")}
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              {featureCount} frågeverktyg över {platformCount} leverantörer. Varje fält visar autentiseringsstatus innan du kör ett anrop.
+              {t("intelligence.hubDescription", { features: featureCount, platforms: platformCount })}
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
             <Link to="/connections?tab=mcp">
               <PlugZap className="h-3.5 w-3.5" aria-hidden />
-              Koppla leverantörer
+              {t("intelligence.connectProviders")}
             </Link>
           </Button>
         </div>
@@ -85,7 +93,7 @@ export function McpIntelligenceHub({
         <Tabs value={tab} onValueChange={(v) => setTab(v as McpHubTabId)}>
           {!hideTabList ? (
             <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-              {MCP_HUB_TABS.map((hubTab) => (
+              {hubTabs.map((hubTab) => (
                 <TabsTrigger
                   key={hubTab.id}
                   value={hubTab.id}
@@ -98,9 +106,7 @@ export function McpIntelligenceHub({
           ) : null}
 
           <TabsContent value="overview" className="mt-0 space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Status för varje MCP-leverantör. Åtgärda saknade API-nycklar eller utgången OAuth under Kopplingar innan du kör frågor i andra flikar.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("intelligence.overviewHint")}</p>
             <McpProviderStatusList businessProfileId={businessProfileId} />
             <McpDataCatalog businessProfileId={businessProfileId} />
           </TabsContent>

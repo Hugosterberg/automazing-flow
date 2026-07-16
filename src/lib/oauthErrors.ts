@@ -4,6 +4,7 @@ import {
   isOAuthPermissionError,
   normalizeOAuthErrorCode,
 } from "@/lib/oauthPermissionErrors";
+import { i18n, t } from "@/lib/i18n";
 
 export type OAuthErrorDetails = {
   code: string;
@@ -12,7 +13,10 @@ export type OAuthErrorDetails = {
   hint: string | null;
 };
 
-/** Visas när sidor inte definierar egna meddelanden — utöka med per-sida-mappar för override. */
+/**
+ * Swedish fallbacks when i18n is not initialized (unit tests / early boot).
+ * Runtime UI prefers `errors:oauth.*` translations via formatOAuthErrorMessage.
+ */
 export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
   not_authenticated:
     "Inloggningssessionen saknades när OAuth slutfördes. Öppna appen igen, håll dig inloggad och starta Koppla-flödet på nytt från samma sida.",
@@ -156,20 +160,42 @@ export function removeOAuthErrorParams(searchParams: URLSearchParams) {
   return next;
 }
 
+function oauthMessageForCode(code: string, overrides?: Record<string, string>): string | undefined {
+  if (overrides?.[code]) return overrides[code];
+  const key = `errors:oauth.${code}`;
+  if (i18n.isInitialized && i18n.exists(key)) {
+    return t(key);
+  }
+  return DEFAULT_OAUTH_ERROR_MESSAGES[code];
+}
+
 export function formatOAuthErrorMessage(
   details: OAuthErrorDetails,
   messages?: Record<string, string>,
-  fallbackPrefix = "Koppling misslyckades"
+  fallbackPrefix?: string
 ) {
-  const merged = { ...DEFAULT_OAUTH_ERROR_MESSAGES, ...(messages || {}) };
+  const prefix =
+    fallbackPrefix ??
+    (i18n.isInitialized ? t("errors:fallbackPrefix") : "Koppling misslyckades");
+  const providerMentioned = (detail: string) =>
+    i18n.isInitialized
+      ? t("errors:providerMentioned", { detail })
+      : `Leverantören nämnde: ${detail}.`;
+  const scopeFallback =
+    oauthMessageForCode("scope_not_granted", messages) ??
+    (i18n.isInitialized
+      ? t("errors:scopeFallback")
+      : "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och godkänn alla efterfrågade rättigheter.");
+
   const lookupCode = normalizeOAuthErrorCode(details.code, details.hint);
-  const baseMessage = merged[lookupCode] ?? merged[details.code];
+  const baseMessage =
+    oauthMessageForCode(lookupCode, messages) ?? oauthMessageForCode(details.code, messages);
 
   if (baseMessage) {
     if (isOAuthPermissionError(details.code, details.hint)) {
       const detail = extractOAuthPermissionDetail(details.hint, details.code);
       if (detail && !baseMessage.includes(detail)) {
-        return `${baseMessage} Leverantören nämnde: ${detail}.`;
+        return `${baseMessage} ${providerMentioned(detail)}`;
       }
     }
     return baseMessage;
@@ -177,14 +203,11 @@ export function formatOAuthErrorMessage(
 
   if (isOAuthPermissionError(details.code, details.hint)) {
     const detail = extractOAuthPermissionDetail(details.hint, details.code);
-    const permissionFallback =
-      merged.scope_not_granted ||
-      "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och godkänn alla efterfrågade rättigheter.";
-    return detail ? `${permissionFallback} Leverantören nämnde: ${detail}.` : permissionFallback;
+    return detail ? `${scopeFallback} ${providerMentioned(detail)}` : scopeFallback;
   }
 
   const humanCode = details.code.replace(/_/g, " ");
-  return `${fallbackPrefix}: ${humanCode}`;
+  return `${prefix}: ${humanCode}`;
 }
 
 export function formatConnectFetchError(params: {
@@ -207,5 +230,12 @@ export function formatConnectFetchError(params: {
       ? params.payload.exception
       : "ej angiven";
 
+  if (i18n.isInitialized) {
+    return t("errors:fetchError", {
+      error: errorCode,
+      status: statusCode,
+      exception,
+    });
+  }
   return `Fel: ${errorCode} | Status: ${statusCode} | Undantag: ${exception}`;
 }

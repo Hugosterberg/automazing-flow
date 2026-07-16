@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { m } from "framer-motion";
 import { ArrowRight, CheckCircle2, Menu, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { LandingAtmosphere } from "@/components/landing/LandingAtmosphere";
@@ -11,16 +12,11 @@ import {
   LandingProductDemo,
 } from "@/components/landing/LandingProductDemo";
 import { LandingSection } from "@/components/landing/LandingSection";
-import { LANDING_STEPS, LANDING_TRUST_POINTS } from "@/lib/landingContent";
+import { LANDING_STEPS, LANDING_TRUST_KEYS } from "@/lib/landingContent";
 import { LandingFounderCase } from "@/components/landing/LandingFounderCase";
+import { LanguageSwitcherCompact } from "@/components/LanguageSwitcher";
 import { pageFadeUp, pageFadeUpTransition, sectionReveal, sectionRevealTransition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
-const NAV_LINKS = [
-  { label: "Demo", target: "produktdemo" },
-  { label: "Varför", target: "varfor" },
-  { label: "Kom igång", target: "kom-igang" },
-] as const;
 
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -32,10 +28,17 @@ function scrollToAuth() {
 }
 
 export function LandingPage() {
+  const { t } = useTranslation("landing");
   const [showMobileCta, setShowMobileCta] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [authInView, setAuthInView] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  const navLinks = [
+    { label: t("nav.demo"), target: "produktdemo" },
+    { label: t("nav.why"), target: "varfor" },
+    { label: t("nav.getStarted"), target: "kom-igang" },
+  ] as const;
 
   useEffect(() => {
     function onScroll() {
@@ -74,7 +77,7 @@ export function LandingPage() {
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Öppna meny">
+                <Button variant="ghost" size="icon" className="md:hidden" aria-label={t("nav.openMenu")}>
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -82,8 +85,8 @@ export function LandingPage() {
                 <SheetHeader>
                   <SheetTitle className="font-display text-left tracking-tight">automazing</SheetTitle>
                 </SheetHeader>
-                <nav className="mt-6 flex flex-col gap-1" aria-label="Mobilnavigering">
-                  {NAV_LINKS.map((link) => (
+                <nav className="mt-6 flex flex-col gap-1" aria-label={t("nav.mobileNav")}>
+                  {navLinks.map((link) => (
                     <button
                       key={link.target}
                       type="button"
@@ -101,7 +104,7 @@ export function LandingPage() {
                     }}
                     className="mt-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-white"
                   >
-                    Logga in / Skapa konto
+                    {t("nav.signInOrCreate")}
                   </button>
                 </nav>
               </SheetContent>
@@ -117,8 +120,8 @@ export function LandingPage() {
             </div>
           </div>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Sidnavigering">
-            {NAV_LINKS.map((link) => (
+          <nav className="hidden items-center gap-1 md:flex" aria-label={t("nav.siteNav")}>
+            {navLinks.map((link) => (
               <button
                 key={link.target}
                 type="button"
@@ -131,21 +134,22 @@ export function LandingPage() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <LanguageSwitcherCompact className="border-white/15 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white" />
             <Button
               variant="ghost"
               size="sm"
               className="hidden text-white/70 hover:bg-white/5 hover:text-white sm:inline-flex"
               onClick={scrollToAuth}
             >
-              Logga in
+              {t("nav.signIn")}
             </Button>
             <Button
               size="sm"
               className="gap-1 bg-white px-2.5 text-xs text-black hover:bg-white/90 sm:gap-1.5 sm:px-3 sm:text-sm"
               onClick={scrollToAuth}
             >
-              <span className="max-[360px]:sr-only">Kom igång</span>
-              <span className="hidden max-[360px]:inline">Start</span>
+              <span className="max-[360px]:sr-only">{t("nav.getStarted")}</span>
+              <span className="hidden max-[360px]:inline">{t("nav.start")}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -158,7 +162,6 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Full-bleed hero — brand first, one composition */}
       <section className="relative flex min-h-[100svh] flex-col justify-center">
         <div className="landing-page-shell relative z-10 mx-auto w-full max-w-6xl pb-16 pt-10 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
           <m.div
@@ -181,7 +184,7 @@ export function LandingPage() {
               transition={{ delay: 0.08, duration: 0.45, ease: "easeOut" }}
               className="mt-5 font-display text-[clamp(1.35rem,3.6vw,2.15rem)] font-semibold leading-snug tracking-tight text-white/90 sm:mt-7"
             >
-              Automatiskt. Amazing.
+              {t("hero.headline")}
             </m.h1>
 
             <m.p
@@ -190,7 +193,7 @@ export function LandingPage() {
               transition={{ delay: 0.14, duration: 0.4, ease: "easeOut" }}
               className="mx-auto mt-4 max-w-xl text-[0.95rem] leading-relaxed text-white/55 sm:mt-5 sm:text-base lg:mx-0 lg:text-lg"
             >
-              Social, mail, recensioner och sälj i ett flöde — snabbt, smidigt och effektivt.
+              {t("hero.sub")}
             </m.p>
 
             <m.div
@@ -204,7 +207,7 @@ export function LandingPage() {
                 className="landing-shine gap-2 bg-white text-black hover:bg-white/90"
                 onClick={scrollToAuth}
               >
-                Skapa konto gratis
+                {t("hero.ctaPrimary")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button
@@ -213,7 +216,7 @@ export function LandingPage() {
                 className="border-white/20 bg-transparent text-white hover:bg-white/5 hover:text-white"
                 onClick={() => scrollToId("produktdemo")}
               >
-                Se det i action
+                {t("hero.ctaSecondary")}
               </Button>
             </m.div>
           </m.div>
@@ -231,8 +234,8 @@ export function LandingPage() {
             <m.div {...sectionReveal} transition={sectionRevealTransition}>
               <LandingSection
                 id="varfor"
-                title="Varför byta?"
-                description="Mindre admin. Mer koll. En app i stället för ett lapptäcke av verktyg."
+                title={t("sections.whyTitle")}
+                description={t("sections.whyDesc")}
               >
                 <LandingComparison />
               </LandingSection>
@@ -241,8 +244,8 @@ export function LandingPage() {
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
               <LandingSection
                 id="produktdemo"
-                title="Se appen i action"
-                description="Klicka på flikarna eller låt demon rulla — så här ser en vanlig dag ut."
+                title={t("sections.demoTitle")}
+                description={t("sections.demoDesc")}
               >
                 <LandingProductDemo />
               </LandingSection>
@@ -253,7 +256,7 @@ export function LandingPage() {
                 <div className="space-y-2">
                   <div aria-hidden className="landing-section-accent" />
                   <p className="landing-title-glow text-sm font-medium text-foreground">
-                    Kopplar till det du redan använder
+                    {t("sections.integrations")}
                   </p>
                 </div>
                 <LandingIntegrationsMarquee />
@@ -262,15 +265,15 @@ export function LandingPage() {
 
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
               <LandingSection
-                title="Tre saker. En plattform."
-                description="Allt hänger ihop — från första meddelande till stängd affär."
+                title={t("sections.pillarsTitle")}
+                description={t("sections.pillarsDesc")}
               >
                 <LandingPillars />
               </LandingSection>
             </m.div>
 
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
-              <LandingSection title="Kom igång på tre steg">
+              <LandingSection title={t("sections.stepsTitle")}>
                 <ol className="relative grid gap-3 sm:grid-cols-3">
                   <div
                     aria-hidden
@@ -284,9 +287,9 @@ export function LandingPage() {
                       <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white font-display text-sm font-bold text-black sm:mx-0">
                         {step.step}
                       </span>
-                      <h3 className="mt-3 text-sm font-semibold">{step.title}</h3>
+                      <h3 className="mt-3 text-sm font-semibold">{t(step.titleKey)}</h3>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        {step.description}
+                        {t(step.descriptionKey)}
                       </p>
                     </li>
                   ))}
@@ -296,8 +299,8 @@ export function LandingPage() {
 
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
               <LandingSection
-                title="Byggt för dig som kör själv"
-                description="Inget påhittat kundcase — så produkten används i praktiken."
+                title={t("sections.founderTitle")}
+                description={t("sections.founderDesc")}
               >
                 <LandingFounderCase />
               </LandingSection>
@@ -309,17 +312,17 @@ export function LandingPage() {
                 className="scroll-mt-20 rounded-[1.75rem] border border-white/15 bg-gradient-to-b from-white/[0.07] to-transparent p-7 landing-premium-card sm:rounded-3xl sm:p-8 lg:hidden"
               >
                 <div className="mb-4 space-y-1">
-                  <h2 className="font-display text-xl font-semibold tracking-tight">Redo att köra?</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Skapa konto — du ser värdet redan första dagen.
-                  </p>
+                  <h2 className="font-display text-xl font-semibold tracking-tight">
+                    {t("sections.readyTitle")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{t("sections.readyDesc")}</p>
                 </div>
                 <LandingAuthPanel compact />
                 <ul className="mt-4 space-y-2">
-                  {LANDING_TRUST_POINTS.map((point) => (
-                    <li key={point} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {LANDING_TRUST_KEYS.map((key) => (
+                    <li key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-white/70" aria-hidden />
-                      {point}
+                      {t(key)}
                     </li>
                   ))}
                 </ul>
@@ -328,10 +331,7 @@ export function LandingPage() {
 
             <footer className="border-t border-white/10 px-1 pt-6 text-xs text-white/35 space-y-1">
               <p>© {new Date().getFullYear()} automazing</p>
-              <p>
-                Data raderas när du tar bort en profil under Inställningar → Data. Formella
-                villkor/privacy publiceras separat.
-              </p>
+              <p>{t("footer.dataNote")}</p>
             </footer>
           </div>
         </div>
@@ -340,10 +340,10 @@ export function LandingPage() {
           <div className="sticky top-20 px-4 py-10 xl:px-5">
             <LandingAuthPanel />
             <ul className="mt-4 space-y-2">
-              {LANDING_TRUST_POINTS.map((point) => (
-                <li key={point} className="flex items-center gap-2 text-xs text-muted-foreground">
+              {LANDING_TRUST_KEYS.map((key) => (
+                <li key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-white/70" />
-                  {point}
+                  {t(key)}
                 </li>
               ))}
             </ul>
@@ -365,7 +365,7 @@ export function LandingPage() {
             size="lg"
             onClick={scrollToAuth}
           >
-            Skapa konto gratis
+            {t("hero.ctaPrimary")}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Activity as ActivityIcon, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import type { ActivityEventRow } from "@/features/activity";
 type SeverityFilter = "all" | ActivityEventRow["severity"];
 
 export default function ActivityPage() {
+  const { t } = useTranslation("pages");
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
@@ -190,9 +192,9 @@ export default function ActivityPage() {
 
   const activityLiveHint =
     severityCounts.error > 0
-      ? `${severityCounts.error} fel i loggen — börja där`
+      ? t("activity.liveErrors", { count: severityCounts.error })
       : severityCounts.warning > 0
-        ? `${severityCounts.warning} varningar att granska`
+        ? t("activity.liveWarnings", { count: severityCounts.warning })
         : null;
 
   const isMobile = useIsMobile();
@@ -204,9 +206,9 @@ export default function ActivityPage() {
       <div className="space-y-4 max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <ActivityIcon className="h-7 w-7 text-muted-foreground" />
-          Aktivitet
+          {t("activity.title")}
         </h1>
-        <p className="text-sm text-muted-foreground">Välj en affärsprofil för att se aktivitetsflödet.</p>
+        <p className="text-sm text-muted-foreground">{t("activity.pickProfile")}</p>
       </div>
     );
   }
@@ -217,11 +219,11 @@ export default function ActivityPage() {
         <>
           <PageHeader
             icon={ActivityIcon}
-            title="Aktivitet"
+            title={t("activity.title")}
             description={
               isMobile
-                ? "Tryck en händelse i listan för att läsa detaljer."
-                : "Granskningslogg för alla ändringar i denna affärsprofil."
+                ? t("activity.descriptionMobile")
+                : t("activity.description")
             }
             actions={
               <Button
@@ -240,36 +242,28 @@ export default function ActivityPage() {
           <PageSmartBar
             title={
               isMobile
-                ? "Filtrera och tryck en händelse för att se vad som hände."
-                : "Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart."
+                ? t("activity.smartBarMobile")
+                : t("activity.smartBar")
             }
             steps={
               isMobile
-                ? ["Filtrera på modul eller allvarlighetsgrad", "Tryck en rad för detaljer", "Använd loggen när något ser fel ut"]
-                : [
-                    "Filtrera på modul eller allvarlighetsgrad för att hitta rätt händelse",
-                    "Välj en rad i listan för att läsa detaljer och metadata",
-                    "Använd loggen när något ser fel ut eller du behöver spåra vem som gjorde vad",
-                  ]
+                ? [t("activity.stepMobile1"), t("activity.stepMobile2"), t("activity.stepMobile3")]
+                : [t("activity.step1"), t("activity.step2"), t("activity.step3")]
             }
-            tip={
-              isMobile
-                ? "Här syns vad automationer och synk gjorde — använd filtrer när något ser konstigt ut."
-                : "Genvägar: J/K bläddra · / sök · E fel · W varning · Esc stäng."
-            }
+            tip={isMobile ? t("activity.tipMobile") : t("activity.tip")}
             liveHintOverride={activityLiveHint}
           />
 
           <PageModeTabs
             value={severityFilter}
-            aria-label="Allvarlighetsflikar"
+            aria-label={t("activity.tabsAria")}
             onChange={setSeverityFilter}
             options={[
-              { value: "error", label: "Fel", count: severityCounts.error },
-              { value: "warning", label: "Varningar", count: severityCounts.warning },
-              { value: "all", label: "Alla" },
-              { value: "success", label: "Lyckades", count: severityCounts.success },
-              { value: "info", label: "Info", count: severityCounts.info },
+              { value: "error", label: t("activity.tabError"), count: severityCounts.error },
+              { value: "warning", label: t("activity.tabWarning"), count: severityCounts.warning },
+              { value: "all", label: t("activity.tabAll") },
+              { value: "success", label: t("activity.tabSuccess"), count: severityCounts.success },
+              { value: "info", label: t("activity.tabInfo"), count: severityCounts.info },
             ]}
           />
         </>

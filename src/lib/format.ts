@@ -2,13 +2,13 @@
  * App-wide date/number/currency formatting.
  *
  * One place instead of per-page helpers, for three reasons:
- *   1. Consistent Swedish locale. The UI language is Swedish, but several
- *      pages formatted dates/numbers with "en-US" or the browser default
- *      ("Yesterday" next to "Igår", "1,234" next to "1 234").
+ *   1. Consistent locale. Formatting follows the active UI language
+ *      (sv-SE or en-US — see src/lib/i18n.ts), instead of a mix of
+ *      hardcoded locales and browser defaults.
  *   2. Performance. `toLocaleDateString(...)` constructs an
  *      `Intl.DateTimeFormat` on every call — measurable in long lists
  *      (inbox rows, order tables). Formatters here are built once and
- *      cached by options.
+ *      cached by locale + options.
  *   3. Smarter output. Dates older than the current year include the year
  *      ("5 jan. 2025"), so history views stay unambiguous across
  *      new-year boundaries.
@@ -17,14 +17,23 @@
  * missing/unparseable input so callers can render a fallback with `||`.
  */
 
-export const APP_LOCALE = "sv-SE";
+/** Active formatting locale. Kept in sync with the UI language by i18n.ts. */
+let appLocale = "en-US";
+
+/** Called by i18n.ts on init and on every language change. */
+export function setFormatLocale(locale: string): void {
+  if (locale === appLocale) return;
+  appLocale = locale;
+  dtfCache.clear();
+  nfCache.clear();
+}
 
 const dtfCache = new Map<string, Intl.DateTimeFormat>();
 function dtf(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   const key = JSON.stringify(options);
   let formatter = dtfCache.get(key);
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(APP_LOCALE, options);
+    formatter = new Intl.DateTimeFormat(appLocale, options);
     dtfCache.set(key, formatter);
   }
   return formatter;
@@ -35,10 +44,15 @@ function nf(options: Intl.NumberFormatOptions = {}): Intl.NumberFormat {
   const key = JSON.stringify(options);
   let formatter = nfCache.get(key);
   if (!formatter) {
-    formatter = new Intl.NumberFormat(APP_LOCALE, options);
+    formatter = new Intl.NumberFormat(appLocale, options);
     nfCache.set(key, formatter);
   }
   return formatter;
+}
+
+/** "Igår"/"Yesterday" per active locale (kept as the app's established forms). */
+function yesterdayLabel(): string {
+  return appLocale.startsWith("sv") ? "Igår" : "Yesterday";
 }
 
 function toDate(value: string | Date | null | undefined): Date | null {
@@ -64,7 +78,7 @@ export function formatSmartDate(value: string | Date | null | undefined, now: Da
   if (!date) return "";
   const diffDays = daysBetween(date, now);
   if (diffDays === 0) return dtf({ hour: "2-digit", minute: "2-digit" }).format(date);
-  if (diffDays === 1) return "Igår";
+  if (diffDays === 1) return yesterdayLabel();
   if (diffDays > 1 && diffDays < 7) return dtf({ weekday: "short" }).format(date);
   return formatShortDate(date, now);
 }

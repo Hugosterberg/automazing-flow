@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Mail } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OutreachInboxRow } from "./OutreachInboxRow";
@@ -30,6 +31,7 @@ export function OutreachInboxList({
   onSelect,
   searchQuery = "",
 }: Props) {
+  const { t } = useTranslation("outreach");
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
@@ -40,10 +42,10 @@ export function OutreachInboxList({
   return (
     <div className="message-inbox-pane flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2">
-        <p className="text-[11px] font-medium text-foreground/80">Outreach-kö</p>
+        <p className="text-[11px] font-medium text-foreground/80">{t("queue.title")}</p>
         {items.length > 0 ? (
           <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
-            {items.length} utkast
+            {t("queue.count", { count: items.length })}
           </span>
         ) : null}
       </div>

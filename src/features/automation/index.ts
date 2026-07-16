@@ -17,6 +17,8 @@ export {
   automationCatalog,
   automationTitleForCronKey,
   catalogEntriesForTopic,
+  localizeAutomationEntry,
+  localizeAutomationTopic,
 } from "./automationCatalog";
 export type {
   AutomationTopic,

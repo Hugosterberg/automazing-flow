@@ -1,4 +1,8 @@
-import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
+import {
+  catalogConnectSteps,
+  type ConnectionCatalogEntry,
+} from "@/lib/connectionCatalog";
+import { t } from "@/lib/i18n";
 import type { Connection, ConnectionHealth } from "@/types/connection";
 import { connectionSyncPermissionFix } from "@/lib/oauthPermissionErrors";
 
@@ -16,10 +20,15 @@ export function connectionFixHint(
     const permissionFix = connectionSyncPermissionFix(connection.platform, connection.lastSyncError);
     const envHint = catalogEntry?.serverNeeds;
     if (permissionFix) {
-      return envHint ? `${permissionFix} — Server: ${envHint}` : permissionFix;
+      return envHint
+        ? t("connections:fix.withServer", { message: permissionFix, server: envHint })
+        : permissionFix;
     }
     if (connection.health === "failed" && envHint) {
-      return `${connection.lastSyncError} — Server: ${envHint}`;
+      return t("connections:fix.withServer", {
+        message: connection.lastSyncError,
+        server: envHint,
+      });
     }
     return connection.lastSyncError;
   }
@@ -27,15 +36,17 @@ export function connectionFixHint(
   switch (connection.health as ConnectionHealth) {
     case "expired":
     case "missing":
-      return "Koppla om och logga in igen för att förnya OAuth-token.";
+      return t("connections:fix.reauth");
     case "failed":
       return catalogEntry?.serverNeeds
-        ? `Kontrollera serverkonfiguration: ${catalogEntry.serverNeeds}`
-        : "Granska integrationsinställningar under Inställningar.";
+        ? t("connections:fix.checkServer", { server: catalogEntry.serverNeeds })
+        : t("connections:fix.checkPrefs");
     case "disconnected":
-      return catalogEntry?.connectSteps ?? "Koppla den här integrationen igen.";
+      return catalogEntry
+        ? catalogConnectSteps(catalogEntry)
+        : t("errors:reconnectGeneric");
     case "pending":
-      return "Synk pågår — testa igen om en stund.";
+      return t("connections:fix.pending");
     default:
       return catalogEntry?.serverNeeds ?? null;
   }
@@ -47,12 +58,15 @@ export function connectionTestToastMessage(result: {
   fix?: string;
 }): { title: string; description?: string; variant?: "destructive" } {
   if (result.health === "healthy") {
-    return { title: "Koppling OK", description: result.message ?? "Uppgifterna verifierades." };
+    return {
+      title: t("connections:toast.ok"),
+      description: result.message ?? t("connections:toast.okDesc"),
+    };
   }
   const description = [result.message, result.fix].filter(Boolean).join(" — ");
   return {
-    title: "Kopplingen behöver uppmärksamhet",
-    description: description || "Testet gick inte igenom.",
+    title: t("connections:toast.attention"),
+    description: description || t("connections:toast.failDesc"),
     variant: "destructive",
   };
 }

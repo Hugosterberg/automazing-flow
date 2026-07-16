@@ -1,0 +1,25 @@
+{
+  "empty": {
+    "mailTitle": "Ingen mail ännu",
+    "mailDesc": "Koppla Gmail eller Outlook under Kopplingar för att se e-post här.",
+    "igTitle": "Inga Instagram-meddelanden",
+    "igDesc": "DM:er visas här när Zernio Inbox är kopplad under Kopplingar.",
+    "messengerTitle": "Inga Messenger-meddelanden",
+    "messengerDesc": "Facebook Messenger visas här via Zernio Inbox — koppla under Kopplingar.",
+    "waTitle": "Inga WhatsApp-meddelanden",
+    "waDesc": "WhatsApp visas här via Zernio Inbox — koppla under Kopplingar.",
+    "noHits": "Inga träffar",
+    "noHitsDesc": "Inget matchade «{{query}}». Prova färre ord eller rensa sökningen.",
+    "allHandled": "Inget kvar att svara på",
+    "allHandledDesc": "Alla meddelanden i denna kanal är hanterade. Slå på auto-svar under Automationer så utkast skapas åt dig när nya DM:er kommer.",
+    "noHistory": "Ingen historik än",
+    "noHistoryDesc": "Meddelanden du markerar som hanterade hamnar här.",
+    "queueEmpty": "Kön är tom",
+    "queueEmptyDesc": "Inget behöver svar just nu. Aktivera auto-svar och uppföljning under Automationer så köarbetet minskar över tid."
+  },
+  "wait": {
+    "minutes": "{{count}} min",
+    "hours": "{{count}} tim",
+    "days": "{{count}} d"
+  }
+}

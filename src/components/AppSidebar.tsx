@@ -79,11 +79,11 @@ import { apiUrl } from "@/lib/apiBase";
 
 // Nav structure lives in navConfig.ts, shared with the command palette.
 import {
-  NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
   navItemsForMode,
   topNavItemsForMode,
 } from "@/components/navConfig";
+import { useTranslation } from "react-i18next";
 import { profilesLabelForMode, useWorkspaceMode } from "@/features/workspace-mode";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { formatNumber } from "@/lib/format";
@@ -233,6 +233,7 @@ function NavCountBadge({
 }
 
 export function AppSidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const prefetchFor = useRoutePrefetch();
@@ -536,7 +537,7 @@ export function AppSidebar() {
                         isActive ? "font-semibold" : "font-medium"
                       }`}
                     >
-                      {item.title}
+                      {t(`nav.${item.key}`)}
                     </span>
                     {item.key === "connections" && accounts.length > 0 ? (
                       <NavCountBadge
@@ -560,7 +561,7 @@ export function AppSidebar() {
         <SidebarGroup key={groupKey}>
           {showLabel && (
             <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wide text-muted-foreground/70">
-              {NAV_GROUP_LABELS[groupKey]}
+              {t(`navGroups.${groupKey}`)}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
@@ -607,7 +608,7 @@ export function AppSidebar() {
                             isActive ? "font-semibold" : "font-medium"
                           } ${isDataRoute && !hasAccounts && !isActive ? "opacity-60" : ""}`}
                         >
-                          {item.title}
+                          {t(`nav.${item.key}`)}
                         </span>
                         {navBadge ? (
                           <NavCountBadge

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { m } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle, ListChecks, Loader2, PlayCircle, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ function matchesModuleFilter(module: string | null | undefined, filter: ModuleFi
  * operational lanes (To-do, In progress, Done) so the workflow stays obvious.
  */
 export default function TasksPage() {
+  const { t } = useTranslation("tasks");
   const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
@@ -478,12 +480,8 @@ export default function TasksPage() {
     >
       <PageHeader
         icon={ListChecks}
-        title="Uppgifter"
-        description={
-          isMobile
-            ? undefined
-            : "Lägg till snabbt, öppna kort för detaljer och dra mellan kolumner."
-        }
+        title={t("title")}
+        description={isMobile ? undefined : t("description")}
         actions={
           <>
             <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as ModuleFilter)}>
@@ -491,10 +489,10 @@ export default function TasksPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="general">Allmänt</SelectItem>
-                <SelectItem value="campaign">Kampanj</SelectItem>
-                <SelectItem value="pipeline">Pipeline</SelectItem>
-                <SelectItem value="all">Alla moduler</SelectItem>
+                <SelectItem value="general">{t("moduleGeneral")}</SelectItem>
+                <SelectItem value="campaign">{t("moduleCampaign")}</SelectItem>
+                <SelectItem value="pipeline">{t("modulePipeline")}</SelectItem>
+                <SelectItem value="all">{t("moduleAll")}</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -503,14 +501,14 @@ export default function TasksPage() {
               onClick={() => void refetch()}
               disabled={isFetching}
               className="h-8 w-8 shrink-0 p-0 text-muted-foreground sm:h-8 sm:w-auto sm:px-3"
-              aria-label="Uppdatera"
+              aria-label={t("refresh")}
             >
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
+              <span className="ml-1.5 hidden sm:inline">{t("refresh")}</span>
             </Button>
           </>
         }
@@ -519,21 +517,17 @@ export default function TasksPage() {
       {!isMobile ? (
         tasks.length === 0 ? (
           <PageSmartBar
-            title="Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
-            steps={[
-              "Skapa din första uppgift med formuläret",
-              "Filtrera på Idag eller Försenade när du triagerar",
-              "Dra kort mellan Att göra → Pågår → Klart",
-            ]}
-            tip="Automationer kan påminna om försenade uppgifter — se Automationer."
+            title={t("smartEmpty")}
+            steps={[t("step1"), t("step2"), t("step3")]}
+            tip={t("tip")}
           />
         ) : overdueCount > 0 || dueTodayCount > 0 ? (
           <PageSmartBar
-            title="Uppgifter"
+            title={t("title")}
             liveHintOverride={
               overdueCount > 0
-                ? `${overdueCount} försenade — filtrera på Försenade för att triagera.`
-                : `${dueTodayCount} förfaller idag.`
+                ? t("overdueHint", { count: overdueCount })
+                : t("dueTodayHint", { count: dueTodayCount })
             }
           />
         ) : null
@@ -541,12 +535,12 @@ export default function TasksPage() {
 
       <PageModeTabs
         value={quickFilter}
-        aria-label="Uppgiftsvy"
+        aria-label={t("viewAria")}
         onChange={setQuickFilter}
         options={[
-          { value: "today", label: "Idag", count: dueTodayCount },
-          { value: "overdue", label: "Försenade", count: overdueCount },
-          { value: "all", label: "Alla" },
+          { value: "today", label: t("today"), count: dueTodayCount },
+          { value: "overdue", label: t("overdue"), count: overdueCount },
+          { value: "all", label: t("all") },
         ]}
       />
 
@@ -555,9 +549,9 @@ export default function TasksPage() {
           compact
           tab="reports"
           focus="task-reminder"
-          title="Påminn automatiskt om försenade"
-          description="Uppgiftspåminnelse mailar dig om öppna deadlines — så du slipper jaga listan manuellt."
-          ctaLabel="Aktivera uppgifts-påminnelser"
+          title={t("remindTitle")}
+          description={t("remindDesc")}
+          ctaLabel={t("remindCta")}
         />
       ) : null}
 

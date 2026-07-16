@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Image as ImageIcon, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,13 @@ function AssetThumb({
   selected,
   onToggle,
   compact,
+  t,
 }: {
   asset: SelectedContentAsset;
   selected: boolean;
   onToggle: () => void;
   compact?: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const [failed, setFailed] = useState(false);
   const src = asset.thumbnailUrl || asset.previewUrl;
@@ -60,7 +63,7 @@ function AssetThumb({
       {!compact ? (
         <div className="p-2">
           <p className="truncate text-[11px] font-medium">{asset.name}</p>
-          <p className="text-[10px] text-muted-foreground">{selected ? "Selected" : "Click to select"}</p>
+          <p className="text-[10px] text-muted-foreground">{selected ? t("assetPicker.selected") : t("assetPicker.clickToSelect")}</p>
         </div>
       ) : (
         <span className="sr-only">{asset.name}</span>
@@ -86,6 +89,7 @@ export function ImageAssetPicker({
   imagesOnly?: boolean;
   maxVisibleSelected?: number;
 }) {
+  const { t } = useTranslation("content");
   const [query, setQuery] = useState("");
   const [folderVisible, setFolderVisible] = useState(PAGE_SIZE);
 
@@ -108,22 +112,22 @@ export function ImageAssetPicker({
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-foreground">Selected for Create</p>
+          <p className="text-xs font-medium text-foreground">{t("assetPicker.selectedForCreate")}</p>
           <div className="flex gap-1">
             {onOpenSelected ? (
               <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onOpenSelected}>
-                Open Selected
+                {t("assetPicker.openSelected")}
               </Button>
             ) : null}
             {onOpenBrowse ? (
               <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onOpenBrowse}>
-                Browse Drive
+                {t("assetPicker.browseDrive")}
               </Button>
             ) : null}
           </div>
         </div>
         {selectedImages.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No images in Selected yet. Mark files in Browse or add from History.</p>
+          <p className="text-xs text-muted-foreground">{t("assetPicker.noImages")}</p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {selectedImages.map((asset) => (
@@ -132,6 +136,7 @@ export function ImageAssetPicker({
                 asset={asset}
                 selected
                 compact
+                t={t}
                 onToggle={() => onToggle(asset, false)}
               />
             ))}
@@ -142,14 +147,14 @@ export function ImageAssetPicker({
       {folderAssets.length > 0 ? (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium text-foreground">Lägg till från denna mapp</p>
+            <p className="text-xs font-medium text-foreground">{t("assetPicker.addFromFolder")}</p>
             <Input
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setFolderVisible(PAGE_SIZE);
               }}
-              placeholder="Filter by name…"
+              placeholder={t("assetPicker.filterPlaceholder")}
               className="h-8 max-w-[180px] text-xs"
             />
           </div>
@@ -159,6 +164,7 @@ export function ImageAssetPicker({
                 key={assetKey(asset)}
                 asset={asset}
                 selected={selectedKeys.has(assetKey(asset))}
+                t={t}
                 onToggle={() => onToggle(asset, !selectedKeys.has(assetKey(asset)))}
               />
             ))}
@@ -172,7 +178,7 @@ export function ImageAssetPicker({
               onClick={() => setFolderVisible((n) => n + PAGE_SIZE)}
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Load {Math.min(PAGE_SIZE, filteredFolder.length - visibleFolder.length)} more
+              {t("assetPicker.loadMore", { count: Math.min(PAGE_SIZE, filteredFolder.length - visibleFolder.length) })}
             </Button>
           ) : null}
         </div>
@@ -180,12 +186,12 @@ export function ImageAssetPicker({
         <div className="flex flex-wrap gap-2">
           {onOpenSelected ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenSelected}>
-              Open Selected
+              {t("assetPicker.openSelected")}
             </Button>
           ) : null}
           {onOpenBrowse ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenBrowse}>
-              Browse Drive
+              {t("assetPicker.browseDrive")}
             </Button>
           ) : null}
         </div>

@@ -1,0 +1,113 @@
+{
+  "shared": {
+    "configurableCadence": "Configurable schedule"
+  },
+  "topics": {
+    "messages": {
+      "title": "Messages & inbox",
+      "description": "Automation that handles incoming conversations so you don’t reply to everything manually."
+    },
+    "content": {
+      "title": "Content & publishing",
+      "description": "Automation that publishes scheduled content on time without you pressing the button."
+    },
+    "reports": {
+      "title": "Reports & digests",
+      "description": "Summaries and alerts emailed automatically instead of you remembering to check."
+    },
+    "insights": {
+      "title": "AI & insights",
+      "description": "Background jobs that keep recommendations and KPIs fresh without manual refresh."
+    }
+  },
+  "entries": {
+    "dm-auto-reply": {
+      "title": "Auto-reply to DMs",
+      "description": "Reads unread conversations and writes replies — as drafts or sends directly.",
+      "explainer": "The job reads new DMs, writes a reply suggestion, and puts it in the Messages queue. In default mode nothing is sent until you press send. Auto-send needs an extra confirmation.",
+      "exampleDraft": "Hi! Thanks for reaching out — definitely interested. Send more about the setup and we’ll get back soon.",
+      "trustNote": "Draft before send by default — you approve before anything goes out."
+    },
+    "publish-scheduled-posts": {
+      "title": "Publish scheduled posts",
+      "description": "Sweeps every 15 minutes, retries failed posts once, and publishes what’s due."
+    },
+    "sales-outreach-auto": {
+      "title": "Automatic outreach",
+      "description": "Creates follow-up email drafts for due leads and quiet leads (10+ days without contact).",
+      "explainer": "When a lead is due or quiet too long, a follow-up draft is created in the Sales queue. You review, edit and send — the automation does not send on its own.",
+      "exampleDraft": "Hi! Just following up on our earlier chat — have you had a chance to look at the proposal?",
+      "trustNote": "Drafts in the queue only — no outreach sends without you."
+    },
+    "content-pipeline": {
+      "title": "Content pipeline",
+      "description": "Seeds repurpose/gap/evergreen ideas and moves queued posts into scheduled publishing."
+    },
+    "cart-recovery": {
+      "title": "Cart recovery",
+      "description": "Sends recovery emails to customers who left a Shopify cart (deduplicated)."
+    },
+    "review-reply-auto": {
+      "title": "Automatic review replies",
+      "description": "Creates reply drafts for new reviews and sends urgent mail at ≤2★ — you approve on Reviews.",
+      "explainer": "New reviews get a reply draft under Reviews. At ≤2★ you may get an urgent email — the reply itself publishes only when you approve.",
+      "exampleDraft": "Thanks for your feedback — we’re taking it internally and happy to follow up.",
+      "trustNote": "Drafts first — publishing requires your approval."
+    },
+    "mail-reply-auto": {
+      "title": "Automatic mail drafts",
+      "description": "Creates reply drafts for unread Gmail/Outlook mail — nothing sends until you approve in Messages.",
+      "explainer": "The job picks unread mail, writes a reply draft, and puts it in Messages. You can send, edit or discard — the automation never sends on its own.",
+      "exampleDraft": "Hi Anna! Thanks for your inquiry — absolutely, we have time. Suggest Tuesday or Thursday 10:00.",
+      "trustNote": "Draft before send — no mail goes out without you."
+    },
+    "marketing-actions": {
+      "title": "Marketing actions",
+      "description": "Automatically pauses Meta campaigns rated F/poor by analytics (Google flagged for manual review)."
+    },
+    "weekly-insight-digest": {
+      "title": "Weekly insight digest",
+      "description": "Monday email with ROAS trend, published posts and content tips when the social feed is active."
+    },
+    "engagement-followup": {
+      "title": "Engagement follow-up",
+      "description": "Emails when unread DMs pile up so you don’t miss purchase intent or questions."
+    },
+    "daily-digest": {
+      "title": "Daily digest",
+      "description": "Morning email every weekday with what needs doing."
+    },
+    "weekly-report": {
+      "title": "Weekly report",
+      "description": "Monday email summarizing last week."
+    },
+    "lead-reminder": {
+      "title": "Lead reminder",
+      "description": "Email when leads need follow-up today or are overdue."
+    },
+    "task-reminder": {
+      "title": "Task reminder",
+      "description": "Email with overdue and today’s tasks."
+    },
+    "marketing-alerts": {
+      "title": "Marketing alerts",
+      "description": "Email when ROAS drops below 1× or ads run against empty shelves."
+    },
+    "ai-recommendations-refresh": {
+      "title": "AI recommendations",
+      "description": "Refreshes recommendations from connections, tasks and content."
+    },
+    "marketing-snapshot": {
+      "title": "Marketing snapshot",
+      "description": "Saves today’s ad KPIs so the weekly trend on Marketing stays complete."
+    },
+    "social-stats-snapshot": {
+      "title": "Social stats snapshot",
+      "description": "Saves daily follower and engagement figures per account so Social can show trends, not just snapshots."
+    },
+    "market-pulse-snapshot": {
+      "title": "Market pulse snapshot",
+      "description": "Fetches LunarCrush sentiment every night so Home loads without a live MCP call."
+    }
+  }
+}

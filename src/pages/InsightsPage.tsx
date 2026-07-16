@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { m } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, BarChart3, Globe2, Megaphone, Share2, Star, Users } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,13 +26,6 @@ import { formatStatChange } from "@/features/social/socialStatsTrend";
 import { MarketingTrendChart, useMarketingTrend } from "@/features/marketing";
 import { CompaniesOverview, SiteAnalyticsSection, useTrackingSite } from "@/features/site-analytics";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const followerChartConfig: ChartConfig = {
-  followers: {
-    label: "Följare totalt",
-    color: "hsl(var(--info))",
-  },
-};
 
 const REVIEW_PLATFORMS = new Set(["google_reviews", "tripadvisor", "google_business"]);
 
@@ -73,6 +67,7 @@ function AccountRow({
   insight: AccountInsight;
   username: string | null;
 }) {
+  const { t } = useTranslation("insights");
   const isReview = REVIEW_PLATFORMS.has(insight.platform);
   const latest = insight.latest;
   const headline = isReview
@@ -84,9 +79,9 @@ function AccountRow({
       : "–";
   const sub = isReview
     ? latest?.reviewCount != null
-      ? `${formatNumber(latest.reviewCount)} recensioner`
+      ? t("social.reviewsCount", { count: latest.reviewCount })
       : ""
-    : "följare";
+    : t("social.followers");
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5">
       <div className="min-w-0">
@@ -150,11 +145,23 @@ function SectionHeading({
  * in the feature components; this page only composes.
  */
 export default function InsightsPage() {
+  const { t } = useTranslation("insights");
+  const { t: tCommon } = useTranslation("common");
   const isMobile = useIsMobile();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
   const { mode } = useWorkspaceMode();
+
+  const followerChartConfig = useMemo<ChartConfig>(
+    () => ({
+      followers: {
+        label: t("social.followersTotal"),
+        color: "hsl(var(--info))",
+      },
+    }),
+    [t]
+  );
 
   const { followerSeries, accounts, isLoading } = useSocialInsights(businessProfileId);
   const { snapshots: marketingSnapshots } = useMarketingTrend();
@@ -202,44 +209,32 @@ export default function InsightsPage() {
     <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="space-y-6 max-w-5xl w-full">
       <PageHeader
         icon={BarChart3}
-        title="Insikter"
-        description="Samlad bild av datan som tankas in från dina källor — som trender, inte ögonblicksbilder."
+        title={t("page.title")}
+        description={t("page.description")}
       />
 
       <PageSmartBar
-        title="Insikter samlar trender från alla kopplade källor — följare, marknadsföring och recensioner över tid."
+        title={t("smartBar.title")}
         steps={
           isMobile
-            ? [
-                "Koppla konton under Kopplingar om graferna är tomma",
-                "Vänta 1–2 dagar på dagliga snapshots från automationer",
-                "Tryck vidare till Socialt, Marknadsföring eller Recensioner för att agera",
-              ]
-            : [
-                "Koppla konton under Kopplingar om graferna är tomma",
-                "Vänta 1–2 dagar på dagliga snapshots från automationer",
-                "Klicka vidare till Socialt, Marknadsföring eller Recensioner för att agera på datan",
-              ]
+            ? [t("smartBar.step1"), t("smartBar.step2"), t("smartBar.step3Mobile")]
+            : [t("smartBar.step1"), t("smartBar.step2"), t("smartBar.step3Desktop")]
         }
-        tip="Webbplatsstatistik kräver att spårningsscriptet är installerat på din sajt."
-        liveHintOverride={
-          isEmpty
-            ? "Ingen trenddata ännu — koppla sociala konton eller installera spårning på webbplatsen."
-            : null
-        }
-        extraActions={isEmpty ? [{ label: "Öppna kopplingar", to: "/connections" }] : []}
+        tip={t("smartBar.tip")}
+        liveHintOverride={isEmpty ? t("smartBar.liveEmpty") : null}
+        extraActions={isEmpty ? [{ label: t("smartBar.openConnections"), to: "/connections" }] : []}
       />
 
       <PageModeTabs
         value={insightsTab}
-        aria-label="Insiktsflikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setInsightsTab}
         options={[
-          { value: "overview", label: "Översikt" },
-          { value: "social", label: "Socialt", count: socialAccounts.length },
-          { value: "marketing", label: "Marknadsföring" },
-          { value: "reviews", label: "Recensioner", count: reviewAccounts.length },
-          { value: "website", label: "Webb" },
+          { value: "overview", label: t("tabs.overview") },
+          { value: "social", label: t("tabs.social"), count: socialAccounts.length },
+          { value: "marketing", label: t("tabs.marketing") },
+          { value: "reviews", label: t("tabs.reviews"), count: reviewAccounts.length },
+          { value: "website", label: t("tabs.website") },
         ]}
       />
 
@@ -247,20 +242,20 @@ export default function InsightsPage() {
         {insightsTab === "overview" ? (
         <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Socialt</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("tabs.social")}</p>
             <p className="text-xs font-semibold tabular-nums">{socialAccounts.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Recensioner</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("tabs.reviews")}</p>
             <p className="text-xs font-semibold tabular-nums">{reviewAccounts.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Marknadsföring</p>
-            <p className="text-xs font-semibold tabular-nums">{hasMarketing ? "Ja" : "—"}</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("tabs.marketing")}</p>
+            <p className="text-xs font-semibold tabular-nums">{hasMarketing ? t("overview.yes") : "—"}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Webb</p>
-            <p className="text-xs font-semibold tabular-nums">{trackingSite?.siteKey ? "Ja" : "—"}</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("tabs.website")}</p>
+            <p className="text-xs font-semibold tabular-nums">{trackingSite?.siteKey ? t("overview.yes") : "—"}</p>
           </div>
         </div>
         ) : null}
@@ -268,10 +263,10 @@ export default function InsightsPage() {
       {insightsTab === "overview" ? <CompaniesOverview /> : null}
 
       {insightsTab === "website" && businessProfileId ? (
-        <section aria-label="Webbplats" className="space-y-2">
+        <section aria-label={t("website.sectionLabel")} className="space-y-2">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <Globe2 className="h-4 w-4 text-muted-foreground" aria-hidden />
-            Webbplats
+            {t("sections.website")}
           </h2>
           <SiteAnalyticsSection businessProfileId={businessProfileId} />
         </section>
@@ -281,34 +276,38 @@ export default function InsightsPage() {
         <Card className="border-dashed border-border bg-muted/10">
           <CardContent className="py-10 text-center space-y-2">
             <BarChart3 className="h-8 w-8 text-muted-foreground/40 mx-auto" aria-hidden />
-            <p className="text-sm text-muted-foreground">Ingen historik än.</p>
+            <p className="text-sm text-muted-foreground">{t("empty.noHistory")}</p>
             <p className="text-xs text-muted-foreground/80 max-w-sm mx-auto leading-relaxed">
-              Trender byggs upp av de dagliga snapshot-automationerna. Koppla konton under{" "}
+              {t("empty.historyBeforeConnections")}{" "}
               <Link to="/connections" className="text-primary underline underline-offset-2">
-                Kopplingar
+                {tCommon("nav.connections")}
               </Link>
-              , och kontrollera att snapshots körs under{" "}
+              {t("empty.historyBetween")}{" "}
               <Link to="/automations" className="text-primary underline underline-offset-2">
-                Automationer
+                {tCommon("nav.automations")}
               </Link>
-              . Sidan fylls på inom ett par dagar.
+              {t("empty.historyAfter")}
             </p>
           </CardContent>
         </Card>
       ) : null}
 
       {(insightsTab === "social") && (socialAccounts.length > 0 || followerSeries.length >= 2) ? (
-        <section aria-label="Socialt" className="space-y-2">
-          <SectionHeading icon={Share2} title="Socialt" to="/social-media" linkLabel="Socialt" />
+        <section aria-label={t("sections.social")} className="space-y-2">
+          <SectionHeading
+            icon={Share2}
+            title={t("sections.social")}
+            to="/social-media"
+            linkLabel={tCommon("nav.social-media")}
+          />
           <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Users className="h-4 w-4 text-info" aria-hidden />
-                Följare totalt
+                {t("social.followersTotal")}
               </CardTitle>
               <CardDescription className="text-xs">
-                Summerat över {socialAccounts.length} konto{socialAccounts.length === 1 ? "" : "n"} ·
-                dagliga snapshots
+                {t("social.accountSummary", { count: socialAccounts.length })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -354,7 +353,7 @@ export default function InsightsPage() {
                 </ChartContainer>
               ) : (
                 <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2.5">
-                  Följarkurvan visas när snapshot-automationen samlat minst två dagar för alla konton.
+                  {t("social.chartPending")}
                 </p>
               )}
               {socialAccounts.length > 0 ? (
@@ -374,8 +373,13 @@ export default function InsightsPage() {
       ) : null}
 
       {insightsTab === "marketing" && hasMarketing ? (
-        <section aria-label="Marknadsföring" className="space-y-2">
-          <SectionHeading icon={Megaphone} title="Marknadsföring & butik" to="/marketing" linkLabel="Marknadsföring" />
+        <section aria-label={t("tabs.marketing")} className="space-y-2">
+          <SectionHeading
+            icon={Megaphone}
+            title={t("sections.marketing")}
+            to="/marketing"
+            linkLabel={tCommon("nav.marketing")}
+          />
           {/* MarketingTrendChart draws its own framed box — no Card wrapper,
               a double border reads as a mistake. */}
           <MarketingTrendChart />
@@ -383,8 +387,13 @@ export default function InsightsPage() {
       ) : null}
 
       {insightsTab === "reviews" && reviewAccounts.length > 0 ? (
-        <section aria-label="Recensioner" className="space-y-2">
-          <SectionHeading icon={Star} title="Recensioner" to="/reviews" linkLabel="Recensioner" />
+        <section aria-label={t("sections.reviews")} className="space-y-2">
+          <SectionHeading
+            icon={Star}
+            title={t("sections.reviews")}
+            to="/reviews"
+            linkLabel={tCommon("nav.reviews")}
+          />
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {reviewAccounts.map((insight) => (
               <AccountRow
@@ -398,16 +407,16 @@ export default function InsightsPage() {
       ) : null}
 
       {insightsTab === "social" && socialAccounts.length === 0 && followerSeries.length < 2 ? (
-        <p className="text-sm text-muted-foreground">Ingen social trenddata ännu. Koppla konton under Kopplingar.</p>
+        <p className="text-sm text-muted-foreground">{t("social.emptyTab")}</p>
       ) : null}
       {insightsTab === "marketing" && !hasMarketing ? (
-        <p className="text-sm text-muted-foreground">Ingen marknadsföringsdata ännu. Koppla annonskonton under Marketing.</p>
+        <p className="text-sm text-muted-foreground">{t("marketing.emptyTab")}</p>
       ) : null}
       {insightsTab === "reviews" && reviewAccounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Inga recensionskonton med betyg ännu.</p>
+        <p className="text-sm text-muted-foreground">{t("reviews.emptyTab")}</p>
       ) : null}
       {insightsTab === "website" && !businessProfileId ? (
-        <p className="text-sm text-muted-foreground">Välj ett företag för att se webbplatsstatistik.</p>
+        <p className="text-sm text-muted-foreground">{t("website.emptyTab")}</p>
       ) : null}
       </div>
     </m.div>

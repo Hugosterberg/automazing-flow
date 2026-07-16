@@ -2,6 +2,7 @@ import type { TypedSupabaseClient } from "@/lib/supabase";
 import type { Tables, TablesUpdate } from "@/types/supabase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
+import { t } from "@/lib/i18n";
 
 export type AiRecommendationRow = Tables<"ai_recommendations">;
 export type AiRecommendationKind = AiRecommendationRow["kind"];
@@ -113,7 +114,9 @@ export async function generateAiRecommendations(
     // Body wasn't JSON — fall through to the status-based error below.
   }
   if (!res.ok) {
-    throw new Error(apiErrorMessage(body, `Kunde inte uppdatera rekommendationerna (${res.status}).`));
+    throw new Error(
+      apiErrorMessage(body, t("aiRecommendations:service.generateFailed", { status: res.status }))
+    );
   }
   const result = (body ?? {}) as GenerateAiRecommendationsResult;
   return {

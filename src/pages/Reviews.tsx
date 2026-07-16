@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,7 @@ function avatarColor(str: string): string {
 }
 
 export default function ReviewsPage() {
+  const { t } = useTranslation("reviews");
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { toast } = useToast();
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
@@ -562,16 +564,16 @@ export default function ReviewsPage() {
 
   const emptyTitle =
     replyFilter === "needs_reply" && needsReplyReviews.length === 0
-      ? "Inget kvar att svara på"
+      ? t("emptyAllHandled")
       : ratingFilter !== "all"
-        ? "Inga recensioner med det betyget"
-        : "Inga recensioner ännu";
+        ? t("emptyRating")
+        : t("emptyReviewsTitle");
   const emptyDescription =
     replyFilter === "needs_reply"
-      ? "Alla omdömen i den här vyn har redan svar."
+      ? t("emptyAllHandledDesc")
       : ratingFilter !== "all"
-        ? "Prova ett annat stjärnfilter eller visa alla betyg."
-        : "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar.";
+        ? t("emptyRatingDesc")
+        : t("emptyReviewsDesc");
 
   const isMobile = useIsMobile();
   const isStackedWorkspace = useStackedWorkspace();
@@ -598,13 +600,13 @@ export default function ReviewsPage() {
         <>
       <PageHeader
         icon={Star}
-        title="Recensioner"
+        title={t("title")}
         description={
           isMobile
-            ? "Tryck en recension för att läsa och svara."
+            ? t("descriptionMobile")
             : displayString(data?.profile?.name)
               ? `${displayString(data?.profile?.name)}${displayString(data?.profile?.location) ? ` · ${displayString(data?.profile?.location)}` : ""}`
-              : "Koppla Google Reviews eller Tripadvisor under Kopplingar för att komma igång"
+              : t("descriptionEmpty")
         }
         actions={
           activeAccount ? (
@@ -620,18 +622,14 @@ export default function ReviewsPage() {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
+              <span className="ml-1.5 hidden sm:inline">{t("refresh")}</span>
             </Button>
           ) : null
         }
       />
 
       <PageSmartBar
-        title={
-          isMobile
-            ? "Filtrera och tryck en recension — AI hjälper dig skriva svar."
-            : "Recensioner samlar kundfeedback — svara snabbt, håll koll på betyg och prioritera det som behöver svar."
-        }
+        title={isMobile ? t("smartMobile") : t("smartDesktop")}
         steps={
           isMobile
             ? reviewAccounts.length === 0
@@ -764,7 +762,7 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.4 }}>
           <EmptyState
             icon={Star}
-            title="Inget recensionskonto kopplat"
+            title={t("emptyAccountTitle")}
             description="Koppla Google Reviews eller Tripadvisor under Kopplingar — sedan synkas omdömen hit automatiskt."
             action={
               <Button asChild variant="outline" size="sm">
@@ -831,7 +829,7 @@ export default function ReviewsPage() {
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <EmptyState
             icon={MessageSquare}
-            title="Inga recensioner ännu"
+            title={t("emptyReviewsTitle")}
             description="Kontot returnerade inga omdömen. Uppdatera, eller kontrollera kopplingen under Kopplingar."
             action={
               <Button variant="outline" size="sm" onClick={() => void refresh()}>

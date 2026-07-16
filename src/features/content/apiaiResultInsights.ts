@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import type { ApiaiRunResult, ApiaiTool } from "./apiaiClient";
 
 export type PublishReadiness = {
@@ -14,7 +15,12 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function moderationInsight(data: Record<string, unknown>): PublishReadiness {
   const decision = String(data.decision || "").toLowerCase();
   if (decision === "allow") {
-    return { ok: true, severity: "ok", label: "Moderation passed", detail: "Image is allowed to publish." };
+    return {
+      ok: true,
+      severity: "ok",
+      label: t("content:insights.moderationPassed"),
+      detail: t("content:insights.moderationPassedDetail"),
+    };
   }
   if (decision === "review") {
     const reason = Array.isArray(data.reasons)
@@ -26,8 +32,8 @@ function moderationInsight(data: Record<string, unknown>): PublishReadiness {
     return {
       ok: false,
       severity: "warn",
-      label: "Needs review",
-      detail: reason || "Moderation flagged this image for human review before publishing.",
+      label: t("content:insights.needsReview"),
+      detail: reason || t("content:insights.needsReviewDetail"),
     };
   }
   const reason = Array.isArray(data.reasons)
@@ -39,8 +45,8 @@ function moderationInsight(data: Record<string, unknown>): PublishReadiness {
   return {
     ok: false,
     severity: "block",
-    label: "Moderation blocked",
-    detail: reason || "This image did not pass the moderation policy.",
+    label: t("content:insights.moderationBlocked"),
+    detail: reason || t("content:insights.moderationBlockedDetail"),
   };
 }
 
@@ -51,7 +57,7 @@ function qualityGateInsight(data: Record<string, unknown>): PublishReadiness {
     return {
       ok: true,
       severity: "ok",
-      label: "Quality check passed",
+      label: t("content:insights.qualityPassed"),
       detail: score != null ? `Score: ${score}` : undefined,
     };
   }
@@ -59,15 +65,15 @@ function qualityGateInsight(data: Record<string, unknown>): PublishReadiness {
     return {
       ok: false,
       severity: "warn",
-      label: "Quality check failed",
-      detail: String(data.explanation || data.reason || "Consider improving the asset before publishing."),
+      label: t("content:insights.qualityFailed"),
+      detail: String(data.explanation || data.reason || t("content:insights.qualityFailedDetail")),
     };
   }
   return {
     ok: true,
     severity: "ok",
-    label: "Quality check complete",
-    detail: "Review the JSON result before publishing.",
+    label: t("content:insights.qualityComplete"),
+    detail: t("content:insights.qualityCompleteDetail"),
   };
 }
 

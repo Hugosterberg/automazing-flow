@@ -21,6 +21,20 @@ export function registerMiscRoutes(app, deps: MiscRoutesDeps) {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  /**
+   * Country of the incoming request, used by the client to pick the default
+   * UI language (Swedish for SE, English otherwise). Vercel sets
+   * `x-vercel-ip-country` on every edge request; locally the header is
+   * absent and the client falls back to English.
+   */
+  app.get("/api/geo", (req, res) => {
+    const raw = req.headers["x-vercel-ip-country"];
+    const country = typeof raw === "string" && /^[A-Z]{2}$/.test(raw) ? raw : null;
+    // Cache per-visitor at the edge for a day; the client caches in localStorage anyway.
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.json({ country });
+  });
+
   app.get("/api/debug-env", (_req, res) => {
     res.json({
       envPath: path.resolve(envPath),

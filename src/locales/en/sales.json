@@ -1,0 +1,159 @@
+{
+  "filters": {
+    "backToSales": "Back to Sales",
+    "showFullSales": "Show full Sales",
+    "outreachQueueBanner": "Outreach queue — review drafts in split view.",
+    "followupsBanner": "Leads with follow-up today or overdue — split view."
+  },
+  "overview": {
+    "aiSuggestionsLabel": "AI suggestions for sales & outreach"
+  },
+  "actionHub": {
+    "title": "Next steps in Sales",
+    "description": "Leads, deals and outreach — clear shortcuts to what you do most.",
+    "showOverdue": "Show overdue",
+    "syncGoalsFromShopify": "Sync goals from Shopify",
+    "followUp": "Follow up ({{count}})",
+    "followUpHint": "Leads due today or overdue",
+    "newLead": "New lead",
+    "newLeadHint": "Register a prospect in CRM",
+    "newDeal": "New deal",
+    "newDealHint": "Add to the sales pipeline",
+    "leadSuggestions": "Lead suggestions",
+    "leadSuggestionsHint": "From your company profile",
+    "findProspects": "Find prospects",
+    "findProspectsHint": "AI brand discovery",
+    "createContent": "Create content",
+    "createContentHint": "Post or outreach copy",
+    "marketing": "Marketing",
+    "marketingHint": "Campaigns, ads and channels",
+    "activeLeads": "{{count}} active leads",
+    "inPipeline": "{{count}} in pipeline",
+    "shopifyOrders": "{{count}} orders (7d)",
+    "connectShopify": "Connect Shopify for revenue goals →"
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "description": "Move deals through each stage toward close.",
+    "newDeal": "New deal",
+    "empty": "No deals here yet",
+    "addDeal": "Add deal",
+    "fromLeads": "From leads",
+    "fillCompanyProfile": "Complete Company for better lead AI",
+    "editDealAria": "Edit deal",
+    "deleteAria": "Remove",
+    "moveForward": "Move forward",
+    "deadline": "Deadline: {{date}}",
+    "stages": {
+      "open": "Prospect",
+      "in_progress": "In dialogue",
+      "blocked": "Waiting",
+      "done": "Closed / Won"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "dialog": {
+      "title": "New deal in pipeline",
+      "companyLabel": "Company / contact name",
+      "companyPlaceholder": "Acme Inc.",
+      "notesLabel": "Notes (optional)",
+      "notesPlaceholder": "Contact, source, next step…",
+      "priority": "Priority",
+      "deadline": "Deadline (optional)",
+      "add": "Add"
+    }
+  },
+  "goals": {
+    "title": "Goals & KPIs",
+    "description": "Click Edit on a goal, or sync from Shopify when connected.",
+    "syncFromShopify": "Sync from Shopify",
+    "edit": "Edit",
+    "current": "Current",
+    "target": "Target",
+    "percentOf": "{{pct}}% of {{target}}",
+    "defaults": {
+      "g1": {
+        "title": "New customers this month",
+        "unit": "customers"
+      },
+      "g2": {
+        "title": "Revenue goal (SEK)",
+        "unit": "SEK"
+      },
+      "g3": {
+        "title": "Customer satisfaction (NPS)",
+        "unit": "points"
+      }
+    }
+  },
+  "playbook": {
+    "title": "Sales & marketing playbook",
+    "description": "AI ideas for pitch, outreach, objections, campaigns, channels and offers.",
+    "generate": "Generate ideas",
+    "emptyHint": "Click \"Generate ideas\" for {{mode}} tailored to your business.",
+    "sourceAi": "AI",
+    "sourceGeneric": "generic ideas",
+    "sourceLine": "Source: {{source}} · {{mode}} · {{count}} ideas",
+    "copySrOnly": "Copy",
+    "modes": {
+      "pitch-angles": {
+        "label": "Pitch",
+        "description": "Value propositions and elevator pitches that sell your offer."
+      },
+      "cold-outreach": {
+        "label": "Outreach",
+        "description": "Email and LinkedIn openers that start conversations."
+      },
+      "objections": {
+        "label": "Objections",
+        "description": "Responses when buyers hesitate on price, timing or fit."
+      },
+      "campaigns": {
+        "label": "Campaigns",
+        "description": "30–90 day marketing campaigns that drive sales."
+      },
+      "channels": {
+        "label": "Channels",
+        "description": "Where you should market and sell your products."
+      },
+      "promotions": {
+        "label": "Offers",
+        "description": "Offers, bundles and hooks that convert."
+      }
+    },
+    "actions": {
+      "draftOutreach": "Write outreach draft",
+      "planCampaign": "Plan campaign",
+      "useInContent": "Use in Content",
+      "storeOffers": "Store offers"
+    }
+  },
+  "automations": {
+    "leadReminderTitle": "Automate lead reminders",
+    "leadReminderDescription_one": "{{count}} lead needs follow-up. Lead reminders keep you updated without a manual checklist.",
+    "leadReminderDescription_other": "{{count}} leads need follow-up. Lead reminders keep you updated without a manual checklist.",
+    "leadReminderCta": "Enable lead reminders"
+  },
+  "discover": {
+    "targetAudience": "Buyers in {{location}}",
+    "mcpTitle": "MCP lead research",
+    "mcpDescription": "Company research and competitor analysis via Exa, Sprouts and Peec AI."
+  },
+  "toasts": {
+    "contentIdeaReady": "Idea is ready in Content — publish or save",
+    "leadStatusError": "Could not update lead status.",
+    "nextLead": "Next: {{company}}",
+    "shopifyConnect": "Connect Shopify and wait for data under Marketing or E-commerce.",
+    "goalsSynced": "Goals updated from Shopify (7 days)",
+    "addedAsLead": "Added as lead",
+    "addLeadError": "Could not add lead.",
+    "campaignIdeaSaved": "Idea saved — finish your campaign plan",
+    "playbookEmpty": "No ideas returned — try again.",
+    "playbookLoadError": "Could not load ideas.",
+    "copied": "Copied"
+  }
+}

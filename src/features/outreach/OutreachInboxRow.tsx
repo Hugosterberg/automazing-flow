@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Mail } from "lucide-react";
 import { SearchHighlight } from "@/features/messages/SearchHighlight";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,8 @@ export const OutreachInboxRow = forwardRef<HTMLButtonElement, Props>(function Ou
   { item, selected, formattedDate, fullDate, senderInitial, avatarClass, onSelect, searchQuery = "" },
   ref
 ) {
-  const snippet = (item.body || "Inget utkast").slice(0, 120);
+  const { t } = useTranslation("outreach");
+  const snippet = (item.body || t("inbox.noDraftSnippet")).slice(0, 120);
 
   return (
     <div className={cn("group relative", selected && "bg-primary/[0.07]")}>
@@ -76,7 +78,7 @@ export const OutreachInboxRow = forwardRef<HTMLButtonElement, Props>(function Ou
               {item.prospectEmail ? (
                 <SearchHighlight text={item.prospectEmail} query={searchQuery} />
               ) : (
-                "Ingen e-post"
+                t("labels.noEmail")
               )}
             </div>
           </div>

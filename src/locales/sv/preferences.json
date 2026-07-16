@@ -1,0 +1,30 @@
+{
+  "title": "Inställningar",
+  "description": "AI-status, plattformsnycklar och integrationshemligheter per profil.",
+  "smartBar": "Inställningar styr hur appen ansluter — AI, automationer och tredjepartsintegrationer.",
+  "step1": "Börja under Översikt för att se vad som saknas",
+  "step2": "Lägg till API-nycklar och testa anslutningarna",
+  "step3": "Justera AI- och automationspreferenser per profil",
+  "tip": "Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automationer — inte här.",
+  "keysMissing_one": "{{count}} nyckel saknas — fyll i under API-nycklar",
+  "keysMissing_other": "{{count}} nycklar saknas — fyll i under API-nycklar",
+  "secretStoreOff": "Hemlighetslagret är inte aktiverat på servern.",
+  "tabsAria": "Inställningsflikar",
+  "tabs": {
+    "overview": "Översikt",
+    "ai": "AI",
+    "apiKeys": "API-nycklar",
+    "team": "Team",
+    "navigation": "Genvägar",
+    "data": "Data",
+    "help": "Hjälp"
+  },
+  "features": {
+    "notifications": "Aviseringar",
+    "notificationsDesc": "Hantera påminnelser och varningar",
+    "appearance": "Utseende",
+    "appearanceDesc": "Tema och visuella inställningar",
+    "security": "Säkerhet",
+    "securityDesc": "Lösenord och tvåfaktorsautentisering"
+  }
+}

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Check, Copy, Eye, Globe2, Loader2, Users } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -17,22 +18,12 @@ import { formatNumber, formatShortDate } from "@/lib/format";
 import { buildTrackingSnippet } from "./siteAnalyticsService";
 import { useTrackingSite, useTrackingSummary } from "./useSiteAnalytics";
 
-const visitorsChartConfig: ChartConfig = {
-  pageviews: {
-    label: "Sidvisningar",
-    color: "hsl(var(--info))",
-  },
-  visitors: {
-    label: "Besökare",
-    color: "hsl(var(--success))",
-  },
-};
-
 function formatChartDate(iso: string): string {
   return formatShortDate(`${iso}T00:00:00`) || iso;
 }
 
 function SnippetBlock({ siteKey }: { siteKey: string }) {
+  const { t } = useTranslation("insights");
   const [copied, setCopied] = useState(false);
   const snippet = buildTrackingSnippet(siteKey);
 
@@ -42,25 +33,24 @@ function SnippetBlock({ siteKey }: { siteKey: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Kunde inte kopiera — markera och kopiera manuellt.");
+      toast.error(t("siteAnalytics.toasts.copyFailed"));
     }
   }
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-foreground">Spårningskod</p>
+        <p className="text-xs font-medium text-foreground">{t("siteAnalytics.snippetLabel")}</p>
         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => void copy()}>
           {copied ? <Check className="h-3 w-3 mr-1 text-success" /> : <Copy className="h-3 w-3 mr-1" />}
-          {copied ? "Kopierad" : "Kopiera"}
+          {copied ? t("siteAnalytics.copied") : t("siteAnalytics.copy")}
         </Button>
       </div>
       <pre className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-[11px] overflow-x-auto whitespace-pre-wrap break-all">
         {snippet}
       </pre>
       <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-        Klistra in före <code>&lt;/head&gt;</code> på din webbplats. Spårningen är cookiefri och
-        lagrar aldrig IP eller user-agent — besökare räknas via en hash som roterar varje dygn.
+        {t("siteAnalytics.snippetHint")}
       </p>
     </div>
   );
@@ -97,22 +87,43 @@ function TopList({ title, rows }: { title: string; rows: Array<{ label: string; 
  * beacons start arriving. Hidden entirely without an active business profile.
  */
 export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId: string | null }) {
+  const { t } = useTranslation("insights");
   const { site, isLoading: siteLoading, create, isCreating } = useTrackingSite(businessProfileId);
   const { summary } = useTrackingSummary(site?.siteKey ? businessProfileId : null, 30);
   const [snippetOpen, setSnippetOpen] = useState(false);
+
+  const visitorsChartConfig = useMemo<ChartConfig>(
+    () => ({
+      pageviews: {
+        label: t("siteAnalytics.chart.pageviews"),
+        color: "hsl(var(--info))",
+      },
+      visitors: {
+        label: t("siteAnalytics.chart.visitors"),
+        color: "hsl(var(--success))",
+      },
+    }),
+    [t]
+  );
 
   if (!businessProfileId || siteLoading) return null;
 
   async function activate() {
     try {
       await create({});
-      toast.success("Besöksspårning aktiverad — klistra in koden på din webbplats.");
+      toast.success(t("siteAnalytics.toasts.activated"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte aktivera besöksspårning.");
+      toast.error(e instanceof Error ? e.message : t("siteAnalytics.toasts.activateFailed"));
     }
   }
 
   const hasData = (summary?.totals.pageviews ?? 0) > 0;
+
+  function deviceLabel(device: string): string {
+    if (device === "mobile") return t("siteAnalytics.devices.mobile");
+    if (device === "tablet") return t("siteAnalytics.devices.tablet");
+    return t("siteAnalytics.devices.desktop");
+  }
 
   return (
     <Card className="border-border">
@@ -121,12 +132,16 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Globe2 className="h-4 w-4 text-info" aria-hidden />
-              Besökare på webbplatsen
+              {t("siteAnalytics.title")}
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
               {hasData && summary
-                ? `${formatNumber(summary.totals.visitors)} besökare · ${formatNumber(summary.totals.pageviews)} sidvisningar senaste ${summary.windowDays} dagarna`
-                : "Cookiefri, egenhostad spårning — inga externa verktyg."}
+                ? t("siteAnalytics.summary", {
+                    visitors: formatNumber(summary.totals.visitors),
+                    pageviews: formatNumber(summary.totals.pageviews),
+                    days: summary.windowDays,
+                  })
+                : t("siteAnalytics.descriptionEmpty")}
             </CardDescription>
           </div>
           {site?.siteKey ? (
@@ -137,7 +152,7 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
               className="h-7 px-2 text-[11px] text-muted-foreground"
               onClick={() => setSnippetOpen((v) => !v)}
             >
-              {snippetOpen ? "Dölj spårningskod" : "Visa spårningskod"}
+              {snippetOpen ? t("siteAnalytics.hideSnippet") : t("siteAnalytics.showSnippet")}
             </Button>
           ) : null}
         </div>
@@ -147,15 +162,14 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
           <div className="rounded-lg border border-dashed border-border/80 bg-muted/10 px-4 py-6 text-center space-y-3">
             <Eye className="h-8 w-8 text-muted-foreground/40 mx-auto" aria-hidden />
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Ingen besöksspårning ännu.</p>
+              <p className="text-sm text-muted-foreground">{t("siteAnalytics.noTracking")}</p>
               <p className="text-xs text-muted-foreground/80 max-w-sm mx-auto leading-relaxed">
-                Aktivera för att få en spårningskod att lägga på företagets webbplats — besökare,
-                sidvisningar, toppsidor och trafikkällor hamnar här.
+                {t("siteAnalytics.activateHint")}
               </p>
             </div>
             <Button type="button" size="sm" disabled={isCreating} onClick={() => void activate()}>
               {isCreating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-              Aktivera besöksspårning
+              {t("siteAnalytics.activate")}
             </Button>
           </div>
         ) : (
@@ -206,11 +220,11 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
 
                 <div className={cn("grid gap-4", summary.topReferrers.length > 0 ? "sm:grid-cols-2" : "grid-cols-1")}>
                   <TopList
-                    title="Toppsidor"
+                    title={t("siteAnalytics.topPages")}
                     rows={summary.topPages.map((p) => ({ label: p.path, count: p.pageviews }))}
                   />
                   <TopList
-                    title="Trafikkällor"
+                    title={t("siteAnalytics.topReferrers")}
                     rows={summary.topReferrers.map((r) => ({ label: r.host, count: r.pageviews }))}
                   />
                 </div>
@@ -220,8 +234,7 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
                     <Users className="h-3 w-3" aria-hidden />
                     {summary.devices
                       .map((d) => {
-                        const label =
-                          d.device === "mobile" ? "Mobil" : d.device === "tablet" ? "Surfplatta" : "Desktop";
+                        const label = deviceLabel(d.device);
                         return `${label} ${Math.round((d.pageviews / Math.max(1, summary.totals.pageviews)) * 100)}%`;
                       })
                       .join(" · ")}
@@ -230,7 +243,7 @@ export function SiteAnalyticsSection({ businessProfileId }: { businessProfileId:
               </>
             ) : (
               <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2.5">
-                Väntar på första besöket — statistiken dyker upp här så fort koden ligger på webbplatsen.
+                {t("siteAnalytics.waitingForVisit")}
               </p>
             )}
           </>

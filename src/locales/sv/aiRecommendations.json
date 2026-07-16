@@ -1,0 +1,99 @@
+{
+  "actions": {
+    "reload": "Ladda om",
+    "reloadListTitle": "Ladda om listan",
+    "generate": "Generera",
+    "generateTitle": "Kör om heuristikproducenten",
+    "openCompany": "Öppna Företag",
+    "openConnections": "Öppna Kopplingar",
+    "showActive": "Visa aktiva"
+  },
+  "noProfile": {
+    "description": "Välj en företagsprofil under Företag för att se AI-rekommendationer."
+  },
+  "errors": {
+    "loadFailed": "Kunde inte ladda rekommendationer.",
+    "unknown": "Okänt fel"
+  },
+  "tabs": {
+    "ariaLabel": "Rekommendationsflikar",
+    "active": "Aktiva",
+    "accepted": "Accepterade",
+    "dismissed": "Avvisade"
+  },
+  "filter": {
+    "placeholder": "Typ",
+    "allKinds": "Alla typer"
+  },
+  "kinds": {
+    "content": "Innehåll",
+    "outreach": "Outreach",
+    "engagement": "Engagemang",
+    "maintenance": "Underhåll",
+    "insight": "Insikt"
+  },
+  "status": {
+    "new": "Ny",
+    "accepted": "Accepterad",
+    "dismissed": "Avvisad"
+  },
+  "card": {
+    "confidence": "{{percent}} konfidens",
+    "whySummary": "Varför det här förslaget?",
+    "created": "Skapad {{time}}",
+    "markSeen": "Markera som sedd",
+    "dismiss": "Avvisa",
+    "accept": "Acceptera"
+  },
+  "empty": {
+    "noMatchesTitle": "Inga träffar",
+    "noMatchesDescription": "Inga rekommendationer matchar den valda typen.",
+    "activeTitle": "Inga aktiva rekommendationer",
+    "activeWithConnections": "Klicka Generera för att analysera kopplingar, uppgifter och innehåll efter nya förslag.",
+    "activeNoConnections": "Koppla konton under Kopplingar och fyll i Företag — sedan kan Generera ge meningsfulla förslag.",
+    "acceptedTitle": "Inget accepterat ännu",
+    "acceptedDescription": "Rekommendationer du accepterar hamnar här så du kan hitta dem senare.",
+    "dismissedTitle": "Inga avvisade rekommendationer",
+    "dismissedDescription": "Det du avvisar sparas här. Gå tillbaka till Aktiva om du vill granska nya förslag."
+  },
+  "mcp": {
+    "optional": "MCP-kontext (valfritt)",
+    "title": "MCP-kontext",
+    "description": "Hämta live-kontext från Era MCP för att berika rekommendationer."
+  },
+  "toasts": {
+    "acceptFailed": "Kunde inte acceptera rekommendationen",
+    "dismissFailed": "Kunde inte avfärda rekommendationen",
+    "updateFailed": "Kunde inte uppdatera rekommendationen",
+    "generateFailed": "Kunde inte uppdatera rekommendationerna",
+    "generateUpdated": "Rekommendationer uppdaterade",
+    "generateCreated": "{{count}} nya",
+    "generateExpired": "{{count}} lösta",
+    "generateAlreadyUpToDate": "redan uppdaterat",
+    "checksPartialFailure": "Vissa kontroller fick problem",
+    "llmSkippedProvider": "Innehållsförslag hoppades över",
+    "llmNotConfiguredTitle": "Innehållsförslag är inte konfigurerade",
+    "llmNotConfiguredDescription": "Sätt OPENAI_API_KEY för att aktivera AI-genererade inläggsidéer.",
+    "llmCachedTitle": "Använder senaste innehållsförslagen",
+    "llmCachedDescription": "Vi återanvände förra omgången AI-idéer för att spara tokens. Försök igen om en minut för nya förslag."
+  },
+  "strip": {
+    "defaultLabel": "AI-förslag för den här sidan",
+    "viewAll": "Alla",
+    "moreSuggestions": "+{{count}} fler förslag"
+  },
+  "widget": {
+    "title": "AI-rekommendationer",
+    "active": "{{count}} aktiva",
+    "viewAll": "Visa alla",
+    "loading": "Laddar…",
+    "emptyPrefix": "Inga aktiva förslag ännu.",
+    "generate": "Generera rekommendationer",
+    "checked": "· kontrollerat {{time}}",
+    "more": "+{{count}} till",
+    "updated": "Uppdaterad {{time}}"
+  },
+  "service": {
+    "generateFailed": "Kunde inte uppdatera rekommendationerna ({{status}})."
+  }
+}

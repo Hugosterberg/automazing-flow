@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildShortcutSections,
   goTargetForKey,
   isPlainLetterShortcut,
   matchesKey,
 } from "./keyboardShortcuts";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 describe("keyboardShortcuts", () => {
   it("matchesKey is case-insensitive", () => {

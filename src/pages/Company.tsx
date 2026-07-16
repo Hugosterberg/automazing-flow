@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { AlertTriangle, Building2, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ function websiteHostname(url: string | null) {
 }
 
 export default function CompanyPage() {
+  const { t } = useTranslation("pages");
   const activeBpId = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBpId ?? null;
   const { profiles, updateProfile, isUpdating } = useBusinessProfiles();
@@ -126,23 +128,22 @@ export default function CompanyPage() {
     <m.div {...pageFadeUp} className="space-y-6 max-w-3xl pb-8">
       <PageHeader
         icon={Building2}
-        title="Företag"
-        description="Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara."
+        title={t("company.title")}
+        description={t("company.description")}
       />
 
       <PageSmartBar
-        title="Bolagsprofilen är grunden — AI använder den för leads, outreach och innehållsförslag."
-        steps={[
-          "Fyll i automatiskt med org.nr eller börja manuellt",
-          "Komplettera beskrivning och målgrupp — det påverkar AI mest",
-          "Spara så att Sales och Content får bättre förslag direkt",
-        ]}
-        tip="Börja med beskrivning (vad ni säljer och till vem), sedan webb och org.nr. Org.nr kan fyllas i automatiskt via uppslag."
+        title={t("company.smartBar")}
+        steps={[t("company.step1"), t("company.step2"), t("company.step3")]}
+        tip={t("company.tip")}
         liveHintOverride={
           profile && completeness.percent < 100
-            ? `Profilen är ${completeness.percent}% klar — saknas: ${completeness.priorities.map((f) => f.label).join(", ")}`
+            ? t("company.liveIncomplete", {
+                percent: completeness.percent,
+                missing: completeness.priorities.map((f) => f.label).join(", "),
+              })
             : profile
-              ? "Profilen ser komplett ut — AI kan ge full träffsäkerhet."
+              ? t("company.liveComplete")
               : null
         }
       />

@@ -1,15 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Compass, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-    document.title = "Page not found · Automazing";
-  }, [location.pathname]);
+    document.title = t("notFound.documentTitle");
+  }, [location.pathname, t]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-8">
@@ -20,15 +22,13 @@ const NotFound = () => {
         <div className="space-y-1">
           <h1 className="text-3xl font-bold">404</h1>
           <p className="text-sm text-muted-foreground">
-            Sidan{" "}
-            <span className="font-mono text-foreground break-all">{location.pathname}</span>{" "}
-            finns inte.
+            {t("notFound.description", { path: location.pathname })}
           </p>
         </div>
         <Button asChild className="mx-auto">
           <Link to="/">
             <ArrowLeft className="h-4 w-4 mr-2" aria-hidden />
-            Till startsidan
+            {t("notFound.backHome")}
           </Link>
         </Button>
       </div>

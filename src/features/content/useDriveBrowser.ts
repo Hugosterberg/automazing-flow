@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AccountPlatform, ConnectedAccount } from "@/types/accounts";
 import { apiUrl } from "@/lib/apiBase";
+import { t } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/apiError";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
@@ -110,14 +111,14 @@ export function useDriveBrowser({
         }
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
-          throw new Error(apiErrorMessage(payload, "Kunde inte hämta innehåll från Google Drive."));
+          throw new Error(apiErrorMessage(payload, t("content:drive.fetchFailed")));
         }
         const data = await res.json();
         if (driveRequestIdRef.current !== reqId) return;
         setProviderData(data);
       } catch (e) {
         if (driveRequestIdRef.current !== reqId) return;
-        setError(e instanceof Error ? e.message : "Anropet misslyckades");
+        setError(e instanceof Error ? e.message : t("content:drive.requestFailed"));
       } finally {
         if (driveRequestIdRef.current === reqId) setLoading(false);
       }

@@ -1,17 +1,20 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Compass } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  MARKETING_PATH_GROUPS,
-  MARKETING_PATH_KIND_LABELS,
-  MARKETING_PATHS,
-  type MarketingPath,
-} from "./marketingPaths";
+import { MARKETING_PATH_GROUPS, MARKETING_PATHS, type MarketingPath } from "./marketingPaths";
 import { cn } from "@/lib/utils";
 
-function PathCard({ path, statusLabel }: { path: MarketingPath; statusLabel?: string | null }) {
+function PathCard({
+  path,
+  statusLabel,
+}: {
+  path: MarketingPath;
+  statusLabel?: string | null;
+}) {
+  const { t } = useTranslation("marketing");
   const Icon = path.icon;
 
   return (
@@ -23,9 +26,9 @@ function PathCard({ path, statusLabel }: { path: MarketingPath; statusLabel?: st
               <Icon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <CardTitle className="text-sm leading-snug">{path.title}</CardTitle>
+              <CardTitle className="text-sm leading-snug">{t(`paths.${path.id}.title`)}</CardTitle>
               <Badge variant="outline" className="mt-1 text-[10px] capitalize">
-                {MARKETING_PATH_KIND_LABELS[path.kind]}
+                {t(`pathKinds.${path.kind}`)}
               </Badge>
               {statusLabel ? (
                 <Badge variant="secondary" className="mt-1 ml-1 text-[10px]">
@@ -35,19 +38,24 @@ function PathCard({ path, statusLabel }: { path: MarketingPath; statusLabel?: st
             </div>
           </div>
         </div>
-        <CardDescription className="text-xs leading-relaxed pt-1">{path.description}</CardDescription>
+        <CardDescription className="text-xs leading-relaxed pt-1">
+          {t(`paths.${path.id}.description`)}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         <ul className="space-y-1">
-          {path.actions.map((action) => (
-            <li key={action} className="text-[11px] text-muted-foreground before:mr-1.5 before:content-['•']">
-              {action}
+          {path.actionKeys.map((actionKey) => (
+            <li
+              key={actionKey}
+              className="text-[11px] text-muted-foreground before:mr-1.5 before:content-['•']"
+            >
+              {t(`paths.${path.id}.actions.${actionKey}`)}
             </li>
           ))}
         </ul>
         <Button asChild size="sm" variant="outline" className="h-8 w-full gap-1.5 text-xs">
           <Link to={path.href}>
-            {path.href.startsWith("/marketing") ? "Öppna här" : "Öppna"}
+            {path.href.startsWith("/marketing") ? t("pathsHub.openHere") : t("pathsHub.open")}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Button>
@@ -65,17 +73,16 @@ export function MarketingPathsHub({
 }: {
   pathStatus?: Partial<Record<string, string>>;
 }) {
+  const { t } = useTranslation("marketing");
+
   return (
     <Card className="border-border">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Compass className="h-4 w-4 text-primary" />
-          Marknadsvägar
+          {t("pathsHub.title")}
         </CardTitle>
-        <CardDescription className="max-w-3xl">
-          Flera sätt att nå kunder — välj en väg för betald annonsering, organiskt innehåll, e-post, e-handel,
-          lokala recensioner eller partnerskap. Du behöver inte alla kanaler; börja med en eller två som passar.
-        </CardDescription>
+        <CardDescription className="max-w-3xl">{t("pathsHub.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {MARKETING_PATH_GROUPS.map((group) => {
@@ -83,8 +90,8 @@ export function MarketingPathsHub({
           return (
             <section key={group.kind} className="space-y-3">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                <p className="text-xs text-muted-foreground">{group.description}</p>
+                <h3 className="text-sm font-semibold text-foreground">{t(`pathGroups.${group.kind}.title`)}</h3>
+                <p className="text-xs text-muted-foreground">{t(`pathGroups.${group.kind}.description`)}</p>
               </div>
               <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3")}>
                 {paths.map((path) => (

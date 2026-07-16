@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   ChevronLeft,
@@ -87,6 +88,7 @@ const emptyEventForm = (): CalendarEventFormValues => ({
 });
 
 export default function CalendarPage() {
+  const { t } = useTranslation("pages");
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
@@ -452,8 +454,8 @@ export default function CalendarPage() {
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
         icon={CalendarDays}
-        title="Kalender"
-        description="Planera och schemalägg händelser från uppgifter, leads och kopplade kalendrar."
+        title={t("calendar.title")}
+        description={t("calendar.description")}
         actions={
           <Button onClick={openDialog}>
             <Plus className="h-4 w-4 mr-2" />
@@ -463,16 +465,12 @@ export default function CalendarPage() {
       />
 
       <PageSmartBar
-        title="Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde."
-        steps={[
-          "Koppla Google eller Outlook-kalender för synk",
-          "Växla dag/vecka/månad och öppna en dag för detaljer",
-          "Skapa egna händelser eller följ upp från Uppgifter och Sales",
-        ]}
-        tip="Uppgifter och leads med datum syns automatiskt i vyn."
+        title={t("calendar.smartBar")}
+        steps={[t("calendar.step1"), t("calendar.step2"), t("calendar.step3")]}
+        tip={t("calendar.tip")}
         liveHintOverride={
           smartSuggestions.length > 0
-            ? `${smartSuggestions.length} uppgift${smartSuggestions.length === 1 ? "" : "er"} eller lead${smartSuggestions.length === 1 ? "" : "s"} förfaller idag — lägg till i kalendern`
+            ? t("calendar.liveDue", { count: smartSuggestions.length })
             : null
         }
       />

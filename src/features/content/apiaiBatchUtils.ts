@@ -1,9 +1,11 @@
+import { t } from "@/lib/i18n";
+
 export function batchStatusLabel(status: string): string {
   const value = status.toLowerCase();
-  if (value.includes("complete")) return "Klar";
-  if (value.includes("run") || value.includes("process")) return "Körs";
-  if (value.includes("cancel")) return "Avbruten";
-  if (value.includes("fail")) return "Misslyckad";
+  if (value.includes("complete")) return t("content:batch.status.complete");
+  if (value.includes("run") || value.includes("process")) return t("content:batch.status.running");
+  if (value.includes("cancel")) return t("content:batch.status.cancelled");
+  if (value.includes("fail")) return t("content:batch.status.failed");
   return status;
 }
 

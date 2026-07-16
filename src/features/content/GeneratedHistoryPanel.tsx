@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, FolderPlus, History, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,23 +27,17 @@ import { assetSelectionKey } from "@/lib/contentSelection";
 
 type SourceFilter = "all" | GeneratedContentItem["source"];
 
-function sourceLabel(source: GeneratedContentItem["source"]) {
-  if (source === "apiai") return "apiai.me";
-  if (source === "openai") return "OpenAI";
-  if (source === "canva") return "Canva";
-  if (source === "upload") return "Upload";
+function sourceLabel(source: GeneratedContentItem["source"], t: (key: string) => string) {
+  if (source === "apiai") return t("sources.apiai");
+  if (source === "openai") return t("sources.openai");
+  if (source === "canva") return t("sources.canva");
+  if (source === "upload") return t("sources.upload");
   return source;
 }
 
-const FILTER_OPTIONS: { id: SourceFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "apiai", label: "apiai.me" },
-  { id: "openai", label: "OpenAI" },
-  { id: "canva", label: "Canva" },
-  { id: "upload", label: "Upload" },
-];
+const FILTER_IDS: SourceFilter[] = ["all", "apiai", "openai", "canva", "upload"];
 
-function HistoryThumbnail({ item, src }: { item: GeneratedContentItem; src: string }) {
+function HistoryThumbnail({ item, src, t }: { item: GeneratedContentItem; src: string; t: (key: string) => string }) {
   const [failed, setFailed] = useState(false);
   const expired = isLikelyExpiredMedia(item);
 
@@ -50,7 +45,7 @@ function HistoryThumbnail({ item, src }: { item: GeneratedContentItem; src: stri
     return (
       <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground p-2 text-center">
         <ImageIcon className="h-8 w-8 opacity-60" />
-        <p className="text-[10px]">{expired ? "Preview expired" : "Preview unavailable"}</p>
+        <p className="text-[10px]">{expired ? t("history.previewExpired") : t("history.previewUnavailable")}</p>
       </div>
     );
   }
@@ -83,6 +78,7 @@ export function GeneratedHistoryPanel({
   onRemove: (id: string) => void;
   onClear: () => void;
 }) {
+  const { t } = useTranslation("content");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
@@ -103,7 +99,7 @@ export function GeneratedHistoryPanel({
       <Card className="border-border border-dashed">
         <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading history…
+          {t("history.loading")}
         </CardContent>
       </Card>
     );
@@ -115,7 +111,7 @@ export function GeneratedHistoryPanel({
         <CardContent className="py-10 text-center space-y-2">
           <History className="h-8 w-8 mx-auto text-muted-foreground/60" />
           <p className="text-sm text-muted-foreground">
-            Generated images and videos appear here automatically — download or add them to Selected anytime.
+            {t("history.empty")}
           </p>
         </CardContent>
       </Card>
@@ -126,7 +122,7 @@ export function GeneratedHistoryPanel({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {items.length} saved generation{items.length === 1 ? "" : "s"} · stored for 30 days on the server
+          {t("history.savedCount", { count: items.length })}
         </p>
         <div className="flex flex-wrap gap-2">
           {onAddAllToSelection && notYetSelected.length > 0 ? (
@@ -139,31 +135,31 @@ export function GeneratedHistoryPanel({
               }
             >
               <FolderPlus className="h-3.5 w-3.5 mr-1.5" />
-              Add all to Selected ({notYetSelected.length})
+              {t("history.addAll", { count: notYetSelected.length })}
             </Button>
           ) : null}
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="ghost" size="sm">
-                Rensa historik
+                {t("history.clear")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Rensa genereringshistorik?</AlertDialogTitle>
+                <AlertDialogTitle>{t("history.clearTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Detta tar bort listan från din profil. Serverfiler kan finnas kvar tills de löper ut.
+                  {t("history.clearDescription")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogCancel>{t("history.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     onClear();
                     setConfirmOpen(false);
                   }}
                 >
-                  Rensa
+                  {t("history.confirmClear")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -172,16 +168,16 @@ export function GeneratedHistoryPanel({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {FILTER_OPTIONS.map((option) => (
+        {FILTER_IDS.map((id) => (
           <Button
-            key={option.id}
+            key={id}
             type="button"
             size="sm"
-            variant={sourceFilter === option.id ? "default" : "outline"}
+            variant={sourceFilter === id ? "default" : "outline"}
             className="h-7 text-xs"
-            onClick={() => setSourceFilter(option.id)}
+            onClick={() => setSourceFilter(id)}
           >
-            {option.label}
+            {id === "all" ? t("sourceFilters.all") : t(`sources.${id}`)}
           </Button>
         ))}
       </div>
@@ -196,14 +192,14 @@ export function GeneratedHistoryPanel({
             <Card key={item.id} className="overflow-hidden border-border">
               <div className="aspect-square bg-muted/30 relative">
                 {item.kind === "image" ? (
-                  <HistoryThumbnail item={item} src={thumbnailUrl} />
+                  <HistoryThumbnail item={item} src={thumbnailUrl} t={t} />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-8 w-8" />
                   </div>
                 )}
                 <Badge variant="secondary" className="absolute top-2 left-2 text-[10px]">
-                  {sourceLabel(item.source)}
+                  {sourceLabel(item.source, t)}
                 </Badge>
               </div>
               <CardHeader className="p-3 pb-1">
@@ -216,7 +212,7 @@ export function GeneratedHistoryPanel({
               <CardContent className="p-3 pt-0 space-y-2">
                 {expired ? (
                   <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                    Link may have expired — re-generate if download fails.
+                    {t("history.linkExpired")}
                   </p>
                 ) : null}
                 <div className="flex flex-wrap gap-1">
@@ -229,12 +225,12 @@ export function GeneratedHistoryPanel({
                     onClick={() => onAddToSelection(generatedItemToAsset(item))}
                   >
                     <FolderPlus className="h-3 w-3 mr-1" />
-                    {alreadySelected ? "In Selected" : "Add to Selected"}
+                    {alreadySelected ? t("history.inSelected") : t("history.addToSelected")}
                   </Button>
                   <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[11px]">
                     <a href={downloadUrl} download={item.name} target="_blank" rel="noopener noreferrer">
                       <Download className="h-3 w-3 mr-1" />
-                      Save
+                      {t("history.save")}
                     </a>
                   </Button>
                   <Button
@@ -245,7 +241,7 @@ export function GeneratedHistoryPanel({
                     onClick={() => onRemove(item.id)}
                   >
                     <Trash2 className="h-3 w-3" />
-                    <span className="sr-only">Ta bort</span>
+                    <span className="sr-only">{t("history.remove")}</span>
                   </Button>
                 </div>
               </CardContent>
@@ -255,7 +251,7 @@ export function GeneratedHistoryPanel({
       </div>
 
       {filteredItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">No items match this filter.</p>
+        <p className="text-sm text-muted-foreground text-center py-4">{t("history.noFilterMatch")}</p>
       ) : null}
     </div>
   );

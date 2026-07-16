@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ChevronLeft, ChevronRight, Copy, ExternalLink, Info, Mail, Trash2 } from "lucide-react";
 import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export function OutreachDetailPanel({
   mailtoHref,
   navigation,
 }: Props) {
+  const { t } = useTranslation("outreach");
   const isStackedWorkspace = useStackedWorkspace();
 
   return (
@@ -55,19 +57,23 @@ export function OutreachDetailPanel({
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              {isStackedWorkspace ? <span>Kön</span> : <span className="sr-only">Tillbaka till listan</span>}
+              {isStackedWorkspace ? (
+                <span>{t("detail.backQueue")}</span>
+              ) : (
+                <span className="sr-only">{t("detail.backList")}</span>
+              )}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">
             <h2 className="text-base font-semibold leading-snug tracking-tight sm:text-lg">{item.leadName}</h2>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="secondary" className="h-5 text-[10px]">
-                Utkast
+                {t("labels.draft")}
               </Badge>
               {item.prospectEmail ? (
                 <span className="truncate">{item.prospectEmail}</span>
               ) : (
-                <span className="text-warning">Ingen e-post — kopiera manuellt</span>
+                <span className="text-warning">{t("labels.noEmailManual")}</span>
               )}
               <span aria-hidden>·</span>
               <time dateTime={item.createdAt} title={formatFullDate(item.createdAt)}>
@@ -77,13 +83,29 @@ export function OutreachDetailPanel({
           </div>
           {navigation ? (
             <div className="flex shrink-0 items-center gap-1">
-              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasPrev} onClick={navigation.onPrev} aria-label="Föregående utkast">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={!navigation.hasPrev}
+                onClick={navigation.onPrev}
+                aria-label={t("detail.prev")}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="min-w-[3rem] text-center text-[11px] tabular-nums text-muted-foreground">
                 {navigation.index + 1}/{navigation.total}
               </span>
-              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasNext} onClick={navigation.onNext} aria-label="Nästa utkast">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={!navigation.hasNext}
+                onClick={navigation.onNext}
+                aria-label={t("detail.next")}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -95,12 +117,16 @@ export function OutreachDetailPanel({
         <div className="w-full space-y-4">
           {item.subject ? (
             <div className="message-reading-card px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Ämnesrad</p>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("labels.subjectLine")}
+              </p>
               <p className="mt-1 text-[15px] font-medium text-foreground">{item.subject}</p>
             </div>
           ) : null}
           <div className="message-reading-card px-4 py-4">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Meddelande</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {t("labels.message")}
+            </p>
             <pre className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground font-sans">{item.body}</pre>
           </div>
         </div>
@@ -110,23 +136,23 @@ export function OutreachDetailPanel({
         <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={onCopy}>
             <Copy className="mr-1.5 h-3.5 w-3.5" />
-            Kopiera
+            {t("actions.copy")}
           </Button>
           {mailtoHref ? (
             <Button type="button" size="sm" className="h-8 text-xs" asChild>
               <a href={mailtoHref}>
                 <Mail className="mr-1.5 h-3.5 w-3.5" />
-                Öppna e-post
+                {t("actions.openEmail")}
               </a>
             </Button>
           ) : null}
           <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={onMarkSent}>
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-            Markera skickad
+            {t("actions.markSent")}
           </Button>
           <Button type="button" size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={onRemove}>
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Ta bort
+            {t("actions.remove")}
           </Button>
         </div>
       </footer>
@@ -135,6 +161,7 @@ export function OutreachDetailPanel({
 }
 
 export function OutreachDetailPlaceholder() {
+  const { t } = useTranslation("outreach");
   return (
     <div className="message-reading-pane flex h-full min-h-[280px] flex-col items-center justify-center gap-5 px-6 text-center">
       <m.div
@@ -148,10 +175,8 @@ export function OutreachDetailPlaceholder() {
         </div>
       </m.div>
       <div className="max-w-sm space-y-1.5">
-        <p className="font-display text-base font-semibold">Välj ett utkast</p>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Granska, skicka via e-post och markera som skickat — listan stannar kvar till vänster.
-        </p>
+        <p className="font-display text-base font-semibold">{t("detail.emptyTitle")}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{t("detail.emptyDesc")}</p>
       </div>
     </div>
   );

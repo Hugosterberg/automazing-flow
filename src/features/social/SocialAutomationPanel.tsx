@@ -3,6 +3,8 @@ import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { BarChart3, CalendarDays, FileText, Heart, RefreshCw, Sparkles, Target, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +18,21 @@ const SOCIAL_AUTOMATIONS_STORAGE_KEY = "automazing-social-workflows";
 const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
 const CALENDAR_STORAGE_KEY = "automazing-calendar-events";
 
-interface AutomationWorkflow {
-  id: string;
+const WORKFLOW_DEFINITIONS = [
+  { id: "repurpose-weekly-hero", icon: FileText },
+  { id: "caption-hashtag-optimizer", icon: Sparkles },
+  { id: "content-gap-filler", icon: CalendarDays },
+  { id: "evergreen-repost", icon: RefreshCw },
+  { id: "engagement-followup", icon: Heart },
+  { id: "weekly-insight-digest", icon: BarChart3 },
+] as const;
+
+const PIPELINE_STAGE_IDS = ["research", "production", "distribution", "followup"] as const;
+
+type WorkflowId = (typeof WORKFLOW_DEFINITIONS)[number]["id"];
+
+interface LocalizedWorkflow {
+  id: WorkflowId;
   title: string;
   summary: string;
   cadence: string;
@@ -26,100 +41,26 @@ interface AutomationWorkflow {
   icon: LucideIcon;
 }
 
-const automationWorkflows: AutomationWorkflow[] = [
-  {
-    id: "repurpose-weekly-hero",
-    title: "Repurpose av veckans huvudinnehåll",
-    summary: "Ett långt video- eller blogginnehåll delas upp till flera kanaler med AI-kopior.",
-    cadence: "2 ggr/vecka",
-    value: "Sparar tid i produktion",
-    steps: [
-      "Identifiera veckans huvudinnehåll",
-      "Generera 3 kortformat (Reels/TikTok/Shorts)",
-      "Skapa plattformsanpassad copy",
-    ],
-    icon: FileText,
-  },
-  {
-    id: "caption-hashtag-optimizer",
-    title: "Caption + hashtag-optimering",
-    summary: "AI skapar caption-varianter och hashtag-paket beroende på mål (reach, leads, community).",
-    cadence: "Varje publicering",
-    value: "Högre organisk räckvidd",
-    steps: [
-      "Analysera format och målgrupp",
-      "Skapa 3 caption-varianter i olika tonalitet",
-      "Lägg till relevanta hashtags per kanal",
-    ],
-    icon: Sparkles,
-  },
-  {
-    id: "content-gap-filler",
-    title: "Kalender-gap-fyllare",
-    summary: "Upptäcker tomma dagar i publiceringsschemat och fyller med AI-idéer automatiskt.",
-    cadence: "Var 2:a dag",
-    value: "Konsekvent närvaro",
-    steps: [
-      "Räkna schemalagda inlägg närmaste 72h",
-      "Generera idéer när färre än 2 inlägg väntar",
-      "Köa till content-pipeline",
-    ],
-    icon: CalendarDays,
-  },
-  {
-    id: "evergreen-repost",
-    title: "Evergreen-replay",
-    summary: "Återpublicerar ditt bästa äldre innehåll när veckan är tom — utan att du behöver gräva i arkivet.",
-    cadence: "Var 2:a vecka",
-    value: "Mer output, mindre arbete",
-    steps: [
-      "Hitta publicerat innehåll äldre än 30 dagar",
-      "Köa replay om inget väntar nästa vecka",
-      "Schemalägg med ny intro-rad",
-    ],
-    icon: RefreshCw,
-  },
-  {
-    id: "engagement-followup",
-    title: "Engagement-följdflöde",
-    summary: "Kritiska kommentarer och frågor fångas upp och fördelas till snabba svarsmallar.",
-    cadence: "Dagligen",
-    value: "Ökar svarsfrekvens",
-    steps: [
-      "Filtrera kommentarer med köpintention eller frågor",
-      "Skicka notifiering och svarsförslag",
-      "Tagga heta leads för uppföljning",
-    ],
-    icon: Heart,
-  },
-  {
-    id: "weekly-insight-digest",
-    title: "Veckovis insiktsrapport",
-    summary: "Automatisk sammanställning av vad som fungerade bäst och vad som ska testas nästa vecka.",
-    cadence: "1 gång/vecka",
-    value: "Datadrivna beslut snabbare",
-    steps: [
-      "Hämta toppinlägg per kanal",
-      "Sammanfatta engagemangsmönster",
-      "Generera 3 nya testidéer för veckan",
-    ],
-    icon: BarChart3,
-  },
-];
-
-const pipelineStages = [
-  { title: "1. Research", tasks: ["Trendspaning", "Målgruppsanalys", "Innehållsvinklar"] },
-  { title: "2. Produktion", tasks: ["Skapa masterinnehåll", "AI-copy", "Bild-/videovarianter"] },
-  { title: "3. Distribution", tasks: ["Plattformsanpassning", "Schemaläggning", "Automatisk publicering"] },
-  { title: "4. Uppföljning", tasks: ["Engagemangssvar", "Lead-tagging", "Veckorapport"] },
-];
-
 type SocialWorkflowsDoc = {
   enabled: Record<string, boolean>;
   lastPipelineRunAt?: string;
 };
 
 const EMPTY_WORKFLOWS: SocialWorkflowsDoc = { enabled: {} };
+
+function localizeWorkflow(id: WorkflowId, icon: LucideIcon, t: TFunction<"social">): LocalizedWorkflow {
+  const base = `automation.flows.${id}`;
+  const steps = t(`${base}.steps`, { returnObjects: true });
+  return {
+    id,
+    icon,
+    title: t(`${base}.title`),
+    summary: t(`${base}.summary`),
+    cadence: t(`${base}.cadence`),
+    value: t(`${base}.value`),
+    steps: Array.isArray(steps) ? (steps as string[]) : [],
+  };
+}
 
 function loadLegacyAutomationState(): Record<string, boolean> {
   try {
@@ -139,7 +80,7 @@ function formatDateForCalendar(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function buildAutomationEvents(activeWorkflows: AutomationWorkflow[]): CalendarEvent[] {
+function buildAutomationEvents(activeWorkflows: LocalizedWorkflow[], t: TFunction<"social">): CalendarEvent[] {
   const now = new Date();
   const timeSlots = ["09:00", "11:00", "14:00", "16:00", "18:00"];
   return activeWorkflows.map((workflow, index) => {
@@ -147,7 +88,7 @@ function buildAutomationEvents(activeWorkflows: AutomationWorkflow[]): CalendarE
     date.setDate(now.getDate() + index + 1);
     return {
       id: crypto.randomUUID(),
-      title: `Auto: ${workflow.title}`,
+      title: t("automation.calendarEventPrefix", { title: workflow.title }),
       date: formatDateForCalendar(date),
       time: timeSlots[index % timeSlots.length],
       isAutomated: true,
@@ -158,6 +99,26 @@ function buildAutomationEvents(activeWorkflows: AutomationWorkflow[]): CalendarE
 }
 
 export function SocialAutomationPanel() {
+  const { t } = useTranslation("social");
+
+  const automationWorkflows = useMemo(
+    () => WORKFLOW_DEFINITIONS.map(({ id, icon }) => localizeWorkflow(id, icon, t)),
+    [t]
+  );
+
+  const pipelineStages = useMemo(
+    () =>
+      PIPELINE_STAGE_IDS.map((id) => {
+        const tasks = t(`automation.pipeline.${id}.tasks`, { returnObjects: true });
+        return {
+          id,
+          title: t(`automation.pipeline.${id}.title`),
+          tasks: Array.isArray(tasks) ? (tasks as string[]) : [],
+        };
+      }),
+    [t]
+  );
+
   const workflowsDoc = useProfileDocument<SocialWorkflowsDoc>(SOCIAL_WORKFLOWS_DOC_KEY, EMPTY_WORKFLOWS, {
     legacyRead: () => {
       const legacy = loadLegacyAutomationState();
@@ -180,7 +141,7 @@ export function SocialAutomationPanel() {
       if (merged[workflow.id] == null) merged[workflow.id] = false;
     }
     return merged;
-  }, [workflowsDoc.data.enabled]);
+  }, [automationWorkflows, workflowsDoc.data.enabled]);
 
   const activeAutomations = automationWorkflows.filter((workflow) => enabledAutomations[workflow.id]);
 
@@ -194,8 +155,8 @@ export function SocialAutomationPanel() {
   function handleCreateAutomationWeekPlan() {
     if (activeAutomations.length === 0) {
       toast({
-        title: "Aktivera minst ett automationsflöde",
-        description: "Välj ett eller flera flöden ovan för att skapa en veckoplan.",
+        title: t("automation.toasts.enableOne"),
+        description: t("automation.toasts.enableOneDesc"),
       });
       return;
     }
@@ -204,7 +165,7 @@ export function SocialAutomationPanel() {
       const raw = localStorage.getItem(CALENDAR_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       const existingEvents: CalendarEvent[] = Array.isArray(parsed) ? parsed : [];
-      const newEvents = buildAutomationEvents(activeAutomations);
+      const newEvents = buildAutomationEvents(activeAutomations, t);
       localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify([...existingEvents, ...newEvents]));
 
       const now = new Date();
@@ -214,7 +175,7 @@ export function SocialAutomationPanel() {
         scheduled.setHours(10 + index, 0, 0, 0);
         upsert({
           id: crypto.randomUUID(),
-          caption: `[Auto] ${workflow.title} — ${workflow.summary}`,
+          caption: t("automation.draftCaption", { title: workflow.title, summary: workflow.summary }),
           accountIds: [],
           platforms: [],
           status: "draft",
@@ -226,13 +187,13 @@ export function SocialAutomationPanel() {
       });
 
       toast({
-        title: "Veckoplan skapad",
-        description: `${newEvents.length} aktiviteter i kalendern och utkast i publiceringskön.`,
+        title: t("automation.toasts.weekPlanCreated"),
+        description: t("automation.toasts.weekPlanCreatedDesc", { count: newEvents.length }),
       });
     } catch {
       toast({
-        title: "Kunde inte skapa veckoplan",
-        description: "Kontrollera lagring och försök igen.",
+        title: t("automation.toasts.weekPlanFailed"),
+        description: t("automation.toasts.weekPlanFailedDesc"),
       });
     }
   }
@@ -246,14 +207,12 @@ export function SocialAutomationPanel() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Zap className="h-5 w-5" />
-                  Automationsflöden för social media
+                  {t("automation.title")}
                 </CardTitle>
-                <CardDescription>
-                  Aktivera flöden — sparas i molnet och styr content-pipeline-cron.
-                </CardDescription>
+                <CardDescription>{t("automation.description")}</CardDescription>
               </div>
               <Badge variant="secondary" className="w-fit">
-                {activeAutomations.length} aktiva
+                {t("automation.activeCount", { count: activeAutomations.length })}
               </Badge>
             </div>
           </CardHeader>
@@ -275,7 +234,7 @@ export function SocialAutomationPanel() {
                       <Switch
                         checked={isEnabled}
                         onCheckedChange={(checked) => handleToggleAutomation(workflow.id, checked)}
-                        aria-label={`Aktivera ${workflow.title}`}
+                        aria-label={t("automation.enableAria", { title: workflow.title })}
                       />
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -300,10 +259,8 @@ export function SocialAutomationPanel() {
             </div>
             <div className="rounded-lg border border-dashed border-border/80 bg-secondary/20 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium">Generera veckoplan till kalendern</p>
-                <p className="text-xs text-muted-foreground">
-                  Skapar kalenderaktiviteter och utkast i publiceringskön baserat på aktiva flöden.
-                </p>
+                <p className="text-sm font-medium">{t("automation.weekPlanTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("automation.weekPlanDesc")}</p>
               </div>
               <Button
                 onClick={handleCreateAutomationWeekPlan}
@@ -311,7 +268,7 @@ export function SocialAutomationPanel() {
                 className="w-full sm:w-auto"
               >
                 <CalendarDays className="h-4 w-4 mr-2" />
-                Skapa automationsvecka
+                {t("automation.weekPlanButton")}
               </Button>
             </div>
           </CardContent>
@@ -323,16 +280,14 @@ export function SocialAutomationPanel() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Target className="h-5 w-5" />
-              Innehållspipeline att automatisera
+              {t("automation.pipelineTitle")}
             </CardTitle>
-            <CardDescription>
-              Ett enkelt ramverk för att automatisera hela content-flödet från idé till analys.
-            </CardDescription>
+            <CardDescription>{t("automation.pipelineDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {pipelineStages.map((stage) => (
-                <div key={stage.title} className="rounded-lg border border-border/60 bg-secondary/30 p-3">
+                <div key={stage.id} className="rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <p className="text-sm font-medium mb-2">{stage.title}</p>
                   <ul className="space-y-1">
                     {stage.tasks.map((task) => (

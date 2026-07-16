@@ -5,7 +5,6 @@ import {
   HelpCircle,
   CheckCircle2,
   ExternalLink,
-  Globe,
   KeyRound,
   LayoutGrid,
   Loader2,
@@ -19,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { TeamManager } from "@/components/TeamManager";
 import { AiSettingsSection } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -36,6 +36,7 @@ import { checkApiaiHealth } from "@/features/content/apiaiClient";
 import { apiJson } from "@/lib/apiJson";
 import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
 import { PreferencesDataSection } from "@/features/preferences/PreferencesDataSection";
+import { LanguageSettingsSection } from "@/features/preferences/LanguageSettingsSection";
 import { QuickNavPrefsEditor } from "@/features/quick-nav";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
@@ -69,13 +70,6 @@ type IntegrationHelp = {
   find: string;
   url: string;
 };
-
-const overviewFeatures = [
-  { icon: Bell, title: "Aviseringar", desc: "Hantera påminnelser och varningar" },
-  { icon: Palette, title: "Utseende", desc: "Tema och visuella inställningar" },
-  { icon: Globe, title: "Språk", desc: "Språk och region" },
-  { icon: Shield, title: "Säkerhet", desc: "Lösenord och tvåfaktorsautentisering" },
-];
 
 const featureRequirements: FeatureRequirement[] = [
   { name: "AI analysis", testTarget: "openai" },
@@ -291,12 +285,19 @@ function parsePreferencesTab(raw: string | null): PreferencesTab {
 }
 
 export default function PreferencesPage() {
+  const { t } = useTranslation("preferences");
   const { toast } = useToast();
   const navigate = useNavigate();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
   const activeTab = parsePreferencesTab(rawTab);
+
+  const overviewFeatures = [
+    { icon: Bell, title: t("features.notifications"), desc: t("features.notificationsDesc") },
+    { icon: Palette, title: t("features.appearance"), desc: t("features.appearanceDesc") },
+    { icon: Shield, title: t("features.security"), desc: t("features.securityDesc") },
+  ];
   const setActiveTab = useCallback(
     (tab: PreferencesTab) => {
       setSearchParams(
@@ -460,23 +461,19 @@ export default function PreferencesPage() {
     <div className="space-y-6 max-w-5xl w-full mx-auto">
       <PageHeader
         icon={Wrench}
-        title="Inställningar"
-        description="AI-status, plattformsnycklar och integrationshemligheter per profil."
+        title={t("title")}
+        description={t("description")}
       />
 
       <PageSmartBar
-        title="Inställningar styr hur appen ansluter — AI, automationer och tredjepartsintegrationer."
-        steps={[
-          "Börja under Översikt för att se vad som saknas",
-          "Lägg till API-nycklar och testa anslutningarna",
-          "Justera AI- och automationspreferenser per profil",
-        ]}
-        tip="Team-fliken hanterar åtkomst. Schemalagda jobb och digests ligger under Automationer — inte här."
+        title={t("smartBar")}
+        steps={[t("step1"), t("step2"), t("step3")]}
+        tip={t("tip")}
         liveHintOverride={
           unconfiguredCount > 0
-            ? `${unconfiguredCount} nyckel${unconfiguredCount === 1 ? "" : "ar"} saknas — fyll i under API-nycklar`
+            ? t("keysMissing", { count: unconfiguredCount })
             : !storeEnabled
-              ? "Hemlighetslagret är inte aktiverat på servern."
+              ? t("secretStoreOff")
               : null
         }
       />
@@ -486,24 +483,25 @@ export default function PreferencesPage() {
         <div className="app-workspace-toolbar px-3 pt-1 sm:px-4">
           <PageModeTabs
             value={activeTab}
-            aria-label="Inställningsflikar"
+            aria-label={t("tabsAria")}
             onChange={setActiveTab}
             options={[
-              { value: "overview", label: "Översikt" },
-              { value: "ai", label: "AI" },
-              { value: "api-keys", label: "API-nycklar", count: unconfiguredCount },
-              { value: "team", label: "Team" },
-              { value: "navigation", label: "Genvägar" },
-              { value: "data", label: "Data" },
-              { value: "help", label: "Hjälp" },
+              { value: "overview", label: t("tabs.overview") },
+              { value: "ai", label: t("tabs.ai") },
+              { value: "api-keys", label: t("tabs.apiKeys"), count: unconfiguredCount },
+              { value: "team", label: t("tabs.team") },
+              { value: "navigation", label: t("tabs.navigation") },
+              { value: "data", label: t("tabs.data") },
+              { value: "help", label: t("tabs.help") },
             ]}
           />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
 
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <TabsContent value="overview" className="space-y-4 pt-2">
+          <LanguageSettingsSection />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {overviewFeatures.map((feature, index) => (
               <m.div
                 key={feature.title}

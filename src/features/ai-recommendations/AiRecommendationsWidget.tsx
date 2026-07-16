@@ -1,14 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAiRecommendations } from "./useAiRecommendations";
-import {
-  AI_REC_KIND_LABELS,
-  type AiRecommendationRow,
-} from "./aiRecommendationsService";
+import type { AiRecommendationRow } from "./aiRecommendationsService";
 
 interface Props {
   businessProfileId: string | null | undefined;
@@ -58,6 +56,7 @@ export function AiRecommendationsWidget({
   businessProfileId,
   previewCount = 3,
 }: Props) {
+  const { t } = useTranslation("aiRecommendations");
   const { recommendations, isLoading } = useAiRecommendations(businessProfileId);
 
   const { activeCount, preview, lastUpdated } = useMemo(() => {
@@ -91,11 +90,11 @@ export function AiRecommendationsWidget({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-baseline gap-2">
                 <h3 className="text-sm font-semibold tracking-tight">
-                  AI Recommendations
+                  {t("widget.title")}
                 </h3>
                 {activeCount > 0 ? (
                   <span className="text-[11px] text-muted-foreground tabular-nums">
-                    {activeCount} active
+                    {t("widget.active", { count: activeCount })}
                   </span>
                 ) : null}
               </div>
@@ -103,23 +102,23 @@ export function AiRecommendationsWidget({
                 to="/ai-recommendations"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                View all
+                {t("widget.viewAll")}
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
             {isLoading ? (
-              <p className="text-xs text-muted-foreground">Laddar…</p>
+              <p className="text-xs text-muted-foreground">{t("widget.loading")}</p>
             ) : activeCount === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No active suggestions yet.{" "}
+                {t("widget.emptyPrefix")}{" "}
                 <Link to="/ai-recommendations" className="text-primary hover:underline">
-                  Generate recommendations
+                  {t("widget.generate")}
                 </Link>
                 {lastUpdatedRelative ? (
                   <span className="text-muted-foreground/80">
                     {" "}
-                    · checked {lastUpdatedRelative}
+                    {t("widget.checked", { time: lastUpdatedRelative })}
                   </span>
                 ) : null}
               </p>
@@ -135,7 +134,7 @@ export function AiRecommendationsWidget({
                         variant="outline"
                         className="text-[11px] uppercase border-border text-muted-foreground shrink-0 mt-0.5"
                       >
-                        {AI_REC_KIND_LABELS[rec.kind]}
+                        {t(`kinds.${rec.kind}`)}
                       </Badge>
                       <p className="text-xs text-foreground leading-snug truncate">
                         {rec.title}
@@ -145,9 +144,9 @@ export function AiRecommendationsWidget({
                 </ul>
                 <p className="text-[11px] text-muted-foreground/80">
                   {remaining > 0
-                    ? `+${remaining} more`
+                    ? t("widget.more", { count: remaining })
                     : lastUpdatedRelative
-                      ? `Updated ${lastUpdatedRelative}`
+                      ? t("widget.updated", { time: lastUpdatedRelative })
                       : null}
                 </p>
               </>

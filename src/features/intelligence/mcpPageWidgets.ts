@@ -1,9 +1,16 @@
-import { MCP_FEATURE_DEFINITIONS, type McpFeatureDefinition } from "./mcpFeatureConfig";
+import {
+  localizeMcpFeature,
+  MCP_FEATURE_DEFINITIONS,
+  type McpFeatureDefinition,
+} from "./mcpFeatureConfig";
 
 /** Lookup feature definitions by id (for page-level widget strips). */
 export function mcpFeaturesByIds(ids: string[]): McpFeatureDefinition[] {
   const map = new Map(MCP_FEATURE_DEFINITIONS.map((f) => [f.id, f]));
-  return ids.map((id) => map.get(id)).filter(Boolean) as McpFeatureDefinition[];
+  return ids
+    .map((id) => map.get(id))
+    .filter(Boolean)
+    .map((feature) => localizeMcpFeature(feature as McpFeatureDefinition));
 }
 
 /** Which intelligence features to surface on each product page. */

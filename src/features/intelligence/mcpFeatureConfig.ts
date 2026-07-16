@@ -3,6 +3,7 @@
  * One entry per user-facing query — fallback providers share the same input.
  */
 
+import { t } from "@/lib/i18n";
 import type { McpTextResult } from "./intelligenceService";
 import {
   fetchMarketPulse,
@@ -91,7 +92,7 @@ export const MCP_FEATURE_DEFINITIONS: McpFeatureDefinition[] = [
     run: async (businessProfileId, topic) => {
       const pulse = await fetchMarketPulse(businessProfileId, topic.toLowerCase());
       if (!pulse.available) {
-        throw new Error(pulse.message || "Marknadspulsen är inte tillgänglig — koppla LunarCrush med en API-nyckel.");
+        throw new Error(pulse.message || t("mcp:features.market-pulse.unavailable"));
       }
       return {
         provider: "lunarcrush",
@@ -265,4 +266,25 @@ export const MCP_PLATFORMS_WITH_UI = [
 
 export function mcpFeaturesForTab(tab: Exclude<McpHubTabId, "overview">): McpFeatureDefinition[] {
   return MCP_FEATURE_DEFINITIONS.filter((f) => f.tab === tab);
+}
+
+/** Localized hub tab label/description (id stays stable). */
+export function localizeMcpHubTab(tab: McpHubTab): McpHubTab {
+  return {
+    ...tab,
+    label: t(`mcp:tabs.${tab.id}.label`),
+    description: t(`mcp:tabs.${tab.id}.description`),
+  };
+}
+
+/** Localized feature chrome for query boxes. */
+export function localizeMcpFeature(feature: McpFeatureDefinition): McpFeatureDefinition {
+  const base = `mcp:features.${feature.id}`;
+  return {
+    ...feature,
+    title: t(`${base}.title`),
+    description: t(`${base}.description`),
+    placeholder: t(`${base}.placeholder`),
+    buttonLabel: t(`${base}.buttonLabel`),
+  };
 }

@@ -52,6 +52,8 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfile
 import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
 import { DemoModeBanner } from "@/features/demo";
 import { WeeklyResultsCard } from "@/features/weekly-results";
+import { quickNavLabel } from "@/features/quick-nav/quickNavLabels";
+import { useTranslation } from "react-i18next";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -81,6 +83,8 @@ import { useMarketingCampaigns } from "@/features/marketing";
 import { useQuickNavPrefs } from "@/features/quick-nav";
 
 export default function Index() {
+  const { t } = useTranslation();
+  const { t: th } = useTranslation("home");
   const { activeProfile, profiles, accounts, removeProfile, updateProfile, activeProfileId } =
     useAccounts();
   const activeBpId = useActiveBusinessProfileIdOptional();
@@ -516,7 +520,7 @@ export default function Index() {
       className="flex flex-col space-y-6 max-w-5xl w-full mx-auto"
     >
       <PageHeader
-        title={activeProfile?.name || "Startsida"}
+        title={activeProfile?.name || th("title")}
         description={
           profileSummary.connectedCount > 0 ? (
             <>
@@ -532,7 +536,7 @@ export default function Index() {
 
       {/* SmartDailyBrief owns the teaching — keep SmartBar live-only. */}
       <PageSmartBar
-        title="Dagens läge"
+        title={th("smartBarTitle")}
         liveHintOverride={
           health.score < 100 && health.topReason
             ? `${health.label} (${health.score}/100) — ${health.topReason}`
@@ -618,7 +622,7 @@ export default function Index() {
           ))}
         </div>
         {moreTodayTiles.length > 0 ? (
-          <HomeCollapsibleSection title="Fler idag" ariaLabel="Fler idag">
+          <HomeCollapsibleSection title={th("sections.moreToday")} ariaLabel={th("sections.moreToday")}>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-1 sm:gap-3">
               {moreTodayTiles.map((tile) => (
                 <TodayTile
@@ -649,8 +653,8 @@ export default function Index() {
       {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
       {activeProfile ? (
         <HomeCollapsibleSection
-          title="Profildetaljer"
-          ariaLabel="Profildetaljer"
+          title={th("sections.profileDetails")}
+          ariaLabel={th("sections.profileDetails")}
           actions={
             <div className="flex items-center gap-1">
               <button
@@ -724,13 +728,13 @@ export default function Index() {
       ) : null}
 
       {homeBusinessProfileId ? (
-        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag">
+        <HomeCollapsibleSection title={th("sections.aiSuggestions")} ariaLabel={th("sections.aiSuggestions")}>
           <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
         </HomeCollapsibleSection>
       ) : null}
 
       {quickOverviewCards.length > 0 ? (
-        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt">
+        <HomeCollapsibleSection title={th("sections.quickOverview")} ariaLabel={th("sections.quickOverview")}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickOverviewCards.map((card) => (
               <QuickOverviewCard
@@ -748,22 +752,25 @@ export default function Index() {
         </HomeCollapsibleSection>
       ) : null}
 
-      <HomeCollapsibleSection title="Automationer som jobbar" ariaLabel="Automationer som jobbar">
+      <HomeCollapsibleSection title={th("sections.automationsWorking")} ariaLabel={th("sections.automationsWorking")}>
         <FlowAutomationStatusCard businessProfileId={homeBusinessProfileId} />
       </HomeCollapsibleSection>
 
-      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
+      <HomeCollapsibleSection title={th("sections.goTo")} ariaLabel={th("sections.goTo")}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {homeJumpDestinations.map((dest) => (
-            <JumpCard
-              key={dest.key}
-              to={dest.to}
-              icon={dest.icon}
-              title={dest.label}
-              description={dest.description ?? dest.label}
-              onPrefetch={prefetchFor}
-            />
-          ))}
+          {homeJumpDestinations.map((dest) => {
+            const title = quickNavLabel(dest.key, t);
+            return (
+              <JumpCard
+                key={dest.key}
+                to={dest.to}
+                icon={dest.icon}
+                title={title}
+                description={dest.description ?? title}
+                onPrefetch={prefetchFor}
+              />
+            );
+          })}
         </div>
       </HomeCollapsibleSection>
       </div>
@@ -772,7 +779,7 @@ export default function Index() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Redigera profil</DialogTitle>
+            <DialogTitle>{th("editProfile")}</DialogTitle>
             <DialogDescription>
               Snabb redigering här — för guide om varje fält, gå till{" "}
               <Link to="/company" className="font-medium text-primary underline underline-offset-2">

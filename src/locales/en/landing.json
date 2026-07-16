@@ -1,0 +1,167 @@
+{
+  "nav": {
+    "demo": "Demo",
+    "why": "Why",
+    "getStarted": "Get started",
+    "signIn": "Sign in",
+    "signInOrCreate": "Sign in / Create account",
+    "openMenu": "Open menu",
+    "mobileNav": "Mobile navigation",
+    "siteNav": "Site navigation",
+    "start": "Start"
+  },
+  "hero": {
+    "headline": "Automatic. Amazing.",
+    "sub": "Social, mail, reviews and sales in one flow — fast, smooth and effective.",
+    "ctaPrimary": "Create free account",
+    "ctaSecondary": "See it in action"
+  },
+  "sections": {
+    "whyTitle": "Why switch?",
+    "whyDesc": "Less admin. More clarity. One app instead of a patchwork of tools.",
+    "demoTitle": "See the app in action",
+    "demoDesc": "Click the tabs or let the demo roll — this is what a normal day looks like.",
+    "integrations": "Connects to what you already use",
+    "pillarsTitle": "Three things. One platform.",
+    "pillarsDesc": "Everything connects — from first message to closed deal.",
+    "stepsTitle": "Get started in three steps",
+    "founderTitle": "Built for people who run it themselves",
+    "founderDesc": "No invented customer case — how the product is used in practice.",
+    "readyTitle": "Ready to go?",
+    "readyDesc": "Create an account — you’ll see value on day one."
+  },
+  "trust": {
+    "free": "Free to create an account",
+    "noCard": "No credit card required",
+    "minutes": "Connect channels in minutes"
+  },
+  "footer": {
+    "dataNote": "Data is deleted when you remove a profile under Preferences → Data. Formal terms/privacy are published separately."
+  },
+  "pillars": {
+    "collect": {
+      "title": "Collect",
+      "tagline": "Stop jumping between tabs",
+      "i0": "Mail, DMs and WhatsApp in one inbox",
+      "i1": "Google & Tripadvisor reviews",
+      "i2": "Calendar and content in the same place"
+    },
+    "grow": {
+      "title": "Grow",
+      "tagline": "Sell and market smarter",
+      "i0": "Leads, pipeline and follow-ups",
+      "i1": "Google Ads & Meta in one view",
+      "i2": "Automations that run themselves"
+    },
+    "understand": {
+      "title": "Understand",
+      "tagline": "AI that knows your reality",
+      "i0": "Daily overview — what needs doing today",
+      "i1": "AI drafts for replies and recommendations",
+      "i2": "MCP Intelligence on your connected data"
+    }
+  },
+  "comparison": {
+    "beforeTitle": "Without automazing",
+    "afterTitle": "With automazing",
+    "soSimple": "It should be this simple",
+    "before0": "8+ tools and logins",
+    "before1": "Reviews that go stale",
+    "before2": "No sense of what’s most important today",
+    "before3": "AI tips that don’t know your business",
+    "after0": "One app for communication, sales & content",
+    "after1": "Prioritized inbox with AI drafts",
+    "after2": "Home shows exactly what needs doing",
+    "after3": "Insights from your real connections"
+  },
+  "steps": {
+    "s1Title": "Create account",
+    "s1Desc": "Google or email — under a minute.",
+    "s2Title": "Connect channels",
+    "s2Desc": "Instagram, mail, reviews and more.",
+    "s3Title": "See results",
+    "s3Desc": "Overview, AI and automations right away."
+  },
+  "founder": {
+    "eyebrow": "How automazing is used",
+    "title": "One solo founder. One app. Draft before send.",
+    "body": "Hugo runs the company with automazing as the hub: morning brief, Today triage in Messages, AI drafts that are always approved before send, and automations visible in Activity.",
+    "b0Label": "Morning",
+    "b0Detail": "Brief shows what actually needs doing — quiet days are fine.",
+    "b1Label": "Inbox",
+    "b1Detail": "Mail and DMs in the same triage. Noise is parked, Today gets answered.",
+    "b2Label": "Trust",
+    "b2Detail": "Nothing sensitive sends without you. Connections have one home."
+  },
+  "demo": {
+    "home": "Overview",
+    "homeCaption": "Your day at a glance — prioritized before customers get impatient.",
+    "messages": "Messages",
+    "messagesCaption": "One inbox for mail and DMs. AI summarizes and suggests replies.",
+    "reviews": "Reviews",
+    "reviewsCaption": "New reviews → AI draft → publish in one click.",
+    "sales": "Sales",
+    "salesCaption": "Leads become deals. Pipeline and follow-ups stay connected.",
+    "intelligence": "MCP & AI",
+    "intelligenceCaption": "Ask your data — the right tools are chosen automatically.",
+    "pause": "Pause",
+    "play": "Play",
+    "unread": "Unread messages",
+    "reviewsTodo": "Reviews to reply to",
+    "tasksToday": "Tasks today",
+    "dealsPipeline": "Deals in pipeline"
+  },
+  "auth": {
+    "continueGoogle": "Continue with Google",
+    "continueEmail": "Continue with email",
+    "openingGoogle": "Opening Google…",
+    "or": "or",
+    "orLocal": "Or",
+    "email": "Email",
+    "emailAddress": "Email address",
+    "emailPlaceholder": "you@company.com",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "signIn": "Sign in",
+    "createFree": "Create free account",
+    "createAccount": "Create your account",
+    "createSubtitle": "Free — done in under a minute.",
+    "sendMagic": "Send sign-in link",
+    "sendReset": "Send reset link",
+    "backToSignIn": "Back to sign in",
+    "haveAccount": "Already have an account? Sign in",
+    "noAccount": "No account? Create one",
+    "forgotPassword": "Forgot password?",
+    "magicLink": "Sign in without password",
+    "localMode": "Local mode (no sign-in)",
+    "localHint": "Everything is saved only in this browser.",
+    "googlePrivacy": "We only import your name and email address.",
+    "checkEmailSignup": "Check your email and click the confirmation link to activate your account.",
+    "checkEmailMagic": "A sign-in link has been sent to your email. Check your inbox.",
+    "checkEmailReset": "A reset link has been sent to your email.",
+    "errInvalid": "Wrong email or password.",
+    "errUnconfirmed": "Confirm your email before signing in.",
+    "errRegistered": "An account with that email already exists. Sign in instead.",
+    "errPassword": "Password must be at least 6 characters.",
+    "errRate": "Too many attempts. Wait a moment and try again.",
+    "errNetwork": "Network error — check your connection.",
+    "errGeneric": "Something went wrong",
+    "title": "Get started",
+    "subtitle": "Create an account or sign in to your workspace.",
+    "stepsHint": "Steps to get started",
+    "stepsAria": "Steps to get started"
+  },
+  "comparisonUi": {
+    "withoutShort": "Without",
+    "withShort": "With automazing"
+  },
+  "gate": {
+    "unavailableTitle": "Cloud sign-in unavailable",
+    "unavailableDesc": "Supabase environment variables are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable sign-in.",
+    "continueLocal": "Continue in local mode",
+    "localHint": "Profiles and connected channels are saved in this browser.",
+    "configureHost": "Configure the variables on your host (e.g. Vercel) and redeploy.",
+    "loading": "Checking sign-in…"
+  }
+}

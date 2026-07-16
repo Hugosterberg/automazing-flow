@@ -5,9 +5,11 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useConnections, aggregateStatus } from "@/features/connections";
 import {
   AREA_LABELS,
+  catalogConnectSteps,
   getConnectionEntriesForArea,
   type AppArea,
 } from "@/lib/connectionCatalog";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -80,12 +82,12 @@ export function SectionConnectionStatus({ area, className, hideWhenHealthy = fal
         className
       )}
       role="region"
-      aria-label={`${AREA_LABELS[area]} — kopplingsstatus för aktiv profil`}
+      aria-label={t("catalog:statusAria", { area: AREA_LABELS[area] })}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="space-y-0.5">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {AREA_LABELS[area]} · kopplingar
+            {t("catalog:statusHeading", { area: AREA_LABELS[area] })}
           </p>
           <p className="text-[11px] tabular-nums text-muted-foreground">
             {okCount} av {total} i gott skick
@@ -132,7 +134,7 @@ export function SectionConnectionStatus({ area, className, hideWhenHealthy = fal
               </div>
               {state !== "ok" ? (
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  {entry.connectSteps}{" "}
+                  {catalogConnectSteps(entry)}{" "}
                   <Link
                     to={
                       state === "attention"

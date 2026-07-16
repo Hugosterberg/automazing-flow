@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ExternalLink, Film, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,8 +59,10 @@ export function MediaTile({
   onToggle: (checked: boolean) => void;
   focused?: boolean;
 }) {
+  const { t } = useTranslation("content");
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = Boolean(file.thumbnailUrl) && !imgFailed;
+  const action = checked ? t("drive.tileRemove") : t("drive.tileAdd");
 
   return (
     <div
@@ -67,7 +70,7 @@ export function MediaTile({
       tabIndex={0}
       data-drive-file-id={file.id}
       aria-pressed={checked}
-      aria-label={`${checked ? "Ta bort från Valda" : "Lägg till i Valda"} ${file.name}`}
+      aria-label={t("drive.tileAria", { action, name: file.name })}
       className={cn(
         "group relative rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors cursor-pointer bg-secondary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         focused && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/50"
@@ -109,7 +112,7 @@ export function MediaTile({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="absolute bottom-1.5 right-1.5 h-7 w-7 rounded-md bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-black/80"
-            title="Open in Google Drive"
+            title={t("drive.openInDrive")}
           >
             <ExternalLink className="h-3.5 w-3.5 text-white" />
           </a>
@@ -149,6 +152,7 @@ export function MediaSection({
   onToggleAsset: (file: DriveBrowserItem, checked: boolean) => void;
   focusedFileId?: string | null;
 }) {
+  const { t } = useTranslation("content");
   const [visibleCount, setVisibleCount] = useState(expanded ? Math.max(files.length, GRID_INITIAL) : previewCount);
 
   useEffect(() => {
@@ -201,8 +205,8 @@ export function MediaSection({
             className={`h-3.5 w-3.5 transition-transform ${expanded && visibleCount >= files.length ? "rotate-180" : ""}`}
           />
           {expanded && visibleCount >= files.length
-            ? "Show less"
-            : `Show ${Math.min(hidden, GRID_BATCH_SIZE)} more ${title.toLowerCase()}`}
+            ? t("drive.showLess")
+            : t("drive.showMore", { count: Math.min(hidden, GRID_BATCH_SIZE), type: title.toLowerCase() })}
         </button>
       ) : expanded ? (
         <button
@@ -211,7 +215,7 @@ export function MediaSection({
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronDown className="h-3.5 w-3.5 rotate-180" />
-          Show less
+          {t("drive.showLess")}
         </button>
       ) : null}
     </div>

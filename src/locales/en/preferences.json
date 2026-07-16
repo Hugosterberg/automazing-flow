@@ -1,0 +1,30 @@
+{
+  "title": "Preferences",
+  "description": "AI status, platform keys and integration secrets per profile.",
+  "smartBar": "Preferences control how the app connects — AI, automations and third-party integrations.",
+  "step1": "Start in Overview to see what’s missing",
+  "step2": "Add API keys and test the connections",
+  "step3": "Tune AI and automation preferences per profile",
+  "tip": "The Team tab manages access. Scheduled jobs and digests live under Automations — not here.",
+  "keysMissing_one": "{{count}} key missing — fill in under API keys",
+  "keysMissing_other": "{{count}} keys missing — fill in under API keys",
+  "secretStoreOff": "The secrets store is not enabled on the server.",
+  "tabsAria": "Preference tabs",
+  "tabs": {
+    "overview": "Overview",
+    "ai": "AI",
+    "apiKeys": "API keys",
+    "team": "Team",
+    "navigation": "Shortcuts",
+    "data": "Data",
+    "help": "Help"
+  },
+  "features": {
+    "notifications": "Notifications",
+    "notificationsDesc": "Manage reminders and alerts",
+    "appearance": "Appearance",
+    "appearanceDesc": "Theme and visual settings",
+    "security": "Security",
+    "securityDesc": "Password and two-factor authentication"
+  }
+}

@@ -6,7 +6,7 @@ describe("marketing paths", () => {
     for (const group of MARKETING_PATH_GROUPS) {
       const paths = MARKETING_PATHS.filter((path) => path.kind === group.kind);
       expect(paths.length).toBeGreaterThan(0);
-      expect(paths.every((path) => path.title && path.description && path.actions.length > 0)).toBe(true);
+      expect(paths.every((path) => path.id && path.href && path.actionKeys.length > 0)).toBe(true);
     }
   });
 

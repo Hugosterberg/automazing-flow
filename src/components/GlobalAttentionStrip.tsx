@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ChevronRight, Sparkles, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
@@ -47,6 +48,7 @@ const SEVERITY_CLASS = {
 const HIDE_ON_PATH_PREFIXES = ["/messages", "/reviews", "/tasks", "/activity"];
 
 export function GlobalAttentionStrip() {
+  const { t } = useTranslation();
   const location = useLocation();
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const { brief, isLoading } = useDailyBriefSummary(businessProfileId);
@@ -67,7 +69,7 @@ export function GlobalAttentionStrip() {
   const topItems = (routeItems.length > 0 ? routeItems : brief.items).slice(0, 4);
   const moduleLabel = routeModuleLabel(location.pathname);
   const stripLabel =
-    routeItems.length > 0 && moduleLabel ? `${moduleLabel}` : "Kräver uppmärksamhet";
+    routeItems.length > 0 && moduleLabel ? `${moduleLabel}` : t("chrome.attention");
 
   return (
     <div className="shrink-0 border-b border-border/50 bg-card/50 px-3 py-1.5 backdrop-blur-md sm:bg-gradient-to-r sm:from-primary/5 sm:via-card/40 sm:to-muted/10 sm:px-4 sm:py-2 sm:backdrop-blur-none">
@@ -102,7 +104,7 @@ export function GlobalAttentionStrip() {
         <Link
           to="/"
           className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground sm:hidden"
-          aria-label="Full översikt"
+          aria-label={t("chrome.fullOverview")}
           title="Full översikt"
         >
           <ChevronRight className="h-3.5 w-3.5 rotate-180" />
@@ -119,7 +121,7 @@ export function GlobalAttentionStrip() {
           type="button"
           onClick={() => setDismissed(true)}
           className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-          aria-label="Dölj sammanfattning"
+          aria-label={t("chrome.dismissSummary")}
         >
           <X className="h-3.5 w-3.5" />
         </button>

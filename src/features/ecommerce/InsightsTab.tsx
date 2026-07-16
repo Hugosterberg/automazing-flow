@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RevenueTrendCard } from "@/features/ecommerce/RevenueTrendCard";
@@ -27,39 +28,40 @@ type Props = {
 
 /** Insights stats, revenue trend, topsäljare/toppkunder, and promotions for the Insikter tab. */
 export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
+  const { t } = useTranslation("ecommerce");
   const stats = shopifyData.stats;
 
   const statCards = useMemo(
     () => [
       {
-        label: "Intäkter (30 dagar)",
+        label: t("insights.revenue30d"),
         value: formatCurrency(stats.revenue30d, currency),
         icon: DollarSign,
-        sub: `${formatNumber(stats.ordersWindow)} ordrar i perioden`,
+        sub: t("insights.ordersInPeriod", { count: stats.ordersWindow }),
       },
       {
-        label: "Snittordervärde",
+        label: t("insights.avgOrderValue"),
         value: formatCurrency(stats.avgOrderValue, currency),
         icon: TrendingUp,
-        sub: stats.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}% levererade` : "—",
+        sub: stats.fulfillmentRate30d != null ? t("insights.fulfillmentRate", { rate: stats.fulfillmentRate30d }) : "—",
       },
       {
-        label: "Kunder",
+        label: t("insights.customers"),
         value: formatNumber(stats.customersCount),
         icon: Users,
-        sub: `+${formatNumber(stats.newCustomers30d)} nya på 30 dagar`,
+        sub: t("insights.newCustomers30d", { count: stats.newCustomers30d }),
       },
       {
-        label: "Produkter",
+        label: t("insights.products"),
         value: formatNumber(stats.productsCount),
         icon: Package,
         sub:
           stats.lowStockCount > 0
-            ? `${stats.lowStockCount} variant${stats.lowStockCount === 1 ? "" : "er"} med lågt lager`
-            : "Lagret ser bra ut",
+            ? t("insights.lowStockVariants", { count: stats.lowStockCount })
+            : t("insights.stockLooksGood"),
       },
     ],
-    [stats, currency]
+    [stats, currency, t]
   );
 
   function handleAddLead(customer: TopCustomer) {
@@ -69,8 +71,11 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
       email: customer.email,
       source: "shopify-customer",
       status: "qualified",
-      notes: `Totalt spenderat: ${formatCurrency(customer.totalSpent, customer.currency || currency)} · ${customer.ordersCount} ordrar`,
-    }).then(() => toast.success("Tillagd i leads"));
+      notes: t("insights.leadNotes", {
+        amount: formatCurrency(customer.totalSpent, customer.currency || currency),
+        count: customer.ordersCount,
+      }),
+    }).then(() => toast.success(t("toasts.addedToLeads")));
   }
 
   return (
@@ -108,9 +113,9 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Box className="h-5 w-5" />
-                    Toppsäljare
+                    {t("insights.topProducts.title")}
                   </CardTitle>
-                  <CardDescription>Efter intäkt, senaste 30 dagarna</CardDescription>
+                  <CardDescription>{t("insights.topProducts.description")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {shopifyData.topProducts.map((product, i) => (
@@ -121,7 +126,7 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{product.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatNumber(product.quantity)} sålda
+                          {t("insights.topProducts.sold", { count: product.quantity })}
                         </p>
                       </div>
                       <p className="text-sm font-semibold tabular-nums">
@@ -140,9 +145,9 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5" />
-                    Toppkunder
+                    {t("insights.topCustomers.title")}
                   </CardTitle>
-                  <CardDescription>Efter totalt spenderat</CardDescription>
+                  <CardDescription>{t("insights.topCustomers.description")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {shopifyData.topCustomers.map((customer) => (
@@ -153,7 +158,7 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{customer.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {customer.email || `${customer.ordersCount} ordrar`}
+                          {customer.email || t("insights.topCustomers.ordersCount", { count: customer.ordersCount })}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -167,7 +172,7 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                           className="h-7 px-2 text-[11px]"
                           onClick={() => handleAddLead(customer)}
                         >
-                          Lägg till lead
+                          {t("insights.topCustomers.addLead")}
                         </Button>
                       </div>
                     </div>
@@ -188,9 +193,9 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Tag className="h-5 w-5" />
-                    Aktiva kampanjer
+                    {t("insights.promotions.title")}
                   </CardTitle>
-                  <CardDescription>{shopifyData.stats.activePromotions} aktiva prisregler</CardDescription>
+                  <CardDescription>{t("insights.promotions.description", { count: shopifyData.stats.activePromotions })}</CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" asChild>
                   <a href={shopifyData.adminLinks.discounts} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -208,8 +213,8 @@ export function InsightsTab({ shopifyData, currency, onCreateLead }: Props) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{promo.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {promo.targetType || "order"} · använd {formatNumber(promo.usageCount)} {promo.usageCount === 1 ? "gång" : "gånger"}
-                      {promo.endsAt ? ` · slutar ${formatDate(promo.endsAt)}` : ""}
+                      {promo.targetType || t("insights.promotions.targetOrder")} · {t("insights.promotions.used", { count: promo.usageCount })}
+                      {promo.endsAt ? t("insights.promotions.endsAt", { date: formatDate(promo.endsAt) }) : ""}
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums text-green-600">

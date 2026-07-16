@@ -23,3 +23,4 @@ export {
 } from "./quickNavPrefs";
 export { useQuickNavPrefs } from "./useQuickNavPrefs";
 export { QuickNavPrefsEditor } from "./QuickNavPrefsEditor";
+export { quickNavLabel, quickNavShortLabel } from "./quickNavLabels";

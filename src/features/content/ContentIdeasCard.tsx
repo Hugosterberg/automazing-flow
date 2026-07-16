@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Lightbulb, Loader2, Copy, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ interface Props {
  * is set. Self-contained: collapsed until the user asks for ideas.
  */
 export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Props) {
+  const { t } = useTranslation("content");
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState("");
@@ -33,9 +35,9 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
       });
       setIdeas(result.ideas);
       setSource(result.source);
-      if (result.ideas.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
+      if (result.ideas.length === 0) toast.message(t("toasts.noIdeas"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte ladda innehållsidéer.");
+      toast.error(e instanceof Error ? e.message : t("toasts.ideasLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -49,15 +51,15 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
     const text = ideaText(idea);
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Kopierat");
+      toast.success(t("toasts.copied"));
     } catch {
-      toast.error("Kunde inte kopiera");
+      toast.error(t("toasts.copyFailed"));
     }
   }
 
   function handleUseIdea(idea: ContentIdea) {
     onUseIdea?.(ideaText(idea));
-    toast.success("Tillagd i utkastet");
+    toast.success(t("toasts.addedToDraft"));
   }
 
   return (
@@ -67,26 +69,26 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-primary" />
-              Content ideas
+              {t("ideas.title")}
             </CardTitle>
-            <CardDescription>AI post ideas tailored to your business.</CardDescription>
+            <CardDescription>{t("ideas.description")}</CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-            {ideas.length > 0 ? "Regenerate" : "Get ideas"}
+            {ideas.length > 0 ? t("ideas.regenerate") : t("ideas.getIdeas")}
           </Button>
         </div>
       </CardHeader>
       {ideas.length > 0 ? (
         <CardContent className="space-y-2">
           {source === "heuristic" ? (
-            <p className="text-[11px] text-muted-foreground">General starters — set an OpenAI key for tailored ideas.</p>
+            <p className="text-[11px] text-muted-foreground">{t("ideas.heuristicHint")}</p>
           ) : null}
           {ideas.map((idea, i) => (
             <div key={i} className="flex items-start justify-between gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2.5">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">{idea.title}</p>
-                {idea.hook ? <p className="text-xs text-muted-foreground mt-0.5">“{idea.hook}”</p> : null}
+                {idea.hook ? <p className="text-xs text-muted-foreground mt-0.5">"{idea.hook}"</p> : null}
                 <p className="text-[11px] text-muted-foreground/80 mt-0.5">
                   {[idea.format, idea.cta].filter(Boolean).join(" · ")}
                 </p>
@@ -94,12 +96,12 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
               <div className="flex shrink-0 items-center gap-1">
                 {onUseIdea ? (
                   <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => handleUseIdea(idea)}>
-                    Use
+                    {t("ideas.use")}
                   </Button>
                 ) : null}
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void copyIdea(idea)}>
                   <Copy className="h-3.5 w-3.5" />
-                  <span className="sr-only">Copy idea</span>
+                  <span className="sr-only">{t("ideas.copySr")}</span>
                 </Button>
               </div>
             </div>

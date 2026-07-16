@@ -1,5 +1,6 @@
 import { m } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Bot } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
@@ -8,7 +9,11 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpIntelligenceHub } from "@/features/intelligence";
-import { MCP_HUB_TABS, type McpHubTabId } from "@/features/intelligence/mcpFeatureConfig";
+import {
+  localizeMcpHubTab,
+  MCP_HUB_TABS,
+  type McpHubTabId,
+} from "@/features/intelligence/mcpFeatureConfig";
 import { pageFadeUp } from "@/lib/motion";
 
 const HUB_TAB_IDS = MCP_HUB_TABS.map((t) => t.id);
@@ -19,6 +24,7 @@ function parseHubTab(raw: string | null): McpHubTabId {
 }
 
 export default function IntelligencePage() {
+  const { t } = useTranslation("pages");
   const { activeProfileId } = useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
@@ -36,18 +42,14 @@ export default function IntelligencePage() {
     <div className="space-y-6 max-w-4xl">
       <PageHeader
         icon={Bot}
-        title="MCP Intelligence"
-        description="En plats för alla MCP-leverantörer — status, frågor och tydlig feedback när API-nycklar eller OAuth saknas."
+        title={t("intelligence.title")}
+        description={t("intelligence.description")}
       />
 
       <PageSmartBar
-        title="MCP Intelligence är kontrollpanelen för alla AI-leverantörer — se status, testa nycklar och kör frågor mot dina data."
-        steps={[
-          "Kontrollera att leverantörerna är gröna under Kopplingar → MCP",
-          "Välj flik för status, jämförelse eller frågekategori",
-          "Använd svaren i Försäljning, Innehåll eller automationer",
-        ]}
-        tip="Saknas en nyckel? Lägg till den under Inställningar → API-nycklar."
+        title={t("intelligence.smartBar")}
+        steps={[t("intelligence.step1"), t("intelligence.step2"), t("intelligence.step3")]}
+        tip={t("intelligence.tip")}
       />
 
       <m.div {...pageFadeUp}>
@@ -56,9 +58,12 @@ export default function IntelligencePage() {
 
       <PageModeTabs
         value={hubTab}
-        aria-label="MCP Intelligence-flikar"
+        aria-label={t("intelligence.tabsAria")}
         onChange={setHubTab}
-        options={MCP_HUB_TABS.map((t) => ({ value: t.id, label: t.label }))}
+        options={MCP_HUB_TABS.map((tab) => {
+          const localized = localizeMcpHubTab(tab);
+          return { value: localized.id, label: localized.label };
+        })}
       />
 
       <m.div {...pageFadeUp} transition={{ delay: 0.04 }} className="app-workspace-shell !min-h-[min(60vh,720px)]">
