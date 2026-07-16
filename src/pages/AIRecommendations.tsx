@@ -25,7 +25,6 @@ import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles
 import {
   useAiRecommendations,
   AiRecommendationCard,
-  AI_REC_KIND_LABELS,
   AI_REC_KIND_ORDER,
   resolveNavigateTarget,
   type AiRecommendationKind,
@@ -41,7 +40,9 @@ type TabValue = "active" | "accepted" | "dismissed";
  * rows, and users can only transition status to accepted or dismissed.
  */
 export default function AIRecommendationsPage() {
-  const { t } = useTranslation("pages");
+  const { t: tPage } = useTranslation("pages");
+  const { t } = useTranslation("aiRecommendations");
+  const { t: tCommon } = useTranslation("common");
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const { accounts } = legacy;
@@ -83,8 +84,8 @@ export default function AIRecommendationsPage() {
       await transition({ id: rec.id, status: "accepted" });
     } catch (err) {
       toast({
-        title: "Kunde inte acceptera rekommendationen",
-        description: err instanceof Error ? err.message : "Okänt fel",
+        title: t("toasts.acceptFailed"),
+        description: err instanceof Error ? err.message : t("errors.unknown"),
         variant: "destructive",
       });
       return;
@@ -98,8 +99,8 @@ export default function AIRecommendationsPage() {
       await transition({ id, status: "dismissed" });
     } catch (err) {
       toast({
-        title: "Kunde inte avfärda rekommendationen",
-        description: err instanceof Error ? err.message : "Okänt fel",
+        title: t("toasts.dismissFailed"),
+        description: err instanceof Error ? err.message : t("errors.unknown"),
         variant: "destructive",
       });
     }
@@ -110,8 +111,8 @@ export default function AIRecommendationsPage() {
       await transition({ id, status: "seen" });
     } catch (err) {
       toast({
-        title: "Kunde inte uppdatera rekommendationen",
-        description: err instanceof Error ? err.message : "Okänt fel",
+        title: t("toasts.updateFailed"),
+        description: err instanceof Error ? err.message : t("errors.unknown"),
         variant: "destructive",
       });
     }
@@ -121,16 +122,16 @@ export default function AIRecommendationsPage() {
     try {
       const result = await generate();
       const parts: string[] = [];
-      if (result.created > 0) parts.push(`${result.created} nya`);
-      if (result.expired > 0) parts.push(`${result.expired} lösta`);
-      if (parts.length === 0) parts.push("redan uppdaterat");
+      if (result.created > 0) parts.push(t("toasts.generateCreated", { count: result.created }));
+      if (result.expired > 0) parts.push(t("toasts.generateExpired", { count: result.expired }));
+      if (parts.length === 0) parts.push(t("toasts.generateAlreadyUpToDate"));
       toast({
-        title: "Rekommendationer uppdaterade",
+        title: t("toasts.generateUpdated"),
         description: parts.join(" · "),
       });
       if (result.errors && result.errors.length > 0) {
         toast({
-          title: "Vissa kontroller fick problem",
+          title: t("toasts.checksPartialFailure"),
           description: result.errors.join("; ").slice(0, 240),
           variant: "destructive",
         });
@@ -140,26 +141,25 @@ export default function AIRecommendationsPage() {
       // versus when the heuristics themselves were idempotent.
       if (result.llm?.skipped === "provider_error" && result.llm.error) {
         toast({
-          title: "Innehållsförslag hoppades över",
+          title: t("toasts.llmSkippedProvider"),
           description: result.llm.error.slice(0, 240),
           variant: "destructive",
         });
       } else if (result.llm?.skipped === "no_api_key") {
         toast({
-          title: "Innehållsförslag är inte konfigurerade",
-          description: "Sätt OPENAI_API_KEY för att aktivera AI-genererade inläggsidéer.",
+          title: t("toasts.llmNotConfiguredTitle"),
+          description: t("toasts.llmNotConfiguredDescription"),
         });
       } else if (result.llm?.skipped === "cached") {
         toast({
-          title: "Använder senaste innehållsförslagen",
-          description:
-            "Vi återanvände förra omgången AI-idéer för att spara tokens. Försök igen om en minut för nya förslag.",
+          title: t("toasts.llmCachedTitle"),
+          description: t("toasts.llmCachedDescription"),
         });
       }
     } catch (err) {
       toast({
-        title: "Kunde inte uppdatera rekommendationerna",
-        description: err instanceof Error ? err.message : "Okänt fel",
+        title: t("toasts.generateFailed"),
+        description: err instanceof Error ? err.message : t("errors.unknown"),
         variant: "destructive",
       });
     }
@@ -213,13 +213,11 @@ export default function AIRecommendationsPage() {
       <div className="space-y-4 max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <LightbulbGlowIcon className="h-7 w-7 text-primary" />
-          AI-rekommendationer
+          {tPage("aiRecommendations.title")}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Välj en företagsprofil under Företag för att se AI-rekommendationer.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("noProfile.description")}</p>
         <Button asChild size="sm" variant="outline" className="mt-2">
-          <Link to="/company">Öppna Företag</Link>
+          <Link to="/company">{t("actions.openCompany")}</Link>
         </Button>
       </div>
     );
@@ -229,8 +227,8 @@ export default function AIRecommendationsPage() {
     <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={<LightbulbGlowIcon className="h-7 w-7 text-primary" />}
-        title={t("aiRecommendations.title")}
-        description={t("aiRecommendations.description")}
+        title={tPage("aiRecommendations.title")}
+        description={tPage("aiRecommendations.description")}
         actions={
           <>
             <Button
@@ -239,45 +237,45 @@ export default function AIRecommendationsPage() {
               onClick={() => void refetch()}
               disabled={isFetching || isGenerating}
               className="text-muted-foreground"
-              title="Ladda om listan"
+              title={t("actions.reloadListTitle")}
             >
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="ml-1.5 hidden sm:inline">Ladda om</span>
+              <span className="ml-1.5 hidden sm:inline">{t("actions.reload")}</span>
             </Button>
             <Button
               size="sm"
               onClick={() => void handleGenerate()}
               disabled={isGenerating}
-              title="Kör om heuristikproducenten"
+              title={t("actions.generateTitle")}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              <span className="ml-1.5">Generera</span>
+              <span className="ml-1.5">{t("actions.generate")}</span>
             </Button>
           </>
         }
       />
 
       <PageSmartBar
-        title={t("aiRecommendations.smartBar")}
+        title={tPage("aiRecommendations.smartBar")}
         steps={[
-          t("aiRecommendations.step1"),
-          t("aiRecommendations.step2"),
-          t("aiRecommendations.step3"),
+          tPage("aiRecommendations.step1"),
+          tPage("aiRecommendations.step2"),
+          tPage("aiRecommendations.step3"),
         ]}
-        tip={t("aiRecommendations.tip")}
+        tip={tPage("aiRecommendations.tip")}
         liveHintOverride={
           newRecCount > 0
-            ? t("aiRecommendations.liveNew", { count: newRecCount })
+            ? tPage("aiRecommendations.liveNew", { count: newRecCount })
             : active.length > 0
-              ? t("aiRecommendations.liveActive", { count: active.length })
+              ? tPage("aiRecommendations.liveActive", { count: active.length })
               : null
         }
       />
@@ -286,10 +284,10 @@ export default function AIRecommendationsPage() {
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="py-3 px-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : "Kunde inte ladda rekommendationer."}
+              {error instanceof Error ? error.message : t("errors.loadFailed")}
             </p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Försök igen
+              {tCommon("common.retry")}
             </Button>
           </CardContent>
         </Card>
@@ -297,26 +295,26 @@ export default function AIRecommendationsPage() {
 
       <PageModeTabs
         value={tab}
-        aria-label="Rekommendationsflikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setTab}
         options={[
-          { value: "active", label: "Aktiva", count: active.length },
-          { value: "accepted", label: "Accepterade", count: accepted.length },
-          { value: "dismissed", label: "Avvisade", count: dismissed.length },
+          { value: "active", label: t("tabs.active"), count: active.length },
+          { value: "accepted", label: t("tabs.accepted"), count: accepted.length },
+          { value: "dismissed", label: t("tabs.dismissed"), count: dismissed.length },
         ]}
       />
 
       {tab === "active" ? (
         <details className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-foreground">
-            MCP-kontext (valfritt)
+            {t("mcp.optional")}
           </summary>
           <m.div {...pageFadeUp} transition={{ duration: 0.25 }} className="mt-3">
             <McpFeatureSection
               businessProfileId={businessProfileId}
               featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
-              title="MCP-kontext"
-              description="Hämta live-kontext från Era MCP för att berika rekommendationer."
+              title={t("mcp.title")}
+              description={t("mcp.description")}
             />
           </m.div>
         </details>
@@ -330,13 +328,13 @@ export default function AIRecommendationsPage() {
               onValueChange={(v) => setKindFilter(v as AiRecommendationKind | "all")}
             >
               <SelectTrigger className="h-8 w-[160px] border-border/60 bg-background/60 text-xs shadow-sm">
-                <SelectValue placeholder="Typ" />
+                <SelectValue placeholder={t("filter.placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alla typer</SelectItem>
+                <SelectItem value="all">{t("filter.allKinds")}</SelectItem>
                 {AI_REC_KIND_ORDER.map((k) => (
                   <SelectItem key={k} value={k}>
-                    {AI_REC_KIND_LABELS[k]}
+                    {t(`kinds.${k}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -397,12 +395,14 @@ function RecommendationsEmpty({
   hasConnections?: boolean;
   onShowActive?: () => void;
 }) {
+  const { t } = useTranslation("aiRecommendations");
+
   if (hasKindFilter) {
     return (
       <EmptyState
         size="compact"
-        title="Inga träffar"
-        description="Inga rekommendationer matchar den valda typen."
+        title={t("empty.noMatchesTitle")}
+        description={t("empty.noMatchesDescription")}
       />
     );
   }
@@ -412,11 +412,11 @@ function RecommendationsEmpty({
       return (
         <EmptyState
           icon={Sparkles}
-          title="Inga aktiva rekommendationer"
+          title={t("empty.activeTitle")}
           description={
             hasConnections
-              ? "Klicka Generera för att analysera kopplingar, uppgifter och innehåll efter nya förslag."
-              : "Koppla konton under Kopplingar och fyll i Företag — sedan kan Generera ge meningsfulla förslag."
+              ? t("empty.activeWithConnections")
+              : t("empty.activeNoConnections")
           }
           action={
             hasConnections && onGenerate ? (
@@ -426,15 +426,15 @@ function RecommendationsEmpty({
                 ) : (
                   <Sparkles className="h-4 w-4 mr-1.5" aria-hidden />
                 )}
-                Generera
+                {t("actions.generate")}
               </Button>
             ) : (
               <div className="flex flex-wrap justify-center gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/connections">Öppna Kopplingar</Link>
+                  <Link to="/connections">{t("actions.openConnections")}</Link>
                 </Button>
                 <Button asChild size="sm" variant="ghost">
-                  <Link to="/company">Öppna Företag</Link>
+                  <Link to="/company">{t("actions.openCompany")}</Link>
                 </Button>
               </div>
             )
@@ -445,20 +445,20 @@ function RecommendationsEmpty({
       return (
         <EmptyState
           size="compact"
-          title="Inget accepterat ännu"
-          description="Rekommendationer du accepterar hamnar här så du kan hitta dem senare."
+          title={t("empty.acceptedTitle")}
+          description={t("empty.acceptedDescription")}
         />
       );
     case "dismissed":
       return (
         <EmptyState
           size="compact"
-          title="Inga avvisade rekommendationer"
-          description="Det du avvisar sparas här. Gå tillbaka till Aktiva om du vill granska nya förslag."
+          title={t("empty.dismissedTitle")}
+          description={t("empty.dismissedDescription")}
           action={
             onShowActive ? (
               <Button size="sm" variant="outline" onClick={onShowActive}>
-                Visa aktiva
+                {t("actions.showActive")}
               </Button>
             ) : undefined
           }

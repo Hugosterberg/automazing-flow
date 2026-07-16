@@ -1,0 +1,85 @@
+{
+  "actions": {
+    "reload": "Reload",
+    "reloadListTitle": "Reload list",
+    "generate": "Generate",
+    "generateTitle": "Run heuristic producer again",
+    "openCompany": "Open Company",
+    "openConnections": "Open Connections",
+    "showActive": "Show active"
+  },
+  "noProfile": {
+    "description": "Select a business profile under Company to see AI recommendations."
+  },
+  "errors": {
+    "loadFailed": "Could not load recommendations.",
+    "unknown": "Unknown error"
+  },
+  "tabs": {
+    "ariaLabel": "Recommendation tabs",
+    "active": "Active",
+    "accepted": "Accepted",
+    "dismissed": "Dismissed"
+  },
+  "filter": {
+    "placeholder": "Type",
+    "allKinds": "All types"
+  },
+  "kinds": {
+    "content": "Content",
+    "outreach": "Outreach",
+    "engagement": "Engagement",
+    "maintenance": "Maintenance",
+    "insight": "Insight"
+  },
+  "status": {
+    "new": "New",
+    "accepted": "Accepted",
+    "dismissed": "Dismissed"
+  },
+  "card": {
+    "confidence": "{{percent}} confidence",
+    "whySummary": "Why this suggestion?",
+    "created": "Created {{time}}",
+    "markSeen": "Mark seen",
+    "dismiss": "Dismiss",
+    "accept": "Accept"
+  },
+  "empty": {
+    "noMatchesTitle": "No matches",
+    "noMatchesDescription": "No recommendations match the selected type.",
+    "activeTitle": "No active recommendations",
+    "activeWithConnections": "Click Generate to analyze connections, tasks and content for new suggestions.",
+    "activeNoConnections": "Connect accounts under Connections and complete Company — then Generate can produce meaningful suggestions.",
+    "acceptedTitle": "Nothing accepted yet",
+    "acceptedDescription": "Recommendations you accept appear here so you can find them later.",
+    "dismissedTitle": "No dismissed recommendations",
+    "dismissedDescription": "What you dismiss is saved here. Go back to Active to review new suggestions."
+  },
+  "mcp": {
+    "optional": "MCP context (optional)",
+    "title": "MCP context",
+    "description": "Fetch live context from your MCP servers to enrich recommendations."
+  },
+  "toasts": {
+    "acceptFailed": "Could not accept recommendation",
+    "dismissFailed": "Could not dismiss recommendation",
+    "updateFailed": "Could not update recommendation",
+    "generateFailed": "Could not refresh recommendations",
+    "generateUpdated": "Recommendations updated",
+    "generateCreated": "{{count}} new",
+    "generateExpired": "{{count}} resolved",
+    "generateAlreadyUpToDate": "already up to date",
+    "checksPartialFailure": "Some checks had problems",
+    "llmSkippedProvider": "Content suggestions skipped",
+    "llmNotConfiguredTitle": "Content suggestions not configured",
+    "llmNotConfiguredDescription": "Set OPENAI_API_KEY to enable AI-generated post ideas.",
+    "llmCachedTitle": "Using latest content suggestions",
+    "llmCachedDescription": "We reused the previous batch of AI ideas to save tokens. Try again in a minute for new suggestions."
+  },
+  "strip": {
+    "defaultLabel": "AI suggestions for this page",
+    "viewAll": "All",
+    "moreSuggestions": "+{{count}} more suggestions"
+  }
+}
