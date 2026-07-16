@@ -32,8 +32,12 @@ export function useSyncMessageAccounts({
   ensureBackendSession,
   addAccountFromOAuth,
 }: Args) {
+  // Latest-ref: the sync effect reads accounts lazily without re-running when
+  // the account list identity changes. Synced in an effect declared first.
   const accountsRef = useRef(accounts);
-  accountsRef.current = accounts;
+  useEffect(() => {
+    accountsRef.current = accounts;
+  }, [accounts]);
 
   useEffect(() => {
     let ignore = false;

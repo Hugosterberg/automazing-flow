@@ -38,12 +38,17 @@ export function useMessageReply({
   const [sendBusy, setSendBusy] = useState(false);
   const [replySent, setReplySent] = useState(false);
   const replyDraftCache = useRef<Map<string, string>>(new Map());
+  // Latest-ref pattern: synced in an effect (not during render) so callers can
+  // pass fresh closures without retriggering the restore effect below. Declared
+  // before it so the refs are current by the time that effect runs.
   const onDraftRestoredRef = useRef(onDraftRestored);
-  onDraftRestoredRef.current = onDraftRestored;
   const getFilteredMessagesRef = useRef(getFilteredMessages);
-  getFilteredMessagesRef.current = getFilteredMessages;
   const pickNextAfterRef = useRef(pickNextAfter);
-  pickNextAfterRef.current = pickNextAfter;
+  useEffect(() => {
+    onDraftRestoredRef.current = onDraftRestored;
+    getFilteredMessagesRef.current = getFilteredMessages;
+    pickNextAfterRef.current = pickNextAfter;
+  });
 
   // Restore reply draft cache and reset transient send state when switching messages.
   useEffect(() => {

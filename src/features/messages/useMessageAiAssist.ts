@@ -31,8 +31,12 @@ export function useMessageAiAssist({
   const [draftBusy, setDraftBusy] = useState(false);
   const autoDraftForId = useRef<string | null>(null);
   const lastSummaryFingerprint = useRef("");
+  // Latest-ref: synced in an effect so async draft callbacks can check the
+  // current selection without re-creating themselves on every hop.
   const selectedIdRef = useRef<string | null>(null);
-  selectedIdRef.current = selectedId;
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const draftReplyFor = useCallback(
     async (forId: string, kind: "email" | "dm", authorName: string, text: string) => {
