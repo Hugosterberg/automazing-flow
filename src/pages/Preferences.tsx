@@ -5,7 +5,6 @@ import {
   HelpCircle,
   CheckCircle2,
   ExternalLink,
-  Globe,
   KeyRound,
   LayoutGrid,
   Loader2,
@@ -36,6 +35,7 @@ import { checkApiaiHealth } from "@/features/content/apiaiClient";
 import { apiJson } from "@/lib/apiJson";
 import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
 import { PreferencesDataSection } from "@/features/preferences/PreferencesDataSection";
+import { LanguageSettingsSection } from "@/features/preferences/LanguageSettingsSection";
 import { QuickNavPrefsEditor } from "@/features/quick-nav";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
@@ -73,7 +73,6 @@ type IntegrationHelp = {
 const overviewFeatures = [
   { icon: Bell, title: "Aviseringar", desc: "Hantera påminnelser och varningar" },
   { icon: Palette, title: "Utseende", desc: "Tema och visuella inställningar" },
-  { icon: Globe, title: "Språk", desc: "Språk och region" },
   { icon: Shield, title: "Säkerhet", desc: "Lösenord och tvåfaktorsautentisering" },
 ];
 
@@ -502,8 +501,9 @@ export default function PreferencesPage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
 
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <TabsContent value="overview" className="space-y-4 pt-2">
+          <LanguageSettingsSection />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {overviewFeatures.map((feature, index) => (
               <m.div
                 key={feature.title}

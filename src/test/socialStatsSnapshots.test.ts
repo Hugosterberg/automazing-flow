@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { buildSocialStatsSnapshotRow } from "../../server/lib/socialStatsSnapshots";
 import {
   computeSocialStatsTrend,
   formatStatChange,
   type SocialStatsSnapshotPoint,
 } from "@/features/social/socialStatsTrend";
+import { setFormatLocale } from "@/lib/format";
+
+beforeAll(() => {
+  setFormatLocale("sv-SE");
+});
 
 describe("buildSocialStatsSnapshotRow", () => {
   const account = {

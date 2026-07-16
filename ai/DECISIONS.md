@@ -2,6 +2,17 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — UI language: SE → sv, else en; Preferences override — **Active**
+
+Default UI language follows request country from Vercel’s `x-vercel-ip-country`
+via `GET /api/geo`: Sweden → Swedish, every other country (and missing header
+locally) → English. Explicit choice in Preferences (`app-language` in
+localStorage) always wins; geo result is cached (`app-language-geo`) to avoid
+a first-paint flash. Stack is i18next + react-i18next (`src/lib/i18n.ts`);
+chrome (nav, layout, command palette, language settings) is the migration
+pattern — migrate page copy incrementally, never invent locale URL segments
+or a separate i18n service.
+
 ## 2026-07-16 — SaaS trust without inventing billing/legal URLs — **Active**
 
 Workspace first-goal is a profile document (`workspace-goal`), not a new column.

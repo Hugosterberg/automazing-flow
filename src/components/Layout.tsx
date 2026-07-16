@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { isLocalDevHost } from "@/lib/deployment";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -49,6 +50,7 @@ function emailInitial(email: string | null | undefined): string {
 }
 
 export default function Layout() {
+  const { t } = useTranslation();
   const { user, signOut, authMode, setAuthMode } = useAuth();
   const allowLocal = isLocalDevHost();
   const email = user?.email ?? null;
@@ -110,7 +112,7 @@ export default function Layout() {
                     <button
                       type="button"
                       className="flex touch-target items-center justify-center gap-2 rounded-full border border-border bg-card/40 p-0.5 hover:bg-accent/40 transition-colors active:scale-95 sm:pl-1 sm:pr-2 sm:py-1"
-                      aria-label="Öppna kontomeny"
+                      aria-label={t("layout.openAccountMenu")}
                     >
                       <Avatar className="h-8 w-8 sm:h-7 sm:w-7">
                         <AvatarFallback className="text-[11px] font-semibold">
@@ -118,7 +120,7 @@ export default function Layout() {
                         </AvatarFallback>
                       </Avatar>
                       <span className="hidden sm:inline text-xs text-muted-foreground max-w-[160px] truncate">
-                        {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
+                        {user?.user_metadata?.full_name ?? email ?? t("layout.signedIn")}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
@@ -127,10 +129,10 @@ export default function Layout() {
                       <UserIcon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-foreground truncate">
-                          {user?.user_metadata?.full_name ?? email ?? "Inloggad"}
+                          {user?.user_metadata?.full_name ?? email ?? t("layout.signedIn")}
                         </p>
                         <p className="text-[11px] text-muted-foreground truncate">
-                          {email ?? "Cloud-konto"}
+                          {email ?? t("layout.cloudAccount")}
                         </p>
                       </div>
                     </DropdownMenuLabel>
@@ -138,7 +140,7 @@ export default function Layout() {
                     <DropdownMenuItem asChild className="text-xs">
                       <Link to="/preferences">
                         <Settings className="h-3.5 w-3.5 mr-2" />
-                        Inställningar
+                        {t("layout.preferences")}
                       </Link>
                     </DropdownMenuItem>
                     {allowLocal ? (
@@ -147,7 +149,7 @@ export default function Layout() {
                         className="text-xs"
                       >
                         <Terminal className="h-3.5 w-3.5 mr-2" />
-                        Lokalt läge
+                        {t("layout.switchToLocal")}
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuSeparator />
@@ -156,20 +158,20 @@ export default function Layout() {
                       className="text-xs text-destructive focus:text-destructive"
                     >
                       <LogOut className="h-3.5 w-3.5 mr-2" />
-                      Logga ut
+                      {t("layout.signOut")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <>
-                  <span className="text-xs text-muted-foreground">Local mode</span>
+                  <span className="text-xs text-muted-foreground">{t("layout.localMode")}</span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setAuthMode("cloud")}
-                    title="Use Supabase Google sign-in and synced profiles"
+                    title={t("layout.useGoogleTitle")}
                   >
-                    Use Google
+                    {t("layout.useGoogle")}
                   </Button>
                 </>
               )}

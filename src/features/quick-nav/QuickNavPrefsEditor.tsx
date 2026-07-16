@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, GripVertical, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -8,6 +9,7 @@ import {
   pathConflictKey,
   type QuickNavDestination,
 } from "./quickNavCatalog";
+import { quickNavLabel } from "./quickNavLabels";
 import { useQuickNavPrefs } from "./useQuickNavPrefs";
 
 function moveKey(list: string[], from: number, to: number): string[] {
@@ -50,6 +52,7 @@ export function QuickNavPrefsEditor({
   className,
   compact = false,
 }: QuickNavPrefsEditorProps) {
+  const { t } = useTranslation();
   const {
     primaryKeys,
     homeJumpKeys,
@@ -112,6 +115,7 @@ export function QuickNavPrefsEditor({
               const dest = available.find((d) => d.key === key);
               if (!dest) return null;
               const Icon = dest.icon;
+              const label = quickNavLabel(dest.key, t);
               return (
                 <li
                   key={key}
@@ -121,7 +125,7 @@ export function QuickNavPrefsEditor({
                     <GripVertical className="h-4 w-4" />
                   </span>
                   <Icon className="h-4 w-4 text-foreground/80" aria-hidden />
-                  <span className="flex-1 text-sm font-medium text-foreground">{dest.label}</span>
+                  <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
                   <div className="flex gap-1">
                     <Button
                       type="button"
@@ -130,7 +134,7 @@ export function QuickNavPrefsEditor({
                       className="h-8 px-2 text-xs"
                       disabled={index === 0}
                       onClick={() => setSelected(moveKey(selected, index, index - 1))}
-                      aria-label={`Flytta ${dest.label} upp`}
+                      aria-label={`Flytta ${label} upp`}
                     >
                       ↑
                     </Button>
@@ -141,7 +145,7 @@ export function QuickNavPrefsEditor({
                       className="h-8 px-2 text-xs"
                       disabled={index === selected.length - 1}
                       onClick={() => setSelected(moveKey(selected, index, index + 1))}
-                      aria-label={`Flytta ${dest.label} ner`}
+                      aria-label={`Flytta ${label} ner`}
                     >
                       ↓
                     </Button>
@@ -151,7 +155,7 @@ export function QuickNavPrefsEditor({
                       variant="ghost"
                       className="h-8 px-2 text-xs text-muted-foreground"
                       onClick={() => setSelected(selected.filter((k) => k !== key))}
-                      aria-label={`Ta bort ${dest.label}`}
+                      aria-label={`Ta bort ${label}`}
                     >
                       Ta bort
                     </Button>
@@ -201,7 +205,7 @@ export function QuickNavPrefsEditor({
                 ) : (
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                 )}
-                <span className="truncate font-medium">{dest.label}</span>
+                <span className="truncate font-medium">{quickNavLabel(dest.key, t)}</span>
               </button>
             );
           })}

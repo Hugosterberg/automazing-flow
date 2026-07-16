@@ -1,4 +1,5 @@
 import { navItems, topNavItems, type TopNavItem } from "@/components/navConfig";
+import { t } from "@/lib/i18n";
 
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
@@ -16,7 +17,6 @@ export interface RecentPage {
 export interface GoNavTarget {
   key: string;
   url: string;
-  title: string;
   modes?: WorkspaceMode[];
 }
 
@@ -34,13 +34,13 @@ export interface ShortcutSection {
 }
 
 export const GO_NAV_TARGETS: GoNavTarget[] = [
-  { key: "h", url: "/", title: "Hem" },
-  { key: "t", url: "/tasks", title: "Uppgifter" },
-  { key: "m", url: "/messages", title: "Meddelanden" },
-  { key: "s", url: "/sales", title: "Försäljning", modes: ["business"] },
-  { key: "c", url: "/company", title: "Företag", modes: ["business"] },
-  { key: "i", url: "/intelligence", title: "MCP Intelligence" },
-  { key: "p", url: "/preferences", title: "Inställningar" },
+  { key: "h", url: "/" },
+  { key: "t", url: "/tasks" },
+  { key: "m", url: "/messages" },
+  { key: "s", url: "/sales", modes: ["business"] },
+  { key: "c", url: "/company", modes: ["business"] },
+  { key: "i", url: "/intelligence" },
+  { key: "p", url: "/preferences" },
 ];
 
 export function isMacLike(): boolean {
@@ -75,13 +75,13 @@ export function isPlainLetterShortcut(event: KeyboardEvent): boolean {
 }
 
 export function titleForRecentPage(pathname: string): string {
-  if (pathname === "/") return "Hem";
+  if (pathname === "/") return t("nav.home");
   const item = ALL_NAV.find((entry) => entry.url === pathname);
-  if (item) return item.title;
+  if (item) return t(`nav.${item.key}`);
   const prefix = ALL_NAV.find(
     (entry) => entry.url !== "/" && pathname.startsWith(`${entry.url}/`)
   );
-  return prefix ? prefix.title : pathname;
+  return prefix ? t(`nav.${prefix.key}`) : pathname;
 }
 
 export function recordRecentPage(pathname: string, title?: string): void {

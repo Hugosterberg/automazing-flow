@@ -28,6 +28,12 @@ import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
  * consumed by both the sidebar (AppSidebar) and the command palette
  * (CommandPalette) so the two never drift apart.
  *
+ * Display titles are NOT stored here — they live in the translation files
+ * (src/locales/<lang>/common.json) under `nav.<key>` and `navGroups.<group>`,
+ * so every consumer renders `t("nav." + item.key)` and language switching
+ * just works. Adding a nav item = add it here + add `nav.<key>` to BOTH
+ * locale files.
+ *
  * Sidebar groups read top-to-bottom as a user journey:
  *   Work:         day-to-day channels and content
  *   Productivity: cross-cutting assistants (tasks, activity, AI)
@@ -36,17 +42,11 @@ import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
  */
 export type NavGroup = "work" | "productivity" | "system";
 
-export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
-  work: "Arbete",
-  productivity: "Produktivitet",
-  system: "System",
-};
-
 export const NAV_GROUP_ORDER: NavGroup[] = ["work", "productivity", "system"];
 
 export interface TopNavItem {
+  /** Stable id; also the translation key suffix (`nav.<key>`). */
   key: string;
-  title: string;
   url: string;
   icon: ComponentType<{ className?: string }>;
   platforms: AccountPlatform[];
@@ -67,7 +67,6 @@ export interface NavItem extends TopNavItem {
 export const topNavItems: TopNavItem[] = [
   {
     key: "company",
-    title: "Företag",
     url: "/company",
     icon: Building2,
     platforms: [] as AccountPlatform[],
@@ -76,7 +75,6 @@ export const topNavItems: TopNavItem[] = [
   },
   {
     key: "connections",
-    title: "Kopplingar",
     url: "/connections",
     icon: PlugZap,
     platforms: [] as AccountPlatform[],
@@ -84,7 +82,6 @@ export const topNavItems: TopNavItem[] = [
   },
   {
     key: "preferences",
-    title: "Inställningar",
     url: "/preferences",
     icon: Settings,
     platforms: [] as AccountPlatform[],
@@ -95,7 +92,6 @@ export const topNavItems: TopNavItem[] = [
 export const navItems: NavItem[] = [
   {
     key: "content",
-    title: "Innehåll",
     url: "/content",
     icon: FolderOpen,
     platforms: ["google_drive", "canva"] as AccountPlatform[],
@@ -103,7 +99,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "social-media",
-    title: "Socialt",
     url: "/social-media",
     icon: Share2,
     platforms: [
@@ -119,7 +114,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "ecommerce",
-    title: "E-handel",
     url: "/ecommerce",
     icon: ShoppingCart,
     platforms: ["shopify", "notion"] as AccountPlatform[],
@@ -128,7 +122,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "sales-marketing",
-    title: "Försäljning",
     url: "/sales",
     icon: LineChart,
     platforms: [] as AccountPlatform[],
@@ -138,7 +131,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "marketing",
-    title: "Marknadsföring",
     url: "/marketing",
     icon: Megaphone,
     platforms: ["google_ads", "meta_business"] as AccountPlatform[],
@@ -147,7 +139,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "digital-brand",
-    title: "Digitalt varumärke",
     url: "/digital-brand",
     icon: Globe2,
     platforms: [] as AccountPlatform[],
@@ -157,7 +148,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "customers",
-    title: "Kunder",
     url: "/customers",
     icon: Users,
     platforms: [] as AccountPlatform[],
@@ -167,7 +157,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "calendar",
-    title: "Kalender",
     url: "/calendar",
     icon: CalendarDays,
     platforms: ["google_calendar", "outlook_calendar"] as AccountPlatform[],
@@ -175,7 +164,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "messages",
-    title: "Meddelanden",
     url: "/messages",
     icon: MessageSquare,
     platforms: ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as AccountPlatform[],
@@ -183,7 +171,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "reviews",
-    title: "Recensioner",
     url: "/reviews",
     icon: Star,
     platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
@@ -192,7 +179,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "tasks",
-    title: "Uppgifter",
     url: "/tasks",
     icon: ListChecks,
     platforms: [] as AccountPlatform[],
@@ -201,7 +187,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "insights",
-    title: "Insikter",
     url: "/insights",
     icon: BarChart3,
     platforms: [] as AccountPlatform[],
@@ -210,7 +195,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "activity",
-    title: "Aktivitet",
     url: "/activity",
     icon: Activity,
     platforms: [] as AccountPlatform[],
@@ -219,7 +203,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "automations",
-    title: "Automationer",
     url: "/automations",
     icon: Zap,
     platforms: [] as AccountPlatform[],
@@ -228,7 +211,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "ai-recommendations",
-    title: "AI-förslag",
     url: "/ai-recommendations",
     icon: LightbulbGlowIcon,
     platforms: [] as AccountPlatform[],
@@ -237,7 +219,6 @@ export const navItems: NavItem[] = [
   },
   {
     key: "intelligence",
-    title: "MCP Intelligence",
     url: "/intelligence",
     icon: Bot,
     platforms: [] as AccountPlatform[],

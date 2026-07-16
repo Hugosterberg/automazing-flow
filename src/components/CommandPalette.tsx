@@ -35,7 +35,6 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import {
-  NAV_GROUP_LABELS,
   navItemsForMode,
   topNavItemsForMode,
   type NavGroup,
@@ -47,8 +46,10 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   getRecentPages,
   modKeyLabel,
+  titleForRecentPage,
   type RecentPage,
 } from "@/lib/keyboardShortcuts";
+import { useTranslation } from "react-i18next";
 import { briefItemsForRoute } from "@/features/daily-brief/briefForRoute";
 import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -64,6 +65,7 @@ type CommandPaletteProps = {
  * and the ? shortcuts dialog via Layout.
  */
 export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
   const navigate = useNavigate();
@@ -121,7 +123,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
     const modeNavItems = navItemsForMode(mode);
     return {
       pageGroups: (["work", "productivity"] as NavGroup[]).map((group) => ({
-        label: NAV_GROUP_LABELS[group],
+        group,
         items: modeNavItems.filter((item) => item.group === group),
       })),
       systemItems: topNavItemsForMode(mode),
@@ -171,10 +173,10 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           setOpen(true);
         }}
         className="pressable relative flex h-9 w-9 items-center justify-center gap-2 rounded-full border border-border bg-card/40 px-0 text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground sm:h-auto sm:w-auto sm:rounded-md sm:px-2 sm:py-1.5"
-        aria-label="Öppna kommandopalett"
+        aria-label={t("commandPalette.open")}
       >
         <Search className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-        <span className="hidden sm:inline">Sök…</span>
+        <span className="hidden sm:inline">{t("commandPalette.search")}</span>
         {pulseItems.length > 0 ? (
           <span
             className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.7)]"
@@ -186,18 +188,18 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
         </kbd>
       </button>
 
-      <CommandDialog open={open} onOpenChange={setOpen} title="Kommandopalett">
-        <CommandInput placeholder="Sök sidor och åtgärder…" />
+      <CommandDialog open={open} onOpenChange={setOpen} title={t("commandPalette.title")}>
+        <CommandInput placeholder={t("commandPalette.placeholder")} />
         <CommandList>
-          <CommandEmpty>Inget hittades.</CommandEmpty>
+          <CommandEmpty>{t("commandPalette.empty")}</CommandEmpty>
 
           {contextualActions.length > 0 ? (
             <>
-              <CommandGroup heading="Snabbval här">
+              <CommandGroup heading={t("commandPalette.contextual")}>
                 {contextualActions.map((action) => (
                   <CommandItem
                     key={action.url + action.label}
-                    value={`Snabbval ${action.label}`}
+                    value={`${t("commandPalette.contextual")} ${action.label}`}
                     onSelect={() => goTo(action.url)}
                     onPointerEnter={() => prefetchFor(action.url.split("?")[0] ?? action.url)}
                   >
@@ -212,7 +214,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
 
           {entities.length > 0 ? (
             <>
-              <CommandGroup heading="Objekt">
+              <CommandGroup heading={t("commandPalette.entities")}>
                 {entities.slice(0, 12).map((entity) => (
                   <CommandItem
                     key={entity.id}
@@ -298,17 +300,22 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           {recentPages.length > 0 ? (
             <>
               <CommandGroup heading="Senast besökt">
-                {recentPages.map((page) => (
-                  <CommandItem
-                    key={page.pathname}
-                    value={`Senast ${page.title} ${page.pathname}`}
-                    onSelect={() => goTo(page.pathname)}
-                    onPointerEnter={() => prefetchFor(page.pathname)}
-                  >
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {page.title}
-                  </CommandItem>
-                ))}
+                {recentPages.map((page) => {
+                  // Re-derive the title so recents follow the active language
+                  // (the stored title is from visit time).
+                  const title = titleForRecentPage(page.pathname) || page.title;
+                  return (
+                    <CommandItem
+                      key={page.pathname}
+                      value={`Senast ${title} ${page.pathname}`}
+                      onSelect={() => goTo(page.pathname)}
+                      onPointerEnter={() => prefetchFor(page.pathname)}
+                    >
+                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {title}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
               <CommandSeparator />
             </>
@@ -409,47 +416,47 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
           </CommandGroup>
           <CommandSeparator />
 
-          {pageGroups.map((group) => (
-            <CommandGroup key={group.label} heading={group.label}>
-              {group.items.map((item) => (
+          {pageGroups.map(({ group, items }) => (
+            <CommandGroup key={group} heading={t(`navGroups.${group}`)}>
+              {items.map((item) => (
                 <CommandItem
                   key={item.key}
-                  value={item.title}
+                  value={t(`nav.${item.key}`)}
                   onSelect={() => goTo(item.url)}
                   onPointerEnter={() => prefetchFor(item.url)}
                 >
                   <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {item.title}
+                  {t(`nav.${item.key}`)}
                 </CommandItem>
               ))}
             </CommandGroup>
           ))}
-          <CommandGroup heading="System">
+          <CommandGroup heading={t("navGroups.system")}>
             {systemItems.map((item) => (
               <CommandItem
                 key={item.key}
-                value={item.title}
+                value={t(`nav.${item.key}`)}
                 onSelect={() => goTo(item.url)}
                 onPointerEnter={() => prefetchFor(item.url)}
               >
                 <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                {item.title}
+                {t(`nav.${item.key}`)}
               </CommandItem>
             ))}
           </CommandGroup>
           {authMode === "cloud" ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading="Konto">
+              <CommandGroup heading={t("commandPalette.account")}>
                 <CommandItem
-                  value="Logga ut"
+                  value={t("commandPalette.signOut")}
                   onSelect={() => {
                     setOpen(false);
                     void signOut();
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Logga ut
+                  {t("commandPalette.signOut")}
                 </CommandItem>
               </CommandGroup>
             </>

@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import { initI18n } from "./lib/i18n";
 import "./index.css";
+
+// Language must be resolved before first render (no flash of wrong language).
+initI18n();
 
 /**
  * React error boundaries cannot catch unhandled promise rejections

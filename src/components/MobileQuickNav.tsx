@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Home, Menu, Settings2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SheetGrabber } from "@/components/ui/sheet-grabber";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
@@ -16,6 +17,7 @@ import { useUnreadDmCount } from "@/features/daily-brief";
 import { useReviewReplyState } from "@/features/reviews";
 import { useTasks, isTaskOpen, isTaskOverdue } from "@/features/tasks";
 import { QuickNavPrefsEditor, useQuickNavPrefs } from "@/features/quick-nav";
+import { quickNavLabel, quickNavShortLabel } from "@/features/quick-nav/quickNavLabels";
 import { cn } from "@/lib/utils";
 
 function BadgeCount({ count }: { count: number }) {
@@ -51,6 +53,7 @@ function TabLabel({
  * Hem and Mer are always present. Hidden while a stacked detail pane is open.
  */
 export function MobileQuickNav() {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { mode } = useWorkspaceMode();
@@ -137,7 +140,7 @@ export function MobileQuickNav() {
               <span className="mobile-tab-icon-wrap">
                 <Home className="mobile-tab-icon" aria-hidden />
               </span>
-              <TabLabel active={homeActive}>Hem</TabLabel>
+              <TabLabel active={homeActive}>{t("nav.home")}</TabLabel>
             </Link>
           </li>
           {primaryDestinations.map((dest) => {
@@ -155,7 +158,7 @@ export function MobileQuickNav() {
                     <Icon className="mobile-tab-icon" aria-hidden />
                     <BadgeCount count={count} />
                   </span>
-                  <TabLabel active={active}>{dest.shortLabel}</TabLabel>
+                  <TabLabel active={active}>{quickNavShortLabel(dest.key, t)}</TabLabel>
                 </Link>
               </li>
             );
@@ -168,7 +171,7 @@ export function MobileQuickNav() {
                 "mobile-tab-item w-full",
                 (moreActive || moreOpen) && "mobile-tab-item-active"
               )}
-              aria-label={setupHint ? "Mer — något behöver din uppmärksamhet" : "Mer"}
+              aria-label={setupHint ? t("quickNav.moreAttention") : t("quickNav.more")}
               aria-expanded={moreOpen}
             >
               <span className="mobile-tab-icon-wrap relative">
@@ -180,7 +183,7 @@ export function MobileQuickNav() {
                   />
                 ) : null}
               </span>
-              <TabLabel active={moreActive || moreOpen}>Mer</TabLabel>
+              <TabLabel active={moreActive || moreOpen}>{t("quickNav.more")}</TabLabel>
             </button>
           </li>
         </ul>
@@ -190,7 +193,7 @@ export function MobileQuickNav() {
         <SheetContent side="bottom" className="max-h-[88dvh] overflow-y-auto px-4">
           <SheetGrabber />
           <SheetHeader className="pb-1 text-left">
-            <SheetTitle className="font-display text-base tracking-tight">Mer</SheetTitle>
+            <SheetTitle className="font-display text-base tracking-tight">{t("quickNav.more")}</SheetTitle>
           </SheetHeader>
           {setupHint ? (
             <div className="mb-3 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2.5">
@@ -206,7 +209,7 @@ export function MobileQuickNav() {
           ) : null}
           <div className="mb-4">
             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Läge
+              {t("quickNav.mode")}
             </p>
             <WorkspaceModeTabs fullWidth />
           </div>
@@ -238,7 +241,7 @@ export function MobileQuickNav() {
                       <Icon className="h-5 w-5 shrink-0" aria-hidden />
                     </span>
                     <span className="line-clamp-2 text-[11px] font-medium leading-tight">
-                      {dest.label}
+                      {quickNavLabel(dest.key, t)}
                     </span>
                     {highlighted ? (
                       <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />

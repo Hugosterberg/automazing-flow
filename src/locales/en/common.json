@@ -1,0 +1,90 @@
+{
+  "nav": {
+    "company": "Company",
+    "connections": "Connections",
+    "preferences": "Preferences",
+    "content": "Content",
+    "social-media": "Social",
+    "ecommerce": "E-commerce",
+    "sales-marketing": "Sales",
+    "marketing": "Marketing",
+    "digital-brand": "Digital brand",
+    "customers": "Customers",
+    "calendar": "Calendar",
+    "messages": "Messages",
+    "reviews": "Reviews",
+    "tasks": "Tasks",
+    "insights": "Insights",
+    "activity": "Activity",
+    "automations": "Automations",
+    "ai-recommendations": "AI suggestions",
+    "intelligence": "MCP Intelligence",
+    "home": "Home"
+  },
+  "navGroups": {
+    "work": "Work",
+    "productivity": "Productivity",
+    "system": "System"
+  },
+  "navShort": {
+    "messages": "Mail",
+    "tasks": "Tasks",
+    "reviews": "Reviews",
+    "content": "Content",
+    "calendar": "Calendar",
+    "social-media": "Social",
+    "sales": "Sales",
+    "customers": "Customers",
+    "activity": "Activity",
+    "connections": "Connect",
+    "company": "Company",
+    "automations": "Auto",
+    "marketing": "Marketing",
+    "ecommerce": "Shop",
+    "insights": "Insights",
+    "ai-recommendations": "AI",
+    "drive-library": "Drive"
+  },
+  "quickNav": {
+    "driveLibrary": "Content library",
+    "more": "More",
+    "moreAttention": "More — something needs your attention",
+    "mode": "Mode"
+  },
+  "layout": {
+    "openAccountMenu": "Open account menu",
+    "signedIn": "Signed in",
+    "cloudAccount": "Cloud account",
+    "preferences": "Preferences",
+    "localMode": "Local mode",
+    "switchToLocal": "Local mode",
+    "useGoogle": "Use Google",
+    "useGoogleTitle": "Use Supabase Google sign-in and synced profiles",
+    "signOut": "Sign out"
+  },
+  "commandPalette": {
+    "open": "Open command palette",
+    "search": "Search…",
+    "placeholder": "Search pages and actions…",
+    "title": "Command palette",
+    "empty": "No results.",
+    "contextual": "Quick actions here",
+    "entities": "Items",
+    "account": "Account",
+    "signOut": "Sign out"
+  },
+  "notFound": {
+    "documentTitle": "Page not found · Automazing",
+    "description": "The page {{path}} does not exist.",
+    "backHome": "Back to home"
+  },
+  "language": {
+    "title": "Language",
+    "description": "Swedish is the default for visitors from Sweden, English for everyone else. Your choice here always wins and is saved in this browser.",
+    "label": "App language",
+    "auto": "Automatic (based on location)",
+    "saved": "Language updated",
+    "sv": "Svenska",
+    "en": "English"
+  }
+}

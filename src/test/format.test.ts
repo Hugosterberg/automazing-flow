@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   formatCurrency,
   formatFullDateTime,
@@ -6,7 +6,13 @@ import {
   formatShortDate,
   formatSmartDate,
   formatTime,
+  setFormatLocale,
 } from "@/lib/format";
+
+// These assertions cover the Swedish formatting surface used when UI lang is sv.
+beforeAll(() => {
+  setFormatLocale("sv-SE");
+});
 
 // A fixed "now" keeps the relative buckets deterministic: Wednesday
 // 2026-07-15 12:00 local time.

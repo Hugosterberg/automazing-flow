@@ -1,0 +1,90 @@
+{
+  "nav": {
+    "company": "Företag",
+    "connections": "Kopplingar",
+    "preferences": "Inställningar",
+    "content": "Innehåll",
+    "social-media": "Socialt",
+    "ecommerce": "E-handel",
+    "sales-marketing": "Försäljning",
+    "marketing": "Marknadsföring",
+    "digital-brand": "Digitalt varumärke",
+    "customers": "Kunder",
+    "calendar": "Kalender",
+    "messages": "Meddelanden",
+    "reviews": "Recensioner",
+    "tasks": "Uppgifter",
+    "insights": "Insikter",
+    "activity": "Aktivitet",
+    "automations": "Automationer",
+    "ai-recommendations": "AI-förslag",
+    "intelligence": "MCP Intelligence",
+    "home": "Hem"
+  },
+  "navGroups": {
+    "work": "Arbete",
+    "productivity": "Produktivitet",
+    "system": "System"
+  },
+  "navShort": {
+    "messages": "Mail",
+    "tasks": "Uppgifter",
+    "reviews": "Omdömen",
+    "content": "Innehåll",
+    "calendar": "Kalender",
+    "social-media": "Socialt",
+    "sales": "Försäljning",
+    "customers": "Kunder",
+    "activity": "Aktivitet",
+    "connections": "Kopplingar",
+    "company": "Företag",
+    "automations": "Auto",
+    "marketing": "Marknadsföring",
+    "ecommerce": "E-handel",
+    "insights": "Insikter",
+    "ai-recommendations": "AI",
+    "drive-library": "Drive"
+  },
+  "quickNav": {
+    "driveLibrary": "Innehållsbibliotek",
+    "more": "Mer",
+    "moreAttention": "Mer — något behöver din uppmärksamhet",
+    "mode": "Läge"
+  },
+  "layout": {
+    "openAccountMenu": "Öppna kontomeny",
+    "signedIn": "Inloggad",
+    "cloudAccount": "Cloud-konto",
+    "preferences": "Inställningar",
+    "localMode": "Lokalt läge",
+    "switchToLocal": "Lokalt läge",
+    "useGoogle": "Använd Google",
+    "useGoogleTitle": "Använd Supabase Google-inloggning och synkade profiler",
+    "signOut": "Logga ut"
+  },
+  "commandPalette": {
+    "open": "Öppna kommandopalett",
+    "search": "Sök…",
+    "placeholder": "Sök sidor och åtgärder…",
+    "title": "Kommandopalett",
+    "empty": "Inget hittades.",
+    "contextual": "Snabbval här",
+    "entities": "Objekt",
+    "account": "Konto",
+    "signOut": "Logga ut"
+  },
+  "notFound": {
+    "documentTitle": "Sidan finns inte · Automazing",
+    "description": "Sidan {{path}} finns inte.",
+    "backHome": "Till startsidan"
+  },
+  "language": {
+    "title": "Språk",
+    "description": "Svenska är standard för besökare från Sverige, engelska för alla andra. Ditt val här gäller alltid och sparas i webbläsaren.",
+    "label": "Appens språk",
+    "auto": "Automatiskt (utifrån plats)",
+    "saved": "Språk uppdaterat",
+    "sv": "Svenska",
+    "en": "English"
+  }
+}

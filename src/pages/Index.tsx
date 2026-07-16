@@ -52,6 +52,8 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfile
 import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
 import { DemoModeBanner } from "@/features/demo";
 import { WeeklyResultsCard } from "@/features/weekly-results";
+import { quickNavLabel } from "@/features/quick-nav/quickNavLabels";
+import { useTranslation } from "react-i18next";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -81,6 +83,7 @@ import { useMarketingCampaigns } from "@/features/marketing";
 import { useQuickNavPrefs } from "@/features/quick-nav";
 
 export default function Index() {
+  const { t } = useTranslation();
   const { activeProfile, profiles, accounts, removeProfile, updateProfile, activeProfileId } =
     useAccounts();
   const activeBpId = useActiveBusinessProfileIdOptional();
@@ -754,16 +757,19 @@ export default function Index() {
 
       <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {homeJumpDestinations.map((dest) => (
-            <JumpCard
-              key={dest.key}
-              to={dest.to}
-              icon={dest.icon}
-              title={dest.label}
-              description={dest.description ?? dest.label}
-              onPrefetch={prefetchFor}
-            />
-          ))}
+          {homeJumpDestinations.map((dest) => {
+            const title = quickNavLabel(dest.key, t);
+            return (
+              <JumpCard
+                key={dest.key}
+                to={dest.to}
+                icon={dest.icon}
+                title={title}
+                description={dest.description ?? title}
+                onPrefetch={prefetchFor}
+              />
+            );
+          })}
         </div>
       </HomeCollapsibleSection>
       </div>

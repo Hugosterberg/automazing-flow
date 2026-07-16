@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { titleForPath } from "@/hooks/useDocumentTitle";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 describe("titleForPath", () => {
   it("resolves known top-level routes to their nav title", () => {
@@ -21,5 +27,12 @@ describe("titleForPath", () => {
   it("does not treat a sibling prefix as a nested match", () => {
     // "/sales-marketing" must not resolve via the "/sales" entry.
     expect(titleForPath("/sales-marketing")).toBe("");
+  });
+
+  it("follows the active language", async () => {
+    await i18n.changeLanguage("en");
+    expect(titleForPath("/ecommerce")).toBe("E-commerce");
+    await i18n.changeLanguage("sv");
+    expect(titleForPath("/ecommerce")).toBe("E-handel");
   });
 });

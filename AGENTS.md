@@ -89,6 +89,24 @@ When working on analytics or reporting:
 - avoid mixing calculations with presentation formatting when possible
 - improve naming and clarity before introducing new analytics abstractions
 
+## Internationalization
+UI languages: **Swedish (`sv`) only for visitors from Sweden**, English (`en`) for everyone else. Explicit Preferences override always wins.
+
+Stack and entry points:
+- `i18next` + `react-i18next` — init in `src/lib/i18n.ts` (called from `main.tsx`)
+- Language policy (localStorage override → cached geo → `en`) in `src/lib/appLanguage.ts`
+- Geo: `GET /api/geo` reads `x-vercel-ip-country` (absent locally → client stays on English until cache/user choice)
+- Resources: `src/locales/<lang>/<namespace>.json` (start with `common`)
+- Date/number formatters follow UI language via `setFormatLocale` / `setRelativeTimeLocale`
+- `document.documentElement.lang` is updated on language change
+
+Migration convention:
+- New or touched UI copy goes through `t("key")` / `useTranslation()` — do not hardcode user-visible strings in chrome you are editing.
+- Prefer keys under `common` until a slice outgrows one screenful, then add a feature namespace.
+- Keep catalog/source-of-truth labels (e.g. quick-nav destinations) as keys; resolve display strings with helpers like `quickNavLabel`.
+- Page body / marketing copy can stay Swedish until that slice is migrated; chrome (nav, layout, palette, language settings) is the reference pattern.
+- After migrating a slice: add/update both `en` and `sv` JSON, keep keys in sync, and cover language resolution with unit tests where logic is non-trivial.
+
 ## What good changes look like
 Examples of good improvements:
 - extracting reusable logic from large page files

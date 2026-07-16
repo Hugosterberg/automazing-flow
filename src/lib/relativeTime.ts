@@ -1,10 +1,8 @@
 /**
  * Native relative time formatting — `"3 minutes ago"`, `"in 2 hours"` etc.
  *
- * Uses `Intl.RelativeTimeFormat` so locale handling is delegated to the
- * browser. Replaces date-fns' `formatDistanceToNow` in UI paths that only
- * need a short "time since / time until" string, avoiding a date-fns
- * dependency in the main bundle.
+ * Uses `Intl.RelativeTimeFormat` so locale handling follows the active UI
+ * language (synced via setRelativeTimeLocale from i18n.ts).
  *
  * Returns `null` on invalid / empty input so callers can choose between
  * rendering a placeholder or hiding the element.
@@ -19,10 +17,19 @@ const UNITS: Array<{ limit: number; divisor: number; unit: Intl.RelativeTimeForm
   { limit: 31_557_600_000, divisor: 2_629_800_000, unit: "month" },
 ];
 
+let appLocale = "en-US";
 let cachedFormatter: Intl.RelativeTimeFormat | null = null;
+
+/** Called by i18n.ts on init and on every language change. */
+export function setRelativeTimeLocale(locale: string): void {
+  if (locale === appLocale) return;
+  appLocale = locale;
+  cachedFormatter = null;
+}
+
 function getFormatter(): Intl.RelativeTimeFormat {
   if (!cachedFormatter) {
-    cachedFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    cachedFormatter = new Intl.RelativeTimeFormat(appLocale, { numeric: "auto" });
   }
   return cachedFormatter;
 }
@@ -43,8 +50,8 @@ export function formatRelativeTime(value: string | Date | null | undefined): str
 
   for (const { limit, divisor, unit } of UNITS) {
     if (absMs < limit) {
-      const value = Math.round(diffMs / divisor);
-      return getFormatter().format(value, unit);
+      const unitValue = Math.round(diffMs / divisor);
+      return getFormatter().format(unitValue, unit);
     }
   }
   const years = Math.round(diffMs / 31_557_600_000);
