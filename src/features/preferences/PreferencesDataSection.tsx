@@ -36,8 +36,8 @@ export function PreferencesDataSection() {
             Data & integritet
           </CardTitle>
           <CardDescription>
-            Din data är scoped till aktiv företagsprofil. När du tar bort en profil kaskaderar
-            kopplingar, hemligheter och profil-dokument i databasen.
+            Din data hör till den aktiva företagsprofilen. När du tar bort en profil raderas även
+            dess kopplingar, hemligheter och profildokument ur databasen.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
