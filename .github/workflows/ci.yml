@@ -1,5 +1,5 @@
 # Runs the same quality gate as `npm run verify` locally:
-# server typecheck -> eslint -> vitest -> production build.
+# typecheck -> structure budgets -> eslint -> vitest -> production build.
 name: CI
 
 on:

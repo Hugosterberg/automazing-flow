@@ -55,6 +55,12 @@ When making changes:
 - avoid hidden side effects
 - prefer explicit data flow and clear return shapes
 
+## Modular structure (do not regress)
+- **Cron:** new jobs go in `server/routes/cron/<job>.js` (`registerXCron`), wired from `cronRoutes.js` — never inline `app.get("/api/cron/...")` there. Keep `vercel.json` paths in sync (enforced by `npm run check:structure`).
+- **OAuth:** new platforms go in `server/routes/oauth/<platform>OAuthRoutes.ts`, wired from `oauthRoutes.ts` — never inline `app.get("/api/auth/...")` there.
+- **Pages:** keep `src/pages/*` as composition; put logic/UI in `src/features/<area>/`.
+- **Verify:** `npm run verify` includes structure check + registration smoke tests. Update `ai/ARCHITECTURE.md` / `ai/DECISIONS.md` when structure changes.
+
 ## Automation guidance
 This product contains automation logic and async workflows.
 

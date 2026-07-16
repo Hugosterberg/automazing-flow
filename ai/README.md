@@ -29,10 +29,11 @@ each repo lives, agent roles — is the repo
 - **Vertical slices.** A feature owns its whole slice: UI (`src/features/<name>/`
   + page), server route (`server/routes/`), and data (Supabase migration). Don't
   scatter a feature across horizontal layers.
-- **Definition of done.** `npm run verify` green (typecheck server+client, lint,
-  tests, build) **and** the change observed working in the running app. New
-  pages/nav items must declare workspace `modes` (private/business) in
-  `src/components/navConfig.ts`.
+- **Definition of done.** `npm run verify` green (typecheck server+client,
+  structure budgets, lint, tests, build) **and** the change observed working in
+  the running app. New pages/nav items must declare workspace `modes`
+  (private/business) in `src/components/navConfig.ts`. New cron paths must exist
+  in both `vercel.json` and `server/routes/cron/*`.
 - **Keep this folder true.** Updating ROADMAP.md and DECISIONS.md when your work
   changes them is part of a feature's definition of done — stale context is
   worse than no context.

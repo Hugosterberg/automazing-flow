@@ -1,0 +1,24 @@
+---
+description: Keep pages and route routers thin — extract into feature/cron/oauth modules
+alwaysApply: true
+---
+
+Modularization (post-2026-07 split):
+
+## File budgets (enforced by `npm run check:structure`)
+- Page gods stay composition-focused: Messages/Content/Ecommerce/Calendar under their budgets
+- `server/routes/oauthRoutes.ts` and `server/routes/cronRoutes.js` are **wiring only**
+
+## Where new code goes
+- **Cron jobs:** `server/routes/cron/<job>.js` exporting `registerXCron(app, deps)` — then call it from `cronRoutes.js`. Never add `app.get("/api/cron/...")` inline in `cronRoutes.js`.
+- **OAuth platforms:** `server/routes/oauth/<platform>OAuthRoutes.ts` exporting `registerXOAuthRoutes` — then call from `oauthRoutes.ts`. Never add `app.get("/api/auth/...")` inline in `oauthRoutes.ts`.
+- **Page UI/logic:** `src/features/<area>/` components, hooks, helpers. Pages own composition + wiring only.
+- **Provider APIs:** `server/providers/` — keep provider-specific fetch/token logic out of routes/UI.
+
+## Tests
+- Prefer Vitest unit tests of pure helpers and registration smoke tests (`src/test/routeRegistration.test.ts`).
+- Do not invent a full Express/supertest harness unless product explicitly needs HTTP contract tests.
+- When adding a Vercel cron in `vercel.json`, ensure a cron module registers that exact path (CI checks this).
+
+## Docs
+- Structural changes update `ai/ARCHITECTURE.md` and/or `ai/DECISIONS.md` as part of done.

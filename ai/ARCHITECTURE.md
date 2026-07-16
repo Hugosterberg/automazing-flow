@@ -56,15 +56,25 @@ Content-Type: application/json
 Zernio (social inbox/publish: Instagram, Facebook, WhatsApp, Google Business,
 Tripadvisor…), Google (Gmail, Calendar, Drive, Ads, Business Profile, Reviews,
 YouTube), Microsoft (Outlook mail + calendar), Shopify, Notion, Canva, Meta
-Business, TikTok, X, Tripadvisor. Pattern: OAuth init/callback in
-`server/routes/oauthRoutes.ts`, provider isolation in `server/providers/`,
-one connected account per (profile, platform).
+Business, TikTok, X, Tripadvisor. Pattern: OAuth **wiring** in
+`server/routes/oauthRoutes.ts` (register* only); platform handlers live in
+`server/routes/oauth/*OAuthRoutes.ts`. Provider isolation in
+`server/providers/`. One connected account per (profile, platform).
 
-## Scheduled automation (Vercel Cron → `server/routes/cronRoutes.js`)
+## Scheduled automation (Vercel Cron → modular cron modules)
 
-cleanup-oauth-pending · refresh-ai-recommendations · auto-reply (15 min) ·
-daily-digest · marketing-alerts · marketing-snapshot · weekly-report.
+`vercel.json` lists cron paths. Implementations live in
+`server/routes/cron/*.js` (`registerXCron`); `server/routes/cronRoutes.js` only
+wires them. `npm run check:structure` fails if a vercel cron path has no
+module, or if handlers are added inline to the wiring files.
+
 All guarded by `CRON_SECRET`, all per-tenant-isolated, all fail-closed.
+
+## Frontend page composition
+
+Heavy screens (Messages, Content, Ecommerce, Calendar) are composition pages
+under `src/pages/`; logic and UI live in `src/features/<area>/` hooks and
+components. File budgets are enforced by `npm run check:structure`.
 
 ## Planned: C# data-ingest service (status: **proposed, not decided**)
 
@@ -93,7 +103,8 @@ automazing consumes remote MCP servers as tenant-scoped data providers:
   Exa, Klarity, LunarCrush, Peec, Sprouts, Gamma, GoDaddy, Shopify
   Storefront, Twilio Docs). Adding a provider = one descriptor.
 - **Account plumbing:** `server/routes/mcpRoutes.ts` (connect + per-account
-  tools/call), OAuth flows in `oauthRoutes.ts` under `/api/auth/mcp/:platform`.
+  tools/call), OAuth flows via `registerMcpOAuthRoutes` under
+  `/api/auth/mcp/:platform`.
 - **Tenant access layer:** `server/lib/mcpAccess.ts` — find a profile's
   connected provider, transparent OAuth refresh, tool picking by pattern.
   **Product features must go through this layer**, never raw fetches.

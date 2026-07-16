@@ -2,6 +2,17 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — Modular routes + file budgets keep the monolith maintainable — **Active**
+
+OAuth and cron handlers are extracted into `server/routes/oauth/*` and
+`server/routes/cron/*`; the parent `oauthRoutes.ts` / `cronRoutes.js` files are
+wiring-only. Page gods stay thin via `src/features/*` hooks/components.
+Guardrails: `npm run check:structure` (budgets, no inline handlers, vercel cron
+↔ module sync) and `src/test/routeRegistration.test.ts` (registration smoke).
+Prefer extracting a new module over growing a wiring file or page past budget.
+Do not invent a full Express/supertest suite — registration + pure-helper tests
+match the repo's reliability-over-ceremony style.
+
 ## 2026-07-16 — Agent output lands in activity_events via CRON_SECRET ingest — **Active**
 
 CMA / external agents do not get a dedicated table. They POST
