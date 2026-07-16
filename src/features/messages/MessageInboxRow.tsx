@@ -25,6 +25,18 @@ type Props = {
   onPrefetch?: () => void;
 };
 
+function buildPreview(message: UnifiedMessage): { primary: string; secondary: string } {
+  const subject = message.subject?.trim() || "";
+  const snippet = message.snippet?.trim() || "";
+  if (message.kind === "email") {
+    if (subject && snippet && snippet !== subject) {
+      return { primary: subject, secondary: snippet };
+    }
+    return { primary: subject || snippet, secondary: "" };
+  }
+  return { primary: snippet || subject, secondary: "" };
+}
+
 export const MessageInboxRow = memo(
   forwardRef<HTMLButtonElement, Props>(function MessageInboxRow(
     {
@@ -48,10 +60,7 @@ export const MessageInboxRow = memo(
     ref
   ) {
     const displayName = message.from.name || message.from.email || message.subject;
-    const preview =
-      message.kind === "email" && message.subject
-        ? message.subject
-        : message.snippet || message.subject || "";
+    const { primary, secondary } = buildPreview(message);
 
     return (
       <div
@@ -75,19 +84,19 @@ export const MessageInboxRow = memo(
           onMouseEnter={onPrefetch}
           onFocus={onPrefetch}
           className={cn(
-            "relative flex w-full items-center gap-1 border-b border-border/25 px-1 py-0.5 text-left transition-colors duration-100",
+            "relative flex w-full min-w-0 items-start gap-2 border-b border-border/25 px-2 py-2 text-left transition-colors duration-100",
             "hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/60",
-            selected && "border-l-2 border-l-primary pl-[calc(0.25rem-1px)]",
+            selected && "border-l-2 border-l-primary pl-[calc(0.5rem-1px)]",
             open && !selected && "border-l border-l-primary/35"
           )}
           aria-current={selected ? "true" : undefined}
-          title={`${displayName}${channelLabel ? ` · ${channelLabel}` : ""}${preview ? ` — ${preview}` : ""}${
+          title={`${displayName}${channelLabel ? ` · ${channelLabel}` : ""}${primary ? ` — ${primary}` : ""}${
             waited ? ` · ${waited}` : ""
           }`}
         >
           <span
             className={cn(
-              "relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[7px] font-semibold text-white",
+              "relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white",
               avatarGradient
             )}
             aria-hidden
@@ -96,42 +105,53 @@ export const MessageInboxRow = memo(
             {visuallyUnread ? (
               <span
                 className={cn(
-                  "absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-1 ring-background",
+                  "absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-1 ring-background",
                   urgent && "animate-pulse"
                 )}
               />
             ) : null}
           </span>
 
-          <span
-            className={cn(
-              "min-w-0 max-w-[38%] shrink-0 truncate text-[10px] leading-none",
-              visuallyUnread ? "font-semibold text-foreground" : "font-medium text-foreground/85"
-            )}
-          >
-            <SearchHighlight text={displayName} query={searchQuery} />
+          <span className="min-w-0 flex-1 space-y-0.5">
+            <span className="flex min-w-0 items-center gap-1">
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-xs leading-tight",
+                  visuallyUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                )}
+              >
+                <SearchHighlight text={displayName} query={searchQuery} />
+              </span>
+              {message.isStarred ? (
+                <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" aria-label="Flaggad" />
+              ) : null}
+              <time
+                className="shrink-0 text-[10px] tabular-nums text-muted-foreground"
+                dateTime={message.date}
+                title={fullDate || undefined}
+              >
+                {formattedDate}
+              </time>
+            </span>
+
+            {primary ? (
+              <span
+                className={cn(
+                  "block min-w-0 text-[11px] leading-snug",
+                  secondary ? "truncate" : "line-clamp-2",
+                  open || selected ? "text-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                <SearchHighlight text={primary} query={searchQuery} />
+              </span>
+            ) : null}
+
+            {secondary ? (
+              <span className="block min-w-0 line-clamp-2 text-[10px] leading-snug text-muted-foreground/90">
+                <SearchHighlight text={secondary} query={searchQuery} />
+              </span>
+            ) : null}
           </span>
-
-          {message.isStarred ? (
-            <Star className="h-2 w-2 shrink-0 fill-amber-400 text-amber-500" aria-label="Flaggad" />
-          ) : null}
-
-          <span
-            className={cn(
-              "min-w-0 flex-1 truncate text-[10px] leading-none",
-              open || selected ? "text-foreground/65" : "text-muted-foreground"
-            )}
-          >
-            <SearchHighlight text={preview} query={searchQuery} />
-          </span>
-
-          <time
-            className="shrink-0 pl-0.5 text-[9px] tabular-nums text-muted-foreground"
-            dateTime={message.date}
-            title={fullDate || undefined}
-          >
-            {formattedDate}
-          </time>
         </button>
 
         {open && onMarkHandled && !isHandled ? (
@@ -139,7 +159,7 @@ export const MessageInboxRow = memo(
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-1/2 h-5 w-5 -translate-y-1/2 p-0 text-muted-foreground opacity-100 hover:bg-emerald-500/10 hover:text-emerald-600 sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute right-1 top-1.5 h-6 w-6 p-0 text-muted-foreground opacity-100 hover:bg-emerald-500/10 hover:text-emerald-600 sm:opacity-0 sm:group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onMarkHandled();
@@ -147,7 +167,7 @@ export const MessageInboxRow = memo(
             aria-label="Markera som hanterad"
             title="Markera som hanterad (H)"
           >
-            <CheckCheck className="h-2.5 w-2.5" />
+            <CheckCheck className="h-3 w-3" />
           </Button>
         ) : null}
       </div>

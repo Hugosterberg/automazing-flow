@@ -4,6 +4,7 @@ import { m } from "framer-motion";
 import { Users, Upload, Search, Trash2, Download, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAccounts } from "@/context/AccountsContext";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -102,6 +103,22 @@ export default function CustomersPage() {
   const debouncedSearch = useDebouncedValue(search, 180);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  type CustomersTab = "list" | "assistant";
+  const customersTab: CustomersTab = searchParams.get("tab") === "assistant" ? "assistant" : "list";
+  const setCustomersTab = useCallback(
+    (tab: CustomersTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "list") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const autoSelected = useRef(false);
@@ -299,17 +316,30 @@ export default function CustomersPage() {
         tip="Koppla Day.ai under Kopplingar för AI-frågor. Fyll i Företag för bättre förslag — Automationer kan synka och påminna."
       />
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS.customers}
-          title="CRM-assistent (Day.ai MCP)"
-          description="Ställ frågor om kunder och affärer när Day.ai är kopplat via OAuth."
-        />
-      </m.div>
+      <PageModeTabs
+        value={customersTab}
+        aria-label="Kundflikar"
+        onChange={setCustomersTab}
+        options={[
+          { value: "list", label: "Lista", count: rows.length },
+          { value: "assistant", label: "Assistent" },
+        ]}
+      />
         </>
       ) : null}
 
+      {!focusedReading && customersTab === "assistant" ? (
+        <m.div {...pageFadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
+          <McpFeatureSection
+            businessProfileId={businessProfileId}
+            featureIds={MCP_PAGE_FEATURE_IDS.customers}
+            title="CRM-assistent (Day.ai MCP)"
+            description="Ställ frågor om kunder och affärer när Day.ai är kopplat via OAuth."
+          />
+        </m.div>
+      ) : null}
+
+      {(customersTab === "list" || focusedReading) ? (
       <m.div
         {...pageFadeUp}
         transition={{ duration: 0.35, delay: focusedReading ? 0 : 0.04 }}
@@ -474,8 +504,9 @@ export default function CustomersPage() {
           </div>
         ) : null}
       </m.div>
+      ) : null}
 
-      {rows.length > 0 ? (
+      {(customersTab === "list" || focusedReading) && rows.length > 0 ? (
         <m.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <CustomerInsightsCard columns={columns} rows={rows} />
         </m.div>

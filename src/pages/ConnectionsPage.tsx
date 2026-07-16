@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Bot, Activity, Building2 } from "lucide-react";
+import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Building2 } from "lucide-react";
 import { connectionsToCsv, downloadCsv } from "@/lib/exportCsv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,8 +22,8 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useTokenExpiryNotifier } from "@/hooks/useTokenExpiryNotifier";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import {
   useConnections,
   reconcileConnections,
@@ -119,7 +119,15 @@ export default function ConnectionsPage() {
   const activeTab = parseConnectionsTab(searchParams.get("tab"));
   const setActiveTab = useCallback(
     (tab: ConnectionsTab) => {
-      setSearchParams(tab === "integrations" ? {} : { tab }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "integrations") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
     },
     [setSearchParams]
   );
@@ -437,6 +445,73 @@ export default function ConnectionsPage() {
         />
       ) : null}
 
+      <PageModeTabs
+        value={activeTab}
+        aria-label="Kopplingsflikar"
+        onChange={setActiveTab}
+        options={[
+          { value: "integrations", label: "Integrationer" },
+          { value: "health", label: "Hälsa", count: healthIssueCount },
+          { value: "mcp", label: "MCP" },
+        ]}
+      />
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ConnectionsTab)}>
+        <TabsContent value="health" className="mt-4 space-y-4">
+          <ConnectionsControlPanel
+            businessProfileId={businessProfileId}
+            connections={connections}
+            onRefreshConnections={() => refetch()}
+          />
+        </TabsContent>
+
+        <TabsContent value="mcp" className="mt-4 space-y-4">
+          <Card className="border-border/80">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Alla {getConnectionEntriesForArea("intelligence").length} MCP-dataleverantörer — koppla här, kör multi-source-jämförelse och frågor på{" "}
+                  <Link to="/intelligence" className="text-primary hover:underline">
+                    MCP Intelligence
+                  </Link>
+                  .
+                </p>
+                <Button variant="outline" size="sm" className="shrink-0 gap-1.5" asChild>
+                  <Link to="/intelligence">
+                    Öppna MCP Intelligence
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
+              <McpProviderStatusList businessProfileId={businessProfileId} />
+            </CardContent>
+          </Card>
+          <McpDataCatalog businessProfileId={businessProfileId} />
+          <McpToolsExplorer businessProfileId={businessProfileId} />
+          {!isLoading ? (
+            <ConnectionsGrid
+              businessProfileId={businessProfileId}
+              connections={connections}
+              onDisconnect={(id) => void disconnect(id)}
+              isDisconnecting={isDisconnecting}
+              onResync={(id) => void resync(id)}
+              isResyncing={isResyncing}
+              resyncingId={resyncingId}
+              onViewDetails={(c) => setDetailsId(c.id)}
+              statusFilter={effectiveFilter}
+              needsAttentionOnly={needsAttentionOnly}
+              searchQuery={searchQuery}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              manuallyConnectedPlatforms={manuallyConnectedPlatforms}
+              onManualConnectionChange={handleManualConnectionChange}
+              mcpReadinessByPlatform={mcpReadinessByPlatform}
+              areasFilter={["intelligence"]}
+            />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4 space-y-4">
       {!isLoading && activeCount === 0 ? (
         <Alert className="border-primary/30 bg-primary/[0.04]">
           <PlugZap className="h-4 w-4" />
@@ -516,81 +591,6 @@ export default function ConnectionsPage() {
         </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ConnectionsTab)}>
-        <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border rounded-none w-full">
-          <TabsTrigger value="integrations" className="text-xs data-[state=active]:bg-muted rounded-b-none">
-            Integrationer
-          </TabsTrigger>
-          <TabsTrigger value="mcp" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
-            <Bot className="h-3.5 w-3.5" aria-hidden />
-            MCP
-          </TabsTrigger>
-          <TabsTrigger value="health" className="text-xs data-[state=active]:bg-muted rounded-b-none gap-1.5">
-            <Activity className="h-3.5 w-3.5" aria-hidden />
-            Hälsa
-            {healthIssueCount > 0 ? (
-              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
-                {healthIssueCount}
-              </Badge>
-            ) : null}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="health" className="mt-4 space-y-4">
-          <ConnectionsControlPanel
-            businessProfileId={businessProfileId}
-            connections={connections}
-            onRefreshConnections={() => refetch()}
-          />
-        </TabsContent>
-
-        <TabsContent value="mcp" className="mt-4 space-y-4">
-          <Card className="border-border/80">
-            <CardContent className="pt-4 pb-4 space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <p className="text-xs text-muted-foreground max-w-xl">
-                  Alla {getConnectionEntriesForArea("intelligence").length} MCP-dataleverantörer — koppla här, kör multi-source-jämförelse och frågor på{" "}
-                  <Link to="/intelligence" className="text-primary hover:underline">
-                    MCP Intelligence
-                  </Link>
-                  .
-                </p>
-                <Button variant="outline" size="sm" className="shrink-0 gap-1.5" asChild>
-                  <Link to="/intelligence">
-                    Öppna MCP Intelligence
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  </Link>
-                </Button>
-              </div>
-              <McpProviderStatusList businessProfileId={businessProfileId} />
-            </CardContent>
-          </Card>
-          <McpDataCatalog businessProfileId={businessProfileId} />
-          <McpToolsExplorer businessProfileId={businessProfileId} />
-          {!isLoading ? (
-            <ConnectionsGrid
-              businessProfileId={businessProfileId}
-              connections={connections}
-              onDisconnect={(id) => void disconnect(id)}
-              isDisconnecting={isDisconnecting}
-              onResync={(id) => void resync(id)}
-              isResyncing={isResyncing}
-              resyncingId={resyncingId}
-              onViewDetails={(c) => setDetailsId(c.id)}
-              statusFilter={effectiveFilter}
-              needsAttentionOnly={needsAttentionOnly}
-              searchQuery={searchQuery}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              manuallyConnectedPlatforms={manuallyConnectedPlatforms}
-              onManualConnectionChange={handleManualConnectionChange}
-              mcpReadinessByPlatform={mcpReadinessByPlatform}
-              areasFilter={["intelligence"]}
-            />
-          ) : null}
-        </TabsContent>
-
-        <TabsContent value="integrations" className="mt-4">
       <div className="app-workspace-shell">
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">

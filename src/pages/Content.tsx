@@ -491,7 +491,14 @@ export default function ContentPage() {
   const goToTab = useCallback(
     (tab: ContentTab) => {
       setContentTab(tab);
-      setSearchParams({ tab }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
     },
     [setSearchParams]
   );
@@ -507,10 +514,9 @@ export default function ContentPage() {
     const pending = consumeContentCaption();
     if (!pending) return;
     setPublishCaption(pending);
-    setContentTab("publish");
-    setSearchParams({ tab: "publish" }, { replace: true });
+    goToTab("publish");
     toast.success("Idea added — ready to post or save");
-  }, [setSearchParams]);
+  }, [goToTab]);
 
   useEffect(() => {
     setCurrentFolderId(null);
@@ -929,43 +935,23 @@ export default function ContentPage() {
         }
       />
 
-      <PageAiSuggestionsStrip
-        businessProfileId={createBusinessProfileId}
-        kinds={["content", "engagement"]}
-        label="AI-idéer för innehåll"
-      />
-
       <SectionConnectionStatus area="content" className="mt-0" />
 
-      <McpFeatureSection
-        businessProfileId={createBusinessProfileId}
-        featureIds={MCP_PAGE_FEATURE_IDS.content}
-        title="MCP-innehållsverktyg"
-        description="Generera presentationer (Gamma) eller designbriefs (Canva MCP). Koppla leverantörer under Kopplingar → MCP om status visar saknad nyckel."
-      />
+      {contentTab === "create" ? (
+        <PageAiSuggestionsStrip
+          businessProfileId={createBusinessProfileId}
+          kinds={["content", "engagement"]}
+          label="AI-idéer för innehåll"
+        />
+      ) : null}
 
-      <ContentFlowGuide
-        active={flowStepFromTab(contentTab)}
-        selectionCount={selectedAssets.length}
-        onGo={(step) => goToTab(step)}
-      />
-
-      <ContentIdeasHub
-        businessProfileId={createBusinessProfileId}
-        socialContext={contentIdeasContext}
-        outreachContext={{
-          businessName: contentIdeasContext.businessName,
-          description: contentIdeasContext.description,
-          location: activeProfile?.location,
-          targetAudience: contentIdeasContext.audience,
-          idealCustomer: contentIdeasContext.description,
-        }}
-        onUseIdea={(text) => {
-          setPublishCaption(text);
-          goToTab("publish");
-          toast.success("Idé tillagd — redo att publicera eller spara");
-        }}
-      />
+      {contentTab === "browse" || contentTab === "create" ? (
+        <ContentFlowGuide
+          active={flowStepFromTab(contentTab)}
+          selectionCount={selectedAssets.length}
+          onGo={(step) => goToTab(step)}
+        />
+      ) : null}
 
       <div className="app-workspace-shell !min-h-0">
         <div className="app-workspace-toolbar overflow-x-auto px-2 py-2 sm:px-4">
@@ -999,6 +985,13 @@ export default function ContentPage() {
               Skapa
             </TabsTrigger>
             <TabsTrigger
+              value="publish"
+              className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
+            >
+              <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              Publicera
+            </TabsTrigger>
+            <TabsTrigger
               value="history"
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
@@ -1007,13 +1000,6 @@ export default function ContentPage() {
               {generatedHistory.length > 0 ? (
                 <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
               ) : null}
-            </TabsTrigger>
-            <TabsTrigger
-              value="publish"
-              className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
-            >
-              <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Publicera
             </TabsTrigger>
           </TabsList>
           <DropdownMenu>
@@ -1047,6 +1033,10 @@ export default function ContentPage() {
                 <Wand2 className="mr-2 h-4 w-4" />
                 Skapa
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => goToTab("publish")}>
+                <Send className="mr-2 h-4 w-4" />
+                Publicera
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("history")}>
                 <History className="mr-2 h-4 w-4" />
                 Historik
@@ -1058,21 +1048,6 @@ export default function ContentPage() {
           </DropdownMenu>
         </div>
       </Tabs>
-        </div>
-
-        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Valda</p>
-            <p className="text-xs font-semibold tabular-nums">{selectedAssets.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Historik</p>
-            <p className="text-xs font-semibold tabular-nums">{generatedHistory.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Flik</p>
-            <p className="text-xs font-semibold capitalize">{contentTab}</p>
-          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto space-y-4 p-3 sm:p-4">
@@ -1089,26 +1064,50 @@ export default function ContentPage() {
       ) : null}
 
       {contentTab === "create" ? (
-        <CreateTab
-          businessProfileId={createBusinessProfileId}
-          selectedAssets={selectedAssets}
-          availableAssets={imageItems.map((file) => assetFromDriveFile(file)).filter((asset): asset is SelectedContentAsset => Boolean(asset))}
-          captionHint={publishCaption}
-          canvaConnected={canvaConnected}
-          onToggleAssetSelection={saveAssetSelection}
-          onOpenBrowse={() => goToTab("browse")}
-          onOpenSelected={() => goToTab("selected")}
-          onBeforeRequest={ensureBackendSession}
-          onRecordGenerated={(asset, meta) => recordGeneratedAsset(asset, meta)}
-          onSaveResultToSelection={(asset, meta) => {
-            saveGeneratedToSelection(asset, meta);
-          }}
-          onContinueToPublish={() => goToTab("publish")}
-          onPublishReadinessChange={setPublishReadiness}
-          onBatchIngested={handleBatchIngested}
-          onOpenHistory={() => goToTab("history")}
-          initialCreateMode={initialCreateMode}
-        />
+        <div className="space-y-4">
+          <ContentIdeasHub
+            businessProfileId={createBusinessProfileId}
+            socialContext={contentIdeasContext}
+            outreachContext={{
+              businessName: contentIdeasContext.businessName,
+              description: contentIdeasContext.description,
+              location: activeProfile?.location,
+              targetAudience: contentIdeasContext.audience,
+              idealCustomer: contentIdeasContext.description,
+            }}
+            onUseIdea={(text) => {
+              setPublishCaption(text);
+              goToTab("publish");
+              toast.success("Idé tillagd — redo att publicera eller spara");
+            }}
+          />
+          <McpFeatureSection
+            businessProfileId={createBusinessProfileId}
+            featureIds={MCP_PAGE_FEATURE_IDS.content}
+            title="MCP-innehållsverktyg"
+            description="Generera presentationer (Gamma) eller designbriefs (Canva MCP). Koppla leverantörer under Kopplingar → MCP om status visar saknad nyckel."
+          />
+          <CreateTab
+            businessProfileId={createBusinessProfileId}
+            selectedAssets={selectedAssets}
+            availableAssets={imageItems.map((file) => assetFromDriveFile(file)).filter((asset): asset is SelectedContentAsset => Boolean(asset))}
+            captionHint={publishCaption}
+            canvaConnected={canvaConnected}
+            onToggleAssetSelection={saveAssetSelection}
+            onOpenBrowse={() => goToTab("browse")}
+            onOpenSelected={() => goToTab("selected")}
+            onBeforeRequest={ensureBackendSession}
+            onRecordGenerated={(asset, meta) => recordGeneratedAsset(asset, meta)}
+            onSaveResultToSelection={(asset, meta) => {
+              saveGeneratedToSelection(asset, meta);
+            }}
+            onContinueToPublish={() => goToTab("publish")}
+            onPublishReadinessChange={setPublishReadiness}
+            onBatchIngested={handleBatchIngested}
+            onOpenHistory={() => goToTab("history")}
+            initialCreateMode={initialCreateMode}
+          />
+        </div>
       ) : null}
 
       {contentTab === "selected" ? (

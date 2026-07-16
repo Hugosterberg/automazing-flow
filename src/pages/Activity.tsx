@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { pageFadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -43,8 +44,15 @@ export default function ActivityPage() {
   const [activitySearch, setActivitySearch] = useState("");
   const debouncedActivitySearch = useDebouncedValue(activitySearch, 160);
   const [moduleFilter, setModuleFilter] = useState<string>("all");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const selectedId = searchParams.get("id");
+  const rawSeverity = searchParams.get("severity");
+  const severityFilter: SeverityFilter =
+    rawSeverity === "error" ||
+    rawSeverity === "warning" ||
+    rawSeverity === "success" ||
+    rawSeverity === "info"
+      ? rawSeverity
+      : "all";
 
   const selectEvent = useCallback(
     (id: string | null) => {
@@ -61,12 +69,20 @@ export default function ActivityPage() {
     [setSearchParams]
   );
 
-  useEffect(() => {
-    const severity = searchParams.get("severity");
-    if (severity === "error" || severity === "warning" || severity === "success" || severity === "info") {
-      setSeverityFilter(severity);
-    }
-  }, [searchParams]);
+  const setSeverityFilter = useCallback(
+    (severity: SeverityFilter) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (severity === "all") next.delete("severity");
+          else next.set("severity", severity);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   const moduleOptions = useMemo(() => {
     const set = new Set<string>();
@@ -100,9 +116,12 @@ export default function ActivityPage() {
 
   const severityCounts = useMemo(() => {
     const counts = { error: 0, warning: 0, success: 0, info: 0 };
-    for (const e of filteredByMeta) counts[e.severity] += 1;
+    for (const e of events) {
+      if (moduleFilter !== "all" && e.module !== moduleFilter) continue;
+      counts[e.severity] += 1;
+    }
     return counts;
-  }, [filteredByMeta]);
+  }, [events, moduleFilter]);
 
   const selectedIndex = useMemo(
     () => (selectedId ? visible.findIndex((e) => e.id === selectedId) : -1),
@@ -149,7 +168,7 @@ export default function ActivityPage() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigateRelative, selectEvent, selectedId, severityCounts.error, severityCounts.warning]);
+  }, [navigateRelative, selectEvent, selectedId, setSeverityFilter, severityCounts.error, severityCounts.warning]);
 
   const activityLiveHint =
     severityCounts.error > 0
@@ -222,6 +241,19 @@ export default function ActivityPage() {
             }
             liveHintOverride={activityLiveHint}
           />
+
+          <PageModeTabs
+            value={severityFilter}
+            aria-label="Allvarlighetsflikar"
+            onChange={setSeverityFilter}
+            options={[
+              { value: "error", label: "Fel", count: severityCounts.error },
+              { value: "warning", label: "Varningar", count: severityCounts.warning },
+              { value: "all", label: "Alla" },
+              { value: "success", label: "Lyckades", count: severityCounts.success },
+              { value: "info", label: "Info", count: severityCounts.info },
+            ]}
+          />
         </>
       ) : null}
 
@@ -263,48 +295,10 @@ export default function ActivityPage() {
             </SelectContent>
           </Select>
 
-          <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as SeverityFilter)}>
-            <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[160px]", isMobile ? "h-10" : "h-8 text-xs")}>
-              <SelectValue placeholder="Allvarlighet" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alla nivåer</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
-              <SelectItem value="success">Lyckades</SelectItem>
-              <SelectItem value="warning">Varning</SelectItem>
-              <SelectItem value="error">Fel</SelectItem>
-            </SelectContent>
-          </Select>
-
           <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
             {isLoading ? "Laddar…" : `${visible.length} av ${events.length} händelser`}
             {debouncedActivitySearch.trim() ? " · sök aktiv" : ""}
           </p>
-        </div>
-        ) : null}
-
-        {!focusedReading ? (
-        <div className="app-workspace-stats flex flex-wrap gap-2 px-3 py-2 sm:px-4">
-          {(
-            [
-              { key: "error", label: "Fel", count: severityCounts.error, className: "border-destructive/30 bg-destructive/5 text-destructive" },
-              { key: "warning", label: "Varningar", count: severityCounts.warning, className: "border-warning/30 bg-warning/5 text-warning" },
-              { key: "success", label: "Lyckades", count: severityCounts.success, className: "border-success/30 bg-success/5 text-success" },
-            ] as const
-          ).map((stat) => (
-            <div
-              key={stat.key}
-              className={cn(
-                "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left",
-                stat.count > 0 ? stat.className : "border-border/50 bg-background/40 text-muted-foreground"
-              )}
-            >
-              <div>
-                <p className="text-[9px] uppercase tracking-wide opacity-80">{stat.label}</p>
-                <p className="text-xs font-semibold tabular-nums">{stat.count}</p>
-              </div>
-            </div>
-          ))}
         </div>
         ) : null}
 

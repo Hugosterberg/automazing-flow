@@ -571,47 +571,16 @@ export default function SocialMedia() {
         options={[
           { value: "publish", label: "Publicera" },
           { value: "stats", label: "Statistik" },
-          { value: "more", label: "Mer", count: scheduledContentTasks.length },
+          {
+            value: "more",
+            label: "Schema & mer",
+            count: pipelinePosts.length + scheduledContentTasks.length,
+          },
         ]}
       />
 
-      {socialMode === "more" ? (
-      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS.social}
-          title="MCP-designstöd"
-          description="Kreativa briefs och designriktning via Canva MCP för socialt innehåll."
-        />
-      </m.div>
-      ) : null}
-
-      {socialMode === "publish" ? (
-      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
-        <ContentIdeasCard
-          businessProfileId={businessProfileId}
-          context={contentIdeasContext}
-          onUseIdea={setPostContent}
-        />
-      </m.div>
-      ) : null}
-
       {socialMode === "publish" ? (
       <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell !min-h-0">
-        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Konton</p>
-            <p className="text-xs font-semibold tabular-nums">{socialAccounts.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Schemalagda</p>
-            <p className="text-xs font-semibold tabular-nums">{pipelinePosts.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Plattform</p>
-            <p className="text-xs font-semibold capitalize">{activeSocialTab.replace(/_/g, " ")}</p>
-          </div>
-        </div>
         <div className="min-h-0 flex-1 space-y-3 p-3 sm:p-4">
         <Tabs value={activeSocialTab} onValueChange={handleSocialTabChange}>
           <div className="rounded-lg border border-border bg-card/70 p-1">
@@ -848,56 +817,11 @@ export default function SocialMedia() {
         />
       </m.div>
 
-      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
-        <SocialVideoDraftCard videos={selectedContentVideos} />
-      </m.div>
-
-      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.18 }}>
-        <Card className="bg-card border-border glow-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ImagePlus className="h-5 w-5" />
-              Create post image
-            </CardTitle>
-            <CardDescription>
-              Generate an image with AI or export a Canva design, then publish it with your post. Manage media in{" "}
-              <Link to="/content?tab=selected" className="text-primary hover:underline">
-                Content → Selected
-              </Link>
-              , or use batch tools under{" "}
-              <Link to="/content?tab=create&mode=batch" className="text-primary hover:underline">
-                Content → Create → Batch
-              </Link>
-              . Generations save to{" "}
-              <Link to="/content?tab=history" className="text-primary hover:underline">
-                History
-              </Link>
-              .
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
-            <ContentAiImageCard
-              embedded
-              allowLocalUpload
-              localPreviewUrl={singleMediaUrl}
-              onLocalUploadClick={() => fileInputRef.current?.click()}
-              canvaInputRef={canvaInputRef}
-              showContentActions={false}
-              businessProfileId={businessProfileId}
-              captionHint={postContent}
-              canvaConnected={canvaConnected}
-              onGenerated={handleGeneratedImage}
-            />
-          </CardContent>
-        </Card>
-      </m.div>
+      {selectedContentVideos.length > 0 ? (
+        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.16 }}>
+          <SocialVideoDraftCard videos={selectedContentVideos} />
+        </m.div>
+      ) : null}
 
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }} id="social-publish-composer">
         {safetyImageAssets.length > 0 ? (
@@ -934,11 +858,6 @@ export default function SocialMedia() {
         />
       </m.div>
 
-      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.22 }}>
-        <ScheduledPostsList onEdit={setEditingPost} />
-      </m.div>
-
-      <SocialAutomationPanel />
       </>
       ) : null}
 
@@ -952,7 +871,70 @@ export default function SocialMedia() {
       ) : null}
 
       {socialMode === "more" ? (
-      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
+      <>
+      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <McpFeatureSection
+          businessProfileId={businessProfileId}
+          featureIds={MCP_PAGE_FEATURE_IDS.social}
+          title="MCP-designstöd"
+          description="Kreativa briefs och designriktning via Canva MCP för socialt innehåll."
+        />
+      </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <ContentIdeasCard
+          businessProfileId={businessProfileId}
+          context={contentIdeasContext}
+          onUseIdea={setPostContent}
+        />
+      </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <Card className="bg-card border-border glow-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ImagePlus className="h-5 w-5" />
+              Skapa bild till inlägg
+            </CardTitle>
+            <CardDescription>
+              Generera med AI eller exportera från Canva. Media hanteras under{" "}
+              <Link to="/content?tab=selected" className="text-primary hover:underline">
+                Innehåll → Valda
+              </Link>
+              .
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+            <ContentAiImageCard
+              embedded
+              allowLocalUpload
+              localPreviewUrl={singleMediaUrl}
+              onLocalUploadClick={() => fileInputRef.current?.click()}
+              canvaInputRef={canvaInputRef}
+              showContentActions={false}
+              businessProfileId={businessProfileId}
+              captionHint={postContent}
+              canvaConnected={canvaConnected}
+              onGenerated={handleGeneratedImage}
+            />
+          </CardContent>
+        </Card>
+      </m.div>
+
+      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+        <ScheduledPostsList onEdit={setEditingPost} />
+      </m.div>
+
+      <SocialAutomationPanel />
+
+      <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.05 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -999,6 +981,7 @@ export default function SocialMedia() {
           </CardContent>
         </Card>
       </m.div>
+      </>
       ) : null}
     </div>
   );

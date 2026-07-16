@@ -235,12 +235,12 @@ export default function SalesMarketingPage() {
     isStackedWorkspace && (showFollowUpsOnly || showOutreachQueue);
 
   type SalesTab = "overview" | "leads" | "outreach" | "pipeline" | "discover" | "goals";
-  const SALES_TAB_VALUES: SalesTab[] = ["overview", "leads", "outreach", "pipeline", "discover", "goals"];
+  const SALES_TAB_VALUES: SalesTab[] = ["leads", "outreach", "pipeline", "overview", "discover", "goals"];
   const rawSalesTab = searchParams.get("tab");
   const salesTab: SalesTab =
     rawSalesTab && (SALES_TAB_VALUES as string[]).includes(rawSalesTab)
       ? (rawSalesTab as SalesTab)
-      : "overview";
+      : "leads";
 
   function clearViewFilter() {
     const next = new URLSearchParams(searchParams);
@@ -251,7 +251,7 @@ export default function SalesMarketingPage() {
   function setSalesTab(tab: SalesTab) {
     const next = new URLSearchParams(searchParams);
     next.delete("view");
-    if (tab === "overview") next.delete("tab");
+    if (tab === "leads") next.delete("tab");
     else next.set("tab", tab);
     setSearchParams(next, { replace: true });
   }
@@ -586,23 +586,26 @@ export default function SalesMarketingPage() {
             }
           />
 
-          <PageAiSuggestionsStrip
-            businessProfileId={businessProfileId}
-            kinds={["outreach", "insight"]}
-            label="AI-förslag för sales & outreach"
-          />
-
-          <CompanyProfileNudge profile={activeProfile} />
+          {salesTab === "overview" ? (
+            <>
+              <PageAiSuggestionsStrip
+                businessProfileId={businessProfileId}
+                kinds={["outreach", "insight"]}
+                label="AI-förslag för sales & outreach"
+              />
+              <CompanyProfileNudge profile={activeProfile} />
+            </>
+          ) : null}
 
           <PageModeTabs
             value={salesTab}
             aria-label="Försäljningsflikar"
             onChange={setSalesTab}
             options={[
-              { value: "overview", label: "Översikt" },
               { value: "leads", label: "Leads", count: activeLeads },
               { value: "outreach", label: "Outreach", count: pendingOutreachCount },
               { value: "pipeline", label: "Pipeline", count: pipelineTasks.length },
+              { value: "overview", label: "Översikt" },
               { value: "discover", label: "Upptäck" },
               { value: "goals", label: "Mål" },
             ]}
@@ -658,9 +661,6 @@ export default function SalesMarketingPage() {
             ))}
           </m.div>
 
-          <m.div {...pageFadeUp} transition={{ delay: 0.037 }}>
-            <OutreachQueueSection businessProfileId={businessProfileId} compact />
-          </m.div>
         </>
       ) : null}
 

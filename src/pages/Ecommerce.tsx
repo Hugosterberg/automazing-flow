@@ -377,17 +377,19 @@ export default function Ecommerce() {
     },
   });
   const [searchParams, setSearchParams] = useSearchParams();
-  type EcommerceTab = "overview" | "products";
-  const ECOMMERCE_TABS: EcommerceTab[] = ["overview", "products"];
+  type EcommerceTab = "orders" | "products" | "insights" | "tools";
+  const ECOMMERCE_TABS: EcommerceTab[] = ["orders", "products", "insights", "tools"];
   const rawEcommerceTab = searchParams.get("tab");
   const tab: EcommerceTab =
-    rawEcommerceTab && (ECOMMERCE_TABS as string[]).includes(rawEcommerceTab)
-      ? (rawEcommerceTab as EcommerceTab)
-      : "overview";
+    rawEcommerceTab === "overview"
+      ? "orders"
+      : rawEcommerceTab && (ECOMMERCE_TABS as string[]).includes(rawEcommerceTab)
+        ? (rawEcommerceTab as EcommerceTab)
+        : "orders";
 
   function setTab(next: EcommerceTab) {
     const params = new URLSearchParams(searchParams);
-    if (next === "overview") params.delete("tab");
+    if (next === "orders") params.delete("tab");
     else params.set("tab", next);
     setSearchParams(params, { replace: true });
   }
@@ -774,12 +776,15 @@ export default function Ecommerce() {
             aria-label="E-handelsflikar"
             onChange={setTab}
             options={[
-              { value: "overview", label: "Översikt" },
+              { value: "orders", label: "Ordrar", count: shopifyData?.orders.length },
               { value: "products", label: "Produkter", count: products.length },
+              { value: "insights", label: "Insikter" },
+              { value: "tools", label: "Verktyg" },
             ]}
           />
         </div>
 
+        {(tab === "orders" || tab === "insights") ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Produkter</p>
@@ -796,26 +801,12 @@ export default function Ecommerce() {
             </p>
           </div>
         </div>
+        ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto space-y-8 p-3 sm:p-4">
 
       {tab === "products" && (
         <div className="space-y-8">
-          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-            <McpFeatureSection
-              businessProfileId={activeBusinessProfileId ?? activeProfileId}
-              featureIds={MCP_PAGE_FEATURE_IDS.ecommerce}
-              title="Shopify-katalog (MCP)"
-              description="Fråga din kopplade Shopify-butik via MCP. Kräver butiksdomän vid koppling."
-            />
-          </m.div>
-          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-            <AlibabaImportCard
-              businessProfileId={activeProfileId}
-              shopifyAccountId={shopifyAccount?.id ?? null}
-              onSaveAsProduct={handleSaveAsProduct}
-            />
-          </m.div>
           <ProductsTab
             businessProfileId={activeProfileId}
             products={products}
@@ -831,7 +822,7 @@ export default function Ecommerce() {
         </div>
       )}
 
-      {tab === "overview" && (
+      {(tab === "orders" || tab === "insights" || tab === "tools") && (
       <div className="space-y-8">
       {authMode === "local" && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
@@ -885,7 +876,13 @@ export default function Ecommerce() {
           <EmptyState
             icon={ShoppingBag}
             title="Koppla Shopify"
-            description="Koppla din Shopify-butik för ordrar och lager. Importera produkter från Alibaba ovan."
+            description={
+              tab === "tools"
+                ? "Koppla Shopify för ordrar och lager. Importera från Alibaba eller använd Notion under Verktyg."
+                : tab === "insights"
+                  ? "Koppla Shopify för att se intäkter, topsäljare och kampanjdata."
+                  : "Koppla din Shopify-butik för att se och hantera ordrar här."
+            }
             action={
               <Button onClick={handleConnect} className="glow-sm">
                 <ShopifyIcon className="h-4 w-4 mr-2" />
@@ -945,7 +942,7 @@ export default function Ecommerce() {
       )}
 
       {/* Action needed strip */}
-      {!loading && shopifyData && actionNeeded && (
+      {tab === "orders" && !loading && shopifyData && actionNeeded && (
         <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.03 }}>
           {actionNeeded.total === 0 ? (
             <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-4 py-2.5 text-sm text-muted-foreground">
@@ -965,6 +962,7 @@ export default function Ecommerce() {
                   <button
                     type="button"
                     onClick={() => {
+                      setTab("orders");
                       setOrderPaymentFilter("all");
                       setOrderFulfillmentFilter("unfulfilled");
                     }}
@@ -978,6 +976,7 @@ export default function Ecommerce() {
                   <button
                     type="button"
                     onClick={() => {
+                      setTab("orders");
                       setOrderPaymentFilter("pending");
                       setOrderFulfillmentFilter("all");
                     }}
@@ -1006,7 +1005,7 @@ export default function Ecommerce() {
       )}
 
       {/* Stats cards */}
-      {!loading && statCards && (
+      {tab === "insights" && !loading && statCards && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((card, i) => (
             <m.div key={card.label} {...fadeUp} transition={{ duration: 0.4, delay: i * 0.07 }} className="h-full">
@@ -1026,7 +1025,7 @@ export default function Ecommerce() {
       )}
 
       {/* Revenue trend */}
-      {!loading && shopifyData && shopifyData.revenueTrend.length > 0 && (
+      {tab === "insights" && !loading && shopifyData && shopifyData.revenueTrend.length > 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
@@ -1084,7 +1083,7 @@ export default function Ecommerce() {
       )}
 
       {/* Insight row: top products + top customers */}
-      {!loading && shopifyData && (shopifyData.topProducts.length > 0 || shopifyData.topCustomers.length > 0) && (
+      {tab === "insights" && !loading && shopifyData && (shopifyData.topProducts.length > 0 || shopifyData.topCustomers.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {shopifyData.topProducts.length > 0 && (
             <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
@@ -1173,7 +1172,7 @@ export default function Ecommerce() {
       )}
 
       {/* Operational alerts: abandoned + low stock */}
-      {!loading && shopifyData && (shopifyData.abandonedCheckouts.length > 0 || shopifyData.lowStock.length > 0) && (
+      {tab === "orders" && !loading && shopifyData && (shopifyData.abandonedCheckouts.length > 0 || shopifyData.lowStock.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {shopifyData.abandonedCheckouts.length > 0 && (
             <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.3 }}>
@@ -1288,7 +1287,7 @@ export default function Ecommerce() {
       )}
 
       {/* Active promotions */}
-      {!loading && shopifyData && shopifyData.promotions.length > 0 && (
+      {tab === "insights" && !loading && shopifyData && shopifyData.promotions.length > 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
           <Card className="bg-card border-border">
             <CardHeader>
@@ -1330,8 +1329,12 @@ export default function Ecommerce() {
         </m.div>
       )}
 
+      {tab === "orders" && !loading && shopifyData && shopifyData.orders.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Inga ordrar hämtade ännu. Uppdatera eller kontrollera Shopify-kopplingen.</p>
+      ) : null}
+
       {/* Recent orders */}
-      {!loading && shopifyData && shopifyData.orders.length > 0 && (
+      {tab === "orders" && !loading && shopifyData && shopifyData.orders.length > 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.45 }}>
           <Card className="bg-card border-border glow-border">
             <CardHeader>
@@ -1492,8 +1495,28 @@ export default function Ecommerce() {
         </m.div>
       )}
 
+      {tab === "tools" ? (
+        <>
+          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+            <McpFeatureSection
+              businessProfileId={activeBusinessProfileId ?? activeProfileId}
+              featureIds={MCP_PAGE_FEATURE_IDS.ecommerce}
+              title="Shopify-katalog (MCP)"
+              description="Fråga din kopplade Shopify-butik via MCP. Kräver butiksdomän vid koppling."
+            />
+          </m.div>
+          <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+            <AlibabaImportCard
+              businessProfileId={activeProfileId}
+              shopifyAccountId={shopifyAccount?.id ?? null}
+              onSaveAsProduct={handleSaveAsProduct}
+            />
+          </m.div>
+        </>
+      ) : null}
+
       {/* Store plan info */}
-      {!loading && shopifyData?.shop && (
+      {tab === "tools" && !loading && shopifyData?.shop && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
           <Card className="bg-card border-border">
             <CardContent className="py-4 px-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -1514,7 +1537,7 @@ export default function Ecommerce() {
         </m.div>
       )}
 
-      {!loading && notionData && (
+      {tab === "tools" && !loading && notionData && (
         <Collapsible open={notionOpen} onOpenChange={setNotionOpen}>
           <m.div {...fadeUp} transition={{ duration: 0.35 }}>
             <Card className="bg-card border-border">

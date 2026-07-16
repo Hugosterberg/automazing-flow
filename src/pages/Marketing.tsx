@@ -31,7 +31,6 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { buildConnectUrl } from "@/features/connections";
 import {
-  MarketingCampaigns,
   MarketingPerformance,
   InventoryAdsAlert,
   CampaignFollowUp,
@@ -235,16 +234,16 @@ export default function MarketingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   type MarketingTab = "paths" | "campaigns" | "ads" | "ideas";
-  const MARKETING_TAB_VALUES: MarketingTab[] = ["paths", "campaigns", "ads", "ideas"];
+  const MARKETING_TAB_VALUES: MarketingTab[] = ["campaigns", "ads", "ideas", "paths"];
   const rawMarketingTab = searchParams.get("tab");
   const marketingTab: MarketingTab =
     rawMarketingTab && (MARKETING_TAB_VALUES as string[]).includes(rawMarketingTab)
       ? (rawMarketingTab as MarketingTab)
-      : "paths";
+      : "campaigns";
 
   function setMarketingTab(tab: MarketingTab) {
     const next = new URLSearchParams(searchParams);
-    if (tab === "paths") next.delete("tab");
+    if (tab === "campaigns") next.delete("tab");
     else next.set("tab", tab);
     setSearchParams(next, { replace: true });
   }
@@ -428,18 +427,33 @@ export default function MarketingPage() {
         aria-label="Marketing-flikar"
         onChange={setMarketingTab}
         options={[
-          { value: "paths", label: "Vägar" },
           { value: "campaigns", label: "Kampanjer", count: campaignTasks.length },
           { value: "ads", label: "Betald" },
           { value: "ideas", label: "Idéer" },
+          { value: "paths", label: "Vägar" },
         ]}
       />
 
       {marketingTab === "paths" ? (
-      <m.div {...pageFadeUp}>
-        <MarketingSetupCard />
-        <MarketingPathsHub pathStatus={pathStatus} />
-      </m.div>
+      <div className="space-y-4">
+        <m.div {...pageFadeUp}>
+          <MarketingPathsHub pathStatus={pathStatus} />
+        </m.div>
+        <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
+          <MarketingSetupCard />
+        </m.div>
+        <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
+          <McpMultiSourceCompare businessProfileId={businessProfileId} />
+        </m.div>
+        <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
+          <McpFeatureSection
+            businessProfileId={businessProfileId}
+            featureIds={MCP_PAGE_FEATURE_IDS.marketing}
+            title="MCP-intelligens"
+            description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
+          />
+        </m.div>
+      </div>
       ) : null}
 
       {marketingTab === "ideas" ? (
@@ -582,25 +596,8 @@ export default function MarketingPage() {
         <InventoryAdsAlert />
       </m.div>
 
-      <m.div {...pageFadeUp} transition={{ delay: 0.048 }}>
-        <McpMultiSourceCompare businessProfileId={businessProfileId} />
-      </m.div>
-
-      <m.div {...pageFadeUp} transition={{ delay: 0.049 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS.marketing}
-          title="MCP-intelligens"
-          description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
-        />
-      </m.div>
-
       <m.div {...pageFadeUp} transition={{ delay: 0.05 }}>
         <MarketingPerformance />
-      </m.div>
-
-      <m.div {...pageFadeUp} transition={{ delay: 0.06 }}>
-        <MarketingCampaigns />
       </m.div>
       </>
       ) : null}

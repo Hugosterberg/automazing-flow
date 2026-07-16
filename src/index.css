@@ -382,6 +382,8 @@
 
   .messages-workspace-shell {
     min-height: min(72dvh, 100%);
+    max-width: 100%;
+    overflow-x: hidden;
   }
   @media (min-width: 640px) {
     .messages-workspace-shell {

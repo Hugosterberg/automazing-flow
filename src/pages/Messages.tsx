@@ -501,7 +501,13 @@ export default function MessagesPage() {
     if (defaultedFilter.current || loading || inboxPrefsDoc.isLoading) return;
     defaultedFilter.current = true;
     const saved = inboxPrefsDoc.data;
-    if (saved?.tab) setActiveTab(saved.tab);
+    const urlTab = searchParams.get("tab");
+    const channelFromUrl =
+      urlTab && MESSAGE_TABS.some((t) => t.value === urlTab)
+        ? (urlTab as MessageChannelTab)
+        : null;
+    if (channelFromUrl) setActiveTab(channelFromUrl);
+    else if (saved?.tab) setActiveTab(saved.tab);
     if (saved?.mailFolder) setSelectedMailFolderState(saved.mailFolder);
     if (saved?.mailViewFilter) setMailViewFilterState(saved.mailViewFilter);
     if (saved?.mailSort) setMailSortState(saved.mailSort);
@@ -511,7 +517,7 @@ export default function MessagesPage() {
     }
     const unread = messages.filter(isUnanswered).length;
     if (unread > 0) setInboxFilter("queue");
-  }, [loading, messages, isUnanswered, inboxPrefsDoc.isLoading, inboxPrefsDoc.data]);
+  }, [loading, messages, isUnanswered, inboxPrefsDoc.isLoading, inboxPrefsDoc.data, searchParams]);
 
   const setInboxFilterPersisted = useCallback(
     (filter: InboxFilter) => {
@@ -524,6 +530,10 @@ export default function MessagesPage() {
   const setActiveTabPersisted = useCallback(
     (tab: MessageChannelTab) => {
       setActiveTab(tab);
+      const next = new URLSearchParams(searchParams);
+      if (tab === "mail") next.delete("tab");
+      else next.set("tab", tab);
+      setSearchParams(next, { replace: true });
       if (tab !== "mail") {
         setSelectedMailFolderState(null);
         inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab, mailFolder: null });
@@ -531,7 +541,7 @@ export default function MessagesPage() {
       }
       inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab });
     },
-    [inboxPrefsDoc]
+    [inboxPrefsDoc, searchParams, setSearchParams]
   );
 
   const removeMessageFromInbox = useCallback(
@@ -1234,7 +1244,7 @@ export default function MessagesPage() {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1520px] flex-col",
+        "mx-auto flex w-full max-w-[1520px] min-w-0 flex-col overflow-x-hidden",
         focusedReading ? "gap-0" : "gap-3 sm:gap-4"
       )}
     >
@@ -1273,7 +1283,7 @@ export default function MessagesPage() {
         </>
       ) : null}
 
-      {!hasAnyMailConnected ? (
+      {!focusedReading && activeTab === "mail" && !hasAnyMailConnected ? (
         <m.div {...fadeUp} transition={{ duration: 0.35 }} className="grid gap-3 sm:grid-cols-2">
           <Card className="border-dashed border-border bg-card/40">
             <CardContent className="flex flex-col items-center gap-3 px-4 py-8 text-center">
@@ -1370,7 +1380,7 @@ export default function MessagesPage() {
         />
         ) : null}
 
-        {!focusedReading ? (
+        {!focusedReading && inboxStats.openCount > 0 ? (
         <MessageInboxStats
           openCount={inboxStats.openCount}
           oldestWait={inboxStats.oldestWait}
@@ -1383,7 +1393,7 @@ export default function MessagesPage() {
         />
         ) : null}
 
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <MessageWorkspace
             filteredMessages={filteredMessages}
             selectedMessage={selectedMessage}

@@ -28,7 +28,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -690,6 +691,24 @@ export default function Index() {
     setEditOpen(false);
   }
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  type HomeTab = "today" | "pulse" | "more";
+  const HOME_TABS: HomeTab[] = ["today", "pulse", "more"];
+  const rawHomeTab = searchParams.get("tab");
+  const homeTab: HomeTab =
+    rawHomeTab && (HOME_TABS as string[]).includes(rawHomeTab)
+      ? (rawHomeTab as HomeTab)
+      : "today";
+
+  function setHomeTab(tab: HomeTab) {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "today") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
+  const showPulseTab = mode === "business";
+
   return (
     <m.div
       {...pageFadeUp}
@@ -740,7 +759,7 @@ export default function Index() {
             ? undefined
             : isMobile
               ? "AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
-              : "Synk-färskhet visas ovanför Idag — grönt betyder att data nyligen hämtats."
+              : "Synk-färskhet visas under Idag — grönt betyder att data nyligen hämtats."
         }
         liveHintOverride={
           health.score < 100 && health.topReason
@@ -751,11 +770,20 @@ export default function Index() {
         }
       />
 
+      <PageModeTabs
+        value={homeTab === "pulse" && !showPulseTab ? "today" : homeTab}
+        aria-label="Startsida-flikar"
+        onChange={setHomeTab}
+        options={[
+          { value: "today", label: "Idag" },
+          ...(showPulseTab ? [{ value: "pulse" as const, label: "Marknadspuls" }] : []),
+          { value: "more", label: "Mer" },
+        ]}
+      />
+
+      {homeTab === "today" || (homeTab === "pulse" && !showPulseTab) ? (
+      <>
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
-
-      {profiles.length > 2 ? <ProfileList /> : null}
-
-      {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
 
       {mode === "business" && isMobile ? (
         <ExperienceBoostCard
@@ -763,12 +791,6 @@ export default function Index() {
           connectedCount={profileSummary.connectedCount}
           attentionCount={connectionIssues.length}
         />
-      ) : null}
-
-      {mode === "business" ? (
-        <HomeCollapsibleSection title="Marknadspuls" ariaLabel="Marknadspuls">
-          <MarketPulseCard businessProfileId={homeBusinessProfileId} />
-        </HomeCollapsibleSection>
       ) : null}
 
       <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-3 p-3 sm:space-y-2 sm:p-4">
@@ -821,11 +843,22 @@ export default function Index() {
           </HomeCollapsibleSection>
         ) : null}
       </section>
+      </>
+      ) : null}
 
+      {homeTab === "pulse" && showPulseTab ? (
+        <MarketPulseCard businessProfileId={homeBusinessProfileId} />
+      ) : null}
+
+      {homeTab === "more" ? (
+      <div className="space-y-4">
+      {profiles.length > 2 ? <ProfileList /> : null}
+      {mode === "business" && !isMobile ? <CompanyProfileNudge profile={businessProfile} /> : null}
       {activeProfile ? (
         <HomeCollapsibleSection
           title="Profildetaljer"
           ariaLabel="Profildetaljer"
+          defaultOpen
           actions={
             <div className="flex items-center gap-1">
               <button
@@ -899,13 +932,13 @@ export default function Index() {
       ) : null}
 
       {homeBusinessProfileId ? (
-        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag">
+        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag" defaultOpen>
           <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
         </HomeCollapsibleSection>
       ) : null}
 
       {quickOverviewCards.length > 0 ? (
-        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt">
+        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt" defaultOpen>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickOverviewCards.map((card) => (
               <QuickOverviewCard
@@ -923,7 +956,7 @@ export default function Index() {
         </HomeCollapsibleSection>
       ) : null}
 
-      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
+      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till" defaultOpen>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {homeJumpDestinations.map((dest) => (
             <JumpCard
@@ -937,6 +970,8 @@ export default function Index() {
           ))}
         </div>
       </HomeCollapsibleSection>
+      </div>
+      ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">

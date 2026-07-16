@@ -89,7 +89,7 @@ export function MessageInboxToolbar({
       <div className={cn("flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4", isMobile && "py-3")}>
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border border-border/60 bg-background/50 p-0.5",
+            "flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-1 rounded-lg border border-border/60 bg-background/50 p-0.5",
             isMobile && "gap-1.5 p-1"
           )}
           role="tablist"
@@ -255,7 +255,7 @@ export function MessageInboxToolbar({
           ) : (
             <>
               <div
-                className="flex min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-border/60 bg-background/40 p-0.5 app-scroll"
+                className="flex min-w-0 max-w-full flex-1 flex-wrap items-center rounded-lg border border-border/60 bg-background/40 p-0.5"
                 role="group"
                 aria-label="Filtrera inkorg"
               >

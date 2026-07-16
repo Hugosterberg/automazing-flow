@@ -120,17 +120,22 @@ export function MessageInboxList({
   const showSections = inboxFilter === "queue";
 
   return (
-    <div className="message-inbox-pane flex h-full min-h-0 flex-col">
+    <div className="message-inbox-pane flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <InboxListHeader count={messages.length} loading={loading} />
-      <div className="min-h-0 flex-1 overflow-y-auto app-scroll">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto app-scroll">
         {loading ? (
           <div className="divide-y divide-border/40">
-            {Array.from({ length: 14 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-1 px-1 py-0.5 shimmer">
-                <div className="h-4 w-4 shrink-0 rounded-full bg-muted/60" />
-                <div className="h-1.5 w-1/4 rounded bg-muted/60" />
-                <div className="h-1.5 flex-1 rounded bg-muted/40" />
-                <div className="h-1.5 w-5 rounded bg-muted/30" />
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2 px-2 py-2 shimmer">
+                <div className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-muted/60" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-1/3 rounded bg-muted/60" />
+                    <div className="ml-auto h-2 w-8 rounded bg-muted/30" />
+                  </div>
+                  <div className="h-2 w-[85%] rounded bg-muted/50" />
+                  <div className="h-2 w-[65%] rounded bg-muted/35" />
+                </div>
               </div>
             ))}
           </div>

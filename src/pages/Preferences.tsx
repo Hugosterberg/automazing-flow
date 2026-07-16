@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
 import {
   Bell,
-  Bot,
   HelpCircle,
   CheckCircle2,
   ExternalLink,
@@ -19,7 +18,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { TeamManager } from "@/components/TeamManager";
 import { AiSettingsSection } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -28,8 +27,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
@@ -279,27 +279,43 @@ function StatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
-const PREFERENCES_TABS = ["overview", "team", "navigation", "ai", "automation", "api-keys", "help"] as const;
+const PREFERENCES_TABS = ["overview", "ai", "api-keys", "team", "navigation", "help"] as const;
 type PreferencesTab = (typeof PREFERENCES_TABS)[number];
 
 function parsePreferencesTab(raw: string | null): PreferencesTab {
   if (raw && (PREFERENCES_TABS as readonly string[]).includes(raw)) {
     return raw as PreferencesTab;
   }
-  return "api-keys";
+  return "overview";
 }
 
 export default function PreferencesPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = parsePreferencesTab(searchParams.get("tab"));
+  const rawTab = searchParams.get("tab");
+  const activeTab = parsePreferencesTab(rawTab);
   const setActiveTab = useCallback(
     (tab: PreferencesTab) => {
-      setSearchParams(tab === "api-keys" ? {} : { tab }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "overview") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
     },
     [setSearchParams]
   );
+
+  useEffect(() => {
+    if (rawTab === "automation") {
+      navigate("/automations", { replace: true });
+    }
+  }, [rawTab, navigate]);
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([]);
   const [storeEnabled, setStoreEnabled] = useState(true);
@@ -465,32 +481,21 @@ export default function PreferencesPage() {
       />
 
       <div className="app-workspace-shell !min-h-0">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex w-full min-h-0 flex-1 flex-col">
-        <div className="app-workspace-toolbar px-3 py-2 sm:px-4">
-        <TabsList>
-          <TabsTrigger value="overview">Översikt</TabsTrigger>
-          <TabsTrigger value="team">
-            <Users className="h-3.5 w-3.5 mr-1.5" />
-            Team
-          </TabsTrigger>
-          <TabsTrigger value="navigation">
-            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
-            Genvägar
-          </TabsTrigger>
-          <TabsTrigger value="ai">
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            AI
-          </TabsTrigger>
-          <TabsTrigger value="automation">
-            <Bot className="h-3.5 w-3.5 mr-1.5" />
-            Automationer
-          </TabsTrigger>
-          <TabsTrigger value="api-keys">API-nycklar</TabsTrigger>
-          <TabsTrigger value="help">
-            <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
-            Hjälp
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PreferencesTab)} className="flex w-full min-h-0 flex-1 flex-col">
+        <div className="app-workspace-toolbar px-3 pt-1 sm:px-4">
+          <PageModeTabs
+            value={activeTab}
+            aria-label="Inställningsflikar"
+            onChange={setActiveTab}
+            options={[
+              { value: "overview", label: "Översikt" },
+              { value: "ai", label: "AI" },
+              { value: "api-keys", label: "API-nycklar", count: unconfiguredCount },
+              { value: "team", label: "Team" },
+              { value: "navigation", label: "Genvägar" },
+              { value: "help", label: "Hjälp" },
+            ]}
+          />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
@@ -563,46 +568,6 @@ export default function PreferencesPage() {
             businessProfileId={activeBusinessProfileId ?? null}
             onOpenIntegrations={() => setActiveTab("api-keys")}
           />
-        </TabsContent>
-
-        <TabsContent value="automation">
-          {/* Automation settings moved to the dedicated /automations page so
-              every automated flow lives under one heading. This tab stays as
-              a signpost for users who look for it here. */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
-                Automationer har flyttat
-              </CardTitle>
-              <CardDescription>
-                Schemalagda jobb och AI-flöden hanteras på sidan Automationer — status, schema och
-                resultat på samma ställe. Här under Inställningar finns bara nycklar och AI-preferenser.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span>Snapshots & digests — synk och summeringar utan manuellt knackande</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span>Påminnelser & AI-jobb — t.ex. uppföljning när något väntar</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span>Publicering schemaläggs under Content → Publicera (inte här)</span>
-                </li>
-              </ul>
-              <Button asChild>
-                <Link to="/automations">
-                  Öppna Automationer
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="api-keys" className="space-y-5">

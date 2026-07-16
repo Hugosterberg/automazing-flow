@@ -21,12 +21,32 @@ const QUERY_TABS = MCP_HUB_TABS.filter(
   (t) => !["overview", "compare", "catalog", "tools"].includes(t.id)
 );
 
+type Props = {
+  businessProfileId: string | null;
+  /** Controlled tab (URL-synced from Intelligence page). */
+  tab?: McpHubTabId;
+  onTabChange?: (tab: McpHubTabId) => void;
+  /** When true, parent renders PageModeTabs — hide inner tab list. */
+  hideTabList?: boolean;
+};
+
 /**
  * Unified hub: one tab per MCP category, one input box per feature.
  * Covers every MCP provider in the catalog (some share a fallback input).
  */
-export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: string | null }) {
-  const [tab, setTab] = useState<McpHubTabId>("compare");
+export function McpIntelligenceHub({
+  businessProfileId,
+  tab: controlledTab,
+  onTabChange,
+  hideTabList = false,
+}: Props) {
+  const [internalTab, setInternalTab] = useState<McpHubTabId>("compare");
+  const tab = controlledTab ?? internalTab;
+
+  function setTab(next: McpHubTabId) {
+    onTabChange?.(next);
+    if (controlledTab === undefined) setInternalTab(next);
+  }
 
   const featureCount = MCP_FEATURE_DEFINITIONS.length;
   const platformCount = MCP_PLATFORMS_WITH_UI.length;
@@ -63,17 +83,19 @@ export function McpIntelligenceHub({ businessProfileId }: { businessProfileId: s
       </CardHeader>
       <CardContent className="pt-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as McpHubTabId)}>
-          <TabsList className="flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0 mb-4">
-            {MCP_HUB_TABS.map((hubTab) => (
-              <TabsTrigger
-                key={hubTab.id}
-                value={hubTab.id}
-                className="text-xs data-[state=active]:bg-muted"
-              >
-                {hubTab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {!hideTabList ? (
+            <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+              {MCP_HUB_TABS.map((hubTab) => (
+                <TabsTrigger
+                  key={hubTab.id}
+                  value={hubTab.id}
+                  className="text-xs data-[state=active]:bg-muted"
+                >
+                  {hubTab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          ) : null}
 
           <TabsContent value="overview" className="mt-0 space-y-4">
             <p className="text-xs text-muted-foreground">

@@ -24,6 +24,7 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -572,6 +573,21 @@ export default function ReviewsPage() {
   const isStackedWorkspace = useStackedWorkspace();
   const focusedReading = useFocusedWorkspaceReading(Boolean(selectedReview));
 
+  type ReviewsTab = "inbox" | "drafts" | "place";
+  const REVIEWS_TABS: ReviewsTab[] = ["inbox", "drafts", "place"];
+  const rawReviewsTab = searchParams.get("tab");
+  const reviewsTab: ReviewsTab =
+    rawReviewsTab && (REVIEWS_TABS as string[]).includes(rawReviewsTab)
+      ? (rawReviewsTab as ReviewsTab)
+      : "inbox";
+
+  function setReviewsTab(tab: ReviewsTab) {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "inbox") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
   return (
     <div className={cn("max-w-7xl w-full", focusedReading ? "space-y-0" : "space-y-8")}>
       {!focusedReading ? (
@@ -635,18 +651,36 @@ export default function ReviewsPage() {
         }
       />
 
-      <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <SectionConnectionStatus area="reviews" />
-      </m.div>
+      {(reviewsTab === "inbox" || focusedReading) && reviewAccounts.length === 0 ? (
+        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
+          <SectionConnectionStatus area="reviews" />
+        </m.div>
+      ) : null}
 
+      <PageModeTabs
+        value={reviewsTab}
+        aria-label="Recensionsflikar"
+        onChange={setReviewsTab}
+        options={[
+          { value: "inbox", label: "Inkorg", count: reviews.length },
+          { value: "drafts", label: "Utkast" },
+          { value: "place", label: "Verksamhet" },
+        ]}
+      />
+
+      {reviewsTab === "drafts" ? (
       <ReviewReplyQueueSection
         onUseDraft={(item) => {
           const match = reviews.find((r) => r.id === item.reviewId);
-          if (match) selectReview(match);
+          if (match) {
+            setReviewsTab("inbox");
+            selectReview(match);
+          }
           setReplyDraft(item.draft);
           toast({ title: "Utkast tillämpat", description: `Svar till ${item.author} är redo att redigera och skicka.` });
         }}
       />
+      ) : null}
         </>
       ) : null}
 
@@ -678,7 +712,7 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {loading && activeAccount && (
+      {(reviewsTab === "inbox" || focusedReading) && loading && activeAccount && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[1, 2].map((i) => (
@@ -694,7 +728,7 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {data?.note && (
+      {(reviewsTab === "inbox" || focusedReading) && data?.note && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/40 border-border">
             <CardContent className="py-3 px-4">
@@ -704,7 +738,7 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {reviewAccounts.length > 1 && (
+      {(reviewsTab === "inbox" || focusedReading) && reviewAccounts.length > 1 && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }} className="flex gap-2 flex-wrap">
           {reviewAccounts.map((acc) => (
             <button
@@ -722,7 +756,7 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {!loading && !activeAccount && (
+      {(reviewsTab === "inbox" || focusedReading) && !loading && !activeAccount && (
         <m.div {...fadeUp} transition={{ duration: 0.4 }}>
           <EmptyState
             icon={Star}
@@ -737,34 +771,14 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {!loading && activeAccount && reviews.length === 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="bg-card border-border">
-              <CardContent className="p-5">
-                <Star className="h-5 w-5 text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{averageRating != null ? averageRating.toFixed(1) : "—"}</p>
-                <p className="text-sm text-muted-foreground">Snittbetyg</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-5">
-                <MessageSquare className="h-5 w-5 text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{reviewCount ?? reviews.length}</p>
-                <p className="text-sm text-muted-foreground">Recensioner</p>
-              </CardContent>
-            </Card>
-          </div>
-        </m.div>
-      )}
-
-      {!loading && activeAccount && placeInfo && (
+      {!focusedReading && reviewsTab === "place" ? (
+        !loading && activeAccount && placeInfo ? (
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Info className="h-4 w-4 text-muted-foreground" />
-                Business information
+                Verksamhetsinformation
               </CardTitle>
               <CardDescription>
                 Hämtat via {placeInfo.source === "zernio" ? "Zernio" : "Official API"}.
@@ -802,9 +816,14 @@ export default function ReviewsPage() {
             </CardContent>
           </Card>
         </m.div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Ingen verksamhetsinformation ännu. Koppla Google Business / Reviews under Kopplingar.
+          </p>
+        )
+      ) : null}
 
-      {!loading && activeAccount && reviews.length === 0 && (
+      {(reviewsTab === "inbox" || focusedReading) && !loading && activeAccount && reviews.length === 0 && (
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
           <EmptyState
             icon={MessageSquare}
@@ -825,7 +844,7 @@ export default function ReviewsPage() {
         </m.div>
       )}
 
-      {!loading && reviews.length > 0 && (
+      {(reviewsTab === "inbox" || focusedReading) && !loading && reviews.length > 0 && (
         <m.div
           {...fadeUp}
           transition={{ duration: 0.35 }}

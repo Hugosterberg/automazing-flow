@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Plus,
   Clock,
@@ -7,7 +7,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Layers,
   CalendarDays,
   Loader2,
   Pencil,
@@ -38,8 +37,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import { getOAuthProfileId } from "@/lib/oauthProfile";
-import { apiUrl } from "@/lib/apiBase";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +52,7 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -140,8 +138,31 @@ export default function CalendarPage() {
     legacyWrite: (_bpId, value) => writeLegacyEvents(value),
   });
   const events = eventsDoc.data;
-  const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "day" : "week"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawView = searchParams.get("view");
+  const viewMode: ViewMode =
+    rawView === "day" || rawView === "week" || rawView === "month"
+      ? rawView
+      : typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+        ? "day"
+        : "week";
+  const setViewMode = useCallback(
+    (mode: ViewMode) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          const defaultMode =
+            typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+              ? "day"
+              : "week";
+          if (mode === defaultMode) next.delete("view");
+          else next.set("view", mode);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
   );
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
@@ -476,20 +497,6 @@ export default function CalendarPage() {
     })
     .slice(0, 8);
 
-  function connectCalendar(
-    platform: "google_calendar" | "outlook_calendar",
-    provider: "auto" | "zernio" | "official"
-  ) {
-    const params = new URLSearchParams();
-    params.set("app_origin", window.location.origin);
-    const oauthProfileId = getOAuthProfileId(activeProfileId);
-    if (oauthProfileId) params.set("profile_id", oauthProfileId);
-    if (activeBusinessProfileId) params.set("business_profile_id", activeBusinessProfileId);
-    if (provider !== "auto") params.set("provider", provider);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    window.location.href = `${apiUrl(`/api/auth/${platform}`)}${query}`;
-  }
-
   return (
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
@@ -497,19 +504,10 @@ export default function CalendarPage() {
         title="Kalender"
         description="Planera och schemalägg händelser från uppgifter, leads och kopplade kalendrar."
         actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => connectCalendar("google_calendar", "auto")}
-            >
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Koppla Google Kalender
-            </Button>
-            <Button onClick={openDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Lägg till
-            </Button>
-          </>
+          <Button onClick={openDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Lägg till
+          </Button>
         }
       />
 
@@ -529,6 +527,17 @@ export default function CalendarPage() {
       />
 
       <SectionConnectionStatus area="calendar" className="mt-0" />
+
+      <PageModeTabs
+        value={viewMode}
+        aria-label="Kalendervy"
+        onChange={setViewMode}
+        options={[
+          { value: "day", label: "Dag" },
+          { value: "week", label: "Vecka" },
+          { value: "month", label: "Månad" },
+        ]}
+      />
 
       {oauthErrorDetails && (
         <OAuthErrorAlert
@@ -589,73 +598,13 @@ export default function CalendarPage() {
                 hasEvents: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
               }}
             />
-            <div className="mt-4 flex gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
-              {(["day", "week", "month"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setViewMode(m)}
-                  className={cn(
-                    "min-h-11 flex-1 rounded-lg text-sm font-semibold transition-colors sm:min-h-9 sm:py-2 sm:text-xs sm:font-medium",
-                    viewMode === m
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {m === "day" && "Dag"}
-                  {m === "week" && "Vecka"}
-                  {m === "month" && "Månad"}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 space-y-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Koppla kalendrar</p>
-              <div className="grid grid-cols-1 gap-1">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => connectCalendar("google_calendar", "zernio")}
-                  className="justify-start gap-1.5"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Google via Zernio (rekommenderat)
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => connectCalendar("google_calendar", "official")}
-                  className="justify-start gap-1.5 text-muted-foreground"
-                >
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Google Official API
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => connectCalendar("outlook_calendar", "zernio")}
-                  className="justify-start gap-1.5"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Outlook via Zernio (rekommenderat)
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => connectCalendar("outlook_calendar", "official")}
-                  className="justify-start gap-1.5 text-muted-foreground"
-                >
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Outlook Official API
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Hantera status och omkoppling i{" "}
-                <Link to="/connections?q=calendar" className="underline underline-offset-2 hover:text-foreground">
-                  Kopplingar
-                </Link>
-                .
-              </p>
-            </div>
+            <p className="mt-4 text-[11px] text-muted-foreground">
+              Koppla Google/Outlook under{" "}
+              <Link to="/connections?q=calendar" className="underline underline-offset-2 hover:text-foreground">
+                Kopplingar
+              </Link>
+              .
+            </p>
             <div className="flex items-center justify-between mt-3">
               <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navPrev}>
                 <ChevronLeft className="h-4 w-4" />

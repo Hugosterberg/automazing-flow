@@ -536,6 +536,7 @@ export default function DigitalBrandPage() {
   const [audit, setAudit] = useState<WebsiteAudit | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [showAllBrandMetrics, setShowAllBrandMetrics] = useState(false);
 
   async function runAudit() {
     if (!websiteUrl) return;
@@ -660,8 +661,8 @@ export default function DigitalBrandPage() {
         aria-label="Digitalt varumärke-flikar"
         onChange={setBrandTab}
         options={[
-          { value: "overview", label: "Översikt" },
           { value: "recs", label: "Rekommendationer", count: highCount },
+          { value: "overview", label: "Översikt" },
           { value: "research", label: "Research" },
         ]}
       />
@@ -758,6 +759,7 @@ export default function DigitalBrandPage() {
         </m.div>
 
       {audit ? (
+        <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {mobilePageSpeed ? (
             <>
@@ -766,7 +768,17 @@ export default function DigitalBrandPage() {
               <MetricCard title="Mobil LCP" value={metricDisplay(mobilePageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint från Lighthouse." icon={RefreshCw} />
               <MetricCard title="Mobil CLS" value={metricDisplay(mobilePageSpeed.metrics.cumulativeLayoutShift)} hint="Cumulative Layout Shift från Lighthouse." icon={ShieldCheck} />
             </>
-          ) : null}
+          ) : (
+            <>
+              <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
+              <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
+              <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
+              <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+            </>
+          )}
+        </div>
+        {showAllBrandMetrics ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {desktopPageSpeed ? (
             <>
               <MetricCard title="Desktop PageSpeed" value={scoreLabel(desktopPageSpeed.scores.performance)} hint="Lighthouse prestandapoäng (desktop) från PageSpeed Insights." icon={Gauge} />
@@ -775,14 +787,29 @@ export default function DigitalBrandPage() {
               <MetricCard title="Desktop LCP" value={metricDisplay(desktopPageSpeed.metrics.largestContentfulPaint)} hint="Largest Contentful Paint (desktop)." icon={RefreshCw} />
             </>
           ) : null}
-          <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
-          <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
-          <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
-          <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+          {mobilePageSpeed ? (
+            <>
+              <MetricCard title="HTTP-status" value={String(audit.status)} hint={audit.ok ? "Startsidan är nåbar." : "Startsidan returnerade fel."} icon={Gauge} />
+              <MetricCard title="Svarstid" value={`${audit.responseTimeMs} ms`} hint="Mätt av server-side audit-hämtningen." icon={RefreshCw} />
+              <MetricCard title="Titelns längd" value={`${audit.titleLength} tecken`} hint={audit.title || "Ingen title-tagg hittades."} icon={Search} />
+              <MetricCard title="Metabeskrivning" value={`${audit.metaDescriptionLength} tecken`} hint={audit.metaDescription || "Ingen metabeskrivning hittades."} icon={FileText} />
+            </>
+          ) : null}
           <MetricCard title="Antal H1" value={String(audit.h1Texts.length)} hint={audit.h1Texts[0] || "Ingen H1 hittades."} icon={CheckCircle2} />
           <MetricCard title="Strukturerad data" value={String(audit.structuredDataCount)} hint="JSON-LD-block hittade i HTML." icon={ShieldCheck} />
           <MetricCard title="Bilder utan alt" value={`${audit.imagesMissingAlt}/${audit.imageCount}`} hint="Baserat på img-taggar i hämtad HTML." icon={FileText} />
           <MetricCard title="Sitemap-status" value={statusLabel(audit.sitemapXmlStatus)} hint="Svar vid kontroll av /sitemap.xml." icon={Globe2} />
+        </div>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="text-xs text-muted-foreground"
+          onClick={() => setShowAllBrandMetrics((v) => !v)}
+        >
+          {showAllBrandMetrics ? "Visa färre mätvärden" : "Visa alla mätvärden"}
+        </Button>
         </div>
       ) : auditLoading ? (
         <Card className="border-border">

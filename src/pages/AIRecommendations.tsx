@@ -5,12 +5,7 @@ import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -21,6 +16,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { pageFadeUp } from "@/lib/motion";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { useAccounts } from "@/context/AccountsContext";
@@ -297,33 +293,31 @@ export default function AIRecommendationsPage() {
         </Card>
       ) : null}
 
-      <m.div {...pageFadeUp} transition={{ duration: 0.25 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
-          title="MCP-kontext"
-          description="Hämta live-kontext från Era MCP för att berika rekommendationer."
-        />
-      </m.div>
+      <PageModeTabs
+        value={tab}
+        aria-label="Rekommendationsflikar"
+        onChange={setTab}
+        options={[
+          { value: "active", label: "Aktiva", count: active.length },
+          { value: "accepted", label: "Accepterade", count: accepted.length },
+          { value: "dismissed", label: "Avvisade", count: dismissed.length },
+        ]}
+      />
+
+      {tab === "active" ? (
+        <m.div {...pageFadeUp} transition={{ duration: 0.25 }}>
+          <McpFeatureSection
+            businessProfileId={businessProfileId}
+            featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
+            title="MCP-kontext"
+            description="Hämta live-kontext från Era MCP för att berika rekommendationer."
+          />
+        </m.div>
+      ) : null}
 
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="flex min-h-0 flex-1 flex-col">
-          <div className="app-workspace-toolbar flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
-            <TabsList className="h-8 bg-background/50 p-0.5">
-              <TabsTrigger value="active" className="h-7 px-2.5 text-xs">
-                Aktiva
-                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{active.length}</span>
-              </TabsTrigger>
-              <TabsTrigger value="accepted" className="h-7 px-2.5 text-xs">
-                Accepterade
-                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{accepted.length}</span>
-              </TabsTrigger>
-              <TabsTrigger value="dismissed" className="h-7 px-2.5 text-xs">
-                Avvisade
-                <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground">{dismissed.length}</span>
-              </TabsTrigger>
-            </TabsList>
-
+          <div className="app-workspace-toolbar flex flex-wrap items-center justify-end gap-2 px-3 py-2.5 sm:px-4">
             <Select
               value={kindFilter}
               onValueChange={(v) => setKindFilter(v as AiRecommendationKind | "all")}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { cn } from "@/lib/utils";
 import { pageFadeUp } from "@/lib/motion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -536,6 +537,17 @@ export default function TasksPage() {
         />
       </m.div>
 
+      <PageModeTabs
+        value={quickFilter}
+        aria-label="Uppgiftsvy"
+        onChange={setQuickFilter}
+        options={[
+          { value: "today", label: "Idag", count: dueTodayCount },
+          { value: "overdue", label: "Försenade", count: overdueCount },
+          { value: "all", label: "Alla" },
+        ]}
+      />
+
       <m.div
         {...pageFadeUp}
         transition={{ duration: 0.3 }}
@@ -560,32 +572,6 @@ export default function TasksPage() {
               )}
               aria-label="Sök uppgifter"
             />
-          </div>
-          <div className="grid w-full min-w-0 grid-cols-3 gap-0.5 rounded-lg border border-border/60 bg-background/40 p-0.5 sm:flex sm:w-auto sm:gap-1 sm:p-1 sm:overflow-visible">
-            {(
-              [
-                { id: "all", label: "Alla", count: null, activeClass: "bg-primary text-primary-foreground shadow-sm" },
-                { id: "overdue", label: "Försenade", count: overdueCount, activeClass: "bg-destructive/90 text-destructive-foreground shadow-sm" },
-                { id: "today", label: "Idag", count: dueTodayCount, activeClass: "bg-warning/90 text-warning-foreground shadow-sm" },
-              ] as const
-            ).map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => setQuickFilter(chip.id)}
-                aria-pressed={quickFilter === chip.id}
-                className={cn(
-                  "pressable min-w-0 rounded-md px-1.5 font-medium transition-colors sm:shrink-0 sm:px-3",
-                  isMobile ? "min-h-9 py-1.5 text-xs" : "px-2.5 py-1 text-[11px]",
-                  quickFilter === chip.id ? chip.activeClass : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span className="truncate">{chip.label}</span>
-                {chip.count !== null && chip.count > 0 ? (
-                  <span className="ml-1 tabular-nums">{chip.count}</span>
-                ) : null}
-              </button>
-            ))}
           </div>
           <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
             {visibleTasks.length} visade

@@ -52,6 +52,7 @@ export interface McpFeatureDefinition {
   run: (businessProfileId: string | null, input: string) => Promise<McpTextResult>;
 }
 
+/** Workflow order: status → act (compare/research domains) → catalog/tools last. */
 export const MCP_HUB_TABS: McpHubTab[] = [
   { id: "overview", label: "Status", description: "Kopplings- och nyckelstatus för alla MCP-leverantörer." },
   {
@@ -59,6 +60,11 @@ export const MCP_HUB_TABS: McpHubTab[] = [
     label: "Jämför",
     description: "Kör samma domän eller företag mot varje kopplad MCP-lins och jämför bedömningarna sida vid sida.",
   },
+  { id: "research", label: "Research", description: "Marknadspuls, lead-research och konkurrentanalys." },
+  { id: "marketing", label: "Marknadsföring", description: "SEO- och marknadsföringsdata." },
+  { id: "content", label: "Innehåll", description: "Presentationer och designhjälp." },
+  { id: "commerce", label: "E-handel", description: "Frågor mot din Shopify-butik." },
+  { id: "crm-mail", label: "CRM & mail", description: "CRM-assistent och mailsökning." },
   {
     id: "catalog",
     label: "Katalog",
@@ -69,11 +75,6 @@ export const MCP_HUB_TABS: McpHubTab[] = [
     label: "Verktyg",
     description: "Bläddra bland och anropa råa verktyg från valfri kopplad MCP-server.",
   },
-  { id: "research", label: "Research", description: "Marknadspuls, lead-research och konkurrentanalys." },
-  { id: "marketing", label: "Marknadsföring", description: "SEO- och marknadsföringsdata." },
-  { id: "content", label: "Innehåll", description: "Presentationer och designhjälp." },
-  { id: "commerce", label: "E-handel", description: "Frågor mot din Shopify-butik." },
-  { id: "crm-mail", label: "CRM & mail", description: "CRM-assistent och mailsökning." },
   { id: "developer", label: "Utvecklare", description: "Dokumentation, domäner, arkitektur och kontextverktyg." },
 ];
 

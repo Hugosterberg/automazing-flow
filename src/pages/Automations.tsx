@@ -378,6 +378,18 @@ export default function AutomationsPage() {
         label="AI underhållsförslag"
       />
 
+      <PageModeTabs
+        value={automationTab}
+        aria-label="Automationsflikar"
+        onChange={setAutomationTab}
+        options={AUTOMATION_TOPIC_ORDER.map((topic) => ({
+          value: topic,
+          label: AUTOMATION_TAB_LABELS[topic],
+          count: catalogEntriesForTopic(topic, { includeBusinessOnly: mode === "business" }).length,
+        }))}
+      />
+
+      <div className="app-workspace-shell !min-h-0 space-y-6 p-3 sm:p-4">
       <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
           <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Jobb</p>
@@ -397,36 +409,27 @@ export default function AutomationsPage() {
         </div>
       </div>
 
-      <div className="app-workspace-shell !min-h-0 space-y-6 p-3 sm:p-4">
-      <AutomationFailuresStrip businessProfileId={businessProfileId} runs={runs} mode={mode} />
-
-      {businessProfileId ? (
-        <m.div {...pageFadeUp} transition={{ delay: 0.015 }}>
-          <FlowAutomationStatusCard businessProfileId={businessProfileId} />
-        </m.div>
+      {runStats.failed > 0 ? (
+        <AutomationFailuresStrip businessProfileId={businessProfileId} runs={runs} mode={mode} />
       ) : null}
 
       {automationTab === "insights" ? (
-      <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
-        <McpFeatureSection
-          businessProfileId={businessProfileId}
-          featureIds={MCP_PAGE_FEATURE_IDS.automations}
-          title="MCP-utvecklarverktyg"
-          description="Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
-        />
-      </m.div>
+        <>
+          {businessProfileId ? (
+            <m.div {...pageFadeUp} transition={{ delay: 0.015 }}>
+              <FlowAutomationStatusCard businessProfileId={businessProfileId} />
+            </m.div>
+          ) : null}
+          <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
+            <McpFeatureSection
+              businessProfileId={businessProfileId}
+              featureIds={MCP_PAGE_FEATURE_IDS.automations}
+              title="MCP-utvecklarverktyg"
+              description="Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
+            />
+          </m.div>
+        </>
       ) : null}
-
-      <PageModeTabs
-        value={automationTab}
-        aria-label="Automationsflikar"
-        onChange={setAutomationTab}
-        options={AUTOMATION_TOPIC_ORDER.map((topic) => ({
-          value: topic,
-          label: AUTOMATION_TAB_LABELS[topic],
-          count: catalogEntriesForTopic(topic, { includeBusinessOnly: mode === "business" }).length,
-        }))}
-      />
 
       {AUTOMATION_TOPIC_ORDER.filter((topic) => topic === automationTab).map((topic) => (
         <m.section

@@ -148,8 +148,8 @@ export function MessageMailToolbar({
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border/60 bg-muted/10 px-3 py-1.5 lg:gap-2 lg:px-3 lg:py-1">
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto app-scroll">
+      <div className="flex max-w-full min-w-0 shrink-0 flex-wrap items-center gap-1.5 overflow-x-hidden border-b border-border/60 bg-muted/10 px-3 py-1.5 lg:gap-2 lg:px-3 lg:py-1">
+        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-1">
           <button
             type="button"
             disabled={disabled}
