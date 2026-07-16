@@ -493,7 +493,7 @@ export function CreateTab({
             <div className="space-y-3">
               <div className="space-y-2">
                 <div>
-                  <Label>Quick actions from apiai.me docs</Label>
+                  <Label>Snabbåtgärder från apiai.me-dokumentationen</Label>
                   <p className="text-xs text-muted-foreground">
                     Click a shortcut to run it instantly when images are selected, or configure it below.
                   </p>
@@ -525,7 +525,7 @@ export function CreateTab({
               </div>
 
               <div className="space-y-2">
-                <Label>Tool or pipeline</Label>
+                <Label>Verktyg eller pipeline</Label>
                 <Select
                   value={selectedToolKey}
                   onValueChange={(value) => {
