@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { m } from "framer-motion";
 import {
@@ -224,6 +225,7 @@ function GoalCard({ goal, onUpdate }: {
 }
 
 export default function SalesMarketingPage() {
+  const { t } = useTranslation("pages");
   const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfileId } = useAccounts();
@@ -569,12 +571,12 @@ export default function SalesMarketingPage() {
         <>
           <PageHeader
             icon={Target}
-            title="Försäljning"
-            description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
+            title={t("sales.title")}
+            description={t("sales.description")}
           />
 
           <PageSmartBar
-            title="Försäljning samlar leads, affärer och mål — från första kontakt till avslut."
+            title={t("sales.smartBar")}
             steps={[
               "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
               "Lägg till leads och följ upp det som är försenat",

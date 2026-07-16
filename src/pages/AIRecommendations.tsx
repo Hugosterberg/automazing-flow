@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { m } from "framer-motion";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,7 @@ type TabValue = "active" | "accepted" | "dismissed";
  * rows, and users can only transition status to accepted or dismissed.
  */
 export default function AIRecommendationsPage() {
+  const { t } = useTranslation("pages");
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const { accounts } = legacy;
@@ -227,8 +229,8 @@ export default function AIRecommendationsPage() {
     <div className="space-y-6 max-w-7xl w-full">
       <PageHeader
         icon={<LightbulbGlowIcon className="h-7 w-7 text-primary" />}
-        title="AI-rekommendationer"
-        description="Datadrivna förslag för den här företagsprofilen."
+        title={t("aiRecommendations.title")}
+        description={t("aiRecommendations.description")}
         actions={
           <>
             <Button
@@ -264,7 +266,7 @@ export default function AIRecommendationsPage() {
       />
 
       <PageSmartBar
-        title="AI-rekommendationer analyserar din profil och föreslår nästa steg — innehåll, outreach och underhåll."
+        title={t("aiRecommendations.smartBar")}
         steps={[
           "Klicka Generera för att köra heuristik + AI på kopplingar, uppgifter och innehåll",
           "Acceptera för att navigera till rätt sida, eller avvisa det som inte passar",

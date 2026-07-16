@@ -1,0 +1,69 @@
+{
+  "content": {
+    "title": "Content",
+    "description": "Pick media from Drive, create with apiai.me, and publish or save as drafts — all in one flow.",
+    "smartBar": "Content is the full flow — pick media, create with AI, save drafts and publish.",
+    "smartShort": "Content",
+    "openConnections": "Open Connections",
+    "refresh": "Refresh"
+  },
+  "sales": {
+    "title": "Sales",
+    "description": "Leads, deals and goals — start with the company profile under Company for better AI suggestions.",
+    "smartBar": "Sales gathers leads, deals and goals — from first contact to close."
+  },
+  "marketing": {
+    "title": "Marketing",
+    "description": "Several ways to market the company and products — paid, organic, email, e-commerce and partnerships.",
+    "smartBar": "Marketing shows campaigns, ad results and what needs action."
+  },
+  "ecommerce": {
+    "title": "E-commerce",
+    "description": "Shopify products, orders and recovery in one flow.",
+    "descriptionEmpty": "Connect Shopify and import products from Alibaba",
+    "smartBar": "E-commerce gathers Shopify products, orders and recovery in one flow."
+  },
+  "activity": {
+    "title": "Activity",
+    "description": "Audit log for every change in this business profile.",
+    "descriptionMobile": "Tap an event in the list to read details.",
+    "smartBar": "Activity is your audit log — everything that happens in the profile, filterable and searchable.",
+    "smartBarMobile": "Filter and tap an event to see what happened."
+  },
+  "automations": {
+    "title": "Automations",
+    "description": "Everything that runs automatically for you — pick days, runs per day and run times for each automation.",
+    "smartBar": "Automations handle the repetitive — snapshots, reminders and sync — so you skip manual upkeep.",
+    "refreshStatus": "Refresh status",
+    "tabsAria": "Automation tabs",
+    "tabMessages": "Messages",
+    "tabContent": "Content",
+    "tabReports": "Reports",
+    "tabInsights": "Insights",
+    "seeResult": "See the result"
+  },
+  "intelligence": {
+    "title": "MCP Intelligence",
+    "description": "One place for all MCP providers — status, queries and clear feedback when API keys or OAuth are missing.",
+    "smartBar": "MCP Intelligence is the control panel for all AI providers — see status, test keys and run queries on your data.",
+    "tabsAria": "MCP Intelligence tabs",
+    "connectProviders": "Connect providers",
+    "hubDescription": "{{features}} query tools across {{platforms}} providers. Each field shows auth status before you run a call.",
+    "overviewHint": "Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "description": "Plan and schedule events from tasks, leads and connected calendars.",
+    "smartBar": "Calendar gathers tasks, lead follow-ups and external calendars — so you see the week in one flow."
+  },
+  "company": {
+    "title": "Company",
+    "description": "Your company profile steers AI in Sales, outreach and content. Auto-fill with org number, adjust manually, save.",
+    "smartBar": "The company profile gives AI and automations the right context — description, website and goals."
+  },
+  "aiRecommendations": {
+    "title": "AI recommendations",
+    "description": "Data-driven suggestions for this business profile.",
+    "smartBar": "AI suggestions prioritize next steps from your connections, tasks and content."
+  }
+}

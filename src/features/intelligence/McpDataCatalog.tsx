@@ -4,10 +4,10 @@ import { ArrowRight, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMcpProvidersStatus, mcpStatusLabel } from "./useMcpProvidersStatus";
-import { MCP_FEATURE_DEFINITIONS } from "./mcpFeatureConfig";
+import { localizeMcpFeature, MCP_FEATURE_DEFINITIONS } from "./mcpFeatureConfig";
 
 function featuresForPlatform(platform: string) {
-  return MCP_FEATURE_DEFINITIONS.filter((f) => f.platforms.includes(platform));
+  return MCP_FEATURE_DEFINITIONS.filter((f) => f.platforms.includes(platform)).map(localizeMcpFeature);
 }
 
 /**

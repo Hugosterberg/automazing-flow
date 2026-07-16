@@ -1,0 +1,101 @@
+{
+  "sections": {
+    "global": "Globalt",
+    "messages": "Meddelanden",
+    "reviews": "Recensioner",
+    "activity": "Aktivitet",
+    "sales": "Sales",
+    "tasks": "Uppgifter",
+    "customers": "Kunder",
+    "content": "Innehåll",
+    "automations": "Automationer",
+    "marketing": "Marknadsföring",
+    "calendar": "Kalender"
+  },
+  "global": {
+    "palette": "Kommandopalett",
+    "home": "Gå till Startsida",
+    "tasks": "Gå till Uppgifter",
+    "messages": "Gå till Meddelanden",
+    "sales": "Gå till Försäljning (företagsläge)",
+    "company": "Gå till Företag (företagsläge)",
+    "intelligence": "Gå till MCP Intelligence",
+    "preferences": "Gå till Inställningar",
+    "help": "Visa genvägslista",
+    "sidebar": "Visa/dölj sidopanelen"
+  },
+  "messages": {
+    "next": "Nästa meddelande",
+    "prev": "Föregående meddelande",
+    "handled": "Markera som hanterad (eller filtret Hanterade utan valt meddelande)",
+    "reply": "Svara (fokus)",
+    "nextOpen": "Nästa öppna",
+    "filterQueue": "Filter: Kö",
+    "filterOpen": "Filter: Öppna",
+    "filterAll": "Filter: Alla",
+    "search": "Sök",
+    "close": "Stäng",
+    "send": "Skicka svar"
+  },
+  "reviews": {
+    "next": "Nästa recension",
+    "prev": "Föregående recension",
+    "markReplied": "Markera som besvarad",
+    "aiDraft": "AI-utkast",
+    "filterAll": "Filter: Alla",
+    "filterNeeds": "Filter: Behöver svar",
+    "search": "Sök",
+    "close": "Stäng"
+  },
+  "activity": {
+    "next": "Nästa händelse",
+    "prev": "Föregående händelse",
+    "search": "Sök",
+    "filterError": "Filter: Fel",
+    "filterWarn": "Filter: Varningar",
+    "close": "Stäng"
+  },
+  "sales": {
+    "search": "Sök",
+    "next": "Nästa (outreach / uppföljning)",
+    "prev": "Föregående (outreach / uppföljning)",
+    "markSent": "Markera som skickad (outreach-kö)",
+    "outreachDraft": "Outreach-utkast (uppföljningar)"
+  },
+  "tasks": {
+    "search": "Sök",
+    "new": "Ny uppgift",
+    "next": "Nästa kort",
+    "prev": "Föregående kort",
+    "edit": "Redigera fokuserat kort",
+    "filterAll": "Filter: Alla",
+    "filterOverdue": "Filter: Försenade",
+    "filterToday": "Filter: Idag"
+  },
+  "customers": {
+    "next": "Nästa kund",
+    "prev": "Föregående kund",
+    "search": "Sök",
+    "close": "Stäng"
+  },
+  "content": {
+    "next": "Nästa fil (Bläddra)",
+    "prev": "Föregående fil (Bläddra)",
+    "search": "Sök (Bläddra)",
+    "select": "Välj / växla fil"
+  },
+  "automations": {
+    "failed": "Misslyckade körningar (scrolla till listan)"
+  },
+  "marketing": {
+    "next": "Nästa kampanj",
+    "prev": "Föregående kampanj",
+    "new": "Ny kampanj",
+    "edit": "Redigera fokuserad kampanj"
+  },
+  "calendar": {
+    "next": "Nästa händelse (vald dag)",
+    "prev": "Föregående händelse (vald dag)",
+    "open": "Öppna fokuserad händelse"
+  }
+}

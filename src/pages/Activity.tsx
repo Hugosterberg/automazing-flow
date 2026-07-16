@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Activity as ActivityIcon, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import type { ActivityEventRow } from "@/features/activity";
 type SeverityFilter = "all" | ActivityEventRow["severity"];
 
 export default function ActivityPage() {
+  const { t } = useTranslation("pages");
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
@@ -217,11 +219,11 @@ export default function ActivityPage() {
         <>
           <PageHeader
             icon={ActivityIcon}
-            title="Aktivitet"
+            title={t("activity.title")}
             description={
               isMobile
-                ? "Tryck en händelse i listan för att läsa detaljer."
-                : "Granskningslogg för alla ändringar i denna affärsprofil."
+                ? t("activity.descriptionMobile")
+                : t("activity.description")
             }
             actions={
               <Button
@@ -240,8 +242,8 @@ export default function ActivityPage() {
           <PageSmartBar
             title={
               isMobile
-                ? "Filtrera och tryck en händelse för att se vad som hände."
-                : "Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart."
+                ? t("activity.smartBarMobile")
+                : t("activity.smartBar")
             }
             steps={
               isMobile

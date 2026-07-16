@@ -36,6 +36,14 @@ import svTasks from "@/locales/sv/tasks.json";
 import enTasks from "@/locales/en/tasks.json";
 import svReviews from "@/locales/sv/reviews.json";
 import enReviews from "@/locales/en/reviews.json";
+import svAutomations from "@/locales/sv/automations.json";
+import enAutomations from "@/locales/en/automations.json";
+import svMcp from "@/locales/sv/mcp.json";
+import enMcp from "@/locales/en/mcp.json";
+import svShortcuts from "@/locales/sv/shortcuts.json";
+import enShortcuts from "@/locales/en/shortcuts.json";
+import svPages from "@/locales/sv/pages.json";
+import enPages from "@/locales/en/pages.json";
 
 export const i18n = i18next;
 
@@ -50,6 +58,10 @@ const NAMESPACES = [
   "connections",
   "tasks",
   "reviews",
+  "automations",
+  "mcp",
+  "shortcuts",
+  "pages",
 ] as const;
 
 function applyLanguageSideEffects(lang: string): void {
@@ -79,6 +91,10 @@ export function initI18n(): void {
         connections: svConnections,
         tasks: svTasks,
         reviews: svReviews,
+        automations: svAutomations,
+        mcp: svMcp,
+        shortcuts: svShortcuts,
+        pages: svPages,
       },
       en: {
         common: enCommon,
@@ -91,6 +107,10 @@ export function initI18n(): void {
         connections: enConnections,
         tasks: enTasks,
         reviews: enReviews,
+        automations: enAutomations,
+        mcp: enMcp,
+        shortcuts: enShortcuts,
+        pages: enPages,
       },
     },
     lng: initialLanguage,

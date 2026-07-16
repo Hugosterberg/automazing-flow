@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 export default function ContentPage() {
+  const { t } = useTranslation("pages");
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
@@ -275,15 +277,15 @@ export default function ContentPage() {
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
         icon={FolderOpen}
-        title="Innehåll"
-        description="Välj media från Drive, skapa med apiai.me och publicera eller spara som utkast — allt i ett flöde."
+        title={t("content.title")}
+        description={t("content.description")}
         actions={
           <>
             {driveAccounts.length === 0 ? (
               <Button asChild variant="outline">
                 <Link to="/connections?q=drive">
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  Öppna Kopplingar
+                  {t("content.openConnections")}
                 </Link>
               </Button>
             ) : null}
@@ -298,7 +300,7 @@ export default function ContentPage() {
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Uppdatera
+                {t("content.refresh")}
               </Button>
             ) : null}
           </>
@@ -307,18 +309,18 @@ export default function ContentPage() {
 
       {driveAccounts.length === 0 ? (
         <PageSmartBar
-          title="Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera."
+          title={t("content.smartBar")}
           steps={[
             "Koppla Google Drive under Kopplingar",
             "Bläddra eller ladda upp — markera det du vill använda",
             "Skapa med AI, spara till Valda och publicera",
           ]}
           tip="När Drive är kopplat försvinner den här guiden — flikarna räcker för flödet."
-          extraActions={[{ label: "Öppna Kopplingar", to: "/connections" }]}
+          extraActions={[{ label: t("content.openConnections"), to: "/connections" }]}
         />
       ) : (contentTab === "browse" && browseMediaFiles.length > 0) || selectedAssets.length > 0 ? (
         <PageSmartBar
-          title="Innehåll"
+          title={t("content.smartShort")}
           liveHintOverride={
             contentTab === "browse" && browseMediaFiles.length > 0
               ? isMobile

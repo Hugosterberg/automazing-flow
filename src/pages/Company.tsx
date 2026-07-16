@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { AlertTriangle, Building2, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ function websiteHostname(url: string | null) {
 }
 
 export default function CompanyPage() {
+  const { t } = useTranslation("pages");
   const activeBpId = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBpId ?? null;
   const { profiles, updateProfile, isUpdating } = useBusinessProfiles();
@@ -126,12 +128,12 @@ export default function CompanyPage() {
     <m.div {...pageFadeUp} className="space-y-6 max-w-3xl pb-8">
       <PageHeader
         icon={Building2}
-        title="Företag"
-        description="Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara."
+        title={t("company.title")}
+        description={t("company.description")}
       />
 
       <PageSmartBar
-        title="Bolagsprofilen är grunden — AI använder den för leads, outreach och innehållsförslag."
+        title={t("company.smartBar")}
         steps={[
           "Fyll i automatiskt med org.nr eller börja manuellt",
           "Komplettera beskrivning och målgrupp — det påverkar AI mest",

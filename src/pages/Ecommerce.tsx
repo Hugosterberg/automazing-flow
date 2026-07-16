@@ -1,4 +1,5 @@
 import { m } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   ShoppingCart,
   RefreshCw,
@@ -61,6 +62,7 @@ import {
 const STALE_UNFULFILLED_DAYS = 2;
 
 export default function Ecommerce() {
+  const { t } = useTranslation("pages");
   const { authMode } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
@@ -306,13 +308,13 @@ export default function Ecommerce() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={ShoppingCart}
-        title="E-handel"
+        title={t("ecommerce.title")}
         description={
           shopifyData?.shop.name
             ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
             : notionData?.workspace?.name
               ? `${notionData.workspace.name} · Notion workspace`
-              : "Koppla Shopify och importera produkter från Alibaba"
+              : t("ecommerce.descriptionEmpty")
         }
         actions={
           activeOrgAccount ? (
@@ -350,7 +352,7 @@ export default function Ecommerce() {
       />
 
       <PageSmartBar
-        title="E-handel samlar Shopify, produkter och ordrar — från lager till åtgärder som kräver uppmärksamhet."
+        title={t("ecommerce.smartBar")}
         steps={[
           "Koppla Shopify under Kopplingar",
           "Synka produkter och följ ordrar under Översikt",

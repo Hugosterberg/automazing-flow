@@ -1,0 +1,69 @@
+{
+  "content": {
+    "title": "Innehåll",
+    "description": "Välj media från Drive, skapa med apiai.me och publicera eller spara som utkast — allt i ett flöde.",
+    "smartBar": "Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera.",
+    "smartShort": "Innehåll",
+    "openConnections": "Öppna Kopplingar",
+    "refresh": "Uppdatera"
+  },
+  "sales": {
+    "title": "Försäljning",
+    "description": "Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag.",
+    "smartBar": "Försäljning samlar leads, affärer och mål — från första kontakt till avslut."
+  },
+  "marketing": {
+    "title": "Marknadsföring",
+    "description": "Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap.",
+    "smartBar": "Marknadsföring visar kampanjer, annonsresultat och vad som behöver åtgärdas."
+  },
+  "ecommerce": {
+    "title": "E-handel",
+    "description": "Shopify-produkter, ordrar och återvinning i ett flöde.",
+    "descriptionEmpty": "Koppla Shopify och importera produkter från Alibaba",
+    "smartBar": "E-handel samlar Shopify-produkter, ordrar och återvinning i ett flöde."
+  },
+  "activity": {
+    "title": "Aktivitet",
+    "description": "Granskningslogg för alla ändringar i denna affärsprofil.",
+    "descriptionMobile": "Tryck en händelse i listan för att läsa detaljer.",
+    "smartBar": "Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart.",
+    "smartBarMobile": "Filtrera och tryck en händelse för att se vad som hände."
+  },
+  "automations": {
+    "title": "Automationer",
+    "description": "Allt som körs automatiskt åt dig — välj dagar, antal körningar per dag och körningstider för varje automation.",
+    "smartBar": "Automationer sköter det repetitiva — snapshots, påminnelser och synk — så du slipper manuellt underhåll.",
+    "refreshStatus": "Uppdatera status",
+    "tabsAria": "Automationsflikar",
+    "tabMessages": "Meddelanden",
+    "tabContent": "Innehåll",
+    "tabReports": "Rapporter",
+    "tabInsights": "Insikter",
+    "seeResult": "Se resultatet"
+  },
+  "intelligence": {
+    "title": "MCP Intelligence",
+    "description": "En plats för alla MCP-leverantörer — status, frågor och tydlig feedback när API-nycklar eller OAuth saknas.",
+    "smartBar": "MCP Intelligence är kontrollpanelen för alla AI-leverantörer — se status, testa nycklar och kör frågor mot dina data.",
+    "tabsAria": "MCP Intelligence-flikar",
+    "connectProviders": "Koppla leverantörer",
+    "hubDescription": "{{features}} frågeverktyg över {{platforms}} leverantörer. Varje fält visar autentiseringsstatus innan du kör ett anrop.",
+    "overviewHint": "Status för varje MCP-leverantör. Åtgärda saknade API-nycklar eller utgången OAuth under Kopplingar innan du kör frågor i andra flikar."
+  },
+  "calendar": {
+    "title": "Kalender",
+    "description": "Planera och schemalägg händelser från uppgifter, leads och kopplade kalendrar.",
+    "smartBar": "Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde."
+  },
+  "company": {
+    "title": "Företag",
+    "description": "Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara.",
+    "smartBar": "Företagsprofilen ger AI och automationer rätt kontext — beskrivning, webb och mål."
+  },
+  "aiRecommendations": {
+    "title": "AI-rekommendationer",
+    "description": "Datadrivna förslag för den här företagsprofilen.",
+    "smartBar": "AI-förslag prioriterar nästa steg utifrån dina kopplingar, uppgifter och innehåll."
+  }
+}

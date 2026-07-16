@@ -1,0 +1,113 @@
+{
+  "shared": {
+    "configurableCadence": "Konfigurerbart schema"
+  },
+  "topics": {
+    "messages": {
+      "title": "Meddelanden & inbox",
+      "description": "Automatik som hanterar inkommande konversationer så du slipper svara på allt manuellt."
+    },
+    "content": {
+      "title": "Innehåll & publicering",
+      "description": "Automatik som publicerar schemalagt innehåll på rätt tid utan att du behöver trycka på knappen."
+    },
+    "reports": {
+      "title": "Rapporter & utskick",
+      "description": "Sammanställningar och larm som mejlas automatiskt istället för att du ska komma ihåg att kolla."
+    },
+    "insights": {
+      "title": "AI & insikter",
+      "description": "Bakgrundsjobb som håller rekommendationer och nyckeltal färska utan manuell uppdatering."
+    }
+  },
+  "entries": {
+    "dm-auto-reply": {
+      "title": "Auto-svar på DM:s",
+      "description": "Läser olästa konversationer och skriver svar — som utkast eller skickar direkt.",
+      "explainer": "Jobbet läser nya DM:s, skriver ett svarsförslag och lägger det i kön under Meddelanden. I standardläge skickas inget förrän du trycker skicka. Auto-skick kräver en extra bekräftelse.",
+      "exampleDraft": "Hej! Tack för att du hör av dig — absolut intresserade. Skicka gärna mer om upplägg så återkommer vi snart.",
+      "trustNote": "Utkast före sändning som standard — du godkänner innan något går ut."
+    },
+    "publish-scheduled-posts": {
+      "title": "Publicera schemalagda inlägg",
+      "description": "Sveper var 15:e minut, försöker om misslyckade inlägg en gång, och publicerar det som är due."
+    },
+    "sales-outreach-auto": {
+      "title": "Automatisk outreach",
+      "description": "Skapar utkast till uppföljningsmejl för due leads och tysta leads (10+ dagar utan kontakt).",
+      "explainer": "När en lead är due eller tyst för länge skapas ett uppföljningsutkast i Sales-kön. Du granskar, redigerar och skickar — automationen skickar inte själv.",
+      "exampleDraft": "Hej! Ville bara följa upp vårt tidigare samtal — har ni hunnit titta på förslaget?",
+      "trustNote": "Bara utkast i kön — ingen outreach skickas utan dig."
+    },
+    "content-pipeline": {
+      "title": "Innehållspipeline",
+      "description": "Seedar repurpose/gap/evergreen-idéer och flyttar köade inlägg till schemalagd publicering."
+    },
+    "cart-recovery": {
+      "title": "Kundvagnsåtervinning",
+      "description": "Skickar återvinningsmejl till kunder som lämnat varukorgen i Shopify (deduplicerat)."
+    },
+    "review-reply-auto": {
+      "title": "Automatiska review-svar",
+      "description": "Skapar utkast till svar på nya recensioner och skickar brådskande mejl vid ≤2★ — du godkänner på Reviews.",
+      "explainer": "Nya recensioner får ett svarsutkast under Recensioner. Vid ≤2★ kan du få ett brådskande mejl — själva svaret publiceras först när du godkänner.",
+      "exampleDraft": "Tack för din feedback — vi tar det vidare internt och återkommer gärna.",
+      "trustNote": "Utkast först — publicering kräver ditt godkännande."
+    },
+    "mail-reply-auto": {
+      "title": "Automatiska mail-utkast",
+      "description": "Skapar svarsutkast till olästa Gmail/Outlook-mail — inget skickas förrän du godkänner under Meddelanden.",
+      "explainer": "Jobbet plockar olästa mail, skriver ett svarsutkast och lägger det i Meddelanden. Du kan skicka, redigera eller kasta — automationen skickar aldrig själv.",
+      "exampleDraft": "Hej Anna! Tack för din förfrågan — absolut, vi har tid. Föreslår tisdag eller torsdag 10:00.",
+      "trustNote": "Utkast före sändning — inget mail går ut utan dig."
+    },
+    "marketing-actions": {
+      "title": "Marknadsförings-åtgärder",
+      "description": "Pausar automatiskt Meta-kampanjer med betyg F/poor enligt analytics (Google flaggas för manuell review)."
+    },
+    "weekly-insight-digest": {
+      "title": "Veckovis insiktsrapport",
+      "description": "Måndagsmejl med ROAS-trend, publicerade inlägg och content-tips när social-flödet är aktivt."
+    },
+    "engagement-followup": {
+      "title": "Engagement-följdflöde",
+      "description": "Mejlar när olästa DM:s hopar sig så du inte missar köpintention eller frågor."
+    },
+    "daily-digest": {
+      "title": "Daglig översikt",
+      "description": "Morgonmejl varje vardag med det som behöver göras."
+    },
+    "weekly-report": {
+      "title": "Veckorapport",
+      "description": "Måndagsmejl som summerar förra veckan."
+    },
+    "lead-reminder": {
+      "title": "Lead-påminnelse",
+      "description": "Mejl när leads behöver uppföljning idag eller är försenade."
+    },
+    "task-reminder": {
+      "title": "Uppgiftspåminnelse",
+      "description": "Mejl med försenade och dagens uppgifter."
+    },
+    "marketing-alerts": {
+      "title": "Marknadsförings-larm",
+      "description": "Mejl när ROAS går under 1× eller annonser körs mot tomma hyllor."
+    },
+    "ai-recommendations-refresh": {
+      "title": "AI-rekommendationer",
+      "description": "Uppdaterar rekommendationerna utifrån connections, tasks och innehåll."
+    },
+    "marketing-snapshot": {
+      "title": "Marknadsförings-snapshot",
+      "description": "Sparar dagens annons-KPI:er så veckotrenden på Marketing-sidan alltid är komplett."
+    },
+    "social-stats-snapshot": {
+      "title": "Social statistik-snapshot",
+      "description": "Sparar dagliga följar- och engagemangssiffror per konto så Social-sidan kan visa trender, inte bara ögonblicksbilder."
+    },
+    "market-pulse-snapshot": {
+      "title": "Market pulse-snapshot",
+      "description": "Hämtar LunarCrush-sentiment varje natt så startsidan laddar direkt utan live MCP-anrop."
+    }
+  }
+}

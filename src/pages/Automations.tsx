@@ -1,6 +1,7 @@
 import { m } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
@@ -22,9 +23,10 @@ import {
   AutomationRunStatus,
   AutomationScheduleEditor,
   FlowAutomationStatusCard,
-  AUTOMATION_TOPICS,
   AUTOMATION_TOPIC_ORDER,
   catalogEntriesForTopic,
+  localizeAutomationEntry,
+  localizeAutomationTopic,
   retryAutomation,
   useAutomationRuns,
   useAutomationSchedules,
@@ -78,7 +80,7 @@ function AutomationFailuresStrip({
         if (run?.lastRun?.status === "failed") {
           out.push({
             cronKey: entry.cronKey,
-            title: entry.title,
+            title: localizeAutomationEntry(entry).title,
             message: run.lastRun.errorMessage ?? null,
           });
         }
@@ -176,10 +178,12 @@ function ScheduleList({
     });
   }
 
+  const { t } = useTranslation("pages");
   if (entries.length === 0) return null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {entries.map((entry) => {
+      {entries.map((raw) => {
+        const entry = localizeAutomationEntry(raw);
         const cronKey = entry.cronKey;
         const schedule = cronKey ? schedules.scheduleFor(cronKey) : null;
         return (
@@ -227,7 +231,7 @@ function ScheduleList({
                   onPointerEnter={() => prefetchFor(entry.outputHref!)}
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                 >
-                  Se resultatet
+                  {t("automations.seeResult")}
                   <ArrowRight className="h-3 w-3" aria-hidden />
                 </Link>
               ) : null}
@@ -270,7 +274,7 @@ function ScheduleList({
 }
 
 function TopicHeading({ topic }: { topic: AutomationTopic }) {
-  const info = AUTOMATION_TOPICS[topic];
+  const info = localizeAutomationTopic(topic);
   return (
     <div className="flex items-start gap-2.5">
       <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -284,14 +288,15 @@ function TopicHeading({ topic }: { topic: AutomationTopic }) {
   );
 }
 
-const AUTOMATION_TAB_LABELS: Record<AutomationTopic, string> = {
-  messages: "Meddelanden",
-  content: "Innehåll",
-  reports: "Rapporter",
-  insights: "Insikter",
+const AUTOMATION_TAB_KEYS: Record<AutomationTopic, "tabMessages" | "tabContent" | "tabReports" | "tabInsights"> = {
+  messages: "tabMessages",
+  content: "tabContent",
+  reports: "tabReports",
+  insights: "tabInsights",
 };
 
 export default function AutomationsPage() {
+  const { t } = useTranslation("pages");
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
@@ -364,8 +369,8 @@ export default function AutomationsPage() {
     <m.div {...pageFadeUp} className="space-y-8 max-w-5xl w-full mx-auto">
       <PageHeader
         icon={Zap}
-        title="Automationer"
-        description="Allt som körs automatiskt åt dig — välj dagar, antal körningar per dag och körningstider för varje automation."
+        title={t("automations.title")}
+        description={t("automations.description")}
         actions={
           <Button
             variant="ghost"
@@ -379,13 +384,13 @@ export default function AutomationsPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            <span className="ml-1.5 hidden sm:inline">Uppdatera status</span>
+            <span className="ml-1.5 hidden sm:inline">{t("automations.refreshStatus")}</span>
           </Button>
         }
       />
 
       <PageSmartBar
-        title="Automationer sköter det repetitiva — snapshots, påminnelser och synk — så du slipper manuellt underhåll."
+        title={t("automations.smartBar")}
         steps={[
           "Se status för varje jobb — senaste körning och nästa schemalagda tid",
           "Justera schema (dagar, tider) efter hur din verksamhet jobbar",
@@ -418,11 +423,11 @@ export default function AutomationsPage() {
 
       <PageModeTabs
         value={automationTab}
-        aria-label="Automationsflikar"
+        aria-label={t("automations.tabsAria")}
         onChange={setAutomationTab}
         options={AUTOMATION_TOPIC_ORDER.map((topic) => ({
           value: topic,
-          label: AUTOMATION_TAB_LABELS[topic],
+          label: t(`automations.${AUTOMATION_TAB_KEYS[topic]}`),
           count: catalogEntriesForTopic(topic, { includeBusinessOnly: mode === "business" }).length,
         }))}
       />
@@ -474,7 +479,7 @@ export default function AutomationsPage() {
           key={topic}
           {...pageFadeUp}
           transition={{ delay: 0.04 }}
-          aria-label={AUTOMATION_TOPICS[topic].title}
+          aria-label={localizeAutomationTopic(topic).title}
           className="space-y-4"
         >
           <TopicHeading topic={topic} />

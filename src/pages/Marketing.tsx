@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Layers, Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,7 @@ function dueAtFromDate(date: string) {
 }
 
 export default function MarketingPage() {
+  const { t } = useTranslation("pages");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const activeBp = useActiveBusinessProfileIdOptional();
@@ -399,12 +401,12 @@ export default function MarketingPage() {
     <div className="space-y-6 max-w-5xl">
       <PageHeader
         icon={Megaphone}
-        title="Marknadsföring"
-        description="Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap."
+        title={t("marketing.title")}
+        description={t("marketing.description")}
       />
 
       <PageSmartBar
-        title="Marknadsföring samlar betald annonsering, kampanjer och AI-idéer — från strategi till publicering."
+        title={t("marketing.smartBar")}
         steps={[
           "Koppla Google Ads och Meta för live kampanjdata",
           "Skapa kampanjer eller låt AI föreslå kanaler och erbjudanden",
