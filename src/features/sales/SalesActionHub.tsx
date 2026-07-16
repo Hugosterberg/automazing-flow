@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   BookmarkCheck,
@@ -47,12 +48,14 @@ export function SalesActionHub({
   onOpenContent: () => void;
   onSyncGoals?: () => void;
 }) {
+  const { t } = useTranslation("sales");
+
   const actions = [
     followUpCount > 0
       ? {
           id: "followups",
-          label: `Följ upp (${followUpCount})`,
-          hint: "Leads med datum idag eller försenade",
+          label: t("actionHub.followUp", { count: followUpCount }),
+          hint: t("actionHub.followUpHint"),
           icon: Mail,
           onClick: onDraftDueLeads,
           variant: "default" as const,
@@ -60,40 +63,40 @@ export function SalesActionHub({
       : null,
     {
       id: "lead",
-      label: "Ny lead",
-      hint: "Registrera ett prospekt i CRM",
+      label: t("actionHub.newLead"),
+      hint: t("actionHub.newLeadHint"),
       icon: UserPlus,
       onClick: onAddLead,
       variant: "outline" as const,
     },
     {
       id: "deal",
-      label: "Ny affär",
-      hint: "Lägg till i säljpipelinen",
+      label: t("actionHub.newDeal"),
+      hint: t("actionHub.newDealHint"),
       icon: Kanban,
       onClick: onAddDeal,
       variant: "outline" as const,
     },
     {
       id: "suggest-leads",
-      label: "Lead-förslag",
-      hint: "Från er bolagsprofil",
+      label: t("actionHub.leadSuggestions"),
+      hint: t("actionHub.leadSuggestionsHint"),
       icon: Target,
       onClick: onSuggestLeads,
       variant: "outline" as const,
     },
     {
       id: "discover",
-      label: "Hitta prospects",
-      hint: "AI varumärkesdiscovery",
+      label: t("actionHub.findProspects"),
+      hint: t("actionHub.findProspectsHint"),
       icon: Sparkles,
       onClick: onDiscover,
       variant: "outline" as const,
     },
     {
       id: "content",
-      label: "Skapa innehåll",
-      hint: "Post eller outreach-text",
+      label: t("actionHub.createContent"),
+      hint: t("actionHub.createContentHint"),
       icon: BookmarkCheck,
       onClick: onOpenContent,
       variant: "outline" as const,
@@ -114,21 +117,19 @@ export function SalesActionHub({
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              Nästa steg i Sales
+              {t("actionHub.title")}
             </CardTitle>
-            <CardDescription>
-              Leads, affärer och outreach — tydliga genvägar till det du gör oftast.
-            </CardDescription>
+            <CardDescription>{t("actionHub.description")}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
             {followUpCount > 0 ? (
               <Button type="button" size="sm" variant="secondary" onClick={onFollowUps}>
-                Visa förfallna
+                {t("actionHub.showOverdue")}
               </Button>
             ) : null}
             {shopifyConnected && onSyncGoals ? (
               <Button type="button" size="sm" variant="ghost" onClick={onSyncGoals}>
-                Synka mål från Shopify
+                {t("actionHub.syncGoalsFromShopify")}
               </Button>
             ) : null}
           </div>
@@ -159,26 +160,26 @@ export function SalesActionHub({
           >
             <div className="flex items-center gap-2 mb-1">
               <Compass className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Marknadsföring</span>
+              <span className="text-sm font-medium">{t("actionHub.marketing")}</span>
               <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground" />
             </div>
-            <p className="text-[11px] text-muted-foreground">Kampanjer, annonser och kanaler</p>
+            <p className="text-[11px] text-muted-foreground">{t("actionHub.marketingHint")}</p>
           </Link>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline">{activeLeads} aktiva leads</Badge>
-          <Badge variant="outline">{pipelineCount} i pipeline</Badge>
+          <Badge variant="outline">{t("actionHub.activeLeads", { count: activeLeads })}</Badge>
+          <Badge variant="outline">{t("actionHub.inPipeline", { count: pipelineCount })}</Badge>
           {shopifyConnected ? (
             <Badge variant="secondary" className="gap-1">
               <ShoppingBag className="h-3 w-3" />
               Shopify
-              {shopifyOrders != null ? ` · ${shopifyOrders} ordrar (7d)` : ""}
+              {shopifyOrders != null ? ` · ${t("actionHub.shopifyOrders", { count: shopifyOrders })}` : ""}
               {shopifyRevenueLabel ? ` · ${shopifyRevenueLabel}` : ""}
             </Badge>
           ) : (
             <Button asChild variant="link" className="h-auto p-0 text-xs">
-              <Link to="/ecommerce">Koppla Shopify för intäktsmål →</Link>
+              <Link to="/ecommerce">{t("actionHub.connectShopify")}</Link>
             </Button>
           )}
         </div>

@@ -1,0 +1,159 @@
+{
+  "filters": {
+    "backToSales": "Tillbaka till Försäljning",
+    "showFullSales": "Visa hela Försäljning",
+    "outreachQueueBanner": "Outreach-kö — granska utkast i split-vy.",
+    "followupsBanner": "Leads med uppföljning idag eller försenad — split-vy."
+  },
+  "overview": {
+    "aiSuggestionsLabel": "AI-förslag för sales & outreach"
+  },
+  "actionHub": {
+    "title": "Nästa steg i Sales",
+    "description": "Leads, affärer och outreach — tydliga genvägar till det du gör oftast.",
+    "showOverdue": "Visa förfallna",
+    "syncGoalsFromShopify": "Synka mål från Shopify",
+    "followUp": "Följ upp ({{count}})",
+    "followUpHint": "Leads med datum idag eller försenade",
+    "newLead": "Ny lead",
+    "newLeadHint": "Registrera ett prospekt i CRM",
+    "newDeal": "Ny affär",
+    "newDealHint": "Lägg till i säljpipelinen",
+    "leadSuggestions": "Lead-förslag",
+    "leadSuggestionsHint": "Från er bolagsprofil",
+    "findProspects": "Hitta prospects",
+    "findProspectsHint": "AI varumärkesdiscovery",
+    "createContent": "Skapa innehåll",
+    "createContentHint": "Post eller outreach-text",
+    "marketing": "Marknadsföring",
+    "marketingHint": "Kampanjer, annonser och kanaler",
+    "activeLeads": "{{count}} aktiva leads",
+    "inPipeline": "{{count}} i pipeline",
+    "shopifyOrders": "{{count}} ordrar (7d)",
+    "connectShopify": "Koppla Shopify för intäktsmål →"
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "description": "Flytta affärer genom varje steg mot avslut.",
+    "newDeal": "Ny affär",
+    "empty": "Inga affärer här än",
+    "addDeal": "Lägg till affär",
+    "fromLeads": "Från leads",
+    "fillCompanyProfile": "Fyll i Företag för bättre lead-AI",
+    "editDealAria": "Redigera affär",
+    "deleteAria": "Ta bort",
+    "moveForward": "Flytta framåt",
+    "deadline": "Deadline: {{date}}",
+    "stages": {
+      "open": "Prospekt",
+      "in_progress": "I dialog",
+      "blocked": "Väntar",
+      "done": "Avslutad / Vunnen"
+    },
+    "priority": {
+      "low": "Låg",
+      "medium": "Medel",
+      "high": "Hög",
+      "urgent": "Akut"
+    },
+    "dialog": {
+      "title": "Ny affär i pipelinen",
+      "companyLabel": "Företag / kontaktnamn",
+      "companyPlaceholder": "Acme AB",
+      "notesLabel": "Anteckning (valfritt)",
+      "notesPlaceholder": "Kontakt, källa, nästa steg…",
+      "priority": "Prioritet",
+      "deadline": "Deadline (valfritt)",
+      "add": "Lägg till"
+    }
+  },
+  "goals": {
+    "title": "Mål & KPI:er",
+    "description": "Klicka Redigera på ett mål, eller synka från Shopify när det är kopplat.",
+    "syncFromShopify": "Synka från Shopify",
+    "edit": "Redigera",
+    "current": "Nuvarande",
+    "target": "Mål",
+    "percentOf": "{{pct}}% av {{target}}",
+    "defaults": {
+      "g1": {
+        "title": "Nya kunder denna månad",
+        "unit": "kunder"
+      },
+      "g2": {
+        "title": "Intäktsmål (SEK)",
+        "unit": "SEK"
+      },
+      "g3": {
+        "title": "Kundnöjdhet (NPS)",
+        "unit": "poäng"
+      }
+    }
+  },
+  "playbook": {
+    "title": "Sälj- & marknadsföringsplaybook",
+    "description": "AI-idéer för pitch, outreach, invändningar, kampanjer, kanalval och erbjudanden.",
+    "generate": "Generera idéer",
+    "emptyHint": "Klicka på \"Generera idéer\" för {{mode}} anpassade till din verksamhet.",
+    "sourceAi": "AI",
+    "sourceGeneric": "generella idéer",
+    "sourceLine": "Källa: {{source}} · {{mode}} · {{count}} idéer",
+    "copySrOnly": "Kopiera",
+    "modes": {
+      "pitch-angles": {
+        "label": "Pitch",
+        "description": "Värdeerbjudanden och hisspitchar som säljer ditt erbjudande."
+      },
+      "cold-outreach": {
+        "label": "Outreach",
+        "description": "Mail- och LinkedIn-öppningar som startar samtal."
+      },
+      "objections": {
+        "label": "Invändningar",
+        "description": "Svar när köpare tvekar på pris, timing eller passform."
+      },
+      "campaigns": {
+        "label": "Kampanjer",
+        "description": "Marknadskampanjer på 30–90 dagar som driver försäljning."
+      },
+      "channels": {
+        "label": "Kanaler",
+        "description": "Var du bör marknadsföra och sälja dina produkter."
+      },
+      "promotions": {
+        "label": "Erbjudanden",
+        "description": "Erbjudanden, paket och krokar som konverterar."
+      }
+    },
+    "actions": {
+      "draftOutreach": "Skriv outreach-utkast",
+      "planCampaign": "Planera kampanj",
+      "useInContent": "Använd i Innehåll",
+      "storeOffers": "Butikserbjudanden"
+    }
+  },
+  "automations": {
+    "leadReminderTitle": "Automatisera lead-påminnelser",
+    "leadReminderDescription_one": "{{count}} lead behöver uppföljning. Leadpåminnelser håller dig uppdaterad utan manuell checklista.",
+    "leadReminderDescription_other": "{{count}} leads behöver uppföljning. Leadpåminnelser håller dig uppdaterad utan manuell checklista.",
+    "leadReminderCta": "Aktivera lead-påminnelser"
+  },
+  "discover": {
+    "targetAudience": "Köpare i {{location}}",
+    "mcpTitle": "MCP lead-research",
+    "mcpDescription": "Företagsresearch och konkurrentanalys via Exa, Sprouts och Peec AI."
+  },
+  "toasts": {
+    "contentIdeaReady": "Idén är klar i Innehåll — publicera eller spara",
+    "leadStatusError": "Kunde inte uppdatera lead-status.",
+    "nextLead": "Nästa: {{company}}",
+    "shopifyConnect": "Koppla Shopify och vänta på data under Marketing eller E-handel.",
+    "goalsSynced": "Mål uppdaterade från Shopify (7 dagar)",
+    "addedAsLead": "Tillagd som lead",
+    "addLeadError": "Kunde inte lägga till lead.",
+    "campaignIdeaSaved": "Idé sparad — slutför din kampanjplan",
+    "playbookEmpty": "Inga idéer kom tillbaka — försök igen.",
+    "playbookLoadError": "Kunde inte ladda idéer.",
+    "copied": "Kopierat"
+  }
+}

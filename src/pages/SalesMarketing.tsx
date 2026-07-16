@@ -65,12 +65,14 @@ import { cn } from "@/lib/utils";
 import { formatNumber, formatShortDate } from "@/lib/format";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
 
-// Pipeline stages - mapped to task statuses
-const PIPELINE_STAGES: { status: TaskStatus; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
-  { status: "open", label: "Prospekt", icon: CircleDot, color: "text-muted-foreground" },
-  { status: "in_progress", label: "I dialog", icon: ChevronRight, color: "text-blue-500" },
-  { status: "blocked", label: "Väntar", icon: Clock, color: "text-yellow-500" },
-  { status: "done", label: "Avslutad / Vunnen", icon: Trophy, color: "text-green-500" },
+import type { TFunction } from "i18next";
+
+// Pipeline stages - mapped to task statuses (labels resolved via i18n in render)
+const PIPELINE_STAGE_META: { status: TaskStatus; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
+  { status: "open", icon: CircleDot, color: "text-muted-foreground" },
+  { status: "in_progress", icon: ChevronRight, color: "text-blue-500" },
+  { status: "blocked", icon: Clock, color: "text-yellow-500" },
+  { status: "done", icon: Trophy, color: "text-green-500" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -80,22 +82,35 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-const PRIORITY_LABELS: Record<string, string> = {
-  low: "Låg", medium: "Medel", high: "Hög", urgent: "Akut",
-};
-
 type GoalItem = { id: string; title: string; current: number; target: number; unit: string };
 
-const DEFAULT_GOALS: GoalItem[] = [
-  { id: "g1", title: "Nya kunder denna månad", current: 0, target: 10, unit: "kunder" },
-  { id: "g2", title: "Intäktsmål (SEK)", current: 0, target: 100000, unit: "SEK" },
-  { id: "g3", title: "Kundnöjdhet (NPS)", current: 0, target: 80, unit: "poäng" },
-];
+const DEFAULT_GOAL_SPECS = [
+  { id: "g1", current: 0, target: 10 },
+  { id: "g2", current: 0, target: 100000 },
+  { id: "g3", current: 0, target: 80 },
+] as const;
 
-function normalizeGoal(goal: GoalItem): GoalItem {
-  const defaultGoal = DEFAULT_GOALS.find((item) => item.id === goal.id);
+function buildDefaultGoals(t: TFunction<"sales">): GoalItem[] {
+  return DEFAULT_GOAL_SPECS.map((spec) => ({
+    ...spec,
+    title: t(`goals.defaults.${spec.id}.title`),
+    unit: t(`goals.defaults.${spec.id}.unit`),
+  }));
+}
+
+function normalizeGoal(goal: GoalItem, defaults: GoalItem[]): GoalItem {
+  const defaultGoal = defaults.find((item) => item.id === goal.id);
   if (!defaultGoal) return goal;
   return { ...goal, title: defaultGoal.title, unit: defaultGoal.unit };
+}
+
+function goalLabel(goal: GoalItem, t: TFunction<"sales">): { title: string; unit: string } {
+  const known = DEFAULT_GOAL_SPECS.some((spec) => spec.id === goal.id);
+  if (!known) return { title: goal.title, unit: goal.unit };
+  return {
+    title: t(`goals.defaults.${goal.id}.title`),
+    unit: t(`goals.defaults.${goal.id}.unit`),
+  };
 }
 
 function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
@@ -105,6 +120,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
   onEdit?: (task: TaskRow) => void;
   isDeleting: boolean;
 }) {
+  const { t } = useTranslation("sales");
   const nextStageMap: Partial<Record<TaskStatus, TaskStatus>> = {
     open: "in_progress",
     in_progress: "blocked",
@@ -122,7 +138,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
               type="button"
               onClick={() => onEdit(task)}
               className="text-muted-foreground hover:text-foreground transition-opacity shrink-0 p-1"
-              aria-label="Redigera affär"
+              aria-label={t("pipeline.editDealAria")}
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -132,7 +148,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
             onClick={() => onDelete(task.id)}
             disabled={isDeleting}
             className="text-muted-foreground hover:text-destructive transition-opacity shrink-0 p-1"
-            aria-label="Ta bort"
+            aria-label={t("pipeline.deleteAria")}
           >
             {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </button>
@@ -143,7 +159,7 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
       )}
       <div className="flex items-center justify-between gap-2">
         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5", PRIORITY_COLORS[task.priority])}>
-          {PRIORITY_LABELS[task.priority]}
+          {t(`pipeline.priority.${task.priority}`)}
         </Badge>
         {next && (
           <Button
@@ -152,13 +168,13 @@ function PipelineCard({ task, onMove, onDelete, onEdit, isDeleting }: {
             className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
             onClick={() => onMove(task.id, next)}
           >
-            Flytta framåt
+            {t("pipeline.moveForward")}
           </Button>
         )}
       </div>
       {task.due_at && (
         <p className="text-[11px] text-muted-foreground">
-          Deadline: {formatShortDate(task.due_at)}
+          {t("pipeline.deadline", { date: formatShortDate(task.due_at) })}
         </p>
       )}
     </div>
@@ -169,9 +185,12 @@ function GoalCard({ goal, onUpdate }: {
   goal: GoalItem;
   onUpdate: (id: string, current: number, target: number) => void;
 }) {
+  const { t } = useTranslation("sales");
+  const { t: tc } = useTranslation("common");
   const [editing, setEditing] = useState(false);
   const [current, setCurrent] = useState(String(goal.current));
   const [target, setTarget] = useState(String(goal.target));
+  const { title, unit } = goalLabel(goal, t);
   // Guard against target 0 from legacy/stored docs — otherwise NaN%.
   const pct = goal.target > 0 ? Math.min(100, Math.round((goal.current / goal.target) * 100)) : 0;
 
@@ -187,36 +206,36 @@ function GoalCard({ goal, onUpdate }: {
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{goal.title}</p>
+        <p className="text-sm font-medium">{title}</p>
         <button
           type="button"
           onClick={() => { setCurrent(String(goal.current)); setTarget(String(goal.target)); setEditing(true); }}
           className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          Redigera
+          {t("goals.edit")}
         </button>
       </div>
       <Progress value={pct} className="h-2" />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{formatNumber(goal.current)} {goal.unit}</span>
+        <span>{formatNumber(goal.current)} {unit}</span>
         <span className={cn("font-medium", pct >= 100 ? "text-green-600" : "text-foreground")}>
-          {pct}% av {formatNumber(goal.target)}
+          {t("goals.percentOf", { pct, target: formatNumber(goal.target) })}
         </span>
       </div>
 
       {editing && (
         <div className="flex gap-2 pt-1">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Nuvarande</Label>
+            <Label className="text-xs">{t("goals.current")}</Label>
             <Input value={current} onChange={(e) => setCurrent(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Mål</Label>
+            <Label className="text-xs">{t("goals.target")}</Label>
             <Input value={target} onChange={(e) => setTarget(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <div className="flex items-end gap-1">
-            <Button size="sm" className="h-7 text-xs" onClick={save}>Spara</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Avbryt</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={save}>{tc("common.save")}</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>{tc("common.cancel")}</Button>
           </div>
         </div>
       )}
@@ -225,7 +244,10 @@ function GoalCard({ goal, onUpdate }: {
 }
 
 export default function SalesMarketingPage() {
-  const { t } = useTranslation("pages");
+  const { t: tPage } = useTranslation("pages");
+  const { t } = useTranslation("sales");
+  const { t: tOutreach } = useTranslation("outreach");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const activeBp = useActiveBusinessProfileIdOptional();
   const { activeProfileId } = useAccounts();
@@ -317,7 +339,7 @@ export default function SalesMarketingPage() {
   function handoffContentIdea(text: string) {
     stashContentCaption(text);
     navigate("/content?tab=publish");
-    toast.success("Idén är klar i Innehåll — publicera eller spara");
+    toast.success(t("toasts.contentIdeaReady"));
   }
 
   const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting, isUpdating } = useTasks(businessProfileId);
@@ -331,11 +353,12 @@ export default function SalesMarketingPage() {
   // Goals persist per business profile in the DB (synced across devices), with
   // a one-time migration from the legacy per-profile localStorage key.
   const legacyGoalsKey = `automazing-goals-${businessProfileId ?? "default"}`;
-  const goalsDoc = useProfileDocument<GoalItem[]>("goals", DEFAULT_GOALS.map((g) => ({ ...g })), {
+  const defaultGoals = useMemo(() => buildDefaultGoals(t), [t]);
+  const goalsDoc = useProfileDocument<GoalItem[]>("goals", defaultGoals.map((g) => ({ ...g })), {
     legacyRead: () => {
       try {
         const stored = localStorage.getItem(legacyGoalsKey);
-        return stored ? (JSON.parse(stored) as GoalItem[]).map(normalizeGoal) : undefined;
+        return stored ? (JSON.parse(stored) as GoalItem[]).map((goal) => normalizeGoal(goal, defaultGoals)) : undefined;
       } catch {
         return undefined;
       }
@@ -454,9 +477,9 @@ export default function SalesMarketingPage() {
 
   const salesLiveHint =
     dueLeadsList.length > 0
-      ? t("sales.liveFollowups", { count: dueLeadsList.length })
+      ? tPage("sales.liveFollowups", { count: dueLeadsList.length })
       : pendingOutreachCount > 0
-        ? t("sales.liveOutreach", { count: pendingOutreachCount })
+        ? tPage("sales.liveOutreach", { count: pendingOutreachCount })
         : null;
 
   useEffect(() => {
@@ -465,7 +488,7 @@ export default function SalesMarketingPage() {
       if (e.key === "/" && !e.shiftKey) {
         e.preventDefault();
         if (showOutreachQueue) {
-          document.querySelector<HTMLInputElement>('[aria-label="Sök outreach-utkast"]')?.focus();
+          document.querySelector<HTMLInputElement>(`[aria-label="${tOutreach("queue.searchAria")}"]`)?.focus();
         } else if (showFollowUpsOnly) {
           document.getElementById("sales-followups-search")?.focus();
         } else {
@@ -513,14 +536,14 @@ export default function SalesMarketingPage() {
       try {
         await updateLead({ id: draftLeadId, patch: { status: "contacted" } });
       } catch {
-        toast.error("Kunde inte uppdatera lead-status.");
+        toast.error(t("toasts.leadStatusError"));
       }
     }
     const idx = draftLeadId ? dueLeadsList.findIndex((l) => l.id === draftLeadId) : -1;
     const next = idx >= 0 ? dueLeadsList[idx + 1] : null;
     if (next) {
       openOutreachForLead(next);
-      toast.message(`Nästa: ${next.company}`);
+      toast.message(t("toasts.nextLead", { company: next.company }));
     } else {
       setOutreachDraftOpen(false);
       setDraftLeadId(null);
@@ -530,7 +553,7 @@ export default function SalesMarketingPage() {
 
   function syncGoalsFromShopify() {
     if (!performance?.revenue && !performance?.orders) {
-      toast.message("Koppla Shopify och vänta på data under Marketing eller E-handel.");
+      toast.message(t("toasts.shopifyConnect"));
       return;
     }
     goalsDoc.save(
@@ -544,8 +567,17 @@ export default function SalesMarketingPage() {
         return g;
       })
     );
-    toast.success("Mål uppdaterade från Shopify (7 dagar)");
+    toast.success(t("toasts.goalsSynced"));
   }
+
+  const pipelineStages = useMemo(
+    () =>
+      PIPELINE_STAGE_META.map((stage) => ({
+        ...stage,
+        label: t(`pipeline.stages.${stage.status}`),
+      })),
+    [t]
+  );
 
   const shopifyRevenueLabel =
     performance?.revenue != null
@@ -564,42 +596,42 @@ export default function SalesMarketingPage() {
             onClick={clearViewFilter}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Tillbaka till Försäljning
+            {t("filters.backToSales")}
           </Button>
         </div>
       ) : (
         <>
           <PageHeader
             icon={Target}
-            title={t("sales.title")}
-            description={t("sales.description")}
+            title={tPage("sales.title")}
+            description={tPage("sales.description")}
           />
 
           <PageSmartBar
-            title={t("sales.smartBar")}
-            steps={[t("sales.step1"), t("sales.step2"), t("sales.step3")]}
-            tip={t("sales.tip")}
+            title={tPage("sales.smartBar")}
+            steps={[tPage("sales.step1"), tPage("sales.step2"), tPage("sales.step3")]}
+            tip={tPage("sales.tip")}
             liveHintOverride={salesLiveHint}
             extraActions={
               dueLeadsList.length > 0
-                ? [{ label: t("sales.actionFollowups"), to: "/sales?view=followups" }]
+                ? [{ label: tPage("sales.actionFollowups"), to: "/sales?view=followups" }]
                 : pendingOutreachCount > 0
-                  ? [{ label: t("sales.actionOutreach"), to: "/sales?view=outreach-queue" }]
+                  ? [{ label: tPage("sales.actionOutreach"), to: "/sales?view=outreach-queue" }]
                   : []
             }
           />
 
           <PageModeTabs
             value={salesTab}
-            aria-label={t("sales.tabsAria")}
+            aria-label={tPage("sales.tabsAria")}
             onChange={setSalesTab}
             options={[
-              { value: "leads", label: t("sales.tabLeads"), count: activeLeads },
-              { value: "outreach", label: t("sales.tabOutreach"), count: pendingOutreachCount },
-              { value: "pipeline", label: t("sales.tabPipeline"), count: pipelineTasks.length },
-              { value: "overview", label: t("sales.tabOverview") },
-              { value: "discover", label: t("sales.tabDiscover") },
-              { value: "goals", label: t("sales.tabGoals") },
+              { value: "leads", label: tPage("sales.tabLeads"), count: activeLeads },
+              { value: "outreach", label: tPage("sales.tabOutreach"), count: pendingOutreachCount },
+              { value: "pipeline", label: tPage("sales.tabPipeline"), count: pipelineTasks.length },
+              { value: "overview", label: tPage("sales.tabOverview") },
+              { value: "discover", label: tPage("sales.tabDiscover") },
+              { value: "goals", label: tPage("sales.tabGoals") },
             ]}
           />
 
@@ -608,7 +640,7 @@ export default function SalesMarketingPage() {
               <PageAiSuggestionsStrip
                 businessProfileId={businessProfileId}
                 kinds={["outreach", "insight"]}
-                label="AI-förslag för sales & outreach"
+                label={t("overview.aiSuggestionsLabel")}
               />
               <CompanyProfileNudge profile={activeProfile} />
             </>
@@ -652,10 +684,10 @@ export default function SalesMarketingPage() {
           {!focusedFilterChrome ? (
             <Card className="border-info/30 bg-info/5 mb-3">
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
-                <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
+                <p className="text-sm">{t("filters.outreachQueueBanner")}</p>
                 <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                   <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                  Visa hela Försäljning
+                  {t("filters.showFullSales")}
                 </Button>
               </CardContent>
             </Card>
@@ -674,7 +706,7 @@ export default function SalesMarketingPage() {
             context={{
               ...marketingContext,
               description: marketingContext.notes,
-              targetAudience: activeProfile?.location ? `Buyers in ${activeProfile.location}` : undefined,
+              targetAudience: activeProfile?.location ? t("discover.targetAudience", { location: activeProfile.location }) : undefined,
               idealCustomer: leadSuggestionInput.description,
             }}
             onUseIdea={handoffContentIdea}
@@ -690,11 +722,11 @@ export default function SalesMarketingPage() {
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 px-4">
                 <div className="flex items-center gap-2 text-sm">
                   <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
-                  <span>Leads med uppföljning idag eller försenad — split-vy.</span>
+                  <span>{t("filters.followupsBanner")}</span>
                 </div>
                 <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                   <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                  Visa hela Försäljning
+                  {t("filters.showFullSales")}
                 </Button>
               </CardContent>
             </Card>
@@ -719,9 +751,9 @@ export default function SalesMarketingPage() {
               compact
               tab="reports"
               focus="lead-reminder"
-              title="Automatisera lead-påminnelser"
-              description={`${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} behöver uppföljning. Leadpåminnelser håller dig uppdaterad utan manuell checklista.`}
-              ctaLabel="Aktivera lead-påminnelser"
+              title={t("automations.leadReminderTitle")}
+              description={t("automations.leadReminderDescription", { count: dueLeadsList.length })}
+              ctaLabel={t("automations.leadReminderCta")}
             />
           ) : null}
           <m.div {...pageFadeUp} transition={{ delay: 0.039 }}>
@@ -767,9 +799,9 @@ export default function SalesMarketingPage() {
                 source: "outreach-discovery",
                 status: "new",
               });
-              toast.success("Tillagd som lead");
+              toast.success(t("toasts.addedAsLead"));
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Kunde inte lägga till lead.");
+              toast.error(error instanceof Error ? error.message : t("toasts.addLeadError"));
             }
           }}
           onDraftOutreach={(item) => {
@@ -798,7 +830,7 @@ export default function SalesMarketingPage() {
           onUseForCampaign={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));
             navigate("/marketing?new=campaign");
-            toast.success("Idea saved — finish your campaign plan");
+            toast.success(t("toasts.campaignIdeaSaved"));
           }}
           onUseForContent={(item) => {
             handoffContentIdea([item.title, item.body].filter(Boolean).join("\n\n"));
@@ -829,8 +861,8 @@ export default function SalesMarketingPage() {
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.sales}
-          title="MCP lead-research"
-          description="Företagsresearch och konkurrentanalys via Exa, Sprouts och Peec AI."
+          title={t("discover.mcpTitle")}
+          description={t("discover.mcpDescription")}
         />
       </m.div>
       ) : null}
@@ -839,12 +871,12 @@ export default function SalesMarketingPage() {
       <m.section {...pageFadeUp} transition={{ delay: 0.05 }}>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-sm font-semibold">Pipeline</h2>
-            <p className="text-xs text-muted-foreground">Flytta affärer genom varje steg mot avslut.</p>
+            <h2 className="text-sm font-semibold">{t("pipeline.title")}</h2>
+            <p className="text-xs text-muted-foreground">{t("pipeline.description")}</p>
           </div>
           <Button size="sm" className="gap-1.5" onClick={() => setPipelineOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            Ny affär
+            {t("pipeline.newDeal")}
           </Button>
         </div>
 
@@ -856,8 +888,8 @@ export default function SalesMarketingPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {PIPELINE_STAGES.map((stage) => {
-              const stageTasks = pipelineTasks.filter((t) => t.status === stage.status);
+            {pipelineStages.map((stage) => {
+              const stageTasks = pipelineTasks.filter((task) => task.status === stage.status);
               return (
                 <div key={stage.status} className="space-y-2">
                   <div className="flex items-center gap-2 px-1">
@@ -881,10 +913,10 @@ export default function SalesMarketingPage() {
                     ))}
                     {stageTasks.length === 0 && (
                       <div className="text-center pt-4 space-y-2 px-1">
-                        <p className="text-[11px] text-muted-foreground/60">Inga affärer här än</p>
+                        <p className="text-[11px] text-muted-foreground/60">{t("pipeline.empty")}</p>
                         <div className="flex flex-col gap-1">
                           <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPipelineOpen(true)}>
-                            Lägg till affär
+                            {t("pipeline.addDeal")}
                           </Button>
                           {stage.status === "open" && activeLeads > 0 ? (
                             <Button
@@ -894,11 +926,11 @@ export default function SalesMarketingPage() {
                               className="h-7 text-[11px]"
                               onClick={() => setSalesTab("leads")}
                             >
-                              Från leads
+                              {t("pipeline.fromLeads")}
                             </Button>
                           ) : stage.status === "open" ? (
                             <Button asChild type="button" size="sm" variant="ghost" className="h-7 text-[11px]">
-                              <Link to="/company">Fyll i Företag för bättre lead-AI</Link>
+                              <Link to="/company">{t("pipeline.fillCompanyProfile")}</Link>
                             </Button>
                           ) : null}
                         </div>
@@ -917,12 +949,12 @@ export default function SalesMarketingPage() {
       <m.section {...pageFadeUp} transition={{ delay: 0.15 }}>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold">Mål & KPI:er</h2>
-            <p className="text-xs text-muted-foreground">Klicka Redigera på ett mål, eller synka från Shopify när det är kopplat.</p>
+            <h2 className="text-sm font-semibold">{t("goals.title")}</h2>
+            <p className="text-xs text-muted-foreground">{t("goals.description")}</p>
           </div>
           {marketingConnected.shopify ? (
             <Button type="button" size="sm" variant="outline" onClick={syncGoalsFromShopify}>
-              Synka från Shopify
+              {t("goals.syncFromShopify")}
             </Button>
           ) : null}
         </div>
@@ -940,40 +972,40 @@ export default function SalesMarketingPage() {
       <Dialog open={pipelineOpen} onOpenChange={setPipelineOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Ny affär i pipelinen</DialogTitle>
+            <DialogTitle>{t("pipeline.dialog.title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="lead-title">Företag / kontaktnamn</Label>
-              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder="Acme AB" autoFocus />
+              <Label htmlFor="lead-title">{t("pipeline.dialog.companyLabel")}</Label>
+              <Input id="lead-title" value={pipelineTitle} onChange={(e) => setPipelineTitle(e.target.value)} placeholder={t("pipeline.dialog.companyPlaceholder")} autoFocus />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lead-desc">Anteckning (valfritt)</Label>
-              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder="Kontakt, källa, nästa steg…" rows={2} />
+              <Label htmlFor="lead-desc">{t("pipeline.dialog.notesLabel")}</Label>
+              <Textarea id="lead-desc" value={pipelineDesc} onChange={(e) => setPipelineDesc(e.target.value)} placeholder={t("pipeline.dialog.notesPlaceholder")} rows={2} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Prioritet</Label>
+                <Label>{t("pipeline.dialog.priority")}</Label>
                 <Select value={pipelinePriority} onValueChange={(v) => setPipelinePriority(v as typeof pipelinePriority)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Låg</SelectItem>
-                    <SelectItem value="medium">Medel</SelectItem>
-                    <SelectItem value="high">Hög</SelectItem>
+                    <SelectItem value="low">{t("pipeline.priority.low")}</SelectItem>
+                    <SelectItem value="medium">{t("pipeline.priority.medium")}</SelectItem>
+                    <SelectItem value="high">{t("pipeline.priority.high")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-due">Deadline (valfritt)</Label>
+                <Label htmlFor="lead-due">{t("pipeline.dialog.deadline")}</Label>
                 <Input id="lead-due" type="date" value={pipelineDue} onChange={(e) => setPipelineDue(e.target.value)} className="h-9 text-sm" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPipelineOpen(false)}>Avbryt</Button>
+            <Button variant="outline" onClick={() => setPipelineOpen(false)}>{tc("common.cancel")}</Button>
             <Button onClick={() => void addLead()} disabled={pipelineAdding || !pipelineTitle.trim()}>
               {pipelineAdding && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Lägg till
+              {t("pipeline.dialog.add")}
             </Button>
           </DialogFooter>
         </DialogContent>
