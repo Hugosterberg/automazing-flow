@@ -81,5 +81,19 @@
     "defaultLabel": "AI-förslag för den här sidan",
     "viewAll": "Alla",
     "moreSuggestions": "+{{count}} fler förslag"
+  },
+  "widget": {
+    "title": "AI-rekommendationer",
+    "active": "{{count}} aktiva",
+    "viewAll": "Visa alla",
+    "loading": "Laddar…",
+    "emptyPrefix": "Inga aktiva förslag ännu.",
+    "generate": "Generera rekommendationer",
+    "checked": "· kontrollerat {{time}}",
+    "more": "+{{count}} till",
+    "updated": "Uppdaterad {{time}}"
+  },
+  "service": {
+    "generateFailed": "Kunde inte uppdatera rekommendationerna ({{status}})."
   }
 }

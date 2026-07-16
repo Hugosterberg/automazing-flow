@@ -81,5 +81,19 @@
     "defaultLabel": "AI suggestions for this page",
     "viewAll": "All",
     "moreSuggestions": "+{{count}} more suggestions"
+  },
+  "widget": {
+    "title": "AI Recommendations",
+    "active": "{{count}} active",
+    "viewAll": "View all",
+    "loading": "Loading…",
+    "emptyPrefix": "No active suggestions yet.",
+    "generate": "Generate recommendations",
+    "checked": "· checked {{time}}",
+    "more": "+{{count}} more",
+    "updated": "Updated {{time}}"
+  },
+  "service": {
+    "generateFailed": "Could not update recommendations ({{status}})."
   }
 }
