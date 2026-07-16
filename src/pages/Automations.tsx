@@ -18,6 +18,7 @@ import { formatScheduleSummarySv } from "@/lib/profileJobSchedule";
 import {
   AutomationPanel,
   AutomatedUpdatesCard,
+  AutomationExplainer,
   AutomationRunStatus,
   AutomationScheduleEditor,
   FlowAutomationStatusCard,
@@ -213,6 +214,13 @@ function ScheduleList({
                 )}
               </div>
               <p className="text-xs text-muted-foreground">{entry.description}</p>
+              {entry.explainer ? (
+                <AutomationExplainer
+                  explainer={entry.explainer}
+                  exampleDraft={entry.exampleDraft}
+                  trustNote={entry.trustNote}
+                />
+              ) : null}
               {entry.outputHref ? (
                 <Link
                   to={entry.outputHref}

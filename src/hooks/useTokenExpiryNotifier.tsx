@@ -7,20 +7,35 @@ import { platformLabel } from "@/lib/platformLabels";
 
 const WARNED_KEY = "automazing-token-expiry-warned";
 const WARN_DAYS = 3; // warn if expires within 3 days
+/** Re-toast the same connection after this TTL (session-dismissible banner is separate). */
+const WARN_TTL_MS = 24 * 60 * 60 * 1000;
 
-function loadWarned(): Set<string> {
+type WarnedMap = Record<string, number>;
+
+function loadWarned(): WarnedMap {
   try {
     const raw = localStorage.getItem(WARNED_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as string[]);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    // Migrate legacy string[] store → map with "now" timestamps.
+    if (Array.isArray(parsed)) {
+      const now = Date.now();
+      const migrated: WarnedMap = {};
+      for (const id of parsed) {
+        if (typeof id === "string") migrated[id] = now;
+      }
+      return migrated;
+    }
+    if (parsed && typeof parsed === "object") return parsed as WarnedMap;
+    return {};
   } catch {
-    return new Set();
+    return {};
   }
 }
 
-function saveWarned(set: Set<string>) {
+function saveWarned(map: WarnedMap) {
   try {
-    localStorage.setItem(WARNED_KEY, JSON.stringify([...set]));
+    localStorage.setItem(WARNED_KEY, JSON.stringify(map));
   } catch {
     // ignore
   }
@@ -28,14 +43,14 @@ function saveWarned(set: Set<string>) {
 
 /**
  * Watches the connections list and toasts when any connection's health is
- * "expired" or "failed" and the user hasn't been warned recently.
+ * "expired" or "failed" and the user hasn't been warned within WARN_TTL_MS.
  * Also detects tokens that have lastSyncedAt older than WARN_DAYS days
  * without a successful sync.
  */
 export function useTokenExpiryNotifier(connections: Connection[]) {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const warnedRef = useRef<Set<string>>(loadWarned());
+  const warnedRef = useRef<WarnedMap>(loadWarned());
 
   useEffect(() => {
     if (connections.length === 0) return;
@@ -46,7 +61,8 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
 
     const problematic = connections.filter((c) => {
       if (c.disconnectedAt) return false;
-      if (warned.has(c.id)) return false;
+      const lastWarned = warned[c.id];
+      if (lastWarned != null && now - lastWarned < WARN_TTL_MS) return false;
 
       if (c.health === "expired") return true;
       if (c.health === "failed") return true;
@@ -71,9 +87,6 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
     if (failedCount > 0) parts.push(`${failedCount} misslyckad${failedCount > 1 ? "e" : ""} synkronisering${failedCount > 1 ? "ar" : ""}`);
     if (staleCount > 0) parts.push(`${staleCount} inaktiv${staleCount > 1 ? "a" : ""} anslutning${staleCount > 1 ? "ar" : ""}`);
 
-    // Name the platforms so the toast reads as a specific to-do, and when a
-    // single platform is affected deep-link straight to its card (search
-    // pre-filled) instead of the generic Connections page.
     const platforms = [...new Set(problematic.map((c) => c.platform))];
     const labels = platforms.map((p) => platformLabel(p));
     const shownLabels = labels.slice(0, 3).join(", ") + (labels.length > 3 ? "…" : "");
@@ -93,9 +106,8 @@ export function useTokenExpiryNotifier(connections: Connection[]) {
       ),
     });
 
-    // Mark as warned
     for (const c of problematic) {
-      warned.add(c.id);
+      warned[c.id] = now;
     }
     saveWarned(warned);
     warnedRef.current = warned;

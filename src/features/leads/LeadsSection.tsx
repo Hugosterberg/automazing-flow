@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Sparkles, Plus, Trash2, Loader2, UserPlus, Building2, CalendarClock, Globe, Upload, Download, Target, Pencil, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ValueSellEmpty } from "@/components/ValueSellEmpty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
@@ -542,12 +543,14 @@ export function LeadsSection({
             <Loader2 className="h-4 w-4 animate-spin" /> Laddar leads…
           </div>
         ) : sortedLeads.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <CalendarClock className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" aria-hidden />
-            <p className="text-sm text-muted-foreground">
-              Inga leads än. Lägg till en, eller låt AI föreslå vem ni kan kontakta.
-            </p>
-          </div>
+          <ValueSellEmpty
+            icon={Target}
+            title="Leads som faktiskt blir uppföljda"
+            description="Lägg till en lead, importera CSV, eller låt AI föreslå utifrån bolagsprofilen. Due-datum och outreach-utkast håller dig i rörelse."
+            trust="Ingen outreach skickas utan dig. Koppla mail under Kopplingar när du vill skicka från samma arbetsyta."
+            primary={{ label: "Fyll i Företag", to: "/company" }}
+            secondary={{ label: "Koppla mail", to: "/connections?wizard=1&q=gmail" }}
+          />
         ) : filteredLeads.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Inga leads matchar filtren.</p>
         ) : (

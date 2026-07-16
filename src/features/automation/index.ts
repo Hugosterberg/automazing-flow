@@ -4,6 +4,7 @@ export { AutomationRunStatus } from "./AutomationRunStatus";
 export { AutomationScheduleEditor } from "./AutomationScheduleEditor";
 export { FlowAutomationStatusCard } from "./FlowAutomationStatusCard";
 export { AutomationEnableHint } from "./AutomationEnableHint";
+export { AutomationExplainer } from "./AutomationExplainer";
 export { AutoReplyDraftsStrip } from "./AutoReplyDraftsStrip";
 export { ApproveDraftsCard } from "./ApproveDraftsCard";
 export { usePendingDmDrafts, useInvalidatePendingDmDrafts, PENDING_DM_DRAFTS_KEY } from "./usePendingDmDrafts";

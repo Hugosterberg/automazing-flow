@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { getRecentPages } from "@/lib/keyboardShortcuts";
 import { softFade } from "@/lib/motion";
+import { useConnections } from "@/features/connections/useConnections";
+import { computeSyncFreshness, formatAgoSv } from "@/features/connections/syncFreshness";
+import { useAutomationRuns } from "@/features/automation";
 import { type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
 import { useDailyBriefSummary } from "./useDailyBriefSummary";
@@ -123,6 +126,17 @@ export function SmartDailyBrief({
     [dayState]
   );
   const { brief, isLoading: isInitialLoading } = useDailyBriefSummary(businessProfileId);
+  const { connections } = useConnections(businessProfileId);
+  const automationRuns = useAutomationRuns(businessProfileId);
+  const syncFreshness = useMemo(() => computeSyncFreshness(connections), [connections]);
+  const overnightOkCount = useMemo(() => {
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return Object.values(automationRuns.byKey).filter((run) => {
+      if (run.lastRun?.status !== "ok") return false;
+      const finished = run.lastRun.finishedAt ? Date.parse(run.lastRun.finishedAt) : 0;
+      return finished >= dayAgo;
+    }).length;
+  }, [automationRuns.byKey]);
 
   const visibleItems = useMemo(
     () => brief.items.filter((item) => !dismissedIds.has(item.id)),
@@ -240,10 +254,56 @@ export function SmartDailyBrief({
         <m.div
           {...softFade}
           transition={{ duration: 0.3 }}
-          className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3 text-sm text-muted-foreground"
+          className="mt-4 space-y-2 rounded-lg border border-success/30 bg-success/5 px-3.5 py-3"
         >
-          <CheckCircle2 className="h-4 w-4 text-success shrink-0" aria-hidden />
-          <span>Kopplingarna är friska, uppgifterna är under kontroll och inget nytt att granska.</span>
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 text-success shrink-0" aria-hidden />
+            <span>
+              Tyst morgon — det är bra. Kopplingarna är friska, inget i Idag-kön och inga utkast som väntar.
+              Digests mejlas bara när det finns något att göra.
+            </span>
+          </div>
+          <ul className="space-y-1 pl-6 text-[11px] text-muted-foreground">
+            {syncFreshness.total > 0 ? (
+              <li>
+                {syncFreshness.latestSyncedAt
+                  ? `Data synkad ${formatAgoSv(syncFreshness.latestSyncedAt)}`
+                  : "Kopplingar finns — väntar på första synk"}
+                {syncFreshness.stale.length > 0
+                  ? ` · ${syncFreshness.stale.length} inaktiva (kolla Kopplingar)`
+                  : ""}
+              </li>
+            ) : (
+              <li>
+                Inga kopplingar än —{" "}
+                <Link to="/connections?wizard=1" className="text-primary underline-offset-2 hover:underline">
+                  starta wizarden
+                </Link>{" "}
+                eller prova demoläge.
+              </li>
+            )}
+            {overnightOkCount > 0 ? (
+              <li>
+                {overnightOkCount === 1
+                  ? "1 automation körde OK senaste dygnet"
+                  : `${overnightOkCount} automationer körde OK senaste dygnet`}
+              </li>
+            ) : null}
+            <li>
+              Fortsätt med{" "}
+              <Link to="/messages?bucket=today" className="text-primary underline-offset-2 hover:underline">
+                Meddelanden
+              </Link>
+              {" · "}
+              <Link to="/automations" className="text-primary underline-offset-2 hover:underline">
+                Automationer
+              </Link>
+              {" · "}
+              <Link to="/activity" className="text-primary underline-offset-2 hover:underline">
+                Aktivitet
+              </Link>
+            </li>
+          </ul>
         </m.div>
       ) : (
         <>

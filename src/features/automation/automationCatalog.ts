@@ -79,6 +79,12 @@ export interface AutomationCatalogEntry {
    * automations.
    */
   cronKey?: string;
+  /** Plain-language “what happens if I turn this on?” (shown before enable). */
+  explainer?: string;
+  /** Sample draft text so users see quality before activating. */
+  exampleDraft?: string;
+  /** Trust line — usually draft-before-send. */
+  trustNote?: string;
 }
 
 export const automationCatalog: AutomationCatalogEntry[] = [
@@ -92,6 +98,11 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: Bot,
     outputHref: "/messages",
     cronKey: "auto-reply",
+    explainer:
+      "Jobbet läser nya DM:s, skriver ett svarsförslag och lägger det i kön under Meddelanden. I standardläge skickas inget förrän du trycker skicka. Auto-skick kräver en extra bekräftelse.",
+    exampleDraft:
+      "Hej! Tack för att du hör av dig — absolut intresserade. Skicka gärna mer om upplägg så återkommer vi snart.",
+    trustNote: "Draft-before-send som default — du godkänner innan något går ut.",
   },
   {
     id: "publish-scheduled-posts",
@@ -115,6 +126,11 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     outputHref: "/sales",
     businessOnly: true,
     cronKey: "sales-outreach-auto",
+    explainer:
+      "När en lead är due eller tyst för länge skapas ett uppföljningsutkast i Sales-kön. Du granskar, redigerar och skickar — automationen skickar inte själv.",
+    exampleDraft:
+      "Hej! Ville bara följa upp vårt tidigare samtal — har ni hunnit titta på förslaget?",
+    trustNote: "Bara utkast i kön — ingen outreach skickas utan dig.",
   },
   {
     id: "content-pipeline",
@@ -150,6 +166,10 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     outputHref: "/reviews",
     businessOnly: true,
     cronKey: "review-reply-auto",
+    explainer:
+      "Nya recensioner får ett svarsutkast under Recensioner. Vid ≤2★ kan du få ett brådskande mejl — själva svaret publiceras först när du godkänner.",
+    exampleDraft: "Tack för din feedback — vi tar det vidare internt och återkommer gärna.",
+    trustNote: "Utkast först — publicering kräver ditt godkännande.",
   },
   {
     id: "mail-reply-auto",
@@ -161,6 +181,11 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: Mail,
     outputHref: "/messages",
     cronKey: "mail-reply-auto",
+    explainer:
+      "Jobbet plockar olästa mail, skriver ett svarsutkast och lägger det i Meddelanden. Du kan skicka, redigera eller kasta — automationen skickar aldrig själv.",
+    exampleDraft:
+      "Hej Anna! Tack för din förfrågan — absolut, vi har tid. Föreslår tisdag eller torsdag 10:00.",
+    trustNote: "Draft-before-send — inget mail går ut utan dig.",
   },
   {
     id: "marketing-actions",

@@ -2,6 +2,15 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — Trust surfaces: quiet Brief, reconnect chrome, pre-enable explainers — **Active**
+
+All-clear Brief shows proof of health (last sync, overnight OK runs) instead of
+a single static line; digests still skip empty days. Reconnect uses a sticky
+Layout banner for expired/failed/missing connections and token toasts re-fire
+after 24h (banner is session-dismissible). Automations catalog may include
+`explainer` / `exampleDraft` / `trustNote` for draft-before-send jobs. Empty
+pages use `ValueSellEmpty` (outcome → trust → connect CTA).
+
 ## 2026-07-16 — Demo mode is client sandbox via profile documents — **Active**
 
 Demoläge (`demo-mode` profile doc) injects sample `UnifiedMessage`s and seeds

@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { useAccounts } from "@/context/AccountsContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { useTokenExpiryNotifier } from "@/hooks/useTokenExpiryNotifier";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -142,7 +141,6 @@ export default function ConnectionsPage() {
   );
 
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
-  useTokenExpiryNotifier(connections);
 
   const [reconcileState, setReconcileState] = useState<{
     loading: boolean;

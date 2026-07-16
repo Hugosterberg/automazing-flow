@@ -83,8 +83,10 @@ document `first-win-checklist` (no new tables)._
 - [x] Demo / sample-data mode (profile doc `demo-mode`) — fake inbox + draft
       queues; send is no-op for `demo-*` ids.
 - [x] Approve drafts hub on Home → Idag (DM/mail/outreach/reviews).
-- [ ] Deeper empty-state pass (Kalender, E-handel, Content, Sales) with same
-      value-selling pattern.
+- [x] Quiet-day Brief proves health (sync + overnight automations + next steps).
+- [x] Sticky reconnect banner in app chrome + toast TTL 24h (not Connections-only).
+- [x] Automation explainers + example drafts (DM/mail/outreach/reviews).
+- [x] Value-selling empty states on Kalender, E-handel, Content, Sales.
 - [ ] Public landing / marketing site polish (outside app shell).
 
 ## v3 — Multi-user SaaS readiness

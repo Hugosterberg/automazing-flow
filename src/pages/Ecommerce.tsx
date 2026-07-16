@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ValueSellEmpty } from "@/components/ValueSellEmpty";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { ShopifyIcon } from "@/components/platform-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -465,28 +466,34 @@ export default function Ecommerce() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="space-y-3"
         >
-          <EmptyState
+          <ValueSellEmpty
             icon={ShoppingBag}
-            title="Koppla Shopify"
+            title="Ordrar, lager och kundvagn — i samma arbetsyta"
             description={
               tab === "tools"
                 ? "Koppla Shopify för ordrar och lager. Importera från Alibaba eller använd Notion under Verktyg."
                 : tab === "insights"
-                  ? "Koppla Shopify för att se intäkter, topsäljare och kampanjdata."
-                  : "Koppla din Shopify-butik för att se och hantera ordrar här."
+                  ? "Se intäkter, topsäljare och kampanjdata när butiken är kopplad — utan att hoppa till admin."
+                  : "Koppla Shopify så dyker ordrar och lager upp här. Kundvagnsåtervinning körs som utkast du godkänner."
             }
+            trust="Automationer skickar inte utan dig — draft-before-send för känsliga flöden."
+            primary={{ label: "Koppla Shopify", to: "/connections?wizard=1&q=shopify" }}
+            secondary={{ label: "Öppna Kopplingar", to: "/connections?q=shopify" }}
+          />
+          <EmptyState
+            icon={ShoppingBag}
+            title="Shopify är hemmet för e-handel här"
+            description="Kopplingar är den enda platsen för integrationer. Notion kopplas också där."
+            size="compact"
             action={
-              <Button asChild className="glow-sm">
+              <Button asChild variant="outline" size="sm">
                 <Link to="/connections?q=shopify">
                   <ShopifyIcon className="h-4 w-4 mr-2" />
-                  Öppna Kopplingar
+                  Till Kopplingar
                 </Link>
               </Button>
             }
           />
-          <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
-            Kopplingar är hemmet för alla integrationer. Notion kopplas också där.
-          </p>
         </m.div>
       )}
 

@@ -12,6 +12,7 @@ import { fetchProducts } from "@/lib/productsApi";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { ValueSellEmpty } from "@/components/ValueSellEmpty";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
@@ -328,7 +329,19 @@ export default function ContentPage() {
         />
       ) : null}
 
-      {driveAccounts.length === 0 ? <SectionConnectionStatus area="content" className="mt-0" /> : null}
+      {driveAccounts.length === 0 ? (
+        <>
+          <ValueSellEmpty
+            icon={HardDrive}
+            title="Från Drive till publicerat — i ett flöde"
+            description="Koppla Google Drive, markera media, skapa med AI och publicera eller spara som utkast. Valda assets följer med mellan flikarna."
+            trust="Inget publiceras automatiskt förrän du schemalägger eller trycker publicera."
+            primary={{ label: "Koppla Google Drive", to: "/connections?wizard=1&q=drive" }}
+            secondary={{ label: "Öppna Kopplingar", to: "/connections?q=drive" }}
+          />
+          <SectionConnectionStatus area="content" className="mt-0" />
+        </>
+      ) : null}
 
       {contentTab === "create" ? (
         <PageAiSuggestionsStrip

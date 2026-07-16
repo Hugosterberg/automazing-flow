@@ -26,6 +26,7 @@ import { recordRecentPage } from "@/lib/keyboardShortcuts";
 import { WorkspaceModeTabs, useWorkspaceMode } from "@/features/workspace-mode";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { GlobalAttentionStrip } from "@/components/GlobalAttentionStrip";
+import { ReconnectRequiredBanner } from "@/components/ReconnectRequiredBanner";
 import { MobileQuickNav } from "@/components/MobileQuickNav";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { useBackgroundDataSync } from "@/hooks/useBackgroundDataSync";
@@ -178,6 +179,7 @@ export default function Layout() {
             <div className="safe-top shrink-0" aria-hidden />
           )}
           {!readingFocus ? <OfflineBanner /> : null}
+          {!readingFocus ? <ReconnectRequiredBanner /> : null}
           {!readingFocus ? <GlobalAttentionStrip /> : null}
           <div
             id="main-content"

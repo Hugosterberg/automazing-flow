@@ -27,6 +27,7 @@ import type { CalendarEvent } from "@/types/calendar";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
+import { ValueSellEmpty } from "@/components/ValueSellEmpty";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
@@ -90,6 +91,14 @@ export default function CalendarPage() {
   const { activeProfileId, accounts, getSelectedAccountId, setSelectedAccountId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
   const selectedAccountId = getSelectedAccountId("calendar");
+  const hasCalendarConnected = useMemo(
+    () =>
+      accounts.some(
+        (a) =>
+          (a.platform === "google_calendar" || a.platform === "outlook_calendar") && Boolean(a.isOAuth)
+      ),
+    [accounts]
+  );
   // Calendar events persist per business profile in the DB (synced across
   // devices), migrating any existing device-local events on first load.
   const eventsDoc = useProfileDocument<CalendarEvent[]>("calendar-events", [], {
@@ -469,6 +478,17 @@ export default function CalendarPage() {
       />
 
       <SectionConnectionStatus area="calendar" className="mt-0" hideWhenHealthy />
+
+      {!hasCalendarConnected ? (
+        <ValueSellEmpty
+          icon={CalendarDays}
+          title="En kalender som samlar dagen"
+          description="Koppla Google eller Outlook så syns möten bredvid uppgifter och lead-uppföljningar — en vy för hela veckan."
+          trust="Lokala händelser fungerar redan; externa kalendrar synkas när du kopplat."
+          primary={{ label: "Koppla kalender", to: "/connections?wizard=1&q=calendar" }}
+          secondary={{ label: "Visa Kopplingar", to: "/connections?q=calendar" }}
+        />
+      ) : null}
 
       <PageModeTabs
         value={viewMode}
