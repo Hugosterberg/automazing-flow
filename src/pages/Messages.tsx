@@ -49,7 +49,6 @@ import {
   type InboxFilter,
   type ThreadMessage,
   type UnifiedMessage,
-  type MailFolder,
   type MailFolderSelection,
   type MailSortOrder,
   type MailViewFilter,
@@ -60,19 +59,16 @@ import {
   TRIAGE_BUCKET_LABELS,
   type TriageBucketFilter,
 } from "@/features/messages";
-import { moveMessageToFolder } from "@/features/messages/mailFoldersClient";
-import { performMailAction, type MailMessageAction } from "@/features/messages/mailActionsClient";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 import { AutoReplyDraftsStrip } from "@/features/automation";
 import { MailReplyDraftsStrip } from "@/features/messages/MailReplyDraftsStrip";
 import { MailConnectEmptyCards } from "@/features/messages/MailConnectEmptyCards";
-import { inboxCacheKey, writeInboxCache } from "@/features/messages/inboxCache";
-import { buildInboxLoadScope } from "@/features/messages/inboxLoadParams";
 import { useLoadUnifiedInbox } from "@/features/messages/useLoadUnifiedInbox";
 import { useMessagesKeyboardShortcuts } from "@/features/messages/useMessagesKeyboardShortcuts";
 import { useMessageTriageState } from "@/features/messages/useMessageTriageState";
 import { useFilteredInbox } from "@/features/messages/useFilteredInbox";
 import { useMessageAiAssist } from "@/features/messages/useMessageAiAssist";
+import { useMailInboxActions } from "@/features/messages/useMailInboxActions";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
@@ -115,9 +111,6 @@ export default function MessagesPage() {
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [selectedMailFolder, setSelectedMailFolderState] = useState<MailFolderSelection | null>(null);
   const [includeAllMail, setIncludeAllMailState] = useState(false);
-  const [mailFolders, setMailFolders] = useState<MailFolder[]>([]);
-  const [moveBusy, setMoveBusy] = useState(false);
-  const [mailActionBusy, setMailActionBusy] = useState(false);
   const [mailViewFilter, setMailViewFilterState] = useState<MailViewFilter>("all");
   const [mailSort, setMailSortState] = useState<MailSortOrder>("triage");
   const [triageBucket, setTriageBucketState] = useState<TriageBucketFilter>("all");
@@ -501,28 +494,6 @@ export default function MessagesPage() {
     [patchInboxPrefs, searchParams, setSearchParams]
   );
 
-  const removeMessageFromInbox = useCallback(
-    (messageId: string) => {
-      setMessages((prev) => {
-        const next = prev.filter((msg) => msg.id !== messageId);
-        const scope = buildInboxLoadScope({ activeTab, selectedMailFolder, includeAllMail });
-        const cacheKey = inboxCacheKey({
-          businessProfileId: activeProfileId,
-          mailAccountId: scope.mailAccountId,
-          mailFolderId: scope.mailFolderId,
-          includeAllMail: scope.allMailScope,
-        });
-        writeInboxCache(cacheKey, next);
-        return next;
-      });
-    },
-    [activeProfileId, activeTab, includeAllMail, selectedMailFolder]
-  );
-
-  const handleMailFoldersChange = useCallback((folders: MailFolder[]) => {
-    setMailFolders(folders);
-  }, []);
-
   const hasAnyMailConnected = mailAccounts.length > 0;
 
   const {
@@ -604,16 +575,6 @@ export default function MessagesPage() {
     [filteredMessages, pickNextAfter, selectMessage]
   );
 
-  const dismissMailAndAdvance = useCallback(
-    (messageId: string) => {
-      const next = pickNextAfter(messageId, filteredMessages);
-      // Select next before removing so the "missing id" effect never clears selection.
-      selectMessage(next);
-      removeMessageFromInbox(messageId);
-    },
-    [filteredMessages, pickNextAfter, removeMessageFromInbox, selectMessage]
-  );
-
   const markHandledAndAdvance = useCallback(
     (id: string) => {
       if (handledIds.has(id)) return;
@@ -624,70 +585,25 @@ export default function MessagesPage() {
     [filteredMessages, handledIds, markHandled, pickNextAfter, selectMessage]
   );
 
-  const moveMessageToMailFolder = useCallback(
-    async (folderId: string) => {
-      if (!selectedMessage || selectedMessage.kind !== "email") return;
-      const providerMessageId = providerMessageIdFor(selectedMessage);
-      if (!providerMessageId) {
-        sonnerToast.error("Kunde inte flytta — saknar meddelande-id hos leverantören.");
-        return;
-      }
-      setMoveBusy(true);
-      try {
-        await moveMessageToFolder({
-          accountId: selectedMessage.accountId,
-          messageId: providerMessageId,
-          folderId,
-          businessProfileId,
-        });
-        sonnerToast.success("Mailet flyttades till mappen.");
-        dismissMailAndAdvance(selectedMessage.id);
-      } catch (error) {
-        sonnerToast.error(error instanceof Error ? error.message : "Kunde inte flytta mailet.");
-      } finally {
-        setMoveBusy(false);
-      }
-    },
-    [businessProfileId, dismissMailAndAdvance, selectedMessage]
-  );
-
-  const performSelectedMailAction = useCallback(
-    async (action: MailMessageAction) => {
-      if (!selectedMessage || selectedMessage.kind !== "email") return;
-      const providerMessageId = providerMessageIdFor(selectedMessage);
-      if (!providerMessageId) {
-        sonnerToast.error("Kunde inte utföra åtgärden — saknar meddelande-id.");
-        return;
-      }
-      setMailActionBusy(true);
-      try {
-        const result = await performMailAction({
-          accountId: selectedMessage.accountId,
-          messageId: providerMessageId,
-          action,
-          businessProfileId,
-        });
-        if (action === "delete") {
-          sonnerToast.success("Mailet raderades.");
-          dismissMailAndAdvance(selectedMessage.id);
-        } else if (action === "archive") {
-          sonnerToast.success("Mailet arkiverades.");
-          dismissMailAndAdvance(selectedMessage.id);
-        } else if (action === "flag" || action === "unflag") {
-          const starred = result.starred ?? action === "flag";
-          setMessages((prev) =>
-            prev.map((msg) => (msg.id === selectedMessage.id ? { ...msg, isStarred: starred } : msg))
-          );
-          sonnerToast.success(starred ? "Mailet flaggades." : "Flaggan togs bort.");
-        }
-      } catch (error) {
-        sonnerToast.error(error instanceof Error ? error.message : "Kunde inte utföra åtgärden.");
-      } finally {
-        setMailActionBusy(false);
-      }
-    },
-    [businessProfileId, dismissMailAndAdvance, selectedMessage]
-  );
+  const {
+    mailFolders,
+    moveBusy,
+    mailActionBusy,
+    handleMailFoldersChange,
+    moveMessageToMailFolder,
+    performSelectedMailAction,
+  } = useMailInboxActions({
+    activeTab,
+    selectedMailFolder,
+    includeAllMail,
+    activeProfileId,
+    businessProfileId,
+    selectedMessage,
+    filteredMessages,
+    pickNextAfter,
+    selectMessage,
+    setMessages,
+  });
 
   const navigateOpenRelative = useCallback(
     (delta: number) => {

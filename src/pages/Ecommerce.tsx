@@ -31,13 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -59,6 +52,7 @@ import { formatCurrency, formatNumber } from "@/lib/format";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
 import { AbandonedCheckoutRecoveryButton } from "@/features/ecommerce/AbandonedCheckoutRecoveryButton";
+import { RevenueTrendCard } from "@/features/ecommerce/RevenueTrendCard";
 import { useLeads } from "@/features/leads";
 import { alibabaImportToInput } from "@/lib/productStore";
 import {
@@ -90,17 +84,9 @@ import {
   isShopifyData,
   isNotionData,
   formatDate,
-  formatChartDate,
   type OrganizationData,
   type NotionParentOption,
 } from "@/features/ecommerce/ecommerceOrg";
-
-const revenueChartConfig: ChartConfig = {
-  revenue: {
-    label: "Intäkter",
-    color: "hsl(var(--primary, 142 76% 36%))",
-  },
-};
 
 /** Unfulfilled orders older than this are flagged in the action strip. */
 const STALE_UNFULFILLED_DAYS = 2;
@@ -762,61 +748,12 @@ export default function Ecommerce() {
       )}
 
       {/* Revenue trend */}
-      {tab === "insights" && !loading && shopifyData && shopifyData.revenueTrend.length > 0 && (
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
-          <Card className="bg-card border-border glow-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <TrendingUp className="h-5 w-5" />
-                Intäktstrend
-              </CardTitle>
-              <CardDescription>
-                Senaste 30 dagarna · Totalt {formatCurrency(shopifyData.stats.revenue30d, currency, { detailed: true })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={revenueChartConfig} className="aspect-[16/5] w-full">
-                <AreaChart data={shopifyData.revenueTrend} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="shopifyRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(value: string) => formatChartDate(value)}
-                    tickLine={false}
-                    axisLine={false}
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    tickFormatter={(value: number) => formatCurrency(value, currency)}
-                    tickLine={false}
-                    axisLine={false}
-                    width={64}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelFormatter={(value) => formatChartDate(String(value))}
-                        formatter={(value) => formatCurrency(Number(value), currency, { detailed: true })}
-                      />
-                    }
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="var(--color-revenue)"
-                    fill="url(#shopifyRevenueFill)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </m.div>
+      {tab === "insights" && !loading && shopifyData && (
+        <RevenueTrendCard
+          revenueTrend={shopifyData.revenueTrend}
+          revenue30d={shopifyData.stats.revenue30d}
+          currency={currency}
+        />
       )}
 
       {/* Insight row: top products + top customers */}

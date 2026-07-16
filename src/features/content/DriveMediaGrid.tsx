@@ -17,6 +17,28 @@ export type DriveBrowserItem = {
   size?: number;
 };
 
+export type DriveProviderData = {
+  source?: string;
+  items?: DriveBrowserItem[];
+  sharedItems?: DriveBrowserItem[];
+  currentFolderId?: string | null;
+  currentFolderName?: string | null;
+  parentFolderId?: string | null;
+} | null;
+
+export type DriveOAuthPopupMessage = {
+  type: "google_drive_oauth";
+  success?: boolean;
+  error?: string;
+  statusCode?: string | null;
+  exception?: string | null;
+  hint?: string | null;
+  platform?: "google_drive";
+  account_id?: string;
+  username?: string;
+  profile_id?: string;
+};
+
 export function formatBytes(value?: number) {
   if (!value || Number.isNaN(value)) return null;
   if (value < 1024) return `${value} B`;

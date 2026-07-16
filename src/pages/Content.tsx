@@ -55,29 +55,9 @@ import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence
 import {
   MediaSection,
   type DriveBrowserItem,
+  type DriveProviderData,
+  type DriveOAuthPopupMessage,
 } from "@/features/content/DriveMediaGrid";
-
-type DriveProviderData = {
-  source?: string;
-  items?: DriveBrowserItem[];
-  sharedItems?: DriveBrowserItem[];
-  currentFolderId?: string | null;
-  currentFolderName?: string | null;
-  parentFolderId?: string | null;
-} | null;
-
-type DriveOAuthPopupMessage = {
-  type: "google_drive_oauth";
-  success?: boolean;
-  error?: string;
-  statusCode?: string | null;
-  exception?: string | null;
-  hint?: string | null;
-  platform?: "google_drive";
-  account_id?: string;
-  username?: string;
-  profile_id?: string;
-};
 
 export default function ContentPage() {
   const navigate = useNavigate();

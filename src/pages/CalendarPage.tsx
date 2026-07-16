@@ -76,11 +76,15 @@ import {
   isExternalEvent,
   localTimeOfIso,
 } from "@/features/calendar/calendarHelpers";
+import {
+  CalendarUpcomingStrip,
+  type CalendarUpcomingItem,
+} from "@/features/calendar/CalendarUpcomingStrip";
 
 type ViewMode = "day" | "week" | "month";
 
 /** Calendar row: a normal event, or a social post carried along for its dialog. */
-type CalendarItem = CalendarEvent & { post?: ScheduledPost };
+type CalendarItem = CalendarUpcomingItem;
 
 type CalendarProviderData = {
   source?: string;
@@ -1000,42 +1004,7 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      {upcomingEvents.length > 0 && (
-        <Card className="rounded-xl">
-          <CardContent className="py-4">
-            <h2 className="text-sm font-semibold mb-3">Kommande händelser</h2>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {upcomingEvents.map((ev: CalendarItem) => (
-                <div
-                  key={ev.id}
-                  className={cn(
-                    "shrink-0 w-44 p-3 rounded-lg border border-border/50 bg-muted/20",
-                    ev.source === "social" && "cursor-pointer hover:bg-muted/40"
-                  )}
-                  onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                >
-                  <p className="font-medium text-sm truncate">{ev.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <span>
-                      {format(parseISO(ev.date), "EEE d MMM", { locale: sv })}
-                      {ev.time && ` · ${ev.time}`}
-                    </span>
-                    {ev.source === "social" && ev.post ? (
-                      <span className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                        {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
-                      </span>
-                    ) : isExternalEvent(ev) ? (
-                      <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                        External
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <CalendarUpcomingStrip events={upcomingEvents} onOpenSocialPost={openPostDialog} />
 
       </div>
 
