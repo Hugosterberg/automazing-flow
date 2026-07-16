@@ -1,0 +1,94 @@
+{
+  "page": {
+    "title": "Kunder",
+    "descriptionMobile": "Tryck en kund i listan för att se alla fält.",
+    "descriptionDesktop": "Ladda upp din kundbas, sök och granska varje kund med alla fält på ett ställe."
+  },
+  "smartBar": {
+    "titleMobile": "Ladda upp CSV, sök och tryck en kund för detaljer.",
+    "titleDesktop": "Bygg en enkel CRM-vy från din CSV — perfekt för uppföljning, segmentering och AI-frågor via Day.ai.",
+    "step1Mobile": "Ladda upp CSV",
+    "step2Mobile": "Sök och tryck en kund",
+    "step3Mobile": "Kopiera kontaktuppgifter",
+    "step1Desktop": "Ladda upp en CSV med kolumner som e-post, namn och telefon",
+    "step2Desktop": "Sök och välj en kund i listan till vänster",
+    "step3Desktop": "Kopiera kontaktuppgifter eller exportera filtrerade rader",
+    "tip": "Koppla Day.ai under Kopplingar för AI-frågor. Fyll i Företag för bättre förslag — Automationer kan synka och påminna."
+  },
+  "tabs": {
+    "ariaLabel": "Kundflikar",
+    "list": "Lista",
+    "assistant": "Assistent"
+  },
+  "mcp": {
+    "title": "CRM-assistent (Day.ai MCP)",
+    "description": "Ställ frågor om kunder och affärer när Day.ai är kopplat via OAuth."
+  },
+  "toolbar": {
+    "searchPlaceholder": "Sök kunder…",
+    "clearSearch": "Rensa sökning",
+    "export": "Exportera",
+    "clear": "Rensa",
+    "stats": "{{shown}} visade · {{total}} totalt · {{columns}} kolumner",
+    "noFile": "Ingen fil laddad"
+  },
+  "stats": {
+    "customers": "Kunder",
+    "columns": "Kolumner",
+    "filledFields": "Ifyllda fält"
+  },
+  "empty": {
+    "title": "Ingen kundbas ännu",
+    "description": "Ladda upp en CSV ovan. Sök, granska och exportera. För AI-frågor om kunderna: koppla Day.ai under Kopplingar → MCP.",
+    "uploadCsv": "Ladda upp CSV",
+    "connectDayAi": "Koppla Day.ai"
+  },
+  "noResults": {
+    "title": "Inga träffar",
+    "description": "Prova ett annat sökord eller rensa filtret."
+  },
+  "footer": {
+    "selected": "Vald:",
+    "rowFallback": "Rad {{number}}",
+    "selectPrompt": "Välj en kund i listan",
+    "shortcuts": "J/K bläddra · / sök"
+  },
+  "errors": {
+    "csvOnly": "Endast CSV-filer stöds.",
+    "readFailed": "Kunde inte läsa filen."
+  },
+  "columnFallback": "Kolumn {{number}}",
+  "exportFilenamePrefix": "kunder",
+  "list": {
+    "title": "Kunder",
+    "count": "{{count}} st",
+    "rowFallback": "Rad {{number}}",
+    "uploadPrompt": "Ladda upp en CSV-fil för att börja."
+  },
+  "detail": {
+    "titleFallback": "Kund #{{number}}",
+    "rowMeta": "Rad {{number}} i kundbasen",
+    "backLabel": "Kunder",
+    "backToList": "Tillbaka till listan",
+    "searchInbox": "Sök i inkorg",
+    "createTask": "Skapa uppgift",
+    "taskTitle": "Följ upp: {{name}}",
+    "toContent": "Till Content",
+    "copy": "Kopiera"
+  },
+  "placeholder": {
+    "title": "Välj en kund",
+    "description": "Klicka en rad i listan för att se alla fält — e-post och telefon går att kopiera med ett klick."
+  },
+  "toast": {
+    "copied": "{{label}} kopierat.",
+    "copyFailed": "Kunde inte kopiera.",
+    "handoffContent": "Kundinfo skickad till Content — redo att publicera."
+  },
+  "insights": {
+    "customers": "Kunder",
+    "withEmail": "Med e-post",
+    "sumColumn": "Σ {{name}}",
+    "sumColumnTitle": "{{name}} (snitt {{avg}})"
+  }
+}

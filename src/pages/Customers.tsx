@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Users, Upload, Search, Trash2, Download, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -21,6 +22,7 @@ import { isShortcutBlocked, isTypingTarget } from "@/lib/keyboardShortcuts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { pageFadeUp } from "@/lib/motion";
+import { t as i18nT } from "@/lib/i18n";
 
 type CustomerRow = Record<string, string>;
 type CustomersStoragePayload = { columns: string[]; rows: CustomerRow[]; fileName: string };
@@ -82,7 +84,7 @@ async function parseCustomerFile(file: File): Promise<{ columns: string[]; rows:
   if (parsedRows.length === 0) return { columns: [], rows: [] };
 
   const [headerRow, ...dataRows] = parsedRows;
-  const columns = headerRow.map((header, index) => header.trim() || `Kolumn ${index + 1}`);
+  const columns = headerRow.map((header, index) => header.trim() || i18nT("customers:columnFallback", { number: index + 1 }));
 
   const rows: CustomerRow[] = dataRows.map((row) => {
     const mapped: CustomerRow = {};
@@ -96,6 +98,7 @@ async function parseCustomerFile(file: File): Promise<{ columns: string[]; rows:
 }
 
 export default function CustomersPage() {
+  const { t } = useTranslation("customers");
   const { activeProfileId } = useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
@@ -244,12 +247,12 @@ export default function CustomersPage() {
     setError(null);
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "";
-      if (extension !== "csv") throw new Error("Endast CSV-filer stöds.");
+      if (extension !== "csv") throw new Error(t("errors.csvOnly"));
       const parsed = await parseCustomerFile(file);
       customersDoc.save({ columns: parsed.columns, rows: parsed.rows, fileName: file.name });
     } catch (e) {
       customersDoc.save({ columns: [], rows: [], fileName: "" });
-      setError(e instanceof Error ? e.message : "Kunde inte läsa filen.");
+      setError(e instanceof Error ? e.message : t("errors.readFailed"));
     } finally {
       event.target.value = "";
     }
@@ -266,7 +269,7 @@ export default function CustomersPage() {
   function exportCustomers() {
     if (rows.length === 0) return;
     const exportRows = debouncedSearch.trim() ? filteredRows : rows;
-    downloadCsv(customersToCsv(columns, exportRows), `kunder-${new Date().toISOString().slice(0, 10)}.csv`);
+    downloadCsv(customersToCsv(columns, exportRows), `${t("exportFilenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
   const filledFieldCount = useMemo(() => {
@@ -290,39 +293,27 @@ export default function CustomersPage() {
         <>
       <PageHeader
         icon={Users}
-        title="Kunder"
-        description={
-          isMobile
-            ? "Tryck en kund i listan för att se alla fält."
-            : "Ladda upp din kundbas, sök och granska varje kund med alla fält på ett ställe."
-        }
+        title={t("page.title")}
+        description={isMobile ? t("page.descriptionMobile") : t("page.descriptionDesktop")}
       />
 
       <PageSmartBar
-        title={
-          isMobile
-            ? "Ladda upp CSV, sök och tryck en kund för detaljer."
-            : "Bygg en enkel CRM-vy från din CSV — perfekt för uppföljning, segmentering och AI-frågor via Day.ai."
-        }
+        title={isMobile ? t("smartBar.titleMobile") : t("smartBar.titleDesktop")}
         steps={
           isMobile
-            ? ["Ladda upp CSV", "Sök och tryck en kund", "Kopiera kontaktuppgifter"]
-            : [
-                "Ladda upp en CSV med kolumner som e-post, namn och telefon",
-                "Sök och välj en kund i listan till vänster",
-                "Kopiera kontaktuppgifter eller exportera filtrerade rader",
-              ]
+            ? [t("smartBar.step1Mobile"), t("smartBar.step2Mobile"), t("smartBar.step3Mobile")]
+            : [t("smartBar.step1Desktop"), t("smartBar.step2Desktop"), t("smartBar.step3Desktop")]
         }
-        tip="Koppla Day.ai under Kopplingar för AI-frågor. Fyll i Företag för bättre förslag — Automationer kan synka och påminna."
+        tip={t("smartBar.tip")}
       />
 
       <PageModeTabs
         value={customersTab}
-        aria-label="Kundflikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setCustomersTab}
         options={[
-          { value: "list", label: "Lista", count: rows.length },
-          { value: "assistant", label: "Assistent" },
+          { value: "list", label: t("tabs.list"), count: rows.length },
+          { value: "assistant", label: t("tabs.assistant") },
         ]}
       />
         </>
@@ -333,8 +324,8 @@ export default function CustomersPage() {
           <McpFeatureSection
             businessProfileId={businessProfileId}
             featureIds={MCP_PAGE_FEATURE_IDS.customers}
-            title="CRM-assistent (Day.ai MCP)"
-            description="Ställ frågor om kunder och affärer när Day.ai är kopplat via OAuth."
+            title={t("mcp.title")}
+            description={t("mcp.description")}
           />
         </m.div>
       ) : null}
@@ -369,7 +360,7 @@ export default function CustomersPage() {
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchInputRef}
-              placeholder="Sök kunder…"
+              placeholder={t("toolbar.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
@@ -383,7 +374,7 @@ export default function CustomersPage() {
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                aria-label="Rensa sökning"
+                aria-label={t("toolbar.clearSearch")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -391,16 +382,16 @@ export default function CustomersPage() {
           </div>
           <Button variant="outline" size="sm" className={cn("text-sm", isMobile ? "h-10" : "h-8 text-xs")} onClick={exportCustomers} disabled={rows.length === 0}>
             <Download className="mr-1.5 h-3.5 w-3.5" />
-            Exportera
+            {t("toolbar.export")}
           </Button>
           <Button variant="outline" size="sm" className={cn("text-sm", isMobile ? "h-10" : "h-8 text-xs")} onClick={clearData} disabled={rows.length === 0 && !fileName}>
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Rensa
+            {t("toolbar.clear")}
           </Button>
           <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
             {rows.length > 0
-              ? `${filteredRows.length} visade · ${rows.length} totalt · ${columns.length} kolumner`
-              : "Ingen fil laddad"}
+              ? t("toolbar.stats", { shown: filteredRows.length, total: rows.length, columns: columns.length })
+              : t("toolbar.noFile")}
           </p>
         </div>
         ) : null}
@@ -412,15 +403,15 @@ export default function CustomersPage() {
         {!focusedReading ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kunder</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("stats.customers")}</p>
             <p className="text-xs font-semibold tabular-nums">{rows.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kolumner</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("stats.columns")}</p>
             <p className="text-xs font-semibold tabular-nums">{columns.length}</p>
           </div>
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Ifyllda fält</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("stats.filledFields")}</p>
             <p className="text-xs font-semibold tabular-nums">{filledFieldCount}</p>
           </div>
         </div>
@@ -431,8 +422,8 @@ export default function CustomersPage() {
             <div className="flex h-full min-h-[320px] items-center justify-center p-8">
               <EmptyState
                 icon={Upload}
-                title="Ingen kundbas ännu"
-                description="Ladda upp en CSV ovan. Sök, granska och exportera. För AI-frågor om kunderna: koppla Day.ai under Kopplingar → MCP."
+                title={t("empty.title")}
+                description={t("empty.description")}
                 action={
                   <Button
                     type="button"
@@ -441,19 +432,19 @@ export default function CustomersPage() {
                     onClick={() => document.getElementById("customers-csv-upload")?.click()}
                   >
                     <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                    Ladda upp CSV
+                    {t("empty.uploadCsv")}
                   </Button>
                 }
                 secondaryAction={
                   <Button asChild size="sm" variant="ghost">
-                    <Link to="/connections">Koppla Day.ai</Link>
+                    <Link to="/connections">{t("empty.connectDayAi")}</Link>
                   </Button>
                 }
               />
             </div>
           ) : filteredRows.length === 0 ? (
             <div className="flex h-full min-h-[200px] items-center justify-center p-8">
-              <EmptyState size="compact" title="Inga träffar" description="Prova ett annat sökord eller rensa filtret." />
+              <EmptyState size="compact" title={t("noResults.title")} description={t("noResults.description")} />
             </div>
           ) : (
             <CustomerWorkspace
@@ -486,9 +477,9 @@ export default function CustomersPage() {
             <span className="truncate">
               {selectedIndex != null && filteredRows[selectedIndex] ? (
                 <>
-                  Vald:{" "}
+                  {t("footer.selected")}{" "}
                   <span className="font-medium text-foreground/80">
-                    {filteredRows[selectedIndex][guessPrimaryColumn(columns)] || `Rad ${selectedIndex + 1}`}
+                    {filteredRows[selectedIndex][guessPrimaryColumn(columns)] || t("footer.rowFallback", { number: selectedIndex + 1 })}
                   </span>
                   {filteredRows.length > 1 ? (
                     <span className="ml-2 tabular-nums">
@@ -497,10 +488,10 @@ export default function CustomersPage() {
                   ) : null}
                 </>
               ) : (
-                "Välj en kund i listan"
+                t("footer.selectPrompt")
               )}
             </span>
-            <span className="hidden sm:inline">J/K bläddra · / sök</span>
+            <span className="hidden sm:inline">{t("footer.shortcuts")}</span>
           </div>
         ) : null}
       </m.div>

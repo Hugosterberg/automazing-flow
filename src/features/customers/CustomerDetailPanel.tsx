@@ -1,5 +1,6 @@
 import { ArrowLeft, Copy, ListChecks, MessageSquare, Send, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
@@ -31,24 +32,25 @@ type Props = {
   showBack?: boolean;
 };
 
-function copyValue(label: string, value: string) {
+function copyValue(label: string, value: string, copiedLabel: string, copyFailedLabel: string) {
   void navigator.clipboard
     .writeText(value)
-    .then(() => toast.success(`${label} kopierat.`))
-    .catch(() => toast.error("Kunde inte kopiera."));
+    .then(() => toast.success(copiedLabel))
+    .catch(() => toast.error(copyFailedLabel));
 }
 
 export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: Props) {
+  const { t } = useTranslation("customers");
   const isStackedWorkspace = useStackedWorkspace();
   const primary = guessPrimaryColumn(columns);
-  const title = (primary && row[primary]) || `Kund #${index + 1}`;
+  const title = (primary && row[primary]) || t("detail.titleFallback", { number: index + 1 });
   const email = findEmailColumn(columns, row);
   const phone = findPhoneColumn(columns, row);
 
   function handoffOutreach() {
     const lines = [title, email, phone].filter(Boolean);
     stashContentCaption(lines.join("\n"));
-    toast.success("Kundinfo skickad till Content — redo att publicera.");
+    toast.success(t("toast.handoffContent"));
   }
 
   return (
@@ -67,7 +69,7 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              {isStackedWorkspace ? <span>Kunder</span> : <span className="sr-only">Tillbaka till listan</span>}
+              {isStackedWorkspace ? <span>{t("detail.backLabel")}</span> : <span className="sr-only">{t("detail.backToList")}</span>}
             </Button>
           ) : null}
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">
@@ -75,7 +77,7 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-semibold leading-snug sm:text-lg">{title}</h2>
-            <p className="text-xs text-muted-foreground">Rad {index + 1} i kundbasen</p>
+            <p className="text-xs text-muted-foreground">{t("detail.rowMeta", { number: index + 1 })}</p>
           </div>
         </div>
       </header>
@@ -86,19 +88,19 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
             <Button asChild size="sm" variant="outline" className="h-7 text-[11px]">
               <Link to={`/messages?search=${encodeURIComponent(email)}`}>
                 <MessageSquare className="mr-1 h-3 w-3" />
-                Sök i inkorg
+                {t("detail.searchInbox")}
               </Link>
             </Button>
           ) : null}
           <Button asChild size="sm" variant="outline" className="h-7 text-[11px]">
-            <Link to={`/tasks?new=1&title=${encodeURIComponent(`Följ upp: ${title}`)}`}>
+            <Link to={`/tasks?new=1&title=${encodeURIComponent(t("detail.taskTitle", { name: title }))}`}>
               <ListChecks className="mr-1 h-3 w-3" />
-              Skapa uppgift
+              {t("detail.createTask")}
             </Link>
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={handoffOutreach}>
             <Send className="mr-1 h-3 w-3" />
-            Till Content
+            {t("detail.toContent")}
           </Button>
         </div>
       </div>
@@ -123,10 +125,10 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
                           variant="ghost"
                           size="sm"
                           className="h-6 px-1.5 text-[10px] text-muted-foreground"
-                          onClick={() => copyValue(col, value)}
+                          onClick={() => copyValue(col, value, t("toast.copied", { label: col }), t("toast.copyFailed"))}
                         >
                           <Copy className="mr-1 h-3 w-3" />
-                          Kopiera
+                          {t("detail.copy")}
                         </Button>
                       ) : null}
                     </span>
@@ -144,15 +146,16 @@ export function CustomerDetailPanel({ row, columns, index, onBack, showBack }: P
 }
 
 export function CustomerDetailPlaceholder() {
+  const { t } = useTranslation("customers");
   return (
     <div className="message-reading-pane flex h-full min-h-[280px] flex-col items-center justify-center gap-4 px-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15">
         <User className="h-6 w-6 text-primary/70" />
       </div>
       <div className="max-w-sm space-y-1.5">
-        <p className="font-display text-base font-semibold">Välj en kund</p>
+        <p className="font-display text-base font-semibold">{t("placeholder.title")}</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Klicka en rad i listan för att se alla fält — e-post och telefon går att kopiera med ett klick.
+          {t("placeholder.description")}
         </p>
       </div>
     </div>
