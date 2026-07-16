@@ -22,7 +22,7 @@ export async function listZernioAccounts(): Promise<ZernioWorkspaceAccount[]> {
   const res = await fetchWithTimeout(apiUrl("/api/zernio/accounts"), { credentials: "include" });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(apiErrorMessage(body, `Couldn't load Zernio accounts (${res.status}).`));
+    throw new Error(apiErrorMessage(body, `Kunde inte ladda Zernio-konton (${res.status}).`));
   }
   return Array.isArray(body?.accounts) ? body.accounts : [];
 }
@@ -38,7 +38,7 @@ export async function reconcileConnections(businessProfileId: string): Promise<{
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(apiErrorMessage(body, `Couldn't refresh connections (${res.status}).`));
+    throw new Error(apiErrorMessage(body, `Kunde inte uppdatera kopplingarna (${res.status}).`));
   }
   return { ok: Boolean(body?.ok), updated: Number(body?.updated ?? 0) };
 }

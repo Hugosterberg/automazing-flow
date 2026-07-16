@@ -4,16 +4,15 @@ import { ArrowRight, Mail, MessageSquare, ShoppingCart, Sparkles, Users } from "
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatDateTimeShort } from "@/lib/format";
-import { pendingOutreachItems, type OutreachQueueItem } from "@/features/outreach/outreachQueueTypes";
-
-type ReviewReplyQueueItem = {
-  id: string;
-  reviewId: string;
-  author: string;
-  draft: string;
-  status: "draft" | "sent";
-  createdAt: string;
-};
+import {
+  OUTREACH_QUEUE_DOC_KEY,
+  pendingOutreachItems,
+  type OutreachQueueItem,
+} from "@/features/outreach/outreachQueueTypes";
+import {
+  REVIEW_REPLY_QUEUE_DOC_KEY,
+  type ReviewReplyQueueItem,
+} from "@/features/reviews/ReviewReplyQueueSection";
 
 type CartRecoverySentDoc = {
   checkoutIds?: string[];
@@ -35,8 +34,8 @@ function formatWhen(iso?: string): string {
 }
 
 export function FlowAutomationStatusCard({ businessProfileId }: { businessProfileId: string | null }) {
-  const outreachDoc = useProfileDocument<OutreachQueueItem[]>("outreach-queue", []);
-  const reviewDoc = useProfileDocument<ReviewReplyQueueItem[]>("review-reply-queue", []);
+  const outreachDoc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
+  const reviewDoc = useProfileDocument<ReviewReplyQueueItem[]>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
   const cartDoc = useProfileDocument<CartRecoverySentDoc>("cart-recovery-sent", {});
   const workflowsDoc = useProfileDocument<SocialWorkflowsDoc>("social-workflows", { enabled: {} });
   const pipelineDoc = useProfileDocument<ContentPipelineItem[]>("content-pipeline-queue", []);

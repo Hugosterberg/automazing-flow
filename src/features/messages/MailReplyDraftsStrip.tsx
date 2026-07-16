@@ -19,6 +19,9 @@ import { isDemoId } from "@/features/demo";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { sendMailReplyDraft } from "./mailReplyClient";
 
+/** Profile-document key for the pending mail reply drafts queue. */
+export const MAIL_REPLY_QUEUE_DOC_KEY = "mail-reply-queue";
+
 export type MailReplyQueueItem = {
   id: string;
   messageKey: string;
@@ -45,7 +48,7 @@ type Props = {
  * Draft-before-send — user must confirm before anything is sent.
  */
 export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft }: Props) {
-  const queueDoc = useProfileDocument<MailReplyQueueItem[]>("mail-reply-queue", []);
+  const queueDoc = useProfileDocument<MailReplyQueueItem[]>(MAIL_REPLY_QUEUE_DOC_KEY, []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmItem, setConfirmItem] = useState<MailReplyQueueItem | null>(null);
 

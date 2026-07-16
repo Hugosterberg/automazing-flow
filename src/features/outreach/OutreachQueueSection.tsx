@@ -84,7 +84,7 @@ export function OutreachQueueSection({
             </div>
             {item.subject ? (
               <p className="text-xs">
-                <span className="text-muted-foreground">Subject: </span>
+                <span className="text-muted-foreground">Ämne: </span>
                 {item.subject}
               </p>
             ) : null}
@@ -94,7 +94,7 @@ export function OutreachQueueSection({
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => void copyItem(item)}>
                 <Copy className="h-3 w-3 mr-1" />
-                Copy
+                Kopiera
               </Button>
               {item.prospectEmail ? (
                 <Button type="button" size="sm" className="h-7 text-xs" asChild>
@@ -105,17 +105,17 @@ export function OutreachQueueSection({
                     )}
                   >
                     <Mail className="h-3 w-3 mr-1" />
-                    Email
+                    E-post
                   </a>
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => markSent(item.id)}>
                 <ExternalLink className="h-3 w-3 mr-1" />
-                Mark sent
+                Markera skickad
               </Button>
               <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => removeItem(item.id)}>
                 <Trash2 className="h-3 w-3 mr-1" />
-                Remove
+                Ta bort
               </Button>
             </div>
           </div>

@@ -59,14 +59,14 @@ export function AbandonedCheckoutRecoveryButton({
     <>
       <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => void draftRecovery()}>
         {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />}
-        Draft recovery
+        Skapa återhämtningsmail
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cart recovery email</DialogTitle>
+            <DialogTitle>Återhämtningsmail för varukorg</DialogTitle>
             <DialogDescription>
-              {email ? `Draft for ${email}` : "Anonymous checkout — copy and send manually."}
+              {email ? `Utkast till ${email}` : "Anonym varukorg — kopiera och skicka manuellt."}
             </DialogDescription>
           </DialogHeader>
           {loading ? (
@@ -75,7 +75,7 @@ export function AbandonedCheckoutRecoveryButton({
             </div>
           ) : (
             <div className="space-y-3">
-              {subject ? <p className="text-sm"><span className="text-muted-foreground">Subject: </span>{subject}</p> : null}
+              {subject ? <p className="text-sm"><span className="text-muted-foreground">Ämne: </span>{subject}</p> : null}
               <pre className="whitespace-pre-wrap rounded-lg border border-border bg-muted/20 p-3 text-xs leading-relaxed max-h-64 overflow-y-auto">
                 {body}
               </pre>
@@ -85,17 +85,17 @@ export function AbandonedCheckoutRecoveryButton({
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    void navigator.clipboard.writeText([subject ? `Subject: ${subject}` : "", body].filter(Boolean).join("\n\n"));
-                    toast.success("Copied");
+                    void navigator.clipboard.writeText([subject ? `Ämne: ${subject}` : "", body].filter(Boolean).join("\n\n"));
+                    toast.success("Kopierat");
                   }}
                 >
                   <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Copy
+                  Kopiera
                 </Button>
                 {email ? (
                   <Button type="button" size="sm" asChild>
                     <a href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}>
-                      Open in email
+                      Öppna i e-post
                     </a>
                   </Button>
                 ) : null}

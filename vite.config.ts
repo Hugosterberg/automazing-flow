@@ -96,6 +96,12 @@ export default defineConfig(({ mode }) => {
             if (id.includes("/@supabase/")) {
               return "supabase-vendor";
             }
+
+            // Icons are referenced from nearly every page — one cacheable
+            // chunk keeps them out of the shared app-code chunk.
+            if (id.includes("/lucide-react/")) {
+              return "icons-vendor";
+            }
           },
         },
       },

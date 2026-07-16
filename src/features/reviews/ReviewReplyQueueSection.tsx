@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AutomationEnableHint } from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 
+/** Profile-document key for the pending review reply drafts queue. */
+export const REVIEW_REPLY_QUEUE_DOC_KEY = "review-reply-queue";
+
 export type ReviewReplyQueueItem = {
   id: string;
   reviewId: string;
@@ -22,7 +25,7 @@ export function ReviewReplyQueueSection({
 }: {
   onUseDraft: (item: ReviewReplyQueueItem) => void;
 }) {
-  const doc = useProfileDocument<ReviewReplyQueueItem[]>("review-reply-queue", []);
+  const doc = useProfileDocument<ReviewReplyQueueItem[]>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
   const pending = doc.data.filter((item) => item.status === "draft" || !item.status);
 
   if (pending.length === 0) {

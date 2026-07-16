@@ -150,7 +150,7 @@ export function ProfileSwitcher() {
                         variant="ghost"
                         className="h-7 w-7 shrink-0"
                         onClick={handleSaveRename}
-                        aria-label="Save name"
+                        aria-label="Spara namn"
                       >
                         <Check className="h-3 w-3" aria-hidden />
                       </Button>
@@ -221,7 +221,7 @@ export function ProfileSwitcher() {
                 variant="ghost"
                 className="h-8 w-8 shrink-0"
                 onClick={handleAddProfile}
-                aria-label="Add profile"
+                aria-label="Lägg till profil"
               >
                 <Plus className="h-4 w-4" aria-hidden />
               </Button>

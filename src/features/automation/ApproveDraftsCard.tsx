@@ -3,6 +3,9 @@ import { CheckSquare, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProfileDocument } from "@/features/profile-documents";
+import { MAIL_REPLY_QUEUE_DOC_KEY } from "@/features/messages/MailReplyDraftsStrip";
+import { OUTREACH_QUEUE_DOC_KEY } from "@/features/outreach/outreachQueueTypes";
+import { REVIEW_REPLY_QUEUE_DOC_KEY } from "@/features/reviews/ReviewReplyQueueSection";
 import { usePendingDmDrafts } from "./usePendingDmDrafts";
 
 type Props = {
@@ -18,9 +21,9 @@ type Props = {
  */
 export function ApproveDraftsCard({ businessProfileId, className, compact }: Props) {
   const { count: dmDrafts } = usePendingDmDrafts(businessProfileId);
-  const mailDoc = useProfileDocument<Array<{ status?: string }>>("mail-reply-queue", []);
-  const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
-  const reviewDoc = useProfileDocument<Array<{ status?: string }>>("review-reply-queue", []);
+  const mailDoc = useProfileDocument<Array<{ status?: string }>>(MAIL_REPLY_QUEUE_DOC_KEY, []);
+  const outreachDoc = useProfileDocument<Array<{ status?: string }>>(OUTREACH_QUEUE_DOC_KEY, []);
+  const reviewDoc = useProfileDocument<Array<{ status?: string }>>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
 
   const mailDrafts = (Array.isArray(mailDoc.data) ? mailDoc.data : []).filter(
     (i) => i?.status === "draft" || !i?.status
@@ -60,7 +63,7 @@ export function ApproveDraftsCard({ businessProfileId, className, compact }: Pro
                 {total === 1 ? "1 AI-utkast att godkänna" : `${total} AI-utkast att godkänna`}
               </p>
               <p className="text-xs text-muted-foreground">
-                Draft-before-send — granska innan något går ut.
+                Utkast före sändning — granska innan något går ut.
               </p>
             </div>
           </div>

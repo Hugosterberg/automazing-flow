@@ -101,7 +101,11 @@ export default function MessagesPage() {
   const [triageBucket, setTriageBucketState] = useState<TriageBucketFilter>("all");
 
   const inboxPrefsDoc = useProfileDocument<InboxPrefs>("messages-inbox-prefs", {});
-  inboxPrefsRef.current = inboxPrefsDoc.data ?? {};
+  // Latest-ref: patchInboxPrefs merges against the freshest prefs without
+  // re-creating itself when the document reloads. Synced in an effect.
+  useEffect(() => {
+    inboxPrefsRef.current = inboxPrefsDoc.data ?? {};
+  }, [inboxPrefsDoc.data]);
   const patchInboxPrefs = useCallback(
     (partial: Partial<InboxPrefs>) => {
       const next = { ...inboxPrefsRef.current, ...partial };
@@ -178,10 +182,15 @@ export default function MessagesPage() {
     sendBusy,
     setReplyDraft,
   });
-  onDraftRestoredRef.current = (messageId, cached) => {
-    setDraftBusy(false);
-    autoDraftForId.current = cached?.trim() ? messageId : null;
-  };
+  // Wired via ref because useMessageReply is created above, before the AI
+  // assist hook exists. Only stable values are captured, so syncing in an
+  // effect (instead of during render) changes nothing behaviorally.
+  useEffect(() => {
+    onDraftRestoredRef.current = (messageId, cached) => {
+      setDraftBusy(false);
+      autoDraftForId.current = cached?.trim() ? messageId : null;
+    };
+  }, [setDraftBusy, autoDraftForId]);
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
@@ -396,7 +405,10 @@ export default function MessagesPage() {
     isVisuallyUnread,
     aiSummaries,
   });
-  filteredMessagesRef.current = filteredMessages;
+  // Latest-ref for send-time reads (see useMessageReply's getFilteredMessages).
+  useEffect(() => {
+    filteredMessagesRef.current = filteredMessages;
+  }, [filteredMessages]);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -445,7 +457,10 @@ export default function MessagesPage() {
     },
     [isUnanswered]
   );
-  pickNextAfterRef.current = pickNextAfter;
+  // Latest-ref for send-time reads (see useMessageReply's pickNextAfter).
+  useEffect(() => {
+    pickNextAfterRef.current = pickNextAfter;
+  }, [pickNextAfter]);
 
   const advanceToNextMessage = useCallback(
     (fromId: string) => {

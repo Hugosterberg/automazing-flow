@@ -73,7 +73,7 @@ export function TaskList({
               checked={completed}
               onCheckedChange={(v) => onToggleComplete(t.id, Boolean(v))}
               disabled={isToggling}
-              aria-label={completed ? "Mark as open" : "Mark as done"}
+              aria-label={completed ? "Markera som öppen" : "Markera som klar"}
               className="mt-0.5"
             />
             <div className="min-w-0 flex-1">
@@ -111,7 +111,7 @@ export function TaskList({
               className="h-7 px-2 text-muted-foreground hover:text-destructive"
               onClick={() => onDelete(t.id)}
               disabled={isDeleting}
-              aria-label="Delete task"
+              aria-label="Ta bort uppgift"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

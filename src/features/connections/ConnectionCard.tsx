@@ -188,12 +188,12 @@ export function ConnectionCard({
           : { apiKey: trimmed, profileId: businessProfileId };
       const payload = await apiJson<Record<string, unknown>>(
         mcpManualConnectPath(entry.platform as IntelligencePlatform),
-        `Could not connect ${entry.label}.`,
+        `Kunde inte koppla ${entry.label}.`,
         { body }
       );
       setMcpDialogOpen(false);
       setMcpCredential("");
-      toast.success(`${entry.label} connected`);
+      toast.success(`${entry.label} kopplad`);
       if (payload.account_id && payload.platform) {
         addAccountFromOAuth(
           String(payload.account_id),
@@ -326,7 +326,7 @@ export function ConnectionCard({
           {firstError && !expanded ? (
             <TriangleAlert
               className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-              aria-label="Has sync error"
+              aria-label="Synkfel"
             />
           ) : null}
           <span className="ml-auto flex shrink-0 items-center gap-2 pr-1">

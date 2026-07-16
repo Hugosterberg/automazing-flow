@@ -249,13 +249,21 @@ export default function SalesMarketingPage() {
     setSearchParams(next, { replace: true });
   }
 
-  function setSalesTab(tab: SalesTab) {
-    const next = new URLSearchParams(searchParams);
-    next.delete("view");
-    if (tab === "leads") next.delete("tab");
-    else next.set("tab", tab);
-    setSearchParams(next, { replace: true });
-  }
+  const setSalesTab = useCallback(
+    (tab: SalesTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("view");
+          if (tab === "leads") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   const showSalesChrome = !showFollowUpsOnly && !showOutreachQueue && !focusedFilterChrome;
   const { profiles } = useBusinessProfiles();
@@ -363,13 +371,13 @@ export default function SalesMarketingPage() {
     openAddLeadRef.current = open;
   }, []);
 
-  function openAddLeadDialog() {
+  const openAddLeadDialog = useCallback(() => {
     setSalesTab("leads");
     window.setTimeout(() => {
       document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       openAddLeadRef.current?.();
     }, 120);
-  }
+  }, [setSalesTab]);
 
   // Deep link: /sales?new=lead | ?new=deal opens CRM dialogs.
   useEffect(() => {
@@ -384,7 +392,7 @@ export default function SalesMarketingPage() {
     const next = new URLSearchParams(searchParams);
     next.delete("new");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, openAddLeadDialog, setSalesTab]);
 
   async function addLead() {
     if (!pipelineTitle.trim()) return;
@@ -474,7 +482,7 @@ export default function SalesMarketingPage() {
     window.setTimeout(() => {
       document.getElementById("leads-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
-  }, [searchParams]);
+  }, [searchParams, setSalesTab]);
 
   function leadToOutreachTarget(lead: Lead): OutreachDraftTarget {
     return {

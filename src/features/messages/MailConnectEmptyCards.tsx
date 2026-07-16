@@ -20,7 +20,7 @@ export function MailConnectEmptyCards() {
         </p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden />
-          Draft-before-send — ingen automation skickar utan dig.
+          Utkast före sändning — ingen automation skickar utan dig.
         </p>
         <div className="mt-3">
           <Button

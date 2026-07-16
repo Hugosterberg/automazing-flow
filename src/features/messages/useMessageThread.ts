@@ -16,8 +16,14 @@ export function useMessageThread({ selectedMessage, activeProfileId }: Args) {
   const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
   const prefetchInflight = useRef<Set<string>>(new Set());
 
+  // Latest-ref: the load effect below keys on the message *id* so list
+  // refreshes (new object, same id) don't refetch; the ref carries the full
+  // object. Synced in an effect declared first so it is current when the
+  // load effect runs in the same commit.
   const selectedMessageRef = useRef(selectedMessage);
-  selectedMessageRef.current = selectedMessage;
+  useEffect(() => {
+    selectedMessageRef.current = selectedMessage;
+  }, [selectedMessage]);
 
   useEffect(() => {
     const msg = selectedMessageRef.current;

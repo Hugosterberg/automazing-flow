@@ -47,8 +47,6 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   getRecentPages,
   modKeyLabel,
-  navTitleSv,
-  NAV_GROUP_LABELS_SV,
   type RecentPage,
 } from "@/lib/keyboardShortcuts";
 import { briefItemsForRoute } from "@/features/daily-brief/briefForRoute";
@@ -123,7 +121,7 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
     const modeNavItems = navItemsForMode(mode);
     return {
       pageGroups: (["work", "productivity"] as NavGroup[]).map((group) => ({
-        label: NAV_GROUP_LABELS_SV[group] ?? NAV_GROUP_LABELS[group],
+        label: NAV_GROUP_LABELS[group],
         items: modeNavItems.filter((item) => item.group === group),
       })),
       systemItems: topNavItemsForMode(mode),
@@ -416,12 +414,12 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
               {group.items.map((item) => (
                 <CommandItem
                   key={item.key}
-                  value={`${navTitleSv(item.key, item.title)} ${item.title}`}
+                  value={item.title}
                   onSelect={() => goTo(item.url)}
                   onPointerEnter={() => prefetchFor(item.url)}
                 >
                   <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {navTitleSv(item.key, item.title)}
+                  {item.title}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -430,12 +428,12 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
             {systemItems.map((item) => (
               <CommandItem
                 key={item.key}
-                value={`${navTitleSv(item.key, item.title)} ${item.title}`}
+                value={item.title}
                 onSelect={() => goTo(item.url)}
                 onPointerEnter={() => prefetchFor(item.url)}
               >
                 <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                {navTitleSv(item.key, item.title)}
+                {item.title}
               </CommandItem>
             ))}
           </CommandGroup>

@@ -293,13 +293,48 @@ export default function ReviewsPage() {
     selectReview(null);
   }, [loading, reviews, selectedId, selectReview]);
 
+  const draftReply = useCallback(
+    async (r: ReviewItem) => {
+      setDraftBusy(true);
+      try {
+        const res = await fetchWithTimeout(apiUrl("/api/ai/reply-draft"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "review",
+            business_profile_id: activeBusinessProfileId ?? activeProfileId,
+            authorName: r.author,
+            rating: r.rating,
+            text: r.text,
+            businessName: displayString(data?.profile?.name),
+          }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(displayString(payload?.error) || "Kunde inte skapa svarsutkast");
+        setReplyDraft(displayString(payload?.draft));
+      } catch (e) {
+        toast({
+          title: "AI-utkast misslyckades",
+          description: e instanceof Error ? e.message : "Okänt fel",
+          variant: "destructive",
+        });
+      } finally {
+        setDraftBusy(false);
+      }
+    },
+    [activeBusinessProfileId, activeProfileId, data?.profile?.name, toast]
+  );
+
+  // Auto-draft one AI reply per selected review. The autoDraftForId guard makes
+  // this idempotent even when the review list refreshes with new object identities.
   useEffect(() => {
     if (!selectedReview || repliedIds.has(selectedReview.id)) return;
     if (draftBusy || sendBusy || replySent) return;
     if (autoDraftForId.current === selectedReview.id) return;
     autoDraftForId.current = selectedReview.id;
     void draftReply(selectedReview);
-  }, [selectedReview?.id, draftBusy, sendBusy, replySent, repliedIds]);
+  }, [selectedReview, draftBusy, sendBusy, replySent, repliedIds, draftReply]);
 
   const placeInfo = useMemo<PlaceInfo | null>(() => {
     if (data?.googleBusiness) {
@@ -330,36 +365,6 @@ export default function ReviewsPage() {
     }
     return null;
   }, [data]);
-
-  async function draftReply(r: ReviewItem) {
-    setDraftBusy(true);
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/ai/reply-draft"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "review",
-          business_profile_id: activeBusinessProfileId ?? activeProfileId,
-          authorName: r.author,
-          rating: r.rating,
-          text: r.text,
-          businessName: displayString(data?.profile?.name),
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(displayString(payload?.error) || "Kunde inte skapa svarsutkast");
-      setReplyDraft(displayString(payload?.draft));
-    } catch (e) {
-      toast({
-        title: "AI-utkast misslyckades",
-        description: e instanceof Error ? e.message : "Okänt fel",
-        variant: "destructive",
-      });
-    } finally {
-      setDraftBusy(false);
-    }
-  }
 
   const navigateRelative = useCallback(
     (delta: number) => {
@@ -542,6 +547,7 @@ export default function ReviewsPage() {
   }, [
     advanceToNextReview,
     draftBusy,
+    draftReply,
     filteredReviews.length,
     navigateRelative,
     repliedIds,
@@ -549,6 +555,7 @@ export default function ReviewsPage() {
     replySent,
     selectedIndex,
     selectedReview,
+    selectReview,
     sendBusy,
     sendReply,
   ]);

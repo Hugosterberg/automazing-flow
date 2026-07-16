@@ -3,6 +3,9 @@
  * Pure helper; callers gather numbers from existing hooks.
  */
 
+import { formatCurrency } from "@/lib/format";
+import { formatRoas } from "@/features/marketing/format";
+
 export type WeeklyResultsInput = {
   businessName: string;
   leadsWon: number;
@@ -22,17 +25,8 @@ export type WeeklyResultsSummary = {
   plainText: string;
 };
 
-function formatRoas(n: number): string {
-  return `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(n)}×`;
-}
-
 function formatMoney(amount: number | null | undefined): string | null {
-  if (amount == null || !Number.isFinite(amount)) return null;
-  return new Intl.NumberFormat("sv-SE", {
-    style: "currency",
-    currency: "SEK",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatCurrency(amount, "SEK") || null;
 }
 
 export function buildWeeklyResultsSummary(input: WeeklyResultsInput): WeeklyResultsSummary {
@@ -65,8 +59,8 @@ export function buildWeeklyResultsSummary(input: WeeklyResultsInput): WeeklyResu
   if (input.followUpsDue > 0) {
     lines.push(
       input.followUpsDue === 1
-        ? "1 uppföljning due den här veckan"
-        : `${input.followUpsDue} uppföljningar due den här veckan`
+        ? "1 uppföljning förfaller den här veckan"
+        : `${input.followUpsDue} uppföljningar förfaller den här veckan`
     );
   }
   if (input.successEvents > 0) {

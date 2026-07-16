@@ -38,7 +38,7 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoPlatform, setVideoPlatform] = useState("Instagram Reels");
-  const [videoObjective, setVideoObjective] = useState("Create a short social media video");
+  const [videoObjective, setVideoObjective] = useState("Skapa en kort video för sociala medier");
   const [generating, setGenerating] = useState(false);
   const [draftSource, setDraftSource] = useState<string | null>(null);
   const [draft, setDraft] = useState<VideoDraftResult | null>(null);
@@ -137,7 +137,7 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="video-platform">Platform</Label>
+                    <Label htmlFor="video-platform">Plattform</Label>
                     <Input
                       id="video-platform"
                       value={videoPlatform}
@@ -146,12 +146,12 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="video-objective">Objective</Label>
+                    <Label htmlFor="video-objective">Mål</Label>
                     <Input
                       id="video-objective"
                       value={videoObjective}
                       onChange={(e) => setVideoObjective(e.target.value)}
-                      placeholder="Create a short product teaser"
+                      placeholder="t.ex. En kort produktteaser"
                     />
                   </div>
                 </div>

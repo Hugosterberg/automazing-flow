@@ -109,11 +109,11 @@ export const LANDING_STEPS = [
 /** Real product story — founder as case #1, no invented customer logos. */
 export const LANDING_FOUNDER_CASE = {
   eyebrow: "Så används automazing",
-  title: "En solo-founder. En app. Draft-before-send.",
+  title: "En solo-founder. En app. Utkast före sändning.",
   body: "Hugo kör bolaget med automazing som nav: morgonbrief, Idag-triage i Meddelanden, AI-utkast som alltid godkänns innan sändning, och automationer som syns i Aktivitet.",
   beats: [
     { label: "Morgon", detail: "Brief visar vad som faktiskt behöver göras — tysta dagar är okej." },
-    { label: "Inkorg", detail: "Mail och DM i samma triage. Brus parkas, Idag besvaras." },
+    { label: "Inkorg", detail: "Mail och DM i samma triage. Brus parkeras, Idag besvaras." },
     { label: "Trygghet", detail: "Inget känsligt skickas utan dig. Kopplingar har en enda hemvist." },
   ],
 } as const;

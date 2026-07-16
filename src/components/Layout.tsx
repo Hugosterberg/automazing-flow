@@ -110,7 +110,7 @@ export default function Layout() {
                     <button
                       type="button"
                       className="flex touch-target items-center justify-center gap-2 rounded-full border border-border bg-card/40 p-0.5 hover:bg-accent/40 transition-colors active:scale-95 sm:pl-1 sm:pr-2 sm:py-1"
-                      aria-label="Open account menu"
+                      aria-label="Öppna kontomeny"
                     >
                       <Avatar className="h-8 w-8 sm:h-7 sm:w-7">
                         <AvatarFallback className="text-[11px] font-semibold">
