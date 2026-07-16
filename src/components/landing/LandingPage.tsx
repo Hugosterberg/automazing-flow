@@ -12,6 +12,7 @@ import {
 } from "@/components/landing/LandingProductDemo";
 import { LandingSection } from "@/components/landing/LandingSection";
 import { LANDING_STEPS, LANDING_TRUST_POINTS } from "@/lib/landingContent";
+import { LandingFounderCase } from "@/components/landing/LandingFounderCase";
 import { pageFadeUp, pageFadeUpTransition, sectionReveal, sectionRevealTransition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -294,6 +295,15 @@ export function LandingPage() {
             </m.div>
 
             <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
+              <LandingSection
+                title="Byggt för dig som kör själv"
+                description="Inget påhittat kundcase — så produkten används i praktiken."
+              >
+                <LandingFounderCase />
+              </LandingSection>
+            </m.div>
+
+            <m.div {...sectionReveal} transition={{ ...sectionRevealTransition, delay: 0.05 }}>
               <div
                 id="kom-igang"
                 className="scroll-mt-20 rounded-[1.75rem] border border-white/15 bg-gradient-to-b from-white/[0.07] to-transparent p-7 landing-premium-card sm:rounded-3xl sm:p-8 lg:hidden"
@@ -316,8 +326,12 @@ export function LandingPage() {
               </div>
             </m.div>
 
-            <footer className="border-t border-white/10 px-1 pt-6 text-xs text-white/35">
-              © {new Date().getFullYear()} automazing
+            <footer className="border-t border-white/10 px-1 pt-6 text-xs text-white/35 space-y-1">
+              <p>© {new Date().getFullYear()} automazing</p>
+              <p>
+                Data raderas när du tar bort en profil under Inställningar → Data. Formella
+                villkor/privacy publiceras separat.
+              </p>
             </footer>
           </div>
         </div>

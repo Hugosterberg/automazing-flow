@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { checkApiaiHealth } from "@/features/content/apiaiClient";
 import { apiJson } from "@/lib/apiJson";
 import { ZernioHelpTab } from "@/features/preferences/ZernioHelpTab";
+import { PreferencesDataSection } from "@/features/preferences/PreferencesDataSection";
 import { QuickNavPrefsEditor } from "@/features/quick-nav";
 
 type GlobalEntry = { key: string; configured: boolean; scope: "global" };
@@ -279,7 +280,7 @@ function StatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
-const PREFERENCES_TABS = ["overview", "ai", "api-keys", "team", "navigation", "help"] as const;
+const PREFERENCES_TABS = ["overview", "ai", "api-keys", "team", "navigation", "data", "help"] as const;
 type PreferencesTab = (typeof PREFERENCES_TABS)[number];
 
 function parsePreferencesTab(raw: string | null): PreferencesTab {
@@ -493,6 +494,7 @@ export default function PreferencesPage() {
               { value: "api-keys", label: "API-nycklar", count: unconfiguredCount },
               { value: "team", label: "Team" },
               { value: "navigation", label: "Genvägar" },
+              { value: "data", label: "Data" },
               { value: "help", label: "Hjälp" },
             ]}
           />
@@ -783,6 +785,10 @@ export default function PreferencesPage() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="data" className="pt-2">
+          <PreferencesDataSection />
         </TabsContent>
 
         <TabsContent value="help">

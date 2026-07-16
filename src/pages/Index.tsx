@@ -47,6 +47,7 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
 import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
 import { DemoModeBanner } from "@/features/demo";
+import { WeeklyResultsCard } from "@/features/weekly-results";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -775,6 +776,10 @@ export default function Index() {
         <DemoModeBanner offerEnable={profileSummary.connectedCount === 0} />
         <ApproveDraftsCard businessProfileId={homeBusinessProfileId} compact />
         <WinsTodayStrip businessProfileId={homeBusinessProfileId} />
+        <WeeklyResultsCard
+          businessProfileId={homeBusinessProfileId}
+          businessName={businessProfile?.name || activeProfile?.name}
+        />
       </div>
 
       {mode === "business" && isMobile ? (

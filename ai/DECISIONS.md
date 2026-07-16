@@ -2,6 +2,15 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — SaaS trust without inventing billing/legal URLs — **Active**
+
+Workspace first-goal is a profile document (`workspace-goal`), not a new column.
+Delete-data is surfaced under Preferences → Data (existing cascade). Weekly
+results are auth-only copy/print (no public token route until decided). Landing
+uses a founder reference case (no fake logos). Agent module is always listed in
+Activity so CMA visibility does not depend on prior events. Formal Terms/Privacy
+URLs and Stripe remain founder decisions.
+
 ## 2026-07-16 — Trust surfaces: quiet Brief, reconnect chrome, pre-enable explainers — **Active**
 
 All-clear Brief shows proof of health (last sync, overnight OK runs) instead of

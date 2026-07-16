@@ -11,6 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
+import { saveProfileDocument } from "@/features/profile-documents";
+import {
+  WORKSPACE_GOAL_DOC_KEY,
+  WORKSPACE_GOALS,
+  type WorkspaceGoalId,
+} from "@/features/onboarding/workspaceGoal";
 import { useBusinessProfiles } from "./useBusinessProfiles";
 import { useSetActiveBusinessProfileId } from "./useActiveBusinessProfileId";
 
@@ -42,6 +49,7 @@ const FEATURE_STEPS = [
  * and redirects to /connections so the user can immediately connect accounts.
  */
 export function OnboardingCreateProfile() {
+  const { user } = useAuth();
   const { createProfile, isCreating } = useBusinessProfiles();
   const setActive = useSetActiveBusinessProfileId();
   const [step, setStep] = useState<"welcome" | "create">("welcome");
@@ -49,6 +57,7 @@ export function OnboardingCreateProfile() {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [website, setWebsite] = useState("");
+  const [goalId, setGoalId] = useState<WorkspaceGoalId>("inbox");
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = name.trim().length > 0 && !isCreating;
@@ -65,6 +74,17 @@ export function OnboardingCreateProfile() {
         website: website.trim() || undefined,
       });
       setActive(created.id);
+      const goal = WORKSPACE_GOALS.find((g) => g.id === goalId) ?? WORKSPACE_GOALS[0];
+      try {
+        await saveProfileDocument(
+          created.id,
+          WORKSPACE_GOAL_DOC_KEY,
+          { goalId: goal.id, label: goal.label, setAt: new Date().toISOString() },
+          user?.id ?? null
+        );
+      } catch {
+        // Non-blocking — profile exists; goal is optional enrichment.
+      }
       // Redirect to /connections via window.location so the full app re-renders
       // with the new active profile set.
       window.location.href = "/connections?wizard=1&next=company";
@@ -205,6 +225,27 @@ export function OnboardingCreateProfile() {
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Första målet</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {WORKSPACE_GOALS.map((goal) => (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => setGoalId(goal.id)}
+                    aria-pressed={goalId === goal.id}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      goalId === goal.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <span className="block text-sm font-medium">{goal.label}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">{goal.detail}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             {error ? (
               <p className="text-xs text-destructive" role="alert">

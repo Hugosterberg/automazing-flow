@@ -91,9 +91,14 @@ document `first-win-checklist` (no new tables)._
 
 ## v3 — Multi-user SaaS readiness
 
-- [ ] Sign-up flow hardening (email domain capture; invite flow).
+- [x] Sign-up goal capture (`workspace-goal` profile doc) + invite toast clarity
+      (hadAccount vs pending).
 - [ ] Billing decision (Stripe?) + free-tier limits per business profile.
-- [ ] Terms/privacy + data-deletion story (delete profile already cascades).
+- [x] Data-deletion surface in Preferences → Data (cascade already existed).
+- [ ] Formal Terms/Privacy URLs (founder-hosted) linked from landing + signup.
+- [x] Auth-only “Veckan i korthet” (copy/print) on Home — public share URL TBD.
+- [x] Landing founder reference case + footer data note.
+- [x] Activity always offers Agent module + empty-state for CMA ingest.
 
 ## v4 — C# ingest service (only if a workload demands it)
 

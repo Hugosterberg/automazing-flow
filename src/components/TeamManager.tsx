@@ -81,12 +81,27 @@ export function TeamManager({ businessProfileId }: Props) {
 
   const inviteMut = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      return apiJson("/api/team/invite", "Inbjudan misslyckades", {
-        body: { email, role, business_profile_id: businessProfileId },
-      });
+      return apiJson<{ ok?: boolean; invited?: boolean; hadAccount?: boolean }>(
+        "/api/team/invite",
+        "Inbjudan misslyckades",
+        {
+          body: { email, role, business_profile_id: businessProfileId },
+        }
+      );
     },
-    onSuccess: () => {
-      toast({ title: "Inbjudan skickad", description: `${inviteEmail} har bjudits in.` });
+    onSuccess: (result) => {
+      const email = inviteEmail;
+      if (result?.hadAccount) {
+        toast({
+          title: "Tillagd i teamet",
+          description: `${email} hade redan konto och ser profilen nu.`,
+        });
+      } else {
+        toast({
+          title: "Inbjudan skickad",
+          description: `${email} kan logga in och går med automatiskt.`,
+        });
+      }
       setInviteEmail("");
       void qc.invalidateQueries({ queryKey: ["team-members", businessProfileId] });
     },

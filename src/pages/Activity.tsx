@@ -101,8 +101,10 @@ export default function ActivityPage() {
   );
 
   const moduleOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of events) set.add(e.module);
+    const set = new Set<string>(["agent"]);
+    for (const e of events) {
+      if (e.module) set.add(e.module);
+    }
     return Array.from(set).sort();
   }, [events]);
 
@@ -325,9 +327,11 @@ export default function ActivityPage() {
             selectedId={selectedId}
             isLoading={isLoading}
             emptyMessage={
-              moduleFilter !== "all" || severityFilter !== "all" || debouncedActivitySearch.trim()
-                ? "Inga händelser matchar filtren."
-                : "Ingen aktivitet registrerad ännu. Skapa en uppgift eller koppla en integration för att komma igång."
+              moduleFilter === "agent"
+                ? "När din AI-medarbetare (CMA) körs syns resultaten här. Agenten POST:ar till /api/agent-activity efter varje körning."
+                : moduleFilter !== "all" || severityFilter !== "all" || debouncedActivitySearch.trim()
+                  ? "Inga händelser matchar filtren."
+                  : "Ingen aktivitet registrerad ännu. Skapa en uppgift eller koppla en integration för att komma igång."
             }
             onSelect={(event) => selectEvent(event?.id ?? null)}
             searchQuery={debouncedActivitySearch}
