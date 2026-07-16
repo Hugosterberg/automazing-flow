@@ -76,10 +76,10 @@ export function SystemHealthCard() {
       <CardContent>
         {isLoading && !report ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Running checks…
+            <Loader2 className="h-4 w-4 animate-spin" /> Kör kontroller…
           </div>
         ) : isError || !report ? (
-          <p className="text-sm text-muted-foreground py-2">Couldn't load the health report.</p>
+          <p className="text-sm text-muted-foreground py-2">Kunde inte ladda hälsorapporten.</p>
         ) : (
           <div className="space-y-1">
             {report.summary.error === 0 && report.summary.warn === 0 ? (

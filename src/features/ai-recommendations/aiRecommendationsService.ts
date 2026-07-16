@@ -113,7 +113,7 @@ export async function generateAiRecommendations(
     // Body wasn't JSON — fall through to the status-based error below.
   }
   if (!res.ok) {
-    throw new Error(apiErrorMessage(body, `Couldn't refresh recommendations (${res.status}).`));
+    throw new Error(apiErrorMessage(body, `Kunde inte uppdatera rekommendationerna (${res.status}).`));
   }
   const result = (body ?? {}) as GenerateAiRecommendationsResult;
   return {

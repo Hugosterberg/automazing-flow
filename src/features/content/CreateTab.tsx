@@ -698,7 +698,7 @@ export function CreateTab({
               {runError ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Could not create content</AlertTitle>
+                  <AlertTitle>Kunde inte skapa innehåll</AlertTitle>
                   <AlertDescription>{runError}</AlertDescription>
                 </Alert>
               ) : null}

@@ -67,14 +67,14 @@ export function useConnections(businessProfileId: string | null | undefined) {
 
   const resyncMut = useMutation({
     mutationFn: async (connectionId: string) => {
-      if (!enabled) throw new Error("Not signed in.");
+      if (!enabled) throw new Error("Inte inloggad.");
       const res = await fetchWithTimeout(
         apiUrl(`/api/connections/${encodeURIComponent(connectionId)}/resync?business_profile_id=${encodeURIComponent(businessProfileId ?? "")}`),
         { method: "POST", credentials: "include" }
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(body, `Couldn't resync the connection (${res.status}).`));
+        throw new Error(apiErrorMessage(body, `Kunde inte synka om kopplingen (${res.status}).`));
       }
       return res.json() as Promise<ConnectionTestResult>;
     },

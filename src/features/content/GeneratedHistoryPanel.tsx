@@ -245,7 +245,7 @@ export function GeneratedHistoryPanel({
                     onClick={() => onRemove(item.id)}
                   >
                     <Trash2 className="h-3 w-3" />
-                    <span className="sr-only">Remove</span>
+                    <span className="sr-only">Ta bort</span>
                   </Button>
                 </div>
               </CardContent>

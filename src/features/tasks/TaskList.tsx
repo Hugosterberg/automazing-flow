@@ -73,7 +73,7 @@ export function TaskList({
               checked={completed}
               onCheckedChange={(v) => onToggleComplete(t.id, Boolean(v))}
               disabled={isToggling}
-              aria-label={completed ? "Mark as open" : "Mark as done"}
+              aria-label={completed ? "Markera som öppen" : "Markera som klar"}
               className="mt-0.5"
             />
             <div className="min-w-0 flex-1">

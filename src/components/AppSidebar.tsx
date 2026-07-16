@@ -468,7 +468,7 @@ export function AppSidebar() {
           formatConnectFetchError({
             status: res.status,
             payload,
-            fallbackMessage: "Could not connect Tripadvisor.",
+            fallbackMessage: "Kunde inte koppla Tripadvisor.",
           })
         );
       }
@@ -482,7 +482,7 @@ export function AppSidebar() {
       setTripadvisorDialogOpen(false);
       navigate("/reviews");
     } catch (err) {
-      setTripadvisorConnectError(err instanceof Error ? err.message : "Error: Could not connect Tripadvisor. | Status: unknown | Exception: not provided");
+      setTripadvisorConnectError(err instanceof Error ? err.message : "Kunde inte koppla Tripadvisor (okänt fel).");
     } finally {
       setTripadvisorConnecting(false);
     }

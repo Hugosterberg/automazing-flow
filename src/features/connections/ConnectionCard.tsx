@@ -188,12 +188,12 @@ export function ConnectionCard({
           : { apiKey: trimmed, profileId: businessProfileId };
       const payload = await apiJson<Record<string, unknown>>(
         mcpManualConnectPath(entry.platform as IntelligencePlatform),
-        `Could not connect ${entry.label}.`,
+        `Kunde inte koppla ${entry.label}.`,
         { body }
       );
       setMcpDialogOpen(false);
       setMcpCredential("");
-      toast.success(`${entry.label} connected`);
+      toast.success(`${entry.label} kopplad`);
       if (payload.account_id && payload.platform) {
         addAccountFromOAuth(
           String(payload.account_id),

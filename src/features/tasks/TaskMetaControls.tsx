@@ -239,7 +239,7 @@ export function ChecklistEditor({
                   checked={item.done}
                   onCheckedChange={(v) => onToggle(item, Boolean(v))}
                   disabled={disabled}
-                  aria-label={item.done ? "Mark as not done" : "Mark as done"}
+                  aria-label={item.done ? "Markera som ej klar" : "Markera som klar"}
                   className="h-3.5 w-3.5"
                 />
               ) : (

@@ -202,22 +202,22 @@ function SuggestionList({
               {onDraftOutreach ? (
                 <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => onDraftOutreach(item)} title="Draft outreach">
                   <MessageSquare className="h-3.5 w-3.5" />
-                  <span className="sr-only">Draft outreach</span>
+                  <span className="sr-only">Skriv outreach-utkast</span>
                 </Button>
               ) : null}
               {onAddAsLead ? (
                 <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => void onAddAsLead(item)}>
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="sr-only">Add as lead</span>
+                  <span className="sr-only">Lägg till som lead</span>
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => onCopy(item.value)}>
                 <Copy className="h-3.5 w-3.5" />
-                <span className="sr-only">Copy</span>
+                <span className="sr-only">Kopiera</span>
               </Button>
               <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => onOpen(item)}>
                 {item.kind === "email" ? <Mail className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                <span className="sr-only">Open</span>
+                <span className="sr-only">Öppna</span>
               </Button>
             </div>
           </div>

@@ -45,12 +45,12 @@ export function useZernioAccounts({ activeProfileId, addAccountFromOAuth }: UseZ
       const r = await fetchWithTimeout(apiUrl("/api/zernio/accounts"), { credentials: "include" });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
-        throw new Error(typeof j.error === "string" ? j.error : "Could not load Zernio accounts");
+        throw new Error(typeof j.error === "string" ? j.error : "Kunde inte ladda Zernio-konton");
       }
       setZernioAccounts(Array.isArray(j.accounts) ? j.accounts : []);
     } catch (e) {
       setZernioAccounts([]);
-      setZernioError(e instanceof Error ? e.message : "Zernio request failed");
+      setZernioError(e instanceof Error ? e.message : "Zernio-anropet misslyckades");
     } finally {
       setZernioLoading(false);
     }

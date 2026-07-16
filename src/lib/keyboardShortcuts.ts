@@ -33,34 +33,6 @@ export interface ShortcutSection {
   shortcuts: ShortcutEntry[];
 }
 
-/** Swedish display titles for nav items (sidebar stays English for now). */
-export const NAV_TITLE_SV: Record<string, string> = {
-  company: "Företag",
-  connections: "Kopplingar",
-  intelligence: "MCP Intelligence",
-  preferences: "Inställningar",
-  content: "Innehåll",
-  "social-media": "Sociala medier",
-  ecommerce: "E-handel",
-  "sales-marketing": "Försäljning",
-  marketing: "Marknadsföring",
-  "digital-brand": "Digitalt varumärke",
-  customers: "Kunder",
-  calendar: "Kalender",
-  messages: "Meddelanden",
-  reviews: "Recensioner",
-  tasks: "Uppgifter",
-  activity: "Aktivitet",
-  automations: "Automationer",
-  "ai-recommendations": "AI-rekommendationer",
-};
-
-export const NAV_GROUP_LABELS_SV: Record<string, string> = {
-  work: "Arbete",
-  productivity: "Produktivitet",
-  system: "System",
-};
-
 export const GO_NAV_TARGETS: GoNavTarget[] = [
   { key: "h", url: "/", title: "Hem" },
   { key: "t", url: "/tasks", title: "Uppgifter" },
@@ -70,10 +42,6 @@ export const GO_NAV_TARGETS: GoNavTarget[] = [
   { key: "i", url: "/intelligence", title: "MCP Intelligence" },
   { key: "p", url: "/preferences", title: "Inställningar" },
 ];
-
-export function navTitleSv(key: string, fallback: string): string {
-  return NAV_TITLE_SV[key] ?? fallback;
-}
 
 export function isMacLike(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -109,11 +77,11 @@ export function isPlainLetterShortcut(event: KeyboardEvent): boolean {
 export function titleForRecentPage(pathname: string): string {
   if (pathname === "/") return "Hem";
   const item = ALL_NAV.find((entry) => entry.url === pathname);
-  if (item) return navTitleSv(item.key, item.title);
+  if (item) return item.title;
   const prefix = ALL_NAV.find(
     (entry) => entry.url !== "/" && pathname.startsWith(`${entry.url}/`)
   );
-  return prefix ? navTitleSv(prefix.key, prefix.title) : pathname;
+  return prefix ? prefix.title : pathname;
 }
 
 export function recordRecentPage(pathname: string, title?: string): void {
