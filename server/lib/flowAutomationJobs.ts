@@ -7,6 +7,8 @@ import crypto from "node:crypto";
 import { heuristicOutreachDraft } from "../ai/outreachDraft.ts";
 import { generateReplyDraft } from "../ai/replyDraft.ts";
 import type { ZernioModule } from "../providers/zernioModule.ts";
+import { fetchGmailAccountData } from "../providers/gmail.ts";
+import { fetchOutlookMailData } from "../providers/outlookMail.ts";
 import { fetchShopifyAbandonedCheckouts } from "../providers/shopify.ts";
 import {
   loadProfileDocument,
@@ -27,6 +29,7 @@ export const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
 export const CART_RECOVERY_SENT_DOC_KEY = "cart-recovery-sent";
 export const REVIEW_REPLY_QUEUE_DOC_KEY = "review-reply-queue";
 export const NEGATIVE_REVIEW_ALERTS_DOC_KEY = "negative-review-alerts";
+export const MAIL_REPLY_QUEUE_DOC_KEY = "mail-reply-queue";
 
 export interface ReviewReplyQueueItem {
   id: string;
@@ -37,6 +40,21 @@ export interface ReviewReplyQueueItem {
   reviewText: string;
   draft: string;
   status: "draft" | "sent";
+  createdAt: string;
+}
+
+export interface MailReplyQueueItem {
+  id: string;
+  messageKey: string;
+  accountId: string;
+  platform: "gmail" | "outlook";
+  providerMessageId: string;
+  subject: string;
+  fromName: string;
+  fromEmail: string;
+  snippet: string;
+  draft: string;
+  status: "draft" | "sent" | "dismissed";
   createdAt: string;
 }
 
@@ -92,6 +110,7 @@ interface BusinessProfileRow {
 
 interface TokenStoreLike {
   get(accountId: string): Promise<Record<string, unknown> | null | undefined>;
+  set?(accountId: string, value: Record<string, unknown>): Promise<unknown>;
 }
 
 function parseOutreachQueue(data: unknown): OutreachQueueItem[] {
@@ -697,4 +716,159 @@ export async function runReviewReplyAuto(deps: {
   }
 
   return { drafted: newItems.length, notified, urgentAlerts };
+}
+
+export function parseMailReplyQueue(data: unknown): MailReplyQueueItem[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (e): e is MailReplyQueueItem =>
+      Boolean(e) &&
+      typeof e === "object" &&
+      typeof (e as MailReplyQueueItem).id === "string" &&
+      typeof (e as MailReplyQueueItem).messageKey === "string" &&
+      typeof (e as MailReplyQueueItem).draft === "string"
+  );
+}
+
+export function countPendingMailReplyDrafts(data: unknown): number {
+  return parseMailReplyQueue(data).filter((q) => q.status === "draft").length;
+}
+
+/**
+ * Auto-draft email replies into mail-reply-queue (never auto-sends).
+ * Uses recent unread Gmail/Outlook messages for the tenant — draft-before-send.
+ */
+export async function runMailReplyAuto(deps: {
+  supabaseAdmin: SupabaseAdminLike;
+  tokenStore: TokenStoreLike & { set: (id: string, value: Record<string, unknown>) => Promise<unknown> };
+  businessProfileId: string;
+  profile: BusinessProfileRow;
+  openaiKey?: string | null;
+  notifyEmail?: string;
+  appUrl?: string;
+}): Promise<{ drafted: number; notified: boolean; scanned: number }> {
+  const { supabaseAdmin, tokenStore, businessProfileId, profile, openaiKey, notifyEmail, appUrl } = deps;
+
+  const { data: accountRows } = await supabaseAdmin
+    .from("connected_accounts")
+    .select("id,platform,disconnected_at")
+    .eq("business_profile_id", businessProfileId)
+    .in("platform", ["gmail", "outlook"])
+    .is("disconnected_at", null);
+  const accounts = Array.isArray(accountRows) ? accountRows : [];
+  if (accounts.length === 0) return { drafted: 0, notified: false, scanned: 0 };
+
+  const queueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, MAIL_REPLY_QUEUE_DOC_KEY);
+  const queue = parseMailReplyQueue(queueDoc?.data);
+  const queuedKeys = new Set(queue.filter((q) => q.status === "draft" || q.status === "sent").map((q) => q.messageKey));
+
+  const newItems: MailReplyQueueItem[] = [];
+  const businessName = String(profile.name || "Our business");
+  let scanned = 0;
+
+  for (const row of accounts) {
+    if (newItems.length >= 5) break;
+    const accountId = String(row?.id || "");
+    const platform = String(row?.platform || "");
+    if (!accountId || (platform !== "gmail" && platform !== "outlook")) continue;
+
+    const stored = await tokenStore.get(accountId);
+    if (!stored?.accessToken) continue;
+
+    try {
+      const data =
+        platform === "gmail"
+          ? await fetchGmailAccountData({
+              accessToken: String(stored.accessToken || ""),
+              refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+              accountId,
+              tokenStore,
+              stored,
+              googleClientId: process.env.GOOGLE_CLIENT_ID,
+              googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+              labelId: "INBOX",
+            })
+          : await fetchOutlookMailData({
+              accessToken: String(stored.accessToken || ""),
+              refreshToken: stored.refreshToken ? String(stored.refreshToken) : undefined,
+              accountId,
+              tokenStore,
+              stored,
+              microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+              microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+            });
+
+      if (data && "error" in data && data.error) continue;
+      const list = Array.isArray((data as { messages?: unknown[] })?.messages)
+        ? (data as { messages: Array<Record<string, unknown>> }).messages
+        : [];
+
+      for (const msg of list) {
+        if (newItems.length >= 5) break;
+        const mid = String(msg.id || "").trim();
+        if (!mid) continue;
+        scanned += 1;
+        if (!msg.isUnread) continue;
+        const messageKey = `${platform}:${accountId}:${mid}`;
+        if (queuedKeys.has(messageKey)) continue;
+
+        const from = (msg.from as { name?: string; email?: string }) || {};
+        const authorName = String(from.name || from.email || "there");
+        const text = String(msg.body || msg.snippet || "").trim();
+        if (!text) continue;
+
+        const { draft } = await generateReplyDraft(
+          {
+            kind: "email",
+            text: text.slice(0, 4000),
+            authorName,
+            businessName,
+          },
+          openaiKey
+        );
+
+        newItems.push({
+          id: crypto.randomUUID(),
+          messageKey,
+          accountId,
+          platform,
+          providerMessageId: mid,
+          subject: String(msg.subject || "(utan ämne)"),
+          fromName: authorName,
+          fromEmail: String(from.email || ""),
+          snippet: String(msg.snippet || text).slice(0, 280),
+          draft,
+          status: "draft",
+          createdAt: new Date().toISOString(),
+        });
+        queuedKeys.add(messageKey);
+      }
+    } catch (err) {
+      console.warn(
+        `[mail-reply-auto] account=${accountId} failed:`,
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
+  if (newItems.length === 0) return { drafted: 0, notified: false, scanned };
+
+  const nextQueue = [...newItems, ...queue].slice(0, 40);
+  await saveProfileDocument(supabaseAdmin, businessProfileId, MAIL_REPLY_QUEUE_DOC_KEY, nextQueue);
+
+  let notified = false;
+  if (notifyEmail) {
+    const messagesUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/messages` : "/messages";
+    const result = await sendEmail({
+      to: notifyEmail,
+      subject: `${businessName}: ${newItems.length} mail-utkast redo`,
+      html:
+        `<p>${newItems.length} automatiska mail-svar väntar på godkännande.</p>` +
+        `<p><a href="${messagesUrl}">Öppna Meddelanden</a></p>`,
+      text: `${newItems.length} mail-utkast redo. Öppna Meddelanden: ${messagesUrl}`,
+    });
+    notified = result.ok;
+  }
+
+  return { drafted: newItems.length, notified, scanned };
 }

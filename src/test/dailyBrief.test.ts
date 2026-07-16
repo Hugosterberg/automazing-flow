@@ -88,6 +88,14 @@ describe("buildDailyBrief", () => {
     expect(brief.actionCount).toBe(2);
   });
 
+  it("prefers triage attention count over raw unread", () => {
+    const brief = buildDailyBrief({ ...empty, unreadDms: 20, triageAttentionCount: 3 });
+    const messages = brief.items.find((i) => i.id === "messages");
+    expect(messages?.count).toBe(3);
+    expect(messages?.title).toMatch(/idag\/denna vecka/i);
+    expect(brief.actionCount).toBe(3);
+  });
+
   it("surfaces reviews needing reply and inventory alerts", () => {
     const reviews = buildDailyBrief({ ...empty, reviewsNeedingReply: 2 });
     expect(reviews.items[0].kind).toBe("review");

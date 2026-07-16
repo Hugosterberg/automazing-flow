@@ -9,9 +9,9 @@
  * `tokenStore` (the persistent, Supabase-backed OAuth token entries).
  */
 
+
 import crypto from "crypto";
-import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
-import type { SecretResolver } from "../lib/secretResolver.ts";
+import { describeZernioFailure } from "../providers/zernioModule.ts";
 import { fetchZernio, zernioFetchErrorMessage } from "../lib/zernioFetch.ts";
 import {
   deterministicAccountId,
@@ -29,446 +29,51 @@ import {
   exchangeMcpOauthCode,
   connectOauthMcp,
 } from "../providers/mcpOauth.ts";
+import type { OAuthErrorExtras, OAuthPendingRecord, OAuthRoutesDeps } from "./oauth/types.ts";
+import {
+  CANVA_AUTH,
+  CANVA_SCOPES,
+  GMAIL_SCOPES,
+  GOOGLE_ADS_SCOPES,
+  GOOGLE_AUTH,
+  GOOGLE_CALENDAR_SCOPES,
+  GOOGLE_DRIVE_SCOPES,
+  GOOGLE_REVIEWS_SCOPES,
+  GOOGLE_TOKEN,
+  IG_AUTH,
+  IG_TOKEN,
+  META_BUSINESS_DEFAULT_SCOPES,
+  NOTION_AUTH,
+  NOTION_TOKEN,
+  OUTLOOK_CALENDAR_SCOPES,
+  TIKTOK_AUTH,
+  TIKTOK_TOKEN,
+  X_AUTH,
+  X_SCOPES,
+  X_TOKEN,
+  X_TOKEN_LEGACY,
+  YOUTUBE_SCOPES,
+} from "./oauth/constants.ts";
+import {
+  fetchXToken,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  getZernioConnectUrl,
+  normalizeRequestedProfileId,
+  profileParam,
+  resolveAndSelectGoogleBusinessLocation,
+  resolveZernioAccountAfterCallback,
+  sendPopupOAuthResult,
+  zernioConnectFailureHint,
+  zernioOauthErrorQuery,
+  ZernioConnectError,
+  buildContentUrl,
+  requestBusinessProfileId,
+  parseLocationsFromBody,
+  getLocationId,
+} from "./oauth/helpers.ts";
 
-interface OAuthPendingRecord {
-  platform: string;
-  userId?: string | null;
-  profileId?: string | null;
-  businessProfileId?: string | null;
-  appBaseUrl?: string | null;
-  zernioProfileId?: string | null;
-  codeVerifier?: string;
-  createdAt?: number;
-  oauthReturnPage?: string | undefined;
-  [key: string]: unknown;
-}
-
-interface OAuthPendingStore {
-  get: (state: string | null | undefined) => Promise<OAuthPendingRecord | null>;
-  set: (state: string, value: OAuthPendingRecord) => Promise<unknown>;
-  delete: (state: string | null | undefined) => Promise<unknown>;
-  listZernioRecentForUser: (
-    userId: string
-  ) => Promise<Array<[string, OAuthPendingRecord]>>;
-}
-
-interface TokenStore {
-  set: (id: string, value: Record<string, unknown>) => Promise<unknown>;
-  get: (id: string) => Promise<Record<string, unknown> | null>;
-  entries: () => Promise<Array<[string, Record<string, unknown>]>>;
-  delete: (id: string) => Promise<unknown>;
-}
-
-interface OAuthRoutesDeps {
-  BASE_URL: string;
-  API_BASE_URL: string;
-  ZERNIO_API_BASE: string;
-  zernio: ZernioModule;
-  getZernioApiKey: () => string;
-  getOrCreateZernioProfileId: (businessProfileId?: string | null) => Promise<string | null>;
-  secretResolver: SecretResolver;
-  normalizeZernioAccountsPayload: (body: unknown) => unknown[];
-  mapZernioPlatform: (raw: string | undefined) => string | null;
-  generateState: () => string;
-  oauthPendingStore: OAuthPendingStore;
-  tokenStore: TokenStore;
-  getSessionUserId: (req: unknown) => string | null;
-}
-
-interface ZernioConnectUrlArgs {
-  ZERNIO_API_BASE: string;
-  zernioKey: string;
-  platformSlugs: string[];
-  profileId?: string | null;
-  redirectUrl: string;
-  extraParams?: Record<string, string | null | undefined>;
-}
-
-interface ResolveZernioAccountArgs {
-  zernio: ZernioModule;
-  mapZernioPlatform: (raw: string | undefined) => string | null;
-  desiredPlatform: string;
-  queryAccountId?: unknown;
-  queryUsername?: unknown;
-}
-
-interface PopupOAuthResult {
-  type: string;
-  error?: string | null;
-  statusCode?: string | null;
-  exception?: string | null;
-  hint?: string | null;
-  [key: string]: unknown;
-}
-
-interface OAuthErrorExtras {
-  status?: string | number | null;
-  exception?: unknown;
-  hint?: unknown;
-}
-
-const IG_AUTH = "https://api.instagram.com/oauth/authorize";
-const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
-const META_BUSINESS_DEFAULT_SCOPES =
-  "public_profile email business_management ads_read ads_management pages_show_list";
-const TIKTOK_AUTH = "https://www.tiktok.com/v2/auth/authorize/";
-const TIKTOK_TOKEN = "https://open.tiktokapis.com/v2/oauth/token/";
-const X_AUTH = "https://x.com/i/oauth2/authorize";
-const X_TOKEN = "https://api.x.com/2/oauth2/token";
-const X_TOKEN_LEGACY = "https://api.twitter.com/2/oauth2/token";
-const X_SCOPES = "tweet.read users.read offline.access like.read";
-const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
-const NOTION_AUTH = "https://api.notion.com/v1/oauth/authorize";
-const NOTION_TOKEN = "https://api.notion.com/v1/oauth/token";
-const CANVA_AUTH = "https://www.canva.com/api/oauth/authorize";
-const YOUTUBE_SCOPES =
-  "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile";
-const GMAIL_SCOPES =
-  "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
-const GOOGLE_DRIVE_SCOPES =
-  "openid email profile https://www.googleapis.com/auth/drive.readonly";
-const GOOGLE_CALENDAR_SCOPES =
-  "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
-const GOOGLE_REVIEWS_SCOPES =
-  "openid email profile https://www.googleapis.com/auth/business.manage";
-const GOOGLE_ADS_SCOPES =
-  "openid email profile https://www.googleapis.com/auth/adwords";
-const OUTLOOK_CALENDAR_SCOPES =
-  "offline_access openid profile email User.Read Calendars.ReadWrite";
-const CANVA_SCOPES = "design:content:read";
-
-function generateCodeVerifier(): string {
-  return crypto.randomBytes(32).toString("base64url");
-}
-function generateCodeChallenge(verifier: string): string {
-  return crypto.createHash("sha256").update(verifier).digest("base64url");
-}
-function profileParam(profileId: string | null | undefined): string {
-  return profileId ? `&profile_id=${encodeURIComponent(profileId)}` : "";
-}
-
-function normalizeRequestedProfileId(profileId: unknown): string | null {
-  const normalized = String(profileId || "").trim();
-  if (!normalized || normalized === "default") {
-    return null;
-  }
-  return normalized;
-}
-
-/**
- * Tenant (business profile) id from the connect request. Used to resolve the
- * tenant's own Zernio profile and per-tenant secrets. Falsy → shared/global.
- */
-function requestBusinessProfileId(req): string | null {
-  const normalized = String(
-    req?.query?.business_profile_id || req?.body?.business_profile_id || ""
-  ).trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
-function buildContentUrl(baseUrl: string, params: Record<string, unknown> = {}): string {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value == null || value === "") continue;
-    query.set(key, String(value));
-  }
-  const suffix = query.toString();
-  return `${baseUrl}/content${suffix ? `?${suffix}` : ""}`;
-}
-
-function popupTargetOrigin(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).origin;
-  } catch {
-    return "*";
-  }
-}
-
-function sendPopupOAuthResult(
-  res,
-  payload: PopupOAuthResult,
-  fallbackUrl: string,
-  baseUrl: string
-): void {
-  const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
-  const serializedFallbackUrl = JSON.stringify(fallbackUrl);
-  const serializedTargetOrigin = JSON.stringify(popupTargetOrigin(baseUrl));
-
-  res
-    .status(200)
-    .type("html")
-    .send(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Google Drive connection</title>
-  </head>
-  <body style="margin:0;background:#000;color:#f5f5f5;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;">
-    <p style="opacity:.85;">Completing Google Drive connection...</p>
-    <script>
-      const payload = ${serializedPayload};
-      const fallbackUrl = ${serializedFallbackUrl};
-      const targetOrigin = ${serializedTargetOrigin};
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage(payload, targetOrigin);
-        window.close();
-      }
-      if (!window.closed) {
-        window.location.replace(fallbackUrl);
-      }
-    </script>
-  </body>
-</html>`);
-}
-
-/**
- * Structured Zernio connect failure. `code` maps to a known oauth_error key
- * and `hint` carries Zernio's actual reason (plan limit, unsupported platform,
- * upstream outage, …) so the user sees WHY the connect was refused instead of
- * a generic "connect failed".
- */
-class ZernioConnectError extends Error {
-  code: string;
-  hint: string;
-  constructor(code: string, hint: string) {
-    super(code);
-    this.code = code;
-    this.hint = hint;
-  }
-}
-
-/** `oauth_error=<code>&oauth_hint=<reason>` query for redirect URLs. */
-function zernioOauthErrorQuery(e: unknown, fallbackCode = "zernio_init_failed"): string {
-  const err = e as { code?: string; hint?: string; message?: string } | null;
-  const code = String(err?.code || fallbackCode);
-  const hint = String(err?.hint || err?.message || "").slice(0, 240);
-  return `oauth_error=${encodeURIComponent(code)}${hint ? `&oauth_hint=${encodeURIComponent(hint)}` : ""}`;
-}
-
-/** Human-readable reason out of a failed Zernio connect response body. */
-function zernioConnectFailureHint(status: number, rawBody: string, platformSlug: string): string {
-  const upstream = rawBody.slice(0, 200);
-  try {
-    const parsed = JSON.parse(rawBody) as { message?: unknown; error?: unknown; code?: unknown };
-    const failure = describeZernioFailure({
-      status,
-      error:
-        typeof parsed.message === "string"
-          ? parsed.message
-          : typeof parsed.error === "string"
-            ? parsed.error
-            : "",
-      data: parsed,
-    });
-    return failure.message;
-  } catch {
-    // Body was not JSON (e.g. an HTML 404 page) — fall back to a generic line.
-  }
-  if (status === 404) {
-    return `Zernio has no connect endpoint for "${platformSlug}" — the platform may not be available on your Zernio plan.`;
-  }
-  return `Zernio replied ${status} on connect/${platformSlug}${upstream ? `: ${upstream}` : ""}`;
-}
-
-async function getZernioConnectUrl({
-  ZERNIO_API_BASE,
-  zernioKey,
-  platformSlugs,
-  profileId,
-  redirectUrl,
-  extraParams,
-}: ZernioConnectUrlArgs): Promise<string> {
-  let lastErr: ZernioConnectError | null = null;
-  for (const platformSlug of platformSlugs) {
-    const connectUrl = new URL(`${ZERNIO_API_BASE}/connect/${platformSlug}`);
-    if (profileId) connectUrl.searchParams.set("profileId", profileId);
-    connectUrl.searchParams.set("redirect_url", redirectUrl);
-    if (extraParams && typeof extraParams === "object") {
-      for (const [k, v] of Object.entries(extraParams)) {
-        if (v != null) connectUrl.searchParams.set(k, String(v));
-      }
-    }
-
-    let connectRes: Response;
-    try {
-      connectRes = await fetchZernio(connectUrl.toString(), {
-        headers: { Authorization: `Bearer ${zernioKey}` },
-      });
-    } catch (error) {
-      const message = zernioFetchErrorMessage(error);
-      console.warn(`[Zernio] connect/${platformSlug} request failed:`, message);
-      lastErr = new ZernioConnectError(
-        "zernio_fetch_failed",
-        `Could not reach Zernio (connect/${platformSlug}): ${message}`
-      );
-      continue;
-    }
-    if (!connectRes.ok) {
-      const err = await connectRes.text().catch(() => "");
-      console.warn(`[Zernio] connect/${platformSlug} failed:`, connectRes.status, err.slice(0, 200));
-      lastErr = new ZernioConnectError(
-        "zernio_connect_failed",
-        zernioConnectFailureHint(connectRes.status, err, platformSlug)
-      );
-      continue;
-    }
-    const data = await connectRes.json().catch(() => ({}));
-    if (data.authUrl) {
-      return data.authUrl;
-    }
-    lastErr = new ZernioConnectError(
-      "zernio_no_auth_url",
-      `Zernio accepted connect/${platformSlug} but returned no login link — try again, or contact Zernio support if it persists.`
-    );
-  }
-  throw lastErr || new ZernioConnectError("zernio_connect_failed", "Zernio refused the connect request.");
-}
-
-function parseLocationsFromBody(body): unknown[] {
-  const candidateLists = [
-    body?.locations,
-    body?.data?.locations,
-    body?.data,
-    body?.items,
-    body?.businessLocations,
-  ];
-  for (const list of candidateLists) {
-    if (Array.isArray(list) && list.length > 0) {
-      return list;
-    }
-  }
-  return [];
-}
-
-function getLocationId(location): string | null {
-  if (!location || typeof location !== "object") return null;
-  return String(
-    location.locationId ??
-      location.id ??
-      location.name ??
-      location.resourceName ??
-      ""
-  ).trim() || null;
-}
-
-async function resolveAndSelectGoogleBusinessLocation({
-  ZERNIO_API_BASE,
-  apiKey,
-  connectToken,
-}: {
-  ZERNIO_API_BASE: string;
-  apiKey: string;
-  connectToken: string;
-}): Promise<void> {
-  const headers = { Authorization: `Bearer ${apiKey}`, "X-Connect-Token": connectToken };
-  const listEndpoints = [
-    `${ZERNIO_API_BASE}/connect/list-google-business-locations`,
-    `${ZERNIO_API_BASE}/connect/google-business/select-location`,
-  ];
-
-  let locations = [];
-  for (const endpoint of listEndpoints) {
-    const r = await fetch(endpoint, { headers, signal: AbortSignal.timeout(15_000) });
-    if (!r.ok) continue;
-    const body = await r.json().catch(() => ({}));
-    locations = parseLocationsFromBody(body);
-    if (locations.length > 0) break;
-  }
-  if (locations.length === 0) {
-    throw new Error("zernio_gmb_no_locations");
-  }
-
-  const locationId = getLocationId(locations[0]);
-  if (!locationId) {
-    throw new Error("zernio_gmb_no_location_id");
-  }
-
-  const selectEndpoints = [
-    `${ZERNIO_API_BASE}/connect/select-google-business-location`,
-    `${ZERNIO_API_BASE}/connect/google-business/select-location`,
-  ];
-  const bodies = [
-    { locationId },
-    { id: locationId },
-    { location: locationId },
-  ];
-
-  for (const endpoint of selectEndpoints) {
-    for (const body of bodies) {
-      const r = await fetch(endpoint, {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (r.ok) return;
-    }
-  }
-  throw new Error("zernio_gmb_select_failed");
-}
-
-async function resolveZernioAccountAfterCallback({
-  zernio,
-  mapZernioPlatform,
-  desiredPlatform,
-  queryAccountId,
-  queryUsername,
-}: ResolveZernioAccountArgs): Promise<{
-  accountId: string | null | undefined;
-  username: string | null | undefined;
-  rawPlatform: string | null;
-}> {
-  let accountId = typeof queryAccountId === "string" && queryAccountId.trim() ? queryAccountId.trim() : null;
-  let username = typeof queryUsername === "string" && queryUsername.trim() ? queryUsername.trim() : null;
-  let rawPlatform: string | null = null;
-
-  if (accountId && username) {
-    return { accountId, username, rawPlatform };
-  }
-
-  const result = await zernio.listAccounts();
-  if (!result.ok) {
-    throw new Error("zernio_fetch_accounts_failed");
-  }
-  const list = result.accounts;
-
-  const matchedByPlatform = list.find(
-    (a) =>
-      mapZernioPlatform(a.platform || a.type || a.provider || a.channel) === desiredPlatform
-  );
-  const acc = matchedByPlatform || (list.length ? list[list.length - 1] : null);
-  if (!acc) {
-    throw new Error("zernio_no_account");
-  }
-
-  accountId = accountId || acc._id || acc.id || acc.accountId;
-  username =
-    username ||
-    acc.username ||
-    acc.name ||
-    acc.displayName ||
-    acc.handle ||
-    acc.phoneNumber ||
-    acc.phone;
-  rawPlatform = acc.platform || acc.type || acc.provider || acc.channel || null;
-
-  if (!accountId) {
-    throw new Error("zernio_no_account");
-  }
-
-  return { accountId, username, rawPlatform };
-}
-
-async function fetchXToken(
-  body: URLSearchParams,
-  headers: Record<string, string>
-): Promise<Response> {
-  const primary = await fetch(X_TOKEN, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
-  if (primary.ok) return primary;
-  return fetch(X_TOKEN_LEGACY, { method: "POST", headers, body: body.toString(), signal: AbortSignal.timeout(15_000) });
-}
+export type { OAuthRoutesDeps } from "./oauth/types.ts";
 
 export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   const {
@@ -4462,3 +4067,4 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     }
   });
 }
+

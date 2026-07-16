@@ -5,9 +5,11 @@ export { MessageInboxStats } from "./MessageInboxStats";
 export { MessageStatusBar } from "./MessageStatusBar";
 export { MessageWorkspace } from "./MessageWorkspace";
 export { MessageThread } from "./MessageThread";
-export { fetchMessageThread } from "./messagesClient";
+export { fetchMessageThread, fetchUnifiedMessagesPreview } from "./messagesClient";
 export { MessageMailToolbar } from "./MessageMailToolbar";
 export { MessageTriageBuckets } from "./MessageTriageBuckets";
+export { MailReplyDraftsStrip } from "./MailReplyDraftsStrip";
+export type { MailReplyQueueItem } from "./MailReplyDraftsStrip";
 export {
   classifyMessageTriage,
   compareByTriage,

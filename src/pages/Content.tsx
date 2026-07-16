@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1334,11 +1334,16 @@ export default function ContentPage() {
         <EmptyState
           icon={HardDrive}
           title="Ingen Google Drive kopplad ännu"
-          description="Koppla Drive först — sedan kan du bläddra mappar, markera media och schemalägga publicering."
+          description="Koppla Drive under Kopplingar — sedan kan du bläddra mappar, markera media och schemalägga publicering."
           action={
-            <Button onClick={() => void connectDrive()} disabled={isConnecting}>
-              {isConnecting ? "Ansluter…" : "Koppla Google Drive"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button asChild>
+                <Link to="/connections?q=drive">Öppna Kopplingar</Link>
+              </Button>
+              <Button variant="outline" onClick={() => void connectDrive()} disabled={isConnecting}>
+                {isConnecting ? "Ansluter…" : "Koppla här"}
+              </Button>
+            </div>
           }
         />
       ) : loading ? (

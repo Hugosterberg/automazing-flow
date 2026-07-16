@@ -152,6 +152,17 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cronKey: "review-reply-auto",
   },
   {
+    id: "mail-reply-auto",
+    topic: "messages",
+    title: "Automatiska mail-utkast",
+    description:
+      "Skapar svarsutkast till olästa Gmail/Outlook-mail — inget skickas förrän du godkänner under Meddelanden.",
+    cadence: "Konfigurerbart schema",
+    icon: Mail,
+    outputHref: "/messages",
+    cronKey: "mail-reply-auto",
+  },
+  {
     id: "marketing-actions",
     topic: "insights",
     title: "Marknadsförings-åtgärder",

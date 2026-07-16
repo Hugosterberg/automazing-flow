@@ -45,6 +45,10 @@
       "schedule": "30 9 * * *"
     },
     {
+      "path": "/api/cron/mail-reply-auto",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/marketing-actions",
       "schedule": "30 7 * * 1-5"
     },

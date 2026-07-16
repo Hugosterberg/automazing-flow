@@ -196,6 +196,13 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "09:30",
     enabled: false,
   },
+  "mail-reply-auto": {
+    days: [1, 2, 3, 4, 5],
+    timesPerDay: 1,
+    startTime: "09:00",
+    endTime: "09:00",
+    enabled: false,
+  },
   "marketing-actions": {
     days: [1, 2, 3, 4, 5],
     timesPerDay: 1,

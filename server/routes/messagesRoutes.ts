@@ -19,6 +19,11 @@ import {
   readRequestBodyBusinessProfileId,
   readRequestBusinessProfileId,
 } from "../lib/profileScope.ts";
+import {
+  mapGmailMessageToUnified,
+  mapOutlookMessageToUnified,
+  parseUnifiedMessagesQuery,
+} from "../lib/unifiedMessageMap.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -95,16 +100,14 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     // Scope every mailbox and DM account to the caller's active business
     // profile, so profiles under the same user never see each other's inbox.
     const businessProfileId = readRequestBusinessProfileId(req);
-    const mailAccountId = String(req.query.mailAccountId || "").trim();
-    const mailFolderId = String(req.query.mailFolderId || "").trim();
-    const folderScoped = Boolean(mailAccountId && mailFolderId);
-    const includeAllMailRaw = String(req.query.includeAllMail || "").trim().toLowerCase();
-    const includeAllMail =
-      !folderScoped && (includeAllMailRaw === "1" || includeAllMailRaw === "true");
-    // Progressive loading: clients can fetch mail first, then DMs.
-    const sourcesRaw = String(req.query.sources || "all").trim().toLowerCase();
-    const includeMail = sourcesRaw === "all" || sourcesRaw === "mail";
-    const includeDm = sourcesRaw === "all" || sourcesRaw === "dm";
+    const {
+      mailAccountId,
+      mailFolderId,
+      folderScoped,
+      includeAllMail,
+      includeMail,
+      includeDm,
+    } = parseUnifiedMessagesQuery(req.query as Record<string, unknown>);
 
     const unified: UnifiedMessage[] = [];
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
@@ -191,26 +194,15 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 ? (data as { messages: Array<Record<string, unknown>> }).messages
                 : [];
               const label = String(stored.username || stored.displayName || "Gmail");
+              const profileId = stored.profileId ? String(stored.profileId) : null;
               for (const m of list) {
-                const mid = String(m.id || "");
-                const from = (m.from as { name?: string; email?: string }) || {};
-                unified.push({
-                  id: `email:gmail:${accountId}:${mid}`,
-                  kind: "email",
-                  channel: "gmail",
+                const mapped = mapGmailMessageToUnified({
                   accountId,
                   accountLabel: label,
-                  subject: String(m.subject || ""),
-                  from: { name: String(from.name || ""), email: String(from.email || "") },
-                  date: String(m.date || ""),
-                  snippet: String(m.snippet || ""),
-                  body: String(m.body || m.snippet || ""),
-                  isUnread: Boolean(m.isUnread),
-                  isStarred: Boolean(m.isStarred),
-                  providerMessageId: mid,
-                  threadId: m.threadId ? String(m.threadId) : undefined,
-                  profileId: stored.profileId ? String(stored.profileId) : null,
+                  profileId,
+                  message: m,
                 });
+                if (mapped) unified.push(mapped);
               }
               return;
             }
@@ -235,27 +227,15 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 ? (data as { messages: Array<Record<string, unknown>> }).messages
                 : [];
               const label = String(stored.username || stored.displayName || "Outlook");
+              const profileId = stored.profileId ? String(stored.profileId) : null;
               for (const m of list) {
-                const mid = String(m.id || "");
-                const from = (m.from as { name?: string; email?: string }) || {};
-                unified.push({
-                  id: `email:outlook:${accountId}:${mid}`,
-                  kind: "email",
-                  channel: "outlook",
+                const mapped = mapOutlookMessageToUnified({
                   accountId,
                   accountLabel: label,
-                  subject: String(m.subject || ""),
-                  from: { name: String(from.name || ""), email: String(from.email || "") },
-                  date: String(m.date || ""),
-                  snippet: String(m.snippet || ""),
-                  body: String(m.body || m.snippet || ""),
-                  isUnread: Boolean(m.isUnread),
-                  isStarred: Boolean(m.isStarred),
-                  providerMessageId: mid,
-                  threadId: m.threadId ? String(m.threadId) : undefined,
-                  conversationId: m.conversationId ? String(m.conversationId) : undefined,
-                  profileId: stored.profileId ? String(stored.profileId) : null,
+                  profileId,
+                  message: m,
                 });
+                if (mapped) unified.push(mapped);
               }
             }
           } catch (e) {

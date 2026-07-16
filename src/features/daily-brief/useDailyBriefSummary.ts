@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useConnections } from "@/features/connections/useConnections";
 import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
@@ -12,6 +13,7 @@ import {
   automationTitleForCronKey,
   usePendingDmDrafts,
 } from "@/features/automation";
+import { classifyMessageTriage, fetchUnifiedMessagesPreview } from "@/features/messages";
 import { useProfileDocument } from "@/features/profile-documents";
 import { platformLabel } from "@/lib/platformLabels";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
@@ -27,6 +29,19 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const { tasks, isLoading: tasksLoading } = useTasks(businessProfileId);
   const { recommendations, isLoading: recsLoading } = useAiRecommendations(businessProfileId);
   const { unreadDms, isLoading: dmsLoading } = useUnreadDmCount();
+  const triagePreview = useQuery({
+    queryKey: ["brief-triage-preview", businessProfileId ?? null],
+    queryFn: async () => {
+      const rows = await fetchUnifiedMessagesPreview(businessProfileId ?? null);
+      return rows.filter((m) => {
+        const bucket = classifyMessageTriage(m).bucket;
+        return bucket === "today" || bucket === "week";
+      }).length;
+    },
+    enabled: Boolean(businessProfileId),
+    staleTime: 60_000,
+    meta: { silent: true },
+  });
   const cachedRoas = useCachedMarketingRoas();
   const { trend: marketingTrend } = useMarketingTrend();
   const { inventoryAlert, performance } = useMarketingCampaigns();
@@ -79,6 +94,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
         .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
         .map((c) => ({ label: platformLabel(c.platform), health: c.health })),
       unreadDms,
+      triageAttentionCount: triagePreview.data ?? 0,
       underwaterRoas: marketingRoas != null && marketingRoas < 1 ? marketingRoas : null,
       marketingTrendDown,
       reviewsNeedingReply,
@@ -107,6 +123,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     recommendations,
     reviewsNeedingReply,
     tasks,
+    triagePreview.data,
     unreadDms,
   ]);
 

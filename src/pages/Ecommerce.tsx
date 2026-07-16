@@ -59,7 +59,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -885,18 +885,21 @@ export default function Ecommerce() {
                   : "Koppla din Shopify-butik för att se och hantera ordrar här."
             }
             action={
-              <Button onClick={handleConnect} className="glow-sm">
-                <ShopifyIcon className="h-4 w-4 mr-2" />
-                Koppla Shopify
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button asChild className="glow-sm">
+                  <Link to="/connections?q=shopify">
+                    <ShopifyIcon className="h-4 w-4 mr-2" />
+                    Öppna Kopplingar
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={handleConnect}>
+                  Ange butik här
+                </Button>
+              </div>
             }
           />
           <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
-            Notion kan kopplas via{" "}
-            <a href="/connections" className="underline underline-offset-2 hover:text-foreground">
-              Kopplingar
-            </a>
-            .
+            Kopplingar är hemmet för alla integrationer. Notion kopplas också där.
           </p>
         </m.div>
       )}

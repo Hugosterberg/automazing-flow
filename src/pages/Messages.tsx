@@ -69,6 +69,7 @@ import { moveMessageToFolder } from "@/features/messages/mailFoldersClient";
 import { performMailAction, type MailMessageAction } from "@/features/messages/mailActionsClient";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 import { AutoReplyDraftsStrip } from "@/features/automation";
+import { MailReplyDraftsStrip } from "@/features/messages/MailReplyDraftsStrip";
 import {
   inboxCacheKey,
   mergeUnifiedByKind,
@@ -76,6 +77,7 @@ import {
   sortUnifiedMessages,
   writeInboxCache,
 } from "@/features/messages/inboxCache";
+import { buildInboxLoadScope } from "@/features/messages/inboxLoadParams";
 import {
   isSnoozed,
   pruneSnoozeMap,
@@ -353,12 +355,15 @@ export default function MessagesPage() {
 
   const loadUnified = useCallback(async (opts?: { silent?: boolean }) => {
     const gen = ++loadGenRef.current;
-    const folderScoped = Boolean(activeTab === "mail" && selectedMailFolder);
-    const allMailScope = activeTab === "mail" && !folderScoped && includeAllMail;
+    const { folderScoped, allMailScope, mailAccountId, mailFolderId } = buildInboxLoadScope({
+      activeTab,
+      selectedMailFolder,
+      includeAllMail,
+    });
     const cacheKey = inboxCacheKey({
       businessProfileId: activeProfileId,
-      mailAccountId: folderScoped && selectedMailFolder ? selectedMailFolder.accountId : null,
-      mailFolderId: folderScoped && selectedMailFolder ? selectedMailFolder.folderId : null,
+      mailAccountId,
+      mailFolderId,
       includeAllMail: allMailScope,
     });
 
@@ -680,12 +685,12 @@ export default function MessagesPage() {
     (messageId: string) => {
       setMessages((prev) => {
         const next = prev.filter((msg) => msg.id !== messageId);
-        const folderScoped = Boolean(activeTab === "mail" && selectedMailFolder);
+        const scope = buildInboxLoadScope({ activeTab, selectedMailFolder, includeAllMail });
         const cacheKey = inboxCacheKey({
           businessProfileId: activeProfileId,
-          mailAccountId: folderScoped && selectedMailFolder ? selectedMailFolder.accountId : null,
-          mailFolderId: folderScoped && selectedMailFolder ? selectedMailFolder.folderId : null,
-          includeAllMail: activeTab === "mail" && !folderScoped && includeAllMail,
+          mailAccountId: scope.mailAccountId,
+          mailFolderId: scope.mailFolderId,
+          includeAllMail: scope.allMailScope,
         });
         writeInboxCache(cacheKey, next);
         return next;
@@ -1568,7 +1573,16 @@ export default function MessagesPage() {
       ) : null}
 
       {!focusedReading ? (
-        <AutoReplyDraftsStrip businessProfileId={businessProfileId} compact />
+        <div className="space-y-2">
+          <AutoReplyDraftsStrip businessProfileId={businessProfileId} compact />
+          <MailReplyDraftsStrip
+            businessProfileId={businessProfileId}
+            onUseDraft={(draft) => {
+              setReplyDraft(draft);
+              sonnerToast.success("Utkast infogat i svarsfältet — öppna mailet och skicka när du är nöjd.");
+            }}
+          />
+        </div>
       ) : null}
 
       <m.div

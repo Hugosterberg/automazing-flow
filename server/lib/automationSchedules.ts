@@ -30,6 +30,7 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "content-pipeline", cron: "0 10 * * *", perTenant: true },
   { key: "cart-recovery", cron: "0 11 * * *", perTenant: true },
   { key: "review-reply-auto", cron: "30 9 * * *", perTenant: true },
+  { key: "mail-reply-auto", cron: "0 9 * * *", perTenant: true },
   { key: "marketing-actions", cron: "30 7 * * 1-5", perTenant: true },
   { key: "weekly-insight-digest", cron: "30 8 * * 1", perTenant: true },
   { key: "engagement-followup", cron: "0 10,16 * * 1-5", perTenant: true },

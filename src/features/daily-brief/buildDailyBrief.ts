@@ -51,6 +51,11 @@ export interface DailyBriefInput {
   connectionIssues: Array<{ label: string; health: string }>;
   /** Count of unread inbox DMs/conversations awaiting a reply. */
   unreadDms?: number;
+  /**
+   * Actionable triage count (Idag + Denna vecka). When set, preferred over raw
+   * unreadDms so FYI/Brus do not inflate the brief badge.
+   */
+  triageAttentionCount?: number;
   /** Blended marketing ROAS (revenue ÷ ad spend) when it has dropped below 1×. */
   underwaterRoas?: number | null;
   /** ROAS week-over-week trend from nightly marketing snapshots. */
@@ -116,18 +121,28 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
   }
 
   const unreadDms = Math.max(0, Math.trunc(input.unreadDms ?? 0));
-  if (unreadDms > 0) {
+  const triageAttention = Math.max(0, Math.trunc(input.triageAttentionCount ?? 0));
+  const messageSignal = triageAttention > 0 ? triageAttention : unreadDms;
+  const usingTriage = triageAttention > 0;
+  if (messageSignal > 0) {
     items.push({
       id: "messages",
       kind: "message",
       severity: "warning",
-      title: unreadDms === 1 ? "1 oläst meddelande" : `${unreadDms} olästa meddelanden`,
-      description:
-        unreadDms === 1
+      title: usingTriage
+        ? messageSignal === 1
+          ? "1 meddelande att hantera idag/denna vecka"
+          : `${messageSignal} meddelanden att hantera idag/denna vecka`
+        : messageSignal === 1
+          ? "1 oläst meddelande"
+          : `${messageSignal} olästa meddelanden`,
+      description: usingTriage
+        ? "Triage: Idag och Denna vecka — FYI/Brus räknas inte här."
+        : messageSignal === 1
           ? "Öppna triage-hinken Idag och svara."
           : "Börja med triage-hinken Idag — svara det viktiga först.",
       to: "/messages?bucket=today",
-      count: unreadDms,
+      count: messageSignal,
     });
   }
 
@@ -302,7 +317,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
   const hasTrendDown = input.marketingTrendDown ? 1 : 0;
   const actionCount =
     input.connectionIssues.length +
-    unreadDms +
+    messageSignal +
     leadsToFollowUp +
     outreachQueuePending +
     pendingDmDrafts +
