@@ -2,15 +2,9 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Plus,
-  Clock,
-  Zap,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  Loader2,
-  Pencil,
-  Send,
 } from "lucide-react";
 import {
   format,
@@ -23,29 +17,12 @@ import {
   subWeeks,
   addMonths,
   subMonths,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
   startOfDay,
-  isSameMonth,
 } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
@@ -65,23 +42,30 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useProfileDocument } from "@/features/profile-documents";
 import { accountDataUrl } from "@/lib/accountDataUrl";
-import { useScheduledPosts, SCHEDULED_POST_STATUS_LABELS, type ScheduledPost } from "@/features/social";
-import { platformLabel } from "@/lib/platformLabels";
+import { useScheduledPosts, type ScheduledPost } from "@/features/social";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import {
   sortCalendarAccounts,
   readLegacyEvents,
   writeLegacyEvents,
   sortByTime,
-  isExternalEvent,
   localTimeOfIso,
 } from "@/features/calendar/calendarHelpers";
 import {
   CalendarUpcomingStrip,
   type CalendarUpcomingItem,
 } from "@/features/calendar/CalendarUpcomingStrip";
+import {
+  CalendarViews,
+  type CalendarViewMode,
+} from "@/features/calendar/CalendarViews";
+import {
+  CalendarEventDialog,
+  type CalendarEventFormValues,
+} from "@/features/calendar/CalendarEventDialog";
+import { ScheduledPostDialog } from "@/features/calendar/ScheduledPostDialog";
 
-type ViewMode = "day" | "week" | "month";
+type ViewMode = CalendarViewMode;
 
 /** Calendar row: a normal event, or a social post carried along for its dialog. */
 type CalendarItem = CalendarUpcomingItem;
@@ -92,6 +76,14 @@ type CalendarProviderData = {
   calendars?: Array<{ id: string; name: string; primary?: boolean }>;
   note?: string;
 } | null;
+
+const emptyEventForm = (): CalendarEventFormValues => ({
+  title: "",
+  date: format(new Date(), "yyyy-MM-dd"),
+  time: "",
+  description: "",
+  isAutomated: false,
+});
 
 export default function CalendarPage() {
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
@@ -135,11 +127,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [formDate, setFormDate] = useState("");
-  const [formTitle, setFormTitle] = useState("");
-  const [formTime, setFormTime] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formAutomated, setFormAutomated] = useState(false);
+  const [eventForm, setEventForm] = useState<CalendarEventFormValues>(emptyEventForm);
   // Social-post reschedule dialog (scheduled posts from the publishing pipeline).
   const scheduledPosts = useScheduledPosts();
   const [postDialog, setPostDialog] = useState<ScheduledPost | null>(null);
@@ -279,9 +267,6 @@ export default function CalendarPage() {
     ]);
   }
 
-  const eventsOnDate = (date: Date) =>
-    allEvents.filter((e) => isSameDay(parseISO(e.date), date));
-
   const dayFocusDate = selectedDate ?? currentDate;
   const dayFocusEvents = useMemo(
     () =>
@@ -327,13 +312,13 @@ export default function CalendarPage() {
   }, [focusedEventId, dayFocusEvents.length, dayFocusDate]);
 
   const saveEvent = () => {
-    if (!formTitle.trim() || !formDate) return;
+    if (!eventForm.title.trim() || !eventForm.date) return;
     const payload = {
-      title: formTitle.trim(),
-      date: formDate,
-      time: formTime.trim() || undefined,
-      description: formDescription.trim() || undefined,
-      isAutomated: formAutomated,
+      title: eventForm.title.trim(),
+      date: eventForm.date,
+      time: eventForm.time.trim() || undefined,
+      description: eventForm.description.trim() || undefined,
+      isAutomated: eventForm.isAutomated,
     };
     if (editingEventId) {
       eventsDoc.save(
@@ -358,12 +343,8 @@ export default function CalendarPage() {
   };
 
   function resetForm() {
-    setFormTitle("");
-    setFormTime("");
-    setFormDescription("");
-    setFormAutomated(false);
+    setEventForm(emptyEventForm());
     setEditingEventId(null);
-    setFormDate(format(new Date(), "yyyy-MM-dd"));
   }
 
   const removeEvent = (id: string) => {
@@ -372,22 +353,23 @@ export default function CalendarPage() {
 
   const openDialog = () => {
     setEditingEventId(null);
-    setFormDate(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
-    setFormTitle("");
-    setFormTime("");
-    setFormDescription("");
-    setFormAutomated(false);
+    setEventForm({
+      ...emptyEventForm(),
+      date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+    });
     setDialogOpen(true);
   };
 
   const openEditDialog = (ev: CalendarEvent) => {
     if (ev.readOnly || ev.source === "external") return;
     setEditingEventId(ev.id);
-    setFormDate(ev.date);
-    setFormTitle(ev.title);
-    setFormTime(ev.time ?? "");
-    setFormDescription(ev.description ?? "");
-    setFormAutomated(ev.isAutomated);
+    setEventForm({
+      title: ev.title,
+      date: ev.date,
+      time: ev.time ?? "",
+      description: ev.description ?? "",
+      isAutomated: ev.isAutomated,
+    });
     setDialogOpen(true);
   };
 
@@ -437,13 +419,6 @@ export default function CalendarPage() {
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const monthDays = eachDayOfInterval({ start: calStart, end: calEnd });
 
   const navTitle =
     viewMode === "day"
@@ -582,370 +557,17 @@ export default function CalendarPage() {
 
         <Card className="rounded-xl min-h-[400px] flex flex-col w-full">
           <CardContent className="flex-1 p-6 overflow-auto">
-            {providerLoading && activeCalendarAccount ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Laddar händelser från kopplad kalender…
-              </div>
-            ) : null}
-            {viewMode === "day" && (
-              <div className="max-w-md">
-                <h2 className="text-lg font-semibold mb-4">
-                  {format(currentDate, "EEEE d MMMM", { locale: sv })}
-                </h2>
-                {eventsOnDate(currentDate).length === 0 ? (
-                  <p className="text-muted-foreground text-sm py-8">
-                    Inga aktiviteter denna dag. Tryck Lägg till för att skapa en.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {sortByTime(eventsOnDate(currentDate)).map((ev: CalendarItem) => (
-                      <li
-                        key={ev.id}
-                        data-calendar-event-id={ev.id}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted group",
-                          ev.source === "social" && "cursor-pointer",
-                          focusedEventId === ev.id && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                        )}
-                        onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                      >
-                        {ev.source === "social" ? (
-                          <Send className="h-4 w-4 text-primary shrink-0" />
-                        ) : ev.isAutomated ? (
-                          <Zap className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{ev.title}</p>
-                          <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
-                            {ev.time ? <span>{ev.time}</span> : null}
-                            {ev.source === "social" && ev.post ? (
-                              <>
-                                {ev.post.platforms.map((p) => (
-                                  <span key={p} className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                                    {platformLabel(p)}
-                                  </span>
-                                ))}
-                                <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                                  {SCHEDULED_POST_STATUS_LABELS[ev.post.status]}
-                                </span>
-                              </>
-                            ) : isExternalEvent(ev) ? (
-                              <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                                External
-                              </span>
-                            ) : null}
-                          </p>
-                        </div>
-                        {!ev.readOnly && (
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                              onClick={() => openEditDialog(ev)}
-                              aria-label="Redigera händelse"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => removeEvent(ev.id)}
-                              aria-label="Ta bort händelse"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {viewMode === "week" && (
-              <>
-                {/* Mobile (< sm): vertical day agenda — avoids horizontal min-w grid */}
-                <div className="space-y-3 sm:hidden">
-                  {weekDays.map((day) => {
-                    const dayEvents = eventsOnDate(day);
-                    const today = isSameDay(day, new Date());
-                    return (
-                      <div
-                        key={day.toISOString()}
-                        className={cn(
-                          "rounded-xl border p-3",
-                          today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
-                        )}
-                      >
-                        <div className="mb-2 flex items-baseline justify-between gap-2">
-                          <p className="text-sm font-semibold">
-                            {format(day, "EEEE d MMM", { locale: sv })}
-                          </p>
-                          {today ? (
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-primary">Idag</span>
-                          ) : null}
-                        </div>
-                        {dayEvents.length === 0 ? (
-                          <p className="text-xs text-muted-foreground py-1">Inga händelser</p>
-                        ) : (
-                          <ul className="space-y-1.5">
-                            {sortByTime(dayEvents).map((ev: CalendarItem) => (
-                              <li
-                                key={ev.id}
-                                data-calendar-event-id={ev.id}
-                                className={cn(
-                                  "group flex items-center gap-2 rounded-lg bg-background/80 px-2 py-2 text-sm",
-                                  ev.source === "social" && "cursor-pointer",
-                                  focusedEventId === ev.id && "ring-1 ring-primary"
-                                )}
-                                onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                              >
-                                {ev.source === "social" ? (
-                                  <Send className="h-3.5 w-3.5 text-primary shrink-0" />
-                                ) : ev.isAutomated ? (
-                                  <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
-                                ) : (
-                                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate font-medium">{ev.title}</p>
-                                  {ev.time ? (
-                                    <p className="text-[11px] text-muted-foreground">{ev.time}</p>
-                                  ) : null}
-                                </div>
-                                {!ev.readOnly && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0 text-destructive"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeEvent(ev.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* sm+: week grid */}
-                <div className="-mx-1 hidden overflow-x-auto app-scroll px-1 sm:mx-0 sm:block sm:overflow-visible sm:px-0">
-                  <div className="grid grid-cols-7 gap-2">
-                    {weekDays.map((day) => {
-                      const dayEvents = eventsOnDate(day);
-                      const today = isSameDay(day, new Date());
-                      return (
-                        <div
-                          key={day.toISOString()}
-                          className={cn(
-                            "rounded-lg border p-2 min-h-[120px]",
-                            today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
-                          )}
-                        >
-                          <div className="text-center mb-2">
-                            <p className="text-[11px] uppercase text-muted-foreground">
-                              {format(day, "EEE", { locale: sv })}
-                            </p>
-                            <p className="text-sm font-semibold">{format(day, "d")}</p>
-                          </div>
-                          <ul className="space-y-1">
-                            {sortByTime(dayEvents).map((ev: CalendarItem) => (
-                              <li
-                                key={ev.id}
-                                data-calendar-event-id={ev.id}
-                                className={cn(
-                                  "group flex items-center gap-1 rounded px-1.5 py-1 bg-background/80 hover:bg-muted text-xs",
-                                  ev.source === "social" && "cursor-pointer",
-                                  focusedEventId === ev.id && "ring-1 ring-primary"
-                                )}
-                                onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                              >
-                                {ev.source === "social" ? (
-                                  <Send className="h-3 w-3 text-primary shrink-0" />
-                                ) : ev.isAutomated ? (
-                                  <Zap className="h-3 w-3 text-primary shrink-0" />
-                                ) : (
-                                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                                )}
-                                <span className="truncate flex-1">{ev.title}</span>
-                                {ev.source === "social" && ev.post ? (
-                                  <span className="shrink-0 text-[9px] uppercase text-primary">
-                                    {ev.post.platforms.length > 0 ? platformLabel(ev.post.platforms[0]) : "Post"}
-                                    {ev.post.platforms.length > 1 ? ` +${ev.post.platforms.length - 1}` : ""}
-                                  </span>
-                                ) : isExternalEvent(ev) ? (
-                                  <span className="shrink-0 text-[9px] uppercase text-muted-foreground">Ext</span>
-                                ) : null}
-                                {!ev.readOnly && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeEvent(ev.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {viewMode === "month" && (
-              <>
-                {/* Mobile (< sm): stacked day cards (days with events in the month) */}
-                <div className="space-y-3 sm:hidden">
-                  {(() => {
-                    const monthAgendaDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
-                      (day) => eventsOnDate(day).length > 0 || isSameDay(day, new Date())
-                    );
-                    if (monthAgendaDays.length === 0) {
-                      return (
-                        <p className="text-sm text-muted-foreground py-6 text-center">
-                          Inga händelser denna månad.
-                        </p>
-                      );
-                    }
-                    return monthAgendaDays.map((day) => {
-                      const dayEvents = eventsOnDate(day);
-                      const today = isSameDay(day, new Date());
-                      return (
-                        <div
-                          key={day.toISOString()}
-                          className={cn(
-                            "rounded-xl border p-3",
-                            today ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20"
-                          )}
-                        >
-                          <div className="mb-2 flex items-baseline justify-between gap-2">
-                            <p className="text-sm font-semibold">
-                              {format(day, "EEEE d", { locale: sv })}
-                            </p>
-                            <span className="text-[11px] tabular-nums text-muted-foreground">
-                              {dayEvents.length > 0 ? `${dayEvents.length} händ.` : ""}
-                            </span>
-                          </div>
-                          {dayEvents.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-1">Inga händelser</p>
-                          ) : (
-                            <ul className="space-y-1.5">
-                              {sortByTime(dayEvents).map((ev: CalendarItem) => (
-                                <li
-                                  key={ev.id}
-                                  data-calendar-event-id={ev.id}
-                                  className={cn(
-                                    "group flex items-center gap-2 rounded-lg bg-background/80 px-2 py-2 text-sm",
-                                    ev.source === "social" && "cursor-pointer",
-                                    focusedEventId === ev.id && "ring-1 ring-primary"
-                                  )}
-                                  onClick={ev.source === "social" && ev.post ? () => openPostDialog(ev.post as ScheduledPost) : undefined}
-                                >
-                                  {ev.source === "social" ? (
-                                    <Send className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  ) : ev.isAutomated ? (
-                                    <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  ) : (
-                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  )}
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate font-medium">{ev.title}</p>
-                                    {ev.time ? (
-                                      <p className="text-[11px] text-muted-foreground">{ev.time}</p>
-                                    ) : null}
-                                  </div>
-                                  {!ev.readOnly && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 shrink-0 text-destructive"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeEvent(ev.id);
-                                      }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-                {/* sm+: month grid */}
-                <div className="-mx-1 hidden overflow-x-auto app-scroll px-1 sm:mx-0 sm:block sm:overflow-visible sm:px-0">
-                  <div className="grid grid-cols-7 gap-1">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                      <div
-                        key={d}
-                        className="py-1 text-center text-xs font-medium text-muted-foreground"
-                      >
-                        {d}
-                      </div>
-                    ))}
-                    {monthDays.map((day) => {
-                      const dayEvents = eventsOnDate(day);
-                      const today = isSameDay(day, new Date());
-                      const inMonth = isSameMonth(day, currentDate);
-                      return (
-                        <div
-                          key={day.toISOString()}
-                          className={cn(
-                            "min-h-[80px] rounded-lg border p-2 relative flex items-center justify-center",
-                            inMonth ? "border-border/50" : "border-transparent opacity-50",
-                            today && "ring-1 ring-primary/30 bg-primary/5"
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
-                              today && "bg-primary text-primary-foreground"
-                            )}
-                          >
-                            {format(day, "d")}
-                          </span>
-                          {dayEvents.length > 0 && (
-                            <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                              {dayEvents.slice(0, 3).map((ev) => (
-                                <span
-                                  key={ev.id}
-                                  className="h-1 w-1 rounded-full bg-primary"
-                                  title={ev.title}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
+            <CalendarViews
+              viewMode={viewMode}
+              currentDate={currentDate}
+              events={allEvents}
+              focusedEventId={focusedEventId}
+              providerLoading={providerLoading}
+              showProviderLoading={Boolean(activeCalendarAccount)}
+              onOpenSocialPost={openPostDialog}
+              onEditEvent={openEditDialog}
+              onRemoveEvent={removeEvent}
+            />
           </CardContent>
         </Card>
       </div>
@@ -1008,141 +630,27 @@ export default function CalendarPage() {
 
       </div>
 
-      <Dialog
+      <CalendarEventDialog
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) resetForm();
         }}
-      >
-        <DialogContent className="rounded-xl">
-          <DialogHeader>
-            <DialogTitle>{editingEventId ? "Redigera aktivitet" : "Lägg till aktivitet"}</DialogTitle>
-            <DialogDescription>
-              {editingEventId ? "Uppdatera den här kalenderposten." : "Lägg till en aktivitet eller automatiserad uppgift i kalendern"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="cal-date">Datum</Label>
-              <Input
-                id="cal-date"
-                type="date"
-                value={formDate}
-                onChange={(e) => setFormDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cal-title">Titel</Label>
-              <Input
-                id="cal-title"
-                placeholder="T.ex. teammöte, schemalagt inlägg"
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cal-time">Tid (valfritt)</Label>
-              <Input
-                id="cal-time"
-                type="time"
-                value={formTime}
-                onChange={(e) => setFormTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cal-description">Beskrivning (valfritt)</Label>
-              <Textarea
-                id="cal-description"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                rows={2}
-                placeholder="Anteckningar eller agenda"
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <Label htmlFor="cal-auto" className="font-medium">
-                  Automatiserad uppgift
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Körs automatiskt vid angiven tid
-                </p>
-              </div>
-              <Switch
-                id="cal-auto"
-                checked={formAutomated}
-                onCheckedChange={setFormAutomated}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Avbryt
-            </Button>
-            <Button onClick={saveEvent} disabled={!formTitle.trim()}>
-              {editingEventId ? "Spara" : "Lägg till"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        editingEventId={editingEventId}
+        values={eventForm}
+        onChange={(patch) => setEventForm((prev) => ({ ...prev, ...patch }))}
+        onSave={saveEvent}
+      />
 
-      <Dialog open={postDialog != null} onOpenChange={(open) => { if (!open) setPostDialog(null); }}>
-        <DialogContent className="rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Schemalagt inlägg</DialogTitle>
-            <DialogDescription>
-              {postDialog
-                ? postDialog.status === "published"
-                  ? "Det här inlägget är redan publicerat."
-                  : "Flytta publiceringstiden, eller öppna inlägget i publiceringsverktyget för att redigera."
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
-          {postDialog ? (
-            <div className="space-y-4 py-2">
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                <p className="text-sm whitespace-pre-line line-clamp-5">{postDialog.caption || "(tomt inlägg)"}</p>
-                <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                  {postDialog.platforms.map((p) => (
-                    <span key={p} className="rounded bg-primary/10 text-primary px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                      {platformLabel(p)}
-                    </span>
-                  ))}
-                  <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                    {SCHEDULED_POST_STATUS_LABELS[postDialog.status]}
-                  </span>
-                  {postDialog.error ? <span className="text-destructive">{postDialog.error}</span> : null}
-                </p>
-              </div>
-              {postDialog.status !== "published" ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="post-date">Datum</Label>
-                    <Input id="post-date" type="date" value={postFormDate} onChange={(e) => setPostFormDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="post-time">Tid</Label>
-                    <Input id="post-time" type="time" value={postFormTime} onChange={(e) => setPostFormTime(e.target.value)} />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <DialogFooter className="gap-2">
-            {postDialog ? (
-              <Button variant="outline" asChild>
-                <Link to={`/social-media?post=${postDialog.id}`}>Öppna i publiceringsverktyget</Link>
-              </Button>
-            ) : null}
-            {postDialog && postDialog.status !== "published" ? (
-              <Button onClick={savePostReschedule} disabled={!postFormDate}>
-                Spara ny tid
-              </Button>
-            ) : null}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ScheduledPostDialog
+        post={postDialog}
+        formDate={postFormDate}
+        formTime={postFormTime}
+        onFormDateChange={setPostFormDate}
+        onFormTimeChange={setPostFormTime}
+        onClose={() => setPostDialog(null)}
+        onSave={savePostReschedule}
+      />
     </div>
   );
 }

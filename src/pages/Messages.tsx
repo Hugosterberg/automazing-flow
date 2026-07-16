@@ -2,13 +2,11 @@ import { m } from "framer-motion";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useToast } from "@/hooks/use-toast";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
@@ -17,11 +15,9 @@ import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiJson } from "@/lib/apiJson";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { useProfileDocument } from "@/features/profile-documents";
-import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
 import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
@@ -33,7 +29,6 @@ import {
   MessageInboxStats,
   MessageStatusBar,
   MessageAlertsBanner,
-  fetchMessageThread,
   avatarGradient,
   channelBadge,
   inboxEmptyCopy,
@@ -47,7 +42,6 @@ import {
   senderInitial,
   type MessageChannelTab,
   type InboxFilter,
-  type ThreadMessage,
   type UnifiedMessage,
   type MailFolderSelection,
   type MailSortOrder,
@@ -69,6 +63,8 @@ import { useMessageTriageState } from "@/features/messages/useMessageTriageState
 import { useFilteredInbox } from "@/features/messages/useFilteredInbox";
 import { useMessageAiAssist } from "@/features/messages/useMessageAiAssist";
 import { useMailInboxActions } from "@/features/messages/useMailInboxActions";
+import { useMessageThread } from "@/features/messages/useMessageThread";
+import { useMessageReply } from "@/features/messages/useMessageReply";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
@@ -95,19 +91,14 @@ export default function MessagesPage() {
   const userPickedMessage = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusReplyRef = useRef<(() => void) | null>(null);
-  const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
-  const prefetchInflight = useRef<Set<string>>(new Set());
-  const replyDraftCache = useRef<Map<string, string>>(new Map());
   const inboxPrefsRef = useRef<InboxPrefs>({});
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [replyDraft, setReplyDraft] = useState("");
-  const [sendBusy, setSendBusy] = useState(false);
-  const [replySent, setReplySent] = useState(false);
-  const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
+  const filteredMessagesRef = useRef<UnifiedMessage[]>([]);
+  const pickNextAfterRef = useRef<(fromId: string, list: UnifiedMessage[]) => UnifiedMessage | null>(
+    () => null
+  );
+  const onDraftRestoredRef = useRef<(messageId: string, cachedDraft: string | null) => void>(() => {});
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [selectedMailFolder, setSelectedMailFolderState] = useState<MailFolderSelection | null>(null);
   const [includeAllMail, setIncludeAllMailState] = useState(false);
@@ -143,13 +134,9 @@ export default function MessagesPage() {
     [messages, selectedId]
   );
 
-  const { aiSummaries, draftBusy, setDraftBusy, draftReply, autoDraftForId } = useMessageAiAssist({
-    messages,
+  const { threadMessages, threadLoading, prefetchThread } = useMessageThread({
     selectedMessage,
-    selectedId,
-    replySent,
-    sendBusy,
-    setReplyDraft,
+    activeProfileId,
   });
 
   const selectMessage = useCallback(
@@ -172,6 +159,29 @@ export default function MessagesPage() {
     (msg: UnifiedMessage | null) => selectMessage(msg, { fromUser: true }),
     [selectMessage]
   );
+
+  const { replyDraft, setReplyDraft, sendBusy, replySent, sendReply } = useMessageReply({
+    selectedMessage,
+    activeProfileId,
+    getFilteredMessages: () => filteredMessagesRef.current,
+    pickNextAfter: (fromId, list) => pickNextAfterRef.current(fromId, list),
+    selectMessage,
+    markHandled,
+    onDraftRestored: (messageId, cached) => onDraftRestoredRef.current(messageId, cached),
+  });
+
+  const { aiSummaries, draftBusy, setDraftBusy, draftReply, autoDraftForId } = useMessageAiAssist({
+    messages,
+    selectedMessage,
+    selectedId,
+    replySent,
+    sendBusy,
+    setReplyDraft,
+  });
+  onDraftRestoredRef.current = (messageId, cached) => {
+    setDraftBusy(false);
+    autoDraftForId.current = cached?.trim() ? messageId : null;
+  };
 
   const mailAccounts = useMemo(
     () => accounts.filter((a) => (a.platform === "gmail" || a.platform === "outlook") && a.isOAuth),
@@ -346,102 +356,12 @@ export default function MessagesPage() {
 
   // Connections is the sole connect home — avoid parallel OAuth entry points here.
 
-  // Restore reply draft cache and reset transient state when switching messages.
-  useEffect(() => {
-    if (!selectedMessage?.id) return;
-    const cached = replyDraftCache.current.get(selectedMessage.id);
-    setReplyDraft(cached ?? "");
-    setReplySent(false);
-    setDraftBusy(false);
-    setSendBusy(false);
-    // Prefer cached thread; otherwise keep prior body visible until the new
-    // fetch lands (avoid blanking the reading pane on every J/K hop).
-    const threadCached = threadPrefetchCache.current.get(selectedMessage.id);
-    if (threadCached) {
-      setThreadMessages(threadCached);
-      setThreadLoading(false);
-    } else {
-      // Avoid briefly showing the previous message's thread under the new selection.
-      setThreadMessages([]);
-    }
-    autoDraftForId.current = cached?.trim() ? selectedMessage.id : null;
-  }, [selectedMessage?.id]);
-
   // Opening a message counts as seen for the unread badge, but the item stays
   // in the open queue until Klar / send / archive.
   useEffect(() => {
     if (!selectedMessage?.id || !selectedMessage.isUnread) return;
     markRead(selectedMessage.id);
   }, [selectedMessage?.id, selectedMessage?.isUnread, markRead]);
-
-  useEffect(() => {
-    if (!selectedMessage?.id || replySent) return;
-    if (replyDraft.trim()) replyDraftCache.current.set(selectedMessage.id, replyDraft);
-    else replyDraftCache.current.delete(selectedMessage.id);
-  }, [replyDraft, replySent, selectedMessage?.id]);
-
-  const selectedMessageRef = useRef(selectedMessage);
-  selectedMessageRef.current = selectedMessage;
-
-  useEffect(() => {
-    const msg = selectedMessageRef.current;
-    if (!msg) {
-      setThreadLoading(false);
-      return;
-    }
-    const canLoad =
-      (msg.kind === "email" && (msg.threadId || msg.providerMessageId)) ||
-      (msg.kind === "dm" && msg.conversationId);
-    if (!canLoad) {
-      setThreadMessages([]);
-      setThreadLoading(false);
-      return;
-    }
-
-    const cached = threadPrefetchCache.current.get(msg.id);
-    if (cached) {
-      setThreadMessages(cached);
-      setThreadLoading(false);
-      return;
-    }
-
-    const ac = new AbortController();
-    const messageId = msg.id;
-    setThreadLoading(true);
-    void fetchMessageThread(msg, activeProfileId, ac.signal)
-      .then((rows) => {
-        if (!ac.signal.aborted) {
-          threadPrefetchCache.current.set(messageId, rows);
-          setThreadMessages(rows);
-        }
-      })
-      .catch(() => {
-        if (!ac.signal.aborted) setThreadMessages([]);
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setThreadLoading(false);
-      });
-
-    return () => ac.abort();
-  }, [selectedMessage?.id, activeProfileId]);
-
-  const prefetchThread = useCallback(
-    (msg: UnifiedMessage) => {
-      if (threadPrefetchCache.current.has(msg.id) || prefetchInflight.current.has(msg.id)) return;
-      const canLoad =
-        (msg.kind === "email" && (msg.threadId || msg.providerMessageId)) ||
-        (msg.kind === "dm" && msg.conversationId);
-      if (!canLoad) return;
-      prefetchInflight.current.add(msg.id);
-      void fetchMessageThread(msg, activeProfileId)
-        .then((rows) => {
-          threadPrefetchCache.current.set(msg.id, rows);
-          prefetchInflight.current.delete(msg.id);
-        })
-        .catch(() => prefetchInflight.current.delete(msg.id));
-    },
-    [activeProfileId]
-  );
 
   useEffect(() => {
     if (defaultedFilter.current || loading || inboxPrefsDoc.isLoading) return;
@@ -519,6 +439,7 @@ export default function MessagesPage() {
     isVisuallyUnread,
     aiSummaries,
   });
+  filteredMessagesRef.current = filteredMessages;
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -567,6 +488,7 @@ export default function MessagesPage() {
     },
     [isUnanswered]
   );
+  pickNextAfterRef.current = pickNextAfter;
 
   const advanceToNextMessage = useCallback(
     (fromId: string) => {
@@ -663,62 +585,6 @@ export default function MessagesPage() {
     selectMessage(filteredMessages[0] ?? null, { fromUser: true });
     searchInputRef.current?.blur();
   }, [filteredMessages, selectMessage]);
-
-  const sendReply = useCallback(async () => {
-    if (!selectedMessage || !replyDraft.trim()) return;
-    const messageId = providerMessageIdFor(selectedMessage);
-    if (selectedMessage.kind === "email" && !messageId) {
-      toast({
-        title: "Kunde inte skicka svar",
-        description: "E-postmeddelandet saknar provider-id. Uppdatera inkorgen och försök igen.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (selectedMessage.kind === "dm" && !selectedMessage.conversationId) return;
-    const sentId = selectedMessage.id;
-    const nextAfterSend = pickNextAfter(sentId, filteredMessages);
-    setSendBusy(true);
-    try {
-      await apiJson("/api/messages/reply", "Kunde inte skicka svar", {
-        body: {
-          accountId: selectedMessage.accountId,
-          conversationId: selectedMessage.kind === "dm" ? selectedMessage.conversationId : undefined,
-          messageId: selectedMessage.kind === "email" ? messageId : undefined,
-          message: replyDraft.trim(),
-          business_profile_id: selectedMessage.profileId || activeProfileId,
-        },
-      });
-      setReplySent(true);
-      replyDraftCache.current.delete(sentId);
-      selectMessage(nextAfterSend);
-      markHandled([sentId], { silent: true });
-      void queryClient.invalidateQueries({ queryKey: UNREAD_DM_KEY });
-      sonnerToast.success(
-        selectedMessage.kind === "email"
-          ? `Svar skickat via ${selectedMessage.channel === "gmail" ? "Gmail" : "Outlook"}`
-          : "Svar skickat"
-      );
-    } catch (e) {
-      toast({
-        title: "Kunde inte skicka svar",
-        description: e instanceof Error ? e.message : "Okänt fel",
-        variant: "destructive",
-      });
-    } finally {
-      setSendBusy(false);
-    }
-  }, [
-    activeProfileId,
-    filteredMessages,
-    markHandled,
-    pickNextAfter,
-    queryClient,
-    replyDraft,
-    selectMessage,
-    selectedMessage,
-    toast,
-  ]);
 
   const getRowMeta = useCallback(
     (msg: UnifiedMessage) => {

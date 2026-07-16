@@ -2,8 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
@@ -18,14 +17,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
 import { AutomationEnableHint } from "@/features/automation";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
 import type { ApiaiBatchIngestItem } from "@/features/content/apiaiClient";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
 import { isContentTab, type ContentTab } from "@/features/content/contentFlow";
 import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
-import { ContentUploadDropzone } from "@/features/content/ContentUploadDropzone";
 import { ContentIdeasHub } from "@/features/content/ContentIdeasHub";
 import { GeneratedHistoryPanel } from "@/features/content/GeneratedHistoryPanel";
 import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
@@ -34,9 +31,10 @@ import { publishBlockReason, type PublishReadiness } from "@/features/content/ap
 import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
 import { uploadContentMedia } from "@/features/content/contentMediaClient";
 import { enqueueContentPipelineItems } from "@/features/content/contentPipelineQueue";
+import { DriveBrowsePanel } from "@/features/content/DriveBrowsePanel";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
-import { Film, FolderOpen, History, Image as ImageIcon, ImagePlus, Loader2, RefreshCw, HardDrive, Users, ChevronDown, ArrowLeft, Wand2, Search, Send, BookmarkCheck, MoreHorizontal } from "lucide-react";
+import { FolderOpen, History, Loader2, RefreshCw, HardDrive, ChevronDown, Wand2, Send, BookmarkCheck, MoreHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -50,10 +48,8 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/featu
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
-import { formatShortDate } from "@/lib/format";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import {
-  MediaSection,
   type DriveBrowserItem,
   type DriveProviderData,
   type DriveOAuthPopupMessage,
@@ -245,12 +241,8 @@ export default function ContentPage() {
   const videoItems = filteredActiveItems.filter((item) => item.kind === "video");
   const otherItems = filteredActiveItems.filter((item) => item.kind === "other");
 
-  const PREVIEW_COUNT = 4;
-  const [imagesExpanded, setImagesExpanded] = useState(false);
-  const [videosExpanded, setVideosExpanded] = useState(false);
   const [focusedBrowseFileId, setFocusedBrowseFileId] = useState<string | null>(null);
   const [uploadingBrowse, setUploadingBrowse] = useState(false);
-  const browseUploadRef = useRef<HTMLInputElement>(null);
   const driveSearchRef = useRef<HTMLInputElement>(null);
   const browseMediaFiles = useMemo(
     () => [...imageItems, ...videoItems],
@@ -502,7 +494,6 @@ export default function ContentPage() {
       toast.error(e instanceof Error ? e.message : "Uppladdningen misslyckades");
     } finally {
       setUploadingBrowse(false);
-      if (browseUploadRef.current) browseUploadRef.current.value = "";
     }
   }
 
@@ -610,6 +601,23 @@ export default function ContentPage() {
     const newStack = folderStack.slice(0, -1);
     setFolderStack(newStack);
     setCurrentFolderId(newStack.length > 0 ? newStack[newStack.length - 1].id : null);
+  }
+
+  function navigateRoot() {
+    setFolderStack([]);
+    setCurrentFolderId(null);
+  }
+
+  function navigateToBreadcrumb(index: number) {
+    const newStack = folderStack.slice(0, index + 1);
+    setFolderStack(newStack);
+    setCurrentFolderId(newStack[newStack.length - 1].id);
+  }
+
+  function handleDriveViewChange(view: "my-drive" | "shared-with-me") {
+    setDriveView(view);
+    setCurrentFolderId(null);
+    setFolderStack([]);
   }
 
   function handleClearSelection() {
@@ -943,313 +951,42 @@ export default function ContentPage() {
       ) : null}
 
       {contentTab === "browse" ? (
-        <>
-      {error ? (
-        <Card className="bg-destructive/10 border-destructive/30">
-          <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
-            <p className="text-sm text-destructive">{error}</p>
-            <Button variant="ghost" size="sm" onClick={() => void refresh()}>Retry</Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {activeAccount && (
-        <div className="space-y-3">
-          {/* View tabs */}
-          <Tabs
-            value={driveView}
-            onValueChange={(value) => {
-              setDriveView(value === "shared-with-me" ? "shared-with-me" : "my-drive");
-              setCurrentFolderId(null);
-              setFolderStack([]);
-            }}
-          >
-            <TabsList className="h-auto rounded-none border-b border-border bg-transparent p-0">
-              <TabsTrigger
-                value="my-drive"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
-              >
-                <HardDrive className="h-3.5 w-3.5" />
-                Min enhet
-              </TabsTrigger>
-              <TabsTrigger
-                value="shared-with-me"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
-              >
-                <Users className="h-3.5 w-3.5" />
-                Delat med mig
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {/* Breadcrumb with back arrow */}
-          {folderStack.length > 0 && (
-            <div className="flex items-center gap-1.5 text-sm min-w-0">
-              <button
-                onClick={navigateBack}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => { setFolderStack([]); setCurrentFolderId(null); }}
-                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                {driveView === "shared-with-me" ? "Delat med mig" : "Min enhet"}
-              </button>
-              {folderStack.map((f, i) => (
-                <React.Fragment key={f.id}>
-                  <span className="text-muted-foreground/50">/</span>
-                  {i === folderStack.length - 1 ? (
-                    <span className="font-medium truncate">{f.name}</span>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        const newStack = folderStack.slice(0, i + 1);
-                        setFolderStack(newStack);
-                        setCurrentFolderId(newStack[newStack.length - 1].id);
-                      }}
-                      className="text-muted-foreground hover:text-foreground transition-colors truncate"
-                    >
-                      {f.name}
-                    </button>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {driveAccounts.length > 1 && (
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-base">Kopplade Drive-konton</CardTitle>
-            <CardDescription>Välj vilket Google Drive-konto du vill bläddra i just nu.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {driveAccounts.map((account) => (
-              <Button
-                key={account.id}
-                variant={selectedAccountId === account.id ? "default" : "outline"}
-                onClick={() => setSelectedAccountId("content", account.id)}
-              >
-                {account.username}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Google Drive</CardTitle>
-          <CardDescription>
-            Klicka på bilder eller videor för att lägga till i Valda
-            {selectedAssets.length > 0 ? (
-              <>
-                {" "}
-                ·{" "}
-                <button
-                  type="button"
-                  className="text-primary hover:underline font-medium"
-                  onClick={() => goToTab("selected")}
-                >
-                  {selectedAssets.length} valda
-                </button>
-              </>
-            ) : null}
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      {driveAccounts.length === 0 ? (
-        <EmptyState
-          icon={HardDrive}
-          title="Ingen Google Drive kopplad ännu"
-          description="Koppla Drive under Kopplingar — sedan kan du bläddra mappar, markera media och schemalägga publicering."
-          action={
-            <Button asChild>
-              <Link to="/connections?q=drive">Öppna Kopplingar</Link>
-            </Button>
-          }
+        <DriveBrowsePanel
+          error={error}
+          onRetry={() => void refresh()}
+          activeAccountId={activeAccount?.id ?? null}
+          driveView={driveView}
+          onDriveViewChange={handleDriveViewChange}
+          folderStack={folderStack}
+          onNavigateBack={navigateBack}
+          onNavigateRoot={navigateRoot}
+          onNavigateToBreadcrumb={navigateToBreadcrumb}
+          onNavigateIntoFolder={navigateIntoFolder}
+          driveAccounts={driveAccounts}
+          selectedAccountId={selectedAccountId}
+          onSelectAccount={(accountId) => setSelectedAccountId("content", accountId)}
+          selectedCount={selectedAssets.length}
+          onGoSelected={() => goToTab("selected")}
+          loading={loading}
+          driveSearch={driveSearch}
+          onDriveSearchChange={setDriveSearch}
+          driveSearchRef={driveSearchRef}
+          onUploadFiles={handleBrowseUploadFiles}
+          uploading={uploadingBrowse}
+          uploadDisabled={!createBusinessProfileId}
+          folderItems={folderItems}
+          imageItems={imageItems}
+          videoItems={videoItems}
+          otherItems={otherItems}
+          browseMediaFiles={browseMediaFiles}
+          filteredActiveItems={filteredActiveItems}
+          driveQuery={driveQuery}
+          providerData={providerData}
+          selectedIds={selectedIds}
+          onToggleAsset={toggleAsset}
+          focusedFileId={focusedBrowseFileId}
+          focusedFile={focusedBrowseFile}
         />
-      ) : loading ? (
-        <Card className="bg-card border-border">
-          <CardContent className="py-10 flex items-center justify-center text-muted-foreground gap-3">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Laddar…
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative max-w-sm flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                ref={driveSearchRef}
-                id="driveSearch"
-                type="search"
-                placeholder="Sök filer efter namn…"
-                value={driveSearch}
-                onChange={(e) => setDriveSearch(e.target.value)}
-                className="pl-9 h-9 text-sm"
-              />
-            </div>
-            <input
-              ref={browseUploadRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="hidden"
-              onChange={(event) => void handleBrowseUploadFiles(event.target.files)}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={uploadingBrowse || !createBusinessProfileId}
-              onClick={() => browseUploadRef.current?.click()}
-            >
-              {uploadingBrowse ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : (
-                <ImagePlus className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              Upload files
-            </Button>
-          </div>
-          <ContentUploadDropzone
-            onFiles={handleBrowseUploadFiles}
-            busy={uploadingBrowse}
-            disabled={!createBusinessProfileId}
-            className="py-6"
-            label="Eller släpp filer här för att ladda upp till Valda"
-          />
-          {folderItems.length > 0 && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {folderItems.map((folder) => (
-                  <button
-                    key={folder.id}
-                    onClick={() => navigateIntoFolder({ id: folder.id, name: folder.name })}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-center group"
-                  >
-                    <div className="h-12 w-12 rounded-lg bg-secondary/60 flex items-center justify-center group-hover:bg-secondary transition-colors">
-                      <FolderOpen className="h-6 w-6 text-blue-500" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium truncate">{folder.name}</p>
-                      {folder.modifiedTime && (
-                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                          {formatShortDate(folder.modifiedTime)}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(imageItems.length > 0 || videoItems.length > 0) && (
-            <>
-              {imageItems.length > 0 && (
-                <MediaSection
-                  title="Images"
-                  icon={<ImageIcon className="h-4 w-4" />}
-                  files={imageItems}
-                  expanded={imagesExpanded}
-                  onToggleExpand={() => setImagesExpanded((v) => !v)}
-                  previewCount={PREVIEW_COUNT}
-                  selectedIds={selectedIds}
-                  selectionKeyForFile={(file) =>
-                    assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
-                  }
-                  onToggleAsset={toggleAsset}
-                  focusedFileId={focusedBrowseFileId}
-                />
-              )}
-              {videoItems.length > 0 && (
-                <MediaSection
-                  title="Videos"
-                  icon={<Film className="h-4 w-4" />}
-                  files={videoItems}
-                  expanded={videosExpanded}
-                  onToggleExpand={() => setVideosExpanded((v) => !v)}
-                  previewCount={PREVIEW_COUNT}
-                  selectedIds={selectedIds}
-                  selectionKeyForFile={(file) =>
-                    assetSelectionKey({ id: file.id, sourceAccountId: activeAccount?.id ?? "" })
-                  }
-                  onToggleAsset={toggleAsset}
-                  focusedFileId={focusedBrowseFileId}
-                />
-              )}
-            </>
-          )}
-
-          {browseMediaFiles.length > 0 ? (
-            <div className="flex shrink-0 items-center justify-between border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-sm sm:px-4 rounded-b-lg -mx-0">
-              <span className="truncate">
-                {focusedBrowseFile ? (
-                  <>
-                    Fokus:{" "}
-                    <span className="font-medium text-foreground/80">{focusedBrowseFile.name}</span>
-                  </>
-                ) : (
-                  "J/K bläddra bland bilder och videor"
-                )}
-              </span>
-              <span className="hidden sm:inline">S Select · / Search</span>
-            </div>
-          ) : null}
-
-          {otherItems.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Other files</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {otherItems.map((file) => (
-                  <div key={`${file.id}-${file.name}`} className="flex items-center gap-3 p-2 rounded-lg border border-border/50 hover:bg-accent/30 transition-colors">
-                    <div className="h-8 w-8 rounded-md bg-secondary/40 flex items-center justify-center shrink-0 overflow-hidden">
-                      {file.iconLink ? (
-                        <img src={file.iconLink} alt="" className="h-4 w-4 object-contain" />
-                      ) : (
-                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium truncate">{file.name}</p>
-                      <p className="text-[11px] text-muted-foreground/70">{file.mimeType}</p>
-                    </div>
-                    {file.webViewLink && (
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs shrink-0" asChild>
-                        <a href={file.webViewLink} target="_blank" rel="noopener noreferrer">Open</a>
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {filteredActiveItems.length === 0 && !loading && (
-            <Card className="bg-card border-border border-dashed">
-              <CardContent className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {driveQuery
-                    ? `Inga filer matchar "${driveSearch.trim()}".`
-                    : driveView === "shared-with-me"
-                    ? "Inga filer delade med dig."
-                    : providerData?.currentFolderName
-                    ? `Inga filer i "${providerData.currentFolderName}".`
-                    : "Inga filer i Min enhet. Prova att bläddra i en undermapp — eller byt till Delat med mig."}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-        </>
       ) : null}
 
         </div>
