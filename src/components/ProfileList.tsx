@@ -73,7 +73,7 @@ export function ProfileList() {
             type="button"
             onClick={() => setShowInput((s) => !s)}
             className="flex items-center justify-center gap-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/70 border-l border-border shrink-0"
-            aria-label="Add profile"
+            aria-label="Lägg till profil"
           >
             <Plus className="h-4 w-4" />
           </button>

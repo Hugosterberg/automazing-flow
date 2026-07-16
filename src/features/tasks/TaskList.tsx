@@ -111,7 +111,7 @@ export function TaskList({
               className="h-7 px-2 text-muted-foreground hover:text-destructive"
               onClick={() => onDelete(t.id)}
               disabled={isDeleting}
-              aria-label="Delete task"
+              aria-label="Ta bort uppgift"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

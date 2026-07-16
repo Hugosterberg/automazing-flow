@@ -136,7 +136,7 @@ export function ContentAiImageCard({
           <div
             role="button"
             tabIndex={0}
-            aria-label="Upload image"
+            aria-label="Ladda upp bild"
             onClick={onLocalUploadClick}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {

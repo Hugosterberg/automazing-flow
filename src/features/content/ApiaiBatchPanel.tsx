@@ -271,7 +271,7 @@ export function ApiaiBatchPanel({
                 : "Use flow:slug for pipelines."}
             </p>
             <Input
-              aria-label="Custom workflow slug"
+              aria-label="Egen workflow-slug"
               value={workflow}
               onChange={(event) => {
                 const next = event.target.value;

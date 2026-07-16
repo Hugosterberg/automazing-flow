@@ -160,7 +160,7 @@ export function ReviewDetailPanel({
                     className="h-10 w-10 p-0"
                     disabled={!navigation.hasPrev}
                     onClick={navigation.onPrev}
-                    aria-label="Previous review"
+                    aria-label="Föregående recension"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
@@ -174,7 +174,7 @@ export function ReviewDetailPanel({
                     className="h-10 w-10 p-0"
                     disabled={!navigation.hasNext}
                     onClick={navigation.onNext}
-                    aria-label="Next review"
+                    aria-label="Nästa recension"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </Button>
@@ -182,7 +182,7 @@ export function ReviewDetailPanel({
               ) : null}
               {review.url && !composeOpen ? (
                 <Button type="button" variant="ghost" size="sm" className="h-10 w-10 p-0" asChild>
-                  <a href={review.url} target="_blank" rel="noreferrer" aria-label="Open review externally">
+                  <a href={review.url} target="_blank" rel="noreferrer" aria-label="Öppna recensionen externt">
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
@@ -395,7 +395,7 @@ export function ReviewDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
-                      aria-label="Previous review"
+                      aria-label="Föregående recension"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -409,7 +409,7 @@ export function ReviewDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
-                      aria-label="Next review"
+                      aria-label="Nästa recension"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -417,7 +417,7 @@ export function ReviewDetailPanel({
                 ) : null}
                 {review.url ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                    <a href={review.url} target="_blank" rel="noreferrer" aria-label="Open review externally">
+                    <a href={review.url} target="_blank" rel="noreferrer" aria-label="Öppna recensionen externt">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
