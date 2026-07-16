@@ -1,11 +1,17 @@
 import { useCallback } from "react";
 import { useProfileDocument } from "@/features/profile-documents";
-import type { MailReplyQueueItem } from "@/features/messages/MailReplyDraftsStrip";
+import {
+  MAIL_REPLY_QUEUE_DOC_KEY,
+  type MailReplyQueueItem,
+} from "@/features/messages/MailReplyDraftsStrip";
 import {
   OUTREACH_QUEUE_DOC_KEY,
   type OutreachQueueItem,
 } from "@/features/outreach/outreachQueueTypes";
-import type { ReviewReplyQueueItem } from "@/features/reviews/ReviewReplyQueueSection";
+import {
+  REVIEW_REPLY_QUEUE_DOC_KEY,
+  type ReviewReplyQueueItem,
+} from "@/features/reviews/ReviewReplyQueueSection";
 import {
   DEMO_MODE_DOC_KEY,
   isDemoId,
@@ -27,9 +33,9 @@ function pendingStatus(status?: string) {
  */
 export function useDemoMode() {
   const doc = useProfileDocument<DemoModeDoc>(DEMO_MODE_DOC_KEY, { enabled: false });
-  const mailDoc = useProfileDocument<MailReplyQueueItem[]>("mail-reply-queue", []);
+  const mailDoc = useProfileDocument<MailReplyQueueItem[]>(MAIL_REPLY_QUEUE_DOC_KEY, []);
   const outreachDoc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
-  const reviewDoc = useProfileDocument<ReviewReplyQueueItem[]>("review-reply-queue", []);
+  const reviewDoc = useProfileDocument<ReviewReplyQueueItem[]>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
 
   const enabled = Boolean(doc.data?.enabled);
   const dmDrafts = enabled ? doc.data?.dmDrafts ?? [] : [];
