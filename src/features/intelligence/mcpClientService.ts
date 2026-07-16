@@ -22,7 +22,7 @@ export interface McpToolCallResponse {
 export async function fetchMcpTools(accountId: string): Promise<McpToolsResponse> {
   return apiJson<McpToolsResponse>(
     `/api/mcp/${encodeURIComponent(accountId)}/tools`,
-    "Could not list MCP tools."
+    "Kunde inte lista MCP-verktyg."
   );
 }
 

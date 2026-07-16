@@ -317,21 +317,21 @@ export default function PreferencesPage() {
       const health = await checkApiaiHealth(activeBusinessProfileId);
       if (health.ok) {
         toast({
-          title: "apiai.me is connected",
-          description: `${health.toolCount} tools available (${health.workflowCount} workflows, ${health.flowCount} flows) · ${health.latencyMs ?? "?"} ms.`,
+          title: "apiai.me är kopplat",
+          description: `${health.toolCount} verktyg tillgängliga (${health.workflowCount} workflows, ${health.flowCount} flöden) · ${health.latencyMs ?? "?"} ms.`,
         });
       } else {
         toast({
           variant: "destructive",
-          title: "apiai.me check failed",
-          description: health.error ?? "Unknown error.",
+          title: "apiai.me-kontrollen misslyckades",
+          description: health.error ?? "Okänt fel.",
         });
       }
     } catch (e) {
       toast({
         variant: "destructive",
-        title: "Could not reach the server",
-        description: e instanceof Error ? e.message : "Request failed.",
+        title: "Kunde inte nå servern",
+        description: e instanceof Error ? e.message : "Anropet misslyckades.",
       });
     } finally {
       setApiaiTesting(false);
@@ -371,7 +371,7 @@ export default function PreferencesPage() {
         if (!ignore) {
           toast({
             title: "Kunde inte ladda inställningar",
-            description: error instanceof Error ? error.message : "Unknown error",
+            description: error instanceof Error ? error.message : "Okänt fel",
             variant: "destructive",
           });
         }
@@ -392,7 +392,7 @@ export default function PreferencesPage() {
     const entries = dirtyKeys.map((key) => ({ key, value: edited[key] }));
     setSaving(true);
     try {
-      await apiJson("/api/settings/secrets", "Could not save secrets.", {
+      await apiJson("/api/settings/secrets", "Kunde inte spara nycklarna.", {
         method: "PUT",
         body: { business_profile_id: activeBusinessProfileId, entries },
       });
@@ -400,12 +400,12 @@ export default function PreferencesPage() {
       await loadTenant(activeBusinessProfileId);
       toast({
         title: "Profilnycklar sparade",
-        description: "Encrypted and stored for this business profile.",
+        description: "Krypterade och lagrade för den här företagsprofilen.",
       });
     } catch (error) {
       toast({
-        title: "Could not save secrets",
-        description: error instanceof Error ? error.message : "Unknown error",
+        title: "Kunde inte spara nycklarna",
+        description: error instanceof Error ? error.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {
@@ -418,12 +418,12 @@ export default function PreferencesPage() {
     try {
       const payload = await apiJson<ConfigTestResult>(
         "/api/settings/api-keys/test",
-        `Could not test ${target}.`,
+        `Kunde inte testa ${target}.`,
         { body: { target } }
       );
       setTestResults((current) => ({ ...current, [target]: payload }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : "Okänt fel";
       setTestResults((current) => ({
         ...current,
         [target]: { ok: false, missing: [], missingAny: [], message },

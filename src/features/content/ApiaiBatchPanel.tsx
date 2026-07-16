@@ -69,7 +69,7 @@ export function ApiaiBatchPanel({
       const next = await listApiaiBatches(businessProfileId);
       setJobs(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load batch jobs");
+      setError(e instanceof Error ? e.message : "Kunde inte ladda batchjobb");
     } finally {
       setLoadingJobs(false);
     }
@@ -96,7 +96,7 @@ export function ApiaiBatchPanel({
       setActiveJob(created);
       await refreshJobs();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start batch job");
+      setError(e instanceof Error ? e.message : "Kunde inte starta batchjobbet");
     } finally {
       setCreating(false);
     }
@@ -127,14 +127,14 @@ export function ApiaiBatchPanel({
       });
       setImportedCount(result.items.length);
       toast.success(
-        `${result.items.length} image${result.items.length === 1 ? "" : "s"} saved to History${
-          addToSelection ? " and selection" : ""
+        `${result.items.length} bild${result.items.length === 1 ? "" : "er"} sparade i Historik${
+          addToSelection ? " och urvalet" : ""
         }`
       );
     } catch (e) {
       ingestedRef.current = null;
-      setError(e instanceof Error ? e.message : "Could not import batch results");
-      toast.error(e instanceof Error ? e.message : "Could not import batch results");
+      setError(e instanceof Error ? e.message : "Kunde inte importera batchresultaten");
+      toast.error(e instanceof Error ? e.message : "Kunde inte importera batchresultaten");
     } finally {
       setIngesting(false);
     }

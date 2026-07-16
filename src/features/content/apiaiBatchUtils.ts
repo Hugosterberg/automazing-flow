@@ -1,9 +1,9 @@
 export function batchStatusLabel(status: string): string {
   const value = status.toLowerCase();
-  if (value.includes("complete")) return "Complete";
-  if (value.includes("run") || value.includes("process")) return "Running";
-  if (value.includes("cancel")) return "Cancelled";
-  if (value.includes("fail")) return "Failed";
+  if (value.includes("complete")) return "Klar";
+  if (value.includes("run") || value.includes("process")) return "Körs";
+  if (value.includes("cancel")) return "Avbruten";
+  if (value.includes("fail")) return "Misslyckad";
   return status;
 }
 

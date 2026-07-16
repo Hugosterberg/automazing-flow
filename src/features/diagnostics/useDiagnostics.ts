@@ -29,7 +29,7 @@ export function useDiagnostics() {
   const { enabled, user } = useAuth();
   const query = useQuery<DiagnosticsReport>({
     queryKey: [...DIAGNOSTICS_KEY, user?.id ?? null],
-    queryFn: () => apiJson<DiagnosticsReport>("/api/diagnostics", "Couldn't load diagnostics."),
+    queryFn: () => apiJson<DiagnosticsReport>("/api/diagnostics", "Kunde inte ladda diagnostiken."),
     enabled: Boolean(enabled),
     staleTime: 5 * 60_000,
     meta: { silent: true },

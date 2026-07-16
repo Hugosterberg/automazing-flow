@@ -176,7 +176,7 @@ export function useMarketingCampaigns() {
         `/api/marketing/campaigns${
           businessProfileId ? `?business_profile_id=${encodeURIComponent(businessProfileId)}` : ""
         }`,
-        "Couldn't load campaigns.",
+        "Kunde inte ladda kampanjer.",
       ),
     enabled: Boolean(enabled),
     staleTime: 60_000,

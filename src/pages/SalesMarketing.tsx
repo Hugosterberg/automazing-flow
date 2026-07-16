@@ -306,7 +306,7 @@ export default function SalesMarketingPage() {
   function handoffContentIdea(text: string) {
     stashContentCaption(text);
     navigate("/content?tab=publish");
-    toast.success("Idea ready in Content — post or save");
+    toast.success("Idén är klar i Innehåll — publicera eller spara");
   }
 
   const { tasks, isLoading, createTask, updateTask, deleteTask, isDeleting, isUpdating } = useTasks(businessProfileId);
@@ -557,19 +557,19 @@ export default function SalesMarketingPage() {
             onClick={clearViewFilter}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Tillbaka till Sales
+            Tillbaka till Försäljning
           </Button>
         </div>
       ) : (
         <>
           <PageHeader
             icon={Target}
-            title="Sales"
+            title="Försäljning"
             description="Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag."
           />
 
           <PageSmartBar
-            title="Sales samlar leads, affärer och mål — från första kontakt till avslut."
+            title="Försäljning samlar leads, affärer och mål — från första kontakt till avslut."
             steps={[
               "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
               "Lägg till leads och följ upp det som är försenat",
@@ -596,7 +596,7 @@ export default function SalesMarketingPage() {
 
           <PageModeTabs
             value={salesTab}
-            aria-label="Sales-flikar"
+            aria-label="Försäljningsflikar"
             onChange={setSalesTab}
             options={[
               { value: "overview", label: "Översikt" },
@@ -672,7 +672,7 @@ export default function SalesMarketingPage() {
                 <p className="text-sm">Outreach-kö — granska utkast i split-vy.</p>
                 <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                   <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                  Visa hela Sales
+                  Visa hela Försäljning
                 </Button>
               </CardContent>
             </Card>
@@ -711,7 +711,7 @@ export default function SalesMarketingPage() {
                 </div>
                 <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearViewFilter}>
                   <X className="h-3.5 w-3.5 mr-1" aria-hidden />
-                  Visa hela Sales
+                  Visa hela Försäljning
                 </Button>
               </CardContent>
             </Card>

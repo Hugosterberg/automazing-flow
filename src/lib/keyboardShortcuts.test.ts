@@ -37,10 +37,10 @@ describe("keyboardShortcuts", () => {
     const reviews = sections.find((s) => s.id === "reviews");
     const tasks = sections.find((s) => s.id === "tasks");
 
-    expect(messages?.shortcuts.some((s) => s.keys.includes("H") && s.description.includes("Handled"))).toBe(true);
-    expect(reviews?.shortcuts.some((s) => s.keys.includes("M") && s.description.includes("Mark"))).toBe(true);
-    expect(reviews?.shortcuts.some((s) => s.keys.includes("D") && s.description.includes("Draft"))).toBe(true);
-    expect(tasks?.shortcuts.some((s) => s.keys.includes("E") && s.description.includes("Edit"))).toBe(true);
-    expect(tasks?.shortcuts.some((s) => s.keys.includes("O") && s.description.includes("Overdue"))).toBe(true);
+    expect(messages?.shortcuts.some((s) => s.keys.includes("H") && s.description.includes("hanterad"))).toBe(true);
+    expect(reviews?.shortcuts.some((s) => s.keys.includes("M") && s.description.includes("Markera"))).toBe(true);
+    expect(reviews?.shortcuts.some((s) => s.keys.includes("D") && s.description.includes("utkast"))).toBe(true);
+    expect(tasks?.shortcuts.some((s) => s.keys.includes("E") && s.description.includes("Redigera"))).toBe(true);
+    expect(tasks?.shortcuts.some((s) => s.keys.includes("O") && s.description.includes("Försenade"))).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { m } from "framer-motion";
 import {
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -472,7 +473,7 @@ async function fetchAudit(websiteUrl: string): Promise<WebsiteAudit> {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || "Could not audit website.");
+    throw new Error(payload?.message || payload?.error || "Kunde inte granska webbplatsen.");
   }
   return payload as WebsiteAudit;
 }
@@ -544,7 +545,7 @@ export default function DigitalBrandPage() {
       setAudit(await fetchAudit(websiteUrl));
     } catch (error) {
       setAudit(null);
-      setAuditError(error instanceof Error ? error.message : "Could not audit website.");
+      setAuditError(error instanceof Error ? error.message : "Kunde inte granska webbplatsen.");
     } finally {
       setAuditLoading(false);
     }
@@ -568,6 +569,40 @@ export default function DigitalBrandPage() {
 
   function recsFor(area: RecommendationArea) {
     return recommendations.filter((item) => item.area === area);
+  }
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  type BrandTab = "overview" | "recs" | "research";
+  type RecAreaTab = RecommendationArea | "all";
+  const BRAND_TABS: BrandTab[] = ["overview", "recs", "research"];
+  const REC_AREAS: RecAreaTab[] = ["seo", "performance", "trust", "channels", "all"];
+  const rawBrandTab = searchParams.get("tab");
+  const brandTab: BrandTab =
+    rawBrandTab && (BRAND_TABS as string[]).includes(rawBrandTab)
+      ? (rawBrandTab as BrandTab)
+      : "overview";
+  const rawArea = searchParams.get("area");
+  const recArea: RecAreaTab =
+    rawArea && (REC_AREAS as string[]).includes(rawArea) ? (rawArea as RecAreaTab) : "seo";
+
+  function setBrandTab(next: BrandTab) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "overview") {
+      params.delete("tab");
+      params.delete("area");
+    } else {
+      params.set("tab", next);
+      if (next !== "recs") params.delete("area");
+    }
+    setSearchParams(params, { replace: true });
+  }
+
+  function setRecArea(next: RecAreaTab) {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "recs");
+    if (next === "seo") params.delete("area");
+    else params.set("area", next);
+    setSearchParams(params, { replace: true });
   }
 
   return (
@@ -603,18 +638,32 @@ export default function DigitalBrandPage() {
         steps={[
           "Registrera webbadress under Kopplingar",
           "Kör audit och granska PageSpeed- och HTML-värden",
-          "Prioritera höga rekommendationer under flikarna SEO, Prestanda och Trust",
+          "Prioritera höga rekommendationer under fliken Rekommendationer",
         ]}
         tip="Auditen körs server-side — ingen kod behöver installeras på sidan."
         liveHintOverride={
           !websiteUrl
             ? "Lägg till webbadress under Kopplingar för att köra audit."
             : highCount > 0
-              ? `${highCount} högprioriterad${highCount === 1 ? "" : "e"} rekommendation${highCount === 1 ? "" : "er"} — börja under SEO eller Prestanda`
+              ? `${highCount} högprioriterad${highCount === 1 ? "" : "e"} rekommendation${highCount === 1 ? "" : "er"} — öppna Rekommendationer`
               : audit
                 ? "Auditen ser bra ut — inga kritiska punkter just nu."
                 : null
         }
+        extraActions={
+          highCount > 0 ? [{ label: "Visa rekommendationer", onClick: () => setBrandTab("recs") }] : []
+        }
+      />
+
+      <PageModeTabs
+        value={brandTab}
+        aria-label="Digitalt varumärke-flikar"
+        onChange={setBrandTab}
+        options={[
+          { value: "overview", label: "Översikt" },
+          { value: "recs", label: "Rekommendationer", count: highCount },
+          { value: "research", label: "Research" },
+        ]}
       />
 
       {!websiteUrl ? (
@@ -637,6 +686,7 @@ export default function DigitalBrandPage() {
         </Alert>
       ) : null}
 
+      {brandTab === "research" ? (
       <m.div {...pageFadeUp} className="space-y-4">
         <McpMultiSourceCompare businessProfileId={businessProfileId} initialSubject={hostname ?? ""} />
         <McpFeatureSection
@@ -646,8 +696,9 @@ export default function DigitalBrandPage() {
           description="SEO-översikt och domänuppslag för din registrerade webbplats."
         />
       </m.div>
+      ) : null}
 
-      {websiteUrl ? (
+      {websiteUrl && brandTab === "overview" ? (
         <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
         <m.div {...pageFadeUp} className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
           <Card className="border-border">
@@ -697,6 +748,11 @@ export default function DigitalBrandPage() {
                 </span>
               </div>
               <Progress value={readinessScore} className="h-2" />
+              {highCount > 0 ? (
+                <Button type="button" size="sm" variant="outline" onClick={() => setBrandTab("recs")}>
+                  Öppna rekommendationer
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         </m.div>
@@ -736,8 +792,12 @@ export default function DigitalBrandPage() {
           </CardContent>
         </Card>
       ) : null}
+        </div>
+      ) : null}
 
-      <Tabs defaultValue="seo" className="space-y-4">
+      {websiteUrl && brandTab === "recs" ? (
+        <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
+      <Tabs value={recArea} onValueChange={(v) => setRecArea(v as RecAreaTab)} className="space-y-4">
         <TabsList className="flex h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="performance">Prestanda</TabsTrigger>

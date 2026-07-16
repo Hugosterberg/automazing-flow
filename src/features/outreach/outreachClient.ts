@@ -40,7 +40,7 @@ export async function fetchOutreachDraft(
 ): Promise<{ draft: OutreachDraft; source: string; channel: OutreachChannel }> {
   const body = await apiJson<{ draft?: unknown; source?: unknown; channel?: unknown }>(
     "/api/sales/outreach-draft",
-    "Couldn't generate outreach draft.",
+    "Kunde inte generera outreach-utkast.",
     { body: input, timeoutMs: 35_000 }
   );
   return {
@@ -76,7 +76,7 @@ export async function fetchOutreachContentIdeas(
 ): Promise<{ ideas: OutreachContentIdea[]; source: string }> {
   const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
     "/api/sales/outreach-content-ideas",
-    "Couldn't load outreach content ideas.",
+    "Kunde inte ladda innehållsidéer för outreach.",
     { body: input, timeoutMs: 30_000 }
   );
   return {

@@ -45,21 +45,12 @@ function PathCard({ path, statusLabel }: { path: MarketingPath; statusLabel?: st
             </li>
           ))}
         </ul>
-        {path.href ? (
-          <Button asChild size="sm" variant="outline" className="h-8 w-full gap-1.5 text-xs">
-            <Link to={path.href}>
-              Open
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        ) : (
-          <Button asChild size="sm" variant="outline" className="h-8 w-full gap-1.5 text-xs">
-            <a href={path.anchor ?? "#paid-ads"}>
-              Set up here
-              <ArrowRight className="h-3.5 w-3.5" />
-            </a>
-          </Button>
-        )}
+        <Button asChild size="sm" variant="outline" className="h-8 w-full gap-1.5 text-xs">
+          <Link to={path.href}>
+            {path.href.startsWith("/marketing") ? "Öppna här" : "Öppna"}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );

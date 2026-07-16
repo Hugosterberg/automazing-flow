@@ -42,7 +42,7 @@ export async function fetchMcpProvidersStatus(
   if (options?.platform) params.set("platform", options.platform);
   return apiJson<McpProvidersResponse>(
     `/api/intelligence/providers?${params}`,
-    "Could not load MCP provider status."
+    "Kunde inte ladda status för MCP-leverantörer."
   );
 }
 

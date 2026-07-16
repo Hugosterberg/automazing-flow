@@ -40,7 +40,7 @@ export function OutreachQueueSection({
     doc.save(
       doc.data.map((item) => (item.id === id ? { ...item, status: "sent" as const } : item))
     );
-    toast.success("Marked as sent");
+    toast.success("Markerad som skickad");
   }
 
   function removeItem(id: string) {
@@ -48,9 +48,9 @@ export function OutreachQueueSection({
   }
 
   async function copyItem(item: OutreachQueueItem) {
-    const text = [item.subject ? `Subject: ${item.subject}` : "", item.body].filter(Boolean).join("\n\n");
+    const text = [item.subject ? `Ämne: ${item.subject}` : "", item.body].filter(Boolean).join("\n\n");
     await navigator.clipboard.writeText(text);
-    toast.success("Copied");
+    toast.success("Kopierat");
   }
 
   return (

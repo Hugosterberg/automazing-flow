@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { m } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp } from "@/lib/motion";
-import { cn } from "@/lib/utils";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
@@ -86,8 +85,8 @@ export default function AIRecommendationsPage() {
       await transition({ id: rec.id, status: "accepted" });
     } catch (err) {
       toast({
-        title: "Could not accept recommendation",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: "Kunde inte acceptera rekommendationen",
+        description: err instanceof Error ? err.message : "Okänt fel",
         variant: "destructive",
       });
       return;
@@ -101,8 +100,8 @@ export default function AIRecommendationsPage() {
       await transition({ id, status: "dismissed" });
     } catch (err) {
       toast({
-        title: "Could not dismiss recommendation",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: "Kunde inte avfärda rekommendationen",
+        description: err instanceof Error ? err.message : "Okänt fel",
         variant: "destructive",
       });
     }
@@ -113,8 +112,8 @@ export default function AIRecommendationsPage() {
       await transition({ id, status: "seen" });
     } catch (err) {
       toast({
-        title: "Could not update recommendation",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: "Kunde inte uppdatera rekommendationen",
+        description: err instanceof Error ? err.message : "Okänt fel",
         variant: "destructive",
       });
     }
@@ -124,16 +123,16 @@ export default function AIRecommendationsPage() {
     try {
       const result = await generate();
       const parts: string[] = [];
-      if (result.created > 0) parts.push(`${result.created} new`);
-      if (result.expired > 0) parts.push(`${result.expired} resolved`);
-      if (parts.length === 0) parts.push("already up to date");
+      if (result.created > 0) parts.push(`${result.created} nya`);
+      if (result.expired > 0) parts.push(`${result.expired} lösta`);
+      if (parts.length === 0) parts.push("redan uppdaterat");
       toast({
-        title: "Recommendations refreshed",
+        title: "Rekommendationer uppdaterade",
         description: parts.join(" · "),
       });
       if (result.errors && result.errors.length > 0) {
         toast({
-          title: "Some heuristics had issues",
+          title: "Vissa kontroller fick problem",
           description: result.errors.join("; ").slice(0, 240),
           variant: "destructive",
         });
@@ -143,32 +142,44 @@ export default function AIRecommendationsPage() {
       // versus when the heuristics themselves were idempotent.
       if (result.llm?.skipped === "provider_error" && result.llm.error) {
         toast({
-          title: "Content suggestions skipped",
+          title: "Innehållsförslag hoppades över",
           description: result.llm.error.slice(0, 240),
           variant: "destructive",
         });
       } else if (result.llm?.skipped === "no_api_key") {
         toast({
-          title: "Content suggestions not configured",
-          description: "Set OPENAI_API_KEY to enable AI-generated post ideas.",
+          title: "Innehållsförslag är inte konfigurerade",
+          description: "Sätt OPENAI_API_KEY för att aktivera AI-genererade inläggsidéer.",
         });
       } else if (result.llm?.skipped === "cached") {
         toast({
-          title: "Using recent content suggestions",
+          title: "Använder senaste innehållsförslagen",
           description:
-            "We re-used the last batch of AI ideas to save on tokens. Try again in a minute for a fresh set.",
+            "Vi återanvände förra omgången AI-idéer för att spara tokens. Försök igen om en minut för nya förslag.",
         });
       }
     } catch (err) {
       toast({
-        title: "Could not refresh recommendations",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: "Kunde inte uppdatera rekommendationerna",
+        description: err instanceof Error ? err.message : "Okänt fel",
         variant: "destructive",
       });
     }
   }
 
-  const [tab, setTab] = useState<TabValue>("active");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const TAB_VALUES: TabValue[] = ["active", "accepted", "dismissed"];
+  const rawTab = searchParams.get("tab");
+  const tab: TabValue =
+    rawTab && (TAB_VALUES as string[]).includes(rawTab) ? (rawTab as TabValue) : "active";
+
+  function setTab(next: TabValue) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "active") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
   const [kindFilter, setKindFilter] = useState<AiRecommendationKind | "all">(
     "all"
   );
@@ -329,27 +340,6 @@ export default function AIRecommendationsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
-            {(
-              [
-                { label: "Aktiva", value: active.length, highlight: active.length > 0 },
-                { label: "Accepterade", value: accepted.length, highlight: false },
-                { label: "Avvisade", value: dismissed.length, highlight: false },
-              ] as const
-            ).map((stat) => (
-              <div
-                key={stat.label}
-                className={cn(
-                  "rounded-lg border px-2.5 py-1.5",
-                  stat.highlight ? "border-primary/25 bg-primary/[0.06]" : "border-border/50 bg-background/40"
-                )}
-              >
-                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{stat.label}</p>
-                <p className="text-xs font-semibold tabular-nums">{stat.value}</p>
-              </div>
-            ))}
           </div>
 
           <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">

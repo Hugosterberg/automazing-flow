@@ -76,7 +76,7 @@ export function McpToolsExplorer({ businessProfileId }: { businessProfileId: str
       .catch((err) => {
         if (!ignore) {
           setTools([]);
-          setToolsError(err instanceof Error ? err.message : "Could not load tools.");
+          setToolsError(err instanceof Error ? err.message : "Kunde inte ladda verktygen.");
         }
       })
       .finally(() => {

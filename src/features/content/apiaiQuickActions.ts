@@ -19,8 +19,8 @@ export type ApiaiDocumentedImageAction = {
 export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   {
     id: "remove-background",
-    title: "Remove background",
-    description: "Strip the background from a product or portrait image.",
+    title: "Ta bort bakgrund",
+    description: "Ta bort bakgrunden från en produkt- eller porträttbild.",
     docsEndpoint: "/api/process/remove-bg",
     directEndpoint: "/api/process/remove-bg",
     defaultOutputFilename: "background-removed",
@@ -30,8 +30,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "enhance-image",
-    title: "Enhance / upscale",
-    description: "Improve sharpness, lighting and clarity for marketing assets.",
+    title: "Förbättra / skala upp",
+    description: "Förbättra skärpa, ljus och tydlighet för marknadsföringsmaterial.",
     docsEndpoint: "/api/process/your-tool-slug",
     defaultOutputFilename: "enhanced-image",
     promptPlaceholder: "Improve quality, lighting, and product clarity while preserving the original subject.",
@@ -41,8 +41,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "greyscale",
-    title: "Greyscale",
-    description: "Convert an image to greyscale via apiai.me process API.",
+    title: "Gråskala",
+    description: "Konvertera en bild till gråskala via apiai.me:s process-API.",
     docsEndpoint: "/api/process/greyscale",
     directEndpoint: "/api/process/greyscale",
     defaultOutputFilename: "greyscale",
@@ -52,8 +52,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "product-pipeline",
-    title: "Image pipeline",
-    description: "Multi-step transformations (logo digitalize, campaign assets, etc.).",
+    title: "Bildpipeline",
+    description: "Transformationer i flera steg (digitalisera logotyp, kampanjmaterial m.m.).",
     docsEndpoint: "/api/pipeline/{slug} or /api/flow/{slug}",
     defaultOutputFilename: "pipeline-result",
     promptPlaceholder: "Create a clean, ready-to-publish marketing asset from this image.",
@@ -64,8 +64,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "quality-gate",
-    title: "Quality gate",
-    description: "Score image quality before publishing to ads or social.",
+    title: "Kvalitetskontroll",
+    description: "Betygsätt bildkvaliteten innan publicering i annonser eller sociala medier.",
     docsEndpoint: "/api/quality-gate",
     directEndpoint: "/api/quality-gate",
     defaultOutputFilename: "quality-report",
@@ -75,8 +75,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "moderation",
-    title: "Moderation check",
-    description: "Check whether an image is safe to publish.",
+    title: "Modereringskontroll",
+    description: "Kontrollera om en bild är säker att publicera.",
     docsEndpoint: "/api/moderation/check-image",
     directEndpoint: "/api/moderation/check-image",
     defaultOutputFilename: "moderation-result",
@@ -86,8 +86,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "resize-crop",
-    title: "Resize / crop",
-    description: "Fit images to ad or social formats.",
+    title: "Ändra storlek / beskär",
+    description: "Anpassa bilder till annons- eller sociala format.",
     docsEndpoint: "/api/process/resize",
     directEndpoint: "/api/process/resize",
     defaultOutputFilename: "resized",
@@ -97,8 +97,8 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "shadow-reflection",
-    title: "Shadow & reflection",
-    description: "Add product shadows or reflections for e-commerce visuals.",
+    title: "Skugga & reflektion",
+    description: "Lägg till produktskuggor eller reflektioner för e-handelsbilder.",
     docsEndpoint: "/api/process/product-shadow",
     directEndpoint: "/api/process/product-shadow",
     defaultOutputFilename: "product-shadow",

@@ -45,7 +45,7 @@ export function useAutomationRuns(
       setByKey(next);
     } catch (err) {
       setByKey({});
-      setError(err instanceof Error ? err.message : "Could not load automation run status.");
+      setError(err instanceof Error ? err.message : "Kunde inte ladda status för automationskörningar.");
     } finally {
       setLoading(false);
     }

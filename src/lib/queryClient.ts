@@ -63,7 +63,7 @@ export const queryClient = new QueryClient({
       const keyLabel = String(query.queryKey[0] ?? "query");
       console.error(`[query:${keyLabel}]`, error);
 
-      toast.error("Couldn't load data", {
+      toast.error("Kunde inte ladda data", {
         id: `query-error:${keyLabel}`,
         description: errorMessage(error),
       });
@@ -78,7 +78,7 @@ export const queryClient = new QueryClient({
         : "mutation";
       console.error(`[mutation:${keyLabel}]`, error);
 
-      toast.error("Couldn't save changes", {
+      toast.error("Kunde inte spara ändringarna", {
         id: `mutation-error:${mutation.mutationId}`,
         description: errorMessage(error),
       });

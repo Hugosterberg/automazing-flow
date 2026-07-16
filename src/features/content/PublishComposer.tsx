@@ -176,7 +176,7 @@ export function PublishComposer({
     if (selectedIds.length === 0 || !caption.trim()) return;
     setBusy(true);
     try {
-      const payload = await apiJson<{ published?: number }>("/api/content/publish", "Could not publish", {
+      const payload = await apiJson<{ published?: number }>("/api/content/publish", "Kunde inte publicera", {
         body: {
           accountIds: selectedIds,
           business_profile_id: businessProfileId,

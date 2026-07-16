@@ -12,7 +12,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
-import { useAiRecommendations } from "@/features/ai-recommendations";
 import { useTasks } from "@/features/tasks";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
 import { ContentIdeasCard } from "@/features/content/ContentIdeasCard";
@@ -45,6 +44,7 @@ import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
@@ -149,7 +149,6 @@ export default function SocialMedia() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
   const { connections } = useConnections(businessProfileId);
-  const { recommendations: aiRecs } = useAiRecommendations(businessProfileId);
   const { tasks: contentTasks } = useTasks(businessProfileId);
   const { profiles: bizProfiles } = useBusinessProfiles();
   const activeBizProfile = bizProfiles.find((p) => p.id === businessProfileId);
@@ -158,14 +157,23 @@ export default function SocialMedia() {
     description: activeBizProfile?.notes ?? undefined,
     platform: "social media",
   };
-  const contentIdeas = useMemo(
-    () => aiRecs.filter((r) => r.kind === "content" && (r.status === "new" || r.status === "seen")).slice(0, 5),
-    [aiRecs]
-  );
   const scheduledContentTasks = useMemo(
     () => contentTasks.filter((t) => t.module === "campaign" && t.status !== "done" && t.status !== "archived").slice(0, 5),
     [contentTasks]
   );
+
+  type SocialMode = "publish" | "stats" | "more";
+  const rawSocialMode = searchParams.get("tab");
+  const socialMode: SocialMode =
+    rawSocialMode === "stats" || rawSocialMode === "more" ? rawSocialMode : "publish";
+
+  function setSocialMode(mode: SocialMode) {
+    const next = new URLSearchParams(searchParams);
+    if (mode === "publish") next.delete("tab");
+    else next.set("tab", mode);
+    setSearchParams(next, { replace: true });
+  }
+
   const selectedAccountId = getSelectedAccountId("social-media");
   const [activeSocialTab, setActiveSocialTab] = useState<SocialPlatform>("instagram");
   const [analyzing, setAnalyzing] = useState(false);
@@ -219,7 +227,7 @@ export default function SocialMedia() {
         throw new Error(
           typeof d?.error === "string" && d.error.trim().length > 0
             ? d.error
-            : `Could not fetch account stats (${res.status})`
+            : `Kunde inte hämta kontostatistik (${res.status})`
         );
       }
       return res.json();
@@ -432,17 +440,23 @@ export default function SocialMedia() {
     setEditingPost(post);
     const next = new URLSearchParams(searchParams);
     next.delete("post");
+    next.delete("tab"); // stay on Publicera
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, pipelinePosts]);
 
   useEffect(() => {
     if (searchParams.get("create") !== "canva") return;
+    const next = new URLSearchParams(searchParams);
+    if (next.get("tab")) {
+      next.delete("tab");
+      setSearchParams(next, { replace: true });
+    }
     const timeout = window.setTimeout(() => {
       canvaInputRef.current?.focus();
       canvaInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (selectedAccount && selectedAccount.platform !== activeSocialTab) {
@@ -502,7 +516,7 @@ export default function SocialMedia() {
         source: "upload",
         sourceLabel: "Upload",
       });
-      toast.success("Upload saved to Selected — ready to publish");
+      toast.success("Uppladdningen sparades i Valda — redo att publicera");
     } catch {
       toast.message("Preview only — upload failed. Generate with AI or pick from Content instead.");
     }
@@ -523,7 +537,7 @@ export default function SocialMedia() {
       source: asset.sourceAccountId === "canva" ? "canva" : "openai",
       sourceLabel: asset.sourceAccountName,
     });
-    toast.message("Saved to History and Selected");
+    toast.message("Sparad i Historik och vald");
   }
 
   return (
@@ -538,10 +552,10 @@ export default function SocialMedia() {
         title="Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
         steps={[
           "Koppla konton under Kopplingar om en plattform saknas",
-          "Välj plattform och konto i flikarna ovan",
+          "Under Publicera: välj plattform och konto",
           "Skriv, lägg till media och publicera eller schemalägg",
         ]}
-        tip="AI-idéer ovan kan fyllas i direkt i kompositören."
+        tip="Statistik och kampanjer ligger under egna flikar — håll Publicera för att skicka."
         liveHintOverride={
           socialAccounts.length === 0
             ? "Inga sociala konton kopplade — börja under Kopplingar."
@@ -550,6 +564,18 @@ export default function SocialMedia() {
         extraActions={socialAccounts.length === 0 ? [{ label: "Koppla konto", to: "/connections" }] : []}
       />
 
+      <PageModeTabs
+        value={socialMode}
+        aria-label="Socialt-flikar"
+        onChange={setSocialMode}
+        options={[
+          { value: "publish", label: "Publicera" },
+          { value: "stats", label: "Statistik" },
+          { value: "more", label: "Mer", count: scheduledContentTasks.length },
+        ]}
+      />
+
+      {socialMode === "more" ? (
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
@@ -558,7 +584,9 @@ export default function SocialMedia() {
           description="Kreativa briefs och designriktning via Canva MCP för socialt innehåll."
         />
       </m.div>
+      ) : null}
 
+      {socialMode === "publish" ? (
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
         <ContentIdeasCard
           businessProfileId={businessProfileId}
@@ -566,7 +594,9 @@ export default function SocialMedia() {
           onUseIdea={setPostContent}
         />
       </m.div>
+      ) : null}
 
+      {socialMode === "publish" ? (
       <m.div {...fadeUp} transition={{ duration: 0.35 }} className="app-workspace-shell !min-h-0">
         <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
@@ -668,13 +698,14 @@ export default function SocialMedia() {
         </Tabs>
         </div>
       </m.div>
+      ) : null}
 
       {authMode === "local" && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
-                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
+                Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session.
               </p>
             </CardContent>
           </Card>
@@ -697,13 +728,13 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between gap-4">
-              <p className="text-sm text-destructive">Could not load social stats: {error}</p>
+              <p className="text-sm text-destructive">Kunde inte ladda social statistik: {error}</p>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => void refreshStats()}>
-                  Retry
+                  Försök igen
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setError(null)}>
-                  Dismiss
+                  Stäng
                 </Button>
               </div>
             </CardContent>
@@ -711,13 +742,13 @@ export default function SocialMedia() {
         </m.div>
       )}
 
-      {!selectedAccount && showOverview && (
+      {socialMode === "stats" && !selectedAccount && showOverview && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <SocialOverviewCard accounts={socialAccounts} />
         </m.div>
       )}
 
-      {!selectedAccount && !showOverview && (
+      {socialMode === "stats" && !selectedAccount && !showOverview && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <EmptyState
             icon={Sparkles}
@@ -732,7 +763,7 @@ export default function SocialMedia() {
         </m.div>
       )}
 
-      {selectedAccount && (
+      {socialMode === "stats" && selectedAccount && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -789,7 +820,8 @@ export default function SocialMedia() {
         </m.div>
       )}
 
-      {selectedAccount?.platform === "google_business" &&
+      {socialMode === "stats" &&
+        selectedAccount?.platform === "google_business" &&
         socialData &&
         dataAccountId === selectedAccountId && (
           <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.12 }}>
@@ -797,6 +829,8 @@ export default function SocialMedia() {
           </m.div>
         )}
 
+      {socialMode === "publish" ? (
+      <>
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.15 }}>
         <SelectedContentPanel
           compact
@@ -905,60 +939,19 @@ export default function SocialMedia() {
       </m.div>
 
       <SocialAutomationPanel />
+      </>
+      ) : null}
 
+      {socialMode === "stats" ? (
       <SocialStatsSection
         account={selectedAccount}
         loading={statsLoading}
         onRefresh={() => void refreshStats()}
         posts={recentPosts}
       />
+      ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
-          <Card className="bg-card border-border glow-border h-full">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="h-5 w-5" />
-                    Innehållsidéer
-                  </CardTitle>
-                  <CardDescription>AI-genererade förslag</CardDescription>
-                </div>
-                <Link to="/ai-recommendations" className="text-xs text-primary hover:underline">
-                  Alla →
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {contentIdeas.length === 0 ? (
-                <div className="text-center py-4 space-y-2">
-                  <p className="text-sm text-muted-foreground">Inga AI-förslag ännu.</p>
-                  <Link to="/ai-recommendations">
-                    <Button size="sm" variant="outline" className="text-xs">
-                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                      Generera förslag
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <ul className="space-y-3">
-                  {contentIdeas.map((rec) => (
-                    <li
-                      key={rec.id}
-                      className="flex items-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <span className="text-muted-foreground/50 mt-0.5">→</span>
-                      <span>{rec.title}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </m.div>
-      </div>
-
+      {socialMode === "more" ? (
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>
@@ -1006,6 +999,7 @@ export default function SocialMedia() {
           </CardContent>
         </Card>
       </m.div>
+      ) : null}
     </div>
   );
 }

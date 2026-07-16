@@ -427,14 +427,14 @@ export default function ContentPage() {
         }
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
-          throw new Error(apiErrorMessage(payload, "Could not fetch Google Drive content."));
+          throw new Error(apiErrorMessage(payload, "Kunde inte hämta innehåll från Google Drive."));
         }
         const data = await res.json();
         if (driveRequestIdRef.current !== reqId) return;
         setProviderData(data);
       } catch (e) {
         if (driveRequestIdRef.current !== reqId) return;
-        setError(e instanceof Error ? e.message : "Request failed");
+        setError(e instanceof Error ? e.message : "Anropet misslyckades");
       } finally {
         if (driveRequestIdRef.current === reqId) setLoading(false);
       }
@@ -610,8 +610,8 @@ export default function ContentPage() {
         setPopupOauthError({
           code: "backend_unavailable",
           statusCode: String(healthRes.status),
-          exception: "Health check failed before starting Google Drive OAuth.",
-          hint: "Start the backend with `npm run dev` or `npm run dev:server`, then try again.",
+          exception: "Hälsokontrollen misslyckades innan Google Drive-OAuth kunde startas.",
+          hint: "Starta backend med `npm run dev` eller `npm run dev:server` och försök igen.",
         });
         return;
       }
@@ -619,8 +619,8 @@ export default function ContentPage() {
       setPopupOauthError({
         code: "backend_unavailable",
         statusCode: null,
-        exception: "Could not reach `/api/health` before starting Google Drive OAuth.",
-        hint: "Start the backend with `npm run dev` or `npm run dev:server`, then try again.",
+        exception: "Kunde inte nå `/api/health` innan Google Drive-OAuth kunde startas.",
+        hint: "Starta backend med `npm run dev` eller `npm run dev:server` och försök igen.",
       });
       return;
     } finally {
@@ -752,10 +752,10 @@ export default function ContentPage() {
         toast.success(`${added} fil${added === 1 ? "" : "er"} uppladdade — tillagda i Valda`);
         goToTab("selected");
       } else {
-        toast.message("No image or video files selected");
+        toast.message("Inga bild- eller videofiler valda");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
+      toast.error(e instanceof Error ? e.message : "Uppladdningen misslyckades");
     } finally {
       setUploadingBrowse(false);
       if (browseUploadRef.current) browseUploadRef.current.value = "";

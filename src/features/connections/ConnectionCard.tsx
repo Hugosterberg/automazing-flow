@@ -237,8 +237,8 @@ export function ConnectionCard({
         toast.error(toastMsg.title, { description: toastMsg.description });
       }
     } catch (err) {
-      toast.error("Connection test failed", {
-        description: err instanceof Error ? err.message : "Could not test the connection.",
+      toast.error("Kopplingstest misslyckades", {
+        description: err instanceof Error ? err.message : "Kunde inte testa kopplingen.",
       });
     }
   }

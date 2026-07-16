@@ -67,7 +67,7 @@ export async function fetchAutomationSettings(
 ): Promise<{ storeEnabled: boolean; settings: AutomationSettings }> {
   return apiJson(
     `/api/automation/settings?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-    "Could not load automation settings."
+    "Kunde inte ladda automationsinställningarna."
   );
 }
 
@@ -75,7 +75,7 @@ export async function saveAutomationSettings(
   businessProfileId: string,
   settings: Partial<AutomationSettings> & { jobSchedules?: JobSchedulesMap }
 ): Promise<{ ok: boolean; settings: AutomationSettings }> {
-  return apiJson("/api/automation/settings", "Could not save automation settings.", {
+  return apiJson("/api/automation/settings", "Kunde inte spara automationsinställningarna.", {
     method: "PUT",
     body: { business_profile_id: businessProfileId, ...settings },
   });
@@ -87,7 +87,7 @@ export async function fetchAutoReplyLog(
 ): Promise<{ entries: AutoReplyLogEntry[] }> {
   return apiJson(
     `/api/automation/log?business_profile_id=${encodeURIComponent(businessProfileId)}&limit=${limit}`,
-    "Could not load the automation log."
+    "Kunde inte ladda automationsloggen."
   );
 }
 
@@ -96,7 +96,7 @@ export async function sendAutomationDraft(
   logId: string,
   message?: string
 ): Promise<{ ok: boolean }> {
-  return apiJson("/api/automation/send-draft", "Could not send the draft.", {
+  return apiJson("/api/automation/send-draft", "Kunde inte skicka utkastet.", {
     body: { business_profile_id: businessProfileId, logId, ...(message ? { message } : {}) },
   });
 }
@@ -106,14 +106,14 @@ export async function fetchAutomationRuns(
 ): Promise<{ runs: AutomationRunStatus[] }> {
   return apiJson(
     `/api/automation/runs?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-    "Could not load automation run status."
+    "Kunde inte ladda status för automationskörningar."
   );
 }
 
 export async function runAutomationNow(
   businessProfileId: string
 ): Promise<{ ok: boolean; summary: AutoReplyRunSummary }> {
-  return apiJson("/api/automation/run", "Could not run the automation.", {
+  return apiJson("/api/automation/run", "Kunde inte köra automationen.", {
     body: { business_profile_id: businessProfileId },
   });
 }
@@ -123,7 +123,7 @@ export async function retryAutomation(
   businessProfileId: string,
   key: string
 ): Promise<{ ok: boolean; key: string }> {
-  return apiJson("/api/automation/retry", "Could not retry the automation.", {
+  return apiJson("/api/automation/retry", "Kunde inte köra om automationen.", {
     body: { business_profile_id: businessProfileId, key },
     timeoutMs: 150_000,
   });

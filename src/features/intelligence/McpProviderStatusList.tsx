@@ -51,25 +51,25 @@ export function McpProviderStatusList({ businessProfileId }: { businessProfileId
       const result = await fetchMcpProvidersStatus(businessProfileId, { probe: true, platform });
       const provider = result.providers.find((p) => p.platform === platform);
       if (!provider) {
-        toast.error("Provider not found");
+        toast.error("Leverantören hittades inte");
         return;
       }
       if (provider.status === "ready") {
         toast.success(`${provider.label} OK`, {
           description:
             provider.toolCount != null
-              ? `Live probe succeeded (${provider.toolCount} tools available).`
-              : "Credentials verified.",
+              ? `Live-testet lyckades (${provider.toolCount} verktyg tillgängliga).`
+              : "Uppgifterna verifierades.",
         });
       } else {
-        toast.error(`${provider.label} needs attention`, {
-          description: mcpFixHint(provider) ?? "Fix credentials under Connections.",
+        toast.error(`${provider.label} behöver uppmärksamhet`, {
+          description: mcpFixHint(provider) ?? "Åtgärda uppgifterna under Kopplingar.",
         });
       }
       void refetch();
     } catch (err) {
-      toast.error("Provider test failed", {
-        description: err instanceof Error ? err.message : "Could not probe the provider.",
+      toast.error("Leverantörstestet misslyckades", {
+        description: err instanceof Error ? err.message : "Kunde inte testa leverantören.",
       });
     } finally {
       setTestingPlatform(null);

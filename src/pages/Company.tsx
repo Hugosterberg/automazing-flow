@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { m } from "framer-motion";
 import { AlertTriangle, Building2, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import {
   BusinessProfileCompletenessCard,
   BusinessProfileEditForm,
@@ -104,6 +106,22 @@ export default function CompanyPage() {
     }
   }
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  type CompanyTab = "profile" | "research" | "system";
+  const COMPANY_TABS: CompanyTab[] = ["profile", "research", "system"];
+  const rawCompanyTab = searchParams.get("tab");
+  const companyTab: CompanyTab =
+    rawCompanyTab && (COMPANY_TABS as string[]).includes(rawCompanyTab)
+      ? (rawCompanyTab as CompanyTab)
+      : "profile";
+
+  function setCompanyTab(next: CompanyTab) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "profile") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
   return (
     <m.div {...pageFadeUp} className="space-y-6 max-w-3xl pb-8">
       <PageHeader
@@ -129,13 +147,26 @@ export default function CompanyPage() {
         }
       />
 
-      {!profile ? (
+      <PageModeTabs
+        value={companyTab}
+        aria-label="Företagsflikar"
+        onChange={setCompanyTab}
+        options={[
+          { value: "profile", label: "Profil" },
+          { value: "research", label: "Research" },
+          { value: "system", label: "System", count: activeConnections.length },
+        ]}
+      />
+
+      {companyTab === "profile" && !profile ? (
         <Card className="border-border">
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
             Ingen aktiv profil vald. Välj eller skapa en profil först.
           </CardContent>
         </Card>
-      ) : (
+      ) : null}
+
+      {companyTab === "profile" && profile ? (
         <div className="app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4">
           <BusinessProfileCompletenessCard
             profile={profile}
@@ -192,9 +223,10 @@ export default function CompanyPage() {
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <div className="space-y-4 pt-2 border-t border-border/60">
+      {companyTab === "research" ? (
+      <div className="space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Extern analys</h2>
           <p className="text-xs text-muted-foreground mt-1">
@@ -221,7 +253,10 @@ export default function CompanyPage() {
           description="SEO, domäninfo och marknadsresearch via kopplade MCP-leverantörer."
         />
       </div>
+      ) : null}
 
+      {companyTab === "system" ? (
+      <>
       <Card className="border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Anslutna källor ({activeConnections.length})</CardTitle>
@@ -257,6 +292,8 @@ export default function CompanyPage() {
 
       <AutomatedUpdatesCard businessProfileId={activeBpId} fallbackEmail={profile?.email ?? undefined} />
       <SystemHealthCard />
+      </>
+      ) : null}
     </m.div>
   );
 }

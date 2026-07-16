@@ -172,7 +172,7 @@ export default function ReviewsPage() {
       const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(displayString(payload?.error) || displayString(payload?.message) || "Could not fetch reviews");
+        throw new Error(displayString(payload?.error) || displayString(payload?.message) || "Kunde inte hämta recensioner");
       }
       return res.json();
     },
@@ -350,12 +350,12 @@ export default function ReviewsPage() {
         }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(displayString(payload?.error) || "Could not draft a reply");
+      if (!res.ok) throw new Error(displayString(payload?.error) || "Kunde inte skapa svarsutkast");
       setReplyDraft(displayString(payload?.draft));
     } catch (e) {
       toast({
         title: "AI-utkast misslyckades",
-        description: e instanceof Error ? e.message : "Unknown error",
+        description: e instanceof Error ? e.message : "Okänt fel",
         variant: "destructive",
       });
     } finally {

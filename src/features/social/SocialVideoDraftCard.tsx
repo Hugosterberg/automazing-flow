@@ -24,7 +24,7 @@ async function generateVideoDraft(payload: {
   platform: string;
   objective: string;
 }): Promise<{ draft: VideoDraftResult; source: string }> {
-  return apiJson("/api/content/video-draft", "Could not generate video draft", {
+  return apiJson("/api/content/video-draft", "Kunde inte generera videoutkast", {
     body: payload,
   });
 }
@@ -76,7 +76,7 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
       setDraft(result.draft);
       setDraftSource(result.source);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate video draft");
+      setError(err instanceof Error ? err.message : "Kunde inte generera videoutkast");
     } finally {
       setGenerating(false);
     }

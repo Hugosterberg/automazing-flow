@@ -20,7 +20,7 @@ export async function fetchContentIdeas(
 ): Promise<{ ideas: ContentIdea[]; source: string }> {
   const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
     "/api/content/ideas",
-    "Couldn't load content ideas.",
+    "Kunde inte ladda innehållsidéer.",
     { body: input, timeoutMs: 30_000 },
   );
   return {

@@ -33,9 +33,9 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
       });
       setIdeas(result.ideas);
       setSource(result.source);
-      if (result.ideas.length === 0) toast.message("No ideas came back — try again.");
+      if (result.ideas.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load content ideas.");
+      toast.error(e instanceof Error ? e.message : "Kunde inte ladda innehållsidéer.");
     } finally {
       setLoading(false);
     }
@@ -49,15 +49,15 @@ export function ContentIdeasCard({ businessProfileId, context, onUseIdea }: Prop
     const text = ideaText(idea);
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Copied");
+      toast.success("Kopierat");
     } catch {
-      toast.error("Couldn't copy");
+      toast.error("Kunde inte kopiera");
     }
   }
 
   function handleUseIdea(idea: ContentIdea) {
     onUseIdea?.(ideaText(idea));
-    toast.success("Added to composer");
+    toast.success("Tillagd i utkastet");
   }
 
   return (

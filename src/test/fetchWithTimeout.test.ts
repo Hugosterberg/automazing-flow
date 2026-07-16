@@ -67,7 +67,7 @@ describe("fetchWithTimeout", () => {
     const err = await fetchWithTimeout("/api/test").catch((e) => e);
     expect(err).toBeInstanceOf(FetchError);
     expect(err.kind).toBe("network");
-    expect(err.message).toMatch(/internet connection/i);
+    expect(err.message).toMatch(/internetanslutning/i);
   });
 
   it("preserves an intentional caller abort as the original error", async () => {

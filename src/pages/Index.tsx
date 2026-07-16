@@ -766,13 +766,9 @@ export default function Index() {
       ) : null}
 
       {mode === "business" ? (
-        isMobile ? (
-          <HomeCollapsibleSection title="Marknadspuls" ariaLabel="Marknadspuls">
-            <MarketPulseCard businessProfileId={homeBusinessProfileId} />
-          </HomeCollapsibleSection>
-        ) : (
+        <HomeCollapsibleSection title="Marknadspuls" ariaLabel="Marknadspuls">
           <MarketPulseCard businessProfileId={homeBusinessProfileId} />
-        )
+        </HomeCollapsibleSection>
       ) : null}
 
       <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-3 p-3 sm:space-y-2 sm:p-4">

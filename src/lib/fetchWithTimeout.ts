@@ -87,7 +87,7 @@ export function fetchWithTimeout(
       // DNS, connection reset, CORS). Turn that into something a user can act on.
       if (err instanceof TypeError) {
         throw new FetchError(
-          "Couldn't reach the server. Check your internet connection and try again.",
+          "Kunde inte nå servern. Kontrollera din internetanslutning och försök igen.",
           "network",
           { cause: err },
         );

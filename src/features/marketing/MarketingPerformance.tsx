@@ -185,10 +185,10 @@ export function MarketingPerformance() {
             </Button>
           ) : null}
           <Button asChild size="sm" variant="ghost">
-            <a href="#paid-ads">
+            <Link to="/marketing?tab=ads">
               <Plug className="h-3.5 w-3.5 mr-1.5" />
               Sätt upp betald annonsering
-            </a>
+            </Link>
           </Button>
         </CardContent>
       </Card>

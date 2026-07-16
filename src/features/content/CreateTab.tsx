@@ -216,7 +216,7 @@ export function CreateTab({
       setTools(nextTools);
       setSelectedToolKey((current) => current || (nextTools[0] ? `${nextTools[0].type}:${nextTools[0].slug}` : ""));
     } catch (error) {
-      setToolsError(error instanceof Error ? error.message : "Could not load apiai.me tools.");
+      setToolsError(error instanceof Error ? error.message : "Kunde inte ladda apiai.me-verktygen.");
     } finally {
       setLoadingTools(false);
     }
@@ -332,7 +332,7 @@ export function CreateTab({
       });
       setCostEstimate(estimate);
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : "Could not estimate cost.");
+      setRunError(error instanceof Error ? error.message : "Kunde inte uppskatta kostnaden.");
     } finally {
       setEstimating(false);
     }

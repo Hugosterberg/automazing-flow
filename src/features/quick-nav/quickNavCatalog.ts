@@ -102,8 +102,8 @@ export const QUICK_NAV_CATALOG: QuickNavDestination[] = [
   {
     key: "sales",
     to: "/sales",
-    label: "Sales",
-    shortLabel: "Sales",
+    label: "Försäljning",
+    shortLabel: "Försäljning",
     description: "Leads, pipeline och uppföljning",
     icon: Target,
     modes: ["business"],
@@ -159,8 +159,8 @@ export const QUICK_NAV_CATALOG: QuickNavDestination[] = [
   {
     key: "marketing",
     to: "/marketing",
-    label: "Marketing",
-    shortLabel: "Marketing",
+    label: "Marknadsföring",
+    shortLabel: "Marknadsföring",
     description: "Kampanjer och marknadsinsikter",
     icon: Megaphone,
     modes: ["business"],

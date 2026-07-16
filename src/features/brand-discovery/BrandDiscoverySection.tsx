@@ -67,10 +67,10 @@ export function BrandDiscoverySection({
       else setEmails(result.suggestions);
       setSource(result.source);
       if (result.suggestions.length === 0) {
-        toast.message("No suggestions came back — try again.");
+        toast.message("Inga förslag kom tillbaka — försök igen.");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't load suggestions.");
+      toast.error(error instanceof Error ? error.message : "Kunde inte ladda förslag.");
     } finally {
       setLoading(false);
     }

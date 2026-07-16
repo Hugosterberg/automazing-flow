@@ -29,7 +29,7 @@ export function OutreachContentCard({
   function openInContent(text: string) {
     stashContentCaption(text);
     navigate("/content?tab=publish");
-    toast.success("Idea ready in Content — post or save");
+    toast.success("Idén är klar i Innehåll — publicera eller spara");
   }
 
   async function generate() {
@@ -41,9 +41,9 @@ export function OutreachContentCard({
       });
       setIdeas(result.ideas);
       setSource(result.source);
-      if (result.ideas.length === 0) toast.message("No ideas came back — try again.");
+      if (result.ideas.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't load outreach content ideas.");
+      toast.error(error instanceof Error ? error.message : "Kunde inte ladda innehållsidéer för outreach.");
     } finally {
       setLoading(false);
     }
@@ -56,24 +56,24 @@ export function OutreachContentCard({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Megaphone className="h-4 w-4 text-primary" />
-              Content that attracts customers
+              Innehåll som attraherar kunder
             </CardTitle>
             <CardDescription>
-              Post and asset ideas that warm up potential buyers — not just posts for existing followers.
+              Inläggs- och materialidéer som värmer upp potentiella köpare — inte bara inlägg för befintliga följare.
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void generate()} disabled={loading || !businessProfileId}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-            {ideas.length > 0 ? "Regenerate" : "Get ideas"}
+            {ideas.length > 0 ? "Generera om" : "Hämta idéer"}
           </Button>
         </div>
       </CardHeader>
       {ideas.length === 0 ? (
         <CardContent className="pt-0">
           <p className="text-xs text-muted-foreground">
-            More post workflows — captions, media, and safety checks — live in{" "}
+            Fler publiceringsflöden — bildtexter, media och säkerhetskontroller — finns under{" "}
             <Link to="/content" className="text-primary hover:underline">
-              Content
+              Innehåll
             </Link>
             .
           </p>
@@ -82,7 +82,7 @@ export function OutreachContentCard({
       {ideas.length > 0 ? (
         <CardContent className="space-y-2">
           {source === "heuristic" ? (
-            <p className="text-[11px] text-muted-foreground">General starters — set OpenAI key for ICP-tailored ideas.</p>
+            <p className="text-[11px] text-muted-foreground">Generella förslag — lägg in en OpenAI-nyckel för idéer anpassade till din målgrupp.</p>
           ) : null}
           {ideas.map((idea, index) => (
             <div
@@ -104,7 +104,7 @@ export function OutreachContentCard({
               <div className="flex shrink-0 gap-1">
                 {onUseIdea ? (
                   <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onUseIdea(ideaText(idea))}>
-                    Use
+                    Använd
                   </Button>
                 ) : (
                   <Button
@@ -113,12 +113,12 @@ export function OutreachContentCard({
                     className="h-7 px-2 text-xs"
                     onClick={() => openInContent(ideaText(idea))}
                   >
-                    Create →
+                    Skapa →
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void navigator.clipboard.writeText(ideaText(idea)).then(() => toast.success("Copied"))}>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void navigator.clipboard.writeText(ideaText(idea)).then(() => toast.success("Kopierat"))}>
                   <Copy className="h-3.5 w-3.5" />
-                  <span className="sr-only">Copy</span>
+                  <span className="sr-only">Kopiera</span>
                 </Button>
               </div>
             </div>

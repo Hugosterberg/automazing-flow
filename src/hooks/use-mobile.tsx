@@ -95,6 +95,6 @@ export function mobileReadingTitle(pathname: string): string {
   if (pathname.startsWith("/reviews")) return "Recensioner";
   if (pathname.startsWith("/customers")) return "Kunder";
   if (pathname.startsWith("/activity")) return "Aktivitet";
-  if (pathname.startsWith("/sales")) return "Sales";
+  if (pathname.startsWith("/sales")) return "Försäljning";
   return "Detalj";
 }

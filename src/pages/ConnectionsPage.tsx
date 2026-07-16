@@ -285,7 +285,7 @@ export default function ConnectionsPage() {
     } catch (err) {
       toast({
         title: "Kopplingstest misslyckades",
-        description: err instanceof Error ? err.message : "Could not test the connection.",
+        description: err instanceof Error ? err.message : "Kunde inte testa kopplingen.",
         variant: "destructive",
       });
     }

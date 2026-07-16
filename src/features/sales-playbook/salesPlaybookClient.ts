@@ -32,7 +32,7 @@ export async function fetchSalesPlaybookItems(
 ): Promise<{ items: SalesPlaybookItem[]; source: string; mode: SalesPlaybookMode }> {
   const body = await apiJson<{ items?: unknown; source?: unknown; mode?: SalesPlaybookMode }>(
     "/api/sales/marketing-playbook",
-    "Couldn't load playbook ideas.",
+    "Kunde inte ladda playbook-idéer.",
     { body: input, timeoutMs: 35_000 }
   );
   const modes: SalesPlaybookMode[] = [

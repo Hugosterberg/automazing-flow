@@ -17,7 +17,7 @@ const VALID_STATES = new Set<AiFeatureState>(["active", "limited", "inactive"]);
 export async function fetchAiFeatures(businessProfileId: string): Promise<AiFeatureStatus[]> {
   const body = await apiJson<{ features?: unknown }>(
     `/api/settings/ai-features?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-    "Could not load AI feature status.",
+    "Kunde inte ladda status för AI-funktioner.",
     { timeoutMs: 15_000 }
   );
   const raw = Array.isArray(body.features) ? body.features : [];

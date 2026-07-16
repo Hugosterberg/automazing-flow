@@ -31,7 +31,7 @@ export function AbandonedCheckoutRecoveryButton({
 
   async function draftRecovery() {
     if (!businessProfileId) {
-      toast.error("Select a business profile first.");
+      toast.error("Välj en företagsprofil först.");
       return;
     }
     setLoading(true);
@@ -45,10 +45,10 @@ export function AbandonedCheckoutRecoveryButton({
         prospectNotes: `Abandoned checkout recovery. Cart value: ${cartTotal} ${currency}. Gentle reminder to complete purchase.`,
         prospectReason: "recover abandoned cart",
       });
-      setSubject(result.draft.subject || "Complete your order");
+      setSubject(result.draft.subject || "Slutför din beställning");
       setBody(result.draft.body);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not draft recovery email");
+      toast.error(e instanceof Error ? e.message : "Kunde inte skapa återhämtningsmail");
       setOpen(false);
     } finally {
       setLoading(false);

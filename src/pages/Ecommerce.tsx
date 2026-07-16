@@ -17,8 +17,6 @@ import {
   Box,
   ArrowUpRight,
   ChevronDown,
-  LayoutDashboard,
-  Boxes,
   Download,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -55,10 +53,12 @@ import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { NotionIcon, ShopifyIcon } from "@/components/platform-icons";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
@@ -261,12 +261,12 @@ function formatChartDate(iso: string) {
   return formatShortDate(iso) || iso;
 }
 
-function formatPromoValue(value: string | null, valueType: string | null) {
+function formatPromoValue(value: string | null, valueType: string | null, currency: string) {
   if (!value) return "—";
   const numeric = parseFloat(value);
   if (!Number.isFinite(numeric)) return value;
   if (valueType === "percentage") return `${Math.abs(numeric)}%`;
-  return formatCurrency(Math.abs(numeric), "USD");
+  return formatCurrency(Math.abs(numeric), currency);
 }
 
 const statusColors: Record<string, string> = {
@@ -376,7 +376,22 @@ export default function Ecommerce() {
       return res.json();
     },
   });
-  const [tab, setTab] = useState<"overview" | "products">("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  type EcommerceTab = "overview" | "products";
+  const ECOMMERCE_TABS: EcommerceTab[] = ["overview", "products"];
+  const rawEcommerceTab = searchParams.get("tab");
+  const tab: EcommerceTab =
+    rawEcommerceTab && (ECOMMERCE_TABS as string[]).includes(rawEcommerceTab)
+      ? (rawEcommerceTab as EcommerceTab)
+      : "overview";
+
+  function setTab(next: EcommerceTab) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "overview") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
   const [shopDomainError, setShopDomainError] = useState<string | null>(null);
@@ -753,35 +768,17 @@ export default function Ecommerce() {
       </m.div>
 
       <div className="app-workspace-shell !min-h-0">
-        <div className="app-workspace-toolbar flex items-center gap-1 px-3 py-2 sm:px-4 border-b border-border/80">
-        <button
-          type="button"
-          onClick={() => setTab("overview")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            tab === "overview"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <LayoutDashboard className="h-3.5 w-3.5" />
-          Översikt
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("products")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
-            tab === "products"
-              ? "border-primary text-foreground font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Boxes className="h-3.5 w-3.5" />
-          Produkter
-          {products.length > 0 ? (
-            <span className="ml-0.5 text-xs text-muted-foreground">({products.length})</span>
-          ) : null}
-        </button>
-      </div>
+        <div className="app-workspace-toolbar px-3 pt-1 sm:px-4">
+          <PageModeTabs
+            value={tab}
+            aria-label="E-handelsflikar"
+            onChange={setTab}
+            options={[
+              { value: "overview", label: "Översikt" },
+              { value: "products", label: "Produkter", count: products.length },
+            ]}
+          />
+        </div>
 
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
@@ -793,8 +790,10 @@ export default function Ecommerce() {
             <p className="text-xs font-semibold tabular-nums">{shopifyData?.orders.length ?? 0}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Flik</p>
-            <p className="text-xs font-semibold">{tab === "overview" ? "Översikt" : "Produkter"}</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Åtgärder</p>
+            <p className={`text-xs font-semibold tabular-nums ${actionNeeded && actionNeeded.total > 0 ? "text-warning" : ""}`}>
+              {actionNeeded ? actionNeeded.total : "—"}
+            </p>
           </div>
         </div>
 
@@ -839,7 +838,7 @@ export default function Ecommerce() {
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
-                Local mode is active. OAuth/connect is enabled for local testing and data stays local to your current session.
+                Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session.
               </p>
             </CardContent>
           </Card>
@@ -1322,7 +1321,7 @@ export default function Ecommerce() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums text-green-600">
-                    {formatPromoValue(promo.value, promo.valueType)}
+                    {formatPromoValue(promo.value, promo.valueType, currency)}
                   </span>
                 </div>
               ))}

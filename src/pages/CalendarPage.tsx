@@ -30,7 +30,7 @@ import {
   startOfDay,
   isSameMonth,
 } from "date-fns";
-import { enUS } from "date-fns/locale";
+import { sv } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,7 +178,7 @@ export default function CalendarPage() {
       const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(payload, "Could not fetch external calendar events."));
+        throw new Error(apiErrorMessage(payload, "Kunde inte hämta händelser från den kopplade kalendern."));
       }
       return res.json();
     },
@@ -459,10 +459,10 @@ export default function CalendarPage() {
 
   const navTitle =
     viewMode === "day"
-      ? format(currentDate, "EEEE d MMMM", { locale: enUS })
+      ? format(currentDate, "EEEE d MMMM", { locale: sv })
       : viewMode === "week"
-        ? `${format(weekStart, "d MMM", { locale: enUS })} – ${format(weekEnd, "d MMM", { locale: enUS })}`
-        : format(currentDate, "MMMM yyyy", { locale: enUS });
+        ? `${format(weekStart, "d MMM", { locale: sv })} – ${format(weekEnd, "d MMM", { locale: sv })}`
+        : format(currentDate, "MMMM yyyy", { locale: sv });
 
   const datesWithEvents = [...new Set(allEvents.map((e) => e.date))].map((d) =>
     parseISO(d)
@@ -583,7 +583,7 @@ export default function CalendarPage() {
                 setSelectedDate(d);
                 if (d) setCurrentDate(d);
               }}
-              locale={enUS}
+              locale={sv}
               modifiers={{ hasEvents: datesWithEvents }}
               modifiersClassNames={{
                 hasEvents: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
@@ -692,7 +692,7 @@ export default function CalendarPage() {
             {viewMode === "day" && (
               <div className="max-w-md">
                 <h2 className="text-lg font-semibold mb-4">
-                  {format(currentDate, "EEEE d MMMM", { locale: enUS })}
+                  {format(currentDate, "EEEE d MMMM", { locale: sv })}
                 </h2>
                 {eventsOnDate(currentDate).length === 0 ? (
                   <p className="text-muted-foreground text-sm py-8">
@@ -786,7 +786,7 @@ export default function CalendarPage() {
                       >
                         <div className="mb-2 flex items-baseline justify-between gap-2">
                           <p className="text-sm font-semibold">
-                            {format(day, "EEEE d MMM", { locale: enUS })}
+                            {format(day, "EEEE d MMM", { locale: sv })}
                           </p>
                           {today ? (
                             <span className="text-[10px] font-medium uppercase tracking-wide text-primary">Idag</span>
@@ -857,7 +857,7 @@ export default function CalendarPage() {
                         >
                           <div className="text-center mb-2">
                             <p className="text-[11px] uppercase text-muted-foreground">
-                              {format(day, "EEE", { locale: enUS })}
+                              {format(day, "EEE", { locale: sv })}
                             </p>
                             <p className="text-sm font-semibold">{format(day, "d")}</p>
                           </div>
@@ -941,7 +941,7 @@ export default function CalendarPage() {
                         >
                           <div className="mb-2 flex items-baseline justify-between gap-2">
                             <p className="text-sm font-semibold">
-                              {format(day, "EEEE d", { locale: enUS })}
+                              {format(day, "EEEE d", { locale: sv })}
                             </p>
                             <span className="text-[11px] tabular-nums text-muted-foreground">
                               {dayEvents.length > 0 ? `${dayEvents.length} händ.` : ""}
@@ -1060,23 +1060,23 @@ export default function CalendarPage() {
                 <span className="font-medium text-foreground/80">{focusedEvent.title}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {format(dayFocusDate, "d MMM", { locale: enUS })}
+                  · {format(dayFocusDate, "d MMM", { locale: sv })}
                 </span>
               </>
             ) : (
-              `J/K bläddra händelser ${format(dayFocusDate, "d MMM", { locale: enUS })}`
+              `J/K bläddra händelser ${format(dayFocusDate, "d MMM", { locale: sv })}`
             )}
           </span>
-          <span className="hidden sm:inline">O Open</span>
+          <span className="hidden sm:inline">O öppna</span>
         </div>
       ) : null}
 
       {smartSuggestions.length > 0 && (
         <Card className="rounded-xl border-dashed">
           <CardContent className="py-4 space-y-3">
-            <h2 className="text-sm font-semibold">Suggested for your calendar</h2>
+            <h2 className="text-sm font-semibold">Förslag till din kalender</h2>
             <p className="text-xs text-muted-foreground">
-              Pulled automatically from tasks and lead follow-ups due today or overdue.
+              Hämtas automatiskt från uppgifter och lead-uppföljningar som är försenade eller ska göras idag.
             </p>
             <div className="flex flex-wrap gap-2">
               {smartSuggestions.map((s) => (
@@ -1114,7 +1114,7 @@ export default function CalendarPage() {
                   <p className="font-medium text-sm truncate">{ev.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5">
                     <span>
-                      {format(parseISO(ev.date), "EEE d MMM", { locale: enUS })}
+                      {format(parseISO(ev.date), "EEE d MMM", { locale: sv })}
                       {ev.time && ` · ${ev.time}`}
                     </span>
                     {ev.source === "social" && ev.post ? (

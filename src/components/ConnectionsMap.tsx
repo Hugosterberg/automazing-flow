@@ -94,21 +94,21 @@ export function ConnectionsMap() {
                       to={entry.pageHref}
                       className="text-xs font-medium text-primary underline-offset-2 hover:underline shrink-0"
                     >
-                      Open {entry.pageName} →
+                      Öppna {entry.pageName} →
                     </Link>
                   </div>
                   {ok ? (
                     <p className="text-xs text-muted-foreground pl-6">
-                      Linked: {accs.map((a) => a.displayName || a.username).join(" · ")}
+                      Kopplat: {accs.map((a) => a.displayName || a.username).join(" · ")}
                     </p>
                   ) : (
-                    <p className="text-xs text-amber-800 dark:text-amber-500/95 pl-6">Not linked for this profile yet.</p>
+                    <p className="text-xs text-amber-800 dark:text-amber-500/95 pl-6">Inte kopplat för den här profilen än.</p>
                   )}
                   <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
-                    <span className="font-medium text-foreground/80">In the app:</span> {entry.connectSteps}
+                    <span className="font-medium text-foreground/80">I appen:</span> {entry.connectSteps}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
-                    <span className="font-medium text-foreground/80">On the server (.env / Preferences):</span>{" "}
+                    <span className="font-medium text-foreground/80">På servern (.env / Inställningar):</span>{" "}
                     {entry.serverNeeds}
                   </p>
                 </div>

@@ -19,124 +19,121 @@ export type MarketingPath = {
   description: string;
   kind: MarketingPathKind;
   icon: LucideIcon;
-  /** In-app route, or null when the path is handled on this page. */
-  href: string | null;
-  /** Anchor on /marketing, e.g. #paid-ads */
-  anchor?: string;
+  /** In-app route (may include query, e.g. /marketing?tab=ads). */
+  href: string;
   actions: string[];
 };
 
 export const MARKETING_PATH_KIND_LABELS: Record<MarketingPathKind, string> = {
-  paid: "Paid",
-  organic: "Organic",
-  owned: "Owned channels",
-  partnership: "Partnerships",
+  paid: "Betald",
+  organic: "Organisk",
+  owned: "Egna kanaler",
+  partnership: "Partnerskap",
 };
 
 export const MARKETING_PATHS: MarketingPath[] = [
   {
     id: "paid-ads",
-    title: "Paid ads",
-    description: "Google Ads and Meta campaigns for traffic, leads and product sales.",
+    title: "Betald annonsering",
+    description: "Google Ads- och Meta-kampanjer för trafik, leads och produktförsäljning.",
     kind: "paid",
     icon: Megaphone,
-    href: null,
-    anchor: "#paid-ads",
-    actions: ["Connect ad accounts", "Track ROAS", "Plan campaign tasks"],
+    href: "/marketing?tab=ads",
+    actions: ["Koppla annonskonton", "Följ ROAS", "Planera kampanjuppgifter"],
   },
   {
     id: "social",
-    title: "Social media",
-    description: "Organic posts, scheduling and community on Instagram, Facebook and LinkedIn.",
+    title: "Sociala medier",
+    description: "Organiska inlägg, schemaläggning och community på Instagram, Facebook och LinkedIn.",
     kind: "organic",
     icon: Share2,
     href: "/social-media",
-    actions: ["Publish posts", "Content calendar", "Engage followers"],
+    actions: ["Publicera inlägg", "Innehållskalender", "Engagera följare"],
   },
   {
     id: "content",
-    title: "Content studio",
-    description: "Long-form content, images and video drafts for your brand and products.",
+    title: "Innehållsstudio",
+    description: "Längre innehåll, bilder och videoutkast för ditt varumärke och dina produkter.",
     kind: "owned",
     icon: Sparkles,
     href: "/content",
-    actions: ["Write articles", "Generate visuals", "Repurpose for social"],
+    actions: ["Skriv artiklar", "Generera bilder", "Återanvänd för sociala medier"],
   },
   {
     id: "seo-brand",
-    title: "SEO & digital brand",
-    description: "Site audit, search visibility and consistent brand presence online.",
+    title: "SEO & digitalt varumärke",
+    description: "Webbplatsgranskning, söksynlighet och en konsekvent varumärkesnärvaro online.",
     kind: "organic",
     icon: Globe2,
     href: "/digital-brand",
-    actions: ["Run site audit", "Fix SEO gaps", "Monitor reputation"],
+    actions: ["Kör webbplatsgranskning", "Åtgärda SEO-luckor", "Bevaka ryktet"],
   },
   {
     id: "email-crm",
-    title: "Email & customers",
-    description: "Newsletters, follow-ups and customer relationships that drive repeat sales.",
+    title: "E-post & kunder",
+    description: "Nyhetsbrev, uppföljningar och kundrelationer som driver återkommande försäljning.",
     kind: "owned",
     icon: Mail,
     href: "/messages",
-    actions: ["Send campaigns", "Reply faster", "Segment customers"],
+    actions: ["Skicka utskick", "Svara snabbare", "Segmentera kunder"],
   },
   {
     id: "sales-outreach",
-    title: "Sales & outreach",
-    description: "Leads, cold outreach, discovery and pipeline toward closed deals.",
+    title: "Försäljning & outreach",
+    description: "Leads, kall outreach, prospektering och pipeline hela vägen till avslut.",
     kind: "owned",
     icon: Target,
     href: "/sales",
-    actions: ["Find leads", "Outreach copy", "Move pipeline"],
+    actions: ["Hitta leads", "Outreach-texter", "Driv pipelinen framåt"],
   },
   {
     id: "ecommerce",
-    title: "E-commerce & stores",
-    description: "Shopify and product listings — merchandising, offers and store performance.",
+    title: "E-handel & butiker",
+    description: "Shopify och produktlistningar — sortiment, erbjudanden och butikens resultat.",
     kind: "paid",
     icon: ShoppingBag,
     href: "/ecommerce",
-    actions: ["Product pages", "Promotions", "Store analytics"],
+    actions: ["Produktsidor", "Kampanjer", "Butiksanalys"],
   },
   {
     id: "reviews-local",
-    title: "Reviews & local",
-    description: "Google reviews, local listings and trust signals that convert browsers.",
+    title: "Recensioner & lokalt",
+    description: "Google-recensioner, lokala listningar och förtroendesignaler som konverterar besökare.",
     kind: "organic",
     icon: Star,
     href: "/reviews",
-    actions: ["Collect reviews", "Respond publicly", "Boost local SEO"],
+    actions: ["Samla recensioner", "Svara offentligt", "Stärk lokal SEO"],
   },
   {
     id: "partners",
     title: "Partners & community",
-    description: "Referrals, co-marketing, influencers and B2B partnerships.",
+    description: "Rekommendationer, sam-marknadsföring, influencers och B2B-partnerskap.",
     kind: "partnership",
     icon: Users,
     href: "/sales",
-    actions: ["Partner outreach", "Referral offers", "Joint campaigns"],
+    actions: ["Partner-outreach", "Referral-erbjudanden", "Gemensamma kampanjer"],
   },
 ];
 
 export const MARKETING_PATH_GROUPS: { kind: MarketingPathKind; title: string; description: string }[] = [
   {
     kind: "paid",
-    title: "Paid growth",
-    description: "Spend budget to reach buyers quickly through ads and marketplaces.",
+    title: "Betald tillväxt",
+    description: "Använd budget för att snabbt nå köpare via annonser och marknadsplatser.",
   },
   {
     kind: "organic",
-    title: "Organic reach",
-    description: "Earn attention through content, SEO, social and local presence.",
+    title: "Organisk räckvidd",
+    description: "Förtjäna uppmärksamhet genom innehåll, SEO, sociala medier och lokal närvaro.",
   },
   {
     kind: "owned",
-    title: "Owned channels",
-    description: "Channels you control — email, site, CRM and direct sales.",
+    title: "Egna kanaler",
+    description: "Kanaler du kontrollerar — e-post, webbplats, CRM och direktförsäljning.",
   },
   {
     kind: "partnership",
-    title: "Partnerships",
-    description: "Grow through others' audiences, referrals and co-marketing.",
+    title: "Partnerskap",
+    description: "Väx genom andras publik, rekommendationer och sam-marknadsföring.",
   },
 ];

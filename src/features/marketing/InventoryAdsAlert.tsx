@@ -34,10 +34,10 @@ export function InventoryAdsAlert() {
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-            <Link to="/ecommerce">View in E-commerce</Link>
+            <Link to="/ecommerce">Visa i E-handel</Link>
           </Button>
           <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-            <Link to="/marketing#paid-ads">Review campaigns</Link>
+            <Link to="/marketing?tab=ads">Granska kampanjer</Link>
           </Button>
         </div>
       </div>

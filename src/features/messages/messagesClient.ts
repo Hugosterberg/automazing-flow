@@ -42,7 +42,7 @@ export async function fetchMessageThread(
 
   const payload = await apiJson<{ messages?: unknown }>(
     `/api/messages/thread?${params.toString()}`,
-    "Could not load conversation thread.",
+    "Kunde inte ladda konversationstråden.",
     { signal }
   );
   return Array.isArray(payload.messages) ? (payload.messages as ThreadMessage[]) : [];

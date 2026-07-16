@@ -27,7 +27,7 @@ export async function fetchBrandDiscoverySuggestions(
 ): Promise<{ suggestions: BrandDiscoverySuggestion[]; source: string; mode: BrandDiscoveryMode }> {
   const body = await apiJson<{ suggestions?: unknown; source?: unknown; mode?: unknown }>(
     "/api/sales/outreach-discovery-suggestions",
-    "Couldn't load brand suggestions.",
+    "Kunde inte ladda varumärkesförslag.",
     { body: input, timeoutMs: 35_000 }
   );
   return {

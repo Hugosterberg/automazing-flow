@@ -32,7 +32,7 @@ export function MarketingSetupCard() {
       done: hasMetrics,
       label: "Se resultat",
       hint: "ROAS visas när butik och annonser är kopplade",
-      href: "#paid-ads",
+      href: "/marketing?tab=ads",
       icon: Gauge,
     },
   ];
@@ -64,7 +64,7 @@ export function MarketingSetupCard() {
               <p className="text-[11px] text-muted-foreground mb-2">{step.hint}</p>
               {!step.done ? (
                 <Button asChild size="sm" variant="outline" className="h-7 text-xs w-full">
-                  <Link to={step.href.startsWith("#") ? `/marketing${step.href}` : step.href}>Koppla</Link>
+                  <Link to={step.href}>Koppla</Link>
                 </Button>
               ) : null}
             </div>

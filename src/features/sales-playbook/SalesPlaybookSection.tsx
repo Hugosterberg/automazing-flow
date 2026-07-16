@@ -30,37 +30,37 @@ const ALL_PLAYBOOK_MODES: {
   {
     id: "pitch-angles",
     label: "Pitch",
-    description: "Value props and elevator pitches to sell your offer.",
+    description: "Värdeerbjudanden och hisspitchar som säljer ditt erbjudande.",
     icon: Target,
   },
   {
     id: "cold-outreach",
     label: "Outreach",
-    description: "Email and LinkedIn openers to start conversations.",
+    description: "Mail- och LinkedIn-öppningar som startar samtal.",
     icon: MessageSquareQuote,
   },
   {
     id: "objections",
-    label: "Objections",
-    description: "Responses when buyers push back on price, timing or fit.",
+    label: "Invändningar",
+    description: "Svar när köpare tvekar på pris, timing eller passform.",
     icon: Zap,
   },
   {
     id: "campaigns",
-    label: "Campaigns",
-    description: "30–90 day marketing campaigns to drive sales.",
+    label: "Kampanjer",
+    description: "Marknadskampanjer på 30–90 dagar som driver försäljning.",
     icon: Megaphone,
   },
   {
     id: "channels",
-    label: "Channels",
-    description: "Where to promote and sell your products.",
+    label: "Kanaler",
+    description: "Var du bör marknadsföra och sälja dina produkter.",
     icon: TrendingUp,
   },
   {
     id: "promotions",
-    label: "Promos",
-    description: "Offers, bundles and hooks that convert.",
+    label: "Erbjudanden",
+    description: "Erbjudanden, paket och krokar som konverterar.",
     icon: Tag,
   },
 ];
@@ -98,8 +98,8 @@ export function SalesPlaybookSection({
   notes,
   modes,
   defaultMode,
-  title = "Sales & marketing playbook",
-  description = "AI ideas to pitch, outreach, handle objections, run campaigns, pick channels and launch promotions.",
+  title = "Sälj- & marknadsföringsplaybook",
+  description = "AI-idéer för pitch, outreach, invändningar, kampanjer, kanalval och erbjudanden.",
   onUseForOutreach,
   onUseForCampaign,
   onUseForContent,
@@ -134,9 +134,9 @@ export function SalesPlaybookSection({
       });
       setCache((prev) => ({ ...prev, [nextMode]: result.items }));
       setSource(result.source);
-      if (result.items.length === 0) toast.message("No ideas came back — try again.");
+      if (result.items.length === 0) toast.message("Inga idéer kom tillbaka — försök igen.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't load ideas.");
+      toast.error(error instanceof Error ? error.message : "Kunde inte ladda idéer.");
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ export function SalesPlaybookSection({
 
   function copyItem(item: SalesPlaybookItem) {
     void navigator.clipboard.writeText(itemText(item));
-    toast.success("Copied");
+    toast.success("Kopierat");
   }
 
   const activeMeta = visibleModes.find((m) => m.id === mode);
@@ -166,7 +166,7 @@ export function SalesPlaybookSection({
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            Generate ideas
+            Generera idéer
           </Button>
         </div>
       </CardHeader>
@@ -197,7 +197,7 @@ export function SalesPlaybookSection({
               <PlaybookList
                 items={cache[tab.id] ?? []}
                 mode={tab.id}
-                emptyText={`Click "Generate ideas" for ${tab.label.toLowerCase()} tailored to your business.`}
+                emptyText={`Klicka på "Generera idéer" för ${tab.label.toLowerCase()} anpassade till din verksamhet.`}
                 onCopy={copyItem}
                 onUseForOutreach={onUseForOutreach}
                 onUseForCampaign={onUseForCampaign}
@@ -210,9 +210,9 @@ export function SalesPlaybookSection({
 
         {source && activeItems.length > 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            Source: {source === "ai" ? "AI" : "general ideas"}
+            Källa: {source === "ai" ? "AI" : "generella idéer"}
             {activeMeta ? ` · ${activeMeta.label}` : ""}
-            {` · ${activeItems.length} ideas`}
+            {` · ${activeItems.length} idéer`}
           </p>
         ) : null}
       </CardContent>
@@ -264,27 +264,27 @@ function PlaybookList({
             <div className="flex flex-wrap gap-1 shrink-0">
               {mode === "cold-outreach" && onUseForOutreach ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForOutreach(item)}>
-                  Draft outreach
+                  Skriv outreach-utkast
                 </Button>
               ) : null}
               {mode === "campaigns" && onUseForCampaign ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForCampaign(item)}>
-                  Plan campaign
+                  Planera kampanj
                 </Button>
               ) : null}
               {(mode === "pitch-angles" || mode === "channels") && onUseForContent ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onUseForContent(item)}>
-                  Use in Content
+                  Använd i Innehåll
                 </Button>
               ) : null}
               {mode === "promotions" && onOpenEcommerce ? (
                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={onOpenEcommerce}>
-                  Store promos
+                  Butikserbjudanden
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="ghost" className="h-8 shrink-0 px-2" onClick={() => onCopy(item)}>
                 <Copy className="h-3.5 w-3.5" />
-                <span className="sr-only">Copy</span>
+                <span className="sr-only">Kopiera</span>
               </Button>
             </div>
           </div>

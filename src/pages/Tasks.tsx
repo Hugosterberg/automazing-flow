@@ -284,12 +284,12 @@ export default function TasksPage() {
               checklist: getTaskChecklist(row),
               comments: getTaskComments(row),
               ai: getTaskAi(row),
-            }).catch(() => toast.error("Could not restore the task."));
+            }).catch(() => toast.error("Kunde inte återställa uppgiften."));
           },
         },
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not delete task.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte ta bort uppgiften.");
     }
   }
 
@@ -304,17 +304,17 @@ export default function TasksPage() {
         done.map((t) => updateTask({ id: t.id, patch: { status: "archived" } }))
       );
       toast.success(
-        `Archived ${done.length} done task${done.length === 1 ? "" : "s"}.`
+        `Arkiverade ${done.length} klar${done.length === 1 ? "" : "a"} uppgift${done.length === 1 ? "" : "er"}.`
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not archive tasks.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte arkivera uppgifterna.");
     }
   }
 
   async function handleDuplicate(task: TaskRow) {
     try {
       await createTask({
-        title: `${task.title} (copy)`,
+        title: `${task.title} (kopia)`,
         description: task.description,
         priority: task.priority,
         dueAt: task.due_at,
@@ -322,9 +322,9 @@ export default function TasksPage() {
         // Fresh ids and unticked boxes — the copy is a new piece of work.
         checklist: getTaskChecklist(task).map((item) => newChecklistItem(item.text)),
       });
-      toast.success("Task duplicated.");
+      toast.success("Uppgiften duplicerades.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not duplicate task.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte duplicera uppgiften.");
     }
   }
 
@@ -347,9 +347,9 @@ export default function TasksPage() {
             : {}),
         },
       });
-      toast.success("Task updated.");
+      toast.success("Uppgiften sparades.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save task.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte spara uppgiften.");
       throw err;
     }
   }
@@ -371,7 +371,7 @@ export default function TasksPage() {
     try {
       await updateTask({ id: task.id, patch: { checklist } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not update checklist.");
+      toast.error(err instanceof Error ? err.message : "Kunde inte uppdatera checklistan.");
     }
   }
 
@@ -428,20 +428,20 @@ export default function TasksPage() {
       });
       if (source === "ai") {
         toast.success(
-          `AI prepared the task: ${newSteps.length} step${newSteps.length === 1 ? "" : "s"} + analysis added.`
+          `AI förberedde uppgiften: ${newSteps.length} steg + analys tillagd.`
         );
       } else {
-        toast.success("Added a basic plan.", {
-          description: "Add an OpenAI key for full task-specific analysis.",
+        toast.success("La till en grundplan.", {
+          description: "Lägg in en OpenAI-nyckel för fullständig uppgiftsanalys.",
           action: {
-            label: "AI settings",
+            label: "AI-inställningar",
             onClick: () => navigate("/preferences?tab=ai"),
           },
         });
       }
       return updated;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "AI could not analyze the task.");
+      toast.error(err instanceof Error ? err.message : "AI kunde inte analysera uppgiften.");
       return null;
     } finally {
       setAiTaskId(null);

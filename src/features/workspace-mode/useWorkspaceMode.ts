@@ -86,8 +86,8 @@ export function useWorkspaceMode(): WorkspaceModeState {
           console.warn(`[workspace-mode] Could not create ${target} profile`, err);
           toast.error(
             target === "private"
-              ? "Could not create your private profile. Try again."
-              : "Could not create a business profile. Try again."
+              ? "Kunde inte skapa din privata profil. Försök igen."
+              : "Kunde inte skapa en företagsprofil. Försök igen."
           );
         })
         .finally(() => {

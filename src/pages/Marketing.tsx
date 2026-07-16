@@ -392,12 +392,12 @@ export default function MarketingPage() {
     <div className="space-y-6 max-w-5xl">
       <PageHeader
         icon={Megaphone}
-        title="Marketing"
+        title="Marknadsföring"
         description="Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap."
       />
 
       <PageSmartBar
-        title="Marketing samlar betald annonsering, kampanjer och AI-idéer — från strategi till publicering."
+        title="Marknadsföring samlar betald annonsering, kampanjer och AI-idéer — från strategi till publicering."
         steps={[
           "Koppla Google Ads och Meta för live kampanjdata",
           "Skapa kampanjer eller låt AI föreslå kanaler och erbjudanden",
@@ -449,7 +449,7 @@ export default function MarketingPage() {
           {...marketingContext}
           modes={["channels", "campaigns", "promotions"]}
           defaultMode="channels"
-          title="Marketingidéer"
+          title="Marknadsföringsidéer"
           description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
           onUseForCampaign={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));

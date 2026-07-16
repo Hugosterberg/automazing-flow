@@ -3,9 +3,9 @@ import { batchStatusLabel, isBatchComplete, isBatchTerminal } from "@/features/c
 
 describe("apiaiBatchUtils", () => {
   it("maps batch statuses to readable labels", () => {
-    expect(batchStatusLabel("completed")).toBe("Complete");
-    expect(batchStatusLabel("running")).toBe("Running");
-    expect(batchStatusLabel("failed")).toBe("Failed");
+    expect(batchStatusLabel("completed")).toBe("Klar");
+    expect(batchStatusLabel("running")).toBe("Körs");
+    expect(batchStatusLabel("failed")).toBe("Misslyckad");
     expect(batchStatusLabel("custom")).toBe("custom");
   });
 

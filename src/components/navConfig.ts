@@ -128,7 +128,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "sales-marketing",
-    title: "Sales",
+    title: "Försäljning",
     url: "/sales",
     icon: LineChart,
     platforms: [] as AccountPlatform[],
@@ -138,7 +138,7 @@ export const navItems: NavItem[] = [
   },
   {
     key: "marketing",
-    title: "Marketing",
+    title: "Marknadsföring",
     url: "/marketing",
     icon: Megaphone,
     platforms: ["google_ads", "meta_business"] as AccountPlatform[],

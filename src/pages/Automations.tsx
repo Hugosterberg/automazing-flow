@@ -1,8 +1,9 @@
 import { m } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSuggestionsStrip";
+import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowRight, Clock, RefreshCw, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -258,6 +259,13 @@ function TopicHeading({ topic }: { topic: AutomationTopic }) {
   );
 }
 
+const AUTOMATION_TAB_LABELS: Record<AutomationTopic, string> = {
+  messages: "Meddelanden",
+  content: "Innehåll",
+  reports: "Rapporter",
+  insights: "Insikter",
+};
+
 export default function AutomationsPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
@@ -266,6 +274,19 @@ export default function AutomationsPage() {
   const prefetchFor = useRoutePrefetch();
   const runs = useAutomationRuns(businessProfileId);
   const [runsRefreshing, setRunsRefreshing] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawAutomationTab = searchParams.get("tab");
+  const automationTab: AutomationTopic =
+    rawAutomationTab && (AUTOMATION_TOPIC_ORDER as string[]).includes(rawAutomationTab)
+      ? (rawAutomationTab as AutomationTopic)
+      : "messages";
+
+  function setAutomationTab(topic: AutomationTopic) {
+    const next = new URLSearchParams(searchParams);
+    if (topic === "messages") next.delete("tab");
+    else next.set("tab", topic);
+    setSearchParams(next, { replace: true });
+  }
 
   const runStats = useMemo(() => {
     const values = Object.values(runs.byKey);
@@ -385,6 +406,7 @@ export default function AutomationsPage() {
         </m.div>
       ) : null}
 
+      {automationTab === "insights" ? (
       <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
@@ -393,12 +415,24 @@ export default function AutomationsPage() {
           description="Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
         />
       </m.div>
+      ) : null}
 
-      {AUTOMATION_TOPIC_ORDER.map((topic, index) => (
+      <PageModeTabs
+        value={automationTab}
+        aria-label="Automationsflikar"
+        onChange={setAutomationTab}
+        options={AUTOMATION_TOPIC_ORDER.map((topic) => ({
+          value: topic,
+          label: AUTOMATION_TAB_LABELS[topic],
+          count: catalogEntriesForTopic(topic, { includeBusinessOnly: mode === "business" }).length,
+        }))}
+      />
+
+      {AUTOMATION_TOPIC_ORDER.filter((topic) => topic === automationTab).map((topic) => (
         <m.section
           key={topic}
           {...pageFadeUp}
-          transition={{ delay: 0.04 + index * 0.03 }}
+          transition={{ delay: 0.04 }}
           aria-label={AUTOMATION_TOPICS[topic].title}
           className="space-y-4"
         >

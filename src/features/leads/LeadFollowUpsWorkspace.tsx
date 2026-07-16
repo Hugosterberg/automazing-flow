@@ -232,7 +232,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
         <p className="mt-1 text-xs text-muted-foreground">Alla leads är ikapp — bra jobbat.</p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-            <Link to="/sales">Öppna Sales</Link>
+            <Link to="/sales">Öppna Försäljning</Link>
           </Button>
           <Button asChild size="sm" variant="ghost" className="h-8 text-xs">
             <Link to="/company">Fyll i Företag</Link>
