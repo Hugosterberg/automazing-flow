@@ -8,7 +8,7 @@ import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +16,6 @@ import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
-import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
@@ -69,6 +68,7 @@ import {
 import { moveMessageToFolder } from "@/features/messages/mailFoldersClient";
 import { performMailAction, type MailMessageAction } from "@/features/messages/mailActionsClient";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
+import { AutoReplyDraftsStrip } from "@/features/automation";
 import {
   inboxCacheKey,
   mergeUnifiedByKind,
@@ -106,6 +106,7 @@ export default function MessagesPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -525,21 +526,7 @@ export default function MessagesPage() {
     };
   }, [activeProfileId, addAccountFromOAuth, ensureBackendSession]);
 
-  async function connectGmail() {
-    await ensureBackendSession();
-    const params = new URLSearchParams();
-    appendOAuthProfileParams(params, activeProfileId);
-    params.set("app_origin", window.location.origin);
-    window.location.href = `${apiUrl("/api/auth/gmail")}?${params}`;
-  }
-
-  async function connectOutlook() {
-    await ensureBackendSession();
-    const params = new URLSearchParams();
-    appendOAuthProfileParams(params, activeProfileId);
-    params.set("app_origin", window.location.origin);
-    window.location.href = `${apiUrl("/api/auth/outlook")}?${params}`;
-  }
+  // Connections is the sole connect home — avoid parallel OAuth entry points here.
 
   // Restore reply draft cache and reset transient state when switching messages.
   useEffect(() => {
@@ -775,7 +762,7 @@ export default function MessagesPage() {
 
   const summaryPayload = useMemo(
     () =>
-      messages.slice(0, 20).map((m) => ({
+      messages.slice(0, 10).map((m) => ({
         id: m.id,
         subject: m.subject,
         snippet: m.snippet,
@@ -1558,10 +1545,10 @@ export default function MessagesPage() {
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Gmail</p>
-                <p className="mt-1 text-xs text-muted-foreground">Koppla för att se mail i inkorgen.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Koppla under Kopplingar för att se mail här.</p>
               </div>
-              <Button size="sm" className="glow-sm" onClick={() => void connectGmail()}>
-                Koppla Gmail
+              <Button asChild size="sm" className="glow-sm">
+                <Link to="/connections?q=gmail">Öppna Kopplingar</Link>
               </Button>
             </CardContent>
           </Card>
@@ -1570,14 +1557,18 @@ export default function MessagesPage() {
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Outlook</p>
-                <p className="mt-1 text-xs text-muted-foreground">Koppla Microsoft 365 / Outlook.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Koppla Microsoft 365 / Outlook under Kopplingar.</p>
               </div>
-              <Button size="sm" variant="outline" onClick={() => void connectOutlook()}>
-                Koppla Outlook
+              <Button asChild size="sm" variant="outline">
+                <Link to="/connections?q=outlook">Öppna Kopplingar</Link>
               </Button>
             </CardContent>
           </Card>
         </m.div>
+      ) : null}
+
+      {!focusedReading ? (
+        <AutoReplyDraftsStrip businessProfileId={businessProfileId} compact />
       ) : null}
 
       <m.div
@@ -1651,8 +1642,8 @@ export default function MessagesPage() {
           error={error}
           onDismissError={() => setError(null)}
           mailErrors={mailErrors}
-          onReconnectGmail={() => void connectGmail()}
-          onReconnectOutlook={() => void connectOutlook()}
+          onReconnectGmail={() => navigate("/connections?filter=attention&q=gmail")}
+          onReconnectOutlook={() => navigate("/connections?filter=attention&q=outlook")}
           zernioNote={zernioNote}
           showZernioNote={showZernioNote}
         />

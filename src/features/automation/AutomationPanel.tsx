@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Loader2, Play, RefreshCw, Save, Send } from "lucide-react";
+import { AlertTriangle, Bot, Loader2, Play, RefreshCw, Save, Send } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +27,7 @@ import {
   type AutomationSettings,
   type AutoReplyLogEntry,
 } from "./automationService";
+import { useInvalidatePendingDmDrafts } from "./usePendingDmDrafts";
 
 const STATUS_LABELS: Record<AutoReplyLogEntry["status"], { label: string; className: string }> = {
   drafted: { label: "Utkast", className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
@@ -32,6 +43,7 @@ const STATUS_LABELS: Record<AutoReplyLogEntry["status"], { label: string; classN
  */
 export function AutomationPanel({ businessProfileId }: { businessProfileId: string }) {
   const { toast } = useToast();
+  const invalidatePendingDrafts = useInvalidatePendingDmDrafts();
   const [loading, setLoading] = useState(true);
   const [storeEnabled, setStoreEnabled] = useState(true);
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
@@ -41,6 +53,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
   const [logEntries, setLogEntries] = useState<AutoReplyLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [sendingDraftId, setSendingDraftId] = useState<string | null>(null);
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false);
 
   const loadLog = useCallback(async () => {
     setLogLoading(true);
@@ -121,6 +134,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
       await sendAutomationDraft(businessProfileId, entry.id);
       toast({ title: "Svar skickat", description: "Utkastet skickades via Zernio." });
       await loadLog();
+      invalidatePendingDrafts(businessProfileId);
     } catch (error) {
       toast({
         title: "Kunde inte skicka utkastet",
@@ -130,6 +144,14 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
     } finally {
       setSendingDraftId(null);
     }
+  }
+
+  function requestModeChange(mode: AutomationSettings["dmAutoReplyMode"]) {
+    if (mode === "send" && settings?.dmAutoReplyMode !== "send") {
+      setConfirmSendOpen(true);
+      return;
+    }
+    patchSettings({ dmAutoReplyMode: mode });
   }
 
   async function handleRunNow() {
@@ -156,6 +178,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
         });
       }
       await loadLog();
+      invalidatePendingDrafts(businessProfileId);
     } catch (error) {
       toast({
         title: "Kunde inte köra automationen",
@@ -228,11 +251,13 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => patchSettings({ dmAutoReplyMode: option.value })}
+                  onClick={() => requestModeChange(option.value)}
                   aria-pressed={settings.dmAutoReplyMode === option.value}
                   className={`rounded-lg border p-3 text-left transition-colors ${
                     settings.dmAutoReplyMode === option.value
-                      ? "border-primary bg-primary/5"
+                      ? option.value === "send"
+                        ? "border-destructive/60 bg-destructive/5"
+                        : "border-primary bg-primary/5"
                       : "border-border hover:bg-muted/50"
                   }`}
                 >
@@ -241,6 +266,15 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
                 </button>
               ))}
             </div>
+            {settings.dmAutoReplyMode === "send" ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <p>
+                  Auto-skick är valt — spara för att tillämpa. Då går svar ut utan manuell
+                  granskning. Utkastläge är säkrare för de flesta.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -364,6 +398,31 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skicka DM-svar automatiskt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              I det här läget skickar AI:n svar direkt till kunder utan att du godkänner dem först.
+              Det går inte att ångra ett skickat meddelande. Utkastläge rekommenderas för startups
+              och mindre team.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                patchSettings({ dmAutoReplyMode: "send" });
+                setConfirmSendOpen(false);
+              }}
+            >
+              Ja, aktivera auto-skick
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

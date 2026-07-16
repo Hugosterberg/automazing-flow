@@ -63,6 +63,8 @@ export interface DailyBriefInput {
   leadsToFollowUp?: number;
   /** Automated outreach drafts waiting for review in Sales. */
   outreachQueuePending?: number;
+  /** DM auto-reply drafts waiting for human send (draft-before-send). */
+  pendingDmDrafts?: number;
   /** Scheduled automations whose most recent run failed. `title` is display-ready. */
   failedAutomations?: Array<{ title: string }>;
   overdueTasks: Array<{ title: string }>;
@@ -158,6 +160,19 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       description: "Automatisk uppföljningstext väntar — granska och skicka under Sales.",
       to: "/sales?view=outreach-queue",
       count: outreachQueuePending,
+    });
+  }
+
+  const pendingDmDrafts = Math.max(0, Math.trunc(input.pendingDmDrafts ?? 0));
+  if (pendingDmDrafts > 0) {
+    items.push({
+      id: "dm-drafts",
+      kind: "message",
+      severity: "warning",
+      title: pendingDmDrafts === 1 ? "1 DM-utkast att godkänna" : `${pendingDmDrafts} DM-utkast att godkänna`,
+      description: "Auto-svar i utkastläge — granska och skicka under Meddelanden.",
+      to: "/messages?tab=instagram",
+      count: pendingDmDrafts,
     });
   }
 
@@ -290,6 +305,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     unreadDms +
     leadsToFollowUp +
     outreachQueuePending +
+    pendingDmDrafts +
     hasUnderwaterRoas +
     hasTrendDown +
     inventoryAlertCount +

@@ -80,6 +80,14 @@ describe("buildDailyBrief", () => {
     expect(brief.actionCount).toBe(2);
   });
 
+  it("surfaces pending DM auto-reply drafts", () => {
+    const brief = buildDailyBrief({ ...empty, pendingDmDrafts: 2 });
+    expect(brief.allClear).toBe(false);
+    expect(brief.items.some((i) => i.id === "dm-drafts")).toBe(true);
+    expect(brief.items.find((i) => i.id === "dm-drafts")?.to).toBe("/messages?tab=instagram");
+    expect(brief.actionCount).toBe(2);
+  });
+
   it("surfaces reviews needing reply and inventory alerts", () => {
     const reviews = buildDailyBrief({ ...empty, reviewsNeedingReply: 2 });
     expect(reviews.items[0].kind).toBe("review");

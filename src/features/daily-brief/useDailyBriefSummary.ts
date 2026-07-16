@@ -7,7 +7,11 @@ import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaign
 import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
 import { useReviewReplyState } from "@/features/reviews";
-import { useAutomationRuns, automationTitleForCronKey } from "@/features/automation";
+import {
+  useAutomationRuns,
+  automationTitleForCronKey,
+  usePendingDmDrafts,
+} from "@/features/automation";
 import { useProfileDocument } from "@/features/profile-documents";
 import { platformLabel } from "@/lib/platformLabels";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
@@ -29,6 +33,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
   const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
   const automationRuns = useAutomationRuns(businessProfileId ?? null);
+  const { count: pendingDmDrafts } = usePendingDmDrafts(businessProfileId);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
   const { events: agentEvents } = useActivityFeed(businessProfileId, {
     module: "agent",
@@ -80,6 +85,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
       inventoryAlertCount,
       leadsToFollowUp,
       outreachQueuePending,
+      pendingDmDrafts,
       failedAutomations,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
@@ -97,6 +103,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     marketingRoas,
     marketingTrendDown,
     outreachQueuePending,
+    pendingDmDrafts,
     recommendations,
     reviewsNeedingReply,
     tasks,
