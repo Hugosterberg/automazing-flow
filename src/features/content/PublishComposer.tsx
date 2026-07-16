@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, Send, CalendarClock, CheckCircle2, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,7 @@ export function PublishComposer({
   /** Pre-select all publishable accounts when the composer opens. */
   autoSelectAccounts?: boolean;
 }) {
+  const { t } = useTranslation("content");
   const { toast } = useToast();
   const { accounts, activeProfileId } = useAccounts();
   const activeBusinessProfileId = useActiveBusinessProfileIdOptional();
@@ -143,19 +145,19 @@ export function PublishComposer({
     const iso = scheduledFor ? new Date(scheduledFor).toISOString() : null;
     scheduledPosts.upsert(buildPost("draft", iso));
     resetForm();
-    toast({ title: "Utkast sparat", description: "Hittas i pipelinen nedan och i kalendern om det har en tid." });
+    toast({ title: t("publish.draftSaved"), description: t("publish.draftSavedDescription") });
   }
 
   /** Queue the post locally; the server sweep publishes it when the time comes. */
   function schedulePost() {
     if (selectedIds.length === 0 || !caption.trim()) return;
     if (!scheduledFor) {
-      toast({ title: "Välj datum och tid", variant: "destructive" });
+      toast({ title: t("publish.pickDateTime"), variant: "destructive" });
       return;
     }
     const atMs = new Date(scheduledFor).getTime();
     if (!Number.isFinite(atMs) || atMs < Date.now() - 60_000) {
-      toast({ title: "Schemalagd tid måste ligga i framtiden", variant: "destructive" });
+      toast({ title: t("publish.scheduleMustBeFuture"), variant: "destructive" });
       return;
     }
     scheduledPosts.upsert(buildPost("scheduled", new Date(atMs).toISOString()));
@@ -163,20 +165,20 @@ export function PublishComposer({
     resetForm();
     onPublished?.();
     toast({
-      title: "Schemalagt",
-      description: "Publiceras automatiskt på vald tid. Flytta eller redigera från kalendern tills dess.",
+      title: t("publish.scheduled"),
+      description: t("publish.scheduledDescription"),
     });
   }
 
   async function publishNow() {
     if (!businessProfileId) {
-      toast({ title: "Välj en företagsprofil först", variant: "destructive" });
+      toast({ title: t("publish.pickProfile"), variant: "destructive" });
       return;
     }
     if (selectedIds.length === 0 || !caption.trim()) return;
     setBusy(true);
     try {
-      const payload = await apiJson<{ published?: number }>("/api/content/publish", "Kunde inte publicera", {
+      const payload = await apiJson<{ published?: number }>("/api/content/publish", t("publish.publishApiError"), {
         body: {
           accountIds: selectedIds,
           business_profile_id: businessProfileId,
@@ -191,13 +193,13 @@ export function PublishComposer({
       resetForm();
       onPublished?.();
       toast({
-        title: "Publicerat",
-        description: `${payload?.published ?? selectedIds.length} konto(n) via Zernio.`,
+        title: t("publish.published"),
+        description: t("publish.publishedDescription", { count: payload?.published ?? selectedIds.length }),
       });
     } catch (e) {
       toast({
-        title: "Publicering misslyckades",
-        description: e instanceof Error ? e.message : "Okänt fel",
+        title: t("publish.publishFailed"),
+        description: e instanceof Error ? e.message : t("publish.unknownError"),
         variant: "destructive",
       });
     } finally {
@@ -210,18 +212,18 @@ export function PublishComposer({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Send className="h-4 w-4 text-muted-foreground" />
-          Publicera eller schemalägg inlägg
+          {t("publish.title")}
         </CardTitle>
         <CardDescription>
-          Utkast → Schemalagd → Publicerad: spara som utkast, schemalägg för automatisk publicering, eller publicera direkt via Zernio.
+          {t("publish.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {postable.length === 0 ? (
           <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            Koppla ett Zernio-kopplat socialt konto för att publicera eller schemalägga inlägg här.
+            {t("publish.noAccounts")}
             <Button variant="link" size="sm" className="h-auto px-1 py-0 text-sm" asChild>
-              <Link to="/connections">Hantera kopplingar</Link>
+              <Link to="/connections">{t("publish.manageConnections")}</Link>
             </Button>
           </div>
         ) : null}
@@ -229,10 +231,10 @@ export function PublishComposer({
         {editingPost ? (
           <div className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
             <span className="text-muted-foreground">
-              Redigerar {editingPost.status === "draft" ? "utkast" : "schemalagt inlägg"} — spara igen för att uppdatera.
+              {editingPost.status === "draft" ? t("publish.editingDraft") : t("publish.editingScheduled")}
             </span>
             <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={resetForm}>
-              Avbryt
+              {t("publish.cancelEdit")}
             </Button>
           </div>
         ) : null}
@@ -245,13 +247,13 @@ export function PublishComposer({
             onCaptionChange?.(next);
             setDone(false);
           }}
-          placeholder="Skriv din bildtext här…"
+          placeholder={t("publish.captionPlaceholder")}
           className="min-h-[90px]"
         />
 
         {resolvedMediaUrls.length > 0 ? (
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Bifogad media ({resolvedMediaUrls.length})</Label>
+            <Label className="text-xs text-muted-foreground">{t("publish.attachedMedia", { count: resolvedMediaUrls.length })}</Label>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {resolvedMediaUrls.map((url) => (
                 <img
@@ -266,28 +268,28 @@ export function PublishComposer({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Ingen media bifogad — lägg till bilder under Bläddra eller Skapa först.</p>
+          <p className="text-xs text-muted-foreground">{t("publish.noMedia")}</p>
         )}
 
         {hasBlobOnlyMedia ? (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-            Local file uploads cannot be published directly. Generate with AI, export from Canva, or pick media from Content or Google Drive.
+            {t("publish.blobWarning")}
           </div>
         ) : null}
 
         {publishBlockedReason ? (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Publishing blocked: {publishBlockedReason}
+            {t("publish.blocked", { reason: publishBlockedReason })}
           </div>
         ) : publishWarning ? (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-            Review before publishing: {publishWarning}
+            {t("publish.reviewWarning", { warning: publishWarning })}
           </div>
         ) : null}
 
         {postable.length > 0 ? (
           <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Accounts</Label>
+          <Label className="text-xs text-muted-foreground">{t("publish.accounts")}</Label>
           <div className="flex flex-wrap gap-2">
             {postable.map((a) => {
               const active = Boolean(selected[a.id]);
@@ -312,14 +314,14 @@ export function PublishComposer({
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">When</Label>
+            <Label className="text-xs text-muted-foreground">{t("publish.when")}</Label>
             <div className="flex gap-1 rounded-md border border-border p-1">
               <button
                 type="button"
                 onClick={() => setMode("now")}
                 className={`text-xs px-3 py-1 rounded ${mode === "now" ? "bg-accent" : "text-muted-foreground"}`}
               >
-                Now
+                {t("publish.now")}
               </button>
               <button
                 type="button"
@@ -328,14 +330,14 @@ export function PublishComposer({
                   mode === "schedule" ? "bg-accent" : "text-muted-foreground"
                 }`}
               >
-                <CalendarClock className="h-3.5 w-3.5" /> Schedule
+                <CalendarClock className="h-3.5 w-3.5" /> {t("publish.schedule")}
               </button>
             </div>
           </div>
           {mode === "schedule" && (
             <div className="space-y-1.5">
               <Label htmlFor="composer-schedule" className="text-xs text-muted-foreground">
-                Date & time
+                {t("publish.dateTime")}
               </Label>
               <Input
                 id="composer-schedule"
@@ -348,13 +350,13 @@ export function PublishComposer({
           )}
           {mode === "schedule" && resolvedMediaUrls.length > 0 ? (
             <p className="basis-full text-xs text-muted-foreground">
-              AI and Canva media links are temporary. Schedule media posts within 20 hours, or regenerate the media closer to publish time.
+              {t("publish.scheduleMediaHint")}
             </p>
           ) : null}
           <div className="ml-auto flex items-center gap-2">
             {done && (
               <span className="text-xs text-emerald-600 inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Sent
+                <CheckCircle2 className="h-3.5 w-3.5" /> {t("publish.sent")}
               </span>
             )}
             <Button
@@ -363,7 +365,7 @@ export function PublishComposer({
               disabled={busy || !caption.trim()}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Spara utkast
+              {t("publish.saveDraft")}
             </Button>
             <Button
               onClick={() => (mode === "now" ? void publishNow() : schedulePost())}
@@ -377,7 +379,7 @@ export function PublishComposer({
               }
             >
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              {mode === "now" ? "Publish" : "Schedule"}{resolvedMediaUrls.length > 0 ? " with media" : ""}
+              {mode === "now" ? t("publish.publish") : t("publish.scheduleAction")}{resolvedMediaUrls.length > 0 ? t("publish.withMedia") : ""}
             </Button>
           </div>
         </div>

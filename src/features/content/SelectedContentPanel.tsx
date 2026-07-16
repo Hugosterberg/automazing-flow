@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   BookmarkCheck,
@@ -30,12 +31,12 @@ import { cn } from "@/lib/utils";
 
 type SourceFilter = "all" | "drive" | "upload" | "apiai" | "generated";
 
-function sourceLabel(asset: SelectedContentAsset) {
-  if (asset.sourceAccountId === "upload") return "Upload";
-  if (asset.sourceAccountId === "apiai") return "apiai.me";
-  if (asset.sourceAccountId === "openai") return "OpenAI";
-  if (asset.sourceAccountId === "canva") return "Canva";
-  return asset.sourceAccountName || "Drive";
+function sourceLabel(asset: SelectedContentAsset, t: (key: string) => string) {
+  if (asset.sourceAccountId === "upload") return t("sources.upload");
+  if (asset.sourceAccountId === "apiai") return t("sources.apiai");
+  if (asset.sourceAccountId === "openai") return t("sources.openai");
+  if (asset.sourceAccountId === "canva") return t("sources.canva");
+  return asset.sourceAccountName || t("sources.drive");
 }
 
 function assetSourceFilter(asset: SelectedContentAsset): SourceFilter {
@@ -45,13 +46,7 @@ function assetSourceFilter(asset: SelectedContentAsset): SourceFilter {
   return "drive";
 }
 
-const FILTER_OPTIONS: { id: SourceFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "drive", label: "Drive" },
-  { id: "upload", label: "Uploads" },
-  { id: "apiai", label: "apiai.me" },
-  { id: "generated", label: "AI / Canva" },
-];
+const FILTER_IDS: SourceFilter[] = ["all", "drive", "upload", "apiai", "generated"];
 
 function SelectedTile({
   asset,
@@ -64,6 +59,7 @@ function SelectedTile({
   onDragOver,
   onDrop,
   dragOver,
+  t,
 }: {
   asset: SelectedContentAsset;
   index: number;
@@ -75,6 +71,7 @@ function SelectedTile({
   onDragOver: (event: React.DragEvent) => void;
   onDrop: () => void;
   dragOver: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const [failed, setFailed] = useState(false);
   const src = asset.thumbnailUrl || asset.previewUrl;
@@ -121,11 +118,11 @@ function SelectedTile({
         )}
         {bulkMode ? (
           <div className="absolute top-2 left-2">
-            <Checkbox checked={bulkChecked} onCheckedChange={onBulkToggle} aria-label={`Select ${asset.name}`} />
+            <Checkbox checked={bulkChecked} onCheckedChange={onBulkToggle} aria-label={t("selected.selectAria", { name: asset.name })} />
           </div>
         ) : (
           <Badge variant="secondary" className="absolute top-2 left-2 text-[10px] max-w-[85%] truncate">
-            {sourceLabel(asset)}
+            {sourceLabel(asset, t)}
           </Badge>
         )}
         {!bulkMode ? (
@@ -138,7 +135,7 @@ function SelectedTile({
                 className="absolute bottom-2 left-2 h-7 w-7 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                 asChild
               >
-                <a href={asset.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${asset.name}`}>
+                <a href={asset.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={t("selected.openAria", { name: asset.name })}>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </Button>
@@ -149,7 +146,7 @@ function SelectedTile({
               variant="secondary"
               className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
               onClick={onRemove}
-              aria-label={`Remove ${asset.name} from Selected`}
+              aria-label={t("selected.removeAria", { name: asset.name })}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -202,6 +199,7 @@ export function SelectedContentPanel({
   onPublish: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("content");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkKeys, setBulkKeys] = useState<Set<string>>(() => new Set());
@@ -267,7 +265,7 @@ export function SelectedContentPanel({
           onFiles={onUploadFiles}
           busy={uploading}
           disabled={uploadDisabled}
-          label="Drop files here to add to Selected — or click to browse"
+          label={t("selected.dropzone")}
         />
       ) : null}
 
@@ -276,19 +274,19 @@ export function SelectedContentPanel({
           <CardContent className="py-10 text-center space-y-4">
             <BookmarkCheck className="h-10 w-10 mx-auto text-muted-foreground/60" />
             <div className="space-y-1">
-              <p className="text-sm font-medium">No files in Selected yet</p>
+              <p className="text-sm font-medium">{t("selected.emptyTitle")}</p>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Mark images or videos in Google Drive, upload files, or pick from History — they appear here for creating and publishing.
+                {t("selected.emptyDescription")}
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <Button type="button" variant="default" size="sm" onClick={onGoBrowse}>
                 <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                Browse Drive
+                {t("selected.browseDrive")}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={onGoHistory}>
                 <History className="h-3.5 w-3.5 mr-1.5" />
-                Open History
+                {t("selected.openHistory")}
               </Button>
             </div>
           </CardContent>
@@ -299,42 +297,45 @@ export function SelectedContentPanel({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <BookmarkCheck className="h-4 w-4 text-primary" />
-                Selected for content
+                {t("selected.title")}
               </CardTitle>
               <CardDescription>
-                {selectedAssets.length} file{selectedAssets.length === 1 ? "" : "s"} · {selectedImages.length} image
-                {selectedImages.length === 1 ? "" : "s"}, {selectedVideos.length} video{selectedVideos.length === 1 ? "" : "s"}
-                {onReorder ? " · drag tiles to set publish order" : ""}
+                {t("selected.description", {
+                  count: selectedAssets.length,
+                  images: selectedImages.length,
+                  videos: selectedVideos.length,
+                })}
+                {onReorder ? t("selected.dragHint") : ""}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 <Button type="button" onClick={onCreate}>
                   <Wand2 className="h-4 w-4 mr-2" />
-                  Create with AI
+                  {t("selected.createWithAi")}
                 </Button>
                 <Button type="button" variant="outline" onClick={onPublish}>
                   <Send className="h-4 w-4 mr-2" />
-                  Post or save
+                  {t("selected.postOrSave")}
                 </Button>
                 <Button type="button" variant="outline" size="sm" asChild>
                   <Link to="/social-media">
                     <Share2 className="h-3.5 w-3.5 mr-1.5" />
-                    Open Social
+                    {t("selected.openSocial")}
                   </Link>
                 </Button>
                 {!compact ? (
                   <>
                     <Button type="button" variant="outline" size="sm" onClick={onGoBrowse}>
-                      Add from Drive
+                      {t("selected.addFromDrive")}
                     </Button>
                     <Button type="button" variant="outline" size="sm" onClick={onGoHistory}>
-                      Add from History
+                      {t("selected.addFromHistory")}
                     </Button>
                   </>
                 ) : (
                   <Button type="button" variant="outline" size="sm" asChild>
-                    <Link to="/content?tab=selected">Manage in Content</Link>
+                    <Link to="/content?tab=selected">{t("selected.manageInContent")}</Link>
                   </Button>
                 )}
                 <Button
@@ -346,30 +347,30 @@ export function SelectedContentPanel({
                     setBulkKeys(new Set());
                   }}
                 >
-                  {bulkMode ? "Cancel bulk" : "Bulk remove"}
+                  {bulkMode ? t("selected.cancelBulk") : t("selected.bulkRemove")}
                 </Button>
                 {bulkMode && bulkKeys.size > 0 ? (
                   <Button type="button" variant="destructive" size="sm" onClick={removeBulkSelected}>
                     <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Remove {bulkKeys.size}
+                    {t("selected.removeCount", { count: bulkKeys.size })}
                   </Button>
                 ) : (
                   <Button type="button" variant="ghost" size="sm" onClick={onClear}>
-                    Clear all
+                    {t("selected.clearAll")}
                   </Button>
                 )}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {FILTER_OPTIONS.map((option) => (
+                {FILTER_IDS.map((id) => (
                   <Button
-                    key={option.id}
+                    key={id}
                     type="button"
                     size="sm"
-                    variant={sourceFilter === option.id ? "default" : "outline"}
+                    variant={sourceFilter === id ? "default" : "outline"}
                     className="h-7 text-xs"
-                    onClick={() => setSourceFilter(option.id)}
+                    onClick={() => setSourceFilter(id)}
                   >
-                    {option.label}
+                    {t(`sourceFilters.${id}`)}
                   </Button>
                 ))}
               </div>
@@ -397,13 +398,14 @@ export function SelectedContentPanel({
                   }}
                   onDrop={() => handleDrop(globalIndex)}
                   dragOver={dropIndex === globalIndex && dragIndex !== null && dragIndex !== globalIndex}
+                  t={t}
                 />
               );
             })}
           </div>
 
           {filteredAssets.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No items match this filter.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("selected.noFilterMatch")}</p>
           ) : null}
         </>
       )}
@@ -411,8 +413,8 @@ export function SelectedContentPanel({
       {!empty && historyToAdd.length > 0 && onAddFromHistory && !compact ? (
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-medium">Lägg till från sparade genereringar</h3>
-            <p className="text-xs text-muted-foreground">Recent History items not yet in Selected.</p>
+            <h3 className="text-sm font-medium">{t("selected.fromHistoryTitle")}</h3>
+            <p className="text-xs text-muted-foreground">{t("selected.fromHistoryHint")}</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {historyToAdd.map((item) => {

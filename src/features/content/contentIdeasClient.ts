@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { apiJson } from "@/lib/apiJson";
 
 export interface ContentIdea {
@@ -20,7 +21,7 @@ export async function fetchContentIdeas(
 ): Promise<{ ideas: ContentIdea[]; source: string }> {
   const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
     "/api/content/ideas",
-    "Kunde inte ladda innehållsidéer.",
+    t("content:errors.ideasLoadFailed"),
     { body: input, timeoutMs: 30_000 },
   );
   return {

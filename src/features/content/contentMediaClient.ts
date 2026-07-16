@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { apiJson } from "@/lib/apiJson";
 
 export async function generateSocialImage(payload: {
@@ -5,7 +6,7 @@ export async function generateSocialImage(payload: {
   caption: string;
   businessProfileId: string | null;
 }): Promise<{ url: string; previewUrl?: string; source: string }> {
-  return apiJson("/api/content/image/generate", "Kunde inte generera bilden", {
+  return apiJson("/api/content/image/generate", t("content:errors.generateImage"), {
     body: {
       prompt: payload.prompt,
       caption: payload.caption,
@@ -19,7 +20,7 @@ export async function exportCanvaImage(payload: {
   designId: string;
   businessProfileId: string | null;
 }): Promise<{ url: string; canvaUrl?: string; source: string }> {
-  return apiJson("/api/content/canva/export", "Kunde inte exportera Canva-designen", {
+  return apiJson("/api/content/canva/export", t("content:errors.exportCanva"), {
     body: {
       designId: payload.designId,
       format: "png",
@@ -50,12 +51,12 @@ export async function uploadContentMedia(payload: {
   const dataBase64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Kunde inte läsa filen"));
+    reader.onerror = () => reject(new Error(t("content:upload.readFailed")));
     reader.readAsDataURL(payload.file);
   });
   const data = await apiJson<{ url?: unknown; contentType?: unknown; filename?: unknown }>(
     "/api/content/media/upload",
-    "Kunde inte ladda upp bilden",
+    t("content:errors.uploadImage"),
     {
       body: {
         dataBase64,

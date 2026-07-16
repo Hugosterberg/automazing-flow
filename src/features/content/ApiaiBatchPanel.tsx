@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, FolderOpen, History, Layers, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ export function ApiaiBatchPanel({
     meta: { batchId: number; workflow?: string; addToSelection: boolean }
   ) => void;
 }) {
+  const { t } = useTranslation("content");
   const [workflow, setWorkflow] = useState(() => readLastBatchWorkflow());
   const [creating, setCreating] = useState(false);
   const [ingesting, setIngesting] = useState(false);
@@ -69,7 +71,7 @@ export function ApiaiBatchPanel({
       const next = await listApiaiBatches(businessProfileId);
       setJobs(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Kunde inte ladda batchjobb");
+      setError(e instanceof Error ? e.message : t("batch.loadFailed"));
     } finally {
       setLoadingJobs(false);
     }
@@ -96,7 +98,7 @@ export function ApiaiBatchPanel({
       setActiveJob(created);
       await refreshJobs();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Kunde inte starta batchjobbet");
+      setError(e instanceof Error ? e.message : t("batch.startFailed"));
     } finally {
       setCreating(false);
     }
@@ -127,14 +129,16 @@ export function ApiaiBatchPanel({
       });
       setImportedCount(result.items.length);
       toast.success(
-        `${result.items.length} bild${result.items.length === 1 ? "" : "er"} sparade i Historik${
-          addToSelection ? " och urvalet" : ""
-        }`
+        t("batch.savedToast", {
+          count: result.items.length,
+          selection: addToSelection ? t("batch.savedToastSelection") : "",
+        })
       );
     } catch (e) {
       ingestedRef.current = null;
-      setError(e instanceof Error ? e.message : "Kunde inte importera batchresultaten");
-      toast.error(e instanceof Error ? e.message : "Kunde inte importera batchresultaten");
+      const message = e instanceof Error ? e.message : t("batch.importFailed");
+      setError(message);
+      toast.error(message);
     } finally {
       setIngesting(false);
     }
@@ -165,10 +169,10 @@ export function ApiaiBatchPanel({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
-              Batchbearbeta bilder
+              {t("batch.title")}
             </CardTitle>
             <CardDescription>
-              Kör samma apiai.me-arbetsflöde på alla valda bilder — resultat importeras automatiskt till historiken.
+              {t("batch.description")}
             </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={() => void refreshJobs()} disabled={loadingJobs}>
@@ -178,21 +182,21 @@ export function ApiaiBatchPanel({
       </CardHeader>
       <CardContent className="space-y-3">
         {!businessProfileId ? (
-          <p className="text-sm text-muted-foreground">Välj en företagsprofil för att köra batch-jobb.</p>
+          <p className="text-sm text-muted-foreground">{t("batch.noProfile")}</p>
         ) : null}
         {imageAssets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Lägg till bilder i Urval först — batch körs på dina nuvarande val.</p>
+            <p className="text-sm text-muted-foreground">{t("batch.noImages")}</p>
             <div className="flex flex-wrap justify-center gap-2">
               {onOpenSelected ? (
                 <Button type="button" size="sm" variant="default" onClick={onOpenSelected}>
-                  Öppna urval
+                  {t("batch.openSelected")}
                 </Button>
               ) : null}
               {onOpenBrowse ? (
                 <Button type="button" size="sm" variant="outline" onClick={onOpenBrowse}>
                   <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                  Bläddra i Drive
+                  {t("batch.browseDrive")}
                 </Button>
               ) : null}
             </div>
@@ -201,7 +205,7 @@ export function ApiaiBatchPanel({
 
         {imageAssets.length > 0 ? (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Input images ({imageAssets.length})</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("batch.inputImages", { count: imageAssets.length })}</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {imageAssets.map((asset) => (
                 <div
@@ -227,13 +231,13 @@ export function ApiaiBatchPanel({
             onCheckedChange={(checked) => setAddToSelection(checked === true)}
           />
           <Label htmlFor="batch-add-selection" className="text-xs font-normal cursor-pointer">
-            Add imported images to Selected
+            {t("batch.addToSelection")}
           </Label>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="space-y-1">
-            <Label htmlFor="apiai-batch-workflow">Workflow</Label>
+            <Label htmlFor="apiai-batch-workflow">{t("batch.workflow")}</Label>
             {workflowOptions.length > 0 ? (
               <Select
                 value={workflow}
@@ -243,7 +247,7 @@ export function ApiaiBatchPanel({
                 }}
               >
                 <SelectTrigger id="apiai-batch-workflow">
-                  <SelectValue placeholder="Välj arbetsflöde" />
+                  <SelectValue placeholder={t("batch.workflowPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {workflowOptions.map((option) => (
@@ -262,23 +266,21 @@ export function ApiaiBatchPanel({
                   setWorkflow(next);
                   writeLastBatchWorkflow(next);
                 }}
-                placeholder="remove-bg or flow:my-pipeline"
+                placeholder={t("batch.workflowSlugPlaceholder")}
               />
             )}
             <p className="text-[11px] text-muted-foreground">
-              {workflowOptions.length > 0
-                ? "Pick from your apiai.me tools, or type a custom slug below."
-                : "Use flow:slug for pipelines."}
+              {workflowOptions.length > 0 ? t("batch.workflowHintListed") : t("batch.workflowHintCustom")}
             </p>
             <Input
-              aria-label="Egen workflow-slug"
+              aria-label={t("batch.workflowSlugAria")}
               value={workflow}
               onChange={(event) => {
                 const next = event.target.value;
                 setWorkflow(next);
                 writeLastBatchWorkflow(next);
               }}
-              placeholder="Custom slug override"
+              placeholder={t("batch.customSlugPlaceholder")}
               className="h-8 text-xs"
             />
           </div>
@@ -288,7 +290,7 @@ export function ApiaiBatchPanel({
             disabled={creating || ingesting || !businessProfileId || imageAssets.length === 0 || !workflow.trim()}
           >
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Start batch
+            {t("batch.start")}
           </Button>
         </div>
 
@@ -297,22 +299,22 @@ export function ApiaiBatchPanel({
         {activeJob ? (
           <div className="rounded-lg border border-border bg-card p-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium">Job #{activeJob.id}</span>
+              <span className="text-sm font-medium">{t("batch.job", { id: activeJob.id })}</span>
               <Badge variant="secondary">{batchStatusLabel(String(activeJob.status || "unknown"))}</Badge>
               {activeJob.total_items != null ? (
-                <span className="text-xs text-muted-foreground">{activeJob.completed_items ?? 0}/{activeJob.total_items} done</span>
+                <span className="text-xs text-muted-foreground">{t("batch.done", { completed: activeJob.completed_items ?? 0, total: activeJob.total_items })}</span>
               ) : null}
               {ingesting ? (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Importing…
+                  {t("batch.importing")}
                 </span>
               ) : null}
               {importedCount != null ? (
-                <span className="text-xs text-primary">{importedCount} in History</span>
+                <span className="text-xs text-primary">{t("batch.inHistory", { count: importedCount })}</span>
               ) : null}
               <Button variant="ghost" size="sm" className="h-7 px-2 ml-auto" onClick={() => void refreshActiveJob(activeJob.id)}>
-                Uppdatera
+                {t("batch.refresh")}
               </Button>
               {isBatchComplete(String(activeJob.status || "")) ? (
                 <>
@@ -326,12 +328,12 @@ export function ApiaiBatchPanel({
                       void ingestCompletedJob(activeJob);
                     }}
                   >
-                    Re-import
+                    {t("batch.reimport")}
                   </Button>
                   {onOpenHistory ? (
                     <Button variant="outline" size="sm" className="h-7" onClick={onOpenHistory}>
                       <History className="h-3.5 w-3.5 mr-1" />
-                      History
+                      {t("batch.history")}
                     </Button>
                   ) : null}
                   <Button asChild variant="outline" size="sm" className="h-7">
@@ -348,7 +350,7 @@ export function ApiaiBatchPanel({
 
         {jobs.length > 0 ? (
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Recent batches</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("batch.recent")}</p>
             {jobs.slice(0, 5).map((job) => (
               <button
                 key={job.id}
@@ -360,7 +362,7 @@ export function ApiaiBatchPanel({
                 }}
                 className="w-full flex items-center justify-between rounded-md border border-border/70 px-2.5 py-1.5 text-left text-xs hover:bg-accent/40"
               >
-                <span>#{job.id} · {job.workflow || "workflow"}</span>
+                <span>#{job.id} · {job.workflow || t("batch.workflowFallback")}</span>
                 <Badge variant="outline">{batchStatusLabel(String(job.status || ""))}</Badge>
               </button>
             ))}

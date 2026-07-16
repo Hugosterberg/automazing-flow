@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,9 @@ export function PublishSafetyPanel({
   readiness: PublishReadiness | null;
   onReadinessChange: (readiness: PublishReadiness | null) => void;
   onBeforeRequest?: () => Promise<void>;
-  /** Runs moderation automatically when the selected images change. */
   autoRunModeration?: boolean;
 }) {
+  const { t } = useTranslation("content");
   const [busy, setBusy] = useState<"moderation" | "quality-gate" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastAutoFingerprintRef = useRef("");
@@ -42,12 +43,12 @@ export function PublishSafetyPanel({
         });
         onReadinessChange(result.readiness);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Safety check failed.");
+        setError(e instanceof Error ? e.message : t("safety.checkFailed"));
       } finally {
         setBusy(null);
       }
     },
-    [businessProfileId, imageAssets, onBeforeRequest, onReadinessChange]
+    [businessProfileId, imageAssets, onBeforeRequest, onReadinessChange, t]
   );
 
   useEffect(() => {
@@ -63,14 +64,12 @@ export function PublishSafetyPanel({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          Pre-publish checks
+          {t("safety.title")}
           {autoRunModeration ? (
-            <span className="text-[10px] font-normal text-muted-foreground">· auto moderation</span>
+            <span className="text-[10px] font-normal text-muted-foreground">{t("safety.autoModeration")}</span>
           ) : null}
         </CardTitle>
-        <CardDescription>
-          Moderation runs automatically when your media changes. Run a quality check before you publish if you want extra confidence.
-        </CardDescription>
+        <CardDescription>{t("safety.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -82,7 +81,7 @@ export function PublishSafetyPanel({
             onClick={() => void runCheck("moderation")}
           >
             {busy === "moderation" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-            Re-run moderation
+            {t("safety.rerunModeration")}
           </Button>
           <Button
             type="button"
@@ -92,11 +91,11 @@ export function PublishSafetyPanel({
             onClick={() => void runCheck("quality-gate")}
           >
             {busy === "quality-gate" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-            Quality check
+            {t("safety.qualityCheck")}
           </Button>
           {readiness ? (
             <Button type="button" size="sm" variant="ghost" onClick={() => onReadinessChange(null)}>
-              Clear
+              {t("safety.clear")}
             </Button>
           ) : null}
         </div>
@@ -104,7 +103,7 @@ export function PublishSafetyPanel({
         {busy && autoRunModeration ? (
           <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Checking content…
+            {t("safety.checking")}
           </p>
         ) : null}
 

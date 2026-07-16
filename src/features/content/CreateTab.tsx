@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, Download, Loader2, RefreshCw, Send, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -127,6 +128,7 @@ export function CreateTab({
   initialCreateMode?: "generate" | "transform" | "batch";
   autoAddResultsToSelection?: boolean;
 }) {
+  const { t } = useTranslation("content");
   const [tools, setTools] = useState<ApiaiTool[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState("");
   const [loadingTools, setLoadingTools] = useState(false);
@@ -174,13 +176,21 @@ export function CreateTab({
       null,
     [tools, selectedToolKey, toolOverride]
   );
+  const quickActionLabels = useCallback(
+    (action: ApiaiDocumentedImageAction) => ({
+      name: t(`quickActions.${action.id}.title`),
+      description: t(`quickActions.${action.id}.description`),
+    }),
+    [t]
+  );
+
   const quickActions = useMemo(
     () =>
       APIAI_DOCUMENTED_IMAGE_ACTIONS.map((action) => ({
         action,
-        tool: findToolForAction(action, tools),
+        tool: findToolForAction(action, tools, quickActionLabels(action)),
       })),
-    [tools]
+    [tools, quickActionLabels]
   );
   const groupedTools = useMemo(() => groupToolsByType(tools), [tools]);
 
@@ -216,7 +226,7 @@ export function CreateTab({
       setTools(nextTools);
       setSelectedToolKey((current) => current || (nextTools[0] ? `${nextTools[0].type}:${nextTools[0].slug}` : ""));
     } catch (error) {
-      setToolsError(error instanceof Error ? error.message : "Kunde inte ladda apiai.me-verktygen.");
+      setToolsError(error instanceof Error ? error.message : t("create.toolsLoadFailed"));
     } finally {
       setLoadingTools(false);
     }
@@ -258,11 +268,11 @@ export function CreateTab({
     const requiresPromptForTool = toolRequiresPrompt(tool);
 
     if (needsImageForTool && assetsForTool.length === 0) {
-      setRunError("This tool needs an image. Select one or more images in Browse first.");
+      setRunError(t("create.needsImage"));
       return;
     }
     if (requiresPromptForTool && !runPrompt.trim()) {
-      setRunError("This tool requires a prompt.");
+      setRunError(t("create.needsPrompt"));
       return;
     }
 
@@ -308,7 +318,7 @@ export function CreateTab({
         }
       }
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : "apiai.me generation failed.");
+      setRunError(error instanceof Error ? error.message : t("create.generationFailed"));
     } finally {
       setRunning(false);
     }
@@ -332,7 +342,7 @@ export function CreateTab({
       });
       setCostEstimate(estimate);
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : "Kunde inte uppskatta kostnaden.");
+      setRunError(error instanceof Error ? error.message : t("create.estimateFailed"));
     } finally {
       setEstimating(false);
     }
@@ -403,9 +413,9 @@ export function CreateTab({
       <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/20 p-1">
         {(
           [
-            { id: "generate", label: "Generera" },
-            { id: "transform", label: "Transformera" },
-            { id: "batch", label: "Batch" },
+            { id: "generate", label: t("create.modes.generate") },
+            { id: "transform", label: t("create.modes.transform") },
+            { id: "batch", label: t("create.modes.batch") },
           ] as const
         ).map((mode) => (
           <button
@@ -430,9 +440,11 @@ export function CreateTab({
           canvaConnected={canvaConnected}
           autoSaveToSelection
           autoContinueToPublish
+          title={t("aiImage.title")}
+          description={t("aiImage.description")}
           onGenerated={(asset) => {
             onRecordGenerated?.(asset);
-            toast.message("Sparat i historiken");
+            toast.message(t("toasts.savedToHistory"));
           }}
           onSaveToSelection={(asset) => onSaveResultToSelection?.(asset)}
           onContinueToPublish={onContinueToPublish}
@@ -460,15 +472,15 @@ export function CreateTab({
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Wand2 className="h-4 w-4 text-primary" />
-                Create with apiai.me
+                {t("create.title")}
               </CardTitle>
               <CardDescription>
-                Use your apiai.me tools, workflows, and pipelines with the media selected in Content.
+                {t("create.description")}
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => void loadTools()} disabled={loadingTools || !businessProfileId}>
               {loadingTools ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-              Ladda om verktyg
+              {t("create.reloadTools")}
             </Button>
           </div>
         </CardHeader>
@@ -476,15 +488,15 @@ export function CreateTab({
           {!businessProfileId ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Ingen aktiv profil</AlertTitle>
-              <AlertDescription>Välj en företagsprofil innan du laddar apiai.me-verktyg.</AlertDescription>
+              <AlertTitle>{t("create.noProfileTitle")}</AlertTitle>
+              <AlertDescription>{t("create.noProfileDescription")}</AlertDescription>
             </Alert>
           ) : toolsError ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>apiai.me is not ready</AlertTitle>
+              <AlertTitle>{t("create.notReadyTitle")}</AlertTitle>
               <AlertDescription>
-                {toolsError} Add <code>APIAI_API_KEY</code> under Preferences → API keys, then reload tools.
+                {t("create.notReadyDescription", { error: toolsError })}
               </AlertDescription>
             </Alert>
           ) : null}
@@ -493,9 +505,9 @@ export function CreateTab({
             <div className="space-y-3">
               <div className="space-y-2">
                 <div>
-                  <Label>Snabbåtgärder från apiai.me-dokumentationen</Label>
+                  <Label>{t("create.quickActionsLabel")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Click a shortcut to run it instantly when images are selected, or configure it below.
+                    {t("create.quickActionsHint")}
                   </p>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible">
@@ -512,10 +524,10 @@ export function CreateTab({
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{action.title}</span>
+                        <span className="text-sm font-medium">{t(`quickActions.${action.id}.title`)}</span>
                         <Badge variant={tool ? "secondary" : "outline"}>{tool ? tool.type : "n/a"}</Badge>
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{action.description}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{t(`quickActions.${action.id}.description`)}</p>
                       <p className="mt-2 text-[10px] text-muted-foreground truncate">
                         <code>{tool?.endpoint || action.directEndpoint || action.docsEndpoint}</code>
                       </p>
@@ -525,7 +537,7 @@ export function CreateTab({
               </div>
 
               <div className="space-y-2">
-                <Label>Verktyg eller pipeline</Label>
+                <Label>{t("create.toolLabel")}</Label>
                 <Select
                   value={selectedToolKey}
                   onValueChange={(value) => {
@@ -535,7 +547,7 @@ export function CreateTab({
                   disabled={loadingTools || tools.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={loadingTools ? "Laddar apiai.me-verktyg…" : "Välj ett verktyg"} />
+                    <SelectValue placeholder={loadingTools ? t("create.toolLoading") : t("create.toolPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
                     {(["workflow", "pipeline", "flow"] as const).map((type) =>
@@ -555,7 +567,7 @@ export function CreateTab({
                 <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">{selectedTool.type}</Badge>
-                    <Badge variant="outline">Output: {outputKind(selectedTool)}</Badge>
+                    <Badge variant="outline">{t("create.output")}: {outputKind(selectedTool)}</Badge>
                     {selectedTool.pricePerRequest != null ? (
                       <Badge variant="outline">${selectedTool.pricePerRequest.toFixed(3)}</Badge>
                     ) : null}
@@ -564,31 +576,31 @@ export function CreateTab({
                     <p className="text-xs text-muted-foreground">{selectedTool.description}</p>
                   ) : null}
                   <p className="text-[11px] text-muted-foreground">
-                    Endpoint: <code>{selectedTool.endpoint}</code>
+                    {t("create.endpoint")}: <code>{selectedTool.endpoint}</code>
                   </p>
                 </div>
               ) : null}
 
               {supportsPrompt ? (
                 <div className="space-y-2">
-                  <Label htmlFor="apiai-prompt">Prompt{requiresPrompt ? " *" : ""}</Label>
+                  <Label htmlFor="apiai-prompt">{t("create.prompt")}{requiresPrompt ? " *" : ""}</Label>
                   <Textarea
                     id="apiai-prompt"
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={4}
-                    placeholder="Beskriv innehållet du vill skapa, transformera eller utvärdera…"
+                    placeholder={t("create.promptPlaceholder")}
                   />
                 </div>
               ) : null}
 
               <div className="space-y-2">
-                <Label htmlFor="apiai-output-name">Output filename</Label>
+                <Label htmlFor="apiai-output-name">{t("create.outputFilename")}</Label>
                 <Input
                   id="apiai-output-name"
                   value={outputFilename}
                   onChange={(event) => setOutputFilename(event.target.value)}
-                  placeholder="campaign-asset"
+                  placeholder={t("create.outputFilenamePlaceholder")}
                 />
               </div>
 
@@ -610,7 +622,7 @@ export function CreateTab({
                             onValueChange={(value) => setParamValues((current) => ({ ...current, [key]: value }))}
                           >
                             <SelectTrigger id={`apiai-param-${key}`}>
-                              <SelectValue placeholder="Choose value" />
+                              <SelectValue placeholder={t("create.chooseValue")} />
                             </SelectTrigger>
                             <SelectContent>
                               {allowedValues.map((value) => (
@@ -643,11 +655,11 @@ export function CreateTab({
             <div className="space-y-3">
               <Card className="bg-muted/20 border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Input images</CardTitle>
+                  <CardTitle className="text-sm">{t("create.inputImages")}</CardTitle>
                   <CardDescription>
                     {usableAssets.length === 0
-                      ? "Select one or more images to send to apiai.me."
-                      : `${usableAssets.length} usable for this tool.`}
+                      ? t("create.inputImagesEmpty")
+                      : t("create.inputImagesCount", { count: usableAssets.length })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -663,18 +675,18 @@ export function CreateTab({
 
               {selectedTool?.maxImages && usableAssets.length > selectedTool.maxImages ? (
                 <p className="text-[11px] text-muted-foreground">
-                  This tool accepts {selectedTool.maxImages} image{selectedTool.maxImages === 1 ? "" : "s"}; the first selected assets will be used.
+                  {t("create.maxImagesHint", { count: selectedTool.maxImages })}
                 </p>
               ) : null}
               {excludedAssets.length > 0 ? (
                 <p className="text-[11px] text-muted-foreground">
-                  {excludedAssets.length} selected video asset{excludedAssets.length === 1 ? "" : "s"} excluded because this tool accepts images only.
+                  {t("create.excludedVideos", { count: excludedAssets.length })}
                 </p>
               ) : null}
 
               <Button className="w-full" onClick={() => void handleRun()} disabled={!canRun}>
                 {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                {running ? "Creating…" : "Run selected tool"}
+                {running ? t("create.creating") : t("create.runTool")}
               </Button>
 
               <Button
@@ -685,12 +697,12 @@ export function CreateTab({
                 disabled={!selectedTool || estimating || !businessProfileId}
               >
                 {estimating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Estimate cost
+                {t("create.estimateCost")}
               </Button>
               {costEstimate?.estimate != null ? (
                 <p className="text-[11px] text-muted-foreground">
-                  Estimated cost: ${costEstimate.estimate.toFixed(3)}
-                  {costEstimate.max != null ? ` (max $${costEstimate.max.toFixed(2)})` : ""}
+                  {t("create.estimatedCost", { estimate: costEstimate.estimate.toFixed(3) })}
+                  {costEstimate.max != null ? t("create.estimatedCostMax", { max: costEstimate.max.toFixed(2) }) : ""}
                   {costEstimate.note ? ` — ${costEstimate.note}` : ""}
                 </p>
               ) : null}
@@ -698,7 +710,7 @@ export function CreateTab({
               {runError ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Kunde inte skapa innehåll</AlertTitle>
+                  <AlertTitle>{t("create.runFailedTitle")}</AlertTitle>
                   <AlertDescription>{runError}</AlertDescription>
                 </Alert>
               ) : null}
@@ -710,11 +722,13 @@ export function CreateTab({
       {result ? (
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Result</CardTitle>
+            <CardTitle className="text-base">{t("create.result")}</CardTitle>
             <CardDescription>
-              {formatHeaderValue(result.headers?.cost) ? `Cost: $${result.headers?.cost}` : "apiai.me returned a result."}
+              {formatHeaderValue(result.headers?.cost)
+                ? t("create.resultCost", { cost: result.headers?.cost })
+                : t("create.resultDefault")}
               {formatHeaderValue(result.headers?.balanceRemaining)
-                ? ` Balance remaining: $${result.headers?.balanceRemaining}.`
+                ? t("create.balanceRemaining", { balance: result.headers?.balanceRemaining })
                 : ""}
             </CardDescription>
           </CardHeader>
@@ -722,30 +736,30 @@ export function CreateTab({
             {result.resultType === "binary" ? (
               <>
                 {result.contentType.startsWith("image/") && resultUrl ? (
-                  <img src={resultUrl} alt="Generated content" className="max-h-[520px] rounded-lg border border-border object-contain" />
+                  <img src={resultUrl} alt={t("create.generatedAlt")} className="max-h-[520px] rounded-lg border border-border object-contain" />
                 ) : result.contentType.startsWith("video/") && resultUrl ? (
                   <video src={resultUrl} controls className="max-h-[520px] rounded-lg border border-border" />
                 ) : (
-                  <p className="text-sm text-muted-foreground">Binary result: {result.contentType}</p>
+                  <p className="text-sm text-muted-foreground">{t("create.binaryResult", { type: result.contentType })}</p>
                 )}
                 <div className="flex flex-wrap gap-2">
                   {resultUrl ? (
                     <Button asChild variant="outline">
                       <a href={resultUrl} download={result.filename}>
                         <Download className="h-4 w-4 mr-2" />
-                        Download {result.filename}
+                        {t("create.download", { filename: result.filename })}
                       </a>
                     </Button>
                   ) : null}
                   {onSaveResultToSelection && result.contentType.startsWith("image/") ? (
                     <Button type="button" variant="secondary" onClick={saveResultToSelection}>
-                      Save to selection
+                      {t("create.saveToSelection")}
                     </Button>
                   ) : null}
                   {onContinueToPublish ? (
                     <Button type="button" onClick={onContinueToPublish}>
                       <Send className="h-4 w-4 mr-2" />
-                      Fortsätt till inlägg
+                      {t("create.continueToPublish")}
                     </Button>
                   ) : null}
                 </div>
@@ -765,7 +779,7 @@ export function CreateTab({
               </>
             )}
             {result.headers?.requestId ? (
-              <p className="text-[11px] text-muted-foreground">Request ID: {result.headers.requestId}</p>
+              <p className="text-[11px] text-muted-foreground">{t("create.requestId", { id: result.headers.requestId })}</p>
             ) : null}
           </CardContent>
         </Card>

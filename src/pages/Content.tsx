@@ -48,7 +48,8 @@ import { cn } from "@/lib/utils";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 
 export default function ContentPage() {
-  const { t } = useTranslation("pages");
+  const { t: tPage } = useTranslation("pages");
+  const { t } = useTranslation("content");
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
@@ -153,7 +154,7 @@ export default function ContentPage() {
     if (!pending) return;
     setPublishCaption(pending);
     goToTab("publish");
-    toast.success("Idea added — ready to post or save");
+    toast.success(t("toasts.ideaAddedHandoff"));
   }, [goToTab]);
 
   const {
@@ -277,15 +278,15 @@ export default function ContentPage() {
     <div className="space-y-6 max-w-6xl w-full mx-auto">
       <PageHeader
         icon={FolderOpen}
-        title={t("content.title")}
-        description={t("content.description")}
+        title={tPage("content.title")}
+        description={tPage("content.description")}
         actions={
           <>
             {driveAccounts.length === 0 ? (
               <Button asChild variant="outline">
                 <Link to="/connections?q=drive">
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  {t("content.openConnections")}
+                  {tPage("content.openConnections")}
                 </Link>
               </Button>
             ) : null}
@@ -300,7 +301,7 @@ export default function ContentPage() {
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                {t("content.refresh")}
+                {tPage("content.refresh")}
               </Button>
             ) : null}
           </>
@@ -309,20 +310,20 @@ export default function ContentPage() {
 
       {driveAccounts.length === 0 ? (
         <PageSmartBar
-          title={t("content.smartBar")}
-          steps={[t("content.step1"), t("content.step2"), t("content.step3")]}
-          tip={t("content.tip")}
-          extraActions={[{ label: t("content.openConnections"), to: "/connections" }]}
+          title={tPage("content.smartBar")}
+          steps={[tPage("content.step1"), tPage("content.step2"), tPage("content.step3")]}
+          tip={tPage("content.tip")}
+          extraActions={[{ label: tPage("content.openConnections"), to: "/connections" }]}
         />
       ) : (contentTab === "browse" && browseMediaFiles.length > 0) || selectedAssets.length > 0 ? (
         <PageSmartBar
-          title={t("content.smartShort")}
+          title={tPage("content.smartShort")}
           liveHintOverride={
             contentTab === "browse" && browseMediaFiles.length > 0
               ? isMobile
-                ? t("content.liveBrowseMobile", { count: browseMediaFiles.length })
-                : t("content.liveBrowseDesktop", { count: browseMediaFiles.length })
-              : t("content.liveSelected", { count: selectedAssets.length })
+                ? tPage("content.liveBrowseMobile", { count: browseMediaFiles.length })
+                : tPage("content.liveBrowseDesktop", { count: browseMediaFiles.length })
+              : tPage("content.liveSelected", { count: selectedAssets.length })
           }
         />
       ) : null}
@@ -331,11 +332,11 @@ export default function ContentPage() {
         <>
           <ValueSellEmpty
             icon={HardDrive}
-            title="Från Drive till publicerat — i ett flöde"
-            description="Koppla Google Drive, markera media, skapa med AI och publicera eller spara som utkast. Valda assets följer med mellan flikarna."
-            trust="Inget publiceras automatiskt förrän du schemalägger eller trycker publicera."
-            primary={{ label: "Koppla Google Drive", to: "/connections?wizard=1&q=drive" }}
-            secondary={{ label: "Öppna Kopplingar", to: "/connections?q=drive" }}
+            title={t("valueSell.title")}
+            description={t("valueSell.description")}
+            trust={t("valueSell.trust")}
+            primary={{ label: t("valueSell.primary"), to: "/connections?wizard=1&q=drive" }}
+            secondary={{ label: t("valueSell.secondary"), to: "/connections?q=drive" }}
           />
           <SectionConnectionStatus area="content" className="mt-0" />
         </>
@@ -345,7 +346,7 @@ export default function ContentPage() {
         <PageAiSuggestionsStrip
           businessProfileId={createBusinessProfileId}
           kinds={["content", "engagement"]}
-          label="AI-idéer för innehåll"
+          label={t("aiSuggestions.label")}
         />
       ) : null}
 
@@ -359,14 +360,14 @@ export default function ContentPage() {
               className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <HardDrive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              <span className="sm:inline">Bläddra</span>
+              <span className="sm:inline">{t("tabs.browse")}</span>
             </TabsTrigger>
             <TabsTrigger
               value="selected"
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <BookmarkCheck className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Valda
+              {t("tabs.selected")}
               {selectedAssets.length > 0 ? (
                 <span className="ml-0.5 rounded-full bg-primary/15 text-primary px-1.5 text-[11px] tabular-nums sm:text-[10px]">
                   {selectedAssets.length}
@@ -378,21 +379,21 @@ export default function ContentPage() {
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <Wand2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Skapa
+              {t("tabs.create")}
             </TabsTrigger>
             <TabsTrigger
               value="publish"
               className="min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <Send className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Publicera
+              {t("tabs.publish")}
             </TabsTrigger>
             <TabsTrigger
               value="history"
               className="hidden min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2.5 text-sm sm:inline-flex sm:min-h-0 sm:py-2 sm:text-xs"
             >
               <History className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              Historik
+              {t("tabs.history")}
               {generatedHistory.length > 0 ? (
                 <span className="ml-0.5 rounded-full bg-muted px-1.5 text-[11px] tabular-nums sm:text-[10px]">{generatedHistory.length}</span>
               ) : null}
@@ -410,32 +411,32 @@ export default function ContentPage() {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground"
                 )}
-                aria-label="Fler flikar"
+                aria-label={t("tabs.moreAria")}
               >
                 <MoreHorizontal className="h-4 w-4" />
-                Mer
+                {t("tabs.more")}
                 <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onSelect={() => goToTab("selected")}>
                 <BookmarkCheck className="mr-2 h-4 w-4" />
-                Valda
+                {t("tabs.selected")}
                 {selectedAssets.length > 0 ? (
                   <span className="ml-auto tabular-nums text-muted-foreground">{selectedAssets.length}</span>
                 ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("create")}>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Skapa
+                {t("tabs.create")}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("publish")}>
                 <Send className="mr-2 h-4 w-4" />
-                Publicera
+                {t("tabs.publish")}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => goToTab("history")}>
                 <History className="mr-2 h-4 w-4" />
-                Historik
+                {t("tabs.history")}
                 {generatedHistory.length > 0 ? (
                   <span className="ml-auto tabular-nums text-muted-foreground">{generatedHistory.length}</span>
                 ) : null}
@@ -474,14 +475,14 @@ export default function ContentPage() {
             onUseIdea={(text) => {
               setPublishCaption(text);
               goToTab("publish");
-              toast.success("Idé tillagd — redo att publicera eller spara");
+              toast.success(t("toasts.ideaAdded"));
             }}
           />
           <McpFeatureSection
             businessProfileId={createBusinessProfileId}
             featureIds={MCP_PAGE_FEATURE_IDS.content}
-            title="MCP-innehållsverktyg"
-            description="Generera presentationer (Gamma) eller designbriefs (Canva MCP). Koppla leverantörer under Kopplingar → MCP om status visar saknad nyckel."
+            title={t("mcp.title")}
+            description={t("mcp.description")}
           />
           <CreateTab
             businessProfileId={createBusinessProfileId}
@@ -516,7 +517,7 @@ export default function ContentPage() {
           onReorder={reorderSelected}
           onAddFromHistory={(asset) => {
             saveAssetSelection(asset, true);
-            toast.success("Tillagd i Valda");
+            toast.success(t("toasts.addedToSelected"));
           }}
           onUploadFiles={handleBrowseUploadFiles}
           uploading={uploadingBrowse}
@@ -535,17 +536,17 @@ export default function ContentPage() {
           selectedKeys={selectedIds}
           onAddToSelection={(asset) => {
             saveAssetSelection(asset, true);
-            toast.success("Tillagd i Valda");
+            toast.success(t("toasts.addedToSelected"));
           }}
           onAddAllToSelection={(assets) => {
             assets.forEach((asset) => saveAssetSelection(asset, true));
-            toast.success(`${assets.length} tillagda i Valda`);
+            toast.success(t("toasts.addedToSelectedCount", { count: assets.length }));
             goToTab("selected");
           }}
           onRemove={removeGenerated}
           onClear={() => {
             clearGenerated();
-            toast.message("Historik rensad");
+            toast.message(t("toasts.historyCleared"));
           }}
         />
       ) : null}
@@ -556,28 +557,28 @@ export default function ContentPage() {
             compact
             tab="content"
             focus="publish-scheduled-posts"
-            title="Schemaläggning körs automatiskt"
-            description="När du schemalägger inlägg publiceras de automatiskt var 15:e minut. Innehållspipelinen kan också köa utkast åt dig."
-            ctaLabel="Se content-automationer"
+            title={t("automation.title")}
+            description={t("automation.description")}
+            ctaLabel={t("automation.cta")}
           />
           {selectedAssets.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-8 text-center space-y-3">
                 <p className="text-sm text-muted-foreground">
                   {generatedHistory.length > 0
-                    ? "Lägg till media från Bläddra eller Historik till Valda, sedan publicera."
-                    : "Välj minst en bild eller video i Bläddra eller Valda först."}
+                    ? t("publishEmpty.withHistory")
+                    : t("publishEmpty.noMedia")}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => goToTab("selected")}>
-                    Öppna Valda
+                    {t("publishEmpty.openSelected")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => goToTab("browse")}>
-                    Gå till Bläddra
+                    {t("publishEmpty.goBrowse")}
                   </Button>
                   {generatedHistory.length > 0 ? (
                     <Button variant="outline" size="sm" onClick={() => goToTab("history")}>
-                      Öppna Historik
+                      {t("publishEmpty.openHistory")}
                     </Button>
                   ) : null}
                 </div>

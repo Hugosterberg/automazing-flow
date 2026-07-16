@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -105,6 +106,7 @@ export function DriveBrowsePanel({
   focusedFileId,
   focusedFile,
 }: DriveBrowsePanelProps) {
+  const { t } = useTranslation("content");
   const [imagesExpanded, setImagesExpanded] = useState(false);
   const [videosExpanded, setVideosExpanded] = useState(false);
   const browseUploadRef = useRef<HTMLInputElement>(null);
@@ -116,7 +118,7 @@ export function DriveBrowsePanel({
           <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
             <p className="text-sm text-destructive">{error}</p>
             <Button variant="ghost" size="sm" onClick={onRetry}>
-              Retry
+              {t("drive.retry")}
             </Button>
           </CardContent>
         </Card>
@@ -136,14 +138,14 @@ export function DriveBrowsePanel({
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
               >
                 <HardDrive className="h-3.5 w-3.5" />
-                Min enhet
+                {t("drive.myDrive")}
               </TabsTrigger>
               <TabsTrigger
                 value="shared-with-me"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 px-3 py-2"
               >
                 <Users className="h-3.5 w-3.5" />
-                Delat med mig
+                {t("drive.sharedWithMe")}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -159,7 +161,7 @@ export function DriveBrowsePanel({
                 onClick={onNavigateRoot}
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
               >
-                {driveView === "shared-with-me" ? "Delat med mig" : "Min enhet"}
+                {driveView === "shared-with-me" ? t("drive.sharedWithMe") : t("drive.myDrive")}
               </button>
               {folderStack.map((f, i) => (
                 <React.Fragment key={f.id}>
@@ -184,8 +186,8 @@ export function DriveBrowsePanel({
       {driveAccounts.length > 1 && (
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Kopplade Drive-konton</CardTitle>
-            <CardDescription>Välj vilket Google Drive-konto du vill bläddra i just nu.</CardDescription>
+            <CardTitle className="text-base">{t("drive.accountsTitle")}</CardTitle>
+            <CardDescription>{t("drive.accountsDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {driveAccounts.map((account) => (
@@ -203,9 +205,9 @@ export function DriveBrowsePanel({
 
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Google Drive</CardTitle>
+          <CardTitle className="text-base">{t("drive.title")}</CardTitle>
           <CardDescription>
-            Klicka på bilder eller videor för att lägga till i Valda
+            {t("drive.description")}
             {selectedCount > 0 ? (
               <>
                 {" "}
@@ -215,7 +217,7 @@ export function DriveBrowsePanel({
                   className="text-primary hover:underline font-medium"
                   onClick={onGoSelected}
                 >
-                  {selectedCount} valda
+                  {t("drive.selectedCount", { count: selectedCount })}
                 </button>
               </>
             ) : null}
@@ -226,11 +228,11 @@ export function DriveBrowsePanel({
       {driveAccounts.length === 0 ? (
         <EmptyState
           icon={HardDrive}
-          title="Ingen Google Drive kopplad ännu"
-          description="Koppla Drive under Kopplingar — sedan kan du bläddra mappar, markera media och schemalägga publicering."
+          title={t("drive.emptyTitle")}
+          description={t("drive.emptyDescription")}
           action={
             <Button asChild>
-              <Link to="/connections?q=drive">Öppna Kopplingar</Link>
+              <Link to="/connections?q=drive">{t("drive.openConnections")}</Link>
             </Button>
           }
         />
@@ -238,7 +240,7 @@ export function DriveBrowsePanel({
         <Card className="bg-card border-border">
           <CardContent className="py-10 flex items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Laddar…
+            {t("drive.loading")}
           </CardContent>
         </Card>
       ) : (
@@ -250,7 +252,7 @@ export function DriveBrowsePanel({
                 ref={driveSearchRef}
                 id="driveSearch"
                 type="search"
-                placeholder="Sök filer efter namn…"
+                placeholder={t("drive.searchPlaceholder")}
                 value={driveSearch}
                 onChange={(e) => onDriveSearchChange(e.target.value)}
                 className="pl-9 h-9 text-sm"
@@ -281,7 +283,7 @@ export function DriveBrowsePanel({
               ) : (
                 <ImagePlus className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Upload files
+              {t("drive.uploadFiles")}
             </Button>
           </div>
           <ContentUploadDropzone
@@ -289,7 +291,7 @@ export function DriveBrowsePanel({
             busy={uploading}
             disabled={uploadDisabled}
             className="py-6"
-            label="Eller släpp filer här för att ladda upp till Valda"
+            label={t("drive.dropzoneLabel")}
           />
           {folderItems.length > 0 && (
             <div className="space-y-3">
@@ -321,7 +323,7 @@ export function DriveBrowsePanel({
             <>
               {imageItems.length > 0 && (
                 <MediaSection
-                  title="Images"
+                  title={t("drive.images")}
                   icon={<ImageIcon className="h-4 w-4" />}
                   files={imageItems}
                   expanded={imagesExpanded}
@@ -337,7 +339,7 @@ export function DriveBrowsePanel({
               )}
               {videoItems.length > 0 && (
                 <MediaSection
-                  title="Videos"
+                  title={t("drive.videos")}
                   icon={<Film className="h-4 w-4" />}
                   files={videoItems}
                   expanded={videosExpanded}
@@ -359,20 +361,20 @@ export function DriveBrowsePanel({
               <span className="truncate">
                 {focusedFile ? (
                   <>
-                    Fokus:{" "}
+                    {t("drive.focus")}{" "}
                     <span className="font-medium text-foreground/80">{focusedFile.name}</span>
                   </>
                 ) : (
-                  "J/K bläddra bland bilder och videor"
+                  t("drive.keyboardHint")
                 )}
               </span>
-              <span className="hidden sm:inline">S Select · / Search</span>
+              <span className="hidden sm:inline">{t("drive.shortcuts")}</span>
             </div>
           ) : null}
 
           {otherItems.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Other files</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("drive.otherFiles")}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {otherItems.map((file) => (
                   <div
@@ -393,7 +395,7 @@ export function DriveBrowsePanel({
                     {file.webViewLink && (
                       <Button variant="ghost" size="sm" className="h-6 px-2 text-xs shrink-0" asChild>
                         <a href={file.webViewLink} target="_blank" rel="noopener noreferrer">
-                          Open
+                          {t("drive.open")}
                         </a>
                       </Button>
                     )}
@@ -408,12 +410,12 @@ export function DriveBrowsePanel({
               <CardContent className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
                   {driveQuery
-                    ? `Inga filer matchar "${driveSearch.trim()}".`
+                    ? t("drive.emptyQuery", { query: driveSearch.trim() })
                     : driveView === "shared-with-me"
-                      ? "Inga filer delade med dig."
+                      ? t("drive.emptyShared")
                       : providerData?.currentFolderName
-                        ? `Inga filer i "${providerData.currentFolderName}".`
-                        : "Inga filer i Min enhet. Prova att bläddra i en undermapp — eller byt till Delat med mig."}
+                        ? t("drive.emptyFolder", { folder: providerData.currentFolderName })
+                        : t("drive.emptyMyDrive")}
                 </p>
               </CardContent>
             </Card>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { checkApiaiHealth, fetchApiaiBalance, type ApiaiHealth } from "./apiaiClient";
 
 export function ApiaiStatusBar({ businessProfileId }: { businessProfileId: string | null }) {
+  const { t } = useTranslation("content");
   const [health, setHealth] = useState<ApiaiHealth | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,23 +42,23 @@ export function ApiaiStatusBar({ businessProfileId }: { businessProfileId: strin
       {health?.ok ? (
         <Badge variant="secondary" className="gap-1">
           <CheckCircle2 className="h-3 w-3" />
-          apiai.me ready · {health.toolCount} tools
+          {t("apiaiStatus.ready", { count: health.toolCount })}
         </Badge>
       ) : health ? (
         <Badge variant="outline" className="gap-1 text-destructive border-destructive/40">
           <AlertCircle className="h-3 w-3" />
-          {health.error || "apiai.me not ready"}
+          {health.error || t("apiaiStatus.notReady")}
         </Badge>
       ) : null}
       {!health?.ok ? (
         <Link to="/preferences" className="text-[11px] text-primary hover:underline">
-          Add API key
+          {t("apiaiStatus.addApiKey")}
         </Link>
       ) : null}
       {balance != null ? (
         <span className="inline-flex items-center gap-1 text-muted-foreground">
           <Wallet className="h-3 w-3" />
-          Balance ${balance.toFixed(2)}
+          {t("apiaiStatus.balance", { balance: balance.toFixed(2) })}
         </span>
       ) : null}
       {health?.latencyMs != null ? (
@@ -64,7 +66,7 @@ export function ApiaiStatusBar({ businessProfileId }: { businessProfileId: strin
       ) : null}
       <Button variant="ghost" size="sm" className="h-6 px-2 ml-auto" onClick={() => void refresh()} disabled={loading}>
         {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-        <span className="sr-only">Uppdatera APIAI-status</span>
+        <span className="sr-only">{t("apiaiStatus.refreshAria")}</span>
       </Button>
     </div>
   );

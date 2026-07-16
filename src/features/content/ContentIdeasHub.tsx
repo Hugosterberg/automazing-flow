@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentIdeasCard } from "./ContentIdeasCard";
 import { OutreachContentCard } from "@/features/outreach";
@@ -14,11 +15,13 @@ export function ContentIdeasHub({
   outreachContext: Omit<OutreachContentInput, "business_profile_id">;
   onUseIdea: (text: string) => void;
 }) {
+  const { t } = useTranslation("content");
+
   return (
     <Tabs defaultValue="social" className="space-y-3">
       <TabsList>
-        <TabsTrigger value="social">Social posts</TabsTrigger>
-        <TabsTrigger value="outreach">Attract customers</TabsTrigger>
+        <TabsTrigger value="social">{t("ideas.tabSocial")}</TabsTrigger>
+        <TabsTrigger value="outreach">{t("ideas.tabOutreach")}</TabsTrigger>
       </TabsList>
       <TabsContent value="social" className="mt-0">
         <ContentIdeasCard businessProfileId={businessProfileId} context={socialContext} onUseIdea={onUseIdea} />

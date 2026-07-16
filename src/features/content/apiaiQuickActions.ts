@@ -2,8 +2,6 @@ import type { ApiaiTool } from "./apiaiClient";
 
 export type ApiaiDocumentedImageAction = {
   id: string;
-  title: string;
-  description: string;
   docsEndpoint: string;
   defaultOutputFilename: string;
   promptPlaceholder?: string;
@@ -19,8 +17,6 @@ export type ApiaiDocumentedImageAction = {
 export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   {
     id: "remove-background",
-    title: "Ta bort bakgrund",
-    description: "Ta bort bakgrunden från en produkt- eller porträttbild.",
     docsEndpoint: "/api/process/remove-bg",
     directEndpoint: "/api/process/remove-bg",
     defaultOutputFilename: "background-removed",
@@ -30,8 +26,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "enhance-image",
-    title: "Förbättra / skala upp",
-    description: "Förbättra skärpa, ljus och tydlighet för marknadsföringsmaterial.",
     docsEndpoint: "/api/process/your-tool-slug",
     defaultOutputFilename: "enhanced-image",
     promptPlaceholder: "Improve quality, lighting, and product clarity while preserving the original subject.",
@@ -41,8 +35,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "greyscale",
-    title: "Gråskala",
-    description: "Konvertera en bild till gråskala via apiai.me:s process-API.",
     docsEndpoint: "/api/process/greyscale",
     directEndpoint: "/api/process/greyscale",
     defaultOutputFilename: "greyscale",
@@ -52,8 +44,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "product-pipeline",
-    title: "Bildpipeline",
-    description: "Transformationer i flera steg (digitalisera logotyp, kampanjmaterial m.m.).",
     docsEndpoint: "/api/pipeline/{slug} or /api/flow/{slug}",
     defaultOutputFilename: "pipeline-result",
     promptPlaceholder: "Create a clean, ready-to-publish marketing asset from this image.",
@@ -64,8 +54,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "quality-gate",
-    title: "Kvalitetskontroll",
-    description: "Betygsätt bildkvaliteten innan publicering i annonser eller sociala medier.",
     docsEndpoint: "/api/quality-gate",
     directEndpoint: "/api/quality-gate",
     defaultOutputFilename: "quality-report",
@@ -75,8 +63,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "moderation",
-    title: "Modereringskontroll",
-    description: "Kontrollera om en bild är säker att publicera.",
     docsEndpoint: "/api/moderation/check-image",
     directEndpoint: "/api/moderation/check-image",
     defaultOutputFilename: "moderation-result",
@@ -86,8 +72,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "resize-crop",
-    title: "Ändra storlek / beskär",
-    description: "Anpassa bilder till annons- eller sociala format.",
     docsEndpoint: "/api/process/resize",
     directEndpoint: "/api/process/resize",
     defaultOutputFilename: "resized",
@@ -97,8 +81,6 @@ export const APIAI_DOCUMENTED_IMAGE_ACTIONS: ApiaiDocumentedImageAction[] = [
   },
   {
     id: "shadow-reflection",
-    title: "Skugga & reflektion",
-    description: "Lägg till produktskuggor eller reflektioner för e-handelsbilder.",
     docsEndpoint: "/api/process/product-shadow",
     directEndpoint: "/api/process/product-shadow",
     defaultOutputFilename: "product-shadow",
@@ -128,13 +110,14 @@ export function resolveDocsEndpoint(action: ApiaiDocumentedImageAction, tool?: A
 
 export function syntheticToolFromAction(
   action: ApiaiDocumentedImageAction,
-  endpoint: string
+  endpoint: string,
+  labels?: { name: string; description: string }
 ): ApiaiTool {
   const needsImage = action.requiresImage !== false;
   return {
     slug: action.id,
-    name: action.title,
-    description: action.description,
+    name: labels?.name ?? action.id,
+    description: labels?.description ?? "",
     endpoint,
     type: endpoint.includes("/flow/") ? "flow" : endpoint.includes("/pipeline/") ? "pipeline" : "workflow",
     acceptedInputs: needsImage ? ["image", "prompt"] : ["prompt"],
@@ -148,7 +131,8 @@ export function syntheticToolFromAction(
 
 export function findToolForAction(
   action: ApiaiDocumentedImageAction,
-  tools: ApiaiTool[]
+  tools: ApiaiTool[],
+  labels?: { name: string; description: string }
 ): ApiaiTool | null {
   const allowedTypes = action.toolTypes ? new Set(action.toolTypes) : null;
   const normalizedSlugs = new Set(action.matchSlugs.map(normalize));
@@ -165,7 +149,7 @@ export function findToolForAction(
 
   if (matched) return matched;
   if (!action.directEndpoint && !action.docsEndpoint.includes("your-tool-slug")) return null;
-  return syntheticToolFromAction(action, resolveDocsEndpoint(action));
+  return syntheticToolFromAction(action, resolveDocsEndpoint(action), labels);
 }
 
 export function groupToolsByType(tools: ApiaiTool[]): Record<ApiaiTool["type"], ApiaiTool[]> {

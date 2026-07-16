@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -87,7 +88,7 @@ export function useContentAssetSelection({
   function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
     saveAssetSelection(asset, true);
     recordAsset(asset, options);
-    toast.success("Tillagd i Valda och Historik");
+    toast.success(t("content:toasts.addedToSelectedAndHistory"));
   }
 
   function handleBatchIngested(
@@ -122,7 +123,9 @@ export function useContentAssetSelection({
       ).then((count) => {
         if (count > 0) {
           toast.message(
-            count === 1 ? "1 objekt köat till innehållspipelinen" : `${count} objekt köade till innehållspipelinen`
+            count === 1
+              ? t("content:toasts.pipelineQueued")
+              : t("content:toasts.pipelineQueued_other", { count })
           );
         }
       });
@@ -155,13 +158,13 @@ export function useContentAssetSelection({
         added += 1;
       }
       if (added > 0) {
-        toast.success(`${added} fil${added === 1 ? "" : "er"} uppladdade — tillagda i Valda`);
+        toast.success(t("content:toasts.filesUploaded", { count: added }));
         goToTab("selected");
       } else {
-        toast.message("Inga bild- eller videofiler valda");
+        toast.message(t("content:toasts.noMediaFiles"));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Uppladdningen misslyckades");
+      toast.error(e instanceof Error ? e.message : t("content:toasts.uploadFailed"));
     } finally {
       setUploadingBrowse(false);
     }
@@ -172,7 +175,7 @@ export function useContentAssetSelection({
     if (!asset) return;
     saveAssetSelection(asset, checked);
     if (checked) {
-      toast.message("Tillagd i Valda");
+      toast.message(t("content:toasts.addedToSelectedDrive"));
     }
   }
 
