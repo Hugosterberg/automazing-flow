@@ -29,6 +29,7 @@ export type {
   MailSortOrder,
   TriageBucketFilter,
 } from "./types";
+export { isMailSortOrder } from "./types";
 export type { InboxPrefs } from "./inboxPrefs";
 export { MessageBody } from "./MessageBody";
 export { MessageInboxRow } from "./MessageInboxRow";
@@ -45,9 +46,7 @@ export {
   MESSAGE_TABS,
   avatarGradient,
   channelBadge,
-  channelIconFor,
   inboxEmptyCopy,
-  emptyCopyForTab,
   formatFullMessageDate,
   formatMessageDate,
   formatWaitTime,

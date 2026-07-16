@@ -4,6 +4,7 @@ import {
   Folder,
   FolderPlus,
   Inbox,
+  Layers,
   Loader2,
   Star,
 } from "lucide-react";
@@ -33,7 +34,13 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { createMailFolder, fetchMailFolders } from "./mailFoldersClient";
-import type { MailFolder, MailFolderSelection, MailSortOrder, MailViewFilter } from "./types";
+import {
+  isMailSortOrder,
+  type MailFolder,
+  type MailFolderSelection,
+  type MailSortOrder,
+  type MailViewFilter,
+} from "./types";
 
 type MailAccount = {
   id: string;
@@ -59,6 +66,8 @@ type Props = {
   mailAccounts: MailAccount[];
   selectedFolder: MailFolderSelection | null;
   onSelectFolder: (folder: MailFolderSelection | null) => void;
+  includeAllMail: boolean;
+  onIncludeAllMailChange: (value: boolean) => void;
   mailViewFilter: MailViewFilter;
   onMailViewFilterChange: (filter: MailViewFilter) => void;
   mailSort: MailSortOrder;
@@ -76,6 +85,8 @@ export function MessageMailToolbar({
   mailAccounts,
   selectedFolder,
   onSelectFolder,
+  includeAllMail,
+  onIncludeAllMailChange,
   mailViewFilter,
   onMailViewFilterChange,
   mailSort,
@@ -137,7 +148,7 @@ export function MessageMailToolbar({
     ? folderValue({ accountId: selectedFolder.accountId, id: selectedFolder.folderId })
     : INBOX_VALUE;
 
-  const activeFolderLabel = selectedFolder?.folderName || "Inkorg";
+  const activeFolderLabel = selectedFolder?.folderName || (includeAllMail ? "Alla mail" : "Inkorg");
   const activeUnread =
     selectedFolder == null
       ? null
@@ -193,6 +204,8 @@ export function MessageMailToolbar({
               <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
             ) : selectedFolder ? (
               <Folder className="h-3 w-3 shrink-0 text-muted-foreground" />
+            ) : includeAllMail ? (
+              <Layers className="h-3 w-3 shrink-0 text-muted-foreground" />
             ) : (
               <Inbox className="h-3 w-3 shrink-0 text-muted-foreground" />
             )}
@@ -208,8 +221,12 @@ export function MessageMailToolbar({
           <SelectContent align="start" className="max-h-72 min-w-[13rem]">
             <SelectItem value={INBOX_VALUE} className="text-xs">
               <span className="inline-flex items-center gap-1.5">
-                <Inbox className="h-3 w-3 text-muted-foreground" />
-                Inkorg
+                {includeAllMail ? (
+                  <Layers className="h-3 w-3 text-muted-foreground" />
+                ) : (
+                  <Inbox className="h-3 w-3 text-muted-foreground" />
+                )}
+                {includeAllMail ? "Alla mail" : "Inkorg"}
               </span>
             </SelectItem>
             {folders.map((folder) => (
@@ -243,6 +260,35 @@ export function MessageMailToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">Ny mapp</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled || Boolean(selectedFolder)}
+              onClick={() => onIncludeAllMailChange(!includeAllMail)}
+              className={cn(
+                "inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium transition-colors",
+                includeAllMail && !selectedFolder
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                selectedFolder && "opacity-50"
+              )}
+              aria-pressed={includeAllMail && !selectedFolder}
+              aria-label="Visa alla mail oavsett mapp"
+            >
+              <Layers className="h-3 w-3 shrink-0" />
+              <span className="hidden sm:inline">Alla mappar</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {selectedFolder
+              ? "Gäller när Inkorg/Alla mail är valt — byt från mappen först"
+              : includeAllMail
+                ? "Visar senaste mail från alla mappar/etiketter"
+                : "Visa alla mail, även de som ligger i mappar"}
+          </TooltipContent>
         </Tooltip>
 
         <div className="mx-0.5 h-3.5 w-px shrink-0 bg-border/70" aria-hidden />
@@ -281,7 +327,13 @@ export function MessageMailToolbar({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center">
-          <Select value={mailSort} onValueChange={(v) => onMailSortChange(v as MailSortOrder)} disabled={disabled}>
+          <Select
+            value={mailSort}
+            onValueChange={(v) => {
+              if (isMailSortOrder(v)) onMailSortChange(v);
+            }}
+            disabled={disabled}
+          >
             <SelectTrigger
               className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-[11px] shadow-none focus:ring-0 focus:ring-offset-0"
               aria-label="Sortera"

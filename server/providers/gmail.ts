@@ -227,16 +227,18 @@ export async function fetchGmailAccountData({
   googleClientId,
   googleClientSecret,
   labelId = "INBOX",
-}: GmailFetchArgs & { labelId?: string }) {
+  includeAllMail = false,
+}: GmailFetchArgs & { labelId?: string; includeAllMail?: boolean }) {
   async function fetchMessagesList(token: string) {
-    const label = encodeURIComponent(labelId || "INBOX");
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=${label}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(15_000),
-      }
-    );
+    // All-mail: omit labelIds so messages in user labels/folders appear too
+    // (still exclude trash/spam). Default remains provider Inbox only.
+    const listUrl = includeAllMail
+      ? `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=${encodeURIComponent("-in:trash -in:spam")}`
+      : `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=${encodeURIComponent(labelId || "INBOX")}`;
+    const listRes = await fetch(listUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    });
     debugLog("pre-fix", "H5", "gmail.ts:fetchMessagesList", "Gmail list response status", {
       status: listRes.status,
       ok: listRes.ok,

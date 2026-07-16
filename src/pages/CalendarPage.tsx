@@ -1031,7 +1031,7 @@ export default function CalendarPage() {
               tab="reports"
               focus="lead-reminder"
               title="Påminn om uppföljningar automatiskt"
-              description="Lead- och task-reminder cron mailar dig om deadlines — så kalendern inte blir den enda platsen du måste kolla."
+              description="Lead- och uppgiftspåminnelser mailar dig om deadlines — så kalendern inte blir den enda platsen du måste kolla."
               ctaLabel="Aktivera påminnelser"
             />
           </CardContent>

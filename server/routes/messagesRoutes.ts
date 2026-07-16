@@ -98,6 +98,9 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const mailAccountId = String(req.query.mailAccountId || "").trim();
     const mailFolderId = String(req.query.mailFolderId || "").trim();
     const folderScoped = Boolean(mailAccountId && mailFolderId);
+    const includeAllMailRaw = String(req.query.includeAllMail || "").trim().toLowerCase();
+    const includeAllMail =
+      !folderScoped && (includeAllMailRaw === "1" || includeAllMailRaw === "true");
     // Progressive loading: clients can fetch mail first, then DMs.
     const sourcesRaw = String(req.query.sources || "all").trim().toLowerCase();
     const includeMail = sourcesRaw === "all" || sourcesRaw === "mail";
@@ -178,6 +181,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 googleClientId: process.env.GOOGLE_CLIENT_ID,
                 googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
                 labelId: gmailLabelId || "INBOX",
+                includeAllMail,
               });
               if (data && "error" in data && data.error) {
                 mailErrors.push({ accountId, platform, error: String(data.error) });
@@ -221,6 +225,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
                 microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
                 microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET,
                 folderId: outlookFolderId,
+                includeAllMail,
               });
               if (data && "error" in data && data.error) {
                 mailErrors.push({ accountId, platform, error: String(data.error) });

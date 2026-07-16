@@ -55,6 +55,21 @@ export function useBackgroundDataSync(businessProfileId: string | null | undefin
     { enabled: online, skipInitial: false }
   );
 
+  // Profile switches must refresh attention data immediately (not wait for the interval).
+  const prevProfileId = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!online) return;
+    const prev = prevProfileId.current;
+    prevProfileId.current = businessProfileId;
+    if (prev === undefined || prev === businessProfileId) return;
+    if (businessProfileId) {
+      invalidateAttentionQueries(qc, userId, businessProfileId);
+    } else {
+      void qc.invalidateQueries({ queryKey: UNREAD_DM_KEY });
+      dispatchLiveSync("messages");
+    }
+  }, [businessProfileId, online, qc, userId]);
+
   useEffect(() => {
     if (!online) {
       wasOffline.current = true;

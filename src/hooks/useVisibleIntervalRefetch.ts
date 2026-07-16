@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 type Options = {
-  /** Skip the first tick on mount (default true). */
+  /** Skip the first interval tick on mount (default true). Visibility refreshes always run. */
   skipInitial?: boolean;
   /** Only run when this is true (default true). */
   enabled?: boolean;
@@ -27,12 +27,12 @@ export function useVisibleIntervalRefetch(
     if (!enabled || intervalMs <= 0) return;
 
     let timer: number | undefined;
-    let skipped = skipInitial;
+    let skipNextInterval = skipInitial;
 
-    function tick() {
+    function tick(fromInterval: boolean) {
       if (document.visibilityState !== "visible") return;
-      if (skipped) {
-        skipped = false;
+      if (fromInterval && skipNextInterval) {
+        skipNextInterval = false;
         return;
       }
       callbackRef.current();
@@ -40,11 +40,11 @@ export function useVisibleIntervalRefetch(
 
     function schedule() {
       window.clearInterval(timer);
-      timer = window.setInterval(tick, intervalMs);
+      timer = window.setInterval(() => tick(true), intervalMs);
     }
 
     function onVisibility() {
-      if (document.visibilityState === "visible") tick();
+      if (document.visibilityState === "visible") tick(false);
     }
 
     schedule();

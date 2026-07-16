@@ -525,7 +525,7 @@ export default function MarketingPage() {
         tab="insights"
         focus="marketing-actions"
         title="Låt annonser justeras automatiskt"
-        description="Marketing-actions och alerts kan pausa svaga Meta-kampanjer och varna om ROAS — mindre manuell kontroll varje morgon."
+        description="Marknadsautomationer kan pausa svaga Meta-kampanjer och varna om ROAS — mindre manuell kontroll varje morgon."
         ctaLabel="Öppna marketing-automationer"
       />
       <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="app-workspace-shell !min-h-0 scroll-mt-24 space-y-4 p-3 sm:p-4" id="paid-ads">

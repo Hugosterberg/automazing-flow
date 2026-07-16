@@ -1,11 +1,3 @@
-import type { ComponentType, SVGProps } from "react";
-import {
-  FacebookIcon,
-  GmailIcon,
-  InstagramIcon,
-  OutlookIcon,
-  WhatsAppIcon,
-} from "@/components/platform-icons";
 import type { InboxFilter, MessageChannelTab, UnifiedMessage } from "./types";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 
@@ -76,18 +68,6 @@ export function channelBadge(msg: UnifiedMessage): string {
   }
   const key = msg.channel.toLowerCase();
   return DM_CHANNEL_LABELS[key] || msg.channel || "DM";
-}
-
-type ChannelIcon = ComponentType<SVGProps<SVGSVGElement>>;
-
-export function channelIconFor(msg: UnifiedMessage): ChannelIcon | null {
-  const ch = msg.channel.toLowerCase();
-  if (ch === "gmail") return GmailIcon;
-  if (ch === "outlook") return OutlookIcon;
-  if (ch === "instagram" || ch === "ig") return InstagramIcon;
-  if (ch === "facebook" || ch === "messenger" || ch === "facebook_messenger") return FacebookIcon;
-  if (ch === "whatsapp" || ch === "wa") return WhatsAppIcon;
-  return null;
 }
 
 export function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): boolean {

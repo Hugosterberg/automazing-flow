@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,9 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
  */
 export function MessageBody({ message }: { message: UnifiedMessage }) {
   const [showQuoted, setShowQuoted] = useState(false);
+  useEffect(() => {
+    setShowQuoted(false);
+  }, [message.id]);
   const raw = (message.body || message.snippet || "").trim();
   if (!raw) {
     return <p className="text-sm text-muted-foreground">Inget innehåll.</p>;

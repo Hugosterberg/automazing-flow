@@ -34,7 +34,7 @@ export function useUnreadDmCount() {
     },
     enabled: Boolean(enabled),
     staleTime: 45_000,
-    refetchInterval: 60_000,
+    // Freshness is driven by useBackgroundDataSync invalidation + focus/reconnect.
     meta: { silent: true },
   });
   return { unreadDms: query.data ?? 0, isLoading: query.isLoading };

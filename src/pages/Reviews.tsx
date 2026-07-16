@@ -42,6 +42,7 @@ import { accountDataUrl } from "@/lib/accountDataUrl";
 import { LIVE_SYNC_REVIEWS } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
+import { senderInitial } from "@/features/messages";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
   const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
@@ -115,10 +116,6 @@ function displayNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
-}
-
-function senderInitial(name: string): string {
-  return (name || "?").charAt(0).toUpperCase();
 }
 
 function avatarColor(str: string): string {

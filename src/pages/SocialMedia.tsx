@@ -885,7 +885,7 @@ export default function SocialMedia() {
         tab="content"
         focus="publish-scheduled-posts"
         title="Låt schema och pipeline köra själva"
-        description="Publicering av schemalagda inlägg, content-pipeline och sociala snapshots kan köras automatiskt — så du slipper klicka manuellt varje dag."
+        description="Publicering av schemalagda inlägg, innehållspipeline och sociala snapshots kan köras automatiskt — så du slipper klicka manuellt varje dag."
         ctaLabel="Öppna content-automationer"
       />
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>

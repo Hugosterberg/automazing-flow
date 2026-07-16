@@ -36,6 +36,27 @@ import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } 
 import { cn } from "@/lib/utils";
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
 
+async function retryAutomationJob(args: {
+  businessProfileId: string | null;
+  cronKey: string;
+  title: string;
+  retryingKey: string | null;
+  setRetryingKey: (key: string | null) => void;
+  onDone: () => void;
+}) {
+  if (!args.businessProfileId || args.retryingKey) return;
+  args.setRetryingKey(args.cronKey);
+  try {
+    await retryAutomation(args.businessProfileId, args.cronKey);
+    toast.success(`"${args.title}" kördes om.`);
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
+  } finally {
+    args.setRetryingKey(null);
+    args.onDone();
+  }
+}
+
 function AutomationFailuresStrip({
   businessProfileId,
   runs,
@@ -66,17 +87,14 @@ function AutomationFailuresStrip({
   }, [runs.byKey, mode]);
 
   async function handleRetry(cronKey: string, title: string) {
-    if (!businessProfileId || retryingKey) return;
-    setRetryingKey(cronKey);
-    try {
-      await retryAutomation(businessProfileId, cronKey);
-      toast.success(`"${title}" kördes om.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
-    } finally {
-      setRetryingKey(null);
-      void runs.refetch();
-    }
+    await retryAutomationJob({
+      businessProfileId,
+      cronKey,
+      title,
+      retryingKey,
+      setRetryingKey,
+      onDone: () => void runs.refetch(),
+    });
   }
 
   if (failedEntries.length === 0) return null;
@@ -147,17 +165,14 @@ function ScheduleList({
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
 
   async function handleRetry(cronKey: string, title: string) {
-    if (!businessProfileId || retryingKey) return;
-    setRetryingKey(cronKey);
-    try {
-      await retryAutomation(businessProfileId, cronKey);
-      toast.success(`"${title}" kördes om.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
-    } finally {
-      setRetryingKey(null);
-      void runs.refetch();
-    }
+    await retryAutomationJob({
+      businessProfileId,
+      cronKey,
+      title,
+      retryingKey,
+      setRetryingKey,
+      onDone: () => void runs.refetch(),
+    });
   }
 
   if (entries.length === 0) return null;

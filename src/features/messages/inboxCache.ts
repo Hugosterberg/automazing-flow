@@ -13,12 +13,15 @@ export function inboxCacheKey(args: {
   businessProfileId: string | null | undefined;
   mailAccountId?: string | null;
   mailFolderId?: string | null;
+  includeAllMail?: boolean;
 }): string {
   const bp = args.businessProfileId || "default";
   const folder =
     args.mailAccountId && args.mailFolderId
       ? `${args.mailAccountId}:${args.mailFolderId}`
-      : "inbox";
+      : args.includeAllMail
+        ? "all-mail"
+        : "inbox";
   return `${bp}:${folder}`;
 }
 

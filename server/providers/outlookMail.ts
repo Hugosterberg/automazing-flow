@@ -164,7 +164,9 @@ async function withOutlookToken<T>(
   return { ok: true as const, token, res };
 }
 
-export async function fetchOutlookMailData(args: OutlookMailFetchArgs & { folderId?: string }) {
+export async function fetchOutlookMailData(
+  args: OutlookMailFetchArgs & { folderId?: string; includeAllMail?: boolean }
+) {
   const {
     accessToken,
     refreshToken,
@@ -174,6 +176,7 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs & { folder
     microsoftClientId,
     microsoftClientSecret,
     folderId,
+    includeAllMail = false,
   } = args;
   let token = accessToken;
   const headers = (t: string) => ({ Authorization: `Bearer ${t}` });
@@ -181,10 +184,13 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs & { folder
   // List view skips full HTML body — bodyPreview is enough for inbox rows; thread fetch loads body on open.
   const listSelect =
     "id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag";
+  // Folder wins over all-mail. All-mail uses mailbox-wide /me/messages (not Inbox-only).
   const listUrl = folderId
     ? `https://graph.microsoft.com/v1.0/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`
-    : "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?" +
-      `$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`;
+    : includeAllMail
+      ? `https://graph.microsoft.com/v1.0/me/messages?$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`
+      : "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?" +
+        `$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`;
 
   async function fetchList(t: string) {
     return fetch(listUrl, { headers: headers(t), signal: AbortSignal.timeout(15_000) });

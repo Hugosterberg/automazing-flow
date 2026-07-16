@@ -556,7 +556,7 @@ export default function TasksPage() {
           tab="reports"
           focus="task-reminder"
           title="Påminn automatiskt om försenade"
-          description="Task-reminder cron mailar dig om öppna deadlines — så du slipper jaga listan manuellt."
+          description="Uppgiftspåminnelse mailar dig om öppna deadlines — så du slipper jaga listan manuellt."
           ctaLabel="Aktivera uppgifts-påminnelser"
         />
       ) : null}

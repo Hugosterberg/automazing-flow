@@ -723,7 +723,9 @@ export default function ContentPage() {
         }))
       ).then((count) => {
         if (count > 0) {
-          toast.message(`${count} item${count === 1 ? "" : "s"} queued for content pipeline`);
+          toast.message(
+            count === 1 ? "1 objekt köat till innehållspipelinen" : `${count} objekt köade till innehållspipelinen`
+          );
         }
       });
     }
@@ -1158,7 +1160,7 @@ export default function ContentPage() {
             tab="content"
             focus="publish-scheduled-posts"
             title="Schemaläggning körs automatiskt"
-            description="När du schemalägger inlägg publicerar cron dem var 15:e minut. Content-pipeline kan också köa utkast åt dig."
+            description="När du schemalägger inlägg publiceras de automatiskt var 15:e minut. Innehållspipelinen kan också köa utkast åt dig."
             ctaLabel="Se content-automationer"
           />
           {selectedAssets.length === 0 ? (

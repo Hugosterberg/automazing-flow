@@ -44,6 +44,12 @@ export type MailViewFilter = "all" | "unread" | "starred";
 /** Mail list sort order. */
 export type MailSortOrder = "triage" | "newest" | "oldest";
 
+const MAIL_SORT_ORDERS: ReadonlySet<string> = new Set(["triage", "newest", "oldest"]);
+
+export function isMailSortOrder(value: unknown): value is MailSortOrder {
+  return typeof value === "string" && MAIL_SORT_ORDERS.has(value);
+}
+
 /**
  * Action-oriented triage bucket (client-side classifier).
  * `all` = no bucket filter.

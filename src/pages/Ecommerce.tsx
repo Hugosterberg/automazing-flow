@@ -1201,8 +1201,8 @@ export default function Ecommerce() {
                     tab="reports"
                     focus="cart-recovery"
                     title="Automatisera återvinning"
-                    description="Cart-recovery cron skickar återhämtningsmail på schema — du slipper klicka per varukorg."
-                    ctaLabel="Slå på cart-recovery"
+                    description="Kundvagnsåtervinning skickar återhämtningsmail på schema — du slipper klicka per varukorg."
+                    ctaLabel="Slå på kundvagnsåtervinning"
                   />
                 </CardHeader>
                 <CardContent className="space-y-2">

@@ -31,8 +31,8 @@ export function ReviewReplyQueueSection({
         tab="messages"
         focus="review-reply-auto"
         title="Inga review-utkast ännu"
-        description="Slå på automatiska recensionssvar — cron förbereder utkast så du bara granskar och skickar."
-        ctaLabel="Aktivera review-automation"
+        description="Slå på automatiska recensionssvar — utkast förbereds så du bara granskar och skickar."
+        ctaLabel="Aktivera recensionsautomation"
       />
     );
   }

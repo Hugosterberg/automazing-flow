@@ -714,7 +714,7 @@ export default function SalesMarketingPage() {
               tab="reports"
               focus="lead-reminder"
               title="Automatisera lead-påminnelser"
-              description={`${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} behöver uppföljning. Lead-reminder cron håller dig uppdaterad utan manuell checklista.`}
+              description={`${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} behöver uppföljning. Leadpåminnelser håller dig uppdaterad utan manuell checklista.`}
               ctaLabel="Aktivera lead-påminnelser"
             />
           ) : null}

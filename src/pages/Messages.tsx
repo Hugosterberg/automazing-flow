@@ -30,7 +30,6 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
-import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import {
   MessageWorkspace,
@@ -74,6 +73,7 @@ import {
   inboxCacheKey,
   mergeUnifiedByKind,
   readInboxCache,
+  sortUnifiedMessages,
   writeInboxCache,
 } from "@/features/messages/inboxCache";
 import {
@@ -85,9 +85,6 @@ import {
 } from "@/features/messages/messageSnooze";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
-
-/** Background refresh interval while the tab is visible. */
-const INBOX_REFRESH_MS = 60_000;
 
 /** Cap for the persisted handled-ids list so the document stays bounded. */
 const MAX_HANDLED_IDS = 500;
@@ -128,6 +125,11 @@ export default function MessagesPage() {
   const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
   const prefetchInflight = useRef<Set<string>>(new Set());
   const replyDraftCache = useRef<Map<string, string>>(new Map());
+  const loadGenRef = useRef(0);
+  const inboxPrefsRef = useRef<InboxPrefs>({});
+  const lastSummaryFingerprint = useRef("");
+  const accountsRef = useRef(accounts);
+  accountsRef.current = accounts;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [replyDraft, setReplyDraft] = useState("");
@@ -138,6 +140,7 @@ export default function MessagesPage() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [selectedMailFolder, setSelectedMailFolderState] = useState<MailFolderSelection | null>(null);
+  const [includeAllMail, setIncludeAllMailState] = useState(false);
   const [mailFolders, setMailFolders] = useState<MailFolder[]>([]);
   const [moveBusy, setMoveBusy] = useState(false);
   const [mailActionBusy, setMailActionBusy] = useState(false);
@@ -151,6 +154,15 @@ export default function MessagesPage() {
   const handledDoc = useProfileDocument<string[]>("messages-handled", []);
   const snoozeDoc = useProfileDocument<SnoozeMap>("messages-snoozed", {});
   const inboxPrefsDoc = useProfileDocument<InboxPrefs>("messages-inbox-prefs", {});
+  inboxPrefsRef.current = inboxPrefsDoc.data ?? {};
+  const patchInboxPrefs = useCallback(
+    (partial: Partial<InboxPrefs>) => {
+      const next = { ...inboxPrefsRef.current, ...partial };
+      inboxPrefsRef.current = next;
+      inboxPrefsDoc.save(next);
+    },
+    [inboxPrefsDoc]
+  );
   const handledIds = useMemo(
     () => new Set(Array.isArray(handledDoc.data) ? handledDoc.data : []),
     [handledDoc.data]
@@ -272,37 +284,50 @@ export default function MessagesPage() {
   const setSelectedMailFolder = useCallback(
     (folder: MailFolderSelection | null) => {
       setSelectedMailFolderState(folder);
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailFolder: folder });
+      patchInboxPrefs({ mailFolder: folder });
     },
-    [inboxPrefsDoc]
+    [patchInboxPrefs]
+  );
+
+  const setIncludeAllMail = useCallback(
+    (value: boolean) => {
+      setIncludeAllMailState(value);
+      if (value) {
+        setSelectedMailFolderState(null);
+        patchInboxPrefs({ includeAllMail: true, mailFolder: null });
+        return;
+      }
+      patchInboxPrefs({ includeAllMail: false });
+    },
+    [patchInboxPrefs]
   );
 
   const setMailViewFilter = useCallback(
     (filter: MailViewFilter) => {
       setMailViewFilterState(filter);
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailViewFilter: filter });
+      patchInboxPrefs({ mailViewFilter: filter });
     },
-    [inboxPrefsDoc]
+    [patchInboxPrefs]
   );
 
   const setMailSort = useCallback(
     (sort: MailSortOrder) => {
       setMailSortState(sort);
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, mailSort: sort });
+      patchInboxPrefs({ mailSort: sort });
     },
-    [inboxPrefsDoc]
+    [patchInboxPrefs]
   );
 
   const setTriageBucket = useCallback(
     (bucket: TriageBucketFilter) => {
       setTriageBucketState(bucket);
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, triageBucket: bucket });
+      patchInboxPrefs({ triageBucket: bucket });
       const next = new URLSearchParams(searchParams);
       if (bucket === "all") next.delete("bucket");
       else next.set("bucket", bucket);
       setSearchParams(next, { replace: true });
     },
-    [inboxPrefsDoc, searchParams, setSearchParams]
+    [patchInboxPrefs, searchParams, setSearchParams]
   );
 
   const ensureBackendSession = useCallback(async () => {
@@ -326,11 +351,14 @@ export default function MessagesPage() {
   }, [authMode, accessToken]);
 
   const loadUnified = useCallback(async (opts?: { silent?: boolean }) => {
-    const folderScoped = activeTab === "mail" && selectedMailFolder;
+    const gen = ++loadGenRef.current;
+    const folderScoped = Boolean(activeTab === "mail" && selectedMailFolder);
+    const allMailScope = activeTab === "mail" && !folderScoped && includeAllMail;
     const cacheKey = inboxCacheKey({
       businessProfileId: activeProfileId,
-      mailAccountId: folderScoped ? selectedMailFolder.accountId : null,
-      mailFolderId: folderScoped ? selectedMailFolder.folderId : null,
+      mailAccountId: folderScoped && selectedMailFolder ? selectedMailFolder.accountId : null,
+      mailFolderId: folderScoped && selectedMailFolder ? selectedMailFolder.folderId : null,
+      includeAllMail: allMailScope,
     });
 
     if (!opts?.silent) {
@@ -352,6 +380,8 @@ export default function MessagesPage() {
     if (folderScoped && selectedMailFolder) {
       baseParams.set("mailAccountId", selectedMailFolder.accountId);
       baseParams.set("mailFolderId", selectedMailFolder.folderId);
+    } else if (allMailScope) {
+      baseParams.set("includeAllMail", "1");
     }
 
     async function fetchSources(sources: "mail" | "dm") {
@@ -377,9 +407,13 @@ export default function MessagesPage() {
     try {
       // Phase 1 — mail first (provider list is now lightweight metadata).
       const mailData = await fetchSources("mail");
+      if (gen !== loadGenRef.current) return;
       const mailMsgs = Array.isArray(mailData.messages) ? mailData.messages : [];
       setMessages((prev) => {
-        const next = mergeUnifiedByKind(prev, mailMsgs, "email");
+        // Folder views are mail-only — do not keep DMs in that cache key.
+        const next = folderScoped
+          ? sortUnifiedMessages(mailMsgs)
+          : mergeUnifiedByKind(prev, mailMsgs, "email");
         writeInboxCache(cacheKey, next);
         return next;
       });
@@ -392,6 +426,7 @@ export default function MessagesPage() {
       if (!folderScoped) {
         try {
           const dmData = await fetchSources("dm");
+          if (gen !== loadGenRef.current) return;
           const dmMsgs = Array.isArray(dmData.messages) ? dmData.messages : [];
           setMessages((prev) => {
             const next = mergeUnifiedByKind(prev, dmMsgs, "dm");
@@ -406,14 +441,15 @@ export default function MessagesPage() {
         }
       }
     } catch (e) {
+      if (gen !== loadGenRef.current) return;
       if (!opts?.silent) {
         setError(e instanceof Error ? e.message : "Något gick fel");
         if (!readInboxCache(cacheKey)?.length) setMessages([]);
       }
     } finally {
-      if (!opts?.silent) setLoading(false);
+      if (gen === loadGenRef.current && !opts?.silent) setLoading(false);
     }
-  }, [ensureBackendSession, activeProfileId, activeTab, selectedMailFolder]);
+  }, [ensureBackendSession, activeProfileId, activeTab, selectedMailFolder, includeAllMail]);
 
   useEffect(() => {
     function handleLiveSync() {
@@ -422,8 +458,6 @@ export default function MessagesPage() {
     window.addEventListener(LIVE_SYNC_MESSAGES, handleLiveSync);
     return () => window.removeEventListener(LIVE_SYNC_MESSAGES, handleLiveSync);
   }, [loadUnified]);
-
-  useVisibleIntervalRefetch(() => void loadUnified({ silent: true }), INBOX_REFRESH_MS);
 
   useEffect(() => {
     void loadUnified();
@@ -448,7 +482,7 @@ export default function MessagesPage() {
       try {
         await ensureBackendSession();
         const platforms = MESSAGE_ACCOUNT_PLATFORMS;
-        const existingAccountIds = new Set(accounts.map((account) => account.id));
+        const existingAccountIds = new Set(accountsRef.current.map((account) => account.id));
         for (const platform of platforms) {
           const params = new URLSearchParams({ platform });
           if (activeProfileId) params.set("business_profile_id", activeProfileId);
@@ -489,7 +523,7 @@ export default function MessagesPage() {
     return () => {
       ignore = true;
     };
-  }, [accounts, activeProfileId, addAccountFromOAuth, ensureBackendSession]);
+  }, [activeProfileId, addAccountFromOAuth, ensureBackendSession]);
 
   async function connectGmail() {
     await ensureBackendSession();
@@ -541,22 +575,25 @@ export default function MessagesPage() {
     else replyDraftCache.current.delete(selectedMessage.id);
   }, [replyDraft, replySent, selectedMessage?.id]);
 
+  const selectedMessageRef = useRef(selectedMessage);
+  selectedMessageRef.current = selectedMessage;
+
   useEffect(() => {
-    if (!selectedMessage) {
+    const msg = selectedMessageRef.current;
+    if (!msg) {
       setThreadLoading(false);
       return;
     }
     const canLoad =
-      (selectedMessage.kind === "email" &&
-        (selectedMessage.threadId || selectedMessage.providerMessageId)) ||
-      (selectedMessage.kind === "dm" && selectedMessage.conversationId);
+      (msg.kind === "email" && (msg.threadId || msg.providerMessageId)) ||
+      (msg.kind === "dm" && msg.conversationId);
     if (!canLoad) {
       setThreadMessages([]);
       setThreadLoading(false);
       return;
     }
 
-    const cached = threadPrefetchCache.current.get(selectedMessage.id);
+    const cached = threadPrefetchCache.current.get(msg.id);
     if (cached) {
       setThreadMessages(cached);
       setThreadLoading(false);
@@ -564,11 +601,12 @@ export default function MessagesPage() {
     }
 
     const ac = new AbortController();
+    const messageId = msg.id;
     setThreadLoading(true);
-    void fetchMessageThread(selectedMessage, activeProfileId, ac.signal)
+    void fetchMessageThread(msg, activeProfileId, ac.signal)
       .then((rows) => {
         if (!ac.signal.aborted) {
-          threadPrefetchCache.current.set(selectedMessage.id, rows);
+          threadPrefetchCache.current.set(messageId, rows);
           setThreadMessages(rows);
         }
       })
@@ -580,7 +618,7 @@ export default function MessagesPage() {
       });
 
     return () => ac.abort();
-  }, [selectedMessage, activeProfileId]);
+  }, [selectedMessage?.id, activeProfileId]);
 
   const prefetchThread = useCallback(
     (msg: UnifiedMessage) => {
@@ -612,6 +650,7 @@ export default function MessagesPage() {
     if (channelFromUrl) setActiveTab(channelFromUrl);
     else if (saved?.tab) setActiveTab(saved.tab);
     if (saved?.mailFolder) setSelectedMailFolderState(saved.mailFolder);
+    if (typeof saved?.includeAllMail === "boolean") setIncludeAllMailState(saved.includeAllMail);
     if (saved?.mailViewFilter) setMailViewFilterState(saved.mailViewFilter);
     if (saved?.mailSort) setMailSortState(saved.mailSort);
     const urlBucket = searchParams.get("bucket");
@@ -628,9 +667,9 @@ export default function MessagesPage() {
   const setInboxFilterPersisted = useCallback(
     (filter: InboxFilter) => {
       setInboxFilter(filter);
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, filter });
+      patchInboxPrefs({ filter });
     },
-    [inboxPrefsDoc]
+    [patchInboxPrefs]
   );
 
   const setActiveTabPersisted = useCallback(
@@ -642,19 +681,30 @@ export default function MessagesPage() {
       setSearchParams(next, { replace: true });
       if (tab !== "mail") {
         setSelectedMailFolderState(null);
-        inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab, mailFolder: null });
+        patchInboxPrefs({ tab, mailFolder: null });
         return;
       }
-      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, tab });
+      patchInboxPrefs({ tab });
     },
-    [inboxPrefsDoc, searchParams, setSearchParams]
+    [patchInboxPrefs, searchParams, setSearchParams]
   );
 
   const removeMessageFromInbox = useCallback(
     (messageId: string) => {
-      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      setMessages((prev) => {
+        const next = prev.filter((msg) => msg.id !== messageId);
+        const folderScoped = Boolean(activeTab === "mail" && selectedMailFolder);
+        const cacheKey = inboxCacheKey({
+          businessProfileId: activeProfileId,
+          mailAccountId: folderScoped && selectedMailFolder ? selectedMailFolder.accountId : null,
+          mailFolderId: folderScoped && selectedMailFolder ? selectedMailFolder.folderId : null,
+          includeAllMail: activeTab === "mail" && !folderScoped && includeAllMail,
+        });
+        writeInboxCache(cacheKey, next);
+        return next;
+      });
     },
-    []
+    [activeProfileId, activeTab, includeAllMail, selectedMailFolder]
   );
 
   const handleMailFoldersChange = useCallback((folders: MailFolder[]) => {
@@ -733,14 +783,20 @@ export default function MessagesPage() {
       })),
     [messages]
   );
+  const summaryFingerprint = useMemo(
+    () => summaryPayload.map((m) => `${m.id}\0${m.snippet}\0${m.subject}`).join("|"),
+    [summaryPayload]
+  );
 
   useEffect(() => {
     if (summaryPayload.length === 0) {
+      lastSummaryFingerprint.current = "";
       setAiSummaries({});
       return;
     }
+    if (summaryFingerprint === lastSummaryFingerprint.current) return;
     const ac = new AbortController();
-      void fetchWithTimeout(apiUrl("/api/messages/summaries"), {
+    void fetchWithTimeout(apiUrl("/api/messages/summaries"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -749,11 +805,13 @@ export default function MessagesPage() {
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("summary_failed"))))
       .then((d) => {
-        if (d && typeof d.summaries === "object") setAiSummaries(d.summaries);
+        if (ac.signal.aborted || !d || typeof d.summaries !== "object") return;
+        lastSummaryFingerprint.current = summaryFingerprint;
+        setAiSummaries(d.summaries);
       })
       .catch(() => {});
     return () => ac.abort();
-  }, [summaryPayload]);
+  }, [summaryFingerprint, summaryPayload]);
 
   const hasAnyMailConnected = mailAccounts.length > 0;
   const filteredMessages = useMemo(() => {
@@ -1559,6 +1617,8 @@ export default function MessagesPage() {
             mailAccounts={mailFolderAccounts}
             selectedFolder={selectedMailFolder}
             onSelectFolder={setSelectedMailFolder}
+            includeAllMail={includeAllMail}
+            onIncludeAllMailChange={setIncludeAllMail}
             mailViewFilter={mailViewFilter}
             onMailViewFilterChange={setMailViewFilter}
             mailSort={mailSort}

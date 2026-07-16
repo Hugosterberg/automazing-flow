@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { AutomationEnableHint } from "@/features/automation";
+import { senderInitial } from "@/features/messages";
 import { useProfileDocument } from "@/features/profile-documents";
 import { OutreachDetailPanel, OutreachDetailPlaceholder } from "./OutreachDetailPanel";
 import { OutreachInboxList } from "./OutreachInboxList";
@@ -29,11 +30,6 @@ const AVATAR_COLORS = [
   "bg-pink-500",
   "bg-teal-500",
 ];
-
-function senderInitial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
-}
 
 function avatarColor(seed: string): string {
   let hash = 0;
