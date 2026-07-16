@@ -27,7 +27,6 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
-import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import {
   MessageWorkspace,
   MessageInboxToolbar,
@@ -72,6 +71,7 @@ import { MailConnectEmptyCards } from "@/features/messages/MailConnectEmptyCards
 import { inboxCacheKey, writeInboxCache } from "@/features/messages/inboxCache";
 import { buildInboxLoadScope } from "@/features/messages/inboxLoadParams";
 import { useLoadUnifiedInbox } from "@/features/messages/useLoadUnifiedInbox";
+import { useMessagesKeyboardShortcuts } from "@/features/messages/useMessagesKeyboardShortcuts";
 import {
   isSnoozed,
   pruneSnoozeMap,
@@ -87,12 +87,6 @@ const MAX_HANDLED_IDS = 500;
 
 /** Cap for the persisted read-ids list so the document stays bounded. */
 const MAX_READ_IDS = 1000;
-
-const FILTER_SHORTCUTS: Record<string, InboxFilter> = {
-  q: "queue",
-  o: "open",
-  a: "all",
-};
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
@@ -1190,98 +1184,13 @@ export default function MessagesPage() {
     mailSort,
   ]);
 
-  const canReplyToSelected =
+  const canReplyToSelected = Boolean(
     selectedMessage &&
-    ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
-      (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)));
+      ((selectedMessage.kind === "dm" && selectedMessage.conversationId) ||
+        (selectedMessage.kind === "email" && providerMessageIdFor(selectedMessage)))
+  );
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (isShortcutBlocked() || isTypingTarget(e.target)) return;
-
-      if (e.shiftKey && (e.key === "j" || e.key === "ArrowDown")) {
-        e.preventDefault();
-        navigateOpenRelative(1);
-        return;
-      }
-      if (e.shiftKey && (e.key === "k" || e.key === "ArrowUp")) {
-        e.preventDefault();
-        navigateOpenRelative(-1);
-        return;
-      }
-      if (!e.shiftKey && (e.key === "j" || e.key === "ArrowDown")) {
-        e.preventDefault();
-        navigateRelative(1);
-        return;
-      }
-      if (!e.shiftKey && (e.key === "k" || e.key === "ArrowUp")) {
-        e.preventDefault();
-        navigateRelative(-1);
-        return;
-      }
-      if ((e.key === "n" || e.key === "N") && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        focusNextOpen();
-        return;
-      }
-      if (e.key === "[" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        cycleTab(-1);
-        return;
-      }
-      if (e.key === "]" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        cycleTab(1);
-        return;
-      }
-      if (matchesKey(e, "h") && isPlainLetterShortcut(e)) {
-        e.preventDefault();
-        if (selectedMessage && !handledIds.has(selectedMessage.id)) {
-          markHandledAndAdvance(selectedMessage.id);
-        }
-        return;
-      }
-      if (matchesKey(e, "z") && isPlainLetterShortcut(e)) {
-        e.preventDefault();
-        if (selectedMessage && !handledIds.has(selectedMessage.id)) {
-          snoozeMessage(selectedMessage.id, e.shiftKey ? "week" : "tomorrow");
-          const next = pickNextAfter(selectedMessage.id, filteredMessages);
-          selectMessage(next, { fromUser: true });
-        }
-        return;
-      }
-      if (matchesKey(e, "e") && isPlainLetterShortcut(e)) {
-        e.preventDefault();
-        if (selectedMessage?.kind === "email" && !mailActionBusy) {
-          void performSelectedMailAction("archive");
-        }
-        return;
-      }
-      const filterShortcut = FILTER_SHORTCUTS[e.key.toLowerCase()];
-      if (filterShortcut && isPlainLetterShortcut(e)) {
-        e.preventDefault();
-        setInboxFilterPersisted(filterShortcut);
-        return;
-      }
-      if (e.key === "Escape" && selectedId) {
-        e.preventDefault();
-        selectMessage(null);
-        return;
-      }
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        return;
-      }
-      if (matchesKey(e, "r") && isPlainLetterShortcut(e) && selectedMessage && canReplyToSelected) {
-        e.preventDefault();
-        focusReplyRef.current?.();
-        return;
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
+  useMessagesKeyboardShortcuts({
     canReplyToSelected,
     cycleTab,
     filteredMessages,
@@ -1298,7 +1207,9 @@ export default function MessagesPage() {
     selectedMessage,
     setInboxFilterPersisted,
     snoozeMessage,
-  ]);
+    searchInputRef,
+    focusReplyRef,
+  });
 
   const detailProps = useMemo(() => {
     if (!selectedMessage) return null;
