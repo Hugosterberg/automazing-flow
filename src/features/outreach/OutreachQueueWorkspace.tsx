@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AnimatePresence, m } from "framer-motion";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -52,6 +53,7 @@ type Props = {
 };
 
 export function OutreachQueueWorkspace({ businessProfileId }: Props) {
+  const { t } = useTranslation("outreach");
   const isDesktopWorkspace = useIsDesktopWorkspace();
   const doc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
   const pending = useMemo(() => pendingOutreachItems(doc.data), [doc.data]);
@@ -121,17 +123,17 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
   const markSent = useCallback(
     (id: string) => {
       doc.save(doc.data.map((item) => (item.id === id ? { ...item, status: "sent" as const } : item)));
-      toast.success("Markerad som skickad");
+      toast.success(t("actions.markedSent"));
     },
-    [doc]
+    [doc, t]
   );
 
   const removeItem = useCallback(
     (id: string) => {
       doc.save(doc.data.filter((item) => item.id !== id));
-      toast.success("Utkast borttaget");
+      toast.success(t("actions.draftRemoved"));
     },
-    [doc]
+    [doc, t]
   );
 
   const advanceAfterAction = useCallback(
@@ -152,10 +154,15 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
   );
 
   const copyItem = useCallback(async (item: OutreachQueueItem) => {
-    const text = [item.subject ? `Ämne: ${item.subject}` : "", item.body].filter(Boolean).join("\n\n");
+    const text = [
+      item.subject ? t("clipboard.subjectPrefix", { subject: item.subject }) : "",
+      item.body,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     await navigator.clipboard.writeText(text);
-    toast.success("Kopierat");
-  }, []);
+    toast.success(t("actions.copied"));
+  }, [t]);
 
   useEffect(() => {
     if (urlItemId && pending.some((item) => item.id === urlItemId)) {
@@ -248,7 +255,7 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
 
   if (!businessProfileId) {
     return (
-      <p className="text-sm text-muted-foreground px-4 py-6">Välj en affärsprofil för att se outreach-kön.</p>
+      <p className="text-sm text-muted-foreground px-4 py-6">{t("queue.noProfile")}</p>
     );
   }
 
@@ -258,9 +265,9 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
         <AutomationEnableHint
           tab="messages"
           focus="sales-outreach-auto"
-          title="Outreach-kön är tom"
-          description="Aktivera automatisk outreach — utkast hamnar här när uppföljningar ska göras. Du granskar och skickar själv."
-          ctaLabel="Aktivera outreach-automation"
+          title={t("automation.enableTitle")}
+          description={t("automation.enableDesc")}
+          ctaLabel={t("automation.enableCta")}
         />
       </div>
     );
@@ -302,17 +309,17 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
             ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Sök utkast…"
+            placeholder={t("queue.searchPlaceholder")}
             className={cn(
               "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
               !isDesktopWorkspace ? "h-10" : "h-8 text-xs"
             )}
-            aria-label="Sök outreach-utkast"
+            aria-label={t("queue.searchAria")}
           />
         </div>
         <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
-          {filtered.length} av {pending.length} utkast
-          {debouncedSearch.trim() ? " · sök aktiv" : ""}
+          {t("queue.countOf", { filtered: filtered.length, total: pending.length })}
+          {debouncedSearch.trim() ? t("queue.searchActive") : ""}
         </p>
       </div>
       ) : null}
@@ -325,8 +332,8 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
                 <OutreachInboxList
                   items={filtered}
                   selectedId={selectedId}
-                  emptyTitle="Inga utkast matchar"
-                  emptyDescription="Prova ett annat sökord eller rensa filtret."
+                  emptyTitle={t("queue.noMatchTitle")}
+                  emptyDescription={t("queue.noMatchDesc")}
                   getRowMeta={getRowMeta}
                   onSelect={selectItem}
                   searchQuery={debouncedSearch}
@@ -345,8 +352,8 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
               <OutreachInboxList
                 items={filtered}
                 selectedId={selectedId}
-                emptyTitle="Inga utkast matchar"
-                emptyDescription="Prova ett annat sökord eller rensa filtret."
+                emptyTitle={t("queue.noMatchTitle")}
+                emptyDescription={t("queue.noMatchDesc")}
                 getRowMeta={getRowMeta}
                 onSelect={selectItem}
                 searchQuery={debouncedSearch}
@@ -368,16 +375,17 @@ export function OutreachQueueWorkspace({ businessProfileId }: Props) {
         <span className="truncate">
           {selectedItem ? (
             <>
-              Valt: <span className="font-medium text-foreground/80">{selectedItem.leadName}</span>
+              {t("queue.selected")}{" "}
+              <span className="font-medium text-foreground/80">{selectedItem.leadName}</span>
               {filtered.length > 1 && selectedIndex >= 0 ? (
                 <span className="ml-2 tabular-nums">({selectedIndex + 1}/{filtered.length})</span>
               ) : null}
             </>
           ) : (
-            "Välj ett utkast i listan"
+            t("queue.pickDraft")
           )}
         </span>
-        <span className="hidden sm:inline">J/K · S Sent · / Search</span>
+        <span className="hidden sm:inline">{t("queue.shortcutHint")}</span>
       </div>
       ) : null}
     </div>

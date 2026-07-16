@@ -1,0 +1,252 @@
+{
+  "page": {
+    "title": "Digital brand",
+    "description": "Live website audit plus SEO, performance, trust and channel recommendations.",
+    "refreshAudit": "Refresh audit",
+    "editWebsite": "Edit website URL"
+  },
+  "smartBar": {
+    "title": "Digital brand audits your website live — SEO, performance and trust with concrete recommendations.",
+    "step1": "Register website URL under Company",
+    "step2": "Run audit and review PageSpeed and HTML values",
+    "step3": "Prioritize high recommendations under the Recommendations tab",
+    "tip": "The audit runs server-side — no code needs to be installed on the site.",
+    "liveHintNoWebsite": "Add website URL under Company to run an audit.",
+    "liveHintHighPriority_one": "{{count}} high-priority recommendation — open Recommendations",
+    "liveHintHighPriority_other": "{{count}} high-priority recommendations — open Recommendations",
+    "liveHintOk": "Audit looks good — no critical issues right now.",
+    "actionShowRecs": "Show recommendations"
+  },
+  "tabs": {
+    "ariaLabel": "Digital brand tabs",
+    "overview": "Overview",
+    "recs": "Recommendations",
+    "research": "Research"
+  },
+  "alerts": {
+    "noWebsiteTitle": "No website URL registered",
+    "noWebsiteDescPrefix": "Add the website URL under",
+    "noWebsiteDescSuffix": "to run a Digital Brand audit.",
+    "auditErrorTitle": "Could not audit the website"
+  },
+  "research": {
+    "mcpTitle": "MCP brand data",
+    "mcpDescription": "SEO overview and domain lookup for your registered website."
+  },
+  "overview": {
+    "primaryWebsite": "Primary website",
+    "openWebsiteSr": "Open website",
+    "auditLoading": "Running PageSpeed Insights and fetching HTML, robots.txt and sitemap.xml…",
+    "auditIdle": "Run an audit to fetch live SEO and performance values from the website.",
+    "auditDonePagespeed": "PageSpeed Insights + HTML audit for {{url}} {{checkedAt}}.",
+    "auditDoneHtmlFallback": "HTML fallback audit for {{url}} {{checkedAt}}.",
+    "pageSpeedMessage": "PageSpeed message: {{message}}",
+    "htmlFallbackMessage": "HTML fallback message: {{message}}",
+    "readiness": "Brand readiness",
+    "auditing": "Auditing…",
+    "highPriorityPoints_one": "{{count}} high-priority item",
+    "highPriorityPoints_other": "{{count}} high-priority items",
+    "openRecs": "Open recommendations",
+    "auditingWebsite": "Auditing website…"
+  },
+  "metrics": {
+    "mobilePageSpeed": "Mobile PageSpeed",
+    "mobilePageSpeedHint": "Lighthouse performance score from PageSpeed Insights.",
+    "mobileSeo": "Mobile SEO",
+    "mobileSeoHint": "Lighthouse SEO score from PageSpeed Insights.",
+    "mobileLcp": "Mobile LCP",
+    "mobileLcpHint": "Largest Contentful Paint from Lighthouse.",
+    "mobileCls": "Mobile CLS",
+    "mobileClsHint": "Cumulative Layout Shift from Lighthouse.",
+    "httpStatus": "HTTP status",
+    "httpStatusHintOk": "Homepage is reachable.",
+    "httpStatusHintFail": "Homepage returned an error.",
+    "responseTime": "Response time",
+    "responseTimeHint": "Measured by the server-side audit fetch.",
+    "titleLength": "Title length",
+    "titleLengthHintNone": "No title tag found.",
+    "metaDescription": "Meta description",
+    "metaDescriptionHintNone": "No meta description found.",
+    "desktopPageSpeed": "Desktop PageSpeed",
+    "desktopPageSpeedHint": "Lighthouse performance score (desktop) from PageSpeed Insights.",
+    "accessibility": "Accessibility",
+    "accessibilityHint": "Lighthouse accessibility score (desktop).",
+    "bestPractices": "Best practices",
+    "bestPracticesHint": "Lighthouse implementation quality score (desktop).",
+    "desktopLcp": "Desktop LCP",
+    "desktopLcpHint": "Largest Contentful Paint (desktop).",
+    "h1Count": "H1 count",
+    "h1CountHintNone": "No H1 found.",
+    "structuredData": "Structured data",
+    "structuredDataHint": "JSON-LD blocks found in HTML.",
+    "imagesMissingAlt": "Images missing alt",
+    "imagesMissingAltHint": "Based on img tags in fetched HTML.",
+    "sitemapStatus": "Sitemap status",
+    "sitemapStatusHint": "Response when checking /sitemap.xml.",
+    "showAll": "Show all metrics",
+    "showFewer": "Show fewer metrics"
+  },
+  "recs": {
+    "allResults": "All results",
+    "areaResults": "{{area}} results"
+  },
+  "areas": {
+    "seo": "SEO",
+    "performance": "Performance",
+    "trust": "Trust",
+    "channels": "Channels",
+    "all": "All"
+  },
+  "priority": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
+  "helpers": {
+    "noData": "No data",
+    "notFound": "Not found",
+    "noUrl": "No URL",
+    "missing": "Missing",
+    "present": "Present",
+    "complete": "Complete",
+    "incomplete": "Incomplete",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "https": "HTTPS",
+    "http": "HTTP",
+    "characters": "{{count}} characters",
+    "h1Count": "{{count}} H1",
+    "jsonLdBlocks": "{{count}} JSON-LD blocks",
+    "imagesMissing": "{{missing}}/{{total}} missing",
+    "scoreFormat": "{{score}}/100",
+    "bytesMb": "{{value}} MB",
+    "bytesKb": "{{value}} KB",
+    "bytesB": "{{value}} B",
+    "milliseconds": "{{ms}} ms"
+  },
+  "errors": {
+    "auditFailed": "Could not audit the website."
+  },
+  "recommendations": {
+    "registerWebsite": {
+      "title": "Register your primary website",
+      "detail": "Add the website URL under {{connections}} before running a Digital Brand audit."
+    },
+    "pageSpeedScore": {
+      "title": "PageSpeed performance score",
+      "detailMobileDesktop": "Mobile Lighthouse performance is {{mobileScore}}. Desktop is {{desktopScore}}.",
+      "detailDesktopOnly": "Desktop Lighthouse performance is {{desktopScore}}."
+    },
+    "pageSpeedUnavailable": {
+      "title": "PageSpeed Insights unavailable",
+      "valueNoResult": "No PSI result",
+      "valueNoApiKey": "No API key",
+      "detailFallback": "Add PAGESPEED_API_KEY or GOOGLE_PAGESPEED_API_KEY for Lighthouse values."
+    },
+    "lighthouseSeoScore": {
+      "title": "Lighthouse SEO score",
+      "detail": "This is the Lighthouse SEO category score from PageSpeed Insights for the registered URL."
+    },
+    "accessibilityScore": {
+      "title": "Accessibility score",
+      "detail": "Accessibility issues often affect conversion, usability and perceived brand quality."
+    },
+    "bestPracticesScore": {
+      "title": "Best practices score",
+      "detail": "Lighthouse best practices checks security, browser compatibility and implementation quality."
+    },
+    "lcp": {
+      "title": "Largest Contentful Paint",
+      "detail": "LCP measures how fast main content loads. Optimize hero media, server response and render-blocking resources."
+    },
+    "cls": {
+      "title": "Cumulative Layout Shift",
+      "detail": "CLS measures visual stability. Reserve space for images/ads and avoid late-loaded UI that shifts content."
+    },
+    "homepageHttpStatus": {
+      "title": "Homepage HTTP status",
+      "detailOk": "Homepage returned HTTP {{status}}.",
+      "detailFail": "Homepage returned HTTP {{status}}; fix this before optimizing SEO content."
+    },
+    "serverResponseTime": {
+      "title": "Server response time",
+      "detailOk": "Initial server response is within a healthy range.",
+      "detailSlow": "Reduce redirects, server work and blocking upstream calls to improve the initial response."
+    },
+    "htmlDownloadSize": {
+      "title": "Downloaded HTML size",
+      "detailOk": "HTML payload is reasonably small.",
+      "detailLarge": "HTML payload is large; reduce inline scripts, embedded data and unused markup."
+    },
+    "titleTagLength": {
+      "title": "Title tag length",
+      "detailPresent": "Current title: \"{{title}}\". Aim for a descriptive title of 25–65 characters.",
+      "detailMissing": "Add a unique title tag naming brand, offer and primary search intent."
+    },
+    "metaDescription": {
+      "title": "Meta description",
+      "detailPresent": "Current meta description is {{count}} characters. Aim for 70–160.",
+      "detailMissing": "Add a meta description summarizing the offer and giving searchers a reason to click."
+    },
+    "h1Structure": {
+      "title": "H1 structure",
+      "detailSingle": "Primary H1: \"{{h1}}\".",
+      "detailMultiple": "Use exactly one clear H1 on the homepage so search engines and visitors understand the page topic."
+    },
+    "canonicalUrl": {
+      "title": "Canonical URL",
+      "detailPresent": "Canonical points to {{canonical}}.",
+      "detailMissing": "Add a canonical URL to prevent duplicate homepage variants competing in search."
+    },
+    "structuredData": {
+      "title": "Structured data",
+      "detailPresent": "Structured data is present on the page.",
+      "detailMissing": "Add Organization, LocalBusiness, FAQ, Product or Review schema where relevant."
+    },
+    "sitemapCheck": {
+      "title": "Sitemap check",
+      "detailOk": "/sitemap.xml is reachable.",
+      "detailMissing": "Expose /sitemap.xml so search engines can find important pages faster."
+    },
+    "https": {
+      "title": "HTTPS",
+      "detailOk": "The registered website uses HTTPS.",
+      "detailHttp": "Switch the registered URL to HTTPS and redirect HTTP to HTTPS."
+    },
+    "mobileViewport": {
+      "title": "Mobile viewport",
+      "detailPresent": "Viewport meta: {{viewport}}.",
+      "detailMissing": "Add a viewport meta tag so the page renders predictably on mobile devices."
+    },
+    "imageAltText": {
+      "title": "Image alt text",
+      "detailNoImages": "No images found in the fetched HTML.",
+      "detailMissing": "Add descriptive alt text on important images and empty alt on decorative images."
+    },
+    "socialPreview": {
+      "title": "Social media preview",
+      "detailComplete": "Open Graph title and description are present.",
+      "detailIncomplete": "Add Open Graph title and description so shared links display clearly in social channels."
+    },
+    "googleBusinessConnection": {
+      "title": "Google Business connection",
+      "detailConnected": "Google Business is connected so local brand signals can be compared with the website.",
+      "detailNotConnected": "Connect Google Business to sync web content with maps, categories, hours and reviews."
+    },
+    "reviewSources": {
+      "title": "Review sources",
+      "detailConnected": "Review sources are connected and can inform trust messaging.",
+      "detailNotConnected": "Connect Google Reviews or Tripadvisor to use real review themes in web optimization."
+    },
+    "socialChannels": {
+      "title": "Social channels",
+      "detailConnected": "Social channels are connected and can be compared with website messaging.",
+      "detailNotConnected": "Connect active social profiles to compare brand positioning across channels."
+    },
+    "paidMediaChannels": {
+      "title": "Paid media channels",
+      "detailConnected": "Paid channels are connected, useful for landing page and CTA alignment.",
+      "detailNotConnected": "Connect Google Ads or Meta Business before campaign-specific landing page optimization."
+    }
+  }
+}

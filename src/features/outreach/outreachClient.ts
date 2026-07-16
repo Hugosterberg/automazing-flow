@@ -1,4 +1,5 @@
 import { apiJson } from "@/lib/apiJson";
+import { t } from "@/lib/i18n";
 
 export type OutreachChannel = "email" | "linkedin" | "follow-up";
 
@@ -40,7 +41,7 @@ export async function fetchOutreachDraft(
 ): Promise<{ draft: OutreachDraft; source: string; channel: OutreachChannel }> {
   const body = await apiJson<{ draft?: unknown; source?: unknown; channel?: unknown }>(
     "/api/sales/outreach-draft",
-    "Kunde inte generera outreach-utkast.",
+    t("outreach:toast.draftFail"),
     { body: input, timeoutMs: 35_000 }
   );
   return {
@@ -76,7 +77,7 @@ export async function fetchOutreachContentIdeas(
 ): Promise<{ ideas: OutreachContentIdea[]; source: string }> {
   const body = await apiJson<{ ideas?: unknown; source?: unknown }>(
     "/api/sales/outreach-content-ideas",
-    "Kunde inte ladda innehållsidéer för outreach.",
+    t("outreach:toast.loadFail"),
     { body: input, timeoutMs: 30_000 }
   );
   return {
@@ -107,12 +108,18 @@ export function outreachDraftText(draft: OutreachDraft, channel: OutreachChannel
   if (channel === "linkedin" && draft.linkedinMessage) {
     return draft.linkedinMessage;
   }
-  const parts = [draft.subject ? `Subject: ${draft.subject}` : "", draft.body].filter(Boolean);
+  const parts = [
+    draft.subject ? t("outreach:clipboard.subjectPrefix", { subject: draft.subject }) : "",
+    draft.body,
+  ].filter(Boolean);
   if (draft.followUps.length > 0) {
     parts.push(
       "",
-      "--- Follow-ups ---",
-      ...draft.followUps.map((fu) => `Day ${fu.day}${fu.subject ? ` · ${fu.subject}` : ""}\n${fu.body}`)
+      `--- ${t("outreach:clipboard.followUpHeader")} ---`,
+      ...draft.followUps.map(
+        (fu) =>
+          `${t("outreach:clipboard.dayLabel", { n: fu.day })}${fu.subject ? ` · ${fu.subject}` : ""}\n${fu.body}`
+      )
     );
   }
   return parts.join("\n");

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Copy, ExternalLink, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ export function OutreachQueueSection({
   businessProfileId: string | null;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("outreach");
   const doc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
   const pending = pendingOutreachItems(doc.data);
 
@@ -29,9 +31,9 @@ export function OutreachQueueSection({
       <AutomationEnableHint
         tab="messages"
         focus="sales-outreach-auto"
-        title="Automatisera lead-uppföljning"
-        description="Slå på automatisk outreach — utkast skapas i kön när leads behöver följas upp. Du godkänner innan något skickas."
-        ctaLabel="Aktivera outreach-automation"
+        title={t("automation.enableTitle")}
+        description={t("automation.enableDesc")}
+        ctaLabel={t("automation.enableCta")}
       />
     );
   }
@@ -40,7 +42,7 @@ export function OutreachQueueSection({
     doc.save(
       doc.data.map((item) => (item.id === id ? { ...item, status: "sent" as const } : item))
     );
-    toast.success("Markerad som skickad");
+    toast.success(t("actions.markedSent"));
   }
 
   function removeItem(id: string) {
@@ -48,9 +50,14 @@ export function OutreachQueueSection({
   }
 
   async function copyItem(item: OutreachQueueItem) {
-    const text = [item.subject ? `Ämne: ${item.subject}` : "", item.body].filter(Boolean).join("\n\n");
+    const text = [
+      item.subject ? t("clipboard.subjectPrefix", { subject: item.subject }) : "",
+      item.body,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     await navigator.clipboard.writeText(text);
-    toast.success("Kopierat");
+    toast.success(t("actions.copied"));
   }
 
   return (
@@ -59,12 +66,10 @@ export function OutreachQueueSection({
         <div className="flex items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              Outreach-kö
+              {t("queue.title")}
               <Badge variant="secondary">{pending.length}</Badge>
             </CardTitle>
-            <CardDescription>
-              Automatiskt genererade utkast — granska, skicka och markera som skickade.
-            </CardDescription>
+            <CardDescription>{t("queue.description")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -84,7 +89,7 @@ export function OutreachQueueSection({
             </div>
             {item.subject ? (
               <p className="text-xs">
-                <span className="text-muted-foreground">Ämne: </span>
+                <span className="text-muted-foreground">{t("labels.subject")} </span>
                 {item.subject}
               </p>
             ) : null}
@@ -94,7 +99,7 @@ export function OutreachQueueSection({
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => void copyItem(item)}>
                 <Copy className="h-3 w-3 mr-1" />
-                Kopiera
+                {t("actions.copy")}
               </Button>
               {item.prospectEmail ? (
                 <Button type="button" size="sm" className="h-7 text-xs" asChild>
@@ -105,17 +110,17 @@ export function OutreachQueueSection({
                     )}
                   >
                     <Mail className="h-3 w-3 mr-1" />
-                    E-post
+                    {t("actions.email")}
                   </a>
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => markSent(item.id)}>
                 <ExternalLink className="h-3 w-3 mr-1" />
-                Markera skickad
+                {t("actions.markSent")}
               </Button>
               <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => removeItem(item.id)}>
                 <Trash2 className="h-3 w-3 mr-1" />
-                Ta bort
+                {t("actions.remove")}
               </Button>
             </div>
           </div>

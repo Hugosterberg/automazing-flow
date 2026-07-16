@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, ExternalLink, Loader2, Mail, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -38,8 +39,9 @@ function displayBody(draft: OutreachDraft, tab: OutreachChannel): string {
 }
 
 function ChannelBadge({ loading, ready }: { loading: boolean; ready: boolean }) {
+  const { t } = useTranslation("outreach");
   if (loading) return <Loader2 className="h-3 w-3 animate-spin ml-1 inline" />;
-  if (ready) return <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[9px]">ready</Badge>;
+  if (ready) return <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[9px]">{t("draft.ready")}</Badge>;
   return null;
 }
 
@@ -59,6 +61,7 @@ export function OutreachDraftDialog({
   /** Called when user marks the lead as contacted after sending outreach. */
   onMarkContacted?: () => void;
 }) {
+  const { t } = useTranslation("outreach");
   const [channel, setChannel] = useState<OutreachChannel>("email");
   const [loadingChannels, setLoadingChannels] = useState<Set<OutreachChannel>>(() => new Set());
   const [sourceByChannel, setSourceByChannel] = useState<Partial<Record<OutreachChannel, string>>>({});
@@ -89,7 +92,7 @@ export function OutreachDraftDialog({
     options?: { force?: boolean; switchTab?: boolean }
   ) {
     if (!businessProfileId) {
-      toast.error("Välj en företagsprofil först.");
+      toast.error(t("draft.pickProfileFirst"));
       return;
     }
     if (!options?.force && draftByChannel[nextChannel]) {
@@ -108,7 +111,7 @@ export function OutreachDraftDialog({
       setDraftByChannel((current) => ({ ...current, [nextChannel]: result.draft }));
       setSourceByChannel((current) => ({ ...current, [nextChannel]: result.source }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kunde inte generera outreach.");
+      toast.error(error instanceof Error ? error.message : t("toast.generateFail"));
     } finally {
       setLoadingChannels((current) => {
         const next = new Set(current);
@@ -121,13 +124,13 @@ export function OutreachDraftDialog({
   async function copyText(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Kopierat");
+      toast.success(t("actions.copied"));
     } catch {
-      toast.error("Kunde inte kopiera");
+      toast.error(t("toast.copyFail"));
     }
   }
 
-  const prospectLabel = target?.prospectCompany || "prospekt";
+  const prospectLabel = target?.prospectCompany || t("draft.prospectFallback");
   const linkedInUrl = linkedInSearchUrl(target);
 
   return (
@@ -136,17 +139,17 @@ export function OutreachDraftDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-primary" />
-            Outreach-utkast — {prospectLabel}
+            {t("draft.title", { name: prospectLabel })}
           </DialogTitle>
           <DialogDescription>
-            Alla tre kanaler genereras automatiskt när du öppnar dialogen.
+            {t("draft.description")}
           </DialogDescription>
         </DialogHeader>
 
         {!businessProfileId ? (
           <Alert variant="destructive">
-            <AlertTitle>Ingen aktiv profil</AlertTitle>
-            <AlertDescription>Välj en företagsprofil innan du genererar outreach-utkast.</AlertDescription>
+            <AlertTitle>{t("draft.noProfileTitle")}</AlertTitle>
+            <AlertDescription>{t("draft.noProfileDesc")}</AlertDescription>
           </Alert>
         ) : null}
 
@@ -159,15 +162,15 @@ export function OutreachDraftDialog({
         >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="email" className="text-xs sm:text-sm">
-              E-post
+              {t("draft.tabs.email")}
               <ChannelBadge loading={loadingChannels.has("email")} ready={Boolean(draftByChannel.email)} />
             </TabsTrigger>
             <TabsTrigger value="linkedin" className="text-xs sm:text-sm">
-              LinkedIn
+              {t("draft.tabs.linkedin")}
               <ChannelBadge loading={loadingChannels.has("linkedin")} ready={Boolean(draftByChannel.linkedin)} />
             </TabsTrigger>
             <TabsTrigger value="follow-up" className="text-xs sm:text-sm">
-              Uppföljning
+              {t("draft.tabs.followUp")}
               <ChannelBadge loading={loadingChannels.has("follow-up")} ready={Boolean(draftByChannel["follow-up"])} />
             </TabsTrigger>
           </TabsList>
@@ -181,26 +184,26 @@ export function OutreachDraftDialog({
                   <Button type="button" className="w-full" onClick={() => void generateChannel(tab, { force: true })}>
                     <Sparkles className="h-4 w-4 mr-2" />
                     {tab === "email"
-                      ? "Generera mailutkast"
+                      ? t("draft.generate.email")
                       : tab === "linkedin"
-                        ? "Generera LinkedIn-utkast"
-                        : "Generera uppföljningsutkast"}
+                        ? t("draft.generate.linkedin")
+                        : t("draft.generate.followUp")}
                   </Button>
                 ) : null}
                 {loading && !draft ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Skriver outreach-text…
+                    {t("draft.writing")}
                   </div>
                 ) : null}
                 {draft ? (
                   <>
                     {source === "heuristic" ? (
-                      <p className="text-[11px] text-muted-foreground">Generell mall — lägg in en OpenAI-nyckel för anpassad text.</p>
+                      <p className="text-[11px] text-muted-foreground">{t("draft.heuristicHint")}</p>
                     ) : null}
                     {tab === "email" && draft.subject ? (
                       <p className="text-sm">
-                        <span className="text-muted-foreground">Ämne: </span>
+                        <span className="text-muted-foreground">{t("labels.subject")} </span>
                         <span className="font-medium">{draft.subject}</span>
                       </p>
                     ) : null}
@@ -211,11 +214,11 @@ export function OutreachDraftDialog({
                     ) : null}
                     {tab === "follow-up" && draft.followUps.length > 0 ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Uppföljningssekvens</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("labels.followUpSequence")}</p>
                         {draft.followUps.map((fu, index) => (
                           <div key={index} className="rounded-md border border-border/70 p-2.5 space-y-1">
                             <Badge variant="outline" className="text-[10px]">
-                              Dag {fu.day}
+                              {t("labels.day", { n: fu.day })}
                             </Badge>
                             {fu.subject ? <p className="text-[11px] font-medium">{fu.subject}</p> : null}
                             <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{fu.body}</pre>
@@ -229,11 +232,11 @@ export function OutreachDraftDialog({
                     ) : null}
                     {tab === "email" && draft.followUps.length > 0 ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Uppföljningssekvens (ingår i texten)</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("draft.followUpInBody")}</p>
                         {draft.followUps.map((fu, index) => (
                           <div key={index} className="rounded-md border border-border/70 p-2.5 space-y-1">
                             <Badge variant="outline" className="text-[10px]">
-                              Dag {fu.day}
+                              {t("labels.day", { n: fu.day })}
                             </Badge>
                             <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{fu.body}</pre>
                           </div>
@@ -244,13 +247,13 @@ export function OutreachDraftDialog({
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" size="sm" variant="outline" onClick={() => void copyText(outreachDraftText(draft, tab))}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
-                        Kopiera
+                        {t("actions.copy")}
                       </Button>
                       {tab === "email" ? (
                         <Button type="button" size="sm" variant="outline" asChild>
                           <a href={outreachDraftToMailto(draft, target?.prospectEmail)}>
                             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                            Öppna i e-post
+                            {t("draft.openInEmail")}
                           </a>
                         </Button>
                       ) : null}
@@ -258,12 +261,12 @@ export function OutreachDraftDialog({
                         <Button type="button" size="sm" variant="outline" asChild>
                           <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                            Hitta på LinkedIn
+                            {t("draft.findOnLinkedIn")}
                           </a>
                         </Button>
                       ) : null}
                       <Button type="button" size="sm" variant="ghost" onClick={() => void generateChannel(tab, { force: true })}>
-                        Generera om
+                        {t("actions.regenerate")}
                       </Button>
                       {onMarkContacted && tab === "email" ? (
                         <Button
@@ -272,10 +275,10 @@ export function OutreachDraftDialog({
                           variant="secondary"
                           onClick={() => {
                             onMarkContacted();
-                            toast.success("Lead markerad som kontaktad");
+                            toast.success(t("toast.leadContacted"));
                           }}
                         >
-                          Markera som kontaktad
+                          {t("actions.markContacted")}
                         </Button>
                       ) : null}
                     </div>

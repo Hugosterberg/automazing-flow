@@ -1,18 +1,110 @@
 {
+  "actions": {
+    "copy": "Kopiera",
+    "copied": "Kopierat",
+    "remove": "Ta bort",
+    "markSent": "Markera skickad",
+    "markedSent": "Markerad som skickad",
+    "draftRemoved": "Utkast borttaget",
+    "openEmail": "Öppna e-post",
+    "email": "E-post",
+    "use": "Använd",
+    "regenerate": "Generera om",
+    "markContacted": "Markera som kontaktad"
+  },
+  "labels": {
+    "subject": "Ämne:",
+    "subjectLine": "Ämnesrad",
+    "message": "Meddelande",
+    "draft": "Utkast",
+    "queue": "Kön",
+    "noEmail": "Ingen e-post",
+    "noEmailManual": "Ingen e-post — kopiera manuellt",
+    "followUpSequence": "Uppföljningssekvens",
+    "day": "Dag {{n}}"
+  },
   "queue": {
     "title": "Outreach-kö",
-    "emptyTitle": "Kön är tom",
-    "emptyDesc": "När automationen skapar uppföljningsutkast landar de här för granskning.",
-    "search": "Sök outreach-utkast",
-    "panelEmpty": "Välj ett utkast i listan."
+    "count": "{{count}} utkast",
+    "description": "Automatiskt genererade utkast — granska, skicka och markera som skickade.",
+    "noProfile": "Välj en affärsprofil för att se outreach-kön.",
+    "emptyTitle": "Outreach-kön är tom",
+    "emptyDesc": "Aktivera automatisk outreach — utkast hamnar här när uppföljningar ska göras. Du granskar och skickar själv.",
+    "enableCta": "Aktivera outreach-automation",
+    "searchPlaceholder": "Sök utkast…",
+    "searchAria": "Sök outreach-utkast",
+    "noMatchTitle": "Inga utkast matchar",
+    "noMatchDesc": "Prova ett annat sökord eller rensa filtret.",
+    "selected": "Valt:",
+    "pickDraft": "Välj ett utkast i listan",
+    "shortcutHint": "J/K · S Sent · / Search",
+    "countOf": "{{filtered}} av {{total}} utkast",
+    "searchActive": " · sök aktiv"
+  },
+  "automation": {
+    "enableTitle": "Automatisera lead-uppföljning",
+    "enableDesc": "Slå på automatisk outreach — utkast skapas i kön när leads behöver följas upp. Du godkänner innan något skickas.",
+    "enableCta": "Aktivera outreach-automation"
   },
   "draft": {
-    "title": "Outreach-utkast",
-    "send": "Skicka till kön",
-    "cancel": "Avbryt"
+    "title": "Outreach-utkast — {{name}}",
+    "titleGeneric": "Outreach-utkast",
+    "description": "Alla tre kanaler genereras automatiskt när du öppnar dialogen.",
+    "noProfileTitle": "Ingen aktiv profil",
+    "noProfileDesc": "Välj en företagsprofil innan du genererar outreach-utkast.",
+    "pickProfileFirst": "Välj en företagsprofil först.",
+    "tabs": {
+      "email": "E-post",
+      "linkedin": "LinkedIn",
+      "followUp": "Uppföljning"
+    },
+    "generate": {
+      "email": "Generera mailutkast",
+      "linkedin": "Generera LinkedIn-utkast",
+      "followUp": "Generera uppföljningsutkast"
+    },
+    "writing": "Skriver outreach-text…",
+    "heuristicHint": "Generell mall — lägg in en OpenAI-nyckel för anpassad text.",
+    "followUpInBody": "Uppföljningssekvens (ingår i texten)",
+    "openInEmail": "Öppna i e-post",
+    "findOnLinkedIn": "Hitta på LinkedIn",
+    "prospectFallback": "prospekt",
+    "ready": "ready"
+  },
+  "detail": {
+    "backList": "Tillbaka till listan",
+    "backQueue": "Kön",
+    "prev": "Föregående utkast",
+    "next": "Nästa utkast",
+    "emptyTitle": "Välj ett utkast",
+    "emptyDesc": "Granska, skicka via e-post och markera som skickat — listan stannar kvar till vänster."
+  },
+  "content": {
+    "title": "Innehåll som attraherar kunder",
+    "description": "Inläggs- och materialidéer som värmer upp potentiella köpare — inte bara inlägg för befintliga följare.",
+    "fetch": "Hämta idéer",
+    "regenerate": "Generera om",
+    "emptyLink": "Fler publiceringsflöden — bildtexter, media och säkerhetskontroller — finns under",
+    "contentPage": "Innehåll",
+    "heuristicHint": "Generella förslag — lägg in en OpenAI-nyckel för idéer anpassade till din målgrupp.",
+    "ideaReadyToast": "Idén är klar i Innehåll — publicera eller spara",
+    "noIdeas": "Inga idéer kom tillbaka — försök igen.",
+    "create": "Skapa →"
+  },
+  "inbox": {
+    "noDraftSnippet": "Inget utkast"
+  },
+  "clipboard": {
+    "subjectPrefix": "Ämne: {{subject}}",
+    "followUpHeader": "Uppföljningar",
+    "dayLabel": "Dag {{n}}"
   },
   "toast": {
-    "draftFail": "Kunde inte skapa utkast.",
-    "loadFail": "Kunde inte ladda outreach."
+    "draftFail": "Kunde inte generera outreach-utkast.",
+    "loadFail": "Kunde inte ladda innehållsidéer för outreach.",
+    "generateFail": "Kunde inte generera outreach.",
+    "copyFail": "Kunde inte kopiera",
+    "ideasFail": "Kunde inte ladda innehållsidéer för outreach.",
+    "leadContacted": "Lead markerad som kontaktad"
   }
 }

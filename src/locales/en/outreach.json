@@ -1,18 +1,110 @@
 {
+  "actions": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "remove": "Remove",
+    "markSent": "Mark sent",
+    "markedSent": "Marked as sent",
+    "draftRemoved": "Draft removed",
+    "openEmail": "Open email",
+    "email": "Email",
+    "use": "Use",
+    "regenerate": "Regenerate",
+    "markContacted": "Mark as contacted"
+  },
+  "labels": {
+    "subject": "Subject:",
+    "subjectLine": "Subject line",
+    "message": "Message",
+    "draft": "Draft",
+    "queue": "Queue",
+    "noEmail": "No email",
+    "noEmailManual": "No email — copy manually",
+    "followUpSequence": "Follow-up sequence",
+    "day": "Day {{n}}"
+  },
   "queue": {
     "title": "Outreach queue",
-    "emptyTitle": "Queue is empty",
-    "emptyDesc": "When automation creates follow-up drafts they land here for review.",
-    "search": "Search outreach drafts",
-    "panelEmpty": "Pick a draft in the list."
+    "count": "{{count}} drafts",
+    "description": "Auto-generated drafts — review, send and mark as sent.",
+    "noProfile": "Pick a business profile to see the outreach queue.",
+    "emptyTitle": "Outreach queue is empty",
+    "emptyDesc": "Enable automatic outreach — drafts land here when follow-ups are due. You review and send yourself.",
+    "enableCta": "Enable outreach automation",
+    "searchPlaceholder": "Search drafts…",
+    "searchAria": "Search outreach drafts",
+    "noMatchTitle": "No drafts match",
+    "noMatchDesc": "Try another search term or clear the filter.",
+    "selected": "Selected:",
+    "pickDraft": "Pick a draft in the list",
+    "shortcutHint": "J/K · S Sent · / Search",
+    "countOf": "{{filtered}} of {{total}} drafts",
+    "searchActive": " · search active"
+  },
+  "automation": {
+    "enableTitle": "Automate lead follow-up",
+    "enableDesc": "Turn on automatic outreach — drafts are created in the queue when leads need follow-up. You approve before anything sends.",
+    "enableCta": "Enable outreach automation"
   },
   "draft": {
-    "title": "Outreach draft",
-    "send": "Send to queue",
-    "cancel": "Cancel"
+    "title": "Outreach draft — {{name}}",
+    "titleGeneric": "Outreach draft",
+    "description": "All three channels generate automatically when you open the dialog.",
+    "noProfileTitle": "No active profile",
+    "noProfileDesc": "Pick a business profile before generating outreach drafts.",
+    "pickProfileFirst": "Pick a business profile first.",
+    "tabs": {
+      "email": "Email",
+      "linkedin": "LinkedIn",
+      "followUp": "Follow-up"
+    },
+    "generate": {
+      "email": "Generate email draft",
+      "linkedin": "Generate LinkedIn draft",
+      "followUp": "Generate follow-up draft"
+    },
+    "writing": "Writing outreach copy…",
+    "heuristicHint": "Generic template — add an OpenAI key for tailored copy.",
+    "followUpInBody": "Follow-up sequence (included in the text)",
+    "openInEmail": "Open in email",
+    "findOnLinkedIn": "Find on LinkedIn",
+    "prospectFallback": "prospect",
+    "ready": "ready"
+  },
+  "detail": {
+    "backList": "Back to list",
+    "backQueue": "Queue",
+    "prev": "Previous draft",
+    "next": "Next draft",
+    "emptyTitle": "Pick a draft",
+    "emptyDesc": "Review, send via email and mark as sent — the list stays on the left."
+  },
+  "content": {
+    "title": "Content that attracts customers",
+    "description": "Post and asset ideas that warm up potential buyers — not just posts for existing followers.",
+    "fetch": "Fetch ideas",
+    "regenerate": "Regenerate",
+    "emptyLink": "More publishing flows — captions, media and safety checks — live under",
+    "contentPage": "Content",
+    "heuristicHint": "Generic suggestions — add an OpenAI key for ideas tailored to your audience.",
+    "ideaReadyToast": "Idea ready in Content — publish or save",
+    "noIdeas": "No ideas came back — try again.",
+    "create": "Create →"
+  },
+  "inbox": {
+    "noDraftSnippet": "No draft"
+  },
+  "clipboard": {
+    "subjectPrefix": "Subject: {{subject}}",
+    "followUpHeader": "Follow-ups",
+    "dayLabel": "Day {{n}}"
   },
   "toast": {
-    "draftFail": "Could not create draft.",
-    "loadFail": "Could not load outreach."
+    "draftFail": "Could not generate outreach draft.",
+    "loadFail": "Could not load outreach content ideas.",
+    "generateFail": "Could not generate outreach.",
+    "copyFail": "Could not copy",
+    "ideasFail": "Could not load outreach content ideas.",
+    "leadContacted": "Lead marked as contacted"
   }
 }
