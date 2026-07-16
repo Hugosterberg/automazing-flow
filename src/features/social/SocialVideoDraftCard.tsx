@@ -57,20 +57,24 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
     setDraft(null);
     setError(null);
     try {
-      const result = await apiJson("/api/content/video-draft", t("videoDraft.generateError"), {
-        body: {
-          asset: {
-            id: selectedVideoAsset.id,
-            name: selectedVideoAsset.name,
-            mimeType: selectedVideoAsset.mimeType,
-            kind: selectedVideoAsset.kind,
-            webViewLink: selectedVideoAsset.webViewLink,
+      const result = await apiJson<{ draft: VideoDraftResult; source: string }>(
+        "/api/content/video-draft",
+        t("videoDraft.generateError"),
+        {
+          body: {
+            asset: {
+              id: selectedVideoAsset.id,
+              name: selectedVideoAsset.name,
+              mimeType: selectedVideoAsset.mimeType,
+              kind: selectedVideoAsset.kind,
+              webViewLink: selectedVideoAsset.webViewLink,
+            },
+            prompt: videoPrompt,
+            platform: videoPlatform,
+            objective: videoObjective,
           },
-          prompt: videoPrompt,
-          platform: videoPlatform,
-          objective: videoObjective,
-        },
-      });
+        }
+      );
       setDraft(result.draft);
       setDraftSource(result.source);
     } catch (err) {
