@@ -1,18 +1,8 @@
 /**
  * i18next setup — the app's single translation entry point.
  *
- * Standard stack: i18next + react-i18next with JSON resources under
- * src/locales/<lang>/<namespace>.json. Components use `useTranslation()`;
- * non-React modules import { t } from here.
- *
- * Language policy lives in src/lib/appLanguage.ts: explicit user choice →
- * cached geo detection → English, with a one-time /api/geo lookup on the
- * very first visit (Swedish only when browsing from Sweden).
- *
- * Migration convention (see AGENTS.md → Internationalization):
- *   - New/changed UI copy goes through t("namespace:key") — never hardcoded.
- *   - Existing Swedish strings are migrated slice by slice; a slice gets its
- *     own namespace file when `common` grows past a screenful.
+ * Language policy: src/lib/appLanguage.ts (user → geo → en; Swedish only for SE).
+ * Namespaces live under src/locales/<lang>/<namespace>.json.
  */
 
 import i18next from "i18next";
@@ -28,6 +18,12 @@ import { setFormatLocale } from "@/lib/format";
 import { setRelativeTimeLocale } from "@/lib/relativeTime";
 import svCommon from "@/locales/sv/common.json";
 import enCommon from "@/locales/en/common.json";
+import svLanding from "@/locales/sv/landing.json";
+import enLanding from "@/locales/en/landing.json";
+import svHome from "@/locales/sv/home.json";
+import enHome from "@/locales/en/home.json";
+import svPreferences from "@/locales/sv/preferences.json";
+import enPreferences from "@/locales/en/preferences.json";
 
 export const i18n = i18next;
 
@@ -40,11 +36,6 @@ function applyLanguageSideEffects(lang: string): void {
   }
 }
 
-/**
- * Initialize synchronously with the best known language so the first paint
- * is already correct for returning visitors; kick off geo detection in the
- * background only when we know nothing yet (first ever visit).
- */
 export function initI18n(): void {
   if (i18next.isInitialized) return;
 
@@ -52,13 +43,24 @@ export function initI18n(): void {
 
   void i18next.use(initReactI18next).init({
     resources: {
-      sv: { common: svCommon },
-      en: { common: enCommon },
+      sv: {
+        common: svCommon,
+        landing: svLanding,
+        home: svHome,
+        preferences: svPreferences,
+      },
+      en: {
+        common: enCommon,
+        landing: enLanding,
+        home: enHome,
+        preferences: enPreferences,
+      },
     },
     lng: initialLanguage,
     fallbackLng: "en",
     defaultNS: "common",
-    interpolation: { escapeValue: false }, // React escapes output itself
+    ns: ["common", "landing", "home", "preferences"],
+    interpolation: { escapeValue: false },
     returnEmptyString: false,
   });
 
@@ -67,7 +69,6 @@ export function initI18n(): void {
 
   if (needsGeoDetection()) {
     void detectGeoLanguage().then((detected) => {
-      // The user may have picked a language while the lookup was in flight.
       if (detected && getUserLanguage() === null && detected !== i18next.language) {
         void i18next.changeLanguage(detected);
       }
@@ -75,7 +76,7 @@ export function initI18n(): void {
   }
 }
 
-/** Translation for non-React modules (nav titles in helpers, etc.). */
+/** Translation for non-React modules. Supports `ns:key` or defaultNS keys. */
 export function t(key: string, options?: Record<string, unknown>): string {
   return i18next.t(key, options);
 }

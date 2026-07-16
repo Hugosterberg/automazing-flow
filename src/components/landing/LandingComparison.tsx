@@ -1,14 +1,24 @@
 import { useState } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { ArrowRight, X, Check } from "lucide-react";
-import { LANDING_COMPARISON, LANDING_PILLARS } from "@/lib/landingContent";
+import { useTranslation } from "react-i18next";
+import { LANDING_PILLAR_DEFS } from "@/lib/landingContent";
 import { cn } from "@/lib/utils";
 
 type ComparisonSide = "before" | "after";
 
 function ComparisonCard({ side }: { side: ComparisonSide }) {
-  const data = LANDING_COMPARISON[side];
+  const { t } = useTranslation("landing");
   const isAfter = side === "after";
+  const title = t(isAfter ? "comparison.afterTitle" : "comparison.beforeTitle");
+  const items = isAfter
+    ? [t("comparison.after0"), t("comparison.after1"), t("comparison.after2"), t("comparison.after3")]
+    : [
+        t("comparison.before0"),
+        t("comparison.before1"),
+        t("comparison.before2"),
+        t("comparison.before3"),
+      ];
 
   return (
     <article
@@ -31,10 +41,10 @@ function ComparisonCard({ side }: { side: ComparisonSide }) {
           isAfter ? "text-primary" : "text-muted-foreground"
         )}
       >
-        {data.title}
+        {title}
       </p>
       <ul className="mt-4 space-y-3">
-        {data.items.map((item) => (
+        {items.map((item) => (
           <li
             key={item}
             className={cn(
@@ -53,7 +63,7 @@ function ComparisonCard({ side }: { side: ComparisonSide }) {
       </ul>
       {isAfter ? (
         <p className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-          Så enkelt ska det vara
+          {t("comparison.soSimple")}
           <ArrowRight className="h-3.5 w-3.5" />
         </p>
       ) : null}
@@ -62,6 +72,7 @@ function ComparisonCard({ side }: { side: ComparisonSide }) {
 }
 
 export function LandingComparison() {
+  const { t } = useTranslation("landing");
   const [activeSide, setActiveSide] = useState<ComparisonSide>("after");
 
   return (
@@ -81,7 +92,7 @@ export function LandingComparison() {
                 : "text-muted-foreground"
             )}
           >
-            {side === "before" ? "Utan" : "Med automazing"}
+            {side === "before" ? t("comparisonUi.withoutShort") : t("comparisonUi.withShort")}
           </button>
         ))}
       </div>
@@ -109,41 +120,52 @@ export function LandingComparison() {
 }
 
 export function LandingPillars() {
+  const { t } = useTranslation("landing");
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {LANDING_PILLARS.map((pillar, index) => (
-        <article
-          key={pillar.title}
-          className={cn(
-            "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all duration-300 hover-lift interactive landing-premium-card",
-            index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/10"
-          )}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 landing-grid-bg"
-          />
-          <div className="relative space-y-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-gradient-to-br from-info/15 via-muted/40 to-card/40 shadow-[0_0_24px_-10px_hsl(var(--info)/0.5)] transition-shadow duration-300 group-hover:shadow-[0_0_28px_-8px_hsl(var(--info)/0.65)]">
-              <pillar.icon className="h-5 w-5 text-info transition-transform duration-300 group-hover:scale-110" />
+      {LANDING_PILLAR_DEFS.map((pillar, index) => {
+        const title = t(`pillars.${pillar.key}.title`);
+        const tagline = t(`pillars.${pillar.key}.tagline`);
+        const items = [
+          t(`pillars.${pillar.key}.i0`),
+          t(`pillars.${pillar.key}.i1`),
+          t(`pillars.${pillar.key}.i2`),
+        ];
+        return (
+          <article
+            key={pillar.key}
+            className={cn(
+              "group relative overflow-hidden rounded-2xl border border-border/70 bg-card/40 p-5 transition-all duration-300 hover-lift interactive landing-premium-card",
+              index === 1 && "lg:-translate-y-1 lg:shadow-lg lg:shadow-primary/10"
+            )}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100 landing-grid-bg"
+            />
+            <div className="relative space-y-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-gradient-to-br from-info/15 via-muted/40 to-card/40 shadow-[0_0_24px_-10px_hsl(var(--info)/0.5)] transition-shadow duration-300 group-hover:shadow-[0_0_28px_-8px_hsl(var(--info)/0.65)]">
+                <pillar.icon className="h-5 w-5 text-info transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {title}
+                </p>
+                <h3 className="mt-1 font-display text-lg font-semibold">{tagline}</h3>
+              </div>
+              <ul className="space-y-2">
+                {items.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary/80" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {pillar.title}
-              </p>
-              <h3 className="mt-1 font-display text-lg font-semibold">{pillar.tagline}</h3>
-            </div>
-            <ul className="space-y-2">
-              {pillar.items.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary/80" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }

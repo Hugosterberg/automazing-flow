@@ -1,0 +1,167 @@
+{
+  "nav": {
+    "demo": "Demo",
+    "why": "Varför",
+    "getStarted": "Kom igång",
+    "signIn": "Logga in",
+    "signInOrCreate": "Logga in / Skapa konto",
+    "openMenu": "Öppna meny",
+    "mobileNav": "Mobilnavigering",
+    "siteNav": "Sidnavigering",
+    "start": "Start"
+  },
+  "hero": {
+    "headline": "Automatiskt. Amazing.",
+    "sub": "Social, mail, recensioner och sälj i ett flöde — snabbt, smidigt och effektivt.",
+    "ctaPrimary": "Skapa konto gratis",
+    "ctaSecondary": "Se det i action"
+  },
+  "sections": {
+    "whyTitle": "Varför byta?",
+    "whyDesc": "Mindre admin. Mer koll. En app i stället för ett lapptäcke av verktyg.",
+    "demoTitle": "Se appen i action",
+    "demoDesc": "Klicka på flikarna eller låt demon rulla — så här ser en vanlig dag ut.",
+    "integrations": "Kopplar till det du redan använder",
+    "pillarsTitle": "Tre saker. En plattform.",
+    "pillarsDesc": "Allt hänger ihop — från första meddelande till stängd affär.",
+    "stepsTitle": "Kom igång på tre steg",
+    "founderTitle": "Byggt för dig som kör själv",
+    "founderDesc": "Inget påhittat kundcase — så produkten används i praktiken.",
+    "readyTitle": "Redo att köra?",
+    "readyDesc": "Skapa konto — du ser värdet redan första dagen."
+  },
+  "trust": {
+    "free": "Gratis att skapa konto",
+    "noCard": "Inget kreditkort krävs",
+    "minutes": "Koppla kanaler på minuter"
+  },
+  "footer": {
+    "dataNote": "Data raderas när du tar bort en profil under Inställningar → Data. Formella villkor/privacy publiceras separat."
+  },
+  "pillars": {
+    "collect": {
+      "title": "Samla",
+      "tagline": "Sluta hoppa mellan flikar",
+      "i0": "Mail, DM och WhatsApp i en inbox",
+      "i1": "Google & Tripadvisor-recensioner",
+      "i2": "Kalender och innehåll på samma ställe"
+    },
+    "grow": {
+      "title": "Väx",
+      "tagline": "Sälj och marknadsför smartare",
+      "i0": "Leads, pipeline och uppföljningar",
+      "i1": "Google Ads & Meta i samma vy",
+      "i2": "Automationer som kör sig själva"
+    },
+    "understand": {
+      "title": "Förstå",
+      "tagline": "AI som känner er verklighet",
+      "i0": "Daglig överblick — vad behöver göras idag",
+      "i1": "AI-utkast till svar och rekommendationer",
+      "i2": "MCP Intelligence mot era kopplade data"
+    }
+  },
+  "comparison": {
+    "beforeTitle": "Utan automazing",
+    "afterTitle": "Med automazing",
+    "soSimple": "Så enkelt ska det vara",
+    "before0": "8+ verktyg och inloggningar",
+    "before1": "Recensioner som hinner bli gamla",
+    "before2": "Ingen koll på vad som är viktigast idag",
+    "before3": "AI-tips som inte känner er business",
+    "after0": "En app för kommunikation, sälj & content",
+    "after1": "Prioriterad inbox med AI-utkast",
+    "after2": "Home visar exakt vad som behöver göras",
+    "after3": "Insikter från era riktiga kopplingar"
+  },
+  "steps": {
+    "s1Title": "Skapa konto",
+    "s1Desc": "Google eller e-post — under en minut.",
+    "s2Title": "Koppla kanaler",
+    "s2Desc": "Instagram, mail, recensioner m.m.",
+    "s3Title": "Se resultat",
+    "s3Desc": "Överblick, AI och automationer direkt."
+  },
+  "founder": {
+    "eyebrow": "Så används automazing",
+    "title": "En solo-founder. En app. Utkast före sändning.",
+    "body": "Hugo kör bolaget med automazing som nav: morgonbrief, Idag-triage i Meddelanden, AI-utkast som alltid godkänns innan sändning, och automationer som syns i Aktivitet.",
+    "b0Label": "Morgon",
+    "b0Detail": "Brief visar vad som faktiskt behöver göras — tysta dagar är okej.",
+    "b1Label": "Inkorg",
+    "b1Detail": "Mail och DM i samma triage. Brus parkeras, Idag besvaras.",
+    "b2Label": "Trygghet",
+    "b2Detail": "Inget känsligt skickas utan dig. Kopplingar har en enda hemvist."
+  },
+  "demo": {
+    "home": "Överblick",
+    "homeCaption": "Din dag i ett ögonkast — prioriterat innan kunder hinner bli otåliga.",
+    "messages": "Meddelanden",
+    "messagesCaption": "En inbox för mail och DM. AI sammanfattar och föreslår svar.",
+    "reviews": "Recensioner",
+    "reviewsCaption": "Nya omdömen → AI-utkast → publicera med ett klick.",
+    "sales": "Försäljning",
+    "salesCaption": "Leads blir affärer. Pipeline och uppföljningar hänger ihop.",
+    "intelligence": "MCP & AI",
+    "intelligenceCaption": "Fråga er data — rätt verktyg väljs automatiskt.",
+    "pause": "Pausa",
+    "play": "Spela",
+    "unread": "Olästa meddelanden",
+    "reviewsTodo": "Recensioner att svara på",
+    "tasksToday": "Uppgifter idag",
+    "dealsPipeline": "Affärer i pipeline"
+  },
+  "auth": {
+    "continueGoogle": "Fortsätt med Google",
+    "continueEmail": "Fortsätt med e-post",
+    "openingGoogle": "Öppnar Google…",
+    "or": "eller",
+    "orLocal": "Eller",
+    "email": "E-post",
+    "emailAddress": "E-postadress",
+    "emailPlaceholder": "du@foretag.se",
+    "password": "Lösenord",
+    "showPassword": "Visa lösenord",
+    "hidePassword": "Dölj lösenord",
+    "signIn": "Logga in",
+    "createFree": "Skapa konto gratis",
+    "createAccount": "Skapa ditt konto",
+    "createSubtitle": "Gratis — klart på under en minut.",
+    "sendMagic": "Skicka inloggningslänk",
+    "sendReset": "Skicka återställningslänk",
+    "backToSignIn": "Tillbaka till inloggning",
+    "haveAccount": "Har du redan ett konto? Logga in",
+    "noAccount": "Inget konto? Skapa ett",
+    "forgotPassword": "Glömt lösenordet?",
+    "magicLink": "Logga in utan lösenord",
+    "localMode": "Lokalt läge (ingen inloggning)",
+    "localHint": "Allt sparas bara i den här webbläsaren.",
+    "googlePrivacy": "Vi importerar bara ditt namn och din e-postadress.",
+    "checkEmailSignup": "Kolla din e-post och klicka på bekräftelselänken för att aktivera ditt konto.",
+    "checkEmailMagic": "En inloggningslänk har skickats till din e-post. Kolla inkorgen.",
+    "checkEmailReset": "En återställningslänk har skickats till din e-post.",
+    "errInvalid": "Fel e-post eller lösenord.",
+    "errUnconfirmed": "Bekräfta din e-post innan du loggar in.",
+    "errRegistered": "Det finns redan ett konto med den e-postadressen. Logga in istället.",
+    "errPassword": "Lösenordet måste vara minst 6 tecken.",
+    "errRate": "För många försök. Vänta en stund och försök igen.",
+    "errNetwork": "Nätverksfel — kontrollera din anslutning.",
+    "errGeneric": "Något gick fel",
+    "title": "Kom igång",
+    "subtitle": "Skapa konto eller logga in till din workspace.",
+    "stepsHint": "Steg för att komma igång",
+    "stepsAria": "Steg för att komma igång"
+  },
+  "comparisonUi": {
+    "withoutShort": "Utan",
+    "withShort": "Med automazing"
+  },
+  "gate": {
+    "unavailableTitle": "Cloud-inloggning ej tillgänglig",
+    "unavailableDesc": "Supabase-miljövariabler saknas. Lägg till VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY för att aktivera inloggning.",
+    "continueLocal": "Fortsätt i lokalt läge",
+    "localHint": "Profiler och kopplade kanaler sparas i den här webbläsaren.",
+    "configureHost": "Konfigurera variablerna på din host (t.ex. Vercel) och driftsätt på nytt.",
+    "loading": "Kontrollerar inloggning…"
+  }
+}

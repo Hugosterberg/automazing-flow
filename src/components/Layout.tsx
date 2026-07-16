@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { useLiveChangeNotifications } from "@/hooks/useLiveChangeNotifications";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { isNavUrlAllowedInMode } from "@/components/navConfig";
+import { LanguageSwitcherCompact } from "@/components/LanguageSwitcher";
 
 /**
  * Pick a stable single-character fallback for the avatar badge.
@@ -92,7 +93,7 @@ export default function Layout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg"
       >
-        Hoppa till innehåll
+        {t("common.skipToContent")}
       </a>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
@@ -103,6 +104,7 @@ export default function Layout() {
             {!isMobile ? <WorkspaceModeTabs /> : null}
             <ActiveProfileContextBar />
             <div className="ml-auto flex items-center gap-0.5 shrink-0 sm:gap-2">
+              <LanguageSwitcherCompact />
               <CommandPalette onOpenShortcuts={openShortcuts} />
               <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
               <NotificationsBell />

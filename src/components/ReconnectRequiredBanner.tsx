@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
  * outside the Connections page.
  */
 export function ReconnectRequiredBanner() {
+  const { t } = useTranslation();
   const businessProfileId = useActiveBusinessProfileIdOptional();
   const { connections } = useConnections(businessProfileId);
   useTokenExpiryNotifier(connections);
@@ -39,7 +41,10 @@ export function ReconnectRequiredBanner() {
     platforms.length === 1
       ? `/connections?filter=attention&q=${encodeURIComponent(labels[0])}`
       : "/connections?filter=attention";
-  const cta = platforms.length === 1 ? `Åtgärda ${labels[0]}` : "Åtgärda kopplingar";
+  const cta =
+    platforms.length === 1
+      ? t("chrome.fixOne", { platform: labels[0] })
+      : t("chrome.fixMany");
 
   return (
     <div
@@ -55,12 +60,12 @@ export function ReconnectRequiredBanner() {
         <p className="min-w-0 flex-1 text-xs text-foreground sm:text-sm">
           <span className="font-medium">
             {issues.length === 1
-              ? "1 koppling behöver återanslutas"
-              : `${issues.length} kopplingar behöver återanslutas`}
+              ? t("chrome.reconnectOne")
+              : t("chrome.reconnectMany", { count: issues.length })}
           </span>
           <span className="text-muted-foreground">
             {" "}
-            — {shown}. Synk och automationer pausar tills det är åtgärdat.
+            {t("chrome.reconnectPause", { platforms: shown })}
           </span>
         </p>
         <Button asChild type="button" size="sm" className="h-7 shrink-0 text-xs">
@@ -70,7 +75,7 @@ export function ReconnectRequiredBanner() {
           type="button"
           onClick={() => setSessionDismissed(true)}
           className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-          aria-label="Dölj tills nästa omladdning"
+          aria-label={t("chrome.dismissUntilReload")}
         >
           <X className="h-3.5 w-3.5" />
         </button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CheckCircle2, Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,24 +34,21 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-function translateAuthError(msg: string): string {
+function translateAuthError(msg: string, t: (key: string) => string): string {
   const lower = msg.toLowerCase();
   if (lower.includes("invalid login credentials") || lower.includes("invalid_credentials")) {
-    return "Fel e-post eller lösenord.";
+    return t("auth.errInvalid");
   }
-  if (lower.includes("email not confirmed")) return "Bekräfta din e-post innan du loggar in.";
-  if (lower.includes("user already registered")) {
-    return "Det finns redan ett konto med den e-postadressen. Logga in istället.";
-  }
-  if (lower.includes("password should be at least")) return "Lösenordet måste vara minst 6 tecken.";
-  if (lower.includes("rate limit")) return "För många försök. Vänta en stund och försök igen.";
-  if (lower.includes("network") || lower.includes("fetch")) {
-    return "Nätverksfel — kontrollera din anslutning.";
-  }
+  if (lower.includes("email not confirmed")) return t("auth.errUnconfirmed");
+  if (lower.includes("user already registered")) return t("auth.errRegistered");
+  if (lower.includes("password should be at least")) return t("auth.errPassword");
+  if (lower.includes("rate limit")) return t("auth.errRate");
+  if (lower.includes("network") || lower.includes("fetch")) return t("auth.errNetwork");
   return msg;
 }
 
 function EmailLoginForm() {
+  const { t } = useTranslation("landing");
   const { signInWithEmail, signUpWithEmail, signInWithMagicLink, resetPassword } = useAuth();
   const [view, setView] = useState<EmailView>("signup");
   const [email, setEmail] = useState("");
@@ -75,19 +73,19 @@ function EmailLoginForm() {
       } else if (view === "signup") {
         await signUpWithEmail(email, password);
         setView("check_email");
-        setSuccessMsg("Kolla din e-post och klicka på bekräftelselänken för att aktivera ditt konto.");
+        setSuccessMsg(t("auth.checkEmailSignup"));
       } else if (view === "magic") {
         await signInWithMagicLink(email);
         setView("check_email");
-        setSuccessMsg("En inloggningslänk har skickats till din e-post. Kolla inkorgen.");
+        setSuccessMsg(t("auth.checkEmailMagic"));
       } else if (view === "reset") {
         await resetPassword(email);
         setView("check_email");
-        setSuccessMsg("En återställningslänk har skickats till din e-post.");
+        setSuccessMsg(t("auth.checkEmailReset"));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Något gick fel";
-      setError(translateAuthError(msg));
+      const msg = err instanceof Error ? err.message : t("auth.errGeneric");
+      setError(translateAuthError(msg, t));
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +96,15 @@ function EmailLoginForm() {
       <div className="space-y-4 py-2 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
         <p className="text-sm leading-relaxed text-muted-foreground">{successMsg}</p>
-        <Button variant="ghost" size="sm" onClick={() => { setView("signin"); clearState(); }}>
-          Tillbaka till inloggning
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setView("signin");
+            clearState();
+          }}
+        >
+          {t("auth.backToSignIn")}
         </Button>
       </div>
     );
@@ -108,22 +113,22 @@ function EmailLoginForm() {
   const needsPassword = view === "signin" || view === "signup";
   const submitLabel =
     view === "signin"
-      ? "Logga in"
+      ? t("auth.signIn")
       : view === "signup"
-        ? "Skapa konto gratis"
+        ? t("auth.createFree")
         : view === "magic"
-          ? "Skicka inloggningslänk"
-          : "Skicka återställningslänk";
+          ? t("auth.sendMagic")
+          : t("auth.sendReset");
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1.5">
-        <Label htmlFor="landing-email-input">E-postadress</Label>
+        <Label htmlFor="landing-email-input">{t("auth.emailAddress")}</Label>
         <Input
           id="landing-email-input"
           type="email"
           autoComplete="email"
-          placeholder="du@foretag.se"
+          placeholder={t("auth.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -132,7 +137,7 @@ function EmailLoginForm() {
       {needsPassword ? (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="landing-password-input">Lösenord</Label>
+            <Label htmlFor="landing-password-input">{t("auth.password")}</Label>
             {view === "signin" ? (
               <button
                 type="button"
@@ -142,7 +147,7 @@ function EmailLoginForm() {
                   clearState();
                 }}
               >
-                Glömt lösenordet?
+                {t("auth.forgotPassword")}
               </button>
             ) : null}
           </div>
@@ -161,7 +166,7 @@ function EmailLoginForm() {
               type="button"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Dölj lösenord" : "Visa lösenord"}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -191,7 +196,7 @@ function EmailLoginForm() {
                 clearState();
               }}
             >
-              Inget konto? Skapa ett
+              {t("auth.noAccount")}
             </button>
             <span aria-hidden>·</span>
             <button
@@ -202,7 +207,7 @@ function EmailLoginForm() {
                 clearState();
               }}
             >
-              Logga in utan lösenord
+              {t("auth.magicLink")}
             </button>
           </>
         ) : null}
@@ -215,7 +220,7 @@ function EmailLoginForm() {
               clearState();
             }}
           >
-            Har du redan ett konto? Logga in
+            {t("auth.haveAccount")}
           </button>
         ) : null}
         {view === "magic" || view === "reset" ? (
@@ -227,7 +232,7 @@ function EmailLoginForm() {
               clearState();
             }}
           >
-            Tillbaka till inloggning
+            {t("auth.backToSignIn")}
           </button>
         ) : null}
       </div>
@@ -241,6 +246,7 @@ type LandingAuthPanelProps = {
 };
 
 export function LandingAuthPanel({ className, compact = false }: LandingAuthPanelProps) {
+  const { t } = useTranslation("landing");
   const { authMode, setAuthMode, signInWithGoogle } = useAuth();
   const allowLocal = isLocalDevHost();
   const [authTab, setAuthTab] = useState<"email" | "google">("google");
@@ -254,8 +260,8 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
       await signInWithGoogle();
       setGoogleLoading(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Något gick fel";
-      setGoogleError(translateAuthError(msg));
+      const msg = err instanceof Error ? err.message : t("auth.errGeneric");
+      setGoogleError(translateAuthError(msg, t));
       setGoogleLoading(false);
     }
   }
@@ -269,13 +275,13 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
     >
       <div className="space-y-1">
         <h2 className="text-xl font-bold text-foreground">
-          {compact ? "Kom igång" : "Skapa ditt konto"}
+          {compact ? t("auth.title") : t("auth.createAccount")}
         </h2>
-        <p className="text-sm text-muted-foreground">Gratis — klart på under en minut.</p>
+        <p className="text-sm text-muted-foreground">{t("auth.createSubtitle")}</p>
       </div>
 
       {!compact ? (
-        <ol className="mt-4 flex flex-col gap-2 sm:flex-row" aria-label="Steg för att komma igång">
+        <ol className="mt-4 flex flex-col gap-2 sm:flex-row" aria-label={t("auth.stepsAria")}>
           {LANDING_STEPS.map((step) => (
             <li
               key={step.step}
@@ -283,7 +289,7 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
             >
               <span className="block font-display text-xs font-bold text-primary">{step.step}</span>
               <span className="mt-0.5 block text-[10px] leading-tight text-muted-foreground">
-                {step.title}
+                {t(step.titleKey)}
               </span>
             </li>
           ))}
@@ -318,7 +324,7 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
           )}
         >
           <Mail className="h-4 w-4" />
-          E-post
+          {t("auth.email")}
         </button>
       </div>
 
@@ -338,16 +344,14 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
               ) : (
                 <GoogleIcon className="h-4 w-4" />
               )}
-              {googleLoading ? "Öppnar Google…" : "Fortsätt med Google"}
+              {googleLoading ? t("auth.openingGoogle") : t("auth.continueGoogle")}
             </Button>
             {googleError ? (
               <p className="text-center text-xs text-destructive" role="alert">
                 {googleError}
               </p>
             ) : null}
-            <p className="text-center text-xs text-muted-foreground">
-              Vi importerar bara ditt namn och din e-postadress.
-            </p>
+            <p className="text-center text-xs text-muted-foreground">{t("auth.googlePrivacy")}</p>
           </div>
         )}
       </div>
@@ -359,14 +363,14 @@ export function LandingAuthPanel({ className, compact = false }: LandingAuthPane
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-wide">
-              <span className="bg-card/80 px-2 text-muted-foreground">Eller</span>
+              <span className="bg-card/80 px-2 text-muted-foreground">{t("auth.orLocal")}</span>
             </div>
           </div>
           <Button variant="secondary" className="w-full" onClick={() => setAuthMode("local")}>
-            Lokalt läge (ingen inloggning)
+            {t("auth.localMode")}
           </Button>
           <p className="mt-2 text-center text-xs leading-relaxed text-muted-foreground">
-            Allt sparas bara i den här webbläsaren.
+            {t("auth.localHint")}
           </p>
         </>
       ) : null}

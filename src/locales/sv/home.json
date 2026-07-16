@@ -1,0 +1,14 @@
+{
+  "title": "Startsida",
+  "smartBarTitle": "Dagens läge",
+  "sections": {
+    "moreToday": "Fler idag",
+    "profileDetails": "Profildetaljer",
+    "aiSuggestions": "AI-förslag",
+    "quickOverview": "Snabböversikt",
+    "automationsWorking": "Automationer som jobbar",
+    "goTo": "Gå till"
+  },
+  "editProfile": "Redigera profil",
+  "editProfileDesc": "Snabb redigering här — för guide om varje fält, gå till"
+}

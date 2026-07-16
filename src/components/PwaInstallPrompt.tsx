@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useIsMobile, useMobileReadingFocus } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ function wasDismissedRecently(): boolean {
  * Hidden when already installed, dismissed recently, or on desktop.
  */
 export function PwaInstallPrompt({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const readingFocus = useMobileReadingFocus();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
@@ -118,7 +120,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
   return (
     <div
       role="dialog"
-      aria-label="Installera app"
+      aria-label={t("chrome.pwaTitle")}
       className={cn(
         "fixed inset-x-3 z-50 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur-md safe-x",
         "bottom-[calc(var(--app-tab-bar-offset,4.25rem)+0.25rem+env(safe-area-inset-bottom,0px))] md:hidden",
@@ -134,26 +136,24 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
           className="mt-0.5 h-10 w-10 shrink-0 rounded-xl border border-border/60"
         />
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-semibold text-foreground">Lägg till på hemskärmen</p>
+          <p className="text-sm font-semibold text-foreground">{t("chrome.pwaTitle")}</p>
           {iosHint ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Tryck <Share className="mx-0.5 inline h-3.5 w-3.5 align-text-bottom" aria-hidden /> Dela, sedan
-              ”Lägg till på hemskärmen” för snabbare tillgång.
+              <Share className="mx-0.5 inline h-3.5 w-3.5 align-text-bottom" aria-hidden />
+              {t("chrome.pwaIosHint")}
             </p>
           ) : (
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Installera Automazing som app — snabbare start och mer plats på skärmen.
-            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{t("chrome.pwaBody")}</p>
           )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {!iosHint && deferred ? (
               <Button type="button" size="sm" className="h-9 gap-1.5 text-xs" onClick={() => void install()} disabled={busy}>
                 <Download className="h-3.5 w-3.5" />
-                Installera
+                {t("chrome.pwaInstall")}
               </Button>
             ) : null}
             <Button type="button" variant="ghost" size="sm" className="h-9 text-xs" onClick={dismiss}>
-              Inte nu
+              {t("chrome.pwaDismiss")}
             </Button>
           </div>
         </div>
@@ -163,7 +163,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
           size="sm"
           className="h-8 w-8 shrink-0 p-0 text-muted-foreground"
           onClick={dismiss}
-          aria-label="Stäng"
+          aria-label={t("common.close")}
         >
           <X className="h-4 w-4" />
         </Button>

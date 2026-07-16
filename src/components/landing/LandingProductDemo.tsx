@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, m } from "framer-motion";
 import { Bot, LineChart, MessageSquare, Pause, Play, Sparkles, Star, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
-  DEMO_SCENES,
-  DEMO_SIDEBAR_ACTIVE,
+  DEMO_SCENE_DEFS,
+  DEMO_SIDEBAR_ACTIVE_KEYS,
   LANDING_INTEGRATIONS,
   type DemoSceneId,
 } from "@/lib/landingContent";
@@ -11,15 +12,29 @@ import { cn } from "@/lib/utils";
 
 const SCENE_DURATION_MS = 5200;
 
-const SIDEBAR_NAV = ["Home", "Meddelanden", "Recensioner", "Försäljning", "Uppgifter"];
+const SIDEBAR_NAV_KEYS = [
+  "demo.home",
+  "demo.messages",
+  "demo.reviews",
+  "demo.sales",
+  "nav.tasks",
+] as const;
 
 function BrowserChrome({
   children,
-  activeNav,
+  activeNavKey,
 }: {
   children: React.ReactNode;
-  activeNav: string;
+  activeNavKey: string;
 }) {
+  const { t } = useTranslation("landing");
+  const { t: tc } = useTranslation();
+  const sidebarLabels = SIDEBAR_NAV_KEYS.map((key) =>
+    key === "nav.tasks" ? tc("nav.tasks") : t(key)
+  );
+  const activeNav =
+    activeNavKey === "nav.tasks" ? tc("nav.tasks") : t(activeNavKey);
+
   return (
     <div className="landing-demo-frame landing-premium-card overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-2xl">
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2.5 sm:px-4">
@@ -39,7 +54,7 @@ function BrowserChrome({
             <span className="hidden font-display text-[10px] font-bold sm:inline">automazing</span>
           </div>
           <nav className="space-y-0.5">
-            {SIDEBAR_NAV.map((item) => (
+            {sidebarLabels.map((item) => (
               <div
                 key={item}
                 title={item}
@@ -54,10 +69,10 @@ function BrowserChrome({
                 <span className="hidden sm:inline">{item}</span>
               </div>
             ))}
-            {activeNav === "MCP Intelligence" ? (
+            {activeNavKey === "demo.intelligence" ? (
               <div className="rounded-md bg-sidebar-accent px-1 py-1.5 text-center text-[9px] font-medium text-sidebar-accent-foreground sm:px-2 sm:text-left sm:text-[10px]">
                 <span className="sm:hidden">M</span>
-                <span className="hidden sm:inline">MCP Intelligence</span>
+                <span className="hidden sm:inline">{t("demo.intelligence")}</span>
               </div>
             ) : null}
           </nav>
@@ -69,11 +84,12 @@ function BrowserChrome({
 }
 
 function HomeScene() {
+  const { t } = useTranslation("landing");
   const tiles = [
-    { label: "Olästa meddelanden", value: 7, color: "text-info" },
-    { label: "Recensioner att svara på", value: 3, color: "text-warning" },
-    { label: "Uppgifter idag", value: 5, color: "text-foreground" },
-    { label: "Affärer i pipeline", value: 12, color: "text-success" },
+    { label: t("demo.unread"), value: 7, color: "text-info" },
+    { label: t("demo.reviewsTodo"), value: 3, color: "text-warning" },
+    { label: t("demo.tasksToday"), value: 5, color: "text-foreground" },
+    { label: t("demo.dealsPipeline"), value: 12, color: "text-success" },
   ];
 
   return (
@@ -446,11 +462,12 @@ function TypingText({
 }
 
 export function LandingProductDemo() {
+  const { t } = useTranslation("landing");
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
-  const activeScene = DEMO_SCENES[activeIndex]!;
-  const activeNav = DEMO_SIDEBAR_ACTIVE[activeScene.id];
+  const activeScene = DEMO_SCENE_DEFS[activeIndex]!;
+  const activeNavKey = DEMO_SIDEBAR_ACTIVE_KEYS[activeScene.id];
 
   useEffect(() => {
     if (paused) return;
@@ -467,7 +484,7 @@ export function LandingProductDemo() {
       const elapsed = now - started;
       setProgress(Math.min(elapsed / SCENE_DURATION_MS, 1));
       if (elapsed >= SCENE_DURATION_MS) {
-        setActiveIndex((current) => (current + 1) % DEMO_SCENES.length);
+        setActiveIndex((current) => (current + 1) % DEMO_SCENE_DEFS.length);
         return;
       }
       frame = requestAnimationFrame(tick);
@@ -486,16 +503,17 @@ export function LandingProductDemo() {
   return (
     <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-        {DEMO_SCENES.map((scene, index) => {
+        {DEMO_SCENE_DEFS.map((scene, index) => {
           const Icon = SCENE_ICONS[scene.id];
           const isActive = index === activeIndex;
+          const label = t(scene.labelKey);
           return (
             <button
               key={scene.id}
               type="button"
               onClick={() => selectScene(index)}
-              title={scene.label}
-              aria-label={scene.label}
+              title={label}
+              aria-label={label}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all sm:px-3",
                 isActive
@@ -504,7 +522,7 @@ export function LandingProductDemo() {
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">{scene.label}</span>
+              <span className="hidden sm:inline">{label}</span>
             </button>
           );
         })}
@@ -512,10 +530,10 @@ export function LandingProductDemo() {
           type="button"
           onClick={() => setPaused((p) => !p)}
           className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground sm:ml-auto"
-          aria-label={paused ? "Fortsätt demo" : "Pausa demo"}
+          aria-label={paused ? t("demo.play") : t("demo.pause")}
         >
           {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-          {paused ? "Spela" : "Paus"}
+          {paused ? t("demo.play") : t("demo.pause")}
         </button>
       </div>
 
@@ -527,7 +545,7 @@ export function LandingProductDemo() {
         />
       </div>
 
-      <BrowserChrome activeNav={activeNav}>
+      <BrowserChrome activeNavKey={activeNavKey}>
         <AnimatePresence mode="wait">
           <m.div
             key={activeScene.id}
@@ -542,7 +560,7 @@ export function LandingProductDemo() {
       </BrowserChrome>
 
       <p className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
-        {activeScene.caption}
+        {t(activeScene.captionKey)}
       </p>
     </div>
   );
