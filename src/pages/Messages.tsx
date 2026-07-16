@@ -1,15 +1,12 @@
 import { m } from "framer-motion";
-import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
-import { PageHeader } from "@/components/ui/page-header";
-import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
@@ -36,7 +33,6 @@ import {
   formatFullMessageDate,
   formatWaitTime,
   isUrgentWait,
-  messageMatchesTab,
   MESSAGE_TABS,
   providerMessageIdFor,
   senderInitial,
@@ -54,9 +50,7 @@ import {
   type TriageBucketFilter,
 } from "@/features/messages";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
-import { AutoReplyDraftsStrip } from "@/features/automation";
-import { MailReplyDraftsStrip } from "@/features/messages/MailReplyDraftsStrip";
-import { MailConnectEmptyCards } from "@/features/messages/MailConnectEmptyCards";
+import { MessagePageChrome } from "@/features/messages/MessagePageChrome";
 import { useLoadUnifiedInbox } from "@/features/messages/useLoadUnifiedInbox";
 import { useMessagesKeyboardShortcuts } from "@/features/messages/useMessagesKeyboardShortcuts";
 import { useMessageTriageState } from "@/features/messages/useMessageTriageState";
@@ -65,14 +59,15 @@ import { useMessageAiAssist } from "@/features/messages/useMessageAiAssist";
 import { useMailInboxActions } from "@/features/messages/useMailInboxActions";
 import { useMessageThread } from "@/features/messages/useMessageThread";
 import { useMessageReply } from "@/features/messages/useMessageReply";
-
-const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
+import { useSyncMessageAccounts, MESSAGE_ACCOUNT_PLATFORMS } from "@/features/messages/useSyncMessageAccounts";
+import { useMessageDetailProps } from "@/features/messages/useMessageDetailProps";
+import { useMessageAutoSelection } from "@/features/messages/useMessageAutoSelection";
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
   const accessToken = session?.access_token ?? null;
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
-  const { accounts, activeProfileId, addAccountFromOAuth, setSelectedAccountId } = useAccounts();
+  const { accounts, activeProfileId, addAccountFromOAuth } = useAccounts();
   const activeBp = useActiveBusinessProfileIdOptional();
   const businessProfileId = activeBp ?? activeProfileId ?? null;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,8 +87,6 @@ export default function MessagesPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusReplyRef = useRef<(() => void) | null>(null);
   const inboxPrefsRef = useRef<InboxPrefs>({});
-  const accountsRef = useRef(accounts);
-  accountsRef.current = accounts;
   const filteredMessagesRef = useRef<UnifiedMessage[]>([]);
   const pickNextAfterRef = useRef<(fromId: string, list: UnifiedMessage[]) => UnifiedMessage | null>(
     () => null
@@ -304,55 +297,12 @@ export default function MessagesPage() {
     return () => window.removeEventListener("automazing:oauth-success", handleOauthSuccess);
   }, [loadUnified]);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function syncMailAccountsFromBackend() {
-      try {
-        await ensureBackendSession();
-        const platforms = MESSAGE_ACCOUNT_PLATFORMS;
-        const existingAccountIds = new Set(accountsRef.current.map((account) => account.id));
-        for (const platform of platforms) {
-          const params = new URLSearchParams({ platform });
-          if (activeProfileId) params.set("business_profile_id", activeProfileId);
-          let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${params.toString()}`), { credentials: "include" });
-          if (res.status === 401) {
-            await ensureBackendSession();
-            res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${params.toString()}`), { credentials: "include" });
-          }
-          const payload = await res.json().catch(() => ({}));
-          if (!res.ok || ignore) continue;
-
-          const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
-          for (const account of backendAccounts) {
-            const accountId = String(account.account_id || "");
-            if (!accountId || existingAccountIds.has(accountId)) continue;
-            existingAccountIds.add(accountId);
-            addAccountFromOAuth(
-              accountId,
-              platform,
-              String(account.username || (platform === "gmail" ? "Gmail" : platform === "outlook" ? "Outlook" : platform)),
-              account.profile_id ? String(account.profile_id) : undefined,
-              {
-                displayName: account.displayName ? String(account.displayName) : undefined,
-                isZernio: Boolean(account.isZernio),
-                zernioAccountId: account.zernioAccountId ? String(account.zernioAccountId) : undefined,
-                // Background hydration must not flip the active profile.
-                switchActiveProfile: false,
-              }
-            );
-          }
-        }
-      } catch {
-        // Best-effort hydration only.
-      }
-    }
-
-    void syncMailAccountsFromBackend();
-    return () => {
-      ignore = true;
-    };
-  }, [activeProfileId, addAccountFromOAuth, ensureBackendSession]);
+  useSyncMessageAccounts({
+    accounts,
+    activeProfileId,
+    ensureBackendSession,
+    addAccountFromOAuth,
+  });
 
   // Connections is the sole connect home — avoid parallel OAuth entry points here.
 
@@ -645,48 +595,21 @@ export default function MessagesPage() {
 
   const showZernioNote = activeTab !== "mail" && Boolean(zernioNote);
 
-  useEffect(() => {
-    if (!selectedId || loading) return;
-    if (messages.some((m) => m.id === selectedId)) return;
-    // Message was removed (archive/delete) — clear so desktop auto-picks the new top.
-    userPickedMessage.current = false;
-    selectMessage(null);
-  }, [loading, messages, selectedId, selectMessage]);
-
-  useEffect(() => {
-    if (!selectedMessage) return;
-    if (messageMatchesTab(selectedMessage, activeTab)) return;
-    userPickedMessage.current = false;
-    selectMessage(null);
-  }, [activeTab, selectedMessage, selectMessage]);
-
-  useEffect(() => {
-    userPickedMessage.current = false;
-  }, [activeTab, activeProfileId, selectedMailFolder, inboxFilter, mailViewFilter, mailSort]);
-
-  // Desktop: always show the top list row on the right until the user picks another.
-  useEffect(() => {
-    if (loading) return;
-    if (typeof window === "undefined" || !window.matchMedia("(min-width: 1024px)").matches) return;
-    if (filteredMessages.length === 0) {
-      if (selectedId) selectMessage(null);
-      return;
-    }
-    const stillInList = Boolean(selectedId && filteredMessages.some((m) => m.id === selectedId));
-    if (userPickedMessage.current && stillInList) return;
-    const top = filteredMessages[0];
-    if (top && top.id !== selectedId) selectMessage(top);
-  }, [
+  useMessageAutoSelection({
     loading,
-    filteredMessages,
+    messages,
     selectedId,
-    selectMessage,
+    selectedMessage,
     activeTab,
+    activeProfileId,
     selectedMailFolder,
     inboxFilter,
     mailViewFilter,
     mailSort,
-  ]);
+    filteredMessages,
+    selectMessage,
+    userPickedMessage,
+  });
 
   const canReplyToSelected = Boolean(
     selectedMessage &&
@@ -715,83 +638,37 @@ export default function MessagesPage() {
     focusReplyRef,
   });
 
-  const detailProps = useMemo(() => {
-    if (!selectedMessage) return null;
-    return {
-      channelLabel: channelBadge(selectedMessage),
-      aiSummary: aiSummaries[selectedMessage.id],
-      threadMessages,
-      threadLoading,
-      replyDraft,
-      onReplyDraftChange: setReplyDraft,
-      draftBusy,
-      sendBusy,
-      replySent,
-      canReply: Boolean(canReplyToSelected),
-      isHandled: handledIds.has(selectedMessage.id),
-      needsAttention: isUnanswered(selectedMessage),
-      focusReplyRef,
-      onDraftReply: () => void draftReply(),
-      onSendReply: () => void sendReply(),
-      onMarkHandled: () => markHandledAndAdvance(selectedMessage.id),
-      onUnmarkHandled: handledIds.has(selectedMessage.id)
-        ? () => unmarkHandled([selectedMessage.id])
-        : undefined,
-      onSnooze: !handledIds.has(selectedMessage.id)
-        ? (until) => {
-            snoozeMessage(selectedMessage.id, until);
-            const next = pickNextAfter(selectedMessage.id, filteredMessages);
-            selectMessage(next, { fromUser: true });
-          }
-        : undefined,
-      onNextAfterSend: () => advanceToNextMessage(selectedMessage.id),
-      onBack: () => selectMessage(null, { fromUser: true }),
-      mailFolders: selectedMessage.kind === "email" ? mailFolders : undefined,
-      onMoveToFolder: selectedMessage.kind === "email" ? moveMessageToMailFolder : undefined,
-      moveBusy,
-      onMailAction: selectedMessage.kind === "email" ? performSelectedMailAction : undefined,
-      mailActionBusy,
-      navigation:
-        filteredMessages.length > 1 && selectedIndex >= 0
-          ? {
-              index: selectedIndex,
-              total: filteredMessages.length,
-              hasPrev: selectedIndex > 0,
-              hasNext: selectedIndex < filteredMessages.length - 1,
-              onPrev: () => navigateRelative(-1),
-              onNext: () => navigateRelative(1),
-            }
-          : undefined,
-    };
-  }, [
-    advanceToNextMessage,
+  const detailProps = useMessageDetailProps({
+    selectedMessage,
     aiSummaries,
-    canReplyToSelected,
+    threadMessages,
+    threadLoading,
+    replyDraft,
+    setReplyDraft,
     draftBusy,
-    draftReply,
-    filteredMessages,
+    sendBusy,
+    replySent,
+    canReplyToSelected,
     handledIds,
     isUnanswered,
-    markHandledAndAdvance,
-    mailFolders,
-    mailActionBusy,
-    moveBusy,
-    moveMessageToMailFolder,
-    navigateRelative,
-    performSelectedMailAction,
-    pickNextAfter,
-    replyDraft,
-    replySent,
-    selectMessage,
-    selectedIndex,
-    selectedMessage,
-    sendBusy,
+    focusReplyRef,
+    draftReply,
     sendReply,
-    snoozeMessage,
-    threadLoading,
-    threadMessages,
+    markHandledAndAdvance,
     unmarkHandled,
-  ]);
+    snoozeMessage,
+    pickNextAfter,
+    filteredMessages,
+    selectMessage,
+    advanceToNextMessage,
+    mailFolders,
+    moveMessageToMailFolder,
+    moveBusy,
+    performSelectedMailAction,
+    mailActionBusy,
+    selectedIndex,
+    navigateRelative,
+  });
 
   const isMobile = useIsMobile();
   const isStackedWorkspace = useStackedWorkspace();
@@ -808,68 +685,21 @@ export default function MessagesPage() {
         focusedReading ? "gap-0" : "gap-3 sm:gap-4"
       )}
     >
-      {!focusedReading ? (
-        <>
-          <PageHeader
-            icon={MessageSquare}
-            title="Meddelanden"
-            description={
-              isMobile
-                ? "Välj ett meddelande — AI hjälper dig sammanfatta och svara."
-                : "Mail, DM och WhatsApp · J/K bläddra · H Klar · E arkivera · R svara"
-            }
-          />
-
-          {inboxStats.openCount === 0 || triageCounts.today > 0 || triageCounts.week > 0 ? (
-            <PageSmartBar
-              title={
-                triageCounts.today + triageCounts.week > 0
-                  ? "Triage först — svara Idag, parkera Brus."
-                  : isMobile
-                    ? "Inkorgen är ikapp — koppla fler kanaler eller vänta på nya meddelanden."
-                    : "Meddelanden är din triage-inkorg — när något dyker upp: läs, svara och markera Klar."
-              }
-              steps={
-                triageCounts.today + triageCounts.week > 0
-                  ? undefined
-                  : isMobile
-                    ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
-                    : [
-                        "Välj kanal och triage-hink (Idag / Vecka / FYI / Brus)",
-                        "J/K bläddra · H Klar · E arkivera · R svara",
-                        "AI sammanfattar och skriver utkast — du godkänner innan du skickar",
-                      ]
-              }
-              tip={
-                triageCounts.today + triageCounts.week > 0
-                  ? undefined
-                  : "Öppna meddelanden stannar i kön tills du trycker Klar (H)."
-              }
-              liveHintOverride={inboxLiveHint}
-              extraActions={
-                triageCounts.today > 0
-                  ? [{ label: "Visa Idag", onClick: () => setTriageBucket("today") }]
-                  : []
-              }
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      {!focusedReading && activeTab === "mail" && !hasAnyMailConnected ? <MailConnectEmptyCards /> : null}
-
-      {!focusedReading ? (
-        <div className="space-y-2">
-          <AutoReplyDraftsStrip businessProfileId={businessProfileId} compact />
-          <MailReplyDraftsStrip
-            businessProfileId={businessProfileId}
-            onUseDraft={(draft) => {
-              setReplyDraft(draft);
-              sonnerToast.success("Utkast infogat i svarsfältet — öppna mailet och skicka när du är nöjd.");
-            }}
-          />
-        </div>
-      ) : null}
+      <MessagePageChrome
+        focusedReading={focusedReading}
+        isMobile={isMobile}
+        triageCounts={triageCounts}
+        inboxLiveHint={inboxLiveHint}
+        openCount={inboxStats.openCount}
+        hasAnyMailConnected={hasAnyMailConnected}
+        activeTabIsMail={activeTab === "mail"}
+        businessProfileId={businessProfileId}
+        onShowToday={() => setTriageBucket("today")}
+        onUseMailDraft={(draft) => {
+          setReplyDraft(draft);
+          sonnerToast.success("Utkast infogat i svarsfältet — öppna mailet och skicka när du är nöjd.");
+        }}
+      />
 
       <m.div
         {...fadeUp}

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,10 +7,9 @@ import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { loadSelectedContent, saveSelectedContent, assetSelectionKey, type SelectedContentAsset } from "@/lib/contentSelection";
+import { assetSelectionKey, type SelectedContentAsset } from "@/lib/contentSelection";
 import { fetchProducts } from "@/lib/productsApi";
-import { useProfileDocument } from "@/features/profile-documents";
-import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
+import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -19,7 +18,6 @@ import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSugg
 import { AutomationEnableHint } from "@/features/automation";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
-import type { ApiaiBatchIngestItem } from "@/features/content/apiaiClient";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
 import { isContentTab, type ContentTab } from "@/features/content/contentFlow";
 import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
@@ -28,10 +26,9 @@ import { GeneratedHistoryPanel } from "@/features/content/GeneratedHistoryPanel"
 import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
 import { PublishSafetyPanel } from "@/features/content/PublishSafetyPanel";
 import { publishBlockReason, type PublishReadiness } from "@/features/content/apiaiResultInsights";
-import { publishMediaUrlsFromAssets } from "@/features/content/contentPublishMedia";
-import { uploadContentMedia } from "@/features/content/contentMediaClient";
-import { enqueueContentPipelineItems } from "@/features/content/contentPipelineQueue";
 import { DriveBrowsePanel } from "@/features/content/DriveBrowsePanel";
+import { useDriveBrowser } from "@/features/content/useDriveBrowser";
+import { useContentAssetSelection } from "@/features/content/useContentAssetSelection";
 import { apiUrl } from "@/lib/apiBase";
 import { consumeContentCaption } from "@/lib/contentCaptionHandoff";
 import { FolderOpen, History, Loader2, RefreshCw, HardDrive, ChevronDown, Wand2, Send, BookmarkCheck, MoreHorizontal } from "lucide-react";
@@ -43,20 +40,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles } from "@/features/business-profiles";
-import { accountDataUrl } from "@/lib/accountDataUrl";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
-import {
-  type DriveBrowserItem,
-  type DriveProviderData,
-  type DriveOAuthPopupMessage,
-} from "@/features/content/DriveMediaGrid";
 
 export default function ContentPage() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
@@ -108,29 +97,11 @@ export default function ContentPage() {
     [accounts]
   );
   const selectedAccountId = getSelectedAccountId("content");
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
-  const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
   const [contentTab, setContentTab] = useState<ContentTab>("browse");
   const [publishReadiness, setPublishReadiness] = useState<PublishReadiness | null>(null);
   const { history: generatedHistory, recordAsset, remove: removeGenerated, clear: clearGenerated, isLoading: historyLoading } =
     useGeneratedContentHistory();
-  const [popupOauthError, setPopupOauthError] = useState<OAuthErrorDetails | null>(null);
-  // Selected content assets persist per business profile in the DB (synced
-  // across devices and live across pages via React Query), migrating any
-  // device-local selection on first load.
-  const selectionDoc = useProfileDocument<SelectedContentAsset[]>("content-selection", [], {
-    legacyRead: () => {
-      const v = loadSelectedContent(activeProfileId);
-      return v.length ? v : undefined;
-    },
-    legacyWrite: (_bpId, value) => saveSelectedContent(activeProfileId, value),
-  });
-  const selectedAssets = selectionDoc.data;
-  const accountsRef = useRef(accounts);
-  useEffect(() => {
-    accountsRef.current = accounts;
-  }, [accounts]);
+  const [publishCaption, setPublishCaption] = useState("");
 
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
@@ -151,122 +122,6 @@ export default function ContentPage() {
       }).catch(() => {});
     }
   }, [authMode, accessToken]);
-
-  // Stable list of Drive accounts (memoized so refs don't churn on every render)
-  const driveAccounts = useMemo(
-    () => accounts.filter((a) => a.platform === "google_drive" && Boolean(a.isOAuth)),
-    [accounts]
-  );
-  const activeAccount = useMemo(() => {
-    if (selectedAccountId) {
-      const hit = driveAccounts.find((a) => a.id === selectedAccountId);
-      if (hit) return hit;
-    }
-    return driveAccounts[0] ?? null;
-  }, [driveAccounts, selectedAccountId]);
-
-  const [providerData, setProviderData] = useState<DriveProviderData>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [driveSearch, setDriveSearch] = useState("");
-  const driveRequestIdRef = useRef(0);
-
-  // Auto-select first account if nothing chosen
-  useEffect(() => {
-    if (driveAccounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId("content", driveAccounts[0].id);
-    }
-  }, [driveAccounts, selectedAccountId, setSelectedAccountId]);
-
-  const ensureBackendSessionRef = useRef(ensureBackendSession);
-  useEffect(() => {
-    ensureBackendSessionRef.current = ensureBackendSession;
-  }, [ensureBackendSession]);
-
-  const activeAccountId = activeAccount?.id ?? null;
-
-  // Single source of truth for fetching Drive data.
-  // Deps are PRIMITIVES only — no object references that churn each render.
-  useEffect(() => {
-    if (!activeAccountId) {
-      setProviderData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    const reqId = ++driveRequestIdRef.current;
-    const params = new URLSearchParams();
-    if (currentFolderId) params.set("folderId", currentFolderId);
-    if (driveView === "shared-with-me") params.set("view", "shared-with-me");
-    const url = accountDataUrl(activeAccountId, activeBusinessProfileId ?? activeProfileId, params);
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        let res = await fetchWithTimeout(url, { credentials: "include" });
-        if (res.status === 401) {
-          await ensureBackendSessionRef.current();
-          res = await fetchWithTimeout(url, { credentials: "include" });
-        }
-        if (!res.ok) {
-          const payload = await res.json().catch(() => ({}));
-          throw new Error(apiErrorMessage(payload, "Kunde inte hämta innehåll från Google Drive."));
-        }
-        const data = await res.json();
-        if (driveRequestIdRef.current !== reqId) return;
-        setProviderData(data);
-      } catch (e) {
-        if (driveRequestIdRef.current !== reqId) return;
-        setError(e instanceof Error ? e.message : "Anropet misslyckades");
-      } finally {
-        if (driveRequestIdRef.current === reqId) setLoading(false);
-      }
-    })();
-  }, [activeAccountId, activeBusinessProfileId, activeProfileId, currentFolderId, driveView, refreshTick]);
-
-  const refresh = useCallback(() => {
-    setRefreshTick((t) => t + 1);
-  }, []);
-
-  // Backend always puts the relevant items in `items` — view=shared-with-me puts shared in items too
-  const activeItems = useMemo(() => providerData?.items || [], [providerData]);
-  const driveQuery = driveSearch.trim().toLowerCase();
-  const filteredActiveItems = useMemo(() => {
-    if (!driveQuery) return activeItems;
-    return activeItems.filter((item) => item.name.toLowerCase().includes(driveQuery));
-  }, [activeItems, driveQuery]);
-  const folderItems = filteredActiveItems.filter((item) => item.kind === "folder");
-  const imageItems = filteredActiveItems.filter((item) => item.kind === "image");
-  const videoItems = filteredActiveItems.filter((item) => item.kind === "video");
-  const otherItems = filteredActiveItems.filter((item) => item.kind === "other");
-
-  const [focusedBrowseFileId, setFocusedBrowseFileId] = useState<string | null>(null);
-  const [uploadingBrowse, setUploadingBrowse] = useState(false);
-  const driveSearchRef = useRef<HTMLInputElement>(null);
-  const browseMediaFiles = useMemo(
-    () => [...imageItems, ...videoItems],
-    [imageItems, videoItems]
-  );
-  const focusedBrowseFile = useMemo(
-    () => browseMediaFiles.find((file) => file.id === focusedBrowseFileId) ?? null,
-    [browseMediaFiles, focusedBrowseFileId]
-  );
-  const selectedIds = useMemo(
-    () => new Set(selectedAssets.map((asset) => assetSelectionKey(asset))),
-    [selectedAssets]
-  );
-  const selectedImages = selectedAssets.filter((asset) => asset.kind === "image");
-  const selectedVideos = selectedAssets.filter((asset) => asset.kind === "video");
-  const publishMediaUrls = useMemo(() => publishMediaUrlsFromAssets(selectedAssets), [selectedAssets]);
-  const [publishCaption, setPublishCaption] = useState("");
-  const combinedOauthError = popupOauthError || oauthErrorDetails;
-  const publishBlockedReason = publishBlockReason(publishReadiness);
-  const initialCreateMode = useMemo(() => {
-    const mode = searchParams.get("mode");
-    if (mode === "generate" || mode === "transform" || mode === "batch") return mode;
-    return undefined;
-  }, [searchParams]);
 
   const goToTab = useCallback(
     (tab: ContentTab) => {
@@ -298,243 +153,78 @@ export default function ContentPage() {
     toast.success("Idea added — ready to post or save");
   }, [goToTab]);
 
-  useEffect(() => {
-    setCurrentFolderId(null);
-    setFolderStack([]);
-    setDriveView("my-drive");
-  }, [selectedAccountId]);
+  const {
+    driveAccounts,
+    activeAccount,
+    providerData,
+    loading,
+    error,
+    refresh,
+    driveSearch,
+    setDriveSearch,
+    driveSearchRef,
+    driveView,
+    handleDriveViewChange,
+    folderStack,
+    navigateIntoFolder,
+    navigateBack,
+    navigateRoot,
+    navigateToBreadcrumb,
+    folderItems,
+    imageItems,
+    videoItems,
+    otherItems,
+    browseMediaFiles,
+    filteredActiveItems,
+    driveQuery,
+    focusedBrowseFileId,
+    focusedBrowseFile,
+    navigateBrowseFileRelative,
+    popupOauthError,
+    setPopupOauthError,
+  } = useDriveBrowser({
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    addAccountFromOAuth,
+    activeBusinessProfileId,
+    activeProfileId,
+    ensureBackendSession,
+  });
 
-  useEffect(() => {
-    let ignore = false;
+  const {
+    selectedAssets,
+    selectedIds,
+    selectedImages,
+    publishMediaUrls,
+    uploadingBrowse,
+    assetFromDriveFile,
+    saveAssetSelection,
+    recordGeneratedAsset,
+    saveGeneratedToSelection,
+    handleBatchIngested,
+    handleBrowseUploadFiles,
+    toggleAsset,
+    removeFromSelected,
+    removeManyFromSelected,
+    reorderSelected,
+    handleClearSelection,
+  } = useContentAssetSelection({
+    activeProfileId,
+    activeAccount,
+    createBusinessProfileId,
+    ensureBackendSession,
+    goToTab,
+    recordAsset,
+  });
 
-    async function syncDriveAccountsFromBackend() {
-      try {
-        const connectedParams = new URLSearchParams({ platform: "google_drive" });
-        const connectedProfileId = activeBusinessProfileId ?? activeProfileId;
-        if (connectedProfileId) connectedParams.set("business_profile_id", connectedProfileId);
-        let res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${connectedParams.toString()}`), { credentials: "include" });
-        if (res.status === 401) {
-          await ensureBackendSession();
-          res = await fetchWithTimeout(apiUrl(`/api/accounts/connected?${connectedParams.toString()}`), { credentials: "include" });
-        }
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok || ignore) return;
-
-        const backendAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
-        if (backendAccounts.length === 0) return;
-        const existingAccountIds = new Set(accountsRef.current.map((account) => account.id));
-
-        for (const account of backendAccounts) {
-          const accountId = String(account.account_id || "");
-          if (!accountId || existingAccountIds.has(accountId)) continue;
-          existingAccountIds.add(accountId);
-          addAccountFromOAuth(
-            accountId,
-            "google_drive",
-            String(account.username || "Google Drive"),
-            account.profile_id ? String(account.profile_id) : undefined,
-            {
-              displayName: account.displayName ? String(account.displayName) : undefined,
-              profileUrl: account.profileUrl ? String(account.profileUrl) : undefined,
-              isZernio: Boolean(account.isZernio),
-              zernioAccountId: account.zernioAccountId ? String(account.zernioAccountId) : undefined,
-              // Background hydration must not flip the active profile.
-              switchActiveProfile: false,
-            }
-          );
-        }
-
-        if (!selectedAccountId) {
-          setSelectedAccountId("content", String(backendAccounts[0].account_id || ""));
-        }
-      } catch {
-        // Best-effort hydration only.
-      }
-    }
-
-    void syncDriveAccountsFromBackend();
-    return () => {
-      ignore = true;
-    };
-  }, [activeBusinessProfileId, activeProfileId, addAccountFromOAuth, selectedAccountId, setSelectedAccountId, ensureBackendSession]);
-
-  useEffect(() => {
-    function handleDriveOauthMessage(event: MessageEvent<DriveOAuthPopupMessage>) {
-      if (event.origin !== window.location.origin) return;
-      const payload = event.data;
-      if (!payload || payload.type !== "google_drive_oauth") return;
-
-      if (payload.error) {
-        setPopupOauthError({
-          code: payload.error,
-          statusCode: payload.statusCode || null,
-          exception: payload.exception || null,
-          hint: payload.hint || null,
-        });
-        return;
-      }
-
-      if (payload.success && payload.platform === "google_drive" && payload.account_id && payload.username) {
-        setPopupOauthError(null);
-        addAccountFromOAuth(payload.account_id, payload.platform, payload.username, payload.profile_id);
-        setSelectedAccountId("content", payload.account_id);
-        setCurrentFolderId(null);
-      }
-    }
-
-    window.addEventListener("message", handleDriveOauthMessage);
-    return () => window.removeEventListener("message", handleDriveOauthMessage);
-  }, [addAccountFromOAuth, setSelectedAccountId]);
-
-  function assetFromDriveFile(file: DriveBrowserItem): SelectedContentAsset | null {
-    if ((file.kind !== "image" && file.kind !== "video") || !activeAccount) return null;
-    return {
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      kind: file.kind,
-      thumbnailUrl: file.thumbnailUrl,
-      previewUrl: file.previewUrl,
-      webViewLink: file.webViewLink,
-      sourceAccountId: activeAccount.id,
-      sourceAccountName: activeAccount.username || "Google Drive",
-    };
-  }
-
-  function saveAssetSelection(asset: SelectedContentAsset, checked: boolean) {
-    const key = assetSelectionKey(asset);
-    const next: SelectedContentAsset[] = checked
-      ? [...selectedAssets.filter((existing) => assetSelectionKey(existing) !== key), asset]
-      : selectedAssets.filter((existing) => assetSelectionKey(existing) !== key);
-
-    selectionDoc.save(next);
-  }
-
-  function recordGeneratedAsset(asset: SelectedContentAsset, options?: { toolName?: string }) {
-    recordAsset(asset, options);
-  }
-
-  function saveGeneratedToSelection(asset: SelectedContentAsset, options?: { toolName?: string }) {
-    saveAssetSelection(asset, true);
-    recordAsset(asset, options);
-    toast.success("Tillagd i Valda och Historik");
-  }
-
-  function handleBatchIngested(
-    items: ApiaiBatchIngestItem[],
-    meta: { batchId: number; workflow?: string; addToSelection: boolean }
-  ) {
-    items.forEach((item, index) => {
-      const asset: SelectedContentAsset = {
-        id: `apiai-batch-${meta.batchId}-${index}`,
-        name: item.filename,
-        mimeType: item.contentType,
-        kind: item.kind === "video" ? "video" : "image",
-        thumbnailUrl: item.mediaUrl,
-        previewUrl: item.mediaUrl,
-        sourceAccountId: "apiai",
-        sourceAccountName: "apiai.me",
-      };
-      recordAsset(asset, { toolName: meta.workflow || `batch #${meta.batchId}` });
-      if (meta.addToSelection) saveAssetSelection(asset, true);
-    });
-    if (items.length > 0 && createBusinessProfileId) {
-      void enqueueContentPipelineItems(
-        createBusinessProfileId,
-        items.map((item, index) => ({
-          title: item.filename || `Batch ${meta.batchId} #${index + 1}`,
-          captionHint: meta.workflow ? `Workflow: ${meta.workflow}` : undefined,
-          accountIds: [],
-          platforms: [],
-          mediaUrls: [item.mediaUrl],
-          scheduledFor: "",
-        }))
-      ).then((count) => {
-        if (count > 0) {
-          toast.message(
-            count === 1 ? "1 objekt köat till innehållspipelinen" : `${count} objekt köade till innehållspipelinen`
-          );
-        }
-      });
-    }
-    if (meta.addToSelection && items.length > 0) {
-      goToTab("publish");
-    }
-  }
-
-  async function handleBrowseUploadFiles(fileList: FileList | null) {
-    if (!fileList?.length || !createBusinessProfileId) return;
-    setUploadingBrowse(true);
-    try {
-      await ensureBackendSession();
-      let added = 0;
-      for (const file of Array.from(fileList)) {
-        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue;
-        const uploaded = await uploadContentMedia({ file, businessProfileId: createBusinessProfileId });
-        const asset: SelectedContentAsset = {
-          id: `upload-${Date.now()}-${added}`,
-          name: uploaded.filename,
-          mimeType: uploaded.contentType,
-          kind: file.type.startsWith("video/") ? "video" : "image",
-          thumbnailUrl: uploaded.url,
-          previewUrl: uploaded.url,
-          sourceAccountId: "upload",
-          sourceAccountName: "Upload",
-        };
-        saveGeneratedToSelection(asset, { toolName: "Upload" });
-        added += 1;
-      }
-      if (added > 0) {
-        toast.success(`${added} fil${added === 1 ? "" : "er"} uppladdade — tillagda i Valda`);
-        goToTab("selected");
-      } else {
-        toast.message("Inga bild- eller videofiler valda");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Uppladdningen misslyckades");
-    } finally {
-      setUploadingBrowse(false);
-    }
-  }
-
-  function toggleAsset(file: DriveBrowserItem, checked: boolean) {
-    const asset = assetFromDriveFile(file);
-    if (!asset) return;
-    saveAssetSelection(asset, checked);
-    if (checked) {
-      toast.message("Tillagd i Valda");
-    }
-  }
-
-  const navigateBrowseFileRelative = useCallback(
-    (delta: 1 | -1) => {
-      if (browseMediaFiles.length === 0) return;
-      const currentIndex = focusedBrowseFileId
-        ? browseMediaFiles.findIndex((file) => file.id === focusedBrowseFileId)
-        : -1;
-      const nextIndex =
-        currentIndex < 0
-          ? delta > 0
-            ? 0
-            : browseMediaFiles.length - 1
-          : (currentIndex + delta + browseMediaFiles.length) % browseMediaFiles.length;
-      setFocusedBrowseFileId(browseMediaFiles[nextIndex]?.id ?? null);
-    },
-    [browseMediaFiles, focusedBrowseFileId]
-  );
-
-  useEffect(() => {
-    if (focusedBrowseFileId && !browseMediaFiles.some((file) => file.id === focusedBrowseFileId)) {
-      setFocusedBrowseFileId(null);
-    }
-  }, [browseMediaFiles, focusedBrowseFileId]);
-
-  useEffect(() => {
-    if (!focusedBrowseFileId) return;
-    document
-      .querySelector(`[data-drive-file-id="${focusedBrowseFileId}"]`)
-      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [focusedBrowseFileId, browseMediaFiles.length]);
+  const combinedOauthError = popupOauthError || oauthErrorDetails;
+  const publishBlockedReason = publishBlockReason(publishReadiness);
+  const initialCreateMode = useMemo(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "generate" || mode === "transform" || mode === "batch") return mode;
+    return undefined;
+  }, [searchParams]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -558,7 +248,7 @@ export default function ContentPage() {
         return;
       }
 
-      if ((matchesKey(e, "s") && isPlainLetterShortcut(e)) && focusedBrowseFileId) {
+      if (matchesKey(e, "s") && isPlainLetterShortcut(e) && focusedBrowseFileId) {
         const file = browseMediaFiles.find((item) => item.id === focusedBrowseFileId);
         if (!file || !activeAccount) return;
         e.preventDefault();
@@ -577,52 +267,8 @@ export default function ContentPage() {
     activeAccount,
     selectedIds,
     toggleAsset,
+    driveSearchRef,
   ]);
-
-  function removeFromSelected(asset: SelectedContentAsset) {
-    saveAssetSelection(asset, false);
-  }
-
-  function removeManyFromSelected(assets: SelectedContentAsset[]) {
-    const keys = new Set(assets.map((asset) => assetSelectionKey(asset)));
-    selectionDoc.save(selectedAssets.filter((asset) => !keys.has(assetSelectionKey(asset))));
-  }
-
-  function reorderSelected(assets: SelectedContentAsset[]) {
-    selectionDoc.save(assets);
-  }
-
-  function navigateIntoFolder(folder: { id: string; name: string }) {
-    setFolderStack((prev) => [...prev, folder]);
-    setCurrentFolderId(folder.id);
-  }
-
-  function navigateBack() {
-    const newStack = folderStack.slice(0, -1);
-    setFolderStack(newStack);
-    setCurrentFolderId(newStack.length > 0 ? newStack[newStack.length - 1].id : null);
-  }
-
-  function navigateRoot() {
-    setFolderStack([]);
-    setCurrentFolderId(null);
-  }
-
-  function navigateToBreadcrumb(index: number) {
-    const newStack = folderStack.slice(0, index + 1);
-    setFolderStack(newStack);
-    setCurrentFolderId(newStack[newStack.length - 1].id);
-  }
-
-  function handleDriveViewChange(view: "my-drive" | "shared-with-me") {
-    setDriveView(view);
-    setCurrentFolderId(null);
-    setFolderStack([]);
-  }
-
-  function handleClearSelection() {
-    selectionDoc.save([]);
-  }
 
   return (
     <div className="space-y-6 max-w-6xl w-full mx-auto">
