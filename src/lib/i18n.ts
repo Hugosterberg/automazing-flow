@@ -52,6 +52,8 @@ import svOutreach from "@/locales/sv/outreach.json";
 import enOutreach from "@/locales/en/outreach.json";
 import svDigitalBrand from "@/locales/sv/digitalBrand.json";
 import enDigitalBrand from "@/locales/en/digitalBrand.json";
+import svSocial from "@/locales/sv/social.json";
+import enSocial from "@/locales/en/social.json";
 
 export const i18n = i18next;
 
@@ -74,6 +76,7 @@ const NAMESPACES = [
   "leads",
   "outreach",
   "digitalBrand",
+  "social",
 ] as const;
 
 function applyLanguageSideEffects(lang: string): void {
@@ -111,6 +114,7 @@ export function initI18n(): void {
         leads: svLeads,
         outreach: svOutreach,
         digitalBrand: svDigitalBrand,
+        social: svSocial,
       },
       en: {
         common: enCommon,
@@ -131,6 +135,7 @@ export function initI18n(): void {
         leads: enLeads,
         outreach: enOutreach,
         digitalBrand: enDigitalBrand,
+        social: enSocial,
       },
     },
     lng: initialLanguage,

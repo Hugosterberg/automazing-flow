@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Film, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
@@ -18,31 +19,26 @@ type VideoDraftResult = {
   cta: string;
 };
 
-async function generateVideoDraft(payload: {
-  asset: Pick<SelectedContentAsset, "id" | "name" | "mimeType" | "kind" | "webViewLink">;
-  prompt: string;
-  platform: string;
-  objective: string;
-}): Promise<{ draft: VideoDraftResult; source: string }> {
-  return apiJson("/api/content/video-draft", "Kunde inte generera videoutkast", {
-    body: payload,
-  });
-}
-
 /**
  * AI Video Draft: pick one of the selected Google Drive videos and generate a
  * short-form concept (hook, shot list, caption, CTA). Fully self-contained —
  * the page only feeds it the currently selected video assets.
  */
 export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[] }) {
+  const { t } = useTranslation("social");
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState("");
-  const [videoPlatform, setVideoPlatform] = useState("Instagram Reels");
-  const [videoObjective, setVideoObjective] = useState("Skapa en kort video för sociala medier");
+  const [videoPlatform, setVideoPlatform] = useState("");
+  const [videoObjective, setVideoObjective] = useState("");
   const [generating, setGenerating] = useState(false);
   const [draftSource, setDraftSource] = useState<string | null>(null);
   const [draft, setDraft] = useState<VideoDraftResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVideoPlatform(t("videoDraft.platformPlaceholder"));
+    setVideoObjective(t("videoDraft.objectiveDefault"));
+  }, [t]);
 
   useEffect(() => {
     if (!selectedVideoId && videos.length > 0) {
@@ -61,22 +57,24 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
     setDraft(null);
     setError(null);
     try {
-      const result = await generateVideoDraft({
-        asset: {
-          id: selectedVideoAsset.id,
-          name: selectedVideoAsset.name,
-          mimeType: selectedVideoAsset.mimeType,
-          kind: selectedVideoAsset.kind,
-          webViewLink: selectedVideoAsset.webViewLink,
+      const result = await apiJson("/api/content/video-draft", t("videoDraft.generateError"), {
+        body: {
+          asset: {
+            id: selectedVideoAsset.id,
+            name: selectedVideoAsset.name,
+            mimeType: selectedVideoAsset.mimeType,
+            kind: selectedVideoAsset.kind,
+            webViewLink: selectedVideoAsset.webViewLink,
+          },
+          prompt: videoPrompt,
+          platform: videoPlatform,
+          objective: videoObjective,
         },
-        prompt: videoPrompt,
-        platform: videoPlatform,
-        objective: videoObjective,
       });
       setDraft(result.draft);
       setDraftSource(result.source);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte generera videoutkast");
+      setError(err instanceof Error ? err.message : t("videoDraft.generateError"));
     } finally {
       setGenerating(false);
     }
@@ -87,22 +85,18 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Film className="h-5 w-5" />
-          AI Video Draft
+          {t("videoDraft.title")}
         </CardTitle>
-        <CardDescription>
-          Choose a selected Google Drive video and generate a reusable short-form video concept, shot list, and caption.
-        </CardDescription>
+        <CardDescription>{t("videoDraft.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {videos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No selected Google Drive videos yet. Mark one in the Content tab to generate a video draft here.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("videoDraft.empty")}</p>
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4">
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Source video</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.sourceVideo")}</p>
                 <div className="space-y-2">
                   {videos.map((asset) => (
                     <button
@@ -137,31 +131,31 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="video-platform">Plattform</Label>
+                    <Label htmlFor="video-platform">{t("videoDraft.platform")}</Label>
                     <Input
                       id="video-platform"
                       value={videoPlatform}
                       onChange={(e) => setVideoPlatform(e.target.value)}
-                      placeholder="Instagram Reels"
+                      placeholder={t("videoDraft.platformPlaceholder")}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="video-objective">Mål</Label>
+                    <Label htmlFor="video-objective">{t("videoDraft.objective")}</Label>
                     <Input
                       id="video-objective"
                       value={videoObjective}
                       onChange={(e) => setVideoObjective(e.target.value)}
-                      placeholder="t.ex. En kort produktteaser"
+                      placeholder={t("videoDraft.objectivePlaceholder")}
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="video-prompt">Extra vägledning</Label>
+                  <Label htmlFor="video-prompt">{t("videoDraft.guidance")}</Label>
                   <Textarea
                     id="video-prompt"
                     value={videoPrompt}
                     onChange={(e) => setVideoPrompt(e.target.value)}
-                    placeholder="Hook-vinkel, målgrupp, CTA, varumärkestonalitet eller viktiga punkter att lyfta."
+                    placeholder={t("videoDraft.guidancePlaceholder")}
                     className="bg-secondary border-border min-h-[96px] resize-none"
                   />
                 </div>
@@ -172,11 +166,13 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
                     ) : (
                       <Film className="h-4 w-4 mr-2" />
                     )}
-                    {generating ? "Skapar…" : "Skapa videoutkast"}
+                    {generating ? t("videoDraft.generating") : t("videoDraft.generate")}
                   </Button>
                   {selectedVideoAsset?.webViewLink && (
                     <Button variant="outline" asChild>
-                      <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">Öppna källvideo</a>
+                      <a href={selectedVideoAsset.webViewLink} target="_blank" rel="noopener noreferrer">
+                        {t("videoDraft.openSource")}
+                      </a>
                     </Button>
                   )}
                 </div>
@@ -188,24 +184,24 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
               <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-                    {draftSource === "openai" ? "AI-generated" : "Fallback draft"}
+                    {draftSource === "openai" ? t("videoDraft.badgeAi") : t("videoDraft.badgeFallback")}
                   </span>
-                  <span>Built from {selectedVideoAsset?.name}</span>
+                  <span>{t("videoDraft.builtFrom", { name: selectedVideoAsset?.name })}</span>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Title</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.title")}</p>
                   <p className="text-sm">{draft.title}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hook</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.hook")}</p>
                   <p className="text-sm">{draft.hook}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Concept</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.concept")}</p>
                   <p className="text-sm">{draft.concept}</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Shot list</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.shotList")}</p>
                   <div className="space-y-2">
                     {draft.shots.map((shot, index) => (
                       <div key={`${shot}-${index}`} className="rounded-md border border-border/70 bg-background/80 p-3">
@@ -216,11 +212,11 @@ export function SocialVideoDraftCard({ videos }: { videos: SelectedContentAsset[
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Caption</p>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.caption")}</p>
                     <p className="text-sm">{draft.caption}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">CTA</p>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("videoDraft.fields.cta")}</p>
                     <p className="text-sm">{draft.cta}</p>
                   </div>
                 </div>

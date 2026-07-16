@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAccounts } from "@/context/AccountsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOAuthCallback } from "@/hooks/useOAuthCallback";
@@ -49,7 +50,7 @@ import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { catalogConnectSteps, getConnectionEntriesForArea } from "@/lib/connectionCatalog";
-import { t } from "@/lib/i18n";
+import { t as globalT } from "@/lib/i18n";
 import {
   aggregateStatus,
   ConnectionStatusBadge,
@@ -141,6 +142,7 @@ async function runAIAnalysis(
 }
 
 export default function SocialMedia() {
+  const { t } = useTranslation("social");
   const [searchParams, setSearchParams] = useSearchParams();
   const { authMode, session } = useAuth();
   const [postContent, setPostContent] = useState("");
@@ -229,7 +231,7 @@ export default function SocialMedia() {
         throw new Error(
           typeof d?.error === "string" && d.error.trim().length > 0
             ? d.error
-            : `Kunde inte hämta kontostatistik (${res.status})`
+            : globalT("social:stats.fetchError", { status: res.status })
         );
       }
       return res.json();
@@ -302,7 +304,7 @@ export default function SocialMedia() {
             updateAccountAnalysis(selectedAccountId, { ...result, analyzedAt: new Date().toISOString() });
           })
           .catch((err) => {
-            toast.error(err instanceof Error ? err.message : "Account analysis failed.");
+            toast.error(err instanceof Error ? err.message : t("toasts.analysisFailed"));
           })
           .finally(() => setAnalyzing(false));
       } else {
@@ -518,9 +520,9 @@ export default function SocialMedia() {
         source: "upload",
         sourceLabel: "Upload",
       });
-      toast.success("Uppladdningen sparades i Valda — redo att publicera");
+      toast.success(t("toasts.uploadSuccess"));
     } catch {
-      toast.message("Preview only — upload failed. Generate with AI or pick from Content instead.");
+      toast.message(t("toasts.uploadPreviewOnly"));
     }
   }
 
@@ -539,46 +541,48 @@ export default function SocialMedia() {
       source: asset.sourceAccountId === "canva" ? "canva" : "openai",
       sourceLabel: asset.sourceAccountName,
     });
-    toast.message("Sparad i Historik och vald");
+    toast.message(t("toasts.savedToHistory"));
   }
 
   return (
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={Sparkles}
-        title="Sociala medier"
-        description="Automatisera och hantera dina sociala kanaler — publicera, schemalägg och följ statistik."
+        title={t("page.title")}
+        description={t("page.description")}
       />
 
       {socialAccounts.length === 0 ? (
         <PageSmartBar
-          title="Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
+          title={t("smartBar.titleEmpty")}
           steps={[
-            "Koppla konton under Kopplingar",
-            "Under Publicera: välj plattform och konto",
-            "Skriv, lägg till media och publicera eller schemalägg",
+            t("smartBar.step1"),
+            t("smartBar.step2"),
+            t("smartBar.step3"),
           ]}
-          tip="Statistik och schema ligger under egna flikar — håll Publicera för att skicka."
-          liveHintOverride="Inga sociala konton kopplade — börja under Kopplingar."
-          extraActions={[{ label: "Koppla konto", to: "/connections" }]}
+          tip={t("smartBar.tip")}
+          liveHintOverride={t("smartBar.liveHintNoAccounts")}
+          extraActions={[{ label: t("smartBar.connectAccount"), to: "/connections" }]}
         />
       ) : pipelinePosts.length + scheduledContentTasks.length > 0 ? (
         <PageSmartBar
-          title="Socialt"
-          liveHintOverride={`${pipelinePosts.length + scheduledContentTasks.length} i kö eller schemalagda — se Schema & mer.`}
+          title={t("smartBar.titleActive")}
+          liveHintOverride={t("smartBar.liveHintQueued", {
+            count: pipelinePosts.length + scheduledContentTasks.length,
+          })}
         />
       ) : null}
 
       <PageModeTabs
         value={socialMode}
-        aria-label="Socialt-flikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setSocialMode}
         options={[
-          { value: "publish", label: "Publicera" },
-          { value: "stats", label: "Statistik" },
+          { value: "publish", label: t("tabs.publish") },
+          { value: "stats", label: t("tabs.stats") },
           {
             value: "more",
-            label: "Schema & mer",
+            label: t("tabs.more"),
             count: pipelinePosts.length + scheduledContentTasks.length,
           },
         ]}
@@ -637,11 +641,11 @@ export default function SocialMedia() {
                       {linkedAccounts.length > 0 ? (
                         <p className="mt-1 text-sm text-muted-foreground truncate">
                           {linkedAccounts.map((account) => account.displayName || account.username).join(" · ")}
-                          {needsAttention ? " — behöver åtgärdas" : ""}
+                          {needsAttention ? t("connections.needsAttention") : ""}
                         </p>
                       ) : (
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {t("catalog:notConnectedProfile", {
+                          {globalT("catalog:notConnectedProfile", {
                             steps: catalogConnectSteps(entry),
                           })}
                         </p>
@@ -654,21 +658,21 @@ export default function SocialMedia() {
                           to={`/connections?q=${encodeURIComponent(entry.label)}`}
                           className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
                         >
-                          Koppla nu
+                          {t("connections.connectNow")}
                         </Link>
                       ) : needsAttention ? (
                         <Link
                           to={`/connections?filter=attention&q=${encodeURIComponent(entry.label)}`}
                           className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
                         >
-                          Åtgärda
+                          {t("connections.fix")}
                         </Link>
                       ) : null}
                       <Link
                         to="/preferences?tab=api-keys"
                         className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
                       >
-                        API-nycklar
+                        {t("connections.apiKeys")}
                       </Link>
                     </div>
                   </div>
@@ -686,7 +690,7 @@ export default function SocialMedia() {
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
-                Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session.
+                {t("localMode")}
               </p>
             </CardContent>
           </Card>
@@ -709,13 +713,13 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-4 flex items-center justify-between gap-4">
-              <p className="text-sm text-destructive">Kunde inte ladda social statistik: {error}</p>
+              <p className="text-sm text-destructive">{t("stats.loadError", { error })}</p>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => void refreshStats()}>
-                  Försök igen
+                  {t("stats.retry")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setError(null)}>
-                  Stäng
+                  {t("stats.close")}
                 </Button>
               </div>
             </CardContent>
@@ -733,11 +737,11 @@ export default function SocialMedia() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <EmptyState
             icon={Sparkles}
-            title="Välj ett socialt konto"
-            description="Välj ett kopplat konto (Instagram, TikTok, YouTube, X) — eller lägg till fler under Kopplingar."
+            title={t("empty.selectAccountTitle")}
+            description={t("empty.selectAccountDesc")}
             action={
               <Button asChild variant="outline" size="sm">
-                <Link to="/connections">Öppna Kopplingar</Link>
+                <Link to="/connections">{t("empty.openConnections")}</Link>
               </Button>
             }
           />
@@ -753,7 +757,7 @@ export default function SocialMedia() {
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
               <Sparkles className="h-3.5 w-3.5" />
-              AI-analys
+              {t("analysis.aiAnalysis")}
             </div>
           </div>
           <Card className="bg-card border-border">
@@ -761,22 +765,22 @@ export default function SocialMedia() {
               {analyzing ? (
                 <div className="flex items-center gap-3 text-muted-foreground text-sm py-2">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                  <span>Analyserar kontoinnehåll…</span>
+                  <span>{t("analysis.analyzing")}</span>
                 </div>
               ) : analysisResult ? (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Om</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("analysis.about")}</p>
                     <p className="text-sm leading-relaxed">{analysisResult.about}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Skriver om</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("analysis.writes")}</p>
                     <p className="text-sm leading-relaxed">{analysisResult.writes}</p>
                   </div>
                   <div className="w-full h-px bg-border" />
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Uppfattning</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("analysis.perception")}</p>
                     <p className="text-sm leading-relaxed">{analysisResult.perception}</p>
                   </div>
                 </div>
@@ -785,15 +789,15 @@ export default function SocialMedia() {
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   <span>
                     {selectedAccount.platform === "google_business"
-                      ? "Hämtar företagsprofil…"
-                      : "Hämtar inlägg…"}
+                      ? t("analysis.loadingProfile")
+                      : t("analysis.loadingPosts")}
                   </span>
                 </div>
               ) : selectedZernioNote ? (
                 <p className="text-sm text-muted-foreground py-2">{selectedZernioNote}</p>
               ) : (
                 <p className="text-sm text-muted-foreground py-2">
-                  Ingen data ännu. Synka kontot under Kopplingar eller vänta på nästa automatiska hämtning.
+                  {t("analysis.noData")}
                 </p>
               )}
             </CardContent>
@@ -887,16 +891,16 @@ export default function SocialMedia() {
       <AutomationEnableHint
         tab="content"
         focus="publish-scheduled-posts"
-        title="Låt schema och pipeline köra själva"
-        description="Publicering av schemalagda inlägg, innehållspipeline och sociala snapshots kan köras automatiskt — så du slipper klicka manuellt varje dag."
-        ctaLabel="Öppna content-automationer"
+        title={t("more.automationHintTitle")}
+        description={t("more.automationHintDesc")}
+        ctaLabel={t("more.automationHintCta")}
       />
       <m.div {...fadeUp} transition={{ duration: 0.3 }}>
         <McpFeatureSection
           businessProfileId={businessProfileId}
           featureIds={MCP_PAGE_FEATURE_IDS.social}
-          title="MCP-designstöd"
-          description="Kreativa briefs och designriktning via Canva MCP för socialt innehåll."
+          title={t("more.mcpTitle")}
+          description={t("more.mcpDesc")}
         />
       </m.div>
 
@@ -913,14 +917,14 @@ export default function SocialMedia() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ImagePlus className="h-5 w-5" />
-              Skapa bild till inlägg
+              {t("more.imageCardTitle")}
             </CardTitle>
             <CardDescription>
-              Generera med AI eller exportera från Canva. Media hanteras under{" "}
+              {t("more.imageCardDescPrefix")}{" "}
               <Link to="/content?tab=selected" className="text-primary hover:underline">
-                Innehåll → Valda
+                {t("more.imageCardDescLink")}
               </Link>
-              .
+              {t("more.imageCardDescSuffix")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -957,19 +961,19 @@ export default function SocialMedia() {
         <Card className="bg-card border-border glow-border">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-lg">Aktiva kampanjer</CardTitle>
+              <CardTitle className="text-lg">{t("more.campaignsTitle")}</CardTitle>
               <Link to="/marketing" className="text-xs text-primary hover:underline">
-                Hantera →
+                {t("more.campaignsManage")}
               </Link>
             </div>
           </CardHeader>
           <CardContent>
             {scheduledContentTasks.length === 0 ? (
               <div className="text-center py-4 space-y-2">
-                <p className="text-sm text-muted-foreground">Inga aktiva kampanjer.</p>
+                <p className="text-sm text-muted-foreground">{t("more.campaignsEmpty")}</p>
                   <Link to="/marketing">
                   <Button size="sm" variant="outline" className="text-xs">
-                    Skapa kampanj
+                    {t("more.campaignsCreate")}
                   </Button>
                 </Link>
               </div>
@@ -984,14 +988,14 @@ export default function SocialMedia() {
                       <p className="text-sm font-medium truncate">{task.title}</p>
                       {task.due_at && (
                         <p className="text-xs text-muted-foreground">
-                          Deadline: {formatShortDate(task.due_at)}
+                          {t("more.campaignDeadline", { date: formatShortDate(task.due_at) })}
                         </p>
                       )}
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full bg-accent text-muted-foreground shrink-0 ${
                       task.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : ""
                     }`}>
-                      {task.status === "open" ? "Planerad" : task.status === "in_progress" ? "Aktiv" : "Pausad"}
+                      {task.status === "open" ? t("more.campaignStatusOpen") : task.status === "in_progress" ? t("more.campaignStatusActive") : t("more.campaignStatusPaused")}
                     </span>
                   </div>
                 ))}

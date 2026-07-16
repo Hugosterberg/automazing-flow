@@ -1,0 +1,264 @@
+{
+  "page": {
+    "title": "Sociala medier",
+    "description": "Automatisera och hantera dina sociala kanaler — publicera, schemalägg och följ statistik."
+  },
+  "smartBar": {
+    "titleEmpty": "Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt.",
+    "step1": "Koppla konton under Kopplingar",
+    "step2": "Under Publicera: välj plattform och konto",
+    "step3": "Skriv, lägg till media och publicera eller schemalägg",
+    "tip": "Statistik och schema ligger under egna flikar — håll Publicera för att skicka.",
+    "liveHintNoAccounts": "Inga sociala konton kopplade — börja under Kopplingar.",
+    "connectAccount": "Koppla konto",
+    "titleActive": "Socialt",
+    "liveHintQueued": "{{count}} i kö eller schemalagda — se Schema & mer."
+  },
+  "tabs": {
+    "ariaLabel": "Socialt-flikar",
+    "publish": "Publicera",
+    "stats": "Statistik",
+    "more": "Schema & mer"
+  },
+  "connections": {
+    "needsAttention": " — behöver åtgärdas",
+    "connectNow": "Koppla nu",
+    "fix": "Åtgärda",
+    "apiKeys": "API-nycklar"
+  },
+  "localMode": "Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session.",
+  "stats": {
+    "loadError": "Kunde inte ladda social statistik: {{error}}",
+    "fetchError": "Kunde inte hämta kontostatistik ({{status}})",
+    "retry": "Försök igen",
+    "close": "Stäng",
+    "refresh": "Uppdatera statistik",
+    "loading": "Laddar…",
+    "dataFor": "Data för {{username}}",
+    "followers": "Följare",
+    "following": "Följer",
+    "posts": "Inlägg",
+    "engagement": "Engagemang",
+    "avgRating": "Snittbetyg",
+    "reviews": "Recensioner",
+    "avgViews": "Snitt visningar",
+    "avgLikes": "Snitt gilla",
+    "tweets": "Tweets",
+    "templates": "Mallar",
+    "recentPosts": "Senaste inlägg",
+    "whatsappTemplates": "WhatsApp-mallar",
+    "recentPostsDescWhatsapp": "Godkända mallar från ditt WhatsApp Business-konto (via Zernio)",
+    "recentPostsDescInstagram": "Visningar, gilla och kommentarer per inlägg",
+    "recentPostsDescDefault": "Gilla och kommentarer per inlägg"
+  },
+  "analysis": {
+    "aiAnalysis": "AI-analys",
+    "analyzing": "Analyserar kontoinnehåll…",
+    "about": "Om",
+    "writes": "Skriver om",
+    "perception": "Uppfattning",
+    "loadingProfile": "Hämtar företagsprofil…",
+    "loadingPosts": "Hämtar inlägg…",
+    "noData": "Ingen data ännu. Synka kontot under Kopplingar eller vänta på nästa automatiska hämtning."
+  },
+  "empty": {
+    "selectAccountTitle": "Välj ett socialt konto",
+    "selectAccountDesc": "Välj ett kopplat konto (Instagram, TikTok, YouTube, X) — eller lägg till fler under Kopplingar.",
+    "openConnections": "Öppna Kopplingar"
+  },
+  "toasts": {
+    "uploadSuccess": "Uppladdningen sparades i Valda — redo att publicera",
+    "uploadPreviewOnly": "Endast förhandsvisning — uppladdning misslyckades. Generera med AI eller välj från Innehåll istället.",
+    "savedToHistory": "Sparad i Historik och vald",
+    "analysisFailed": "Kontoanalys misslyckades."
+  },
+  "more": {
+    "automationHintTitle": "Låt schema och pipeline köra själva",
+    "automationHintDesc": "Publicering av schemalagda inlägg, innehållspipeline och sociala snapshots kan köras automatiskt — så du slipper klicka manuellt varje dag.",
+    "automationHintCta": "Öppna content-automationer",
+    "mcpTitle": "MCP-designstöd",
+    "mcpDesc": "Kreativa briefs och designriktning via Canva MCP för socialt innehåll.",
+    "imageCardTitle": "Skapa bild till inlägg",
+    "imageCardDescPrefix": "Generera med AI eller exportera från Canva. Media hanteras under",
+    "imageCardDescLink": "Innehåll → Valda",
+    "imageCardDescSuffix": ".",
+    "campaignsTitle": "Aktiva kampanjer",
+    "campaignsManage": "Hantera →",
+    "campaignsEmpty": "Inga aktiva kampanjer.",
+    "campaignsCreate": "Skapa kampanj",
+    "campaignDeadline": "Deadline: {{date}}",
+    "campaignStatusOpen": "Planerad",
+    "campaignStatusActive": "Aktiv",
+    "campaignStatusPaused": "Pausad"
+  },
+  "overview": {
+    "title": "Total översikt",
+    "description": "Samlad statistik för alla kopplade sociala konton i den här profilen.",
+    "connectedAccounts": "Kopplade konton",
+    "totalFollowers": "Följare totalt",
+    "totalPosts": "Inlägg/mallar totalt",
+    "avgEngagement": "Snittengagemang",
+    "totalLikes": "Gilla-markeringar totalt",
+    "totalComments": "Kommentarer totalt",
+    "avgLikesPerAccount": "Snitt gilla/konto",
+    "avgCommentsPerAccount": "Snitt kommentarer/konto",
+    "perPlatform": "Per plattform",
+    "noAccounts": "Inga sociala konton kopplade ännu.",
+    "openConnections": "Öppna Kopplingar",
+    "platformRow_one": "{{accounts}} konto · {{followers}} följare · {{posts}} inlägg",
+    "platformRow_other": "{{accounts}} konton · {{followers}} följare · {{posts}} inlägg",
+    "lastUpdated": "Senast uppdaterad:",
+    "noTimestamp": "Ingen tidsstämpel tillgänglig"
+  },
+  "schedule": {
+    "title": "Publiceringspipeline",
+    "descriptionPrefix": "Utkast och schemalagda inlägg — schemalagda syns även i",
+    "calendarLink": "kalendern",
+    "descriptionSuffix": "och kan flyttas därifrån.",
+    "emptyCaption": "(tomt inlägg)",
+    "noTime": "Ingen tid satt",
+    "editPost": "Redigera inlägg",
+    "removePost": "Ta bort inlägg",
+    "status": {
+      "draft": "Utkast",
+      "scheduled": "Schemalagd",
+      "published": "Publicerad",
+      "failed": "Misslyckad"
+    }
+  },
+  "automation": {
+    "title": "Automationsflöden för social media",
+    "description": "Aktivera flöden — sparas i molnet och styr content-pipeline-cron.",
+    "activeCount": "{{count}} aktiva",
+    "enableAria": "Aktivera {{title}}",
+    "weekPlanTitle": "Generera veckoplan till kalendern",
+    "weekPlanDesc": "Skapar kalenderaktiviteter och utkast i publiceringskön baserat på aktiva flöden.",
+    "weekPlanButton": "Skapa automationsvecka",
+    "pipelineTitle": "Innehållspipeline att automatisera",
+    "pipelineDesc": "Ett enkelt ramverk för att automatisera hela content-flödet från idé till analys.",
+    "calendarEventPrefix": "Auto: {{title}}",
+    "draftCaption": "[Auto] {{title}} — {{summary}}",
+    "toasts": {
+      "enableOne": "Aktivera minst ett automationsflöde",
+      "enableOneDesc": "Välj ett eller flera flöden ovan för att skapa en veckoplan.",
+      "weekPlanCreated": "Veckoplan skapad",
+      "weekPlanCreatedDesc": "{{count}} aktiviteter i kalendern och utkast i publiceringskön.",
+      "weekPlanFailed": "Kunde inte skapa veckoplan",
+      "weekPlanFailedDesc": "Kontrollera lagring och försök igen."
+    },
+    "flows": {
+      "repurpose-weekly-hero": {
+        "title": "Repurpose av veckans huvudinnehåll",
+        "summary": "Ett långt video- eller blogginnehåll delas upp till flera kanaler med AI-kopior.",
+        "cadence": "2 ggr/vecka",
+        "value": "Sparar tid i produktion",
+        "steps": [
+          "Identifiera veckans huvudinnehåll",
+          "Generera 3 kortformat (Reels/TikTok/Shorts)",
+          "Skapa plattformsanpassad copy"
+        ]
+      },
+      "caption-hashtag-optimizer": {
+        "title": "Caption + hashtag-optimering",
+        "summary": "AI skapar caption-varianter och hashtag-paket beroende på mål (reach, leads, community).",
+        "cadence": "Varje publicering",
+        "value": "Högre organisk räckvidd",
+        "steps": [
+          "Analysera format och målgrupp",
+          "Skapa 3 caption-varianter i olika tonalitet",
+          "Lägg till relevanta hashtags per kanal"
+        ]
+      },
+      "content-gap-filler": {
+        "title": "Kalender-gap-fyllare",
+        "summary": "Upptäcker tomma dagar i publiceringsschemat och fyller med AI-idéer automatiskt.",
+        "cadence": "Var 2:a dag",
+        "value": "Konsekvent närvaro",
+        "steps": [
+          "Räkna schemalagda inlägg närmaste 72h",
+          "Generera idéer när färre än 2 inlägg väntar",
+          "Köa till content-pipeline"
+        ]
+      },
+      "evergreen-repost": {
+        "title": "Evergreen-replay",
+        "summary": "Återpublicerar ditt bästa äldre innehåll när veckan är tom — utan att du behöver gräva i arkivet.",
+        "cadence": "Var 2:a vecka",
+        "value": "Mer output, mindre arbete",
+        "steps": [
+          "Hitta publicerat innehåll äldre än 30 dagar",
+          "Köa replay om inget väntar nästa vecka",
+          "Schemalägg med ny intro-rad"
+        ]
+      },
+      "engagement-followup": {
+        "title": "Engagement-följdflöde",
+        "summary": "Kritiska kommentarer och frågor fångas upp och fördelas till snabba svarsmallar.",
+        "cadence": "Dagligen",
+        "value": "Ökar svarsfrekvens",
+        "steps": [
+          "Filtrera kommentarer med köpintention eller frågor",
+          "Skicka notifiering och svarsförslag",
+          "Tagga heta leads för uppföljning"
+        ]
+      },
+      "weekly-insight-digest": {
+        "title": "Veckovis insiktsrapport",
+        "summary": "Automatisk sammanställning av vad som fungerade bäst och vad som ska testas nästa vecka.",
+        "cadence": "1 gång/vecka",
+        "value": "Datadrivna beslut snabbare",
+        "steps": [
+          "Hämta toppinlägg per kanal",
+          "Sammanfatta engagemangsmönster",
+          "Generera 3 nya testidéer för veckan"
+        ]
+      }
+    },
+    "pipeline": {
+      "research": {
+        "title": "1. Research",
+        "tasks": ["Trendspaning", "Målgruppsanalys", "Innehållsvinklar"]
+      },
+      "production": {
+        "title": "2. Produktion",
+        "tasks": ["Skapa masterinnehåll", "AI-copy", "Bild-/videovarianter"]
+      },
+      "distribution": {
+        "title": "3. Distribution",
+        "tasks": ["Plattformsanpassning", "Schemaläggning", "Automatisk publicering"]
+      },
+      "followup": {
+        "title": "4. Uppföljning",
+        "tasks": ["Engagemangssvar", "Lead-tagging", "Veckorapport"]
+      }
+    }
+  },
+  "videoDraft": {
+    "title": "AI Video Draft",
+    "description": "Välj en markerad Google Drive-video och generera ett återanvändbart kortformat-koncept, shotlista och caption.",
+    "empty": "Inga markerade Google Drive-videor ännu. Markera en under fliken Innehåll för att generera ett videoutkast här.",
+    "sourceVideo": "Källvideo",
+    "platform": "Plattform",
+    "platformPlaceholder": "Instagram Reels",
+    "objective": "Mål",
+    "objectivePlaceholder": "t.ex. En kort produktteaser",
+    "objectiveDefault": "Skapa en kort video för sociala medier",
+    "guidance": "Extra vägledning",
+    "guidancePlaceholder": "Hook-vinkel, målgrupp, CTA, varumärkestonalitet eller viktiga punkter att lyfta.",
+    "generating": "Skapar…",
+    "generate": "Skapa videoutkast",
+    "openSource": "Öppna källvideo",
+    "generateError": "Kunde inte generera videoutkast",
+    "badgeAi": "AI-genererat",
+    "badgeFallback": "Reservutkast",
+    "builtFrom": "Byggt från {{name}}",
+    "fields": {
+      "title": "Titel",
+      "hook": "Hook",
+      "concept": "Koncept",
+      "shotList": "Shotlista",
+      "caption": "Caption",
+      "cta": "CTA"
+    }
+  }
+}

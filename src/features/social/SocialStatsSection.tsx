@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Users, FileText, Heart, Eye, Star, Loader2, ImagePlus } from "lucide-react";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
@@ -11,13 +12,6 @@ import type { ConnectedAccount } from "@/types/accounts";
 import type { SocialMediaApiPost } from "./socialApiTypes";
 import { useSocialStatsTrend } from "./useSocialStatsTrend";
 import { formatStatChange, type SocialTrendMetric } from "./socialStatsTrend";
-
-const defaultStats = [
-  { label: "Följare", value: "–", change: "", icon: Users, key: "followers" },
-  { label: "Följer", value: "–", change: "", icon: Users, key: "following" },
-  { label: "Inlägg", value: "–", change: "", icon: FileText, key: "media" },
-  { label: "Engagemang", value: "–", change: "", icon: Heart, key: "engagement" },
-];
 
 /** Which snapshot metric backs each KPI card, keyed by the card's `key`. */
 const TREND_METRIC_BY_STAT_KEY: Record<string, SocialTrendMetric> = {
@@ -50,7 +44,18 @@ export function SocialStatsSection({
   onRefresh: () => void;
   posts: SocialMediaApiPost[];
 }) {
+  const { t } = useTranslation("social");
   const { trend } = useSocialStatsTrend(account?.id ?? null);
+
+  const defaultStats = useMemo(
+    () => [
+      { label: t("stats.followers"), value: "–", change: "", icon: Users, key: "followers" },
+      { label: t("stats.following"), value: "–", change: "", icon: Users, key: "following" },
+      { label: t("stats.posts"), value: "–", change: "", icon: FileText, key: "media" },
+      { label: t("stats.engagement"), value: "–", change: "", icon: Heart, key: "engagement" },
+    ],
+    [t]
+  );
 
   const stats = useMemo(() => {
     const s = account?.stats;
@@ -61,7 +66,7 @@ export function SocialStatsSection({
         {
           ...defaultStats[0],
           key: "gbp-rating",
-          label: "Snittbetyg",
+          label: t("stats.avgRating"),
           value: s.averageRating != null ? s.averageRating.toFixed(1) : "–",
           change: "",
           icon: Star,
@@ -69,13 +74,13 @@ export function SocialStatsSection({
         {
           ...defaultStats[1],
           key: "gbp-reviews",
-          label: "Recensioner",
+          label: t("stats.reviews"),
           value: s.reviewCount != null ? formatNumber(s.reviewCount) : "–",
           change: "",
           icon: FileText,
         },
-        { ...defaultStats[2], key: "gbp-posts", label: "Inlägg", value: "–" },
-        { ...defaultStats[3], key: "gbp-engagement", label: "Engagemang", value: "–" },
+        { ...defaultStats[2], key: "gbp-posts", label: t("stats.posts"), value: "–" },
+        { ...defaultStats[3], key: "gbp-engagement", label: t("stats.engagement"), value: "–" },
       ];
     }
     const isX = account.platform === "x";
@@ -84,9 +89,9 @@ export function SocialStatsSection({
 
     const avgLikesStat =
       isInstagram && s.avgViews != null
-        ? { key: "avg-views", label: "Snitt visningar", value: formatNumber(s.avgViews), change: "", icon: Eye }
+        ? { key: "avg-views", label: t("stats.avgViews"), value: formatNumber(s.avgViews), change: "", icon: Eye }
         : s.avgLikes != null
-        ? { key: "avg-likes", label: "Snitt gilla", value: String(s.avgLikes), change: "", icon: Heart }
+        ? { key: "avg-likes", label: t("stats.avgLikes"), value: String(s.avgLikes), change: "", icon: Heart }
         : s.followingCount != null
           ? { ...defaultStats[1], value: formatNumber(s.followingCount) }
           : { ...defaultStats[1], value: "–" };
@@ -104,12 +109,12 @@ export function SocialStatsSection({
       avgLikesStat,
       {
         ...defaultStats[2],
-        label: isX ? "Tweets" : isWhatsApp ? "Mallar" : "Inlägg",
+        label: isX ? t("stats.tweets") : isWhatsApp ? t("stats.templates") : t("stats.posts"),
         value: s.mediaCount != null ? formatNumber(s.mediaCount) : "–",
       },
       engagementStat,
     ];
-  }, [account]);
+  }, [account, defaultStats, t]);
 
   // Fill each card's change badge from the daily snapshots ("+12 (7d)").
   // Cards keep their empty change until the cron has two days of history.
@@ -127,6 +132,15 @@ export function SocialStatsSection({
     });
   }, [stats, trend]);
 
+  const recentPostsTitle =
+    account?.platform === "whatsapp" ? t("stats.whatsappTemplates") : t("stats.recentPosts");
+  const recentPostsDesc =
+    account?.platform === "whatsapp"
+      ? t("stats.recentPostsDescWhatsapp")
+      : account?.platform === "instagram"
+        ? t("stats.recentPostsDescInstagram")
+        : t("stats.recentPostsDescDefault");
+
   return (
     <>
       {account && (account.isOAuth || account.isZernio) && (
@@ -142,14 +156,14 @@ export function SocialStatsSection({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                Laddar…
+                {t("stats.loading")}
               </>
             ) : (
-              "Uppdatera statistik"
+              t("stats.refresh")
             )}
           </Button>
           <span className="text-xs text-muted-foreground truncate">
-            Data för {account.username}
+            {t("stats.dataFor", { username: account.username })}
           </span>
         </div>
       )}
@@ -197,15 +211,9 @@ export function SocialStatsSection({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-5 w-5" />
-                {account?.platform === "whatsapp" ? "WhatsApp-mallar" : "Senaste inlägg"}
+                {recentPostsTitle}
               </CardTitle>
-              <CardDescription>
-                {account?.platform === "whatsapp"
-                  ? "Godkända mallar från ditt WhatsApp Business-konto (via Zernio)"
-                  : account?.platform === "instagram"
-                    ? "Visningar, gilla och kommentarer per inlägg"
-                    : "Gilla och kommentarer per inlägg"}
-              </CardDescription>
+              <CardDescription>{recentPostsDesc}</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Image grid for visual platforms (Instagram etc.) */}

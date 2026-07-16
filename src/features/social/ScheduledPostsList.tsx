@@ -1,12 +1,13 @@
 import { CalendarClock, Pencil, Send, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDateTimeMedium } from "@/lib/format";
 import { platformLabel } from "@/lib/platformLabels";
 import { useScheduledPosts } from "./useScheduledPosts";
-import { SCHEDULED_POST_STATUS_LABELS, type ScheduledPost, type ScheduledPostStatus } from "./scheduledPosts";
+import { type ScheduledPost, type ScheduledPostStatus } from "./scheduledPosts";
 
 const STATUS_TONE: Record<ScheduledPostStatus, string> = {
   draft: "border-border bg-muted/40 text-muted-foreground",
@@ -15,32 +16,33 @@ const STATUS_TONE: Record<ScheduledPostStatus, string> = {
   failed: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 
-function formatWhen(iso: string | null): string {
-  return formatDateTimeMedium(iso) || "Ingen tid satt";
-}
-
 /**
  * The publishing pipeline under the composer: every post with its
  * draft → scheduled → published status, editable until it is published.
  * Scheduled posts also appear on the Calendar, where they can be moved.
  */
 export function ScheduledPostsList({ onEdit }: { onEdit?: (post: ScheduledPost) => void }) {
+  const { t } = useTranslation("social");
   const { posts, remove } = useScheduledPosts();
   if (posts.length === 0) return null;
+
+  function formatWhen(iso: string | null): string {
+    return formatDateTimeMedium(iso) || t("schedule.noTime");
+  }
 
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Send className="h-4 w-4 text-muted-foreground" />
-          Publiceringspipeline
+          {t("schedule.title")}
         </CardTitle>
         <CardDescription>
-          Utkast och schemalagda inlägg — schemalagda syns även i{" "}
+          {t("schedule.descriptionPrefix")}{" "}
           <Link to="/calendar" className="underline underline-offset-2 hover:text-foreground">
-            kalendern
+            {t("schedule.calendarLink")}
           </Link>{" "}
-          och kan flyttas därifrån.
+          {t("schedule.descriptionSuffix")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -52,7 +54,7 @@ export function ScheduledPostsList({ onEdit }: { onEdit?: (post: ScheduledPost) 
               className="flex flex-col gap-2 rounded-lg border border-border/70 bg-background/60 px-3.5 py-2.5 sm:flex-row sm:items-center"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground truncate">{post.caption || "(tomt inlägg)"}</p>
+                <p className="text-sm text-foreground truncate">{post.caption || t("schedule.emptyCaption")}</p>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <CalendarClock className="h-3 w-3" aria-hidden />
@@ -71,7 +73,7 @@ export function ScheduledPostsList({ onEdit }: { onEdit?: (post: ScheduledPost) 
                     STATUS_TONE[post.status]
                   )}
                 >
-                  {SCHEDULED_POST_STATUS_LABELS[post.status]}
+                  {t(`schedule.status.${post.status}`)}
                 </span>
                 {editable && onEdit ? (
                   <Button
@@ -79,7 +81,7 @@ export function ScheduledPostsList({ onEdit }: { onEdit?: (post: ScheduledPost) 
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     onClick={() => onEdit(post)}
-                    aria-label="Redigera inlägg"
+                    aria-label={t("schedule.editPost")}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -89,7 +91,7 @@ export function ScheduledPostsList({ onEdit }: { onEdit?: (post: ScheduledPost) 
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
                   onClick={() => remove(post.id)}
-                  aria-label="Ta bort inlägg"
+                  aria-label={t("schedule.removePost")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

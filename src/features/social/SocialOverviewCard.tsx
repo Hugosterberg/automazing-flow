@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import type { ConnectedAccount } from "@/types/accounts";
 
 /** Aggregated metrics across all connected social accounts in the profile. */
 export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] }) {
+  const { t } = useTranslation("social");
+
   const overviewData = useMemo(() => {
     const summary = accounts.reduce(
       (acc, a) => {
@@ -52,60 +55,58 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
     <>
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Total översikt</span>
+        <span className="text-sm font-medium text-muted-foreground">{t("overview.title")}</span>
       </div>
       <Card className="bg-card border-border">
         <CardContent className="px-4 py-4 sm:px-6 sm:py-5">
-          <p className="text-xs text-muted-foreground mb-4">
-            Samlad statistik för alla kopplade sociala konton i den här profilen.
-          </p>
+          <p className="text-xs text-muted-foreground mb-4">{t("overview.description")}</p>
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Kopplade konton</p>
+              <p className="text-xs text-muted-foreground">{t("overview.connectedAccounts")}</p>
               <p className="font-semibold">{formatNumber(overviewData.connected)}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Följare totalt</p>
+              <p className="text-xs text-muted-foreground">{t("overview.totalFollowers")}</p>
               <p className="font-semibold">{overviewData.hasFollowers ? formatNumber(overviewData.followers) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Inlägg/mallar totalt</p>
+              <p className="text-xs text-muted-foreground">{t("overview.totalPosts")}</p>
               <p className="font-semibold">{overviewData.hasPosts ? formatNumber(overviewData.posts) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Snittengagemang</p>
+              <p className="text-xs text-muted-foreground">{t("overview.avgEngagement")}</p>
               <p className="font-semibold">
                 {overviewData.engagementCount > 0 ? `${(overviewData.engagementSum / overviewData.engagementCount).toFixed(1)}%` : "–"}
               </p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Gilla-markeringar totalt</p>
+              <p className="text-xs text-muted-foreground">{t("overview.totalLikes")}</p>
               <p className="font-semibold">{overviewData.hasTotalLikes ? formatNumber(overviewData.totalLikes) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Kommentarer totalt</p>
+              <p className="text-xs text-muted-foreground">{t("overview.totalComments")}</p>
               <p className="font-semibold">{overviewData.hasTotalComments ? formatNumber(overviewData.totalComments) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Snitt gilla/konto</p>
+              <p className="text-xs text-muted-foreground">{t("overview.avgLikesPerAccount")}</p>
               <p className="font-semibold">{overviewData.avgLikes != null ? overviewData.avgLikes.toFixed(1) : "–"}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Snitt kommentarer/konto</p>
+              <p className="text-xs text-muted-foreground">{t("overview.avgCommentsPerAccount")}</p>
               <p className="font-semibold">{overviewData.avgComments != null ? overviewData.avgComments.toFixed(1) : "–"}</p>
             </div>
           </div>
 
           <div className="rounded-md border border-border mt-4">
             <div className="px-3 py-2 border-b border-border">
-              <p className="text-xs font-medium text-muted-foreground">Per plattform</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("overview.perPlatform")}</p>
             </div>
             <div className="px-3 py-2 space-y-2">
               {overviewData.byPlatform.length === 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Inga sociala konton kopplade ännu.</p>
+                  <p className="text-xs text-muted-foreground">{t("overview.noAccounts")}</p>
                   <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                    <Link to="/connections">Öppna Kopplingar</Link>
+                    <Link to="/connections">{t("overview.openConnections")}</Link>
                   </Button>
                 </div>
               ) : (
@@ -113,7 +114,12 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
                   <div key={platform} className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between text-xs">
                     <span className="capitalize font-medium">{platform.replace("_", " ")}</span>
                     <span className="text-muted-foreground sm:text-right">
-                      {values.accounts} konto{values.accounts === 1 ? "" : "n"} · {formatNumber(values.followers)} följare · {formatNumber(values.posts)} inlägg
+                      {t("overview.platformRow", {
+                        count: values.accounts,
+                        accounts: values.accounts,
+                        followers: formatNumber(values.followers),
+                        posts: formatNumber(values.posts),
+                      })}
                     </span>
                   </div>
                 ))
@@ -122,8 +128,8 @@ export function SocialOverviewCard({ accounts }: { accounts: ConnectedAccount[] 
           </div>
 
           <p className="text-xs text-muted-foreground mt-3">
-            Senast uppdaterad:{" "}
-            {formatDateTimeMedium(overviewData.lastUpdatedIso) || "Ingen tidsstämpel tillgänglig"}
+            {t("overview.lastUpdated")}{" "}
+            {formatDateTimeMedium(overviewData.lastUpdatedIso) || t("overview.noTimestamp")}
           </p>
         </CardContent>
       </Card>
