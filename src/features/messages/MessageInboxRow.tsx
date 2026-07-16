@@ -12,6 +12,7 @@ type Props = {
   visuallyUnread?: boolean;
   urgent: boolean;
   channelLabel: string;
+  triageLabel?: string | null;
   aiSummary?: string;
   waited: string | null;
   formattedDate: string;
@@ -46,6 +47,7 @@ export const MessageInboxRow = memo(
       visuallyUnread = open,
       urgent,
       channelLabel,
+      triageLabel,
       waited,
       formattedDate,
       fullDate,
@@ -124,6 +126,18 @@ export const MessageInboxRow = memo(
               </span>
               {message.isStarred ? (
                 <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" aria-label="Flaggad" />
+              ) : null}
+              {triageLabel ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1 py-px text-[9px] font-medium uppercase tracking-wide",
+                    urgent
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {triageLabel}
+                </span>
               ) : null}
               <time
                 className="shrink-0 text-[10px] tabular-nums text-muted-foreground"

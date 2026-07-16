@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   area: AppArea;
   className?: string;
+  /** Hide when every entry for the area is connected and healthy. */
+  hideWhenHealthy?: boolean;
 };
 
 type RowState = "ok" | "attention" | "missing";
@@ -21,7 +23,7 @@ type RowState = "ok" | "attention" | "missing";
  * Compact checklist for the current app page: what is linked for the active
  * profile, what needs reconnect, and what is still missing.
  */
-export function SectionConnectionStatus({ area, className }: Props) {
+export function SectionConnectionStatus({ area, className, hideWhenHealthy = false }: Props) {
   const { activeProfileId, allAccounts } = useAccounts();
   const { connections } = useConnections(activeProfileId);
   const entries = getConnectionEntriesForArea(area);
@@ -65,6 +67,11 @@ export function SectionConnectionStatus({ area, className }: Props) {
 
   const okCount = rows.filter((r) => r.state === "ok").length;
   const attentionCount = rows.filter((r) => r.state === "attention").length;
+  const missingCount = rows.filter((r) => r.state === "missing").length;
+
+  if (hideWhenHealthy && attentionCount === 0 && missingCount === 0 && total > 0) {
+    return null;
+  }
 
   return (
     <div

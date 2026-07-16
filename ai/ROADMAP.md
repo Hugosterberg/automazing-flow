@@ -2,7 +2,7 @@
 
 _Numbered versions are deliberate increments, not a wish pile. When a version
 ships, move its highlights to Shipped and renumber what's left. Last updated:
-2026-07-13._
+2026-07-16._
 
 ## Shipped (highlights)
 
@@ -36,6 +36,15 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
   existing snapshot tables; data-freshness strip on Home with one-click
   resync; Daily Brief upgraded to done/snooze with progress; token-expiry
   nudges now name the platform and deep-link to its Connections card.
+- **Inbox triage buckets** (2026-07-16): client-side classifier maps mail/DMs
+  into Idag / Denna vecka / FYI / Brus; filter chips + sort on Meddelanden;
+  Daily Brief deep-links to `?bucket=today`; local snooze (imorgon / nästa vecka);
+  “Skapa uppgift” from message detail. Heuristics only (no new tables).
+- **Agent activity ingest** (2026-07-16): `POST /api/agent-activity` (CRON_SECRET)
+  → `activity_events` module=agent; Brief + Activity `?module=agent`.
+- **UX chrome trim** (2026-07-16): SmartBar/AI strips scoped to when they help;
+  Mer-collapsibles closed by default; Digital Brand website edit → Företag;
+  Reviews/Ecommerce connection status hidden when healthy.
 
 ## v1 — Trust the automation (make what exists visibly reliable)
 
@@ -45,16 +54,20 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - [x] Connection health: proactive re-auth nudges before tokens die (expiry
       notifier exists; make it actionable per platform). _Shipped: toast names
       the platform and deep-links to its card via `/connections?filter=attention&q=…`._
-- [ ] Eval/regression habit: golden cases for auto-reply drafts and digests so
-      prompt changes can't silently regress.
+- [x] Eval/regression habit: golden cases for auto-reply drafts and digests so
+      prompt changes can't silently regress. _Shipped: `server/ai/evals/goldenCases.ts`
+      + `src/test/aiEvalGolden.test.ts` (fallback drafts + brief all-clear)._
 
 ## v2 — First CMA "AI employee"
 
 - [ ] Pick and launch the first Claude Managed Agent (candidates: scheduled
       business digest with real research; repo engineer issue→PR; data analyst
       over business exports). Working folder: `c:\Code\launch-your-agent\my-agent\`.
-- [ ] Wire its output into automazing (Activity feed entry or Daily Brief
-      section) so agent work is visible inside the product.
+- [x] Wire its output into automazing (Activity feed entry or Daily Brief
+      section) so agent work is visible inside the product. _Ingest:
+      `POST /api/agent-activity` → `activity_events` (module=agent); Brief shows
+      last-24h agent updates; Activity supports `?module=agent`. Still need the
+      agent process to call the endpoint after each run._
 
 ## v3 — Multi-user SaaS readiness
 
@@ -75,4 +88,5 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - Bitcoin angle for BAI Digital (treasury dashboard? on-chain data slice?) —
   needs founder definition before it enters a version.
 - Generated UI on top of CMA agents (results viewer inside automazing).
-- Inbox triage beyond auto-reply (bucketing, priority queue).
+- Inbox triage v2: AI re-rank / learn-from-Klar overrides, server-side labels,
+  header-aware bulk detection (List-Unsubscribe) once providers expose headers.

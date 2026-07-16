@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { briefItemsForRoute, routeModuleLabel } from "@/features/daily-brief/briefForRoute";
 import {
+  Bot,
   Gauge,
   ListChecks,
   MessageSquare,
@@ -27,6 +28,7 @@ const KIND_ICON: Record<BriefItemKind, typeof MessageSquare> = {
   recommendation: SparklesIcon,
   review: Star,
   automation: Zap,
+  agent: Bot,
 };
 
 const SEVERITY_CLASS = {

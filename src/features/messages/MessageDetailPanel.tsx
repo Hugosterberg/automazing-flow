@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowLeft,
   Archive,
@@ -6,10 +7,12 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Copy,
   ExternalLink,
   Folder,
   FolderInput,
+  ListTodo,
   Loader2,
   Mail,
   MoreHorizontal,
@@ -48,6 +51,7 @@ import { useIsDesktopWorkspace, useIsMobile, useKeyboardInset } from "@/hooks/us
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
+import { classifyMessageTriage, TRIAGE_BUCKET_LABELS } from "./messageTriage";
 import { MessageThread } from "./MessageThread";
 import { avatarGradient, formatFullMessageDate, formatMessageDate, senderInitial } from "./messagesUi";
 import type { MailFolder, ThreadMessage, UnifiedMessage } from "./types";
@@ -70,6 +74,8 @@ export type MessageDetailPanelProps = {
   onSendReply: () => void;
   onMarkHandled: () => void;
   onUnmarkHandled?: () => void;
+  /** Defer message in the local triage queue (does not change provider state). */
+  onSnooze?: (until: "tomorrow" | "week") => void;
   onNextAfterSend?: () => void;
   onBack?: () => void;
   showBack?: boolean;
@@ -107,6 +113,7 @@ export function MessageDetailPanel({
   onSendReply,
   onMarkHandled,
   onUnmarkHandled,
+  onSnooze,
   onNextAfterSend,
   onBack,
   showBack,
@@ -174,10 +181,17 @@ export function MessageDetailPanel({
   const headerInitial = senderInitial(fromName);
   const headerAvatarGradient = avatarGradient(fromName || fromEmail || message.id);
   const relativeDate = message.date ? formatMessageDate(message.date) : "";
+  const triage = classifyMessageTriage(message);
   const hasDraft = Boolean(replyDraft.trim());
   const accountFolders = mailFolders.filter((folder) => folder.accountId === message.accountId);
   const isStarred = Boolean(message.isStarred);
   const showMailActions = message.kind === "email" && Boolean(onMailAction);
+  const taskPrefillTitle = (
+    message.subject?.trim() ||
+    message.snippet?.trim() ||
+    `Svara ${fromName}`
+  ).slice(0, 120);
+  const createTaskHref = `/tasks?new=1&title=${encodeURIComponent(taskPrefillTitle)}`;
 
   function renderMoveSubmenu() {
     if (message.kind !== "email" || !onMoveToFolder || accountFolders.length === 0) return null;
@@ -254,6 +268,12 @@ export function MessageDetailPanel({
         >
           <Archive className="h-3.5 w-3.5" />
           Arkivera
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px]" asChild>
+          <Link to={createTaskHref}>
+            <ListTodo className="h-3.5 w-3.5" />
+            Uppgift
+          </Link>
         </Button>
         {onMoveToFolder && accountFolders.length > 0 ? (
           <DropdownMenu>
@@ -494,6 +514,24 @@ export function MessageDetailPanel({
                       <Copy className="mr-2 h-4 w-4" />
                       Kopiera meddelande
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={createTaskHref}>
+                        <ListTodo className="mr-2 h-4 w-4" />
+                        Skapa uppgift
+                      </Link>
+                    </DropdownMenuItem>
+                    {onSnooze && !isHandled ? (
+                      <>
+                        <DropdownMenuItem onSelect={() => onSnooze("tomorrow")}>
+                          <Clock className="mr-2 h-4 w-4" />
+                          Skjut upp till imorgon
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => onSnooze("week")}>
+                          <Clock className="mr-2 h-4 w-4" />
+                          Skjut upp till nästa vecka
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
                     {fromEmail ? (
                       <DropdownMenuItem onSelect={copyEmail}>
                         <Mail className="mr-2 h-4 w-4" />
@@ -547,6 +585,17 @@ export function MessageDetailPanel({
                     <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px] uppercase tracking-wide">
                       {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
                       {channelLabel}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "h-5 px-1.5 text-[10px] font-medium",
+                        triage.bucket === "today" && "border-destructive/40 text-destructive",
+                        triage.bucket === "week" && "border-warning/40 text-warning"
+                      )}
+                      title={triage.reason}
+                    >
+                      {TRIAGE_BUCKET_LABELS[triage.bucket]}
                     </Badge>
                     {fromEmail ? <span className="truncate">{fromEmail}</span> : null}
                   </div>
@@ -834,6 +883,17 @@ export function MessageDetailPanel({
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground lg:mt-0.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "h-5 px-1.5 text-[10px] font-medium",
+                  triage.bucket === "today" && "border-destructive/40 text-destructive",
+                  triage.bucket === "week" && "border-warning/40 text-warning"
+                )}
+                title={triage.reason}
+              >
+                {TRIAGE_BUCKET_LABELS[triage.bucket]}
+              </Badge>
               <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[9px] uppercase tracking-wide">
                 {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
                 {channelLabel}

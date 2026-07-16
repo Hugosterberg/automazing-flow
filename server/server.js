@@ -39,6 +39,7 @@ import { registerAccountRoutes } from "./routes/accountRoutes.ts";
 import { registerAiRoutes } from "./routes/aiRoutes.ts";
 import { registerAiRecommendationsRoutes } from "./routes/aiRecommendationsRoutes.ts";
 import { registerMessagesRoutes } from "./routes/messagesRoutes.ts";
+import { registerAgentActivityRoutes } from "./routes/agentActivityRoutes.ts";
 import { registerMcpRoutes } from "./routes/mcpRoutes.ts";
 import { registerIntelligenceRoutes } from "./routes/intelligenceRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
@@ -459,6 +460,10 @@ registerMessagesRoutes(app, {
   getStoredAccountAccess,
   zernio: zernioModule,
   zernioProfileIdFilter: (process.env.ZERNIO_PROFILE_ID || process.env.LATE_PROFILE_ID || "").trim(),
+});
+
+registerAgentActivityRoutes(app, {
+  supabaseAdmin: supabaseServiceClient,
 });
 
 registerOAuthRoutes(app, {

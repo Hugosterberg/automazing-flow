@@ -98,6 +98,10 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
     const mailAccountId = String(req.query.mailAccountId || "").trim();
     const mailFolderId = String(req.query.mailFolderId || "").trim();
     const folderScoped = Boolean(mailAccountId && mailFolderId);
+    // Progressive loading: clients can fetch mail first, then DMs.
+    const sourcesRaw = String(req.query.sources || "all").trim().toLowerCase();
+    const includeMail = sourcesRaw === "all" || sourcesRaw === "mail";
+    const includeDm = sourcesRaw === "all" || sourcesRaw === "dm";
 
     const unified: UnifiedMessage[] = [];
     const mailErrors: Array<{ accountId: string; platform: string; error: string }> = [];
@@ -132,7 +136,11 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
       const platform = String(stored.platform || "");
       const zernioAccountId = String(stored.zernioAccountId || stored.lateAccountId || "").trim();
 
-      if ((SOCIAL_MESSAGE_PLATFORMS as readonly string[]).includes(platform) && zernioAccountId) {
+      if (
+        includeDm &&
+        (SOCIAL_MESSAGE_PLATFORMS as readonly string[]).includes(platform) &&
+        zernioAccountId
+      ) {
         zernioMessageAccounts.push({
           localAccountId: accountId,
           zernioAccountId,
@@ -142,6 +150,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
         });
       }
 
+      if (!includeMail) continue;
       if (platform !== "gmail" && platform !== "outlook") continue;
 
       const mailboxKey = `${platform}:${String(stored.username || "").trim().toLowerCase()}`;
@@ -257,7 +266,7 @@ export function registerMessagesRoutes(app: import("express").Express, deps: Mes
 
     let zernioNote: string | undefined;
     const zernioPromise = (async () => {
-      if (zernioMessageAccounts.length === 0) return;
+      if (!includeDm || zernioMessageAccounts.length === 0) return;
 
       try {
         const accountsByPlatform = new Map<string, typeof zernioMessageAccounts>();

@@ -40,6 +40,11 @@ const ALLOWED_INTERNAL_ROUTES = new Set<string>([
   "/preferences",
   "/connections",
   "/integrations",
+  "/intelligence",
+  "/automations",
+  "/digital-brand",
+  "/insights",
+  "/company",
 ]);
 
 /**

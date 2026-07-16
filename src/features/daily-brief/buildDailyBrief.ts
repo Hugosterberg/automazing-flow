@@ -11,7 +11,16 @@
  */
 import { formatNumber } from "@/lib/format";
 
-export type BriefItemKind = "connection" | "message" | "marketing" | "lead" | "task" | "recommendation" | "review" | "automation";
+export type BriefItemKind =
+  | "connection"
+  | "message"
+  | "marketing"
+  | "lead"
+  | "task"
+  | "recommendation"
+  | "review"
+  | "automation"
+  | "agent";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -59,6 +68,8 @@ export interface DailyBriefInput {
   overdueTasks: Array<{ title: string }>;
   dueTodayTasks: Array<{ title: string }>;
   newRecommendations: Array<{ title: string }>;
+  /** Recent CMA / agent runs surfaced via activity_events (module=agent). */
+  agentUpdates?: Array<{ title: string }>;
 }
 
 const SEVERITY_RANK: Record<BriefSeverity, number> = { critical: 0, warning: 1, info: 2 };
@@ -110,8 +121,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       severity: "warning",
       title: unreadDms === 1 ? "1 oläst meddelande" : `${unreadDms} olästa meddelanden`,
       description:
-        unreadDms === 1 ? "En kund väntar på svar." : "Kunder väntar på svar.",
-      to: "/messages",
+        unreadDms === 1
+          ? "Öppna triage-hinken Idag och svara."
+          : "Börja med triage-hinken Idag — svara det viktiga först.",
+      to: "/messages?bucket=today",
       count: unreadDms,
     });
   }
@@ -253,6 +266,20 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const agentUpdates = input.agentUpdates ?? [];
+  if (agentUpdates.length > 0) {
+    const n = agentUpdates.length;
+    items.push({
+      id: "agent-updates",
+      kind: "agent",
+      severity: "info",
+      title: n === 1 ? "1 agentresultat att granska" : `${n} agentresultat att granska`,
+      description: taskDescription(agentUpdates),
+      to: "/activity?module=agent",
+      count: n,
+    });
+  }
+
   items.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.count - a.count);
 
   const hasUnderwaterRoas =
@@ -270,7 +297,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     failedAutomations.length +
     input.overdueTasks.length +
     input.dueTodayTasks.length +
-    input.newRecommendations.length;
+    input.newRecommendations.length +
+    agentUpdates.length;
 
   if (items.length === 0) {
     return {

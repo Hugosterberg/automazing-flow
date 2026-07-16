@@ -36,5 +36,8 @@ export function resolveActivitySubjectLink(
   if (type === "scheduled_post" || type === "post") {
     return { to: "/social-media", label: "Öppna social" };
   }
+  if (type === "agent_run" || type === "agent") {
+    return { to: "/activity?module=agent", label: "Agentaktivitet" };
+  }
   return null;
 }

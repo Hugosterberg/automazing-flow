@@ -44,12 +44,13 @@ describe("buildDailyBrief", () => {
     expect(brief.actionCount).toBe(6);
   });
 
-  it("surfaces unread DMs as a warning with customer-facing copy", () => {
+  it("surfaces unread DMs as a warning with triage deep link", () => {
     const single = buildDailyBrief({ ...empty, unreadDms: 1 });
     expect(single.items[0].kind).toBe("message");
     expect(single.items[0].severity).toBe("warning");
     expect(single.items[0].title).toBe("1 oläst meddelande");
-    expect(single.items[0].description).toMatch(/väntar på svar/i);
+    expect(single.items[0].description).toMatch(/triage/i);
+    expect(single.items[0].to).toBe("/messages?bucket=today");
 
     const many = buildDailyBrief({ ...empty, unreadDms: 5 });
     expect(many.items[0].title).toBe("5 olästa meddelanden");

@@ -12,7 +12,7 @@ const ROUTE_KINDS: Record<string, BriefItemKind[]> = {
   "/content": ["marketing", "recommendation"],
   "/ecommerce": ["marketing"],
   "/customers": ["lead", "message"],
-  "/activity": ["automation", "task", "lead"],
+  "/activity": ["automation", "task", "lead", "agent"],
   "/ai-recommendations": ["recommendation"],
   "/insights": ["marketing"],
   "/social-media": ["recommendation", "marketing"],

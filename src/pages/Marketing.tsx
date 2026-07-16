@@ -416,12 +416,6 @@ export default function MarketingPage() {
         }
       />
 
-      <PageAiSuggestionsStrip
-        businessProfileId={businessProfileId}
-        kinds={["insight", "maintenance"]}
-        label="AI-insikter för marketing"
-      />
-
       <PageModeTabs
         value={marketingTab}
         aria-label="Marketing-flikar"
@@ -434,6 +428,14 @@ export default function MarketingPage() {
         ]}
       />
 
+      {marketingTab === "campaigns" || marketingTab === "ideas" ? (
+        <PageAiSuggestionsStrip
+          businessProfileId={businessProfileId}
+          kinds={["insight", "maintenance"]}
+          label="AI-insikter för marketing"
+        />
+      ) : null}
+
       {marketingTab === "paths" ? (
       <div className="space-y-4">
         <m.div {...pageFadeUp}>
@@ -442,17 +444,20 @@ export default function MarketingPage() {
         <m.div {...pageFadeUp} transition={{ delay: 0.02 }}>
           <MarketingSetupCard />
         </m.div>
-        <m.div {...pageFadeUp} transition={{ delay: 0.03 }}>
-          <McpMultiSourceCompare businessProfileId={businessProfileId} />
-        </m.div>
-        <m.div {...pageFadeUp} transition={{ delay: 0.04 }}>
-          <McpFeatureSection
-            businessProfileId={businessProfileId}
-            featureIds={MCP_PAGE_FEATURE_IDS.marketing}
-            title="MCP-intelligens"
-            description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
-          />
-        </m.div>
+        <details className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            MCP-research (valfritt)
+          </summary>
+          <div className="mt-3 space-y-4">
+            <McpMultiSourceCompare businessProfileId={businessProfileId} />
+            <McpFeatureSection
+              businessProfileId={businessProfileId}
+              featureIds={MCP_PAGE_FEATURE_IDS.marketing}
+              title="MCP-intelligens"
+              description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
+            />
+          </div>
+        </details>
       </div>
       ) : null}
 

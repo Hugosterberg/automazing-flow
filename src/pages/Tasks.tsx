@@ -516,26 +516,27 @@ export default function TasksPage() {
       />
 
       {!isMobile ? (
-        <PageSmartBar
-          title="Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
-          steps={[
-            "Skapa en uppgift med formuläret ovan (eller öppna befintlig via kortet)",
-            "Filtrera på försenade eller dagens deadlines när du triagerar",
-            "Dra kort mellan Att göra → Pågår → Klart, eller öppna detaljer för AI/checklista",
-          ]}
-          tip="Dra mellan kolumnerna. Automationer kan påminna om försenade uppgifter — se Automationer."
-        />
+        tasks.length === 0 ? (
+          <PageSmartBar
+            title="Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier."
+            steps={[
+              "Skapa din första uppgift med formuläret",
+              "Filtrera på Idag eller Försenade när du triagerar",
+              "Dra kort mellan Att göra → Pågår → Klart",
+            ]}
+            tip="Automationer kan påminna om försenade uppgifter — se Automationer."
+          />
+        ) : overdueCount > 0 || dueTodayCount > 0 ? (
+          <PageSmartBar
+            title="Uppgifter"
+            liveHintOverride={
+              overdueCount > 0
+                ? `${overdueCount} försenade — filtrera på Försenade för att triagera.`
+                : `${dueTodayCount} förfaller idag.`
+            }
+          />
+        ) : null
       ) : null}
-
-      <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
-        <TaskForm
-          onSubmit={(input) => createTask(input)}
-          disabled={isCreating}
-          initialTitle={prefillTitle}
-          titleInputRef={taskTitleRef}
-          compact={isMobile}
-        />
-      </m.div>
 
       <PageModeTabs
         value={quickFilter}
@@ -547,6 +548,16 @@ export default function TasksPage() {
           { value: "all", label: "Alla" },
         ]}
       />
+
+      <m.div {...pageFadeUp} transition={{ duration: 0.35 }}>
+        <TaskForm
+          onSubmit={(input) => createTask(input)}
+          disabled={isCreating}
+          initialTitle={prefillTitle}
+          titleInputRef={taskTitleRef}
+          compact={isMobile}
+        />
+      </m.div>
 
       <m.div
         {...pageFadeUp}

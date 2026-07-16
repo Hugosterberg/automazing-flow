@@ -526,7 +526,7 @@ export default function CalendarPage() {
         }
       />
 
-      <SectionConnectionStatus area="calendar" className="mt-0" />
+      <SectionConnectionStatus area="calendar" className="mt-0" hideWhenHealthy />
 
       <PageModeTabs
         value={viewMode}
@@ -565,23 +565,6 @@ export default function CalendarPage() {
       )}
 
       <div className="app-workspace-shell !min-h-[min(72vh,820px)]">
-        <div className="app-workspace-stats hidden grid-cols-3 gap-2 px-3 py-2 sm:grid sm:px-4">
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Händelser</p>
-            <p className="text-xs font-semibold tabular-nums">{allEvents.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kommande</p>
-            <p className="text-xs font-semibold tabular-nums">{upcomingEvents.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kalendrar</p>
-            <p className="text-xs font-semibold tabular-nums">
-              {accounts.filter((a) => (a.platform === "google_calendar" || a.platform === "outlook_calendar") && a.isOAuth).length}
-            </p>
-          </div>
-        </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] gap-6 items-start p-3 sm:p-4 min-h-0 flex-1 overflow-y-auto">
         <Card className="rounded-xl shrink-0 w-full lg:mx-0 mx-auto">
           <CardContent className="pt-6">

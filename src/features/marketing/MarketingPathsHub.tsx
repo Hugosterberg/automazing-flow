@@ -70,11 +70,11 @@ export function MarketingPathsHub({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Compass className="h-4 w-4 text-primary" />
-          Marketing paths
+          Marknadsvägar
         </CardTitle>
         <CardDescription className="max-w-3xl">
-          Multiple ways to reach customers — pick a path below for paid ads, organic content, email, e-commerce,
-          local reviews or partnerships. You do not need every channel; start with one or two that fit your product.
+          Flera sätt att nå kunder — välj en väg för betald annonsering, organiskt innehåll, e-post, e-handel,
+          lokala recensioner eller partnerskap. Du behöver inte alla kanaler; börja med en eller två som passar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

@@ -59,10 +59,30 @@ import {
   type MailSortOrder,
   type MailViewFilter,
   MessageMailToolbar,
+  MessageTriageBuckets,
+  classifyMessageTriage,
+  compareByTriage,
+  countByTriageBucket,
+  isTriageBucket,
+  TRIAGE_BUCKET_LABELS,
+  type TriageBucketFilter,
 } from "@/features/messages";
 import { moveMessageToFolder } from "@/features/messages/mailFoldersClient";
 import { performMailAction, type MailMessageAction } from "@/features/messages/mailActionsClient";
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
+import {
+  inboxCacheKey,
+  mergeUnifiedByKind,
+  readInboxCache,
+  writeInboxCache,
+} from "@/features/messages/inboxCache";
+import {
+  isSnoozed,
+  pruneSnoozeMap,
+  snoozeUntilNextWeek,
+  snoozeUntilTomorrowMorning,
+  type SnoozeMap,
+} from "@/features/messages/messageSnooze";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
 
@@ -100,7 +120,8 @@ export default function MessagesPage() {
   const [inboxSearch, setInboxSearch] = useState("");
   const debouncedInboxSearch = useDebouncedValue(inboxSearch, 160);
   const defaultedFilter = useRef(false);
-  const autoSelectedDesktop = useRef(false);
+  /** Once the user picks a row, keep it until context changes or it leaves the list. */
+  const userPickedMessage = useRef(false);
   const autoDraftForId = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusReplyRef = useRef<(() => void) | null>(null);
@@ -122,15 +143,30 @@ export default function MessagesPage() {
   const [mailActionBusy, setMailActionBusy] = useState(false);
   const [mailViewFilter, setMailViewFilterState] = useState<MailViewFilter>("all");
   const [mailSort, setMailSortState] = useState<MailSortOrder>("triage");
+  const [triageBucket, setTriageBucketState] = useState<TriageBucketFilter>("all");
 
   // "Handled" is app-level triage (the providers don't expose mark-as-read):
   // handled ids stop counting as unanswered in this inbox. Persisted per
   // profile so the state follows the user across devices.
   const handledDoc = useProfileDocument<string[]>("messages-handled", []);
+  const snoozeDoc = useProfileDocument<SnoozeMap>("messages-snoozed", {});
   const inboxPrefsDoc = useProfileDocument<InboxPrefs>("messages-inbox-prefs", {});
   const handledIds = useMemo(
     () => new Set(Array.isArray(handledDoc.data) ? handledDoc.data : []),
     [handledDoc.data]
+  );
+  const snoozeMap = useMemo(
+    () => pruneSnoozeMap(snoozeDoc.data && typeof snoozeDoc.data === "object" ? snoozeDoc.data : {}),
+    [snoozeDoc.data]
+  );
+  const snoozeMessage = useCallback(
+    (id: string, until: "tomorrow" | "week") => {
+      const untilIso = until === "week" ? snoozeUntilNextWeek() : snoozeUntilTomorrowMorning();
+      const next = pruneSnoozeMap({ ...snoozeMap, [id]: untilIso });
+      snoozeDoc.save(next);
+      sonnerToast.success(until === "week" ? "Uppskjutet till nästa vecka" : "Uppskjutet till imorgon");
+    },
+    [snoozeDoc, snoozeMap]
   );
   const markHandled = useCallback(
     (ids: string[], opts?: { silent?: boolean }) => {
@@ -198,7 +234,8 @@ export default function MessagesPage() {
   );
 
   const selectMessage = useCallback(
-    (msg: UnifiedMessage | null) => {
+    (msg: UnifiedMessage | null, opts?: { fromUser?: boolean }) => {
+      if (opts?.fromUser) userPickedMessage.current = Boolean(msg);
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -210,6 +247,11 @@ export default function MessagesPage() {
       );
     },
     [setSearchParams]
+  );
+
+  const selectMessageFromUser = useCallback(
+    (msg: UnifiedMessage | null) => selectMessage(msg, { fromUser: true }),
+    [selectMessage]
   );
 
   const mailAccounts = useMemo(
@@ -251,6 +293,18 @@ export default function MessagesPage() {
     [inboxPrefsDoc]
   );
 
+  const setTriageBucket = useCallback(
+    (bucket: TriageBucketFilter) => {
+      setTriageBucketState(bucket);
+      inboxPrefsDoc.save({ ...inboxPrefsDoc.data, triageBucket: bucket });
+      const next = new URLSearchParams(searchParams);
+      if (bucket === "all") next.delete("bucket");
+      else next.set("bucket", bucket);
+      setSearchParams(next, { replace: true });
+    },
+    [inboxPrefsDoc, searchParams, setSearchParams]
+  );
+
   const ensureBackendSession = useCallback(async () => {
     if (authMode === "local") {
       await fetchWithTimeout(apiUrl("/api/auth/local-session"), {
@@ -272,23 +326,38 @@ export default function MessagesPage() {
   }, [authMode, accessToken]);
 
   const loadUnified = useCallback(async (opts?: { silent?: boolean }) => {
+    const folderScoped = activeTab === "mail" && selectedMailFolder;
+    const cacheKey = inboxCacheKey({
+      businessProfileId: activeProfileId,
+      mailAccountId: folderScoped ? selectedMailFolder.accountId : null,
+      mailFolderId: folderScoped ? selectedMailFolder.folderId : null,
+    });
+
     if (!opts?.silent) {
-      setLoading(true);
       setError(null);
       setZernioNote(null);
       setMailErrors([]);
-    }
-    try {
-      // Scope the inbox to the active business profile so switching profiles
-      // never shows another profile's mailboxes/DMs.
-      const params = new URLSearchParams();
-      if (activeProfileId) params.set("business_profile_id", activeProfileId);
-      if (activeTab === "mail" && selectedMailFolder) {
-        params.set("mailAccountId", selectedMailFolder.accountId);
-        params.set("mailFolderId", selectedMailFolder.folderId);
+      const cached = readInboxCache(cacheKey);
+      if (cached && cached.length > 0) {
+        // Show last known inbox immediately while fresh data loads.
+        setMessages(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
       }
-      const query = params.toString() ? `?${params.toString()}` : "";
-      const unifiedUrl = apiUrl(`/api/messages/unified${query}`);
+    }
+
+    const baseParams = new URLSearchParams();
+    if (activeProfileId) baseParams.set("business_profile_id", activeProfileId);
+    if (folderScoped && selectedMailFolder) {
+      baseParams.set("mailAccountId", selectedMailFolder.accountId);
+      baseParams.set("mailFolderId", selectedMailFolder.folderId);
+    }
+
+    async function fetchSources(sources: "mail" | "dm") {
+      const params = new URLSearchParams(baseParams);
+      params.set("sources", sources);
+      const unifiedUrl = apiUrl(`/api/messages/unified?${params.toString()}`);
       let res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
       if (res.status === 401) {
         await ensureBackendSession();
@@ -298,14 +367,48 @@ export default function MessagesPage() {
         const d = await res.json().catch(() => ({}));
         throw new Error(apiErrorMessage(d, "Kunde inte ladda meddelanden."));
       }
-      const data = await res.json();
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-      if (Array.isArray(data.mailErrors) && data.mailErrors.length > 0) setMailErrors(data.mailErrors);
-      if (typeof data.zernioNote === "string" && data.zernioNote) setZernioNote(data.zernioNote);
+      return res.json() as Promise<{
+        messages?: UnifiedMessage[];
+        mailErrors?: Array<{ accountId: string; platform: string; error: string }>;
+        zernioNote?: string;
+      }>;
+    }
+
+    try {
+      // Phase 1 — mail first (provider list is now lightweight metadata).
+      const mailData = await fetchSources("mail");
+      const mailMsgs = Array.isArray(mailData.messages) ? mailData.messages : [];
+      setMessages((prev) => {
+        const next = mergeUnifiedByKind(prev, mailMsgs, "email");
+        writeInboxCache(cacheKey, next);
+        return next;
+      });
+      if (Array.isArray(mailData.mailErrors) && mailData.mailErrors.length > 0) {
+        setMailErrors(mailData.mailErrors);
+      }
+      if (!opts?.silent) setLoading(false);
+
+      // Phase 2 — DMs after mail is visible (skip when viewing a specific mail folder).
+      if (!folderScoped) {
+        try {
+          const dmData = await fetchSources("dm");
+          const dmMsgs = Array.isArray(dmData.messages) ? dmData.messages : [];
+          setMessages((prev) => {
+            const next = mergeUnifiedByKind(prev, dmMsgs, "dm");
+            writeInboxCache(cacheKey, next);
+            return next;
+          });
+          if (typeof dmData.zernioNote === "string" && dmData.zernioNote) {
+            setZernioNote(dmData.zernioNote);
+          }
+        } catch {
+          /* Keep mail rows if DM fetch fails. */
+        }
+      }
     } catch (e) {
       if (!opts?.silent) {
         setError(e instanceof Error ? e.message : "Något gick fel");
-        setMessages([]);
+        if (!readInboxCache(cacheKey)?.length) setMessages([]);
       }
     } finally {
       if (!opts?.silent) setLoading(false);
@@ -511,6 +614,9 @@ export default function MessagesPage() {
     if (saved?.mailFolder) setSelectedMailFolderState(saved.mailFolder);
     if (saved?.mailViewFilter) setMailViewFilterState(saved.mailViewFilter);
     if (saved?.mailSort) setMailSortState(saved.mailSort);
+    const urlBucket = searchParams.get("bucket");
+    if (isTriageBucket(urlBucket)) setTriageBucketState(urlBucket);
+    else if (saved?.triageBucket) setTriageBucketState(saved.triageBucket);
     if (saved?.filter) {
       setInboxFilter(saved.filter);
       return;
@@ -660,10 +766,19 @@ export default function MessagesPage() {
         return true;
       })
       .filter((msg) => {
+        // Snoozed messages leave the work queues until they resurface.
+        if (inboxFilter === "handled" || inboxFilter === "all") return true;
+        return !isSnoozed(snoozeMap, msg.id);
+      })
+      .filter((msg) => {
         if (activeTab !== "mail" || mailViewFilter === "all") return true;
         if (mailViewFilter === "unread") return isVisuallyUnread(msg);
         if (mailViewFilter === "starred") return Boolean(msg.isStarred);
         return true;
+      })
+      .filter((msg) => {
+        if (triageBucket === "all") return true;
+        return classifyMessageTriage(msg).bucket === triageBucket;
       })
       .filter((msg) => {
         if (!q) return true;
@@ -680,19 +795,44 @@ export default function MessagesPage() {
         return haystack.includes(q);
       });
     return rows.sort((a, b) => {
-      if (activeTab === "mail" && mailSort !== "triage") {
+      if (mailSort === "newest" || mailSort === "oldest") {
         const aDate = Date.parse(a.date) || 0;
         const bDate = Date.parse(b.date) || 0;
         return mailSort === "oldest" ? aDate - bDate : bDate - aDate;
       }
+      // Default "triage": action buckets first, then open-before-handled.
+      const triageCmp = compareByTriage(a, b);
+      if (triageCmp !== 0) return triageCmp;
       const aOpen = isUnanswered(a);
       const bOpen = isUnanswered(b);
       if (aOpen !== bOpen) return aOpen ? -1 : 1;
-      const aDate = Date.parse(a.date) || 0;
-      const bDate = Date.parse(b.date) || 0;
-      return aOpen ? aDate - bDate : bDate - aDate;
+      return 0;
     });
-  }, [activeTab, messages, inboxFilter, debouncedInboxSearch, isUnanswered, isVisuallyUnread, handledIds, mailViewFilter, mailSort]);
+  }, [
+    activeTab,
+    messages,
+    inboxFilter,
+    debouncedInboxSearch,
+    isUnanswered,
+    isVisuallyUnread,
+    handledIds,
+    mailViewFilter,
+    mailSort,
+    triageBucket,
+    snoozeMap,
+  ]);
+
+  const triageCounts = useMemo(() => {
+    const inTab = messages
+      .filter((msg) => messageMatchesTab(msg, activeTab))
+      .filter((msg) => {
+        if (inboxFilter === "open") return isUnanswered(msg);
+        if (inboxFilter === "handled") return handledIds.has(msg.id);
+        if (inboxFilter === "queue") return true;
+        return true;
+      });
+    return countByTriageBucket(inTab);
+  }, [messages, activeTab, inboxFilter, isUnanswered, handledIds]);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -715,7 +855,7 @@ export default function MessagesPage() {
             ? 0
             : filteredMessages.length - 1
           : Math.min(filteredMessages.length - 1, Math.max(0, currentIndex + delta));
-      selectMessage(filteredMessages[nextIndex] ?? null);
+      selectMessage(filteredMessages[nextIndex] ?? null, { fromUser: true });
     },
     [filteredMessages, selectedId, selectMessage]
   );
@@ -742,12 +882,15 @@ export default function MessagesPage() {
   }, [unansweredInTab, aiSummaries]);
 
   const inboxLiveHint = useMemo(() => {
+    if (triageCounts.today > 0) {
+      return `${triageCounts.today} att svara idag · ${triageCounts.week} denna vecka · filtrera hinkarna ovanför listan`;
+    }
     if (inboxStats.openCount === 0) return null;
     const parts = [`${inboxStats.openCount} öppna i inkorgen`];
     if (inboxStats.oldestWait) parts.push(`äldsta väntar ${inboxStats.oldestWait}`);
     if (inboxStats.aiReadyCount > 0) parts.push(`${inboxStats.aiReadyCount} med AI-utkast klara`);
     return parts.join(" · ");
-  }, [inboxStats]);
+  }, [inboxStats, triageCounts]);
 
   const pickNextAfter = useCallback(
     (fromId: string, list: UnifiedMessage[]) => {
@@ -913,7 +1056,7 @@ export default function MessagesPage() {
 
   const selectFirstSearchResult = useCallback(() => {
     if (filteredMessages.length === 0) return;
-    selectMessage(filteredMessages[0] ?? null);
+    selectMessage(filteredMessages[0] ?? null, { fromUser: true });
     searchInputRef.current?.blur();
   }, [filteredMessages, selectMessage]);
 
@@ -974,19 +1117,26 @@ export default function MessagesPage() {
   ]);
 
   const getRowMeta = useCallback(
-    (msg: UnifiedMessage) => ({
-      open: isUnanswered(msg),
-      visuallyUnread: isVisuallyUnread(msg),
-      waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
-      urgent: isUnanswered(msg) && isUrgentWait(msg.date),
-      channelLabel: channelBadge(msg),
-      aiSummary: aiSummaries[msg.id],
-      formattedDate: formatMessageDate(msg.date),
-      fullDate: formatFullMessageDate(msg.date),
-      senderInitial: senderInitial(msg.from.name || msg.from.email),
-      avatarGradient: avatarGradient(msg.from.name || msg.from.email || msg.id),
-      isHandled: handledIds.has(msg.id),
-    }),
+    (msg: UnifiedMessage) => {
+      const triage = classifyMessageTriage(msg);
+      const showTriageChip = triage.bucket === "today" || triage.bucket === "week";
+      return {
+        open: isUnanswered(msg),
+        visuallyUnread: isVisuallyUnread(msg),
+        waited: isUnanswered(msg) ? formatWaitTime(msg.date) : null,
+        urgent:
+          (isUnanswered(msg) && isUrgentWait(msg.date)) ||
+          (isUnanswered(msg) && triage.bucket === "today"),
+        channelLabel: channelBadge(msg),
+        triageLabel: showTriageChip ? TRIAGE_BUCKET_LABELS[triage.bucket] : null,
+        aiSummary: aiSummaries[msg.id],
+        formattedDate: formatMessageDate(msg.date),
+        fullDate: formatFullMessageDate(msg.date),
+        senderInitial: senderInitial(msg.from.name || msg.from.email),
+        avatarGradient: avatarGradient(msg.from.name || msg.from.email || msg.id),
+        isHandled: handledIds.has(msg.id),
+      };
+    },
     [aiSummaries, handledIds, isUnanswered, isVisuallyUnread]
   );
 
@@ -1025,6 +1175,10 @@ export default function MessagesPage() {
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxSearch("")}>
       Rensa sökning
     </Button>
+  ) : triageBucket !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
+    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setTriageBucket("all")}>
+      Visa alla hinkar
+    </Button>
   ) : inboxFilter !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxFilterPersisted("all")}>
       Visa alla meddelanden
@@ -1040,28 +1194,45 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!selectedId || loading) return;
     if (messages.some((m) => m.id === selectedId)) return;
-    // Message was removed (archive/delete) — only clear if nothing else selected it yet.
+    // Message was removed (archive/delete) — clear so desktop auto-picks the new top.
+    userPickedMessage.current = false;
     selectMessage(null);
   }, [loading, messages, selectedId, selectMessage]);
 
   useEffect(() => {
     if (!selectedMessage) return;
     if (messageMatchesTab(selectedMessage, activeTab)) return;
+    userPickedMessage.current = false;
     selectMessage(null);
   }, [activeTab, selectedMessage, selectMessage]);
 
   useEffect(() => {
-    autoSelectedDesktop.current = false;
-  }, [activeTab, activeProfileId]);
+    userPickedMessage.current = false;
+  }, [activeTab, activeProfileId, selectedMailFolder, inboxFilter, mailViewFilter, mailSort]);
 
+  // Desktop: always show the top list row on the right until the user picks another.
   useEffect(() => {
-    if (loading || selectedId || filteredMessages.length === 0 || autoSelectedDesktop.current) return;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
-      const first = filteredMessages.find(isUnanswered) ?? filteredMessages[0];
-      if (first) selectMessage(first);
-      autoSelectedDesktop.current = true;
+    if (loading) return;
+    if (typeof window === "undefined" || !window.matchMedia("(min-width: 1024px)").matches) return;
+    if (filteredMessages.length === 0) {
+      if (selectedId) selectMessage(null);
+      return;
     }
-  }, [loading, selectedId, filteredMessages, isUnanswered, selectMessage]);
+    const stillInList = Boolean(selectedId && filteredMessages.some((m) => m.id === selectedId));
+    if (userPickedMessage.current && stillInList) return;
+    const top = filteredMessages[0];
+    if (top && top.id !== selectedId) selectMessage(top);
+  }, [
+    loading,
+    filteredMessages,
+    selectedId,
+    selectMessage,
+    activeTab,
+    selectedMailFolder,
+    inboxFilter,
+    mailViewFilter,
+    mailSort,
+  ]);
 
   const canReplyToSelected =
     selectedMessage &&
@@ -1114,6 +1285,15 @@ export default function MessagesPage() {
         }
         return;
       }
+      if (matchesKey(e, "z") && isPlainLetterShortcut(e)) {
+        e.preventDefault();
+        if (selectedMessage && !handledIds.has(selectedMessage.id)) {
+          snoozeMessage(selectedMessage.id, e.shiftKey ? "week" : "tomorrow");
+          const next = pickNextAfter(selectedMessage.id, filteredMessages);
+          selectMessage(next, { fromUser: true });
+        }
+        return;
+      }
       if (matchesKey(e, "e") && isPlainLetterShortcut(e)) {
         e.preventDefault();
         if (selectedMessage?.kind === "email" && !mailActionBusy) {
@@ -1148,6 +1328,7 @@ export default function MessagesPage() {
   }, [
     canReplyToSelected,
     cycleTab,
+    filteredMessages,
     focusNextOpen,
     handledIds,
     mailActionBusy,
@@ -1155,10 +1336,12 @@ export default function MessagesPage() {
     navigateOpenRelative,
     navigateRelative,
     performSelectedMailAction,
+    pickNextAfter,
     selectMessage,
     selectedId,
     selectedMessage,
     setInboxFilterPersisted,
+    snoozeMessage,
   ]);
 
   const detailProps = useMemo(() => {
@@ -1183,8 +1366,15 @@ export default function MessagesPage() {
       onUnmarkHandled: handledIds.has(selectedMessage.id)
         ? () => unmarkHandled([selectedMessage.id])
         : undefined,
+      onSnooze: !handledIds.has(selectedMessage.id)
+        ? (until) => {
+            snoozeMessage(selectedMessage.id, until);
+            const next = pickNextAfter(selectedMessage.id, filteredMessages);
+            selectMessage(next, { fromUser: true });
+          }
+        : undefined,
       onNextAfterSend: () => advanceToNextMessage(selectedMessage.id),
-      onBack: () => selectMessage(null),
+      onBack: () => selectMessage(null, { fromUser: true }),
       mailFolders: selectedMessage.kind === "email" ? mailFolders : undefined,
       onMoveToFolder: selectedMessage.kind === "email" ? moveMessageToMailFolder : undefined,
       moveBusy,
@@ -1207,7 +1397,7 @@ export default function MessagesPage() {
     aiSummaries,
     canReplyToSelected,
     draftBusy,
-    filteredMessages.length,
+    filteredMessages,
     handledIds,
     isUnanswered,
     markHandledAndAdvance,
@@ -1215,14 +1405,17 @@ export default function MessagesPage() {
     mailActionBusy,
     moveBusy,
     moveMessageToMailFolder,
-    performSelectedMailAction,
     navigateRelative,
+    performSelectedMailAction,
+    pickNextAfter,
     replyDraft,
     replySent,
+    selectMessage,
     selectedIndex,
     selectedMessage,
     sendBusy,
     sendReply,
+    snoozeMessage,
     threadLoading,
     threadMessages,
     unmarkHandled,
@@ -1260,24 +1453,37 @@ export default function MessagesPage() {
             }
           />
 
-          {inboxStats.openCount === 0 ? (
+          {inboxStats.openCount === 0 || triageCounts.today > 0 || triageCounts.week > 0 ? (
             <PageSmartBar
               title={
-                isMobile
-                  ? "Inkorgen är ikapp — koppla fler kanaler eller vänta på nya meddelanden."
-                  : "Meddelanden är din triage-inkorg — när något dyker upp: läs, svara och markera Klar."
+                triageCounts.today + triageCounts.week > 0
+                  ? "Triage först — svara Idag, parkera Brus."
+                  : isMobile
+                    ? "Inkorgen är ikapp — koppla fler kanaler eller vänta på nya meddelanden."
+                    : "Meddelanden är din triage-inkorg — när något dyker upp: läs, svara och markera Klar."
               }
               steps={
-                isMobile
-                  ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
-                  : [
-                      "Välj kanal och filter (Kö / Öppna)",
-                      "J/K bläddra · H Klar · E arkivera · R svara",
-                      "AI sammanfattar och skriver utkast — du godkänner innan du skickar",
-                    ]
+                triageCounts.today + triageCounts.week > 0
+                  ? undefined
+                  : isMobile
+                    ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
+                    : [
+                        "Välj kanal och triage-hink (Idag / Vecka / FYI / Brus)",
+                        "J/K bläddra · H Klar · E arkivera · R svara",
+                        "AI sammanfattar och skriver utkast — du godkänner innan du skickar",
+                      ]
               }
-              tip="Öppna meddelanden stannar i kön tills du trycker Klar (H)."
+              tip={
+                triageCounts.today + triageCounts.week > 0
+                  ? undefined
+                  : "Öppna meddelanden stannar i kön tills du trycker Klar (H)."
+              }
               liveHintOverride={inboxLiveHint}
+              extraActions={
+                triageCounts.today > 0
+                  ? [{ label: "Visa Idag", onClick: () => setTriageBucket("today") }]
+                  : []
+              }
             />
           ) : null}
         </>
@@ -1359,6 +1565,14 @@ export default function MessagesPage() {
           />
         ) : null}
 
+        {!focusedReading && hasMessagesInTab ? (
+          <MessageTriageBuckets
+            value={triageBucket}
+            counts={triageCounts}
+            onChange={setTriageBucket}
+          />
+        ) : null}
+
         {!focusedReading && oauthErrorDetails ? (
           <OAuthErrorAlert
             details={oauthErrorDetails}
@@ -1406,7 +1620,7 @@ export default function MessagesPage() {
             emptyDescription={inboxEmptyState.description}
             emptyAction={inboxEmptyAction}
             getRowMeta={getRowMeta}
-            onSelect={selectMessage}
+            onSelect={selectMessageFromUser}
             onMarkHandled={markHandledAndAdvance}
             onPrefetch={prefetchThread}
             detailProps={detailProps}

@@ -653,7 +653,7 @@ export default function ReviewsPage() {
 
       {(reviewsTab === "inbox" || focusedReading) && reviewAccounts.length === 0 ? (
         <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-          <SectionConnectionStatus area="reviews" />
+          <SectionConnectionStatus area="reviews" hideWhenHealthy />
         </m.div>
       ) : null}
 

@@ -178,10 +178,13 @@ export async function fetchOutlookMailData(args: OutlookMailFetchArgs & { folder
   let token = accessToken;
   const headers = (t: string) => ({ Authorization: `Bearer ${t}` });
 
+  // List view skips full HTML body — bodyPreview is enough for inbox rows; thread fetch loads body on open.
+  const listSelect =
+    "id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag";
   const listUrl = folderId
-    ? `https://graph.microsoft.com/v1.0/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag,body`
+    ? `https://graph.microsoft.com/v1.0/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`
     : "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?" +
-      "$top=10&$orderby=receivedDateTime%20desc&$select=id,conversationId,subject,bodyPreview,receivedDateTime,from,isRead,flag,body";
+      `$top=10&$orderby=receivedDateTime%20desc&$select=${listSelect}`;
 
   async function fetchList(t: string) {
     return fetch(listUrl, { headers: headers(t), signal: AbortSignal.timeout(15_000) });

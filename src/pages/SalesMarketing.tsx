@@ -425,10 +425,6 @@ export default function SalesMarketingPage() {
 
   // Add pipeline lead dialog
   const activeLeads = leads.filter((l) => isLeadOpen(l.status)).length;
-  const wonLeads = leads.filter((l) => l.status === "won").length;
-  const lostLeads = leads.filter((l) => l.status === "lost").length;
-  const closedLeads = wonLeads + lostLeads;
-  const conversionRate = closedLeads > 0 ? Math.round((wonLeads / closedLeads) * 100) : 0;
 
   const dueLeadsList = useMemo(() => {
     const nowMs = Date.now();
@@ -586,17 +582,6 @@ export default function SalesMarketingPage() {
             }
           />
 
-          {salesTab === "overview" ? (
-            <>
-              <PageAiSuggestionsStrip
-                businessProfileId={businessProfileId}
-                kinds={["outreach", "insight"]}
-                label="AI-förslag för sales & outreach"
-              />
-              <CompanyProfileNudge profile={activeProfile} />
-            </>
-          ) : null}
-
           <PageModeTabs
             value={salesTab}
             aria-label="Försäljningsflikar"
@@ -610,58 +595,49 @@ export default function SalesMarketingPage() {
               { value: "goals", label: "Mål" },
             ]}
           />
+
+          {salesTab === "overview" ? (
+            <>
+              <PageAiSuggestionsStrip
+                businessProfileId={businessProfileId}
+                kinds={["outreach", "insight"]}
+                label="AI-förslag för sales & outreach"
+              />
+              <CompanyProfileNudge profile={activeProfile} />
+            </>
+          ) : null}
         </>
       )}
 
       <div className={cn("app-workspace-shell !min-h-0 space-y-4 p-3 sm:p-4", focusedFilterChrome && "rounded-none border-0 p-0 shadow-none sm:p-0")}>
       {showSalesChrome && salesTab === "overview" ? (
-        <>
-          <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
-            <SalesActionHub
-              followUpCount={dueLeadsList.length}
-              activeLeads={activeLeads}
-              pipelineCount={pipelineTasks.length}
-              shopifyConnected={marketingConnected.shopify}
-              shopifyOrders={performance?.orders ?? null}
-              shopifyRevenueLabel={shopifyRevenueLabel}
-              onFollowUps={() => navigate("/sales?view=followups")}
-              onAddLead={openAddLeadDialog}
-              onAddDeal={() => {
-                setSalesTab("pipeline");
-                setPipelineOpen(true);
-              }}
-              onDraftDueLeads={startDueLeadDrafts}
-              onDiscover={() => setSalesTab("discover")}
-              onSuggestLeads={() => setSalesTab("leads")}
-              onOpenContent={() => {
-                stashContentCaption("");
-                navigate("/content?tab=create");
-              }}
-              onSyncGoals={() => {
-                setSalesTab("goals");
-                syncGoalsFromShopify();
-              }}
-            />
-          </m.div>
-
-          {/* KPI tiles — desktop/tablet; ActionHub is the mobile entry */}
-          <m.div {...pageFadeUp} className="hidden grid-cols-2 gap-3 sm:grid sm:grid-cols-3">
-            {[
-              { label: "Aktiva leads", value: activeLeads, icon: CircleDot, color: "text-blue-500" },
-              { label: "Vunna affärer", value: wonLeads, icon: Trophy, color: "text-green-500" },
-              { label: "Konvertering", value: `${conversionRate}%`, icon: Target, color: "text-primary" },
-            ].map((kpi) => (
-              <Card key={kpi.label} className="border-border">
-                <CardContent className="p-4">
-                  <kpi.icon className={cn("h-4 w-4 mb-2", kpi.color)} />
-                  <p className="text-2xl font-bold tabular-nums">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </m.div>
-
-        </>
+        <m.div {...pageFadeUp} transition={{ delay: 0.035 }}>
+          <SalesActionHub
+            followUpCount={dueLeadsList.length}
+            activeLeads={activeLeads}
+            pipelineCount={pipelineTasks.length}
+            shopifyConnected={marketingConnected.shopify}
+            shopifyOrders={performance?.orders ?? null}
+            shopifyRevenueLabel={shopifyRevenueLabel}
+            onFollowUps={() => navigate("/sales?view=followups")}
+            onAddLead={openAddLeadDialog}
+            onAddDeal={() => {
+              setSalesTab("pipeline");
+              setPipelineOpen(true);
+            }}
+            onDraftDueLeads={startDueLeadDrafts}
+            onDiscover={() => setSalesTab("discover")}
+            onSuggestLeads={() => setSalesTab("leads")}
+            onOpenContent={() => {
+              stashContentCaption("");
+              navigate("/content?tab=create");
+            }}
+            onSyncGoals={() => {
+              setSalesTab("goals");
+              syncGoalsFromShopify();
+            }}
+          />
+        </m.div>
       ) : null}
 
       {showOutreachQueue ? (

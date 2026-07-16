@@ -766,7 +766,7 @@ export default function Ecommerce() {
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <SectionConnectionStatus area="ecommerce" />
+        <SectionConnectionStatus area="ecommerce" hideWhenHealthy />
       </m.div>
 
       <div className="app-workspace-shell !min-h-0">

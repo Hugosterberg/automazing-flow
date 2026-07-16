@@ -43,8 +43,9 @@ export default function ActivityPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [activitySearch, setActivitySearch] = useState("");
   const debouncedActivitySearch = useDebouncedValue(activitySearch, 160);
-  const [moduleFilter, setModuleFilter] = useState<string>("all");
   const selectedId = searchParams.get("id");
+  const rawModule = searchParams.get("module");
+  const moduleFilter = rawModule && rawModule.trim() ? rawModule.trim() : "all";
   const rawSeverity = searchParams.get("severity");
   const severityFilter: SeverityFilter =
     rawSeverity === "error" ||
@@ -76,6 +77,21 @@ export default function ActivityPage() {
           const next = new URLSearchParams(prev);
           if (severity === "all") next.delete("severity");
           else next.set("severity", severity);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const setModuleFilter = useCallback(
+    (module: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (!module || module === "all") next.delete("module");
+          else next.set("module", module);
           return next;
         },
         { replace: true }

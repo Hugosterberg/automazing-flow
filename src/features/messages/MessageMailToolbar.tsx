@@ -26,6 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { createMailFolder, fetchMailFolders } from "./mailFoldersClient";
 import type { MailFolder, MailFolderSelection, MailSortOrder, MailViewFilter } from "./types";
@@ -36,17 +41,19 @@ type MailAccount = {
   platform: "gmail" | "outlook";
 };
 
-const VIEW_FILTERS: Array<{ value: MailViewFilter; label: string; icon?: typeof Star }> = [
-  { value: "all", label: "Alla" },
-  { value: "unread", label: "Olästa" },
-  { value: "starred", label: "Flaggade", icon: Star },
+const VIEW_FILTERS: Array<{ value: MailViewFilter; label: string; short: string; icon?: typeof Star }> = [
+  { value: "all", label: "Alla", short: "Alla" },
+  { value: "unread", label: "Olästa", short: "Ol." },
+  { value: "starred", label: "Flaggade", short: "★", icon: Star },
 ];
 
 const SORT_OPTIONS: Array<{ value: MailSortOrder; label: string; hint: string }> = [
-  { value: "triage", label: "Triage", hint: "Öppna först, äldst väntar" },
-  { value: "newest", label: "Nyast", hint: "Senaste mail överst" },
-  { value: "oldest", label: "Äldst", hint: "Äldsta mail överst" },
+  { value: "triage", label: "Triage", hint: "Öppna först" },
+  { value: "newest", label: "Nyast", hint: "Senaste överst" },
+  { value: "oldest", label: "Äldst", hint: "Äldsta överst" },
 ];
+
+const INBOX_VALUE = "__inbox__";
 
 type Props = {
   mailAccounts: MailAccount[];
@@ -60,6 +67,10 @@ type Props = {
   disabled?: boolean;
   onFoldersChange?: (folders: MailFolder[]) => void;
 };
+
+function folderValue(folder: Pick<MailFolder, "accountId" | "id">) {
+  return `${folder.accountId}:${folder.id}`;
+}
 
 export function MessageMailToolbar({
   mailAccounts,
@@ -122,6 +133,18 @@ export function MessageMailToolbar({
     setCreateAccountId(defaultCreateAccountId);
   }, [createOpen, defaultCreateAccountId]);
 
+  const folderSelectValue = selectedFolder
+    ? folderValue({ accountId: selectedFolder.accountId, id: selectedFolder.folderId })
+    : INBOX_VALUE;
+
+  const activeFolderLabel = selectedFolder?.folderName || "Inkorg";
+  const activeUnread =
+    selectedFolder == null
+      ? null
+      : folders.find(
+          (f) => f.id === selectedFolder.folderId && f.accountId === selectedFolder.accountId
+        )?.unreadCount;
+
   async function handleCreateFolder() {
     const name = newFolderName.trim();
     const accountId = createAccountId || defaultCreateAccountId;
@@ -141,89 +164,91 @@ export function MessageMailToolbar({
     }
   }
 
-  if (mailAccounts.length === 0) return null;
+  function handleFolderChange(value: string) {
+    if (value === INBOX_VALUE) {
+      onSelectFolder(null);
+      return;
+    }
+    const folder = folders.find((f) => folderValue(f) === value);
+    if (!folder) return;
+    onSelectFolder({
+      accountId: folder.accountId,
+      folderId: folder.id,
+      folderName: folder.name,
+    });
+  }
 
-  const inboxActive = !selectedFolder;
-  const sortLabel = SORT_OPTIONS.find((opt) => opt.value === mailSort)?.label || "Sortera";
+  if (mailAccounts.length === 0) return null;
 
   return (
     <>
-      <div className="flex max-w-full min-w-0 shrink-0 flex-wrap items-center gap-1.5 overflow-x-hidden border-b border-border/60 bg-muted/10 px-3 py-1.5 lg:gap-2 lg:px-3 lg:py-1">
-        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-1">
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelectFolder(null)}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all",
-              inboxActive
-                ? "border-primary/40 bg-primary text-primary-foreground shadow-sm"
-                : "border-border/60 bg-background/70 text-muted-foreground hover:border-border hover:text-foreground"
+      <div className="flex h-8 max-w-full min-w-0 shrink-0 items-center gap-1.5 border-b border-border/50 bg-muted/5 px-2 sm:px-3">
+        {/* Minimalist folder dropdown — single control for all mail folders */}
+        <Select value={folderSelectValue} onValueChange={handleFolderChange} disabled={disabled || loading}>
+          <SelectTrigger
+            className="h-7 w-auto max-w-[min(52vw,16rem)] gap-1 rounded-md border border-border/60 bg-background/80 px-2 text-[11px] font-medium shadow-none focus:ring-1 focus:ring-primary/25"
+            aria-label="Välj mapp"
+          >
+            {loading ? (
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+            ) : selectedFolder ? (
+              <Folder className="h-3 w-3 shrink-0 text-muted-foreground" />
+            ) : (
+              <Inbox className="h-3 w-3 shrink-0 text-muted-foreground" />
             )}
-          >
-            <Inbox className="h-3 w-3" />
-            Inkorg
-          </button>
-          {loading ? (
-            <span className="inline-flex items-center gap-1 px-2 text-[11px] text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-            </span>
-          ) : (
-            folders.map((folder) => {
-              const active =
-                selectedFolder?.folderId === folder.id && selectedFolder.accountId === folder.accountId;
-              return (
-                <button
-                  key={`${folder.accountId}:${folder.id}`}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    onSelectFolder({
-                      accountId: folder.accountId,
-                      folderId: folder.id,
-                      folderName: folder.name,
-                    })
-                  }
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all",
-                    active
-                      ? "border-primary/40 bg-primary text-primary-foreground shadow-sm"
-                      : "border-border/60 bg-background/70 text-muted-foreground hover:border-border hover:text-foreground"
-                  )}
-                  title={folder.messageCount != null ? `${folder.messageCount} meddelanden` : undefined}
-                >
-                  <Folder className="h-3 w-3" />
-                  <span className="max-w-[120px] truncate">{folder.name}</span>
+            <SelectValue>
+              <span className="truncate">{activeFolderLabel}</span>
+            </SelectValue>
+            {activeUnread ? (
+              <span className="rounded-full bg-primary/12 px-1 text-[10px] tabular-nums text-primary">
+                {activeUnread}
+              </span>
+            ) : null}
+          </SelectTrigger>
+          <SelectContent align="start" className="max-h-72 min-w-[13rem]">
+            <SelectItem value={INBOX_VALUE} className="text-xs">
+              <span className="inline-flex items-center gap-1.5">
+                <Inbox className="h-3 w-3 text-muted-foreground" />
+                Inkorg
+              </span>
+            </SelectItem>
+            {folders.map((folder) => (
+              <SelectItem key={folderValue(folder)} value={folderValue(folder)} className="text-xs">
+                <span className="inline-flex w-full items-center justify-between gap-3">
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    <Folder className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{folder.name}</span>
+                  </span>
                   {folder.unreadCount ? (
-                    <span
-                      className={cn(
-                        "rounded-full px-1 text-[10px] tabular-nums",
-                        active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/15 text-primary"
-                      )}
-                    >
-                      {folder.unreadCount}
-                    </span>
+                    <span className="tabular-nums text-muted-foreground">{folder.unreadCount}</span>
                   ) : null}
-                </button>
-              );
-            })
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 shrink-0 gap-1 rounded-full px-1.5 text-[11px] text-muted-foreground"
-            disabled={disabled || loading}
-            onClick={() => setCreateOpen(true)}
-            title="Skapa mapp"
-          >
-            <FolderPlus className="h-3 w-3" />
-            <span className="hidden sm:inline">Ny</span>
-          </Button>
-        </div>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 shrink-0 p-0 text-muted-foreground"
+              disabled={disabled || loading}
+              onClick={() => setCreateOpen(true)}
+              aria-label="Skapa mapp"
+            >
+              <FolderPlus className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Ny mapp</TooltipContent>
+        </Tooltip>
+
+        <div className="mx-0.5 h-3.5 w-px shrink-0 bg-border/70" aria-hidden />
 
         <div
-          className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border/50 bg-background/60 p-0.5"
+          className="flex shrink-0 items-center gap-px"
           role="group"
           aria-label="Filtrera mail"
         >
@@ -231,40 +256,51 @@ export function MessageMailToolbar({
             const Icon = opt.icon;
             const active = mailViewFilter === opt.value;
             return (
-              <button
-                key={opt.value}
-                type="button"
-                disabled={disabled}
-                onClick={() => onMailViewFilterChange(opt.value)}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary ring-1 ring-primary/25"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                )}
-                title={opt.label}
-              >
-                {Icon ? <Icon className={cn("h-3 w-3", active && "fill-current")} /> : null}
-                <span className="hidden md:inline">{opt.label}</span>
-              </button>
+              <Tooltip key={opt.value}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onMailViewFilterChange(opt.value)}
+                    className={cn(
+                      "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-[10px] font-medium transition-colors",
+                      active
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    )}
+                    aria-pressed={active}
+                    aria-label={opt.label}
+                  >
+                    {Icon ? <Icon className={cn("h-3 w-3", active && "fill-current")} /> : opt.short}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{opt.label}</TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
 
-        <Select value={mailSort} onValueChange={(v) => onMailSortChange(v as MailSortOrder)} disabled={disabled}>
-          <SelectTrigger className="h-6 w-auto min-w-[5.5rem] gap-1 border-border/60 bg-background/70 px-2 text-[11px]">
-            <ArrowUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <SelectValue placeholder={sortLabel} />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {SORT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                <span className="font-medium">{opt.label}</span>
-                <span className="ml-1 text-muted-foreground">· {opt.hint}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="ml-auto flex shrink-0 items-center">
+          <Select value={mailSort} onValueChange={(v) => onMailSortChange(v as MailSortOrder)} disabled={disabled}>
+            <SelectTrigger
+              className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-[11px] shadow-none focus:ring-0 focus:ring-offset-0"
+              aria-label="Sortera"
+            >
+              <ArrowUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="hidden sm:inline">
+                {SORT_OPTIONS.find((opt) => opt.value === mailSort)?.label || "Sortera"}
+              </span>
+            </SelectTrigger>
+            <SelectContent align="end">
+              {SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  <span className="font-medium">{opt.label}</span>
+                  <span className="ml-1 text-muted-foreground">· {opt.hint}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -335,11 +335,15 @@ export async function fetchGmailAccountData({
   const messageIds = (((listData as { messages?: Array<{ id: string }> }).messages || []) as Array<{ id: string }>).map(
     (m) => m.id
   );
+  // Inbox list uses metadata (headers + snippet) — much faster than format=full.
+  // Full bodies load on demand via the thread endpoint when a message is opened.
+  const metaQuery =
+    "format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date";
   const messages = await Promise.all(
     messageIds.map((id) =>
-      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, {
+      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?${metaQuery}`, {
         headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(12_000),
       })
         .then(async (r) => (r.ok ? r.json() : null))
         .catch((error) => {
@@ -360,15 +364,15 @@ export async function fetchGmailAccountData({
       const headers = msg.payload?.headers ?? [];
       const dateRaw = getHeader(headers, "Date");
       const subject = getHeader(headers, "Subject");
-      const body = extractGmailBody(msg.payload);
+      const snippet = msg.snippet || "";
       return {
         id: msg.id,
         threadId: msg.threadId,
         subject: subject || "(No subject)",
         from: parseSender(getHeader(headers, "From")),
         date: dateRaw || (msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : ""),
-        snippet: msg.snippet || "",
-        body: body || msg.snippet || "",
+        snippet,
+        body: snippet,
         isUnread: (msg.labelIds || []).includes("UNREAD"),
         isStarred: (msg.labelIds || []).includes("STARRED"),
       };

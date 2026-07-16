@@ -548,21 +548,24 @@ export default function SocialMedia() {
         description="Automatisera och hantera dina sociala kanaler — publicera, schemalägg och följ statistik."
       />
 
-      <PageSmartBar
-        title="Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
-        steps={[
-          "Koppla konton under Kopplingar om en plattform saknas",
-          "Under Publicera: välj plattform och konto",
-          "Skriv, lägg till media och publicera eller schemalägg",
-        ]}
-        tip="Statistik och kampanjer ligger under egna flikar — håll Publicera för att skicka."
-        liveHintOverride={
-          socialAccounts.length === 0
-            ? "Inga sociala konton kopplade — börja under Kopplingar."
-            : null
-        }
-        extraActions={socialAccounts.length === 0 ? [{ label: "Koppla konto", to: "/connections" }] : []}
-      />
+      {socialAccounts.length === 0 ? (
+        <PageSmartBar
+          title="Socialt är publiceringscentret — välj konto, skriv inlägg och schemalägg eller publicera direkt."
+          steps={[
+            "Koppla konton under Kopplingar",
+            "Under Publicera: välj plattform och konto",
+            "Skriv, lägg till media och publicera eller schemalägg",
+          ]}
+          tip="Statistik och schema ligger under egna flikar — håll Publicera för att skicka."
+          liveHintOverride="Inga sociala konton kopplade — börja under Kopplingar."
+          extraActions={[{ label: "Koppla konto", to: "/connections" }]}
+        />
+      ) : pipelinePosts.length + scheduledContentTasks.length > 0 ? (
+        <PageSmartBar
+          title="Socialt"
+          liveHintOverride={`${pipelinePosts.length + scheduledContentTasks.length} i kö eller schemalagda — se Schema & mer.`}
+        />
+      ) : null}
 
       <PageModeTabs
         value={socialMode}
@@ -617,6 +620,10 @@ export default function SocialMedia() {
                 ? "connected"
                 : aggregateStatus(platformConnections);
             const needsAttention = status === "error" || status === "reconnect_required";
+            const showStatusCard = linkedAccounts.length === 0 || needsAttention;
+            if (!showStatusCard) {
+              return <TabsContent key={entry.platform} value={entry.platform} className="mt-0" />;
+            }
             return (
               <TabsContent key={entry.platform} value={entry.platform} className="mt-3">
                 <div className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
@@ -628,6 +635,7 @@ export default function SocialMedia() {
                       {linkedAccounts.length > 0 ? (
                         <p className="mt-1 text-sm text-muted-foreground truncate">
                           {linkedAccounts.map((account) => account.displayName || account.username).join(" · ")}
+                          {needsAttention ? " — behöver åtgärdas" : ""}
                         </p>
                       ) : (
                         <p className="mt-1 text-sm text-muted-foreground">

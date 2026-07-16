@@ -7,9 +7,28 @@ export { MessageWorkspace } from "./MessageWorkspace";
 export { MessageThread } from "./MessageThread";
 export { fetchMessageThread } from "./messagesClient";
 export { MessageMailToolbar } from "./MessageMailToolbar";
+export { MessageTriageBuckets } from "./MessageTriageBuckets";
+export {
+  classifyMessageTriage,
+  compareByTriage,
+  countByTriageBucket,
+  isTriageBucket,
+  TRIAGE_BUCKET_LABELS,
+} from "./messageTriage";
+export type { TriageBucket } from "./messageTriage";
 export { fetchMailFolders, createMailFolder, moveMessageToFolder } from "./mailFoldersClient";
 export { performMailAction, type MailMessageAction } from "./mailActionsClient";
-export type { UnifiedMessage, MessageChannelTab, ThreadMessage, InboxFilter, MailFolder, MailFolderSelection, MailViewFilter, MailSortOrder } from "./types";
+export type {
+  UnifiedMessage,
+  MessageChannelTab,
+  ThreadMessage,
+  InboxFilter,
+  MailFolder,
+  MailFolderSelection,
+  MailViewFilter,
+  MailSortOrder,
+  TriageBucketFilter,
+} from "./types";
 export type { InboxPrefs } from "./inboxPrefs";
 export { MessageBody } from "./MessageBody";
 export { MessageInboxRow } from "./MessageInboxRow";

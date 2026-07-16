@@ -286,8 +286,12 @@ export default function InsightsPage() {
               Trender byggs upp av de dagliga snapshot-automationerna. Koppla konton under{" "}
               <Link to="/connections" className="text-primary underline underline-offset-2">
                 Kopplingar
-              </Link>{" "}
-              så fylls sidan på inom ett par dagar.
+              </Link>
+              , och kontrollera att snapshots körs under{" "}
+              <Link to="/automations" className="text-primary underline underline-offset-2">
+                Automationer
+              </Link>
+              . Sidan fylls på inom ett par dagar.
             </p>
           </CardContent>
         </Card>

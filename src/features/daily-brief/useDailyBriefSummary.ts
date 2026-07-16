@@ -11,6 +11,7 @@ import { useAutomationRuns, automationTitleForCronKey } from "@/features/automat
 import { useProfileDocument } from "@/features/profile-documents";
 import { platformLabel } from "@/lib/platformLabels";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
+import { useActivityFeed } from "@/features/activity/useActivityFeed";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
 /**
@@ -29,11 +30,25 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const { leads, isLoading: leadsLoading } = useLeads(businessProfileId);
   const automationRuns = useAutomationRuns(businessProfileId ?? null);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
+  const { events: agentEvents } = useActivityFeed(businessProfileId, {
+    module: "agent",
+    limit: 5,
+  });
 
   const outreachQueuePending = useMemo(
     () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
     [outreachDoc.data]
   );
+
+  const agentUpdates = useMemo(() => {
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return agentEvents
+      .filter((e) => {
+        const t = Date.parse(e.occurred_at || "") || 0;
+        return t >= dayAgo;
+      })
+      .map((e) => ({ title: e.summary || "Agentkörning" }));
+  }, [agentEvents]);
 
   const marketingRoas =
     performance?.roas ?? marketingTrend?.current?.roas ?? cachedRoas ?? null;
@@ -71,8 +86,10 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
       newRecommendations: recommendations
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
+      agentUpdates,
     });
   }, [
+    agentUpdates,
     automationRuns.byKey,
     connections,
     inventoryAlertCount,

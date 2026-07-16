@@ -14,6 +14,7 @@ import {
   UserPlus,
   X,
   Star,
+  Bot,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   recommendation: Sparkles,
   review: Star,
   automation: Zap,
+  agent: Bot,
 };
 
 const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {

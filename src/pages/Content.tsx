@@ -22,9 +22,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
 import type { ApiaiBatchIngestItem } from "@/features/content/apiaiClient";
-import { ContentFlowGuide } from "@/features/content/ContentFlowGuide";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
-import { flowStepFromTab, isContentTab, type ContentTab } from "@/features/content/contentFlow";
+import { isContentTab, type ContentTab } from "@/features/content/contentFlow";
 import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
 import { ContentUploadDropzone } from "@/features/content/ContentUploadDropzone";
 import { ContentIdeasHub } from "@/features/content/ContentIdeasHub";
@@ -916,40 +915,37 @@ export default function ContentPage() {
         }
       />
 
-      <PageSmartBar
-        title="Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera."
-        steps={[
-          "Bläddra Drive eller ladda upp — markera det du vill använda",
-          "Skapa eller redigera under Skapa, spara till Valda eller Historik",
-          "Publicera eller schemalägg under Publicera",
-        ]}
-        tip="Koppla Google Drive först om Bläddra är tom. Publicering kan schemaläggas — då går inlägg ut automatiskt."
-        liveHintOverride={
-          contentTab === "browse" && browseMediaFiles.length > 0
-            ? isMobile
-              ? `${browseMediaFiles.length} mediafiler i vyn — markera det du vill använda.`
-              : `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S välj.`
-            : selectedAssets.length > 0
-              ? `${selectedAssets.length} valda — gå till Skapa eller Publicera.`
-              : null
-        }
-      />
+      {driveAccounts.length === 0 ? (
+        <PageSmartBar
+          title="Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera."
+          steps={[
+            "Koppla Google Drive under Kopplingar",
+            "Bläddra eller ladda upp — markera det du vill använda",
+            "Skapa med AI, spara till Valda och publicera",
+          ]}
+          tip="När Drive är kopplat försvinner den här guiden — flikarna räcker för flödet."
+          extraActions={[{ label: "Öppna Kopplingar", to: "/connections" }]}
+        />
+      ) : (contentTab === "browse" && browseMediaFiles.length > 0) || selectedAssets.length > 0 ? (
+        <PageSmartBar
+          title="Innehåll"
+          liveHintOverride={
+            contentTab === "browse" && browseMediaFiles.length > 0
+              ? isMobile
+                ? `${browseMediaFiles.length} mediafiler i vyn — markera det du vill använda.`
+                : `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S välj.`
+              : `${selectedAssets.length} valda — gå till Skapa eller Publicera.`
+          }
+        />
+      ) : null}
 
-      <SectionConnectionStatus area="content" className="mt-0" />
+      {driveAccounts.length === 0 ? <SectionConnectionStatus area="content" className="mt-0" /> : null}
 
       {contentTab === "create" ? (
         <PageAiSuggestionsStrip
           businessProfileId={createBusinessProfileId}
           kinds={["content", "engagement"]}
           label="AI-idéer för innehåll"
-        />
-      ) : null}
-
-      {contentTab === "browse" || contentTab === "create" ? (
-        <ContentFlowGuide
-          active={flowStepFromTab(contentTab)}
-          selectionCount={selectedAssets.length}
-          onGo={(step) => goToTab(step)}
         />
       ) : null}
 

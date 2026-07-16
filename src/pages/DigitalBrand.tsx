@@ -625,7 +625,7 @@ export default function DigitalBrandPage() {
               </Button>
             ) : null}
             <Button type="button" size="sm" variant="outline" asChild>
-              <Link to="/connections">
+              <Link to="/company">
                 <Globe2 className="mr-1.5 h-3.5 w-3.5" />
                 Redigera webbadress
               </Link>
@@ -637,14 +637,14 @@ export default function DigitalBrandPage() {
       <PageSmartBar
         title="Digitalt varumärke granskar er webbplats live — SEO, prestanda och förtroende med konkreta rekommendationer."
         steps={[
-          "Registrera webbadress under Kopplingar",
+          "Registrera webbadress under Företag",
           "Kör audit och granska PageSpeed- och HTML-värden",
           "Prioritera höga rekommendationer under fliken Rekommendationer",
         ]}
         tip="Auditen körs server-side — ingen kod behöver installeras på sidan."
         liveHintOverride={
           !websiteUrl
-            ? "Lägg till webbadress under Kopplingar för att köra audit."
+            ? "Lägg till webbadress under Företag för att köra audit."
             : highCount > 0
               ? `${highCount} högprioriterad${highCount === 1 ? "" : "e"} rekommendation${highCount === 1 ? "" : "er"} — öppna Rekommendationer`
               : audit
@@ -661,8 +661,8 @@ export default function DigitalBrandPage() {
         aria-label="Digitalt varumärke-flikar"
         onChange={setBrandTab}
         options={[
-          { value: "recs", label: "Rekommendationer", count: highCount },
           { value: "overview", label: "Översikt" },
+          { value: "recs", label: "Rekommendationer", count: highCount },
           { value: "research", label: "Research" },
         ]}
       />
@@ -673,8 +673,8 @@ export default function DigitalBrandPage() {
           <AlertTitle>Ingen webbadress registrerad</AlertTitle>
           <AlertDescription>
             Lägg till webbadressen under{" "}
-            <Link to="/connections" className="text-primary underline underline-offset-2">
-              Kopplingar
+            <Link to="/company" className="text-primary underline underline-offset-2">
+              Företag
             </Link>{" "}
             för att köra en Digital Brand-audit.
           </AlertDescription>

@@ -305,14 +305,19 @@ export default function AIRecommendationsPage() {
       />
 
       {tab === "active" ? (
-        <m.div {...pageFadeUp} transition={{ duration: 0.25 }}>
-          <McpFeatureSection
-            businessProfileId={businessProfileId}
-            featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
-            title="MCP-kontext"
-            description="Hämta live-kontext från Era MCP för att berika rekommendationer."
-          />
-        </m.div>
+        <details className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            MCP-kontext (valfritt)
+          </summary>
+          <m.div {...pageFadeUp} transition={{ duration: 0.25 }} className="mt-3">
+            <McpFeatureSection
+              businessProfileId={businessProfileId}
+              featureIds={MCP_PAGE_FEATURE_IDS["ai-recommendations"]}
+              title="MCP-kontext"
+              description="Hämta live-kontext från Era MCP för att berika rekommendationer."
+            />
+          </m.div>
+        </details>
       ) : null}
 
       <m.div {...pageFadeUp} transition={{ duration: 0.3 }} className="app-workspace-shell">

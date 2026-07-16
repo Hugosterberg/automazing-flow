@@ -10,6 +10,7 @@ type RowMeta = {
   waited: string | null;
   urgent: boolean;
   channelLabel: string;
+  triageLabel?: string | null;
   aiSummary?: string;
   formattedDate: string;
   fullDate: string;
@@ -102,6 +103,7 @@ export function MessageInboxList({
         visuallyUnread={meta.visuallyUnread ?? meta.open}
         urgent={meta.urgent}
         channelLabel={meta.channelLabel}
+        triageLabel={meta.triageLabel}
         aiSummary={meta.aiSummary}
         waited={meta.waited}
         formattedDate={meta.formattedDate}

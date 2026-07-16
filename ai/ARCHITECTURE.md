@@ -1,6 +1,6 @@
 # Architecture — current state and planned services
 
-_Last updated: 2026-07-02._
+_Last updated: 2026-07-16._
 
 ## Current stack (the TypeScript monolith)
 
@@ -30,7 +30,26 @@ A feature = one slice: `src/features/<name>/` (+ a page in `src/pages/`),
 a route module in `server/routes/`, provider logic in `server/providers/`,
 and its migration. Current slices: activity, ai-recommendations, automation,
 business-profiles, connections, content, customers, daily-brief, ecommerce,
-leads, marketing, preferences, profile-documents, tasks, workspace-mode.
+leads, marketing, messages, preferences, profile-documents, tasks,
+workspace-mode.
+
+Agent run visibility (no dedicated table): CMA / external agents POST
+`/api/agent-activity` (CRON_SECRET) → `activity_events` with `module=agent`;
+Daily Brief reads the last 24h of those rows.
+
+```http
+POST /api/agent-activity
+Authorization: Bearer <CRON_SECRET>
+Content-Type: application/json
+
+{
+  "businessProfileId": "<uuid>",
+  "summary": "bai-repo-engineer: Automations run-status patch ready",
+  "agent": "bai-repo-engineer",
+  "runId": "run-42",
+  "severity": "success"
+}
+```
 
 ## Integrations (via `server/providers/` + `src/lib/connectionCatalog.ts`)
 

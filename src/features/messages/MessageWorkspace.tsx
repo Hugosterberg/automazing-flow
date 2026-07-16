@@ -11,6 +11,7 @@ type RowMeta = {
   waited: string | null;
   urgent: boolean;
   channelLabel: string;
+  triageLabel?: string | null;
   aiSummary?: string;
   formattedDate: string;
   fullDate: string;

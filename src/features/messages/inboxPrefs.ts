@@ -1,4 +1,11 @@
-import type { InboxFilter, MessageChannelTab, MailFolderSelection, MailViewFilter, MailSortOrder } from "./types";
+import type {
+  InboxFilter,
+  MessageChannelTab,
+  MailFolderSelection,
+  MailViewFilter,
+  MailSortOrder,
+  TriageBucketFilter,
+} from "./types";
 
 export type InboxPrefs = {
   filter?: InboxFilter;
@@ -6,4 +13,5 @@ export type InboxPrefs = {
   mailFolder?: MailFolderSelection | null;
   mailViewFilter?: MailViewFilter;
   mailSort?: MailSortOrder;
+  triageBucket?: TriageBucketFilter;
 };

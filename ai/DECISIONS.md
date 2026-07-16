@@ -2,6 +2,26 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — Agent output lands in activity_events via CRON_SECRET ingest — **Active**
+
+CMA / external agents do not get a dedicated table. They POST
+`/api/agent-activity` with `Authorization: Bearer <CRON_SECRET>` and a
+`businessProfileId` + `summary`. Server writes `activity_events` with
+`module=agent`. Daily Brief surfaces last-24h agent rows; Activity deep-links
+via `?module=agent`. Keeps tenancy + RLS intact without inventing schema.
+
+## 2026-07-16 — Inbox triage is client-side buckets, drafts stay human-gated — **Active**
+
+Meddelanden classifies each unified message into four action buckets
+(Idag / Denna vecka / FYI / Brus) with pure heuristics on fields we already
+fetch (from, subject, snippet, body, kind, unread/starred). No new DB tables,
+no auto-archive, no auto-send. Bulk/noreply signals act as a *ceiling* so
+newsletters cannot land in Idag. Sort default remains "triage"; filter chips
+and `?bucket=` deep-links let Daily Brief jump straight to Idag. Local snooze
+(profile document `messages-snoozed`) can defer a row until tomorrow / next
+week without touching the provider. Future AI re-rank or learned overrides can
+layer on without changing the taxonomy.
+
 ## 2026-07-13 — Integration UX: one status language, one connect home — **Active**
 
 For multi-integration platforms, end users need a single vocabulary and a

@@ -432,7 +432,7 @@ export default function CustomersPage() {
               <EmptyState
                 icon={Upload}
                 title="Ingen kundbas ännu"
-                description="Ladda upp en CSV ovan. Sök, granska och exportera — koppla Day.ai under Kopplingar för AI-frågor om kunderna."
+                description="Ladda upp en CSV ovan. Sök, granska och exportera. För AI-frågor om kunderna: koppla Day.ai under Kopplingar → MCP."
                 action={
                   <Button
                     type="button"

@@ -44,6 +44,12 @@ export type MailViewFilter = "all" | "unread" | "starred";
 /** Mail list sort order. */
 export type MailSortOrder = "triage" | "newest" | "oldest";
 
+/**
+ * Action-oriented triage bucket (client-side classifier).
+ * `all` = no bucket filter.
+ */
+export type TriageBucketFilter = "all" | "today" | "week" | "fyi" | "noise";
+
 export type ThreadMessage = {
   id: string;
   date: string;

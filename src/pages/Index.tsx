@@ -730,43 +730,22 @@ export default function Index() {
         }
       />
 
-      {/* On mobile business home, ExperienceBoost owns setup guidance — keep SmartBar live-only. */}
+      {/* SmartDailyBrief owns the teaching — keep SmartBar live-only. */}
       <PageSmartBar
-        title={
-          isMobile && mode === "business"
-            ? "Dagens fokus"
-            : isMobile
-              ? "Fyll i det viktiga först — sedan sköter automationer mer av jobbet."
-              : "Startsidan är din dagliga överblick — vad som behöver göras och var du ska gå härnäst."
-        }
-        steps={
-          isMobile && mode === "business"
-            ? undefined
-            : isMobile
-              ? [
-                  "Beskrivning + webb under Företag",
-                  "Koppla mail och sociala konton",
-                  "Titta under Automationer vad som kan köras automatiskt",
-                ]
-              : [
-                  "Läs dagens brief och kolla Idag-rutorna",
-                  "Fyll i Företag och koppla konton för bättre AI",
-                  "Öppna Automationer för jobb som kan köra sig själva",
-                ]
-        }
-        tip={
-          isMobile && mode === "business"
-            ? undefined
-            : isMobile
-              ? "AI blir bättre ju mer profil och kopplingar du fyller i — utkast och förslag blir mer relevanta."
-              : "Synk-färskhet visas under Idag — grönt betyder att data nyligen hämtats."
-        }
+        title="Dagens läge"
         liveHintOverride={
           health.score < 100 && health.topReason
             ? `${health.label} (${health.score}/100) — ${health.topReason}`
             : health.score >= 100
               ? "Allt ser bra ut idag — inget brådskande i briefen."
-              : null
+              : profileSummary.connectedCount === 0
+                ? "Inga kopplingar än — börja under Kopplingar."
+                : null
+        }
+        extraActions={
+          profileSummary.connectedCount === 0
+            ? [{ label: "Öppna Kopplingar", to: "/connections" }]
+            : []
         }
       />
 
@@ -858,7 +837,6 @@ export default function Index() {
         <HomeCollapsibleSection
           title="Profildetaljer"
           ariaLabel="Profildetaljer"
-          defaultOpen
           actions={
             <div className="flex items-center gap-1">
               <button
@@ -932,13 +910,13 @@ export default function Index() {
       ) : null}
 
       {homeBusinessProfileId ? (
-        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag" defaultOpen>
+        <HomeCollapsibleSection title="AI-förslag" ariaLabel="AI-förslag">
           <AiRecommendationsWidget businessProfileId={homeBusinessProfileId} />
         </HomeCollapsibleSection>
       ) : null}
 
       {quickOverviewCards.length > 0 ? (
-        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt" defaultOpen>
+        <HomeCollapsibleSection title="Snabböversikt" ariaLabel="Snabböversikt">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickOverviewCards.map((card) => (
               <QuickOverviewCard
@@ -956,7 +934,7 @@ export default function Index() {
         </HomeCollapsibleSection>
       ) : null}
 
-      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till" defaultOpen>
+      <HomeCollapsibleSection title="Gå till" ariaLabel="Gå till">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {homeJumpDestinations.map((dest) => (
             <JumpCard
