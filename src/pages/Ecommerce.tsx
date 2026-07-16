@@ -484,7 +484,7 @@ export default function Ecommerce() {
                   ? "Se intäkter, topsäljare och kampanjdata när butiken är kopplad — utan att hoppa till admin."
                   : "Koppla Shopify så dyker ordrar och lager upp här. Kundvagnsåtervinning körs som utkast du godkänner."
             }
-            trust="Automationer skickar inte utan dig — draft-before-send för känsliga flöden."
+            trust="Automationer skickar inte utan dig — utkast före sändning i känsliga flöden."
             primary={{ label: "Koppla Shopify", to: "/connections?wizard=1&q=shopify" }}
             secondary={{ label: "Öppna Kopplingar", to: "/connections?q=shopify" }}
           />

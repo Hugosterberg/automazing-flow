@@ -131,7 +131,7 @@ export function buildFirstWinSteps(args: {
     {
       id: "enable_automation",
       title: "Slå på en automation",
-      detail: "T.ex. AI-utkast för DM eller mail — alltid draft-before-send där det är känsligt.",
+      detail: "T.ex. AI-utkast för DM eller mail — utkast före sändning där det är känsligt.",
       to: "/automations?tab=messages",
       cta: "Öppna Automationer",
       done: false, // user action; checked via completedStepIds in UI layer if needed

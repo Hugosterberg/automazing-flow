@@ -102,7 +102,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
       "Jobbet läser nya DM:s, skriver ett svarsförslag och lägger det i kön under Meddelanden. I standardläge skickas inget förrän du trycker skicka. Auto-skick kräver en extra bekräftelse.",
     exampleDraft:
       "Hej! Tack för att du hör av dig — absolut intresserade. Skicka gärna mer om upplägg så återkommer vi snart.",
-    trustNote: "Draft-before-send som default — du godkänner innan något går ut.",
+    trustNote: "Utkast före sändning som standard — du godkänner innan något går ut.",
   },
   {
     id: "publish-scheduled-posts",
@@ -185,7 +185,7 @@ export const automationCatalog: AutomationCatalogEntry[] = [
       "Jobbet plockar olästa mail, skriver ett svarsutkast och lägger det i Meddelanden. Du kan skicka, redigera eller kasta — automationen skickar aldrig själv.",
     exampleDraft:
       "Hej Anna! Tack för din förfrågan — absolut, vi har tid. Föreslår tisdag eller torsdag 10:00.",
-    trustNote: "Draft-before-send — inget mail går ut utan dig.",
+    trustNote: "Utkast före sändning — inget mail går ut utan dig.",
   },
   {
     id: "marketing-actions",
