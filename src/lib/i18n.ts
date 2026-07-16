@@ -24,8 +24,33 @@ import svHome from "@/locales/sv/home.json";
 import enHome from "@/locales/en/home.json";
 import svPreferences from "@/locales/sv/preferences.json";
 import enPreferences from "@/locales/en/preferences.json";
+import svCatalog from "@/locales/sv/catalog.json";
+import enCatalog from "@/locales/en/catalog.json";
+import svErrors from "@/locales/sv/errors.json";
+import enErrors from "@/locales/en/errors.json";
+import svMessages from "@/locales/sv/messages.json";
+import enMessages from "@/locales/en/messages.json";
+import svConnections from "@/locales/sv/connections.json";
+import enConnections from "@/locales/en/connections.json";
+import svTasks from "@/locales/sv/tasks.json";
+import enTasks from "@/locales/en/tasks.json";
+import svReviews from "@/locales/sv/reviews.json";
+import enReviews from "@/locales/en/reviews.json";
 
 export const i18n = i18next;
+
+const NAMESPACES = [
+  "common",
+  "landing",
+  "home",
+  "preferences",
+  "catalog",
+  "errors",
+  "messages",
+  "connections",
+  "tasks",
+  "reviews",
+] as const;
 
 function applyLanguageSideEffects(lang: string): void {
   const locale = localeForLanguage(lang);
@@ -48,18 +73,30 @@ export function initI18n(): void {
         landing: svLanding,
         home: svHome,
         preferences: svPreferences,
+        catalog: svCatalog,
+        errors: svErrors,
+        messages: svMessages,
+        connections: svConnections,
+        tasks: svTasks,
+        reviews: svReviews,
       },
       en: {
         common: enCommon,
         landing: enLanding,
         home: enHome,
         preferences: enPreferences,
+        catalog: enCatalog,
+        errors: enErrors,
+        messages: enMessages,
+        connections: enConnections,
+        tasks: enTasks,
+        reviews: enReviews,
       },
     },
     lng: initialLanguage,
     fallbackLng: "en",
     defaultNS: "common",
-    ns: ["common", "landing", "home", "preferences"],
+    ns: [...NAMESPACES],
     interpolation: { escapeValue: false },
     returnEmptyString: false,
   });

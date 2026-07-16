@@ -1,0 +1,23 @@
+{
+  "title": "Uppgifter",
+  "description": "Lägg till snabbt, öppna kort för detaljer och dra mellan kolumner.",
+  "refresh": "Uppdatera",
+  "moduleGeneral": "Allmänt",
+  "moduleCampaign": "Kampanj",
+  "modulePipeline": "Pipeline",
+  "moduleAll": "Alla moduler",
+  "smartEmpty": "Uppgifter är din dagliga kö — skapa snabbt, filtrera det viktiga och dra kort mellan stadier.",
+  "step1": "Skapa din första uppgift med formuläret",
+  "step2": "Filtrera på Idag eller Försenade när du triagerar",
+  "step3": "Dra kort mellan Att göra → Pågår → Klart",
+  "tip": "Automationer kan påminna om försenade uppgifter — se Automationer.",
+  "overdueHint": "{{count}} försenade — filtrera på Försenade för att triagera.",
+  "dueTodayHint": "{{count}} förfaller idag.",
+  "viewAria": "Uppgiftsvy",
+  "today": "Idag",
+  "overdue": "Försenade",
+  "all": "Alla",
+  "remindTitle": "Påminn automatiskt om försenade",
+  "remindDesc": "Uppgiftspåminnelse mailar dig om öppna deadlines — så du slipper jaga listan manuellt.",
+  "remindCta": "Aktivera uppgifts-påminnelser"
+}

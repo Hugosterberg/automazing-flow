@@ -1,5 +1,6 @@
 import type { InboxFilter, MessageChannelTab, UnifiedMessage } from "./types";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
 export const MESSAGE_TABS: Array<{ value: MessageChannelTab; label: string; shortLabel: string }> = [
   { value: "mail", label: "Mail", shortLabel: "Mail" },
@@ -49,11 +50,11 @@ export function formatWaitTime(raw: string): string | null {
   const ms = Date.now() - Date.parse(raw);
   if (!Number.isFinite(ms) || ms < 0) return null;
   const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${Math.max(1, minutes)} min`;
+  if (minutes < 60) return t("messages:wait.minutes", { count: Math.max(1, minutes) });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} tim`;
+  if (hours < 24) return t("messages:wait.hours", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} d`;
+  return t("messages:wait.days", { count: days });
 }
 
 export function isUrgentWait(raw: string): boolean {
@@ -83,28 +84,28 @@ export function messageMatchesTab(msg: UnifiedMessage, tab: MessageChannelTab): 
 export function emptyCopyForTab(tab: MessageChannelTab): { title: string; description: string; showConnect?: boolean } {
   if (tab === "mail") {
     return {
-      title: "Ingen mail ännu",
-      description: "Koppla Gmail eller Outlook under Kopplingar för att se e-post här.",
+      title: t("messages:empty.mailTitle"),
+      description: t("messages:empty.mailDesc"),
       showConnect: true,
     };
   }
   if (tab === "instagram") {
     return {
-      title: "Inga Instagram-meddelanden",
-      description: "DM:er visas här när Zernio Inbox är kopplad under Kopplingar.",
+      title: t("messages:empty.igTitle"),
+      description: t("messages:empty.igDesc"),
       showConnect: true,
     };
   }
   if (tab === "messenger") {
     return {
-      title: "Inga Messenger-meddelanden",
-      description: "Facebook Messenger visas här via Zernio Inbox — koppla under Kopplingar.",
+      title: t("messages:empty.messengerTitle"),
+      description: t("messages:empty.messengerDesc"),
       showConnect: true,
     };
   }
   return {
-    title: "Inga WhatsApp-meddelanden",
-    description: "WhatsApp visas här via Zernio Inbox — koppla under Kopplingar.",
+    title: t("messages:empty.waTitle"),
+    description: t("messages:empty.waDesc"),
     showConnect: true,
   };
 }
@@ -125,30 +126,28 @@ export function inboxEmptyCopy(opts: {
   const query = opts.search.trim();
   if (query) {
     return {
-      title: "Inga träffar",
-      description: `Inget matchade «${query}». Prova färre ord eller rensa sökningen.`,
+      title: t("messages:empty.noHits"),
+      description: t("messages:empty.noHitsDesc", { query }),
       showClearSearch: true,
     };
   }
   if (opts.filter === "open" && opts.hasMessagesInTab) {
     return {
-      title: "Inget kvar att svara på",
-      description:
-        "Alla meddelanden i denna kanal är hanterade. Slå på auto-svar under Automationer så utkast skapas åt dig när nya DM:er kommer.",
+      title: t("messages:empty.allHandled"),
+      description: t("messages:empty.allHandledDesc"),
       showAutomations: true,
     };
   }
   if (opts.filter === "handled") {
     return {
-      title: "Ingen historik än",
-      description: "Meddelanden du markerar som hanterade hamnar här.",
+      title: t("messages:empty.noHistory"),
+      description: t("messages:empty.noHistoryDesc"),
     };
   }
   if (opts.filter === "queue" && opts.hasMessagesInTab) {
     return {
-      title: "Kön är tom",
-      description:
-        "Inget behöver svar just nu. Aktivera auto-svar och uppföljning under Automationer så köarbetet minskar över tid.",
+      title: t("messages:empty.queueEmpty"),
+      description: t("messages:empty.queueEmptyDesc"),
       showAutomations: true,
     };
   }

@@ -1,0 +1,15 @@
+{
+  "title": "Recensioner",
+  "descriptionMobile": "Tryck en recension för att läsa och svara.",
+  "descriptionEmpty": "Koppla Google Reviews eller Tripadvisor under Kopplingar för att komma igång",
+  "refresh": "Uppdatera",
+  "smartMobile": "Filtrera och tryck en recension — AI hjälper dig skriva svar.",
+  "smartDesktop": "Recensioner samlar kundfeedback — svara snabbt, håll koll på betyg och prioritera det som behöver svar.",
+  "emptyAccountTitle": "Inget recensionskonto kopplat",
+  "emptyReviewsTitle": "Inga recensioner ännu",
+  "emptyAllHandled": "Inget kvar att svara på",
+  "emptyAllHandledDesc": "Alla omdömen i den här vyn har redan svar.",
+  "emptyRating": "Inga recensioner med det betyget",
+  "emptyRatingDesc": "Prova ett annat stjärnfilter eller visa alla betyg.",
+  "emptyReviewsDesc": "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar."
+}

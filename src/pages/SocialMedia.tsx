@@ -48,7 +48,8 @@ import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getConnectionEntriesForArea } from "@/lib/connectionCatalog";
+import { catalogConnectSteps, getConnectionEntriesForArea } from "@/lib/connectionCatalog";
+import { t } from "@/lib/i18n";
 import {
   aggregateStatus,
   ConnectionStatusBadge,
@@ -640,7 +641,9 @@ export default function SocialMedia() {
                         </p>
                       ) : (
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Inte kopplat för den här profilen. {entry.connectSteps}
+                          {t("catalog:notConnectedProfile", {
+                            steps: catalogConnectSteps(entry),
+                          })}
                         </p>
                       )}
                     </div>

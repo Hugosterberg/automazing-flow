@@ -8,7 +8,7 @@
 import { useMemo } from "react";
 import { connectionSyncLooksLikePermissionError } from "@/lib/oauthPermissionErrors";
 import { useMcpProvidersStatus, mcpStatusLabel } from "@/features/intelligence/useMcpProvidersStatus";
-import { CONNECTION_CATALOG } from "@/lib/connectionCatalog";
+import { CONNECTION_CATALOG, catalogConnectSteps } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
 import type { useAutomationRuns } from "@/features/automation/useAutomationRuns";
 import { aggregateStatus, CONNECTION_STATUS_LABELS, type ConnectionStatus } from "./connectionStatus";
@@ -46,7 +46,7 @@ export function connectionIssues(connections: Connection[]): HealthIssue[] {
       severity: status === "error" ? "error" : "warning",
       category: "connection",
       title: `${entry.label} — ${permissionIssue ? "Behörighet saknas" : CONNECTION_STATUS_LABELS[status]}`,
-      message: lastError || entry.connectSteps,
+      message: lastError || catalogConnectSteps(entry),
       actionHref: "/connections?filter=attention",
       actionLabel: "Öppna Kopplingar",
     });

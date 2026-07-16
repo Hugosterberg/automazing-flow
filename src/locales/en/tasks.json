@@ -1,0 +1,23 @@
+{
+  "title": "Tasks",
+  "description": "Add quickly, open cards for details, and drag between columns.",
+  "refresh": "Refresh",
+  "moduleGeneral": "General",
+  "moduleCampaign": "Campaign",
+  "modulePipeline": "Pipeline",
+  "moduleAll": "All modules",
+  "smartEmpty": "Tasks are your daily queue — create fast, filter what matters, and drag cards between stages.",
+  "step1": "Create your first task with the form",
+  "step2": "Filter on Today or Overdue when you triage",
+  "step3": "Drag cards between To do → Doing → Done",
+  "tip": "Automations can remind you about overdue tasks — see Automations.",
+  "overdueHint": "{{count}} overdue — filter on Overdue to triage.",
+  "dueTodayHint": "{{count}} due today.",
+  "viewAria": "Task view",
+  "today": "Today",
+  "overdue": "Overdue",
+  "all": "All",
+  "remindTitle": "Remind automatically about overdue",
+  "remindDesc": "Task reminders email you about open deadlines — so you don’t chase the list manually.",
+  "remindCta": "Enable task reminders"
+}

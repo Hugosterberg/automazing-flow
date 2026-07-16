@@ -6,8 +6,11 @@ import { useWorkspaceMode } from "@/features/workspace-mode";
 import {
   AREA_LABELS,
   areaOrderForMode,
+  catalogConnectSteps,
+  catalogPageName,
   getCatalogByArea,
 } from "@/lib/connectionCatalog";
+import { t } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
@@ -94,7 +97,7 @@ export function ConnectionsMap() {
                       to={entry.pageHref}
                       className="text-xs font-medium text-primary underline-offset-2 hover:underline shrink-0"
                     >
-                      Öppna {entry.pageName} →
+                      {t("catalog:openPage", { page: catalogPageName(entry) })}
                     </Link>
                   </div>
                   {ok ? (
@@ -105,7 +108,8 @@ export function ConnectionsMap() {
                     <p className="text-xs text-amber-800 dark:text-amber-500/95 pl-6">Inte kopplat för den här profilen än.</p>
                   )}
                   <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
-                    <span className="font-medium text-foreground/80">I appen:</span> {entry.connectSteps}
+                    <span className="font-medium text-foreground/80">{t("catalog:inApp")}</span>{" "}
+                    {catalogConnectSteps(entry)}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
                     <span className="font-medium text-foreground/80">På servern (.env / Inställningar):</span>{" "}

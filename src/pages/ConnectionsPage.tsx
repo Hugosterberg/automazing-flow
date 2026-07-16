@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams, Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, ExternalLink, Globe2, Loader2, PlugZap, RefreshCw, Save, Search, Unplug, X, Building2 } from "lucide-react";
@@ -91,6 +92,7 @@ function safeWebsiteUrl(value: string | null | undefined): string | null {
  *   cloud auth is not enabled, so local-mode users still see something.
  */
 export default function ConnectionsPage() {
+  const { t } = useTranslation("connections");
   const { toast } = useToast();
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
@@ -350,7 +352,7 @@ export default function ConnectionsPage() {
       <div className="max-w-3xl mx-auto py-16">
         <EmptyState
           icon={PlugZap}
-          title="Ingen företagsprofil vald"
+          title={t("noProfileTitle")}
           description="Välj eller skapa en företagsprofil för att hantera kopplingar."
           action={
             <Button variant="outline" size="sm" asChild>
@@ -379,21 +381,21 @@ export default function ConnectionsPage() {
   const needsAttentionOnly = statusFilter === "needs_attention";
 
   const summary = isLoading
-    ? "Laddar kopplingar…"
-    : `${activeCount} kopplade`;
+    ? t("loading")
+    : t("connectedCount", { count: activeCount });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <PageHeader
         icon={PlugZap}
-        title="Kopplingar"
+        title={t("title")}
         description={
           <>
-            Alla integrationer för{" "}
+            {t("descriptionBefore")}{" "}
             <span className="font-medium text-foreground">
-              {legacy.activeProfile?.name ?? "denna företagsprofil"}
+              {legacy.activeProfile?.name ?? t("descriptionFallback")}
             </span>
-            . Koppla eller koppla från konton, se hälsa och status för omkoppling.
+            {t("descriptionAfter")}
           </>
         }
         actions={
@@ -408,10 +410,10 @@ export default function ConnectionsPage() {
                 downloadCsv(csv, `anslutningar-${new Date().toISOString().slice(0, 10)}.csv`);
               }}
               disabled={connections.length === 0}
-              title="Exportera till CSV"
+              title={t("exportTitle")}
             >
               <Download className="h-3.5 w-3.5" />
-              Exportera
+              {t("export")}
             </Button>
             <Button
               type="button"
@@ -426,28 +428,24 @@ export default function ConnectionsPage() {
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              Uppdatera
+              {t("refresh")}
             </Button>
           </div>
         }
       />
 
       <PageSmartBar
-        title="Det här är navet för all data in i appen — utan kopplingar fylls inte Meddelanden, Innehåll eller Insikter."
-        steps={[
-          "Koppla de kanaler du jobbar med (mail, socialt, recensioner …)",
-          "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",
-          "Använd kopplingarna i resten av appen (publicera, svara, rapportera)",
-        ]}
-        tip="Efter koppling: fyll i Företag (beskrivning + webb) så AI och automationer får rätt kontext. Hälsa visar problem samlat."
+        title={t("smartBar")}
+        steps={[t("step1"), t("step2"), t("step3")]}
+        tip={t("tip")}
         liveHintOverride={
           healthIssueCount > 0
-            ? `${healthIssueCount} koppling${healthIssueCount === 1 ? "" : "ar"} behöver åtgärd — öppna fliken Hälsa`
+            ? t("healthHint", { count: healthIssueCount })
             : null
         }
         extraActions={
           healthIssueCount > 0
-            ? [{ label: "Visa hälsa", to: "/connections?tab=health" }]
+            ? [{ label: t("showHealth"), to: "/connections?tab=health" }]
             : []
         }
       />

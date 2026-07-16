@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { connectionFixHint, connectionTestToastMessage } from "@/features/connections/connectionFixHints";
 import type { ConnectionCatalogEntry } from "@/lib/connectionCatalog";
 import type { Connection } from "@/types/connection";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 const catalogEntry: ConnectionCatalogEntry = {
   platform: "gmail",

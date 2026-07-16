@@ -1,0 +1,15 @@
+{
+  "title": "Reviews",
+  "descriptionMobile": "Tap a review to read and reply.",
+  "descriptionEmpty": "Connect Google Reviews or Tripadvisor under Connections to get started",
+  "refresh": "Refresh",
+  "smartMobile": "Filter and tap a review — AI helps you write replies.",
+  "smartDesktop": "Reviews collect customer feedback — reply quickly, track ratings, and prioritize what needs a response.",
+  "emptyAccountTitle": "No review account connected",
+  "emptyReviewsTitle": "No reviews yet",
+  "emptyAllHandled": "Nothing left to reply to",
+  "emptyAllHandledDesc": "All reviews in this view already have a reply.",
+  "emptyRating": "No reviews with that rating",
+  "emptyRatingDesc": "Try another star filter or show all ratings.",
+  "emptyReviewsDesc": "The account returned no reviews. Tap Refresh or check the connection under Connections."
+}

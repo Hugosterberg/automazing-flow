@@ -1,5 +1,6 @@
 import type { AccountPlatform } from "@/types/accounts";
 import type { WorkspaceMode } from "@/features/workspace-mode/workspaceMode";
+import { t } from "@/lib/i18n";
 
 /** Logical product areas (matches main nav groupings). */
 export type AppArea =
@@ -35,16 +36,31 @@ export function areaOrderForMode(mode: WorkspaceMode): AppArea[] {
   return AREA_ORDER.filter((area) => PRIVATE_AREAS.has(area));
 }
 
-export const AREA_LABELS: Record<AppArea, string> = {
-  social: "Sociala medier",
-  marketing: "Marknadsföring",
-  ecommerce: "E-handel",
-  messages: "Meddelanden & mail",
-  calendar: "Kalender",
-  reviews: "Recensioner",
-  content: "Innehållsbibliotek",
-  intelligence: "Intelligence & MCP",
-};
+/** Translated area label (follows active UI language). */
+export function areaLabel(area: AppArea): string {
+  return t(`catalog:areas.${area}`);
+}
+
+/**
+ * Compatibility map that always reads live translations.
+ * Prefer `areaLabel()` in new code.
+ */
+export const AREA_LABELS: Record<AppArea, string> = new Proxy({} as Record<AppArea, string>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop !== "string") return undefined;
+    if ((AREA_ORDER as string[]).includes(prop)) return areaLabel(prop as AppArea);
+    return undefined;
+  },
+  ownKeys() {
+    return [...AREA_ORDER];
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    if (typeof prop === "string" && (AREA_ORDER as string[]).includes(prop)) {
+      return { configurable: true, enumerable: true, value: areaLabel(prop as AppArea) };
+    }
+    return undefined;
+  },
+});
 
 export type ConnectionCatalogEntry = {
   platform: AccountPlatform;
@@ -58,12 +74,33 @@ export type ConnectionCatalogEntry = {
   areas: [AppArea, ...AppArea[]];
   /** In-app page where Connect actions live */
   pageHref: string;
+  /**
+   * Fallback English page label — prefer `catalogPageName(entry)` for UI.
+   * Kept for tests and non-i18n contexts.
+   */
   pageName: string;
-  /** What the user does in the product */
+  /**
+   * Fallback Swedish connect steps — prefer `catalogConnectSteps(entry)` for UI.
+   */
   connectSteps: string;
   /** What must be set on the server (.env / Preferences) before OAuth succeeds */
   serverNeeds: string;
 };
+
+function pageKeyFromHref(href: string): string {
+  const path = href.replace(/^\//, "").split("?")[0] || "connections";
+  return path;
+}
+
+/** Localized “open Connections → …” steps for a catalog entry. */
+export function catalogConnectSteps(entry: Pick<ConnectionCatalogEntry, "platform">): string {
+  return t(`catalog:connect.${entry.platform}`);
+}
+
+/** Localized destination page name for a catalog entry. */
+export function catalogPageName(entry: Pick<ConnectionCatalogEntry, "pageHref">): string {
+  return t(`catalog:pages.${pageKeyFromHref(entry.pageHref)}`);
+}
 
 /**
  * Single source of truth: which integrations exist, where to connect them, and what the server needs.

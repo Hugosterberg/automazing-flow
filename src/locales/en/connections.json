@@ -1,0 +1,33 @@
+{
+  "title": "Connections",
+  "descriptionBefore": "All integrations for",
+  "descriptionFallback": "this business profile",
+  "descriptionAfter": ". Connect or disconnect accounts, see health and reconnect status.",
+  "export": "Export",
+  "exportTitle": "Export to CSV",
+  "refresh": "Refresh",
+  "loading": "Loading connections…",
+  "connectedCount": "{{count}} connected",
+  "noProfileTitle": "No business profile selected",
+  "smartBar": "This is the hub for all data into the app — without connections, Messages, Content and Insights stay empty.",
+  "step1": "Connect the channels you work with (mail, social, reviews…)",
+  "step2": "Check status — yellow/red means you need to reconnect or sync",
+  "step3": "Use the connections across the rest of the app (publish, reply, report)",
+  "tip": "After connecting: fill in Company (description + website) so AI and automations get the right context. Health shows issues in one place.",
+  "healthHint_one": "{{count}} connection needs attention — open the Health tab",
+  "healthHint_other": "{{count}} connections need attention — open the Health tab",
+  "showHealth": "Show health",
+  "fix": {
+    "withServer": "{{message}} — Server: {{server}}",
+    "reauth": "Reconnect and sign in again to renew the OAuth token.",
+    "checkServer": "Check server configuration: {{server}}",
+    "checkPrefs": "Review integration settings under Preferences.",
+    "pending": "Sync in progress — try again in a moment."
+  },
+  "toast": {
+    "ok": "Connection OK",
+    "okDesc": "Credentials verified.",
+    "attention": "Connection needs attention",
+    "failDesc": "The test did not pass."
+  }
+}

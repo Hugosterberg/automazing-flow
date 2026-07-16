@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_OAUTH_ERROR_MESSAGES, formatOAuthErrorMessage, type OAuthErrorDetails } from "./oauthErrors";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 function details(code: string): OAuthErrorDetails {
   return { code, statusCode: null, exception: null, hint: null };
@@ -9,7 +15,7 @@ describe("formatOAuthErrorMessage", () => {
   it("uses built-in copy for not_authenticated", () => {
     const msg = formatOAuthErrorMessage(details("not_authenticated"));
     expect(msg).toContain("Inloggningssessionen");
-    expect(DEFAULT_OAUTH_ERROR_MESSAGES.not_authenticated).toBe(msg);
+    expect(msg).toBe(DEFAULT_OAUTH_ERROR_MESSAGES.not_authenticated);
   });
 
   it("page overrides win over defaults", () => {

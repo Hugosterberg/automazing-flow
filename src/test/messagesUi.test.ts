@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { beforeAll, describe, expect, it, vi, afterEach } from "vitest";
 import {
   channelBadge,
   formatWaitTime,
@@ -9,6 +9,12 @@ import {
   senderInitial,
 } from "@/features/messages/messagesUi";
 import type { UnifiedMessage } from "@/features/messages/types";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 function msg(
   partial: Pick<UnifiedMessage, "id" | "kind" | "channel"> & Partial<UnifiedMessage>

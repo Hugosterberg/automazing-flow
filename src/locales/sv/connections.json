@@ -1,0 +1,33 @@
+{
+  "title": "Kopplingar",
+  "descriptionBefore": "Alla integrationer för",
+  "descriptionFallback": "denna företagsprofil",
+  "descriptionAfter": ". Koppla eller koppla från konton, se hälsa och status för omkoppling.",
+  "export": "Exportera",
+  "exportTitle": "Exportera till CSV",
+  "refresh": "Uppdatera",
+  "loading": "Laddar kopplingar…",
+  "connectedCount": "{{count}} kopplade",
+  "noProfileTitle": "Ingen företagsprofil vald",
+  "smartBar": "Det här är navet för all data in i appen — utan kopplingar fylls inte Meddelanden, Innehåll eller Insikter.",
+  "step1": "Koppla de kanaler du jobbar med (mail, socialt, recensioner …)",
+  "step2": "Kontrollera status — gult/rött betyder att du behöver koppla om eller synka",
+  "step3": "Använd kopplingarna i resten av appen (publicera, svara, rapportera)",
+  "tip": "Efter koppling: fyll i Företag (beskrivning + webb) så AI och automationer får rätt kontext. Hälsa visar problem samlat.",
+  "healthHint_one": "{{count}} koppling behöver åtgärd — öppna fliken Hälsa",
+  "healthHint_other": "{{count}} kopplingar behöver åtgärd — öppna fliken Hälsa",
+  "showHealth": "Visa hälsa",
+  "fix": {
+    "withServer": "{{message}} — Server: {{server}}",
+    "reauth": "Koppla om och logga in igen för att förnya OAuth-token.",
+    "checkServer": "Kontrollera serverkonfiguration: {{server}}",
+    "checkPrefs": "Granska integrationsinställningar under Inställningar.",
+    "pending": "Synk pågår — testa igen om en stund."
+  },
+  "toast": {
+    "ok": "Koppling OK",
+    "okDesc": "Uppgifterna verifierades.",
+    "attention": "Kopplingen behöver uppmärksamhet",
+    "failDesc": "Testet gick inte igenom."
+  }
+}
