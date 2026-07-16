@@ -1,9 +1,11 @@
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
 import type { CampaignTrend } from "./campaignTrend";
 
 export function CampaignTrendBadge({ trend }: { trend: CampaignTrend | undefined }) {
+  const { t } = useTranslation("marketing");
   if (!trend?.previous) return null;
 
   const Icon =
@@ -35,7 +37,9 @@ export function CampaignTrendBadge({ trend }: { trend: CampaignTrend | undefined
         "inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums shrink-0",
         tone,
       )}
-      title={`Vs ~7 dagar sedan${gradeHint ? ` · betyg ${gradeHint}` : ""}`}
+      title={t("campaignTrend.title", {
+        gradeHint: gradeHint ? t("campaignTrend.gradeHint", { grades: gradeHint }) : "",
+      })}
     >
       <Icon className="h-3 w-3" aria-hidden />
       {scoreText}

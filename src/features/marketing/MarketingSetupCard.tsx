@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Gauge, Megaphone, Plug, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMarketingCampaigns } from "./useMarketingCampaigns";
 
 export function MarketingSetupCard() {
+  const { t } = useTranslation("marketing");
   const { connected, performance, isLoading } = useMarketingCampaigns();
   const hasAds = connected.meta_business || connected.google_ads;
   const hasShopify = connected.shopify;
@@ -16,22 +18,22 @@ export function MarketingSetupCard() {
   const steps = [
     {
       done: hasShopify,
-      label: "Shopify",
-      hint: "Intäkter och ROAS från din butik",
+      label: t("setup.steps.shopify.label"),
+      hint: t("setup.steps.shopify.hint"),
       href: "/ecommerce",
       icon: ShoppingBag,
     },
     {
       done: hasAds,
-      label: "Google Ads eller Meta",
-      hint: "Följ spend och kampanjresultat",
+      label: t("setup.steps.ads.label"),
+      hint: t("setup.steps.ads.hint"),
       href: "/connections",
       icon: Megaphone,
     },
     {
       done: hasMetrics,
-      label: "Se resultat",
-      hint: "ROAS visas när butik och annonser är kopplade",
+      label: t("setup.steps.results.label"),
+      hint: t("setup.steps.results.hint"),
       href: "/marketing?tab=ads",
       icon: Gauge,
     },
@@ -42,11 +44,9 @@ export function MarketingSetupCard() {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <Plug className="h-4 w-4 text-primary" />
-          Koppla din marknadsföringsstack
+          {t("setup.title")}
         </CardTitle>
-        <CardDescription>
-          Välj vad du vill koppla först — organiskt innehåll fungerar utan annonser, men ROAS kräver Shopify plus minst en annonsplattform.
-        </CardDescription>
+        <CardDescription>{t("setup.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-3">
         {steps.map((step) => {
@@ -64,7 +64,7 @@ export function MarketingSetupCard() {
               <p className="text-[11px] text-muted-foreground mb-2">{step.hint}</p>
               {!step.done ? (
                 <Button asChild size="sm" variant="outline" className="h-7 text-xs w-full">
-                  <Link to={step.href}>Koppla</Link>
+                  <Link to={step.href}>{t("setup.connect")}</Link>
                 </Button>
               ) : null}
             </div>

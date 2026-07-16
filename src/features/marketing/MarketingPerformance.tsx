@@ -1,5 +1,6 @@
 import { Gauge, Info, Minus, Plug, TrendingDown, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ function pct(value: number | null): string {
 
 /** Week-over-week trend strip from daily snapshots. */
 function TrendStrip() {
+  const { t } = useTranslation("marketing");
   const { trend } = useMarketingTrend();
   if (!trend || !trend.previous) return null;
   if (trend.roasDelta == null && trend.portfolioScoreDelta == null) return null;
@@ -55,19 +57,22 @@ function TrendStrip() {
       {roasDelta ? (
         <span className={cn("inline-flex items-center gap-1 font-medium", roasTone)}>
           <RoasIcon className="h-3.5 w-3.5" aria-hidden />
-          ROAS {roasDelta} vs förra veckan
+          {t("performance.trend.roasVsWeek", { delta: roasDelta })}
         </span>
       ) : null}
       {trend.portfolioScoreDelta != null ? (
         <span className={cn("inline-flex items-center gap-1 font-medium", scoreTone)}>
           <ScoreIcon className="h-3.5 w-3.5" aria-hidden />
-          Betyg {trend.portfolioScoreDelta > 0 ? "+" : ""}
-          {Math.round(trend.portfolioScoreDelta)} p
-          {trend.current?.portfolioGrade ? ` (nu ${trend.current.portfolioGrade})` : ""}
+          {t("performance.trend.gradeDelta", {
+            delta: `${trend.portfolioScoreDelta > 0 ? "+" : ""}${Math.round(trend.portfolioScoreDelta)}`,
+            gradeHint: trend.current?.portfolioGrade
+              ? t("performance.trend.gradeHint", { grade: trend.current.portfolioGrade })
+              : "",
+          })}
         </span>
       ) : null}
-      <span>Spend {pct(trend.spendChangePct)}</span>
-      <span>Intäkter {pct(trend.revenueChangePct)}</span>
+      <span>{t("performance.trend.spend", { pct: pct(trend.spendChangePct) })}</span>
+      <span>{t("performance.trend.revenue", { pct: pct(trend.revenueChangePct) })}</span>
     </div>
   );
 }
@@ -121,6 +126,7 @@ const CHANNEL_META: Array<{ key: "meta_business" | "google_ads"; label: string; 
  * total ad spend).
  */
 function ChannelMix({ performance: p }: { performance: Performance }) {
+  const { t } = useTranslation("marketing");
   const total = p.adSpend ?? 0;
   if (total <= 0) return null;
   const channels = CHANNEL_META.map((c) => ({
@@ -132,8 +138,10 @@ function ChannelMix({ performance: p }: { performance: Performance }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">Kanalmix (andel av annonsspend)</p>
-        <p className="text-[11px] text-muted-foreground">andel = kanalens spend ÷ {formatMoney(total, p.adSpendCurrency)}</p>
+        <p className="text-xs font-medium text-muted-foreground">{t("performance.channelMix.title")}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {t("performance.channelMix.formula", { total: formatMoney(total, p.adSpendCurrency) })}
+        </p>
       </div>
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
         {channels.map((c) => (
@@ -153,12 +161,13 @@ function ChannelMix({ performance: p }: { performance: Performance }) {
 }
 
 export function MarketingPerformance() {
+  const { t } = useTranslation("marketing");
   const { performance, connected, analytics, isLoading } = useMarketingCampaigns();
 
   if (isLoading && !performance) {
     return (
       <Card className="border-border border-dashed">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">Laddar marknadsföringsdata…</CardContent>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">{t("performance.loading")}</CardContent>
       </Card>
     );
   }
@@ -169,25 +178,25 @@ export function MarketingPerformance() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Gauge className="h-4 w-4 text-primary" />
-            Marknadsföringsresultat
+            {t("performance.title")}
           </CardTitle>
-          <CardDescription>Koppla Shopify och minst en annonsplattform för att se ROAS här.</CardDescription>
+          <CardDescription>{t("performance.emptyDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {!connected.shopify ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/ecommerce">Koppla Shopify</Link>
+              <Link to="/ecommerce">{t("performance.connectShopify")}</Link>
             </Button>
           ) : null}
           {!connected.meta_business && !connected.google_ads ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/connections">Koppla annonser</Link>
+              <Link to="/connections">{t("performance.connectAds")}</Link>
             </Button>
           ) : null}
           <Button asChild size="sm" variant="ghost">
             <Link to="/marketing?tab=ads">
               <Plug className="h-3.5 w-3.5 mr-1.5" />
-              Sätt upp betald annonsering
+              {t("performance.setupPaid")}
             </Link>
           </Button>
         </CardContent>
@@ -204,23 +213,21 @@ export function MarketingPerformance() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Gauge className="h-4 w-4 text-primary" />
-            Marknadsföringsresultat
+            {t("performance.title")}
           </CardTitle>
           <CardDescription>
-            {connected.shopify
-              ? "Shopify kopplad — väntar på annonskostnadsdata."
-              : "Koppla Shopify för intäktssidan av ROAS."}
+            {connected.shopify ? t("performance.shopifyWaiting") : t("performance.shopifyForRevenue")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {!connected.shopify ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/ecommerce">Koppla Shopify</Link>
+              <Link to="/ecommerce">{t("performance.connectShopify")}</Link>
             </Button>
           ) : null}
           {!connected.meta_business && !connected.google_ads ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/connections">Koppla Meta eller Google Ads</Link>
+              <Link to="/connections">{t("performance.connectMetaGoogle")}</Link>
             </Button>
           ) : null}
         </CardContent>
@@ -236,11 +243,9 @@ export function MarketingPerformance() {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <Gauge className="h-4 w-4 text-primary" />
-          Marknadsföringsresultat
+          {t("performance.title")}
         </CardTitle>
-        <CardDescription>
-          Annonsspend och butiksintäkter kopplade ihop · senaste {p.windowDays} dagarna
-        </CardDescription>
+        <CardDescription>{t("performance.windowDescription", { days: p.windowDays })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {analytics && analytics.portfolioGrade !== "—" ? (
@@ -255,7 +260,9 @@ export function MarketingPerformance() {
             )}
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Marknadsföringsbetyg · senaste {p.windowDays} dagar</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("performance.gradeTitle", { days: p.windowDays })}
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <MarketingGradeBadge
                   grade={analytics.portfolioGrade}
@@ -276,16 +283,21 @@ export function MarketingPerformance() {
             </div>
             <div className="text-right text-[11px] text-muted-foreground tabular-nums">
               <p>
-                {analytics.campaignsGood} bra · {analytics.campaignsOk} godkända ·{" "}
+                {t("performance.campaignGood", { count: analytics.campaignsGood })} ·{" "}
+                {t("performance.campaignOk", { count: analytics.campaignsOk })} ·{" "}
                 <span className={analytics.campaignsPoor > 0 ? "text-destructive font-medium" : ""}>
-                  {analytics.campaignsPoor} svaga
+                  {t("performance.campaignPoor", { count: analytics.campaignsPoor })}
                 </span>
               </p>
               {analytics.platformScores.meta_business ? (
-                <p>Meta {analytics.platformScores.meta_business.grade} · Google{" "}
-                  {analytics.platformScores.google_ads?.grade ?? "—"}</p>
+                <p>
+                  {t("performance.platformMetaGoogle", {
+                    metaGrade: analytics.platformScores.meta_business.grade,
+                    googleGrade: analytics.platformScores.google_ads?.grade ?? "—",
+                  })}
+                </p>
               ) : analytics.platformScores.google_ads ? (
-                <p>Google {analytics.platformScores.google_ads.grade}</p>
+                <p>{t("performance.platformGoogle", { grade: analytics.platformScores.google_ads.grade })}</p>
               ) : null}
             </div>
           </div>
@@ -293,45 +305,52 @@ export function MarketingPerformance() {
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricTile
-            label="ROAS"
+            label={t("performance.metrics.roas")}
             value={formatRoas(p.roas)}
             tone={p.roas == null ? "default" : p.roas >= 1 ? "good" : "bad"}
             formula={
               p.roas != null ? (
-                <>Intäkter {moneyRevenue} ÷ annonsspend {moneySpend}</>
+                <>{t("performance.formulas.roasCalc", { revenue: moneyRevenue, spend: moneySpend })}</>
               ) : !hasRevenue ? (
-                "Anslut Shopify för att beräkna ROAS"
+                t("performance.formulas.roasNeedsShopify")
               ) : (
-                "Anslut Meta/Google Ads för att beräkna ROAS"
+                t("performance.formulas.roasNeedsAds")
               )
             }
           />
           <MetricTile
-            label="Kostnad per order"
+            label={t("performance.metrics.costPerOrder")}
             value={p.costPerOrder != null ? formatMoney(p.costPerOrder, p.adSpendCurrency) : "—"}
             formula={
               p.costPerOrder != null ? (
-                <>Annonsspend {moneySpend} ÷ {formatNumber(p.orders)} ordrar</>
+                <>{t("performance.formulas.cpoCalc", { spend: moneySpend, orders: formatNumber(p.orders) })}</>
               ) : !hasAdSpend ? (
-                "Kräver annonsspend"
+                t("performance.formulas.cpoNeedsSpend")
               ) : (
-                "Kräver Shopify-ordrar"
+                t("performance.formulas.cpoNeedsOrders")
               )
             }
           />
           <MetricTile
-            label="Annonsspend"
+            label={t("performance.metrics.adSpend")}
             value={moneySpend}
-            formula={hasAdSpend ? adSpendBreakdown(p) || "Summa aktiva kampanjer" : "Ingen annons­plattform ansluten"}
+            formula={
+              hasAdSpend ? adSpendBreakdown(p) || t("performance.formulas.spendSum") : t("performance.formulas.spendNone")
+            }
           />
           <MetricTile
-            label="Intäkter"
+            label={t("performance.metrics.revenue")}
             value={moneyRevenue}
             formula={
               hasRevenue ? (
-                <>Shopify brutto · {formatNumber(p.orders)} ordrar · ⌀ {formatMoney(p.averageOrderValue, p.revenueCurrency)}</>
+                <>
+                  {t("performance.formulas.revenueCalc", {
+                    orders: formatNumber(p.orders),
+                    aov: formatMoney(p.averageOrderValue, p.revenueCurrency),
+                  })}
+                </>
               ) : (
-                "Ingen Shopify-butik ansluten"
+                t("performance.formulas.revenueNone")
               )
             }
           />
@@ -340,68 +359,82 @@ export function MarketingPerformance() {
         {analytics && (analytics.blendedCtr != null || analytics.blendedCpc != null) ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <MetricTile
-              label="CTR (snitt)"
+              label={t("performance.metrics.ctr")}
               value={formatPct(analytics.blendedCtr)}
               formula={
                 analytics.blendedCtr != null ? (
                   <>
-                    {formatNumber(analytics.totalClicks)} klick ÷ {formatNumber(analytics.totalImpressions)} visningar
+                    {t("performance.formulas.ctrCalc", {
+                      clicks: formatNumber(analytics.totalClicks),
+                      impressions: formatNumber(analytics.totalImpressions),
+                    })}
                   </>
                 ) : (
-                  "Kräver impressions från Meta/Google"
+                  t("performance.formulas.ctrNeeds")
                 )
               }
             />
             <MetricTile
-              label="CPC (snitt)"
+              label={t("performance.metrics.cpc")}
               value={formatMoney(analytics.blendedCpc, p.adSpendCurrency)}
               formula={
                 analytics.blendedCpc != null ? (
                   <>
-                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalClicks)} klick
+                    {t("performance.formulas.cpcCalc", {
+                      spend: formatMoney(p.adSpend, p.adSpendCurrency),
+                      clicks: formatNumber(analytics.totalClicks),
+                    })}
                   </>
                 ) : (
-                  "Kräver klickdata"
+                  t("performance.formulas.cpcNeeds")
                 )
               }
             />
             <MetricTile
-              label="CPM (snitt)"
+              label={t("performance.metrics.cpm")}
               value={formatMoney(analytics.blendedCpm, p.adSpendCurrency)}
               formula={
                 analytics.blendedCpm != null ? (
                   <>
-                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalImpressions)} visningar ×
-                    1000
+                    {t("performance.formulas.cpmCalc", {
+                      spend: formatMoney(p.adSpend, p.adSpendCurrency),
+                      impressions: formatNumber(analytics.totalImpressions),
+                    })}
                   </>
                 ) : (
-                  "Kräver impressions"
+                  t("performance.formulas.cpmNeeds")
                 )
               }
             />
             <MetricTile
-              label="Konverteringsgrad"
+              label={t("performance.metrics.conversionRate")}
               value={formatPct(analytics.blendedConversionRate)}
               formula={
                 analytics.blendedConversionRate != null ? (
                   <>
-                    {formatNumber(analytics.totalConversions)} konv. ÷ {formatNumber(analytics.totalClicks)} klick
+                    {t("performance.formulas.cvrCalc", {
+                      conversions: formatNumber(analytics.totalConversions),
+                      clicks: formatNumber(analytics.totalClicks),
+                    })}
                   </>
                 ) : (
-                  "Kräver conversions från Meta/Google"
+                  t("performance.formulas.cvrNeeds")
                 )
               }
             />
             <MetricTile
-              label="Kostnad per konv."
+              label={t("performance.metrics.costPerConversion")}
               value={formatMoney(analytics.blendedCostPerConversion, p.adSpendCurrency)}
               formula={
                 analytics.blendedCostPerConversion != null ? (
                   <>
-                    {formatMoney(p.adSpend, p.adSpendCurrency)} ÷ {formatNumber(analytics.totalConversions)} konv.
+                    {t("performance.formulas.cpconvCalc", {
+                      spend: formatMoney(p.adSpend, p.adSpendCurrency),
+                      conversions: formatNumber(analytics.totalConversions),
+                    })}
                   </>
                 ) : (
-                  "Kräver konverteringsdata"
+                  t("performance.formulas.cpconvNeeds")
                 )
               }
             />
@@ -422,11 +455,8 @@ export function MarketingPerformance() {
           <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden />
           <span>
             <TrendingUp className="inline h-3 w-3 mr-1 align-[-1px]" aria-hidden />
-            Källor: annonsspend från Meta &amp; Google Ads, intäkter från Shopify (bruttoförsäljning, exkl. avbrutna
-            ordrar). Alla siffror avser samma {p.windowDays}-dagarsfönster.
-            {p.currencyMismatch
-              ? " Obs: annonsspend och intäkter rapporteras i olika valutor — ROAS är ungefärlig."
-              : ""}
+            {t("performance.sourcesNote", { days: p.windowDays })}
+            {p.currencyMismatch ? t("performance.currencyMismatch") : ""}
           </span>
         </div>
       </CardContent>

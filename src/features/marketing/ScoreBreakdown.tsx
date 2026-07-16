@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /** Mini horizontal bars showing sub-scores behind the letter grade. */
@@ -12,11 +13,12 @@ export function ScoreBreakdown({
     audience?: number;
   };
 }) {
+  const { t } = useTranslation("marketing");
   const items = [
     { key: "roas", label: "ROAS", value: breakdown.roas },
     { key: "eng", label: "CTR", value: breakdown.engagement },
     { key: "cvr", label: "CVR", value: breakdown.conversions },
-    { key: "scale", label: "Skala", value: breakdown.scale },
+    { key: "scale", label: t("scoreBreakdown.scale"), value: breakdown.scale },
     ...(breakdown.audience != null ? [{ key: "aud", label: "Audience", value: breakdown.audience }] : []),
   ];
 

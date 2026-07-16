@@ -1,0 +1,379 @@
+{
+  "tabs": {
+    "ariaLabel": "Marketing-flikar",
+    "campaigns": "Kampanjer",
+    "ads": "Betald",
+    "ideas": "Idéer",
+    "paths": "Vägar"
+  },
+  "objectives": {
+    "awareness": "Varumärkeskännedom",
+    "traffic": "Trafik",
+    "leads": "Leads",
+    "sales": "Försäljning",
+    "retention": "Återköp"
+  },
+  "channels": {
+    "google_search": "Google Search",
+    "google_pmax": "Google Performance Max",
+    "google_display": "Google Display",
+    "meta_social": "Meta Facebook/Instagram",
+    "social_organic": "Organisk social",
+    "email_newsletter": "E-post / nyhetsbrev",
+    "seo_content": "SEO & innehåll",
+    "influencer": "Influencer / UGC",
+    "marketplace": "Marknadsplats / e-handel",
+    "pr_events": "PR / event",
+    "referral": "Referral / partners",
+    "cross_channel": "Cross-channel"
+  },
+  "platforms": {
+    "google_ads": "Google Ads",
+    "meta_business": "Meta Business"
+  },
+  "pathKinds": {
+    "paid": "Betald",
+    "organic": "Organisk",
+    "owned": "Egna kanaler",
+    "partnership": "Partnerskap"
+  },
+  "pathGroups": {
+    "paid": {
+      "title": "Betald tillväxt",
+      "description": "Använd budget för att snabbt nå köpare via annonser och marknadsplatser."
+    },
+    "organic": {
+      "title": "Organisk räckvidd",
+      "description": "Förtjäna uppmärksamhet genom innehåll, SEO, sociala medier och lokal närvaro."
+    },
+    "owned": {
+      "title": "Egna kanaler",
+      "description": "Kanaler du kontrollerar — e-post, webbplats, CRM och direktförsäljning."
+    },
+    "partnership": {
+      "title": "Partnerskap",
+      "description": "Väx genom andras publik, rekommendationer och sam-marknadsföring."
+    }
+  },
+  "paths": {
+    "paid-ads": {
+      "title": "Betald annonsering",
+      "description": "Google Ads- och Meta-kampanjer för trafik, leads och produktförsäljning.",
+      "actions": {
+        "connectAccounts": "Koppla annonskonton",
+        "trackRoas": "Följ ROAS",
+        "planTasks": "Planera kampanjuppgifter"
+      }
+    },
+    "social": {
+      "title": "Sociala medier",
+      "description": "Organiska inlägg, schemaläggning och community på Instagram, Facebook och LinkedIn.",
+      "actions": {
+        "publish": "Publicera inlägg",
+        "calendar": "Innehållskalender",
+        "engage": "Engagera följare"
+      }
+    },
+    "content": {
+      "title": "Innehållsstudio",
+      "description": "Längre innehåll, bilder och videoutkast för ditt varumärke och dina produkter.",
+      "actions": {
+        "write": "Skriv artiklar",
+        "generateImages": "Generera bilder",
+        "repurpose": "Återanvänd för sociala medier"
+      }
+    },
+    "seo-brand": {
+      "title": "SEO & digitalt varumärke",
+      "description": "Webbplatsgranskning, söksynlighet och en konsekvent varumärkesnärvaro online.",
+      "actions": {
+        "runAudit": "Kör webbplatsgranskning",
+        "fixSeo": "Åtgärda SEO-luckor",
+        "monitorReputation": "Bevaka ryktet"
+      }
+    },
+    "email-crm": {
+      "title": "E-post & kunder",
+      "description": "Nyhetsbrev, uppföljningar och kundrelationer som driver återkommande försäljning.",
+      "actions": {
+        "sendCampaigns": "Skicka utskick",
+        "replyFaster": "Svara snabbare",
+        "segment": "Segmentera kunder"
+      }
+    },
+    "sales-outreach": {
+      "title": "Försäljning & outreach",
+      "description": "Leads, kall outreach, prospektering och pipeline hela vägen till avslut.",
+      "actions": {
+        "findLeads": "Hitta leads",
+        "outreachCopy": "Outreach-texter",
+        "drivePipeline": "Driv pipelinen framåt"
+      }
+    },
+    "ecommerce": {
+      "title": "E-handel & butiker",
+      "description": "Shopify och produktlistningar — sortiment, erbjudanden och butikens resultat.",
+      "actions": {
+        "productPages": "Produktsidor",
+        "campaigns": "Kampanjer",
+        "storeAnalytics": "Butiksanalys"
+      }
+    },
+    "reviews-local": {
+      "title": "Recensioner & lokalt",
+      "description": "Google-recensioner, lokala listningar och förtroendesignaler som konverterar besökare.",
+      "actions": {
+        "collectReviews": "Samla recensioner",
+        "replyPublicly": "Svara offentligt",
+        "boostLocalSeo": "Stärk lokal SEO"
+      }
+    },
+    "partners": {
+      "title": "Partners & community",
+      "description": "Rekommendationer, sam-marknadsföring, influencers och B2B-partnerskap.",
+      "actions": {
+        "partnerOutreach": "Partner-outreach",
+        "referralOffers": "Referral-erbjudanden",
+        "jointCampaigns": "Gemensamma kampanjer"
+      }
+    }
+  },
+  "pathsHub": {
+    "title": "Marknadsvägar",
+    "description": "Flera sätt att nå kunder — välj en väg för betald annonsering, organiskt innehåll, e-post, e-handel, lokala recensioner eller partnerskap. Du behöver inte alla kanaler; börja med en eller två som passar.",
+    "openHere": "Öppna här",
+    "open": "Öppna"
+  },
+  "pathStatus": {
+    "shopifyConnected": "Shopify connected",
+    "grade": "Betyg {{grade}} · {{label}}",
+    "roas": "ROAS {{roas}}",
+    "adsConnected": "Ads connected"
+  },
+  "setup": {
+    "title": "Koppla din marknadsföringsstack",
+    "description": "Välj vad du vill koppla först — organiskt innehåll fungerar utan annonser, men ROAS kräver Shopify plus minst en annonsplattform.",
+    "steps": {
+      "shopify": {
+        "label": "Shopify",
+        "hint": "Intäkter och ROAS från din butik"
+      },
+      "ads": {
+        "label": "Google Ads eller Meta",
+        "hint": "Följ spend och kampanjresultat"
+      },
+      "results": {
+        "label": "Se resultat",
+        "hint": "ROAS visas när butik och annonser är kopplade"
+      }
+    },
+    "connect": "Koppla"
+  },
+  "ideas": {
+    "aiStripLabel": "AI-insikter för marketing",
+    "playbookTitle": "Marknadsföringsidéer",
+    "playbookDescription": "AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter.",
+    "contentCardTitle": "Innehåll som attraherar kunder",
+    "contentCardDescription": "Inläggsidéer som värmer upp potentiella köpare finns i Innehåll — sociala inlägg och outreach-vinklar på ett ställe.",
+    "openContentIdeas": "Öppna innehållsidéer →"
+  },
+  "mcp": {
+    "researchSummary": "MCP-research (valfritt)",
+    "intelligenceTitle": "MCP-intelligens",
+    "intelligenceDescription": "SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
+  },
+  "automationHint": {
+    "title": "Låt annonser justeras automatiskt",
+    "description": "Marknadsautomationer kan pausa svaga Meta-kampanjer och varna om ROAS — mindre manuell kontroll varje morgon.",
+    "cta": "Öppna marketing-automationer"
+  },
+  "ads": {
+    "statsCampaigns": "Kampanjer",
+    "statsActive": "Aktiva",
+    "statsAdvertising": "Annonsering",
+    "title": "Betald annonsering",
+    "description": "Koppla Google Ads och Meta för att följa spend, ROAS och aktiva kampanjer.",
+    "connected": "Kopplad för denna profil.",
+    "notConnected": "Koppla för att hämta kampanjdata till Marketing.",
+    "connectRecommended": "Koppla (rekommenderat)",
+    "connectZernio": "Koppla via Zernio",
+    "useOfficialApi": "Använd Official API",
+    "connections": "Kopplingar"
+  },
+  "campaigns": {
+    "sectionTitle": "Kampanjer",
+    "sectionDescription": "Planera, skapa och redigera kampanjer med kanal, mål, budget och period.",
+    "newCampaign": "Ny kampanj",
+    "empty": "Inga kampanjer ännu",
+    "unnamed": "Namnlös kampanj",
+    "focus": "Fokus:",
+    "keyboardBrowse": "J/K bläddra bland kampanjer",
+    "keyboardHints": "E Edit · N New",
+    "editAria": "Redigera kampanj",
+    "deleteAria": "Ta bort kampanj",
+    "dialogEditTitle": "Redigera kampanj",
+    "dialogNewTitle": "Ny kampanj",
+    "fieldTitle": "Kampanjnamn",
+    "fieldObjective": "Mål",
+    "fieldChannel": "Kanal",
+    "fieldBudget": "Budget",
+    "fieldStatus": "Status",
+    "fieldStart": "Start",
+    "fieldEnd": "Slut",
+    "fieldAudience": "Målgrupp",
+    "fieldCta": "CTA",
+    "fieldNotes": "Anteckningar",
+    "budgetPlaceholder": "Ex. 5 000 kr/månad",
+    "audiencePlaceholder": "Ex. lokala företag, nya kunder",
+    "ctaPlaceholder": "Ex. Boka demo",
+    "cancel": "Avbryt",
+    "saveChanges": "Spara ändringar",
+    "create": "Skapa kampanj",
+    "activeTitle": "Aktiva kampanjer",
+    "activeDescription": "Pågående annonsering, spend och betyg (A–F) från Meta & Google Ads.",
+    "refreshSr": "Uppdatera kampanjer",
+    "needsAction_one": "{{count}} kampanj behöver åtgärd — sorterade svagast först.",
+    "needsAction_other": "{{count}} kampanjer behöver åtgärd — sorterade svagast först.",
+    "noActiveCampaigns": "Inga aktiva kampanjer just nu.",
+    "platformSpend": "{{amount}} senaste 7 dgr",
+    "statusActive": "Aktiv",
+    "budgetPerDay": "/dag",
+    "budgetLifetime": " totalt",
+    "daysShort": "7 dgr",
+    "clicks": "klick",
+    "roasTitle": "ROAS = försäljning {{sales}} ÷ spend {{spend}}"
+  },
+  "status": {
+    "open": "Planerad",
+    "in_progress": "Aktiv",
+    "blocked": "Pausad",
+    "done": "Avslutad"
+  },
+  "followUp": {
+    "title": "Uppföljning – aktiva kampanjer",
+    "descriptionWithPerformance": "Resultat senaste {{days}} dagarna (alla annonskanaler sammanslaget).",
+    "descriptionNoData": "Ingen annonsdata ännu för den senaste perioden.",
+    "descriptionNotConnected": "Koppla Google Ads eller Meta för att se resultat mot kampanjerna.",
+    "spend": "spend",
+    "revenue": "intäkter",
+    "orders": "ordrar",
+    "missingDetails": "Kampanjdetaljer saknas",
+    "periodEnded": "Slutdatum passerat — dags att utvärdera",
+    "daysLeft_one": "1 dag kvar",
+    "daysLeft_other": "{{count}} dagar kvar",
+    "dayCount": "Dag {{day}} · inget slutdatum",
+    "noPeriod": "Ingen period satt",
+    "createPost": "Create post"
+  },
+  "inventoryAlert": {
+    "title": "Annonser igång men hyllorna är tomma",
+    "body_one": "{{activeCampaigns}} aktiv kampanj körs medan {{stockParts}}.",
+    "body_other": "{{activeCampaigns}} aktiva kampanjer körs medan {{stockParts}}.",
+    "examples": " T.ex. {{examples}}.",
+    "footer": " Pausa eller fyll på lagret för att inte bränna budget.",
+    "calculation": "Beräknas: aktiva kampanjer (Meta/Google) × Shopify-produkter med spårat lager på eller under tröskeln.",
+    "viewEcommerce": "Visa i E-handel",
+    "reviewCampaigns": "Granska kampanjer",
+    "outOfStock_one": "{{count}} slutsåld",
+    "outOfStock_other": "{{count}} slutsålda",
+    "lowStock_one": "{{count}} lågt i lager (≤ {{threshold}})",
+    "lowStock_other": "{{count}} lågt i lager (≤ {{threshold}})",
+    "and": " och "
+  },
+  "recommendations": {
+    "title": "Rekommenderade åtgärder",
+    "description": "Baserat på Meta/Google-data och Shopify-ROAS — prioriterade för dig.",
+    "severity": {
+      "critical": "Akut",
+      "warning": "Varning",
+      "opportunity": "Möjlighet"
+    }
+  },
+  "performance": {
+    "loading": "Laddar marknadsföringsdata…",
+    "title": "Marknadsföringsresultat",
+    "emptyDescription": "Koppla Shopify och minst en annonsplattform för att se ROAS här.",
+    "connectShopify": "Koppla Shopify",
+    "connectAds": "Koppla annonser",
+    "setupPaid": "Sätt upp betald annonsering",
+    "shopifyWaiting": "Shopify kopplad — väntar på annonskostnadsdata.",
+    "shopifyForRevenue": "Koppla Shopify för intäktssidan av ROAS.",
+    "connectMetaGoogle": "Koppla Meta eller Google Ads",
+    "windowDescription": "Annonsspend och butiksintäkter kopplade ihop · senaste {{days}} dagarna",
+    "gradeTitle": "Marknadsföringsbetyg · senaste {{days}} dagar",
+    "campaignGood": "{{count}} bra",
+    "campaignOk": "{{count}} godkända",
+    "campaignPoor": "{{count}} svaga",
+    "platformMetaGoogle": "Meta {{metaGrade}} · Google {{googleGrade}}",
+    "platformGoogle": "Google {{grade}}",
+    "metrics": {
+      "roas": "ROAS",
+      "costPerOrder": "Kostnad per order",
+      "adSpend": "Annonsspend",
+      "revenue": "Intäkter",
+      "ctr": "CTR (snitt)",
+      "cpc": "CPC (snitt)",
+      "cpm": "CPM (snitt)",
+      "conversionRate": "Konverteringsgrad",
+      "costPerConversion": "Kostnad per konv."
+    },
+    "formulas": {
+      "roasCalc": "Intäkter {{revenue}} ÷ annonsspend {{spend}}",
+      "roasNeedsShopify": "Anslut Shopify för att beräkna ROAS",
+      "roasNeedsAds": "Anslut Meta/Google Ads för att beräkna ROAS",
+      "cpoCalc": "Annonsspend {{spend}} ÷ {{orders}} ordrar",
+      "cpoNeedsSpend": "Kräver annonsspend",
+      "cpoNeedsOrders": "Kräver Shopify-ordrar",
+      "spendSum": "Summa aktiva kampanjer",
+      "spendNone": "Ingen annons­plattform ansluten",
+      "revenueCalc": "Shopify brutto · {{orders}} ordrar · ⌀ {{aov}}",
+      "revenueNone": "Ingen Shopify-butik ansluten",
+      "ctrCalc": "{{clicks}} klick ÷ {{impressions}} visningar",
+      "ctrNeeds": "Kräver impressions från Meta/Google",
+      "cpcCalc": "{{spend}} ÷ {{clicks}} klick",
+      "cpcNeeds": "Kräver klickdata",
+      "cpmCalc": "{{spend}} ÷ {{impressions}} visningar × 1000",
+      "cpmNeeds": "Kräver impressions",
+      "cvrCalc": "{{conversions}} konv. ÷ {{clicks}} klick",
+      "cvrNeeds": "Kräver conversions från Meta/Google",
+      "cpconvCalc": "{{spend}} ÷ {{conversions}} konv.",
+      "cpconvNeeds": "Kräver konverteringsdata"
+    },
+    "trend": {
+      "roasVsWeek": "ROAS {{delta}} vs förra veckan",
+      "gradeDelta": "Betyg {{delta}} p{{gradeHint}}",
+      "gradeHint": " (nu {{grade}})",
+      "spend": "Spend {{pct}}",
+      "revenue": "Intäkter {{pct}}"
+    },
+    "channelMix": {
+      "title": "Kanalmix (andel av annonsspend)",
+      "formula": "andel = kanalens spend ÷ {{total}}"
+    },
+    "sourcesNote": "Källor: annonsspend från Meta & Google Ads, intäkter från Shopify (bruttoförsäljning, exkl. avbrutna ordrar). Alla siffror avser samma {{days}}-dagarsfönster.",
+    "currencyMismatch": " Obs: annonsspend och intäkter rapporteras i olika valutor — ROAS är ungefärlig."
+  },
+  "trendChart": {
+    "title": "Snapshot-historik · {{days}} dagar · varje punkt är ett rullande 7-dagarsfönster",
+    "revenue": "Intäkter",
+    "adSpend": "Annonsspend",
+    "roas": "ROAS",
+    "orders": "Ordrar",
+    "ordersTooltip": "Ordrar (7 d)"
+  },
+  "scoreBreakdown": {
+    "scale": "Skala"
+  },
+  "campaignTrend": {
+    "title": "Vs ~7 dagar sedan{{gradeHint}}",
+    "gradeHint": " · betyg {{grades}}"
+  },
+  "toasts": {
+    "ideaLoadedCampaign": "Idé laddad i ny kampanj",
+    "ideaReadyContent": "Idé klar i Innehåll",
+    "campaignCtaReady": "Kampanj-CTA klar i Innehåll"
+  },
+  "aiStrip": {
+    "label": "AI-insikter för marketing"
+  }
+}

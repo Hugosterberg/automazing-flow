@@ -56,33 +56,35 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
 import { cn } from "@/lib/utils";
 
-const MARKETING_PLATFORMS = [
-  { platform: "google_ads" as const, label: "Google Ads" },
-  { platform: "meta_business" as const, label: "Meta Business" },
-];
+/** Stable Swedish prefixes for campaign task descriptions (storage format). */
+const CAMPAIGN_FIELD = {
+  objective: "Mål",
+  channel: "Kanal",
+  budget: "Budget",
+  start: "Start",
+  end: "Slut",
+  audience: "Målgrupp",
+  cta: "CTA",
+  notes: "Anteckningar",
+} as const;
 
-const CAMPAIGN_OBJECTIVES = [
-  { value: "awareness", label: "Varumärkeskännedom" },
-  { value: "traffic", label: "Trafik" },
-  { value: "leads", label: "Leads" },
-  { value: "sales", label: "Försäljning" },
-  { value: "retention", label: "Återköp" },
+const CAMPAIGN_OBJECTIVE_VALUES = ["awareness", "traffic", "leads", "sales", "retention"] as const;
+const CAMPAIGN_CHANNEL_VALUES = [
+  "google_search",
+  "google_pmax",
+  "google_display",
+  "meta_social",
+  "social_organic",
+  "email_newsletter",
+  "seo_content",
+  "influencer",
+  "marketplace",
+  "pr_events",
+  "referral",
+  "cross_channel",
 ] as const;
 
-const CAMPAIGN_CHANNELS = [
-  { value: "google_search", label: "Google Search" },
-  { value: "google_pmax", label: "Google Performance Max" },
-  { value: "google_display", label: "Google Display" },
-  { value: "meta_social", label: "Meta Facebook/Instagram" },
-  { value: "social_organic", label: "Organisk social" },
-  { value: "email_newsletter", label: "E-post / nyhetsbrev" },
-  { value: "seo_content", label: "SEO & innehåll" },
-  { value: "influencer", label: "Influencer / UGC" },
-  { value: "marketplace", label: "Marknadsplats / e-handel" },
-  { value: "pr_events", label: "PR / event" },
-  { value: "referral", label: "Referral / partners" },
-  { value: "cross_channel", label: "Cross-channel" },
-] as const;
+const MARKETING_PLATFORM_IDS = ["google_ads", "meta_business"] as const;
 
 function optionLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
@@ -90,7 +92,10 @@ function optionLabel(options: readonly { value: string; label: string }[], value
 
 function optionValue(options: readonly { value: string; label: string }[], label: string | null, fallback: string) {
   if (!label) return fallback;
-  return options.find((option) => option.label === label)?.value ?? fallback;
+  const byLabel = options.find((option) => option.label === label);
+  if (byLabel) return byLabel.value;
+  const byValue = options.find((option) => option.value === label);
+  return byValue?.value ?? fallback;
 }
 
 function campaignField(description: string | null | undefined, label: string) {
@@ -99,36 +104,13 @@ function campaignField(description: string | null | undefined, label: string) {
   return line ? line.slice(prefix.length).trim() : "";
 }
 
-function buildCampaignDescription(input: {
-  objective: string;
-  channel: string;
-  budget: string;
-  startDate: string;
-  endDate: string;
-  audience: string;
-  cta: string;
-  notes: string;
-}) {
-  return [
-    `Mål: ${optionLabel(CAMPAIGN_OBJECTIVES, input.objective)}`,
-    `Kanal: ${optionLabel(CAMPAIGN_CHANNELS, input.channel)}`,
-    input.budget.trim() ? `Budget: ${input.budget.trim()}` : null,
-    input.startDate ? `Start: ${input.startDate}` : null,
-    input.endDate ? `Slut: ${input.endDate}` : null,
-    input.audience.trim() ? `Målgrupp: ${input.audience.trim()}` : null,
-    input.cta.trim() ? `CTA: ${input.cta.trim()}` : null,
-    input.notes.trim() ? `Anteckningar: ${input.notes.trim().replace(/\s+/g, " ")}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 function dueAtFromDate(date: string) {
   return date ? new Date(`${date}T23:59:59`).toISOString() : null;
 }
 
 export default function MarketingPage() {
-  const { t } = useTranslation("pages");
+  const { t: tPage } = useTranslation("pages");
+  const { t } = useTranslation("marketing");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const activeBp = useActiveBusinessProfileIdOptional();
@@ -149,36 +131,56 @@ export default function MarketingPage() {
   const { tasks, createTask, updateTask, deleteTask, isDeleting } = useTasks(businessProfileId);
   const { connected, performance, analytics } = useMarketingCampaigns();
 
+  const campaignObjectives = useMemo(
+    () => CAMPAIGN_OBJECTIVE_VALUES.map((value) => ({ value, label: t(`objectives.${value}`) })),
+    [t],
+  );
+  const campaignChannels = useMemo(
+    () => CAMPAIGN_CHANNEL_VALUES.map((value) => ({ value, label: t(`channels.${value}`) })),
+    [t],
+  );
+  const marketingPlatforms = useMemo(
+    () =>
+      MARKETING_PLATFORM_IDS.map((platform) => ({
+        platform,
+        label: t(`platforms.${platform}`),
+      })),
+    [t],
+  );
+
   const pathStatus = useMemo(() => {
     const status: Record<string, string> = {};
-    if (connected.shopify) status.ecommerce = "Shopify connected";
+    if (connected.shopify) status.ecommerce = t("pathStatus.shopifyConnected");
     if (analytics?.portfolioGrade && analytics.portfolioGrade !== "—") {
-      status["paid-ads"] = `Betyg ${analytics.portfolioGrade} · ${analytics.portfolioLabel}`;
+      status["paid-ads"] = t("pathStatus.grade", {
+        grade: analytics.portfolioGrade,
+        label: analytics.portfolioLabel,
+      });
     } else if (performance?.roas != null) {
-      status["paid-ads"] = `ROAS ${formatRoas(performance.roas)}`;
+      status["paid-ads"] = t("pathStatus.roas", { roas: formatRoas(performance.roas) });
     }
-    if (connected.meta_business || connected.google_ads) status.social = "Ads connected";
+    if (connected.meta_business || connected.google_ads) status.social = t("pathStatus.adsConnected");
     return status;
-  }, [connected, performance?.roas, analytics?.portfolioGrade, analytics?.portfolioLabel]);
+  }, [connected, performance?.roas, analytics?.portfolioGrade, analytics?.portfolioLabel, t]);
 
   const campaignTasks = useMemo(
-    () => tasks.filter((t) => t.module === "campaign" && t.status !== "archived"),
+    () => tasks.filter((task) => task.module === "campaign" && task.status !== "archived"),
     [tasks]
   );
 
   const activeCampaigns = useMemo<FollowUpCampaign[]>(
     () =>
       campaignTasks
-        .filter((t) => t.status === "in_progress")
-        .map((t) => ({
-          id: t.id,
-          title: t.title || "Namnlös kampanj",
-          startDate: campaignField(t.description, "Start"),
-          endDate: campaignField(t.description, "Slut"),
-          budget: campaignField(t.description, "Budget"),
-          channel: campaignField(t.description, "Kanal"),
+        .filter((task) => task.status === "in_progress")
+        .map((task) => ({
+          id: task.id,
+          title: task.title || t("campaigns.unnamed"),
+          startDate: campaignField(task.description, CAMPAIGN_FIELD.start),
+          endDate: campaignField(task.description, CAMPAIGN_FIELD.end),
+          budget: campaignField(task.description, CAMPAIGN_FIELD.budget),
+          channel: campaignField(task.description, CAMPAIGN_FIELD.channel),
         })),
-    [campaignTasks]
+    [campaignTasks, t],
   );
 
   const [campaignOpen, setCampaignOpen] = useState(false);
@@ -299,27 +301,30 @@ export default function MarketingPage() {
     setCampaignOpen(true);
   }, [setMarketingTab, resetCampaignForm]);
 
-  const openEditCampaign = useCallback((task: TaskRow) => {
-    setEditingCampaignId(task.id);
-    setCampaignTitle(task.title || "");
-    setCampaignObjective(optionValue(CAMPAIGN_OBJECTIVES, campaignField(task.description, "Mål"), "leads"));
-    setCampaignChannel(optionValue(CAMPAIGN_CHANNELS, campaignField(task.description, "Kanal"), "google_search"));
-    setCampaignBudget(campaignField(task.description, "Budget"));
-    setCampaignStartDate(campaignField(task.description, "Start"));
-    setCampaignEndDate(campaignField(task.description, "Slut"));
-    setCampaignAudience(campaignField(task.description, "Målgrupp"));
-    setCampaignCta(campaignField(task.description, "CTA"));
-    // Fall back to the raw description ONLY for legacy tasks without the
-    // structured "Mål:"-lines. For structured descriptions an empty notes
-    // field must stay empty — otherwise the whole description would be
-    // re-saved inside "Anteckningar:" and duplicate every field on each edit.
-    const isStructured = Boolean(campaignField(task.description, "Mål"));
-    setCampaignNotes(
-      campaignField(task.description, "Anteckningar") || (isStructured ? "" : task.description || "")
-    );
-    setCampaignStatus(task.status);
-    setCampaignOpen(true);
-  }, []);
+  const openEditCampaign = useCallback(
+    (task: TaskRow) => {
+      setEditingCampaignId(task.id);
+      setCampaignTitle(task.title || "");
+      setCampaignObjective(
+        optionValue(campaignObjectives, campaignField(task.description, CAMPAIGN_FIELD.objective), "leads"),
+      );
+      setCampaignChannel(
+        optionValue(campaignChannels, campaignField(task.description, CAMPAIGN_FIELD.channel), "google_search"),
+      );
+      setCampaignBudget(campaignField(task.description, CAMPAIGN_FIELD.budget));
+      setCampaignStartDate(campaignField(task.description, CAMPAIGN_FIELD.start));
+      setCampaignEndDate(campaignField(task.description, CAMPAIGN_FIELD.end));
+      setCampaignAudience(campaignField(task.description, CAMPAIGN_FIELD.audience));
+      setCampaignCta(campaignField(task.description, CAMPAIGN_FIELD.cta));
+      const isStructured = Boolean(campaignField(task.description, CAMPAIGN_FIELD.objective));
+      setCampaignNotes(
+        campaignField(task.description, CAMPAIGN_FIELD.notes) || (isStructured ? "" : task.description || ""),
+      );
+      setCampaignStatus(task.status);
+      setCampaignOpen(true);
+    },
+    [campaignObjectives, campaignChannels],
+  );
 
   function handleCampaignDialogChange(open: boolean) {
     setCampaignOpen(open);
@@ -363,16 +368,20 @@ export default function MarketingPage() {
   async function saveCampaign() {
     if (!campaignTitle.trim()) return;
     setCampaignSaving(true);
-    const description = buildCampaignDescription({
-      objective: campaignObjective,
-      channel: campaignChannel,
-      budget: campaignBudget,
-      startDate: campaignStartDate,
-      endDate: campaignEndDate,
-      audience: campaignAudience,
-      cta: campaignCta,
-      notes: campaignNotes,
-    });
+    const description = [
+      `${CAMPAIGN_FIELD.objective}: ${optionLabel(campaignObjectives, campaignObjective)}`,
+      `${CAMPAIGN_FIELD.channel}: ${optionLabel(campaignChannels, campaignChannel)}`,
+      campaignBudget.trim() ? `${CAMPAIGN_FIELD.budget}: ${campaignBudget.trim()}` : null,
+      campaignStartDate ? `${CAMPAIGN_FIELD.start}: ${campaignStartDate}` : null,
+      campaignEndDate ? `${CAMPAIGN_FIELD.end}: ${campaignEndDate}` : null,
+      campaignAudience.trim() ? `${CAMPAIGN_FIELD.audience}: ${campaignAudience.trim()}` : null,
+      campaignCta.trim() ? `${CAMPAIGN_FIELD.cta}: ${campaignCta.trim()}` : null,
+      campaignNotes.trim()
+        ? `${CAMPAIGN_FIELD.notes}: ${campaignNotes.trim().replace(/\s+/g, " ")}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
     try {
       const payload = {
         title: campaignTitle.trim(),
@@ -401,36 +410,36 @@ export default function MarketingPage() {
     <div className="space-y-6 max-w-5xl">
       <PageHeader
         icon={Megaphone}
-        title={t("marketing.title")}
-        description={t("marketing.description")}
+        title={tPage("marketing.title")}
+        description={tPage("marketing.description")}
       />
 
       <PageSmartBar
-        title={t("marketing.smartBar")}
-        steps={[t("marketing.step1"), t("marketing.step2"), t("marketing.step3")]}
-        tip={t("marketing.tip")}
+        title={tPage("marketing.smartBar")}
+        steps={[tPage("marketing.step1"), tPage("marketing.step2"), tPage("marketing.step3")]}
+        tip={tPage("marketing.tip")}
         liveHintOverride={
           activeCampaigns.length > 0
             ? isMobile
-              ? t("marketing.liveActiveMobile", { count: activeCampaigns.length })
-              : t("marketing.liveActiveDesktop", { count: activeCampaigns.length })
+              ? tPage("marketing.liveActiveMobile", { count: activeCampaigns.length })
+              : tPage("marketing.liveActiveDesktop", { count: activeCampaigns.length })
             : campaignTasks.length > 0
               ? isMobile
-                ? t("marketing.livePlannedMobile", { count: campaignTasks.length })
-                : t("marketing.livePlannedDesktop", { count: campaignTasks.length })
+                ? tPage("marketing.livePlannedMobile", { count: campaignTasks.length })
+                : tPage("marketing.livePlannedDesktop", { count: campaignTasks.length })
               : null
         }
       />
 
       <PageModeTabs
         value={marketingTab}
-        aria-label="Marketing-flikar"
+        aria-label={t("tabs.ariaLabel")}
         onChange={setMarketingTab}
         options={[
-          { value: "campaigns", label: "Kampanjer", count: campaignTasks.length },
-          { value: "ads", label: "Betald" },
-          { value: "ideas", label: "Idéer" },
-          { value: "paths", label: "Vägar" },
+          { value: "campaigns", label: t("tabs.campaigns"), count: campaignTasks.length },
+          { value: "ads", label: t("tabs.ads") },
+          { value: "ideas", label: t("tabs.ideas") },
+          { value: "paths", label: t("tabs.paths") },
         ]}
       />
 
@@ -438,7 +447,7 @@ export default function MarketingPage() {
         <PageAiSuggestionsStrip
           businessProfileId={businessProfileId}
           kinds={["insight", "maintenance"]}
-          label="AI-insikter för marketing"
+          label={t("aiStrip.label")}
         />
       ) : null}
 
@@ -452,15 +461,15 @@ export default function MarketingPage() {
         </m.div>
         <details className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-foreground">
-            MCP-research (valfritt)
+            {t("mcp.researchSummary")}
           </summary>
           <div className="mt-3 space-y-4">
             <McpMultiSourceCompare businessProfileId={businessProfileId} />
             <McpFeatureSection
               businessProfileId={businessProfileId}
               featureIds={MCP_PAGE_FEATURE_IDS.marketing}
-              title="MCP-intelligens"
-              description="SEO, marknadsföringsdata och konkurrensresearch via kopplade MCP-leverantörer."
+              title={t("mcp.intelligenceTitle")}
+              description={t("mcp.intelligenceDescription")}
             />
           </div>
         </details>
@@ -474,17 +483,17 @@ export default function MarketingPage() {
           {...marketingContext}
           modes={["channels", "campaigns", "promotions"]}
           defaultMode="channels"
-          title="Marknadsföringsidéer"
-          description="AI-förslag på kanaler, kampanjer och erbjudanden anpassade till ditt bolag och dina produkter."
+          title={t("ideas.playbookTitle")}
+          description={t("ideas.playbookDescription")}
           onUseForCampaign={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join(" — "));
             openNewCampaign();
-            toast.success("Idé laddad i ny kampanj");
+            toast.success(t("toasts.ideaLoadedCampaign"));
           }}
           onUseForContent={(item) => {
             stashContentCaption([item.title, item.body].filter(Boolean).join("\n\n"));
             navigate("/content?tab=create");
-            toast.success("Idé klar i Innehåll");
+            toast.success(t("toasts.ideaReadyContent"));
           }}
           onOpenEcommerce={() => navigate("/ecommerce")}
         />
@@ -492,15 +501,13 @@ export default function MarketingPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Megaphone className="h-4 w-4 text-primary" />
-              Innehåll som attraherar kunder
+              {t("ideas.contentCardTitle")}
             </CardTitle>
-            <CardDescription>
-              Inläggsidéer som värmer upp potentiella köpare finns i Innehåll — sociala inlägg och outreach-vinklar på ett ställe.
-            </CardDescription>
+            <CardDescription>{t("ideas.contentCardDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" size="sm">
-              <Link to="/content">Öppna innehållsidéer →</Link>
+              <Link to="/content">{t("ideas.openContentIdeas")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -529,35 +536,33 @@ export default function MarketingPage() {
         compact
         tab="insights"
         focus="marketing-actions"
-        title="Låt annonser justeras automatiskt"
-        description="Marknadsautomationer kan pausa svaga Meta-kampanjer och varna om ROAS — mindre manuell kontroll varje morgon."
-        ctaLabel="Öppna marketing-automationer"
+        title={t("automationHint.title")}
+        description={t("automationHint.description")}
+        ctaLabel={t("automationHint.cta")}
       />
       <m.section {...pageFadeUp} transition={{ delay: 0.038 }} className="app-workspace-shell !min-h-0 scroll-mt-24 space-y-4 p-3 sm:p-4" id="paid-ads">
         <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kampanjer</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("ads.statsCampaigns")}</p>
             <p className="text-xs font-semibold tabular-nums">{campaignTasks.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Aktiva</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("ads.statsActive")}</p>
             <p className="text-xs font-semibold tabular-nums">{activeCampaigns.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 col-span-2 sm:col-span-1">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Annonsering</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("ads.statsAdvertising")}</p>
             <p className="text-xs font-semibold tabular-nums">
-              {MARKETING_PLATFORMS.filter((item) => accounts.some((a) => a.platform === item.platform)).length}/{MARKETING_PLATFORMS.length}
+              {marketingPlatforms.filter((item) => accounts.some((a) => a.platform === item.platform)).length}/{marketingPlatforms.length}
             </p>
           </div>
         </div>
         <div>
-          <h2 className="text-sm font-semibold">Betald annonsering</h2>
-          <p className="text-xs text-muted-foreground">
-            Koppla Google Ads och Meta för att följa spend, ROAS och aktiva kampanjer.
-          </p>
+          <h2 className="text-sm font-semibold">{t("ads.title")}</h2>
+          <p className="text-xs text-muted-foreground">{t("ads.description")}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-        {MARKETING_PLATFORMS.map((item) => {
+        {marketingPlatforms.map((item) => {
           const connected = accounts.some((account) => account.platform === item.platform);
           const pathOptions = getConnectionPathOptions(item.platform);
           const defaultPath = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
@@ -571,7 +576,7 @@ export default function MarketingPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{item.label}</CardTitle>
                 <CardDescription>
-                  {connected ? "Kopplad för denna profil." : "Koppla för att hämta kampanjdata till Marketing."}
+                  {connected ? t("ads.connected") : t("ads.notConnected")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap items-center gap-2">
@@ -584,7 +589,7 @@ export default function MarketingPage() {
                     className="gap-1.5"
                   >
                     {defaultProvider === "zernio" ? <Layers className="h-3.5 w-3.5" /> : null}
-                    {defaultProvider === "zernio" ? "Koppla via Zernio" : "Koppla (rekommenderat)"}
+                    {defaultProvider === "zernio" ? t("ads.connectZernio") : t("ads.connectRecommended")}
                   </Button>
                 ) : null}
                 {alternatePath ? (
@@ -596,12 +601,12 @@ export default function MarketingPage() {
                     disabled={!businessProfileId}
                   >
                     {alternateProvider === "zernio" ? <Layers className="h-3.5 w-3.5" /> : null}
-                    {alternateProvider === "zernio" ? "Koppla via Zernio" : "Använd Official API"}
+                    {alternateProvider === "zernio" ? t("ads.connectZernio") : t("ads.useOfficialApi")}
                   </Button>
                 ) : null}
                 <Button size="sm" variant="ghost" className="text-muted-foreground" asChild>
                   <Link to={`/connections?q=${encodeURIComponent(item.label)}`}>
-                    Kopplingar
+                    {t("ads.connections")}
                   </Link>
                 </Button>
               </CardContent>
@@ -630,7 +635,7 @@ export default function MarketingPage() {
             onUseCampaignCta={(cta, title) => {
               stashContentCaption(`${title}: ${cta}`);
               navigate("/content?tab=publish");
-              toast.success("Kampanj-CTA klar i Innehåll");
+              toast.success(t("toasts.campaignCtaReady"));
             }}
           />
         </m.div>
@@ -639,14 +644,12 @@ export default function MarketingPage() {
       <m.section {...pageFadeUp} transition={{ delay: 0.08 }}>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-sm font-semibold">Kampanjer</h2>
-            <p className="text-xs text-muted-foreground">
-              Planera, skapa och redigera kampanjer med kanal, mål, budget och period.
-            </p>
+            <h2 className="text-sm font-semibold">{t("campaigns.sectionTitle")}</h2>
+            <p className="text-xs text-muted-foreground">{t("campaigns.sectionDescription")}</p>
           </div>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={openNewCampaign}>
             <Plus className="h-3.5 w-3.5" />
-            Ny kampanj
+            {t("campaigns.newCampaign")}
           </Button>
         </div>
 
@@ -654,10 +657,10 @@ export default function MarketingPage() {
           <Card className="border-dashed">
             <CardContent className="py-10 text-center">
               <Megaphone className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Inga kampanjer ännu</p>
+              <p className="text-sm text-muted-foreground">{t("campaigns.empty")}</p>
               <Button size="sm" variant="outline" className="mt-4 gap-1.5" onClick={openNewCampaign}>
                 <Plus className="h-3.5 w-3.5" />
-                Ny kampanj
+                {t("campaigns.newCampaign")}
               </Button>
             </CardContent>
           </Card>
@@ -687,10 +690,10 @@ export default function MarketingPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="open">Planerad</SelectItem>
-                        <SelectItem value="in_progress">Aktiv</SelectItem>
-                        <SelectItem value="blocked">Pausad</SelectItem>
-                        <SelectItem value="done">Avslutad</SelectItem>
+                        <SelectItem value="open">{t("status.open")}</SelectItem>
+                        <SelectItem value="in_progress">{t("status.in_progress")}</SelectItem>
+                        <SelectItem value="blocked">{t("status.blocked")}</SelectItem>
+                        <SelectItem value="done">{t("status.done")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="flex items-center gap-2">
@@ -698,7 +701,7 @@ export default function MarketingPage() {
                         type="button"
                         onClick={() => openEditCampaign(task)}
                         className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label="Redigera kampanj"
+                        aria-label={t("campaigns.editAria")}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -707,7 +710,7 @@ export default function MarketingPage() {
                         onClick={() => void deleteTask(task.id)}
                         disabled={isDeleting}
                         className="text-muted-foreground hover:text-destructive transition-colors"
-                        aria-label="Ta bort kampanj"
+                        aria-label={t("campaigns.deleteAria")}
                       >
                         {isDeleting ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -728,14 +731,14 @@ export default function MarketingPage() {
             <span className="truncate">
               {focusedCampaign ? (
                 <>
-                  Fokus:{" "}
+                  {t("campaigns.focus")}{" "}
                   <span className="font-medium text-foreground/80">{focusedCampaign.title}</span>
                 </>
               ) : (
-                "J/K bläddra bland kampanjer"
+                t("campaigns.keyboardBrowse")
               )}
             </span>
-            <span className="hidden sm:inline">E Edit · N New</span>
+            <span className="hidden sm:inline">{t("campaigns.keyboardHints")}</span>
           </div>
         ) : null}
       </m.section>
@@ -745,11 +748,13 @@ export default function MarketingPage() {
       <Dialog open={campaignOpen} onOpenChange={handleCampaignDialogChange}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingCampaignId ? "Redigera kampanj" : "Ny kampanj"}</DialogTitle>
+            <DialogTitle>
+              {editingCampaignId ? t("campaigns.dialogEditTitle") : t("campaigns.dialogNewTitle")}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="campaign-title">Kampanjnamn</Label>
+              <Label htmlFor="campaign-title">{t("campaigns.fieldTitle")}</Label>
               <Input
                 id="campaign-title"
                 value={campaignTitle}
@@ -758,13 +763,13 @@ export default function MarketingPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Mål</Label>
+              <Label>{t("campaigns.fieldObjective")}</Label>
               <Select value={campaignObjective} onValueChange={setCampaignObjective}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CAMPAIGN_OBJECTIVES.map((objective) => (
+                  {campaignObjectives.map((objective) => (
                     <SelectItem key={objective.value} value={objective.value}>
                       {objective.label}
                     </SelectItem>
@@ -773,13 +778,13 @@ export default function MarketingPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Kanal</Label>
+              <Label>{t("campaigns.fieldChannel")}</Label>
               <Select value={campaignChannel} onValueChange={setCampaignChannel}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CAMPAIGN_CHANNELS.map((channel) => (
+                  {campaignChannels.map((channel) => (
                     <SelectItem key={channel.value} value={channel.value}>
                       {channel.label}
                     </SelectItem>
@@ -788,30 +793,30 @@ export default function MarketingPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campaign-budget">Budget</Label>
+              <Label htmlFor="campaign-budget">{t("campaigns.fieldBudget")}</Label>
               <Input
                 id="campaign-budget"
                 value={campaignBudget}
                 onChange={(e) => setCampaignBudget(e.target.value)}
-                placeholder="Ex. 5 000 kr/månad"
+                placeholder={t("campaigns.budgetPlaceholder")}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label>{t("campaigns.fieldStatus")}</Label>
               <Select value={campaignStatus} onValueChange={(value) => setCampaignStatus(value as TaskStatus)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="open">Planerad</SelectItem>
-                  <SelectItem value="in_progress">Aktiv</SelectItem>
-                  <SelectItem value="blocked">Pausad</SelectItem>
-                  <SelectItem value="done">Avslutad</SelectItem>
+                  <SelectItem value="open">{t("status.open")}</SelectItem>
+                  <SelectItem value="in_progress">{t("status.in_progress")}</SelectItem>
+                  <SelectItem value="blocked">{t("status.blocked")}</SelectItem>
+                  <SelectItem value="done">{t("status.done")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campaign-start">Start</Label>
+              <Label htmlFor="campaign-start">{t("campaigns.fieldStart")}</Label>
               <Input
                 id="campaign-start"
                 type="date"
@@ -820,7 +825,7 @@ export default function MarketingPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campaign-end">Slut</Label>
+              <Label htmlFor="campaign-end">{t("campaigns.fieldEnd")}</Label>
               <Input
                 id="campaign-end"
                 type="date"
@@ -829,25 +834,25 @@ export default function MarketingPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campaign-audience">Målgrupp</Label>
+              <Label htmlFor="campaign-audience">{t("campaigns.fieldAudience")}</Label>
               <Input
                 id="campaign-audience"
                 value={campaignAudience}
                 onChange={(e) => setCampaignAudience(e.target.value)}
-                placeholder="Ex. lokala företag, nya kunder"
+                placeholder={t("campaigns.audiencePlaceholder")}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="campaign-cta">CTA</Label>
+              <Label htmlFor="campaign-cta">{t("campaigns.fieldCta")}</Label>
               <Input
                 id="campaign-cta"
                 value={campaignCta}
                 onChange={(e) => setCampaignCta(e.target.value)}
-                placeholder="Ex. Boka demo"
+                placeholder={t("campaigns.ctaPlaceholder")}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="campaign-notes">Anteckningar</Label>
+              <Label htmlFor="campaign-notes">{t("campaigns.fieldNotes")}</Label>
               <Textarea
                 id="campaign-notes"
                 value={campaignNotes}
@@ -858,11 +863,11 @@ export default function MarketingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleCampaignDialogChange(false)}>
-              Avbryt
+              {t("campaigns.cancel")}
             </Button>
             <Button onClick={() => void saveCampaign()} disabled={campaignSaving || !campaignTitle.trim()}>
               {campaignSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {editingCampaignId ? "Spara ändringar" : "Skapa kampanj"}
+              {editingCampaignId ? t("campaigns.saveChanges") : t("campaigns.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

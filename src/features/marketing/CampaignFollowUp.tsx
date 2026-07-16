@@ -1,4 +1,5 @@
 import { CalendarClock, Send, TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -17,23 +18,15 @@ export interface FollowUpCampaign {
 
 const DAY_MS = 86_400_000;
 
-function periodLabel(startDate: string, endDate: string, nowMs: number): { text: string; ended: boolean } {
-  if (endDate) {
-    const end = Date.parse(`${endDate}T23:59:59`);
-    if (Number.isFinite(end)) {
-      if (end < nowMs) return { text: "Slutdatum passerat — dags att utvärdera", ended: true };
-      const daysLeft = Math.ceil((end - nowMs) / DAY_MS);
-      return { text: daysLeft === 1 ? "1 dag kvar" : `${daysLeft} dagar kvar`, ended: false };
-    }
-  }
-  if (startDate) {
-    const start = Date.parse(`${startDate}T00:00:00`);
-    if (Number.isFinite(start) && start <= nowMs) {
-      const day = Math.max(1, Math.floor((nowMs - start) / DAY_MS) + 1);
-      return { text: `Dag ${day} · inget slutdatum`, ended: false };
-    }
-  }
-  return { text: "Ingen period satt", ended: false };
+function isSocialChannel(channel: string): boolean {
+  const lower = channel.toLowerCase();
+  return (
+    lower.includes("social") ||
+    lower.includes("organisk") ||
+    lower.includes("organic") ||
+    lower.includes("instagram") ||
+    lower.includes("facebook")
+  );
 }
 
 /**
@@ -49,6 +42,7 @@ export function CampaignFollowUp({
   campaigns: FollowUpCampaign[];
   onUseCampaignCta?: (cta: string, campaignTitle: string) => void;
 }) {
+  const { t } = useTranslation("marketing");
   const { performance, connected } = useMarketingCampaigns();
   if (campaigns.length === 0) return null;
 
@@ -56,19 +50,38 @@ export function CampaignFollowUp({
   const anyAdsConnected = connected.meta_business || connected.google_ads;
   const hasPerformance = performance != null && performance.adSpend != null;
 
+  function periodLabel(startDate: string, endDate: string): { text: string; ended: boolean } {
+    if (endDate) {
+      const end = Date.parse(`${endDate}T23:59:59`);
+      if (Number.isFinite(end)) {
+        if (end < nowMs) return { text: t("followUp.periodEnded"), ended: true };
+        const daysLeft = Math.ceil((end - nowMs) / DAY_MS);
+        return { text: t("followUp.daysLeft", { count: daysLeft }), ended: false };
+      }
+    }
+    if (startDate) {
+      const start = Date.parse(`${startDate}T00:00:00`);
+      if (Number.isFinite(start) && start <= nowMs) {
+        const day = Math.max(1, Math.floor((nowMs - start) / DAY_MS) + 1);
+        return { text: t("followUp.dayCount", { day }), ended: false };
+      }
+    }
+    return { text: t("followUp.noPeriod"), ended: false };
+  }
+
   return (
     <Card className="border-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          Uppföljning – aktiva kampanjer
+          {t("followUp.title")}
         </CardTitle>
         <CardDescription>
           {hasPerformance
-            ? `Resultat senaste ${performance.windowDays} dagarna (alla annonskanaler sammanslaget).`
+            ? t("followUp.descriptionWithPerformance", { days: performance.windowDays })
             : anyAdsConnected
-              ? "Ingen annonsdata ännu för den senaste perioden."
-              : "Koppla Google Ads eller Meta för att se resultat mot kampanjerna."}
+              ? t("followUp.descriptionNoData")
+              : t("followUp.descriptionNotConnected")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -83,16 +96,16 @@ export function CampaignFollowUp({
               ROAS {formatRoas(performance.roas)}
             </p>
             <p className="text-xs text-muted-foreground tabular-nums">
-              {formatMoney(performance.adSpend, performance.adSpendCurrency)} spend
+              {formatMoney(performance.adSpend, performance.adSpendCurrency)} {t("followUp.spend")}
               {performance.revenue != null
-                ? ` · ${formatMoney(performance.revenue, performance.revenueCurrency)} intäkter`
+                ? ` · ${formatMoney(performance.revenue, performance.revenueCurrency)} ${t("followUp.revenue")}`
                 : ""}
-              {performance.orders != null ? ` · ${performance.orders} ordrar` : ""}
+              {performance.orders != null ? ` · ${performance.orders} ${t("followUp.orders")}` : ""}
             </p>
           </div>
         ) : null}
         {campaigns.map((campaign) => {
-          const period = periodLabel(campaign.startDate, campaign.endDate, nowMs);
+          const period = periodLabel(campaign.startDate, campaign.endDate);
           return (
             <div
               key={campaign.id}
@@ -101,7 +114,7 @@ export function CampaignFollowUp({
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{campaign.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {[campaign.channel, campaign.budget].filter(Boolean).join(" · ") || "Kampanjdetaljer saknas"}
+                  {[campaign.channel, campaign.budget].filter(Boolean).join(" · ") || t("followUp.missingDetails")}
                 </p>
               </div>
               <span
@@ -115,11 +128,7 @@ export function CampaignFollowUp({
                 <CalendarClock className="h-3 w-3" aria-hidden />
                 {period.text}
               </span>
-              {onUseCampaignCta &&
-              (campaign.channel.toLowerCase().includes("social") ||
-                campaign.channel.toLowerCase().includes("organisk") ||
-                campaign.channel.toLowerCase().includes("instagram") ||
-                campaign.channel.toLowerCase().includes("facebook")) ? (
+              {onUseCampaignCta && isSocialChannel(campaign.channel) ? (
                 <Button
                   type="button"
                   size="sm"
@@ -128,7 +137,7 @@ export function CampaignFollowUp({
                   onClick={() => onUseCampaignCta(campaign.channel, campaign.title)}
                 >
                   <Send className="h-3 w-3 mr-1" />
-                  Create post
+                  {t("followUp.createPost")}
                 </Button>
               ) : null}
             </div>
