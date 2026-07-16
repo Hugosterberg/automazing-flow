@@ -43,7 +43,11 @@ import {
   type ConnectionStatus,
 } from "@/features/connections/connectionStatus";
 import { getConnectConfig } from "@/features/connections/connectAuthPath";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import {
+  useActiveBusinessProfileIdOptional,
+  useBusinessProfiles,
+} from "@/features/business-profiles";
+import { ConnectPriorityWizard } from "@/features/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
@@ -92,6 +96,11 @@ export default function ConnectionsPage() {
   const activeBp = useActiveBusinessProfileIdOptional();
   const legacy = useAccounts();
   const businessProfileId = activeBp ?? legacy.activeProfileId ?? null;
+  const { profiles: businessProfiles } = useBusinessProfiles();
+  const activeBusinessProfile = useMemo(
+    () => businessProfiles.find((p) => p.id === businessProfileId) ?? null,
+    [businessProfiles, businessProfileId]
+  );
   const [websiteInput, setWebsiteInput] = useState(legacy.activeProfile?.website ?? "");
   const [websiteSaving, setWebsiteSaving] = useState(false);
 
@@ -359,6 +368,14 @@ export default function ConnectionsPage() {
     (platform) => !connections.some((connection) => connection.platform === platform)
   ).length;
   const activeCount = connections.length + manualOnlyCount;
+  const showConnectWizard =
+    !isLoading && (searchParams.get("wizard") === "1" || activeCount === 0);
+  const connectedPlatforms = [
+    ...new Set<string>([
+      ...connections.map((c) => c.platform),
+      ...manuallyConnectedPlatforms,
+    ]),
+  ];
   const effectiveFilter =
     statusFilter === "all" || statusFilter === "needs_attention" ? null : statusFilter;
   const needsAttentionOnly = statusFilter === "needs_attention";
@@ -512,20 +529,12 @@ export default function ConnectionsPage() {
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-4 space-y-4">
-      {!isLoading && activeCount === 0 ? (
-        <Alert className="border-primary/30 bg-primary/[0.04]">
-          <PlugZap className="h-4 w-4" />
-          <AlertTitle>Kom igång med första kopplingen</AlertTitle>
-          <AlertDescription className="text-sm leading-relaxed">
-            Börja med de kanaler du använder mest (t.ex. Instagram, Gmail eller Google Ads). Öppna
-            ett kort nedan och välj den rekommenderade kopplingsvägen — du kan alltid byta eller
-            lägga till fler senare. API-nycklar och tester finns under{" "}
-            <Link to="/preferences?tab=api-keys" className="font-medium text-primary underline underline-offset-2">
-              Inställningar → API-nycklar
-            </Link>
-            .
-          </AlertDescription>
-        </Alert>
+      {showConnectWizard ? (
+        <ConnectPriorityWizard
+          kind={activeBusinessProfile?.kind}
+          connectedPlatforms={connectedPlatforms}
+          force={searchParams.get("wizard") === "1"}
+        />
       ) : null}
 
       {searchParams.get("next") === "company" ? (

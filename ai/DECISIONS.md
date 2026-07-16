@@ -2,6 +2,14 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — First-win onboarding via profile documents — **Active**
+
+Post-create redirect goes to `/connections?wizard=1&next=company`. Home shows
+a first-win checklist and a “klart idag” strip; Connections shows a short
+priority wizard by profile kind. Checklist dismiss/progress is stored in
+profile document `first-win-checklist` — no new DB columns. Mail empty states
+sell draft-before-send trust, not just “koppla konto”.
+
 ## 2026-07-16 — Modular routes + file budgets keep the monolith maintainable — **Active**
 
 OAuth and cron handlers are extracted into `server/routes/oauth/*` and

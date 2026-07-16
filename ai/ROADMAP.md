@@ -69,10 +69,25 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
       last-24h agent updates; Activity supports `?module=agent`. Still need the
       agent process to call the endpoint after each run._
 
+## v2.5 — Product adoption (first win → habit)
+
+_Make more people want to stay after day one. Checklist lives as profile
+document `first-win-checklist` (no new tables)._
+
+- [x] Guided first-win checklist on Home (connect mail → channel → inbox →
+      automation → company when relevant).
+- [x] Prioritized connect wizard on `/connections?wizard=1` (personal vs
+      company recommendations).
+- [x] Value-selling empty state on Meddelanden mail tab (draft-before-send).
+- [x] Home “klart idag” strip from success activity events.
+- [ ] Demo / sample-data mode for empty workspaces (optional seed).
+- [ ] Deeper empty-state pass (Kalender, E-handel, Content, Sales) with same
+      value-selling pattern.
+- [ ] Public landing / marketing site polish (outside app shell).
+
 ## v3 — Multi-user SaaS readiness
 
-- [ ] Sign-up flow hardening (onboarding already exists; add email domain
-      capture, empty-state polish per workspace).
+- [ ] Sign-up flow hardening (email domain capture; invite flow).
 - [ ] Billing decision (Stripe?) + free-tier limits per business profile.
 - [ ] Terms/privacy + data-deletion story (delete profile already cascades).
 

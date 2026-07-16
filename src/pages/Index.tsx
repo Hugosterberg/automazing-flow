@@ -45,6 +45,7 @@ import { ProfileList } from "@/components/ProfileList";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
+import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -745,7 +746,7 @@ export default function Index() {
         }
         extraActions={
           profileSummary.connectedCount === 0
-            ? [{ label: "Öppna Kopplingar", to: "/connections" }]
+            ? [{ label: "Öppna Kopplingar", to: "/connections?wizard=1" }]
             : []
         }
       />
@@ -764,6 +765,14 @@ export default function Index() {
       {homeTab === "today" || (homeTab === "pulse" && !showPulseTab) ? (
       <>
       <SmartDailyBrief businessProfileId={homeBusinessProfileId} />
+
+      <div className="space-y-2 px-3 sm:px-0">
+        <FirstWinChecklist
+          profile={businessProfile}
+          connectedPlatforms={accounts.map((a) => a.platform)}
+        />
+        <WinsTodayStrip businessProfileId={homeBusinessProfileId} />
+      </div>
 
       {mode === "business" && isMobile ? (
         <ExperienceBoostCard

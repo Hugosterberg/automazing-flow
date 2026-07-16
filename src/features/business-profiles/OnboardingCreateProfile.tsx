@@ -67,7 +67,7 @@ export function OnboardingCreateProfile() {
       setActive(created.id);
       // Redirect to /connections via window.location so the full app re-renders
       // with the new active profile set.
-      window.location.href = "/connections?next=company";
+      window.location.href = "/connections?wizard=1&next=company";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte skapa företagsprofilen");
     }
