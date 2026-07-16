@@ -1,0 +1,109 @@
+{
+  "page": {
+    "title": "Insikter",
+    "description": "Samlad bild av datan som tankas in från dina källor — som trender, inte ögonblicksbilder."
+  },
+  "smartBar": {
+    "title": "Insikter samlar trender från alla kopplade källor — följare, marknadsföring och recensioner över tid.",
+    "step1": "Koppla konton under Kopplingar om graferna är tomma",
+    "step2": "Vänta 1–2 dagar på dagliga snapshots från automationer",
+    "step3Mobile": "Tryck vidare till Socialt, Marknadsföring eller Recensioner för att agera",
+    "step3Desktop": "Klicka vidare till Socialt, Marknadsföring eller Recensioner för att agera på datan",
+    "tip": "Webbplatsstatistik kräver att spårningsscriptet är installerat på din sajt.",
+    "liveEmpty": "Ingen trenddata ännu — koppla sociala konton eller installera spårning på webbplatsen.",
+    "openConnections": "Öppna kopplingar"
+  },
+  "tabs": {
+    "ariaLabel": "Insiktsflikar",
+    "overview": "Översikt",
+    "social": "Socialt",
+    "marketing": "Marknadsföring",
+    "reviews": "Recensioner",
+    "website": "Webb"
+  },
+  "overview": {
+    "yes": "Ja"
+  },
+  "empty": {
+    "noHistory": "Ingen historik än.",
+    "historyBeforeConnections": "Trender byggs upp av de dagliga snapshot-automationerna. Koppla konton under",
+    "historyBetween": ", och kontrollera att snapshots körs under",
+    "historyAfter": ". Sidan fylls på inom ett par dagar."
+  },
+  "sections": {
+    "social": "Socialt",
+    "marketing": "Marknadsföring & butik",
+    "reviews": "Recensioner",
+    "website": "Webbplats"
+  },
+  "social": {
+    "followersTotal": "Följare totalt",
+    "accountSummary_one": "Summerat över {{count}} konto · dagliga snapshots",
+    "accountSummary_other": "Summerat över {{count}} konton · dagliga snapshots",
+    "chartPending": "Följarkurvan visas när snapshot-automationen samlat minst två dagar för alla konton.",
+    "followers": "följare",
+    "reviewsCount": "{{count}} recensioner",
+    "emptyTab": "Ingen social trenddata ännu. Koppla konton under Kopplingar."
+  },
+  "marketing": {
+    "emptyTab": "Ingen marknadsföringsdata ännu. Koppla annonskonton under Marketing."
+  },
+  "reviews": {
+    "emptyTab": "Inga recensionskonton med betyg ännu."
+  },
+  "website": {
+    "emptyTab": "Välj ett företag för att se webbplatsstatistik.",
+    "sectionLabel": "Webbplats"
+  },
+  "companiesOverview": {
+    "ariaLabel": "Alla företag",
+    "heading": "Alla företag · senaste 7 dagarna",
+    "visitors": "Besökare",
+    "sales": "Försäljning",
+    "followers": "Följare",
+    "pageviewsHint": "{{count}} sidvisningar",
+    "ordersHint": "{{count}} ordrar",
+    "footerBefore": "Byt aktiv profil i sidhuvudet för att fördjupa dig i ett företag.",
+    "footerLink": "Koppla fler källor",
+    "footerAfter": "för att fylla på siffrorna."
+  },
+  "siteAnalytics": {
+    "chart": {
+      "pageviews": "Sidvisningar",
+      "visitors": "Besökare"
+    },
+    "title": "Besökare på webbplatsen",
+    "summary": "{{visitors}} besökare · {{pageviews}} sidvisningar senaste {{days}} dagarna",
+    "descriptionEmpty": "Cookiefri, egenhostad spårning — inga externa verktyg.",
+    "hideSnippet": "Dölj spårningskod",
+    "showSnippet": "Visa spårningskod",
+    "noTracking": "Ingen besöksspårning ännu.",
+    "activateHint": "Aktivera för att få en spårningskod att lägga på företagets webbplats — besökare, sidvisningar, toppsidor och trafikkällor hamnar här.",
+    "activate": "Aktivera besöksspårning",
+    "snippetLabel": "Spårningskod",
+    "copy": "Kopiera",
+    "copied": "Kopierad",
+    "snippetHint": "Klistra in före </head> på din webbplats. Spårningen är cookiefri och lagrar aldrig IP eller user-agent — besökare räknas via en hash som roterar varje dygn.",
+    "topPages": "Toppsidor",
+    "topReferrers": "Trafikkällor",
+    "waitingForVisit": "Väntar på första besöket — statistiken dyker upp här så fort koden ligger på webbplatsen.",
+    "devices": {
+      "mobile": "Mobil",
+      "tablet": "Surfplatta",
+      "desktop": "Desktop"
+    },
+    "toasts": {
+      "activated": "Besöksspårning aktiverad — klistra in koden på din webbplats.",
+      "activateFailed": "Kunde inte aktivera besöksspårning.",
+      "copyFailed": "Kunde inte kopiera — markera och kopiera manuellt."
+    }
+  },
+  "service": {
+    "errors": {
+      "fetchTrackingSite": "Kunde inte hämta spårningsstatus.",
+      "createTrackingSite": "Kunde inte aktivera besöksspårning.",
+      "fetchSummary": "Kunde inte hämta besöksstatistik.",
+      "fetchCompaniesOverview": "Kunde inte hämta företagsöversikten."
+    }
+  }
+}

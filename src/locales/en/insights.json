@@ -1,0 +1,109 @@
+{
+  "page": {
+    "title": "Insights",
+    "description": "A unified view of data flowing in from your sources — as trends, not snapshots."
+  },
+  "smartBar": {
+    "title": "Insights gathers trends from every connected source — followers, marketing and reviews over time.",
+    "step1": "Connect accounts under Connections if charts are empty",
+    "step2": "Wait 1–2 days for daily snapshots from automations",
+    "step3Mobile": "Tap through to Social, Marketing or Reviews to act",
+    "step3Desktop": "Click through to Social, Marketing or Reviews to act on the data",
+    "tip": "Website analytics requires the tracking script to be installed on your site.",
+    "liveEmpty": "No trend data yet — connect social accounts or install website tracking.",
+    "openConnections": "Open Connections"
+  },
+  "tabs": {
+    "ariaLabel": "Insights tabs",
+    "overview": "Overview",
+    "social": "Social",
+    "marketing": "Marketing",
+    "reviews": "Reviews",
+    "website": "Web"
+  },
+  "overview": {
+    "yes": "Yes"
+  },
+  "empty": {
+    "noHistory": "No history yet.",
+    "historyBeforeConnections": "Trends are built by the daily snapshot automations. Connect accounts under",
+    "historyBetween": ", and check that snapshots run under",
+    "historyAfter": ". The page fills in within a couple of days."
+  },
+  "sections": {
+    "social": "Social",
+    "marketing": "Marketing & store",
+    "reviews": "Reviews",
+    "website": "Website"
+  },
+  "social": {
+    "followersTotal": "Total followers",
+    "accountSummary_one": "Aggregated across {{count}} account · daily snapshots",
+    "accountSummary_other": "Aggregated across {{count}} accounts · daily snapshots",
+    "chartPending": "The follower curve appears once the snapshot automation has collected at least two days for all accounts.",
+    "followers": "followers",
+    "reviewsCount": "{{count}} reviews",
+    "emptyTab": "No social trend data yet. Connect accounts under Connections."
+  },
+  "marketing": {
+    "emptyTab": "No marketing data yet. Connect ad accounts under Marketing."
+  },
+  "reviews": {
+    "emptyTab": "No review accounts with ratings yet."
+  },
+  "website": {
+    "emptyTab": "Select a company to see website analytics.",
+    "sectionLabel": "Website"
+  },
+  "companiesOverview": {
+    "ariaLabel": "All companies",
+    "heading": "All companies · last 7 days",
+    "visitors": "Visitors",
+    "sales": "Sales",
+    "followers": "Followers",
+    "pageviewsHint": "{{count}} pageviews",
+    "ordersHint": "{{count}} orders",
+    "footerBefore": "Switch the active profile in the header to dive into one company.",
+    "footerLink": "Connect more sources",
+    "footerAfter": "to fill in the numbers."
+  },
+  "siteAnalytics": {
+    "chart": {
+      "pageviews": "Pageviews",
+      "visitors": "Visitors"
+    },
+    "title": "Website visitors",
+    "summary": "{{visitors}} visitors · {{pageviews}} pageviews in the last {{days}} days",
+    "descriptionEmpty": "Cookie-free, self-hosted tracking — no external tools.",
+    "hideSnippet": "Hide tracking code",
+    "showSnippet": "Show tracking code",
+    "noTracking": "No visitor tracking yet.",
+    "activateHint": "Activate to get a tracking snippet for the company website — visitors, pageviews, top pages and traffic sources appear here.",
+    "activate": "Activate visitor tracking",
+    "snippetLabel": "Tracking code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "snippetHint": "Paste before </head> on your website. Tracking is cookie-free and never stores IP or user-agent — visitors are counted via a hash that rotates daily.",
+    "topPages": "Top pages",
+    "topReferrers": "Traffic sources",
+    "waitingForVisit": "Waiting for the first visit — stats appear here as soon as the code is on the website.",
+    "devices": {
+      "mobile": "Mobile",
+      "tablet": "Tablet",
+      "desktop": "Desktop"
+    },
+    "toasts": {
+      "activated": "Visitor tracking activated — paste the code on your website.",
+      "activateFailed": "Could not activate visitor tracking.",
+      "copyFailed": "Could not copy — select and copy manually."
+    }
+  },
+  "service": {
+    "errors": {
+      "fetchTrackingSite": "Could not fetch tracking status.",
+      "createTrackingSite": "Could not activate visitor tracking.",
+      "fetchSummary": "Could not fetch visitor statistics.",
+      "fetchCompaniesOverview": "Could not fetch the companies overview."
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Building2, Eye, ShoppingBag, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/features/marketing/format";
@@ -42,14 +43,15 @@ function Metric({
  * case in more depth.
  */
 export function CompaniesOverview() {
+  const { t } = useTranslation("insights");
   const { companies } = useCompaniesOverview();
   if (companies.length < 2) return null;
 
   return (
-    <section aria-label="Alla företag" className="space-y-2">
+    <section aria-label={t("companiesOverview.ariaLabel")} className="space-y-2">
       <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
         <Building2 className="h-4 w-4 text-muted-foreground" aria-hidden />
-        Alla företag · senaste 7 dagarna
+        {t("companiesOverview.heading")}
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {companies.map((company) => (
@@ -59,23 +61,23 @@ export function CompaniesOverview() {
               <div className="grid grid-cols-3 gap-3">
                 <Metric
                   icon={Eye}
-                  label="Besökare"
+                  label={t("companiesOverview.visitors")}
                   value={formatNumber(company.visitors7d)}
-                  hint={`${formatNumber(company.pageviews7d)} sidvisningar`}
+                  hint={t("companiesOverview.pageviewsHint", { count: company.pageviews7d })}
                 />
                 <Metric
                   icon={ShoppingBag}
-                  label="Försäljning"
+                  label={t("companiesOverview.sales")}
                   value={company.revenue != null ? formatMoney(company.revenue, company.currency) : "—"}
                   hint={
                     company.orders != null
-                      ? `${formatNumber(company.orders)} ordrar`
+                      ? t("companiesOverview.ordersHint", { count: company.orders })
                       : undefined
                   }
                 />
                 <Metric
                   icon={Users}
-                  label="Följare"
+                  label={t("companiesOverview.followers")}
                   value={company.followers != null ? formatNumber(company.followers) : "—"}
                 />
               </div>
@@ -84,11 +86,11 @@ export function CompaniesOverview() {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground/80">
-        Byt aktiv profil i sidhuvudet för att fördjupa dig i ett företag.{" "}
+        {t("companiesOverview.footerBefore")}{" "}
         <Link to="/connections" className="underline underline-offset-2 hover:text-foreground">
-          Koppla fler källor
+          {t("companiesOverview.footerLink")}
         </Link>{" "}
-        för att fylla på siffrorna.
+        {t("companiesOverview.footerAfter")}
       </p>
     </section>
   );

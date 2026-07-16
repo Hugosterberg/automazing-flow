@@ -1,5 +1,6 @@
 import { apiJson } from "@/lib/apiJson";
 import { getApiOrigin } from "@/lib/apiBase";
+import { t } from "@/lib/i18n";
 
 export interface TrackingSite {
   siteKey: string | null;
@@ -31,7 +32,7 @@ export interface CompanyOverview {
 export function fetchTrackingSite(businessProfileId: string): Promise<TrackingSite> {
   return apiJson<TrackingSite>(
     `/api/tracking/site?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-    "Kunde inte hämta spårningsstatus."
+    t("insights:service.errors.fetchTrackingSite")
   );
 }
 
@@ -41,7 +42,7 @@ export function createTrackingSite(
 ): Promise<{ siteKey: string; enabled: boolean; rotated: boolean }> {
   return apiJson(
     `/api/tracking/site?business_profile_id=${encodeURIComponent(businessProfileId)}`,
-    "Kunde inte aktivera besöksspårning.",
+    t("insights:service.errors.createTrackingSite"),
     { method: "POST", body: { rotate: Boolean(options.rotate) } }
   );
 }
@@ -52,14 +53,14 @@ export function fetchTrackingSummary(
 ): Promise<VisitSummary> {
   return apiJson<VisitSummary>(
     `/api/tracking/summary?business_profile_id=${encodeURIComponent(businessProfileId)}&days=${days}`,
-    "Kunde inte hämta besöksstatistik."
+    t("insights:service.errors.fetchSummary")
   );
 }
 
 export function fetchCompaniesOverview(): Promise<{ companies: CompanyOverview[] }> {
   return apiJson<{ companies: CompanyOverview[] }>(
     "/api/insights/companies",
-    "Kunde inte hämta företagsöversikten."
+    t("insights:service.errors.fetchCompaniesOverview")
   );
 }
 
