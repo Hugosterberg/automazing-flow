@@ -1,0 +1,327 @@
+{
+  "tabs": {
+    "ariaLabel": "E-handelsflikar",
+    "orders": "Ordrar",
+    "products": "Produkter",
+    "insights": "Insikter",
+    "tools": "Verktyg"
+  },
+  "statsStrip": {
+    "products": "Produkter",
+    "orders": "Ordrar",
+    "actions": "Åtgärder"
+  },
+  "headerActions": {
+    "openAdmin": "Öppna admin",
+    "refresh": "Uppdatera"
+  },
+  "platforms": {
+    "shopify": "Shopify",
+    "notion": "Notion"
+  },
+  "workspaceSuffix": "Notion workspace",
+  "localMode": {
+    "message": "Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session."
+  },
+  "valueSell": {
+    "title": "Ordrar, lager och kundvagn — i samma arbetsyta",
+    "trust": "Automationer skickar inte utan dig — utkast före sändning i känsliga flöden.",
+    "primary": "Koppla Shopify",
+    "secondary": "Öppna Kopplingar",
+    "description": {
+      "tools": "Koppla Shopify för ordrar och lager. Importera från Alibaba eller använd Notion under Verktyg.",
+      "insights": "Se intäkter, topsäljare och kampanjdata när butiken är kopplad — utan att hoppa till admin.",
+      "default": "Koppla Shopify så dyker ordrar och lager upp här. Kundvagnsåtervinning körs som utkast du godkänner."
+    }
+  },
+  "empty": {
+    "shopifyHome": {
+      "title": "Shopify är hemmet för e-handel här",
+      "description": "Kopplingar är den enda platsen för integrationer. Notion kopplas också där.",
+      "action": "Till Kopplingar"
+    }
+  },
+  "errors": {
+    "fetchStoreData": "Kunde inte hämta butiksdata.",
+    "loadProducts": "Kunde inte ladda produkter.",
+    "noActiveProfile": "Ingen aktiv profil vald.",
+    "importShopify": "Kunde inte importera från Shopify."
+  },
+  "toasts": {
+    "shopifySync": "Synkade Shopify: {{imported}} nya, {{updated}} uppdaterade.",
+    "productCreated": "Produkt skapad",
+    "productCreateFailed": "Kunde inte skapa produkten.",
+    "productSaved": "Produkt sparad",
+    "productSaveFailed": "Kunde inte spara produkten.",
+    "productDeleted": "Produkt borttagen",
+    "productDeleteFailed": "Kunde inte ta bort produkten.",
+    "imageAlreadyOnProduct": "Bilden finns redan på produkten",
+    "addedToLeads": "Tillagd i leads",
+    "copied": "Kopierat",
+    "copiedLabel": "{{label}} kopierad",
+    "copyFailed": "Kunde inte kopiera till urklipp",
+    "alibabaSavedAsProduct": "Sparad som produkt",
+    "alibabaSaveFailed": "Kunde inte spara produkten.",
+    "shopifyDraftCreated": "Utkast skapat i Shopify",
+    "shopifyDraftFailed": "Kunde inte skapa Shopify-utkast.",
+    "recoveryDraftFailed": "Kunde inte skapa återhämtningsmail"
+  },
+  "shopInfo": {
+    "store": "Butik:",
+    "domain": "Domän:",
+    "plan": "Plan:",
+    "currency": "Valuta:",
+    "country": "Land:",
+    "timezone": "Tidszon:",
+    "email": "E-post:"
+  },
+  "mcp": {
+    "title": "Shopify-katalog (MCP)",
+    "description": "Fråga din kopplade Shopify-butik via MCP. Kräver butiksdomän vid koppling."
+  },
+  "sources": {
+    "manual": "Manuell",
+    "alibaba": "Alibaba",
+    "shopify": "Shopify",
+    "content": "Content"
+  },
+  "products": {
+    "title": "Produkter",
+    "emptyDescription": "Registrera produkterna du säljer och deras olika versioner.",
+    "countInCatalog_one": "{{count}} produkt i din katalog.",
+    "countInCatalog_other": "{{count}} produkter i din katalog.",
+    "importFromShopify": "Hämta från Shopify",
+    "newProduct": "Ny produkt",
+    "searchPlaceholder": "Sök produkt, märke eller tagg…",
+    "searchAriaLabel": "Sök produkter",
+    "filterAll": "Alla",
+    "sortUpdated": "Senast ändrad",
+    "sortName": "Namn (A–Ö)",
+    "sortPrice": "Pris (lågt först)",
+    "sortAriaLabel": "Sortera produkter",
+    "emptyTitle": "Inga produkter ännu",
+    "emptyDescriptionLong": "Skapa en produkt manuellt, importera från Alibaba ovan, hämta din Shopify-katalog, eller tagga en bild som du markerat i Content.",
+    "createProduct": "Skapa produkt",
+    "noMatch": "Inga produkter matchar din sökning eller filter.",
+    "clearFilters": "Rensa filter",
+    "productImageAlt": "Produktbild",
+    "editProductAria": "Redigera {{name}}",
+    "versionCount_one": "{{count}} version",
+    "versionCount_other": "{{count}} versioner",
+    "dialog": {
+      "newTitle": "Ny produkt",
+      "newDescription": "Ge produkten ett namn. Du kan lägga till bilder och versioner sedan.",
+      "nameLabel": "Namn",
+      "namePlaceholder": "t.ex. Bambu tandborste",
+      "descriptionLabel": "Beskrivning (valfritt)",
+      "descriptionEditLabel": "Beskrivning",
+      "descriptionPlaceholder": "Kort beskrivning av produkten",
+      "editTitle": "Redigera produkt",
+      "editDescription": "Justera namn och beskrivning, lägg till bilder från Content och tagga versioner.",
+      "priceLabel": "Pris",
+      "pricePlaceholder": "t.ex. 199",
+      "currencyLabel": "Valuta",
+      "currencyPlaceholder": "t.ex. SEK",
+      "descriptionEditPlaceholder": "Beskriv produkten. Importerad text från Alibaba eller Shopify kan redigeras fritt här.",
+      "openInShopify": "Öppna i Shopify",
+      "sourceLink": "Källa",
+      "specsTitle": "Specifikationer",
+      "imagesTitle": "Bilder",
+      "noImages": "Inga bilder ännu.",
+      "removeImageAria": "Ta bort bild",
+      "versionsTitle": "Versioner",
+      "versionsHint": "Tagga en bild från Content och ge den ett namn för att skapa en version.",
+      "removeVersionAria": "Ta bort version",
+      "versionNamePlaceholder": "Versionsnamn (t.ex. Röd / Large)",
+      "contentImagesHint": "Bilder markerade i Content — välj en (valfritt)",
+      "noContentImages": "Markera bilder i Content-fliken så dyker de upp här som taggbara versioner.",
+      "addVersion": "Lägg till version",
+      "addTaggedToGallery": "Lägg till markerad bild i galleri",
+      "delete": "Ta bort"
+    }
+  },
+  "orders": {
+    "allClear": "Allt under kontroll — inga ordrar eller lagernivåer behöver åtgärdas just nu.",
+    "actionsNeeded_one": "{{count}} sak behöver åtgärdas",
+    "actionsNeeded_other": "{{count}} saker behöver åtgärdas",
+    "staleUnfulfilled": "{{count}} ej skickade >{{days}} dagar",
+    "pendingPayments": "{{count}} väntande betalningar",
+    "lowStockVariants": "{{count}} varianter med lågt lager",
+    "abandonedCarts": {
+      "title": "Övergivna varukorgar",
+      "description": "{{count}} varukorgar · {{value}} i riskzonen",
+      "anonymous": "Anonym",
+      "recoveryLinkTitle": "Öppna återställningslänk"
+    },
+    "automationHint": {
+      "title": "Automatisera återvinning",
+      "description": "Kundvagnsåtervinning skickar återhämtningsmail på schema — du slipper klicka per varukorg.",
+      "cta": "Slå på kundvagnsåtervinning"
+    },
+    "lowStock": {
+      "title": "Lågt lager",
+      "description": "Varianter med högst 5 enheter i lager",
+      "defaultVariant": "Standardvariant",
+      "remaining": "{{count}} kvar"
+    },
+    "noOrdersYet": "Inga ordrar hämtade ännu. Uppdatera eller kontrollera Shopify-kopplingen.",
+    "recentOrders": {
+      "title": "Senaste ordrar",
+      "showing": "{{filtered}} visas · {{total}} laddade"
+    },
+    "filters": {
+      "paymentPlaceholder": "Betalning",
+      "fulfillmentPlaceholder": "Leverans",
+      "allPayments": "Alla betalningar",
+      "allFulfillment": "Alla leveranser",
+      "exportCsv": "Exportera CSV",
+      "noMatch": "Inga ordrar matchar filtren."
+    },
+    "table": {
+      "order": "Order",
+      "customer": "Kund",
+      "lines": "Rader",
+      "payment": "Betalning",
+      "fulfillment": "Leverans",
+      "total": "Totalt",
+      "date": "Datum",
+      "missingLineItems": "Radinformation saknas för den här ordern — uppdatera sidan för att hämta den.",
+      "moreLines": "+{{count}} fler rader — se ordern i Shopify admin."
+    },
+    "paymentStatus": {
+      "paid": "Betald",
+      "pending": "Väntar",
+      "refunded": "Återbetald",
+      "voided": "Annullerad",
+      "partially_paid": "Delbetald"
+    },
+    "fulfillmentStatus": {
+      "fulfilled": "Skickad",
+      "unfulfilled": "Ej skickad",
+      "partial": "Delvis skickad",
+      "restocked": "Återlagd"
+    }
+  },
+  "insights": {
+    "revenue30d": "Intäkter (30 dagar)",
+    "ordersInPeriod_one": "{{count}} order i perioden",
+    "ordersInPeriod_other": "{{count}} ordrar i perioden",
+    "avgOrderValue": "Snittordervärde",
+    "fulfillmentRate": "{{rate}}% levererade",
+    "customers": "Kunder",
+    "newCustomers30d": "+{{count}} nya på 30 dagar",
+    "products": "Produkter",
+    "lowStockVariants_one": "{{count}} variant med lågt lager",
+    "lowStockVariants_other": "{{count}} varianter med lågt lager",
+    "stockLooksGood": "Lagret ser bra ut",
+    "leadNotes": "Totalt spenderat: {{amount}} · {{count}} ordrar",
+    "topProducts": {
+      "title": "Toppsäljare",
+      "description": "Efter intäkt, senaste 30 dagarna",
+      "sold_one": "{{count}} såld",
+      "sold_other": "{{count}} sålda"
+    },
+    "topCustomers": {
+      "title": "Toppkunder",
+      "description": "Efter totalt spenderat",
+      "ordersCount_one": "{{count}} order",
+      "ordersCount_other": "{{count}} ordrar",
+      "addLead": "Lägg till lead"
+    },
+    "promotions": {
+      "title": "Aktiva kampanjer",
+      "description": "{{count}} aktiva prisregler",
+      "targetOrder": "order",
+      "used_one": "använd {{count}} gång",
+      "used_other": "använd {{count}} gånger",
+      "endsAt": " · slutar {{date}}"
+    }
+  },
+  "revenueChart": {
+    "label": "Intäkter",
+    "title": "Intäktstrend",
+    "description": "Senaste 30 dagarna · Totalt {{total}}"
+  },
+  "alibaba": {
+    "title": "Importera från Alibaba",
+    "description": "Klistra in en Alibaba- eller 1688-länk för att hämta titel, beskrivning, specifikationer och produktbilder.",
+    "urlAriaLabel": "Alibaba produktlänk",
+    "fetching": "Hämtar...",
+    "importProduct": "Importera produkt",
+    "importFailed": "Kunde inte importera produkten.",
+    "copyTitle": "Kopiera titel",
+    "copyDescription": "Kopiera beskrivning",
+    "titleLabel": "Titel",
+    "descriptionLabel": "Beskrivning",
+    "priceLabel": "Pris:",
+    "showLess": "Visa mindre",
+    "showMore": "Visa mer",
+    "viewSource": "Visa källsida",
+    "saveAsProduct": "Spara som produkt",
+    "downloadImagesZip": "Ladda ner bilder (zip)",
+    "createShopifyDraft": "Skapa Shopify-utkast",
+    "zipFailed": "Kunde inte skapa zip-fil.",
+    "downloadFailed": "Kunde inte ladda ner bilder.",
+    "imageLabel": "Bild {{index}}",
+    "download": "Ladda ner",
+    "noImagesFound": "Inga produktbilder hittades på sidan."
+  },
+  "notion": {
+    "panelTitle": "Notion workspace (valfritt)",
+    "connectedWorkspace": "Kopplat workspace",
+    "pagesCount_one": "{{count}} sida",
+    "pagesCount_other": "{{count}} sidor",
+    "pagesFound": "Sidor hittade",
+    "databasesFound": "Databaser hittade",
+    "recentPages": "Senaste Notion-sidorna",
+    "untitledPage": "Namnlös sida",
+    "untitledDatabase": "Namnlös databas",
+    "untitled": "Namnlös",
+    "unknownDate": "Okänt datum",
+    "createPage": {
+      "title": "Skapa Notion-sida",
+      "hint": "Dela först föräldersidan/databasen med din integration i Notion.",
+      "parentSelectLabel": "Välj förälder (valfritt)",
+      "parentSelectPlaceholder": "Välj en sida eller databas...",
+      "pagesGroup": "Sidor ({{count}})",
+      "databasesGroup": "Databaser ({{count}})",
+      "parentIdLabel": "Förälder-ID",
+      "parentIdPlaceholder": "sid- eller databas-id",
+      "parentTypeLabel": "Föräldertyp",
+      "typePage": "Sida",
+      "typeDatabase": "Databas",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Veckoplanering",
+      "contentLabel": "Innehåll (valfritt)",
+      "contentPlaceholder": "Första stycket på sidan",
+      "creating": "Skapar…",
+      "submit": "Skapa i Notion",
+      "success": "Sidan skapades i Notion.",
+      "failed": "Kunde inte skapa Notion-sida."
+    }
+  },
+  "shopifyGuide": {
+    "title": "Så hittar du rätt Shopify-domän",
+    "steps": {
+      "openAdmin": "Öppna Shopify Admin för butiken du vill koppla.",
+      "goToDomains": "Gå till Settings → Domains.",
+      "copyDomain": "Kopiera domänen som slutar på .myshopify.com, till exempel {{example}}.",
+      "pasteDomain": "Klistra in domänen här. Använd inte en egen publik domän som bara pekar till butiken.",
+      "approveAccess": "Tryck Continue/Connect och godkänn åtkomsten i Shopify."
+    },
+    "permissionHint": "Får du missing_shopify_permission (t.ex. customer_read_quick_sale)? Det betyder att Shopify-appen begär en rättighet som inte är godkänd. Öppna Partner Dashboard, gå till din app → Configuration → Access scopes, ta bort ogodkända customer_*-scopes och spara. Koppla om butiken — standard är bara read_products.",
+    "openShopifyAdmin": "Öppna Shopify Admin",
+    "domainsGuide": "Shopifys guide om Domains"
+  },
+  "recovery": {
+    "selectProfileFirst": "Välj en företagsprofil först.",
+    "defaultSubject": "Slutför din beställning",
+    "createEmail": "Skapa återhämtningsmail",
+    "dialogTitle": "Återhämtningsmail för varukorg",
+    "draftTo": "Utkast till {{email}}",
+    "anonymousCart": "Anonym varukorg — kopiera och skicka manuellt.",
+    "subjectPrefix": "Ämne:",
+    "copy": "Kopiera",
+    "openInEmail": "Öppna i e-post"
+  }
+}

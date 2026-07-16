@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { initI18n, i18n } from "@/lib/i18n";
 import {
   fulfillmentStatusLabel,
   formatPromoValue,
@@ -8,6 +9,11 @@ import {
 } from "@/features/ecommerce/orderDisplay";
 
 describe("paymentStatusLabel / fulfillmentStatusLabel", () => {
+  beforeEach(async () => {
+    initI18n();
+    await i18n.changeLanguage("sv");
+  });
+
   it("maps known Shopify statuses to Swedish labels", () => {
     expect(paymentStatusLabel("paid")).toBe("Betald");
     expect(paymentStatusLabel("partially_paid")).toBe("Delbetald");

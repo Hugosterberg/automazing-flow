@@ -11,6 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,6 +80,7 @@ export function OrdersTab({
   onFilterPendingPayments,
   onExportOrders,
 }: Props) {
+  const { t } = useTranslation("ecommerce");
   return (
     <>
       {/* Action needed strip */}
@@ -86,14 +88,14 @@ export function OrdersTab({
         {actionNeeded.total === 0 ? (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-4 py-2.5 text-sm text-muted-foreground">
             <Package className="h-4 w-4 text-emerald-500 shrink-0" aria-hidden />
-            <span>Allt under kontroll — inga ordrar eller lagernivåer behöver åtgärdas just nu.</span>
+            <span>{t("orders.allClear")}</span>
           </div>
         ) : (
           <div className="rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden />
               <p className="text-sm font-medium text-foreground">
-                {actionNeeded.total} {actionNeeded.total === 1 ? "sak behöver" : "saker behöver"} åtgärdas
+                {t("orders.actionsNeeded", { count: actionNeeded.total })}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -104,7 +106,7 @@ export function OrdersTab({
                   className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition-colors"
                 >
                   <Package className="h-3 w-3" aria-hidden />
-                  {actionNeeded.staleUnfulfilled} ej skickade &gt;{staleUnfulfilledDays} dagar
+                  {t("orders.staleUnfulfilled", { count: actionNeeded.staleUnfulfilled, days: staleUnfulfilledDays })}
                 </button>
               )}
               {actionNeeded.pendingPayments > 0 && (
@@ -114,7 +116,7 @@ export function OrdersTab({
                   className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/20 transition-colors"
                 >
                   <Receipt className="h-3 w-3" aria-hidden />
-                  {actionNeeded.pendingPayments} väntande betalningar
+                  {t("orders.pendingPayments", { count: actionNeeded.pendingPayments })}
                 </button>
               )}
               {actionNeeded.lowStock > 0 && (
@@ -125,7 +127,7 @@ export function OrdersTab({
                   className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
                 >
                   <Box className="h-3 w-3" aria-hidden />
-                  {actionNeeded.lowStock} varianter med lågt lager
+                  {t("orders.lowStockVariants", { count: actionNeeded.lowStock })}
                   <ArrowUpRight className="h-3 w-3" aria-hidden />
                 </a>
               )}
@@ -145,10 +147,13 @@ export function OrdersTab({
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <Receipt className="h-5 w-5 text-orange-500" />
-                        Övergivna varukorgar
+                        {t("orders.abandonedCarts.title")}
                       </CardTitle>
                       <CardDescription>
-                        {shopifyData.stats.abandonedCheckouts30d} varukorgar · {formatCurrency(shopifyData.stats.abandonedValue30d, currency, { detailed: true })} i riskzonen
+                        {t("orders.abandonedCarts.description", {
+                          count: shopifyData.stats.abandonedCheckouts30d,
+                          value: formatCurrency(shopifyData.stats.abandonedValue30d, currency, { detailed: true }),
+                        })}
                       </CardDescription>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
@@ -162,9 +167,9 @@ export function OrdersTab({
                     compact
                     tab="reports"
                     focus="cart-recovery"
-                    title="Automatisera återvinning"
-                    description="Kundvagnsåtervinning skickar återhämtningsmail på schema — du slipper klicka per varukorg."
-                    ctaLabel="Slå på kundvagnsåtervinning"
+                    title={t("orders.automationHint.title")}
+                    description={t("orders.automationHint.description")}
+                    ctaLabel={t("orders.automationHint.cta")}
                   />
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -174,7 +179,7 @@ export function OrdersTab({
                       className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{checkout.email || "Anonym"}</p>
+                        <p className="text-sm font-medium truncate">{checkout.email || t("orders.abandonedCarts.anonymous")}</p>
                         <p className="text-xs text-muted-foreground">{formatDate(checkout.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -194,7 +199,7 @@ export function OrdersTab({
                             target="_blank"
                             rel="noreferrer"
                             className="text-muted-foreground hover:text-foreground"
-                            title="Öppna återställningslänk"
+                            title={t("orders.abandonedCarts.recoveryLinkTitle")}
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
@@ -215,9 +220,9 @@ export function OrdersTab({
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                        Lågt lager
+                        {t("orders.lowStock.title")}
                       </CardTitle>
-                      <CardDescription>Varianter med högst 5 enheter i lager</CardDescription>
+                      <CardDescription>{t("orders.lowStock.description")}</CardDescription>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
                       <a href={shopifyData.adminLinks.products} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -235,7 +240,7 @@ export function OrdersTab({
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{item.productTitle}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {[item.variantTitle, item.sku].filter(Boolean).join(" · ") || "Standardvariant"}
+                          {[item.variantTitle, item.sku].filter(Boolean).join(" · ") || t("orders.lowStock.defaultVariant")}
                         </p>
                       </div>
                       <span
@@ -247,7 +252,7 @@ export function OrdersTab({
                               : "bg-yellow-500/15 text-yellow-600"
                         }`}
                       >
-                        {item.quantity} kvar
+                        {t("orders.lowStock.remaining", { count: item.quantity })}
                       </span>
                     </div>
                   ))}
@@ -259,7 +264,7 @@ export function OrdersTab({
       )}
 
       {shopifyData.orders.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Inga ordrar hämtade ännu. Uppdatera eller kontrollera Shopify-kopplingen.</p>
+        <p className="text-sm text-muted-foreground">{t("orders.noOrdersYet")}</p>
       ) : null}
 
       {/* Recent orders */}
@@ -271,19 +276,22 @@ export function OrdersTab({
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <ShoppingCart className="h-5 w-5" />
-                    Senaste ordrar
+                    {t("orders.recentOrders.title")}
                   </CardTitle>
                   <CardDescription>
-                    {filteredOrders.length} visas · {shopifyData.orders.length} laddade
+                    {t("orders.recentOrders.showing", {
+                      filtered: filteredOrders.length,
+                      total: shopifyData.orders.length,
+                    })}
                   </CardDescription>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <Select value={orderPaymentFilter} onValueChange={onOrderPaymentFilterChange}>
                     <SelectTrigger className="h-8 w-full text-xs sm:w-[130px]">
-                      <SelectValue placeholder="Betalning" />
+                      <SelectValue placeholder={t("orders.filters.paymentPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Alla betalningar</SelectItem>
+                      <SelectItem value="all">{t("orders.filters.allPayments")}</SelectItem>
                       {orderPaymentOptions.map((status) => (
                         <SelectItem key={status} value={status}>
                           {paymentStatusLabel(status)}
@@ -293,10 +301,10 @@ export function OrdersTab({
                   </Select>
                   <Select value={orderFulfillmentFilter} onValueChange={onOrderFulfillmentFilterChange}>
                     <SelectTrigger className="h-8 w-full text-xs sm:w-[130px]">
-                      <SelectValue placeholder="Leverans" />
+                      <SelectValue placeholder={t("orders.filters.fulfillmentPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Alla leveranser</SelectItem>
+                      <SelectItem value="all">{t("orders.filters.allFulfillment")}</SelectItem>
                       {orderFulfillmentOptions.map((status) => (
                         <SelectItem key={status} value={status}>
                           {fulfillmentStatusLabel(status)}
@@ -306,7 +314,7 @@ export function OrdersTab({
                   </Select>
                   <Button variant="outline" size="sm" onClick={onExportOrders} disabled={filteredOrders.length === 0}>
                     <Download className="h-4 w-4 mr-1.5" />
-                    Exportera CSV
+                    {t("orders.filters.exportCsv")}
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
                     <a href={shopifyData.adminLinks.orders} target="_blank" rel="noreferrer" className="text-muted-foreground">
@@ -319,18 +327,18 @@ export function OrdersTab({
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 {filteredOrders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Inga ordrar matchar filtren.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("orders.filters.noMatch")}</p>
                 ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground text-xs">
-                      <th className="text-left px-5 py-3 font-medium">Order</th>
-                      <th className="text-left px-3 py-3 font-medium">Kund</th>
-                      <th className="text-left px-3 py-3 font-medium">Rader</th>
-                      <th className="text-left px-3 py-3 font-medium">Betalning</th>
-                      <th className="text-left px-3 py-3 font-medium">Leverans</th>
-                      <th className="text-right px-5 py-3 font-medium">Totalt</th>
-                      <th className="text-right px-5 py-3 font-medium">Datum</th>
+                      <th className="text-left px-5 py-3 font-medium">{t("orders.table.order")}</th>
+                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.customer")}</th>
+                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.lines")}</th>
+                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.payment")}</th>
+                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.fulfillment")}</th>
+                      <th className="text-right px-5 py-3 font-medium">{t("orders.table.total")}</th>
+                      <th className="text-right px-5 py-3 font-medium">{t("orders.table.date")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -382,7 +390,7 @@ export function OrdersTab({
                               <td colSpan={7} className="px-5 py-3">
                                 {lineItems.length === 0 ? (
                                   <p className="text-xs text-muted-foreground">
-                                    Radinformation saknas för den här ordern — uppdatera sidan för att hämta den.
+                                    {t("orders.table.missingLineItems")}
                                   </p>
                                 ) : (
                                   <div className="space-y-1.5">
@@ -404,7 +412,7 @@ export function OrdersTab({
                                     ))}
                                     {order.lineItemCount > lineItems.length ? (
                                       <p className="text-[11px] text-muted-foreground/70">
-                                        +{order.lineItemCount - lineItems.length} fler rader — se ordern i Shopify admin.
+                                        {t("orders.table.moreLines", { count: order.lineItemCount - lineItems.length })}
                                       </p>
                                     ) : null}
                                   </div>

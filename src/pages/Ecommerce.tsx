@@ -62,7 +62,8 @@ import {
 const STALE_UNFULFILLED_DAYS = 2;
 
 export default function Ecommerce() {
-  const { t } = useTranslation("pages");
+  const { t: tPage } = useTranslation("pages");
+  const { t } = useTranslation("ecommerce");
   const { authMode } = useAuth();
   const { oauthErrorDetails, clearOauthError } = useOAuthCallback();
   const { accounts, getSelectedAccountId, setSelectedAccountId, activeProfileId } = useAccounts();
@@ -91,7 +92,7 @@ export default function Ecommerce() {
       const res = await fetchWithTimeout(accountDataUrl(accountId, activeBusinessProfileId ?? activeProfileId), { credentials: "include" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(d, "Kunde inte hämta butiksdata."));
+        throw new Error(apiErrorMessage(d, t("errors.fetchStoreData")));
       }
       return res.json();
     },
@@ -240,7 +241,7 @@ export default function Ecommerce() {
         if (!ignore) setProducts(list);
       })
       .catch((e) => {
-        if (!ignore) setProductsError(e instanceof Error ? e.message : "Kunde inte ladda produkter.");
+        if (!ignore) setProductsError(e instanceof Error ? e.message : t("errors.loadProducts"));
       })
       .finally(() => {
         if (!ignore) setProductsLoading(false);
@@ -252,7 +253,7 @@ export default function Ecommerce() {
 
   const handleCreateProduct = useCallback(
     async (input: ProductInput) => {
-      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      if (!productProfileId) throw new Error(t("errors.noActiveProfile"));
       const product = await createProduct(productProfileId, input);
       setProducts((prev) => [product, ...prev]);
       return product;
@@ -262,7 +263,7 @@ export default function Ecommerce() {
 
   const handleUpdateProduct = useCallback(
     async (id: string, patch: Partial<ProductInput>) => {
-      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      if (!productProfileId) throw new Error(t("errors.noActiveProfile"));
       const product = await updateProduct(productProfileId, id, patch);
       setProducts((prev) => prev.map((p) => (p.id === id ? product : p)));
     },
@@ -271,7 +272,7 @@ export default function Ecommerce() {
 
   const handleDeleteProduct = useCallback(
     async (id: string) => {
-      if (!productProfileId) throw new Error("Ingen aktiv profil vald.");
+      if (!productProfileId) throw new Error(t("errors.noActiveProfile"));
       await deleteProduct(productProfileId, id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
     },
@@ -285,10 +286,10 @@ export default function Ecommerce() {
       const result = await importShopifyProducts(productProfileId, shopifyAccount.id);
       setProducts(result.products);
       toast.success(
-        `Synkade Shopify: ${result.imported} nya, ${result.updated} uppdaterade.`
+        t("toasts.shopifySync", { imported: result.imported, updated: result.updated })
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Kunde inte importera från Shopify.");
+      toast.error(e instanceof Error ? e.message : t("errors.importShopify"));
     } finally {
       setImportingShopify(false);
     }
@@ -308,13 +309,13 @@ export default function Ecommerce() {
     <div className="space-y-8 max-w-6xl">
       <PageHeader
         icon={ShoppingCart}
-        title={t("ecommerce.title")}
+        title={tPage("ecommerce.title")}
         description={
           shopifyData?.shop.name
             ? `${shopifyData.shop.name} · ${shopifyData.shop.domain}`
             : notionData?.workspace?.name
-              ? `${notionData.workspace.name} · Notion workspace`
-              : t("ecommerce.descriptionEmpty")
+              ? `${notionData.workspace.name} · ${t("workspaceSuffix")}`
+              : tPage("ecommerce.descriptionEmpty")
         }
         actions={
           activeOrgAccount ? (
@@ -328,7 +329,7 @@ export default function Ecommerce() {
                 >
                   <a href={shopifyData.shop.adminUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-4 w-4" />
-                    <span className="ml-1.5 hidden sm:inline">Öppna admin</span>
+                    <span className="ml-1.5 hidden sm:inline">{t("headerActions.openAdmin")}</span>
                   </a>
                 </Button>
               )}
@@ -344,7 +345,7 @@ export default function Ecommerce() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                <span className="ml-1.5 hidden sm:inline">Uppdatera</span>
+                <span className="ml-1.5 hidden sm:inline">{t("headerActions.refresh")}</span>
               </Button>
             </div>
           ) : null
@@ -352,14 +353,14 @@ export default function Ecommerce() {
       />
 
       <PageSmartBar
-        title={t("ecommerce.smartBar")}
-        steps={[t("ecommerce.step1"), t("ecommerce.step2"), t("ecommerce.step3")]}
-        tip={t("ecommerce.tip")}
+        title={tPage("ecommerce.smartBar")}
+        steps={[tPage("ecommerce.step1"), tPage("ecommerce.step2"), tPage("ecommerce.step3")]}
+        tip={tPage("ecommerce.tip")}
         liveHintOverride={
           actionNeeded && actionNeeded.total > 0
-            ? t("ecommerce.liveActions", { count: actionNeeded.total })
+            ? tPage("ecommerce.liveActions", { count: actionNeeded.total })
             : shopifyData
-              ? t("ecommerce.liveOk")
+              ? tPage("ecommerce.liveOk")
               : null
         }
       />
@@ -372,13 +373,13 @@ export default function Ecommerce() {
         <div className="app-workspace-toolbar px-3 pt-1 sm:px-4">
           <PageModeTabs
             value={tab}
-            aria-label="E-handelsflikar"
+            aria-label={t("tabs.ariaLabel")}
             onChange={setTab}
             options={[
-              { value: "orders", label: "Ordrar", count: shopifyData?.orders.length },
-              { value: "products", label: "Produkter", count: products.length },
-              { value: "insights", label: "Insikter" },
-              { value: "tools", label: "Verktyg" },
+              { value: "orders", label: t("tabs.orders"), count: shopifyData?.orders.length },
+              { value: "products", label: t("tabs.products"), count: products.length },
+              { value: "insights", label: t("tabs.insights") },
+              { value: "tools", label: t("tabs.tools") },
             ]}
           />
         </div>
@@ -386,15 +387,15 @@ export default function Ecommerce() {
         {(tab === "orders" || tab === "insights") ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Produkter</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.products")}</p>
             <p className="text-xs font-semibold tabular-nums">{products.length}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Ordrar</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.orders")}</p>
             <p className="text-xs font-semibold tabular-nums">{shopifyData?.orders.length ?? 0}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Åtgärder</p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.actions")}</p>
             <p className={`text-xs font-semibold tabular-nums ${actionNeeded && actionNeeded.total > 0 ? "text-warning" : ""}`}>
               {actionNeeded ? actionNeeded.total : "—"}
             </p>
@@ -428,7 +429,7 @@ export default function Ecommerce() {
           <Card className="bg-muted/30 border-border">
             <CardContent className="py-3">
               <p className="text-sm text-muted-foreground">
-                Lokalt läge är aktivt. OAuth/koppling är påslaget för lokal testning och data stannar i din nuvarande session.
+                {t("localMode.message")}
               </p>
             </CardContent>
           </Card>
@@ -460,7 +461,7 @@ export default function Ecommerce() {
                   : "border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {acc.username} · {acc.platform === "shopify" ? "Shopify" : "Notion"}
+              {acc.username} · {acc.platform === "shopify" ? t("platforms.shopify") : t("platforms.notion")}
             </button>
           ))}
         </m.div>
@@ -474,28 +475,28 @@ export default function Ecommerce() {
         >
           <ValueSellEmpty
             icon={ShoppingBag}
-            title="Ordrar, lager och kundvagn — i samma arbetsyta"
+            title={t("valueSell.title")}
             description={
               tab === "tools"
-                ? "Koppla Shopify för ordrar och lager. Importera från Alibaba eller använd Notion under Verktyg."
+                ? t("valueSell.description.tools")
                 : tab === "insights"
-                  ? "Se intäkter, topsäljare och kampanjdata när butiken är kopplad — utan att hoppa till admin."
-                  : "Koppla Shopify så dyker ordrar och lager upp här. Kundvagnsåtervinning körs som utkast du godkänner."
+                  ? t("valueSell.description.insights")
+                  : t("valueSell.description.default")
             }
-            trust="Automationer skickar inte utan dig — utkast före sändning i känsliga flöden."
-            primary={{ label: "Koppla Shopify", to: "/connections?wizard=1&q=shopify" }}
-            secondary={{ label: "Öppna Kopplingar", to: "/connections?q=shopify" }}
+            trust={t("valueSell.trust")}
+            primary={{ label: t("valueSell.primary"), to: "/connections?wizard=1&q=shopify" }}
+            secondary={{ label: t("valueSell.secondary"), to: "/connections?q=shopify" }}
           />
           <EmptyState
             icon={ShoppingBag}
-            title="Shopify är hemmet för e-handel här"
-            description="Kopplingar är den enda platsen för integrationer. Notion kopplas också där."
+            title={t("empty.shopifyHome.title")}
+            description={t("empty.shopifyHome.description")}
             size="compact"
             action={
               <Button asChild variant="outline" size="sm">
                 <Link to="/connections?q=shopify">
                   <ShopifyIcon className="h-4 w-4 mr-2" />
-                  Till Kopplingar
+                  {t("empty.shopifyHome.action")}
                 </Link>
               </Button>
             }
@@ -509,7 +510,7 @@ export default function Ecommerce() {
           <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3 px-4 flex items-center justify-between">
               <p className="text-sm text-destructive">{error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)}>Stäng</Button>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)}>{t("common:common.close")}</Button>
             </CardContent>
           </Card>
         </m.div>
@@ -588,8 +589,8 @@ export default function Ecommerce() {
             <McpFeatureSection
               businessProfileId={activeBusinessProfileId ?? activeProfileId}
               featureIds={MCP_PAGE_FEATURE_IDS.ecommerce}
-              title="Shopify-katalog (MCP)"
-              description="Fråga din kopplade Shopify-butik via MCP. Kräver butiksdomän vid koppling."
+              title={t("mcp.title")}
+              description={t("mcp.description")}
             />
           </m.div>
           <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -607,18 +608,18 @@ export default function Ecommerce() {
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.5 }}>
           <Card className="bg-card border-border">
             <CardContent className="py-4 px-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span><span className="text-foreground font-medium">Butik:</span> {shopifyData.shop.name}</span>
+              <span><span className="text-foreground font-medium">{t("shopInfo.store")}</span> {shopifyData.shop.name}</span>
               <span>
-                <span className="text-foreground font-medium">Domän:</span>{" "}
+                <span className="text-foreground font-medium">{t("shopInfo.domain")}</span>{" "}
                 <a href={shopifyData.shop.storefrontUrl} target="_blank" rel="noreferrer" className="hover:text-foreground">
                   {shopifyData.shop.domain}
                 </a>
               </span>
-              {shopifyData.shop.plan && <span><span className="text-foreground font-medium">Plan:</span> {shopifyData.shop.plan}</span>}
-              {shopifyData.shop.currency && <span><span className="text-foreground font-medium">Valuta:</span> {shopifyData.shop.currency}</span>}
-              {shopifyData.shop.country && <span><span className="text-foreground font-medium">Land:</span> {shopifyData.shop.country}</span>}
-              {shopifyData.shop.timezone && <span><span className="text-foreground font-medium">Tidszon:</span> {shopifyData.shop.timezone}</span>}
-              {shopifyData.shop.email && <span><span className="text-foreground font-medium">E-post:</span> {shopifyData.shop.email}</span>}
+              {shopifyData.shop.plan && <span><span className="text-foreground font-medium">{t("shopInfo.plan")}</span> {shopifyData.shop.plan}</span>}
+              {shopifyData.shop.currency && <span><span className="text-foreground font-medium">{t("shopInfo.currency")}</span> {shopifyData.shop.currency}</span>}
+              {shopifyData.shop.country && <span><span className="text-foreground font-medium">{t("shopInfo.country")}</span> {shopifyData.shop.country}</span>}
+              {shopifyData.shop.timezone && <span><span className="text-foreground font-medium">{t("shopInfo.timezone")}</span> {shopifyData.shop.timezone}</span>}
+              {shopifyData.shop.email && <span><span className="text-foreground font-medium">{t("shopInfo.email")}</span> {shopifyData.shop.email}</span>}
             </CardContent>
           </Card>
         </m.div>

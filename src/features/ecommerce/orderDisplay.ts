@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/format";
+import { i18n, t } from "@/lib/i18n";
 
 export function formatPromoValue(value: string | null, valueType: string | null, currency: string) {
   if (!value) return "—";
@@ -23,28 +24,17 @@ export const fulfillmentColors: Record<string, string> = {
   restocked: "bg-muted text-muted-foreground",
 };
 
-/**
- * Swedish labels for the raw Shopify status values shown in order badges
- * and filter dropdowns. Unknown values fall back to the raw string so new
- * Shopify statuses never render blank.
- */
-export const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  paid: "Betald",
-  pending: "Väntar",
-  refunded: "Återbetald",
-  voided: "Annullerad",
-  partially_paid: "Delbetald",
-};
+/** Localized label for raw Shopify payment status (unknown values pass through). */
+export function paymentStatusLabel(status: string): string {
+  const key = `orders.paymentStatus.${status}`;
+  return i18n.exists(`ecommerce:${key}`) ? t(`ecommerce:${key}`) : status;
+}
 
-export const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
-  fulfilled: "Skickad",
-  unfulfilled: "Ej skickad",
-  partial: "Delvis skickad",
-  restocked: "Återlagd",
-};
-
-export const paymentStatusLabel = (status: string) => PAYMENT_STATUS_LABELS[status] ?? status;
-export const fulfillmentStatusLabel = (status: string) => FULFILLMENT_STATUS_LABELS[status] ?? status;
+/** Localized label for raw Shopify fulfillment status (unknown values pass through). */
+export function fulfillmentStatusLabel(status: string): string {
+  const key = `orders.fulfillmentStatus.${status}`;
+  return i18n.exists(`ecommerce:${key}`) ? t(`ecommerce:${key}`) : status;
+}
 
 export interface PersistedOrderFilters {
   payment: string;

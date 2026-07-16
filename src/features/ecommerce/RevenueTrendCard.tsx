@@ -1,5 +1,6 @@
 import { m } from "framer-motion";
 import { TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -12,13 +13,6 @@ import { formatCurrency } from "@/lib/format";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { formatChartDate, type RevenuePoint } from "./ecommerceOrg";
 
-export const revenueChartConfig: ChartConfig = {
-  revenue: {
-    label: "Intäkter",
-    color: "hsl(var(--primary, 142 76% 36%))",
-  },
-};
-
 type Props = {
   revenueTrend: RevenuePoint[];
   revenue30d: number;
@@ -27,6 +21,15 @@ type Props = {
 
 /** Shopify 30-day revenue area chart for the ecommerce Insights tab. */
 export function RevenueTrendCard({ revenueTrend, revenue30d, currency }: Props) {
+  const { t } = useTranslation("ecommerce");
+
+  const revenueChartConfig: ChartConfig = {
+    revenue: {
+      label: t("revenueChart.label"),
+      color: "hsl(var(--primary, 142 76% 36%))",
+    },
+  };
+
   if (revenueTrend.length === 0) return null;
 
   return (
@@ -35,10 +38,12 @@ export function RevenueTrendCard({ revenueTrend, revenue30d, currency }: Props) 
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" />
-            Intäktstrend
+            {t("revenueChart.title")}
           </CardTitle>
           <CardDescription>
-            Senaste 30 dagarna · Totalt {formatCurrency(revenue30d, currency, { detailed: true })}
+            {t("revenueChart.description", {
+              total: formatCurrency(revenue30d, currency, { detailed: true }),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
