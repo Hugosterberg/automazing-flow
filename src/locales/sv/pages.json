@@ -5,30 +5,90 @@
     "smartBar": "Innehåll är hela flödet — välj media, skapa med AI, spara utkast och publicera.",
     "smartShort": "Innehåll",
     "openConnections": "Öppna Kopplingar",
-    "refresh": "Uppdatera"
+    "refresh": "Uppdatera",
+    "step1": "Koppla Google Drive under Kopplingar",
+    "step2": "Bläddra eller ladda upp — markera det du vill använda",
+    "step3": "Skapa med AI, spara till Valda och publicera",
+    "tip": "När Drive är kopplat försvinner den här guiden — flikarna räcker för flödet.",
+    "liveBrowseMobile": "{{count}} mediafiler i vyn — markera det du vill använda.",
+    "liveBrowseDesktop": "{{count}} mediafiler i vyn — J/K bläddra, S välj.",
+    "liveSelected": "{{count}} valda — gå till Skapa eller Publicera."
   },
   "sales": {
     "title": "Försäljning",
     "description": "Leads, affärer och mål — börja med bolagsprofilen under Företag för bättre AI-förslag.",
-    "smartBar": "Försäljning samlar leads, affärer och mål — från första kontakt till avslut."
+    "smartBar": "Försäljning samlar leads, affärer och mål — från första kontakt till avslut.",
+    "step1": "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
+    "step2": "Lägg till leads och följ upp det som är försenat",
+    "step3": "Flytta affärer i pipelinen och mät mot dina mål",
+    "tip": "Outreach-utkast kan skickas vidare till Content. Fyll i Företag först så AI-förslagen blir mer relevanta.",
+    "liveFollowups_one": "{{count}} lead att följa upp idag",
+    "liveFollowups_other": "{{count}} leads att följa upp idag",
+    "liveOutreach": "{{count}} outreach-utkast väntar i kön",
+    "actionFollowups": "Visa uppföljningar",
+    "actionOutreach": "Outreach-kö",
+    "tabsAria": "Försäljningsflikar",
+    "tabLeads": "Leads",
+    "tabOutreach": "Outreach",
+    "tabPipeline": "Pipeline",
+    "tabOverview": "Översikt",
+    "tabDiscover": "Upptäck",
+    "tabGoals": "Mål"
   },
   "marketing": {
     "title": "Marknadsföring",
     "description": "Flera vägar att marknadsföra bolaget och produkterna — betalt, organiskt, e-post, e-handel och partnerskap.",
-    "smartBar": "Marknadsföring visar kampanjer, annonsresultat och vad som behöver åtgärdas."
+    "smartBar": "Marknadsföring visar kampanjer, annonsresultat och vad som behöver åtgärdas.",
+    "step1": "Koppla Google Ads och Meta för live kampanjdata",
+    "step2": "Skapa kampanjer eller låt AI föreslå kanaler och erbjudanden",
+    "step3": "Skicka idéer vidare till Content eller E-handel med ett klick",
+    "tip": "ROAS och spend syns när annonskonton är kopplade och snapshots körs.",
+    "liveActiveMobile_one": "{{count}} aktiv kampanj — svep eller tryck för att bläddra.",
+    "liveActiveMobile_other": "{{count}} aktiva kampanjer — svep eller tryck för att bläddra.",
+    "liveActiveDesktop_one": "{{count}} aktiv kampanj — J/K bläddra, N ny kampanj.",
+    "liveActiveDesktop_other": "{{count}} aktiva kampanjer — J/K bläddra, N ny kampanj.",
+    "livePlannedMobile_one": "{{count}} kampanj planerad — tryck Ny kampanj.",
+    "livePlannedMobile_other": "{{count}} kampanjer planerade — tryck Ny kampanj.",
+    "livePlannedDesktop_one": "{{count}} kampanj planerad — tryck N för ny.",
+    "livePlannedDesktop_other": "{{count}} kampanjer planerade — tryck N för ny."
   },
   "ecommerce": {
     "title": "E-handel",
     "description": "Shopify-produkter, ordrar och återvinning i ett flöde.",
     "descriptionEmpty": "Koppla Shopify och importera produkter från Alibaba",
-    "smartBar": "E-handel samlar Shopify-produkter, ordrar och återvinning i ett flöde."
+    "smartBar": "E-handel samlar Shopify-produkter, ordrar och återvinning i ett flöde.",
+    "step1": "Koppla Shopify under Kopplingar",
+    "step2": "Synka produkter och följ ordrar under Översikt",
+    "step3": "Importera från Alibaba eller hantera katalogen under Produkter",
+    "tip": "Dagliga automationer synkar ordrar och lager. Ordrar som väntar på leverans markeras i åtgärdsraden.",
+    "liveActions_one": "{{count}} åtgärd väntar — ordrar eller lågt lager",
+    "liveActions_other": "{{count}} åtgärder väntar — ordrar eller lågt lager",
+    "liveOk": "Inga brådskande e-handelsåtgärder just nu."
   },
   "activity": {
     "title": "Aktivitet",
     "description": "Granskningslogg för alla ändringar i denna affärsprofil.",
     "descriptionMobile": "Tryck en händelse i listan för att läsa detaljer.",
     "smartBar": "Aktivitet är din granskningslogg — allt som händer i profilen, filtrerbart och sökbart.",
-    "smartBarMobile": "Filtrera och tryck en händelse för att se vad som hände."
+    "smartBarMobile": "Filtrera och tryck en händelse för att se vad som hände.",
+    "step1": "Filtrera på modul eller allvarlighetsgrad för att hitta rätt händelse",
+    "step2": "Välj en rad i listan för att läsa detaljer och metadata",
+    "step3": "Använd loggen när något ser fel ut eller du behöver spåra vem som gjorde vad",
+    "stepMobile1": "Filtrera på modul eller allvarlighetsgrad",
+    "stepMobile2": "Tryck en rad för detaljer",
+    "stepMobile3": "Använd loggen när något ser fel ut",
+    "tip": "Genvägar: J/K bläddra · / sök · E fel · W varning · Esc stäng.",
+    "tipMobile": "Här syns vad automationer och synk gjorde — använd filtrer när något ser konstigt ut.",
+    "liveErrors": "{{count}} fel i loggen — börja där",
+    "liveWarnings": "{{count}} varningar att granska",
+    "pickProfile": "Välj en affärsprofil för att se aktivitetsflödet.",
+    "tabsAria": "Allvarlighetsflikar",
+    "tabError": "Fel",
+    "tabWarning": "Varningar",
+    "tabAll": "Alla",
+    "tabSuccess": "Lyckades",
+    "tabInfo": "Info",
+    "refresh": "Uppdatera"
   },
   "automations": {
     "title": "Automationer",
@@ -40,7 +100,18 @@
     "tabContent": "Innehåll",
     "tabReports": "Rapporter",
     "tabInsights": "Insikter",
-    "seeResult": "Se resultatet"
+    "seeResult": "Se resultatet",
+    "step1": "Se status för varje jobb — senaste körning och nästa schemalagda tid",
+    "step2": "Justera schema (dagar, tider) efter hur din verksamhet jobbar",
+    "step3": "Följ länken ”Se resultatet” för att se vad jobbet faktiskt gjorde",
+    "tipFailed": "Misslyckade körningar kan oftast köras om direkt från jobbkortet.",
+    "tipOk": "Här körs digests, snapshots, AI-jobb och synk på schema — så du slipper manuellt underhåll.",
+    "liveFailed": "{{count}} jobb misslyckades vid senaste körning — kör om från listan eller jobbkortet.",
+    "liveNever": "{{count}} jobb har ännu ingen körningshistorik — kontrollera att schemat är aktiverat.",
+    "actionFailed": "{{count}} misslyckade — granska",
+    "aiStrip": "AI underhållsförslag",
+    "retryOk": "\"{{title}}\" kördes om.",
+    "retryFail": "Kunde inte köra om automationen."
   },
   "intelligence": {
     "title": "MCP Intelligence",
@@ -49,21 +120,45 @@
     "tabsAria": "MCP Intelligence-flikar",
     "connectProviders": "Koppla leverantörer",
     "hubDescription": "{{features}} frågeverktyg över {{platforms}} leverantörer. Varje fält visar autentiseringsstatus innan du kör ett anrop.",
-    "overviewHint": "Status för varje MCP-leverantör. Åtgärda saknade API-nycklar eller utgången OAuth under Kopplingar innan du kör frågor i andra flikar."
+    "overviewHint": "Status för varje MCP-leverantör. Åtgärda saknade API-nycklar eller utgången OAuth under Kopplingar innan du kör frågor i andra flikar.",
+    "step1": "Kontrollera att leverantörerna är gröna under Kopplingar → MCP",
+    "step2": "Välj flik för status, jämförelse eller frågekategori",
+    "step3": "Använd svaren i Försäljning, Innehåll eller automationer",
+    "tip": "Saknas en nyckel? Lägg till den under Inställningar → API-nycklar."
   },
   "calendar": {
     "title": "Kalender",
     "description": "Planera och schemalägg händelser från uppgifter, leads och kopplade kalendrar.",
-    "smartBar": "Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde."
+    "smartBar": "Kalendern samlar uppgifter, lead-uppföljningar och externa kalendrar — så du ser veckan i ett flöde.",
+    "step1": "Koppla Google eller Outlook-kalender för synk",
+    "step2": "Växla dag/vecka/månad och öppna en dag för detaljer",
+    "step3": "Skapa egna händelser eller följ upp från Uppgifter och Sales",
+    "tip": "Uppgifter och leads med datum syns automatiskt i vyn.",
+    "liveDue_one": "{{count}} uppgift eller lead förfaller idag — lägg till i kalendern",
+    "liveDue_other": "{{count}} uppgifter eller leads förfaller idag — lägg till i kalendern"
   },
   "company": {
     "title": "Företag",
     "description": "Er bolagsprofil styr AI i Sales, outreach och innehåll. Fyll i automatiskt med org.nr, justera manuellt, spara.",
-    "smartBar": "Företagsprofilen ger AI och automationer rätt kontext — beskrivning, webb och mål."
+    "smartBar": "Företagsprofilen ger AI och automationer rätt kontext — beskrivning, webb och mål.",
+    "step1": "Fyll i automatiskt med org.nr eller börja manuellt",
+    "step2": "Komplettera beskrivning och målgrupp — det påverkar AI mest",
+    "step3": "Spara så att Sales och Content får bättre förslag direkt",
+    "tip": "Börja med beskrivning (vad ni säljer och till vem), sedan webb och org.nr. Org.nr kan fyllas i automatiskt via uppslag.",
+    "liveIncomplete": "Profilen är {{percent}}% klar — saknas: {{missing}}",
+    "liveComplete": "Profilen ser komplett ut — AI kan ge full träffsäkerhet."
   },
   "aiRecommendations": {
     "title": "AI-rekommendationer",
     "description": "Datadrivna förslag för den här företagsprofilen.",
-    "smartBar": "AI-förslag prioriterar nästa steg utifrån dina kopplingar, uppgifter och innehåll."
+    "smartBar": "AI-förslag prioriterar nästa steg utifrån dina kopplingar, uppgifter och innehåll.",
+    "step1": "Klicka Generera för att köra heuristik + AI på kopplingar, uppgifter och innehåll",
+    "step2": "Acceptera för att navigera till rätt sida, eller avvisa det som inte passar",
+    "step3": "Granska accepterade och avvisade under flikarna för historik",
+    "tip": "Nya förslag markeras automatiskt som sedda när du öppnar sidan.",
+    "liveNew_one": "{{count}} ny rekommendation att granska",
+    "liveNew_other": "{{count}} nya rekommendationer att granska",
+    "liveActive_one": "{{count}} aktivt förslag — acceptera eller avvisa",
+    "liveActive_other": "{{count}} aktiva förslag — acceptera eller avvisa"
   }
 }

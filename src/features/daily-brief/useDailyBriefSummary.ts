@@ -17,6 +17,7 @@ import { classifyMessageTriage, fetchUnifiedMessagesPreview } from "@/features/m
 import { useProfileDocument } from "@/features/profile-documents";
 import { buildDemoBriefOverlay, useDemoMode } from "@/features/demo";
 import { platformLabel } from "@/lib/platformLabels";
+import { t } from "@/lib/i18n";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
 import { useUnreadDmCount } from "./useUnreadDmCount";
@@ -69,7 +70,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
         const t = Date.parse(e.occurred_at || "") || 0;
         return t >= dayAgo;
       })
-      .map((e) => ({ title: e.summary || "Agentkörning" }));
+      .map((e) => ({ title: e.summary || t("dailyBrief:agentRun") }));
   }, [agentEvents]);
 
   const marketingRoas =

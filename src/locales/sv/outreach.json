@@ -1,0 +1,18 @@
+{
+  "queue": {
+    "title": "Outreach-kö",
+    "emptyTitle": "Kön är tom",
+    "emptyDesc": "När automationen skapar uppföljningsutkast landar de här för granskning.",
+    "search": "Sök outreach-utkast",
+    "panelEmpty": "Välj ett utkast i listan."
+  },
+  "draft": {
+    "title": "Outreach-utkast",
+    "send": "Skicka till kön",
+    "cancel": "Avbryt"
+  },
+  "toast": {
+    "draftFail": "Kunde inte skapa utkast.",
+    "loadFail": "Kunde inte ladda outreach."
+  }
+}

@@ -1,14 +1,34 @@
+import { t } from "@/lib/i18n";
+
 export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
 
 export const LEAD_STATUS_ORDER: LeadStatus[] = ["new", "contacted", "qualified", "won", "lost"];
 
-export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "Ny",
-  contacted: "Kontaktad",
-  qualified: "Kvalificerad",
-  won: "Vunnen",
-  lost: "Förlorad",
-};
+/** Localized lead status label (follows active UI language). */
+export function leadStatusLabel(status: LeadStatus): string {
+  return t(`leads:status.${status}`);
+}
+
+/**
+ * Compatibility map that always reads live translations.
+ * Prefer `leadStatusLabel()` in new code.
+ */
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = new Proxy({} as Record<LeadStatus, string>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop !== "string") return undefined;
+    if ((LEAD_STATUS_ORDER as string[]).includes(prop)) return leadStatusLabel(prop as LeadStatus);
+    return undefined;
+  },
+  ownKeys() {
+    return [...LEAD_STATUS_ORDER];
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    if (typeof prop === "string" && (LEAD_STATUS_ORDER as string[]).includes(prop)) {
+      return { configurable: true, enumerable: true, value: leadStatusLabel(prop as LeadStatus) };
+    }
+    return undefined;
+  },
+});
 
 /** Open leads are the ones still worth chasing. */
 export function isLeadOpen(status: LeadStatus): boolean {

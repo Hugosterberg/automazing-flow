@@ -407,21 +407,17 @@ export default function MarketingPage() {
 
       <PageSmartBar
         title={t("marketing.smartBar")}
-        steps={[
-          "Koppla Google Ads och Meta för live kampanjdata",
-          "Skapa kampanjer eller låt AI föreslå kanaler och erbjudanden",
-          "Skicka idéer vidare till Content eller E-handel med ett klick",
-        ]}
-        tip="ROAS och spend syns när annonskonton är kopplade och snapshots körs."
+        steps={[t("marketing.step1"), t("marketing.step2"), t("marketing.step3")]}
+        tip={t("marketing.tip")}
         liveHintOverride={
           activeCampaigns.length > 0
             ? isMobile
-              ? `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — svep eller tryck för att bläddra.`
-              : `${activeCampaigns.length} aktiv${activeCampaigns.length === 1 ? "" : "a"} kampanj${activeCampaigns.length === 1 ? "" : "er"} — J/K bläddra, N ny kampanj.`
+              ? t("marketing.liveActiveMobile", { count: activeCampaigns.length })
+              : t("marketing.liveActiveDesktop", { count: activeCampaigns.length })
             : campaignTasks.length > 0
               ? isMobile
-                ? `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck Ny kampanj.`
-                : `${campaignTasks.length} kampanj${campaignTasks.length === 1 ? "" : "er"} planerade — tryck N för ny.`
+                ? t("marketing.livePlannedMobile", { count: campaignTasks.length })
+                : t("marketing.livePlannedDesktop", { count: campaignTasks.length })
               : null
         }
       />

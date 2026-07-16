@@ -134,17 +134,16 @@ export default function CompanyPage() {
 
       <PageSmartBar
         title={t("company.smartBar")}
-        steps={[
-          "Fyll i automatiskt med org.nr eller börja manuellt",
-          "Komplettera beskrivning och målgrupp — det påverkar AI mest",
-          "Spara så att Sales och Content får bättre förslag direkt",
-        ]}
-        tip="Börja med beskrivning (vad ni säljer och till vem), sedan webb och org.nr. Org.nr kan fyllas i automatiskt via uppslag."
+        steps={[t("company.step1"), t("company.step2"), t("company.step3")]}
+        tip={t("company.tip")}
         liveHintOverride={
           profile && completeness.percent < 100
-            ? `Profilen är ${completeness.percent}% klar — saknas: ${completeness.priorities.map((f) => f.label).join(", ")}`
+            ? t("company.liveIncomplete", {
+                percent: completeness.percent,
+                missing: completeness.priorities.map((f) => f.label).join(", "),
+              })
             : profile
-              ? "Profilen ser komplett ut — AI kan ge full träffsäkerhet."
+              ? t("company.liveComplete")
               : null
         }
       />

@@ -5,30 +5,90 @@
     "smartBar": "Content is the full flow — pick media, create with AI, save drafts and publish.",
     "smartShort": "Content",
     "openConnections": "Open Connections",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "step1": "Connect Google Drive under Connections",
+    "step2": "Browse or upload — select what you want to use",
+    "step3": "Create with AI, save to Selected and publish",
+    "tip": "When Drive is connected this guide disappears — the tabs are enough for the flow.",
+    "liveBrowseMobile": "{{count}} media files in view — select what you want to use.",
+    "liveBrowseDesktop": "{{count}} media files in view — J/K browse, S select.",
+    "liveSelected": "{{count}} selected — go to Create or Publish."
   },
   "sales": {
     "title": "Sales",
     "description": "Leads, deals and goals — start with the company profile under Company for better AI suggestions.",
-    "smartBar": "Sales gathers leads, deals and goals — from first contact to close."
+    "smartBar": "Sales gathers leads, deals and goals — from first contact to close.",
+    "step1": "Complete the company profile under Company for better AI suggestions",
+    "step2": "Add leads and follow up what’s overdue",
+    "step3": "Move deals through the pipeline and measure against your goals",
+    "tip": "Outreach drafts can be sent on to Content. Fill in Company first so AI suggestions stay relevant.",
+    "liveFollowups_one": "{{count}} lead to follow up today",
+    "liveFollowups_other": "{{count}} leads to follow up today",
+    "liveOutreach": "{{count}} outreach drafts waiting in the queue",
+    "actionFollowups": "Show follow-ups",
+    "actionOutreach": "Outreach queue",
+    "tabsAria": "Sales tabs",
+    "tabLeads": "Leads",
+    "tabOutreach": "Outreach",
+    "tabPipeline": "Pipeline",
+    "tabOverview": "Overview",
+    "tabDiscover": "Discover",
+    "tabGoals": "Goals"
   },
   "marketing": {
     "title": "Marketing",
     "description": "Several ways to market the company and products — paid, organic, email, e-commerce and partnerships.",
-    "smartBar": "Marketing shows campaigns, ad results and what needs action."
+    "smartBar": "Marketing shows campaigns, ad results and what needs action.",
+    "step1": "Connect Google Ads and Meta for live campaign data",
+    "step2": "Create campaigns or let AI suggest channels and offers",
+    "step3": "Send ideas on to Content or E-commerce in one click",
+    "tip": "ROAS and spend show when ad accounts are connected and snapshots run.",
+    "liveActiveMobile_one": "{{count}} active campaign — swipe or tap to browse.",
+    "liveActiveMobile_other": "{{count}} active campaigns — swipe or tap to browse.",
+    "liveActiveDesktop_one": "{{count}} active campaign — J/K browse, N new campaign.",
+    "liveActiveDesktop_other": "{{count}} active campaigns — J/K browse, N new campaign.",
+    "livePlannedMobile_one": "{{count}} campaign planned — tap New campaign.",
+    "livePlannedMobile_other": "{{count}} campaigns planned — tap New campaign.",
+    "livePlannedDesktop_one": "{{count}} campaign planned — press N for new.",
+    "livePlannedDesktop_other": "{{count}} campaigns planned — press N for new."
   },
   "ecommerce": {
     "title": "E-commerce",
     "description": "Shopify products, orders and recovery in one flow.",
     "descriptionEmpty": "Connect Shopify and import products from Alibaba",
-    "smartBar": "E-commerce gathers Shopify products, orders and recovery in one flow."
+    "smartBar": "E-commerce gathers Shopify products, orders and recovery in one flow.",
+    "step1": "Connect Shopify under Connections",
+    "step2": "Sync products and track orders under Overview",
+    "step3": "Import from Alibaba or manage the catalog under Products",
+    "tip": "Daily automations sync orders and inventory. Orders waiting for fulfillment are marked in the action row.",
+    "liveActions_one": "{{count}} action waiting — orders or low stock",
+    "liveActions_other": "{{count}} actions waiting — orders or low stock",
+    "liveOk": "No urgent e-commerce actions right now."
   },
   "activity": {
     "title": "Activity",
     "description": "Audit log for every change in this business profile.",
     "descriptionMobile": "Tap an event in the list to read details.",
     "smartBar": "Activity is your audit log — everything that happens in the profile, filterable and searchable.",
-    "smartBarMobile": "Filter and tap an event to see what happened."
+    "smartBarMobile": "Filter and tap an event to see what happened.",
+    "step1": "Filter by module or severity to find the right event",
+    "step2": "Select a row to read details and metadata",
+    "step3": "Use the log when something looks wrong or you need to trace who did what",
+    "stepMobile1": "Filter by module or severity",
+    "stepMobile2": "Tap a row for details",
+    "stepMobile3": "Use the log when something looks wrong",
+    "tip": "Shortcuts: J/K browse · / search · E errors · W warnings · Esc close.",
+    "tipMobile": "Here you see what automations and sync did — use filters when something looks odd.",
+    "liveErrors": "{{count}} errors in the log — start there",
+    "liveWarnings": "{{count}} warnings to review",
+    "pickProfile": "Pick a business profile to see the activity feed.",
+    "tabsAria": "Severity tabs",
+    "tabError": "Errors",
+    "tabWarning": "Warnings",
+    "tabAll": "All",
+    "tabSuccess": "Succeeded",
+    "tabInfo": "Info",
+    "refresh": "Refresh"
   },
   "automations": {
     "title": "Automations",
@@ -40,7 +100,18 @@
     "tabContent": "Content",
     "tabReports": "Reports",
     "tabInsights": "Insights",
-    "seeResult": "See the result"
+    "seeResult": "See the result",
+    "step1": "See status for each job — last run and next scheduled time",
+    "step2": "Adjust the schedule (days, times) to how your business works",
+    "step3": "Follow the “See the result” link to see what the job actually did",
+    "tipFailed": "Failed runs can usually be retried directly from the job card.",
+    "tipOk": "Digests, snapshots, AI jobs and sync run on a schedule here — so you skip manual upkeep.",
+    "liveFailed": "{{count}} jobs failed on the last run — retry from the list or job card.",
+    "liveNever": "{{count}} jobs have no run history yet — check that the schedule is enabled.",
+    "actionFailed": "{{count}} failed — review",
+    "aiStrip": "AI maintenance suggestions",
+    "retryOk": "\"{{title}}\" was rerun.",
+    "retryFail": "Could not rerun the automation."
   },
   "intelligence": {
     "title": "MCP Intelligence",
@@ -49,21 +120,45 @@
     "tabsAria": "MCP Intelligence tabs",
     "connectProviders": "Connect providers",
     "hubDescription": "{{features}} query tools across {{platforms}} providers. Each field shows auth status before you run a call.",
-    "overviewHint": "Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs."
+    "overviewHint": "Status for every MCP provider. Fix missing API keys or expired OAuth under Connections before running queries in other tabs.",
+    "step1": "Check that providers are green under Connections → MCP",
+    "step2": "Pick a tab for status, compare or a query category",
+    "step3": "Use the answers in Sales, Content or automations",
+    "tip": "Missing a key? Add it under Preferences → API keys."
   },
   "calendar": {
     "title": "Calendar",
     "description": "Plan and schedule events from tasks, leads and connected calendars.",
-    "smartBar": "Calendar gathers tasks, lead follow-ups and external calendars — so you see the week in one flow."
+    "smartBar": "Calendar gathers tasks, lead follow-ups and external calendars — so you see the week in one flow.",
+    "step1": "Connect Google or Outlook calendar for sync",
+    "step2": "Switch day/week/month and open a day for details",
+    "step3": "Create your own events or follow up from Tasks and Sales",
+    "tip": "Tasks and leads with dates show automatically in the view.",
+    "liveDue_one": "{{count}} task or lead is due today — add it to the calendar",
+    "liveDue_other": "{{count}} tasks or leads are due today — add them to the calendar"
   },
   "company": {
     "title": "Company",
     "description": "Your company profile steers AI in Sales, outreach and content. Auto-fill with org number, adjust manually, save.",
-    "smartBar": "The company profile gives AI and automations the right context — description, website and goals."
+    "smartBar": "The company profile gives AI and automations the right context — description, website and goals.",
+    "step1": "Auto-fill with org number or start manually",
+    "step2": "Complete description and audience — that affects AI most",
+    "step3": "Save so Sales and Content get better suggestions right away",
+    "tip": "Start with description (what you sell and to whom), then website and org number. Org number can auto-fill via lookup.",
+    "liveIncomplete": "Profile is {{percent}}% complete — missing: {{missing}}",
+    "liveComplete": "Profile looks complete — AI can hit full accuracy."
   },
   "aiRecommendations": {
     "title": "AI recommendations",
     "description": "Data-driven suggestions for this business profile.",
-    "smartBar": "AI suggestions prioritize next steps from your connections, tasks and content."
+    "smartBar": "AI suggestions prioritize next steps from your connections, tasks and content.",
+    "step1": "Click Generate to run heuristics + AI on connections, tasks and content",
+    "step2": "Accept to navigate to the right page, or dismiss what doesn’t fit",
+    "step3": "Review accepted and dismissed under the tabs for history",
+    "tip": "New suggestions are automatically marked as seen when you open the page.",
+    "liveNew_one": "{{count}} new recommendation to review",
+    "liveNew_other": "{{count}} new recommendations to review",
+    "liveActive_one": "{{count}} active suggestion — accept or dismiss",
+    "liveActive_other": "{{count}} active suggestions — accept or dismiss"
   }
 }

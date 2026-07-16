@@ -1,0 +1,53 @@
+{
+  "status": {
+    "new": "New",
+    "contacted": "Contacted",
+    "qualified": "Qualified",
+    "won": "Won",
+    "lost": "Lost"
+  },
+  "section": {
+    "title": "Leads",
+    "openCount": "{{count}} open",
+    "followUps_one": " · {{count}} follow-up to do",
+    "followUps_other": " · {{count}} follow-ups to do",
+    "import": "Import",
+    "importTitle": "Import leads from CSV",
+    "export": "Export",
+    "exportTitle": "Export leads to CSV",
+    "suggest": "Suggest segments",
+    "draftDue": "Draft ({{count}})",
+    "add": "New lead",
+    "search": "Search leads",
+    "emptyTitle": "Leads that actually get followed up",
+    "emptyDesc": "Add a lead, import CSV, or let AI suggest from your company profile. Due dates and outreach drafts keep you moving.",
+    "emptyCta": "Add first lead",
+    "noMatch": "No leads match the filters.",
+    "noContact": "No contact details yet",
+    "dueToday": "Today",
+    "overdue": "Overdue"
+  },
+  "toast": {
+    "importEmpty": "No leads found in the file. Expect a header row with a company column.",
+    "importOk_one": "Imported {{count}} lead",
+    "importOk_other": "Imported {{count}} leads",
+    "importSkipped": " ({{skipped}} skipped)",
+    "importFail": "Could not import the file.",
+    "noData": "No data found.",
+    "enrichOk": "Filled from lookup",
+    "enrichSources_one": "Fetched from {{count}} source",
+    "enrichSources_other": "Fetched from {{count}} sources",
+    "enrichFail": "Lookup failed.",
+    "added": "Lead added",
+    "updated": "Lead updated.",
+    "deleted": "Lead deleted",
+    "deleteFail": "Could not delete lead.",
+    "addFail": "Could not add lead.",
+    "noSuggestions": "No suggestions — try again or fill in more under Company.",
+    "suggestionsFail": "Could not fetch suggestions.",
+    "followUpAuto": "Follow-up date was set automatically.",
+    "followUpFail": "Could not update follow-up date.",
+    "updateFail": "Could not update lead.",
+    "suggestionAdded": "Added as lead"
+  }
+}

@@ -466,15 +466,11 @@ export default function CalendarPage() {
 
       <PageSmartBar
         title={t("calendar.smartBar")}
-        steps={[
-          "Koppla Google eller Outlook-kalender för synk",
-          "Växla dag/vecka/månad och öppna en dag för detaljer",
-          "Skapa egna händelser eller följ upp från Uppgifter och Sales",
-        ]}
-        tip="Uppgifter och leads med datum syns automatiskt i vyn."
+        steps={[t("calendar.step1"), t("calendar.step2"), t("calendar.step3")]}
+        tip={t("calendar.tip")}
         liveHintOverride={
           smartSuggestions.length > 0
-            ? `${smartSuggestions.length} uppgift${smartSuggestions.length === 1 ? "" : "er"} eller lead${smartSuggestions.length === 1 ? "" : "s"} förfaller idag — lägg till i kalendern`
+            ? t("calendar.liveDue", { count: smartSuggestions.length })
             : null
         }
       />

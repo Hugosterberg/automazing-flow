@@ -268,16 +268,16 @@ export default function AIRecommendationsPage() {
       <PageSmartBar
         title={t("aiRecommendations.smartBar")}
         steps={[
-          "Klicka Generera för att köra heuristik + AI på kopplingar, uppgifter och innehåll",
-          "Acceptera för att navigera till rätt sida, eller avvisa det som inte passar",
-          "Granska accepterade och avvisade under flikarna för historik",
+          t("aiRecommendations.step1"),
+          t("aiRecommendations.step2"),
+          t("aiRecommendations.step3"),
         ]}
-        tip="Nya förslag markeras automatiskt som sedda när du öppnar sidan."
+        tip={t("aiRecommendations.tip")}
         liveHintOverride={
           newRecCount > 0
-            ? `${newRecCount} ny${newRecCount === 1 ? "" : "a"} rekommendation${newRecCount === 1 ? "" : "er"} att granska`
+            ? t("aiRecommendations.liveNew", { count: newRecCount })
             : active.length > 0
-              ? `${active.length} aktiv${active.length === 1 ? "" : "a"} förslag — acceptera eller avvisa`
+              ? t("aiRecommendations.liveActive", { count: active.length })
               : null
         }
       />

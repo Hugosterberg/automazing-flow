@@ -44,6 +44,12 @@ import svShortcuts from "@/locales/sv/shortcuts.json";
 import enShortcuts from "@/locales/en/shortcuts.json";
 import svPages from "@/locales/sv/pages.json";
 import enPages from "@/locales/en/pages.json";
+import svDailyBrief from "@/locales/sv/dailyBrief.json";
+import enDailyBrief from "@/locales/en/dailyBrief.json";
+import svLeads from "@/locales/sv/leads.json";
+import enLeads from "@/locales/en/leads.json";
+import svOutreach from "@/locales/sv/outreach.json";
+import enOutreach from "@/locales/en/outreach.json";
 
 export const i18n = i18next;
 
@@ -62,6 +68,9 @@ const NAMESPACES = [
   "mcp",
   "shortcuts",
   "pages",
+  "dailyBrief",
+  "leads",
+  "outreach",
 ] as const;
 
 function applyLanguageSideEffects(lang: string): void {
@@ -95,6 +104,9 @@ export function initI18n(): void {
         mcp: svMcp,
         shortcuts: svShortcuts,
         pages: svPages,
+        dailyBrief: svDailyBrief,
+        leads: svLeads,
+        outreach: svOutreach,
       },
       en: {
         common: enCommon,
@@ -111,6 +123,9 @@ export function initI18n(): void {
         mcp: enMcp,
         shortcuts: enShortcuts,
         pages: enPages,
+        dailyBrief: enDailyBrief,
+        leads: enLeads,
+        outreach: enOutreach,
       },
     },
     lng: initialLanguage,

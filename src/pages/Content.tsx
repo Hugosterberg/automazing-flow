@@ -310,12 +310,8 @@ export default function ContentPage() {
       {driveAccounts.length === 0 ? (
         <PageSmartBar
           title={t("content.smartBar")}
-          steps={[
-            "Koppla Google Drive under Kopplingar",
-            "Bläddra eller ladda upp — markera det du vill använda",
-            "Skapa med AI, spara till Valda och publicera",
-          ]}
-          tip="När Drive är kopplat försvinner den här guiden — flikarna räcker för flödet."
+          steps={[t("content.step1"), t("content.step2"), t("content.step3")]}
+          tip={t("content.tip")}
           extraActions={[{ label: t("content.openConnections"), to: "/connections" }]}
         />
       ) : (contentTab === "browse" && browseMediaFiles.length > 0) || selectedAssets.length > 0 ? (
@@ -324,9 +320,9 @@ export default function ContentPage() {
           liveHintOverride={
             contentTab === "browse" && browseMediaFiles.length > 0
               ? isMobile
-                ? `${browseMediaFiles.length} mediafiler i vyn — markera det du vill använda.`
-                : `${browseMediaFiles.length} mediafiler i vyn — J/K bläddra, S välj.`
-              : `${selectedAssets.length} valda — gå till Skapa eller Publicera.`
+                ? t("content.liveBrowseMobile", { count: browseMediaFiles.length })
+                : t("content.liveBrowseDesktop", { count: browseMediaFiles.length })
+              : t("content.liveSelected", { count: selectedAssets.length })
           }
         />
       ) : null}

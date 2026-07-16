@@ -43,6 +43,8 @@ async function retryAutomationJob(args: {
   businessProfileId: string | null;
   cronKey: string;
   title: string;
+  retryOk: string;
+  retryFail: string;
   retryingKey: string | null;
   setRetryingKey: (key: string | null) => void;
   onDone: () => void;
@@ -51,9 +53,9 @@ async function retryAutomationJob(args: {
   args.setRetryingKey(args.cronKey);
   try {
     await retryAutomation(args.businessProfileId, args.cronKey);
-    toast.success(`"${args.title}" kördes om.`);
+    toast.success(args.retryOk);
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : "Kunde inte köra om automationen.");
+    toast.error(err instanceof Error ? err.message : args.retryFail);
   } finally {
     args.setRetryingKey(null);
     args.onDone();
@@ -69,6 +71,7 @@ function AutomationFailuresStrip({
   runs: AutomationRunsState;
   mode: WorkspaceMode;
 }) {
+  const { t } = useTranslation("pages");
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
 
   const failedEntries = useMemo(() => {
@@ -94,6 +97,8 @@ function AutomationFailuresStrip({
       businessProfileId,
       cronKey,
       title,
+      retryOk: t("automations.retryOk", { title }),
+      retryFail: t("automations.retryFail"),
       retryingKey,
       setRetryingKey,
       onDone: () => void runs.refetch(),
@@ -164,6 +169,7 @@ function ScheduleList({
   runs: AutomationRunsState;
   businessProfileId: string | null;
 }) {
+  const { t } = useTranslation("pages");
   const schedules = useAutomationSchedules(businessProfileId);
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
 
@@ -172,13 +178,14 @@ function ScheduleList({
       businessProfileId,
       cronKey,
       title,
+      retryOk: t("automations.retryOk", { title }),
+      retryFail: t("automations.retryFail"),
       retryingKey,
       setRetryingKey,
       onDone: () => void runs.refetch(),
     });
   }
 
-  const { t } = useTranslation("pages");
   if (entries.length === 0) return null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -391,26 +398,22 @@ export default function AutomationsPage() {
 
       <PageSmartBar
         title={t("automations.smartBar")}
-        steps={[
-          "Se status för varje jobb — senaste körning och nästa schemalagda tid",
-          "Justera schema (dagar, tider) efter hur din verksamhet jobbar",
-          "Följ länken ”Se resultatet” för att se vad jobbet faktiskt gjorde",
-        ]}
+        steps={[t("automations.step1"), t("automations.step2"), t("automations.step3")]}
         tip={
           runStats.failed > 0
-            ? "Misslyckade körningar kan oftast köras om direkt från jobbkortet."
-            : "Här körs digests, snapshots, AI-jobb och synk på schema — så du slipper manuellt underhåll."
+            ? t("automations.tipFailed")
+            : t("automations.tipOk")
         }
         liveHintOverride={
           runStats.failed > 0
-            ? `${runStats.failed} jobb misslyckades vid senaste körning — kör om från listan eller jobbkortet.`
+            ? t("automations.liveFailed", { count: runStats.failed })
             : runStats.never > 0 && runStats.ok === 0 && runStats.failed === 0
-              ? `${runStats.never} jobb har ännu ingen körningshistorik — kontrollera att schemat är aktiverat.`
+              ? t("automations.liveNever", { count: runStats.never })
               : null
         }
         extraActions={
           runStats.failed > 0
-            ? [{ label: `${runStats.failed} misslyckade — granska`, to: "/automations#automation-failures" }]
+            ? [{ label: t("automations.actionFailed", { count: runStats.failed }), to: "/automations#automation-failures" }]
             : []
         }
       />
@@ -418,7 +421,7 @@ export default function AutomationsPage() {
       <PageAiSuggestionsStrip
         businessProfileId={businessProfileId}
         kinds={["maintenance"]}
-        label="AI underhållsförslag"
+        label={t("automations.aiStrip")}
       />
 
       <PageModeTabs

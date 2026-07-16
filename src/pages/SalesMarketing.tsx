@@ -454,9 +454,9 @@ export default function SalesMarketingPage() {
 
   const salesLiveHint =
     dueLeadsList.length > 0
-      ? `${dueLeadsList.length} lead${dueLeadsList.length === 1 ? "" : "s"} att följa upp idag`
+      ? t("sales.liveFollowups", { count: dueLeadsList.length })
       : pendingOutreachCount > 0
-        ? `${pendingOutreachCount} outreach-utkast väntar i kön`
+        ? t("sales.liveOutreach", { count: pendingOutreachCount })
         : null;
 
   useEffect(() => {
@@ -577,33 +577,29 @@ export default function SalesMarketingPage() {
 
           <PageSmartBar
             title={t("sales.smartBar")}
-            steps={[
-              "Komplettera bolagsprofilen under Företag för bättre AI-förslag",
-              "Lägg till leads och följ upp det som är försenat",
-              "Flytta affärer i pipelinen och mät mot dina mål",
-            ]}
-            tip="Outreach-utkast kan skickas vidare till Content. Fyll i Företag först så AI-förslagen blir mer relevanta."
+            steps={[t("sales.step1"), t("sales.step2"), t("sales.step3")]}
+            tip={t("sales.tip")}
             liveHintOverride={salesLiveHint}
             extraActions={
               dueLeadsList.length > 0
-                ? [{ label: "Visa uppföljningar", to: "/sales?view=followups" }]
+                ? [{ label: t("sales.actionFollowups"), to: "/sales?view=followups" }]
                 : pendingOutreachCount > 0
-                  ? [{ label: "Outreach-kö", to: "/sales?view=outreach-queue" }]
+                  ? [{ label: t("sales.actionOutreach"), to: "/sales?view=outreach-queue" }]
                   : []
             }
           />
 
           <PageModeTabs
             value={salesTab}
-            aria-label="Försäljningsflikar"
+            aria-label={t("sales.tabsAria")}
             onChange={setSalesTab}
             options={[
-              { value: "leads", label: "Leads", count: activeLeads },
-              { value: "outreach", label: "Outreach", count: pendingOutreachCount },
-              { value: "pipeline", label: "Pipeline", count: pipelineTasks.length },
-              { value: "overview", label: "Översikt" },
-              { value: "discover", label: "Upptäck" },
-              { value: "goals", label: "Mål" },
+              { value: "leads", label: t("sales.tabLeads"), count: activeLeads },
+              { value: "outreach", label: t("sales.tabOutreach"), count: pendingOutreachCount },
+              { value: "pipeline", label: t("sales.tabPipeline"), count: pipelineTasks.length },
+              { value: "overview", label: t("sales.tabOverview") },
+              { value: "discover", label: t("sales.tabDiscover") },
+              { value: "goals", label: t("sales.tabGoals") },
             ]}
           />
 

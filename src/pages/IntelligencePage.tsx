@@ -48,12 +48,8 @@ export default function IntelligencePage() {
 
       <PageSmartBar
         title={t("intelligence.smartBar")}
-        steps={[
-          "Kontrollera att leverantörerna är gröna under Kopplingar → MCP",
-          "Välj flik för status, jämförelse eller frågekategori",
-          "Använd svaren i Försäljning, Innehåll eller automationer",
-        ]}
-        tip="Saknas en nyckel? Lägg till den under Inställningar → API-nycklar."
+        steps={[t("intelligence.step1"), t("intelligence.step2"), t("intelligence.step3")]}
+        tip={t("intelligence.tip")}
       />
 
       <m.div {...pageFadeUp}>

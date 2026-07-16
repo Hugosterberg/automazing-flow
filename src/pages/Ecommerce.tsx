@@ -353,17 +353,13 @@ export default function Ecommerce() {
 
       <PageSmartBar
         title={t("ecommerce.smartBar")}
-        steps={[
-          "Koppla Shopify under Kopplingar",
-          "Synka produkter och följ ordrar under Översikt",
-          "Importera från Alibaba eller hantera katalogen under Produkter",
-        ]}
-        tip="Dagliga automationer synkar ordrar och lager. Ordrar som väntar på leverans markeras i åtgärdsraden."
+        steps={[t("ecommerce.step1"), t("ecommerce.step2"), t("ecommerce.step3")]}
+        tip={t("ecommerce.tip")}
         liveHintOverride={
           actionNeeded && actionNeeded.total > 0
-            ? `${actionNeeded.total} åtgärd${actionNeeded.total === 1 ? "" : "er"} väntar — ordrar eller lågt lager`
+            ? t("ecommerce.liveActions", { count: actionNeeded.total })
             : shopifyData
-              ? "Inga brådskande e-handelsåtgärder just nu."
+              ? t("ecommerce.liveOk")
               : null
         }
       />

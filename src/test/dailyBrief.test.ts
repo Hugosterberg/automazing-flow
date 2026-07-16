@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { buildDailyBrief, joinNames } from "../features/daily-brief/buildDailyBrief";
+import { initI18n, i18n } from "@/lib/i18n";
+
+beforeAll(async () => {
+  initI18n();
+  await i18n.changeLanguage("sv");
+});
 
 describe("joinNames", () => {
   it("formats lists for human-readable descriptions", () => {

@@ -1,0 +1,18 @@
+{
+  "queue": {
+    "title": "Outreach queue",
+    "emptyTitle": "Queue is empty",
+    "emptyDesc": "When automation creates follow-up drafts they land here for review.",
+    "search": "Search outreach drafts",
+    "panelEmpty": "Pick a draft in the list."
+  },
+  "draft": {
+    "title": "Outreach draft",
+    "send": "Send to queue",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "draftFail": "Could not create draft.",
+    "loadFail": "Could not load outreach."
+  }
+}
