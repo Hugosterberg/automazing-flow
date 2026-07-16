@@ -18,7 +18,6 @@ import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { apiUrl } from "@/lib/apiBase";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import { apiErrorMessage } from "@/lib/apiError";
 import { apiJson } from "@/lib/apiJson";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
@@ -70,14 +69,9 @@ import { performMailAction, type MailMessageAction } from "@/features/messages/m
 import type { InboxPrefs } from "@/features/messages/inboxPrefs";
 import { AutoReplyDraftsStrip } from "@/features/automation";
 import { MailReplyDraftsStrip } from "@/features/messages/MailReplyDraftsStrip";
-import {
-  inboxCacheKey,
-  mergeUnifiedByKind,
-  readInboxCache,
-  sortUnifiedMessages,
-  writeInboxCache,
-} from "@/features/messages/inboxCache";
+import { inboxCacheKey, writeInboxCache } from "@/features/messages/inboxCache";
 import { buildInboxLoadScope } from "@/features/messages/inboxLoadParams";
+import { useLoadUnifiedInbox } from "@/features/messages/useLoadUnifiedInbox";
 import {
   isSnoozed,
   pruneSnoozeMap,
@@ -128,7 +122,6 @@ export default function MessagesPage() {
   const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
   const prefetchInflight = useRef<Set<string>>(new Set());
   const replyDraftCache = useRef<Map<string, string>>(new Map());
-  const loadGenRef = useRef(0);
   const inboxPrefsRef = useRef<InboxPrefs>({});
   const lastSummaryFingerprint = useRef("");
   const accountsRef = useRef(accounts);
@@ -353,109 +346,18 @@ export default function MessagesPage() {
     }
   }, [authMode, accessToken]);
 
-  const loadUnified = useCallback(async (opts?: { silent?: boolean }) => {
-    const gen = ++loadGenRef.current;
-    const { folderScoped, allMailScope, mailAccountId, mailFolderId } = buildInboxLoadScope({
-      activeTab,
-      selectedMailFolder,
-      includeAllMail,
-    });
-    const cacheKey = inboxCacheKey({
-      businessProfileId: activeProfileId,
-      mailAccountId,
-      mailFolderId,
-      includeAllMail: allMailScope,
-    });
-
-    if (!opts?.silent) {
-      setError(null);
-      setZernioNote(null);
-      setMailErrors([]);
-      const cached = readInboxCache(cacheKey);
-      if (cached && cached.length > 0) {
-        // Show last known inbox immediately while fresh data loads.
-        setMessages(cached);
-        setLoading(false);
-      } else {
-        setLoading(true);
-      }
-    }
-
-    const baseParams = new URLSearchParams();
-    if (activeProfileId) baseParams.set("business_profile_id", activeProfileId);
-    if (folderScoped && selectedMailFolder) {
-      baseParams.set("mailAccountId", selectedMailFolder.accountId);
-      baseParams.set("mailFolderId", selectedMailFolder.folderId);
-    } else if (allMailScope) {
-      baseParams.set("includeAllMail", "1");
-    }
-
-    async function fetchSources(sources: "mail" | "dm") {
-      const params = new URLSearchParams(baseParams);
-      params.set("sources", sources);
-      const unifiedUrl = apiUrl(`/api/messages/unified?${params.toString()}`);
-      let res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
-      if (res.status === 401) {
-        await ensureBackendSession();
-        res = await fetchWithTimeout(unifiedUrl, { credentials: "include" });
-      }
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(apiErrorMessage(d, "Kunde inte ladda meddelanden."));
-      }
-      return res.json() as Promise<{
-        messages?: UnifiedMessage[];
-        mailErrors?: Array<{ accountId: string; platform: string; error: string }>;
-        zernioNote?: string;
-      }>;
-    }
-
-    try {
-      // Phase 1 — mail first (provider list is now lightweight metadata).
-      const mailData = await fetchSources("mail");
-      if (gen !== loadGenRef.current) return;
-      const mailMsgs = Array.isArray(mailData.messages) ? mailData.messages : [];
-      setMessages((prev) => {
-        // Folder views are mail-only — do not keep DMs in that cache key.
-        const next = folderScoped
-          ? sortUnifiedMessages(mailMsgs)
-          : mergeUnifiedByKind(prev, mailMsgs, "email");
-        writeInboxCache(cacheKey, next);
-        return next;
-      });
-      if (Array.isArray(mailData.mailErrors) && mailData.mailErrors.length > 0) {
-        setMailErrors(mailData.mailErrors);
-      }
-      if (!opts?.silent) setLoading(false);
-
-      // Phase 2 — DMs after mail is visible (skip when viewing a specific mail folder).
-      if (!folderScoped) {
-        try {
-          const dmData = await fetchSources("dm");
-          if (gen !== loadGenRef.current) return;
-          const dmMsgs = Array.isArray(dmData.messages) ? dmData.messages : [];
-          setMessages((prev) => {
-            const next = mergeUnifiedByKind(prev, dmMsgs, "dm");
-            writeInboxCache(cacheKey, next);
-            return next;
-          });
-          if (typeof dmData.zernioNote === "string" && dmData.zernioNote) {
-            setZernioNote(dmData.zernioNote);
-          }
-        } catch {
-          /* Keep mail rows if DM fetch fails. */
-        }
-      }
-    } catch (e) {
-      if (gen !== loadGenRef.current) return;
-      if (!opts?.silent) {
-        setError(e instanceof Error ? e.message : "Något gick fel");
-        if (!readInboxCache(cacheKey)?.length) setMessages([]);
-      }
-    } finally {
-      if (gen === loadGenRef.current && !opts?.silent) setLoading(false);
-    }
-  }, [ensureBackendSession, activeProfileId, activeTab, selectedMailFolder, includeAllMail]);
+  const { loadUnified } = useLoadUnifiedInbox({
+    activeTab,
+    selectedMailFolder,
+    includeAllMail,
+    activeProfileId,
+    ensureBackendSession,
+    setMessages,
+    setLoading,
+    setError,
+    setZernioNote,
+    setMailErrors,
+  });
 
   useEffect(() => {
     function handleLiveSync() {

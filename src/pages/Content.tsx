@@ -12,7 +12,6 @@ import { loadSelectedContent, saveSelectedContent, assetSelectionKey, type Selec
 import { fetchProducts } from "@/lib/productsApi";
 import { useProfileDocument } from "@/features/profile-documents";
 import { formatOAuthErrorMessage, type OAuthErrorDetails } from "@/lib/oauthErrors";
-import { appendOAuthProfileParams } from "@/lib/oauthProfile";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { SectionConnectionStatus } from "@/components/SectionConnectionStatus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -323,7 +322,6 @@ export default function ContentPage() {
     [accounts]
   );
   const selectedAccountId = getSelectedAccountId("content");
-  const [isConnecting, setIsConnecting] = useState(false);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
   const [driveView, setDriveView] = useState<"my-drive" | "shared-with-me">("my-drive");
@@ -606,58 +604,6 @@ export default function ContentPage() {
     return () => window.removeEventListener("message", handleDriveOauthMessage);
   }, [addAccountFromOAuth, setSelectedAccountId]);
 
-  async function connectDrive() {
-    setIsConnecting(true);
-    setPopupOauthError(null);
-    try {
-      await ensureBackendSession();
-      const healthRes = await fetchWithTimeout(apiUrl("/api/health"), { credentials: "include" });
-      if (!healthRes.ok) {
-        setPopupOauthError({
-          code: "backend_unavailable",
-          statusCode: String(healthRes.status),
-          exception: "Hälsokontrollen misslyckades innan Google Drive-OAuth kunde startas.",
-          hint: "Starta backend med `npm run dev` eller `npm run dev:server` och försök igen.",
-        });
-        return;
-      }
-    } catch {
-      setPopupOauthError({
-        code: "backend_unavailable",
-        statusCode: null,
-        exception: "Kunde inte nå `/api/health` innan Google Drive-OAuth kunde startas.",
-        hint: "Starta backend med `npm run dev` eller `npm run dev:server` och försök igen.",
-      });
-      return;
-    } finally {
-      setIsConnecting(false);
-    }
-
-    const params = new URLSearchParams();
-    params.set("app_origin", window.location.origin);
-    appendOAuthProfileParams(params, activeProfileId);
-    params.set("popup", "1");
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const popupWidth = 540;
-    const popupHeight = 720;
-    const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
-    const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
-    const popup = window.open(
-      `${apiUrl("/api/auth/google_drive")}${query}`,
-      "google-drive-oauth",
-      `popup=yes,width=${popupWidth},height=${popupHeight},left=${left},top=${top}`
-    );
-
-    if (!popup) {
-      params.delete("popup");
-      const fallbackQuery = params.toString() ? `?${params.toString()}` : "";
-      window.location.href = `${apiUrl("/api/auth/google_drive")}${fallbackQuery}`;
-      return;
-    }
-
-    popup.focus();
-  }
-
   function assetFromDriveFile(file: DriveBrowserItem): SelectedContentAsset | null {
     if ((file.kind !== "image" && file.kind !== "video") || !activeAccount) return null;
     return {
@@ -888,18 +834,14 @@ export default function ContentPage() {
         description="Välj media från Drive, skapa med apiai.me och publicera eller spara som utkast — allt i ett flöde."
         actions={
           <>
-            <Button
-              variant="outline"
-              onClick={() => void connectDrive()}
-              disabled={isConnecting}
-            >
-              {isConnecting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <FolderOpen className="h-4 w-4 mr-2" />
-              )}
-              Koppla Google Drive
-            </Button>
+            {driveAccounts.length === 0 ? (
+              <Button asChild variant="outline">
+                <Link to="/connections?q=drive">
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Öppna Kopplingar
+                </Link>
+              </Button>
+            ) : null}
             {activeAccount ? (
               <Button
                 variant="ghost"
@@ -1336,14 +1278,9 @@ export default function ContentPage() {
           title="Ingen Google Drive kopplad ännu"
           description="Koppla Drive under Kopplingar — sedan kan du bläddra mappar, markera media och schemalägga publicering."
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button asChild>
-                <Link to="/connections?q=drive">Öppna Kopplingar</Link>
-              </Button>
-              <Button variant="outline" onClick={() => void connectDrive()} disabled={isConnecting}>
-                {isConnecting ? "Ansluter…" : "Koppla här"}
-              </Button>
-            </div>
+            <Button asChild>
+              <Link to="/connections?q=drive">Öppna Kopplingar</Link>
+            </Button>
           }
         />
       ) : loading ? (

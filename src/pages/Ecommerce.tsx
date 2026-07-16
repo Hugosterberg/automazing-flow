@@ -25,14 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -63,17 +55,12 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAccountData } from "@/hooks/useAccountData";
 import { OAuthErrorAlert } from "@/components/OAuthErrorAlert";
 import { formatOAuthErrorMessage } from "@/lib/oauthErrors";
-import { appendOAuthProfileParams } from "@/lib/oauthProfile";
-
-import { apiUrl } from "@/lib/apiBase";
 import { formatCurrency, formatNumber, formatShortDate, formatSmartDate } from "@/lib/format";
 import type { ConnectedAccount } from "@/types/accounts";
 import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
-import { ShopifyConnectGuide } from "@/features/ecommerce/ShopifyConnectGuide";
 import { AbandonedCheckoutRecoveryButton } from "@/features/ecommerce/AbandonedCheckoutRecoveryButton";
 import { useLeads } from "@/features/leads";
-import { normalizeShopifyShopDomain, SHOPIFY_DOMAIN_EXAMPLE } from "@/features/ecommerce/shopifyConnect";
 import { alibabaImportToInput } from "@/lib/productStore";
 import {
   fetchProducts,
@@ -395,9 +382,6 @@ export default function Ecommerce() {
     setSearchParams(params, { replace: true });
   }
 
-  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
-  const [shopDomain, setShopDomain] = useState("");
-  const [shopDomainError, setShopDomainError] = useState<string | null>(null);
   const [notionParentId, setNotionParentId] = useState("");
   const [notionParentType, setNotionParentType] = useState<"page_id" | "database_id">("page_id");
   const [notionTitle, setNotionTitle] = useState("");
@@ -437,27 +421,6 @@ export default function Ecommerce() {
       /* storage unavailable — filters just won't persist */
     }
   }, [filterProfileKey, orderPaymentFilter, orderFulfillmentFilter]);
-
-  function handleConnect() {
-    setShopDomain("");
-    setShopDomainError(null);
-    setConnectDialogOpen(true);
-  }
-
-  function handleConnectSubmit() {
-    const shop = normalizeShopifyShopDomain(shopDomain);
-    if (!shop) {
-      setShopDomainError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
-      return;
-    }
-    const params = new URLSearchParams({ shop });
-    params.set("app_origin", window.location.origin);
-    appendOAuthProfileParams(params, activeProfileId);
-    setConnectDialogOpen(false);
-    setShopDomain("");
-    setShopDomainError(null);
-    window.location.href = `${apiUrl("/api/auth/shopify")}?${params}`;
-  }
 
   function handleRefresh() {
     void refresh();
@@ -885,17 +848,12 @@ export default function Ecommerce() {
                   : "Koppla din Shopify-butik för att se och hantera ordrar här."
             }
             action={
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button asChild className="glow-sm">
-                  <Link to="/connections?q=shopify">
-                    <ShopifyIcon className="h-4 w-4 mr-2" />
-                    Öppna Kopplingar
-                  </Link>
-                </Button>
-                <Button variant="outline" onClick={handleConnect}>
-                  Ange butik här
-                </Button>
-              </div>
+              <Button asChild className="glow-sm">
+                <Link to="/connections?q=shopify">
+                  <ShopifyIcon className="h-4 w-4 mr-2" />
+                  Öppna Kopplingar
+                </Link>
+              </Button>
             }
           />
           <p className="text-xs text-muted-foreground/60 text-center max-w-lg mx-auto">
@@ -1717,47 +1675,6 @@ export default function Ecommerce() {
         </div>
       </div>
 
-      <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShopifyIcon className="h-4 w-4" />
-              Koppla Shopify
-            </DialogTitle>
-            <DialogDescription>
-              Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
-            </DialogDescription>
-          </DialogHeader>
-          <ShopifyConnectGuide />
-          <div className="space-y-2 py-2">
-            <Label htmlFor="ecom-shop-domain">Butiksdomän</Label>
-            <Input
-              id="ecom-shop-domain"
-              placeholder={SHOPIFY_DOMAIN_EXAMPLE}
-              value={shopDomain}
-              onChange={(e) => {
-                setShopDomain(e.target.value);
-                setShopDomainError(null);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && handleConnectSubmit()}
-              aria-invalid={Boolean(shopDomainError)}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">
-              Du kan också klistra in en Shopify Admin-länk, t.ex. admin.shopify.com/store/mystore.
-            </p>
-            {shopDomainError ? <p className="text-xs text-destructive">{shopDomainError}</p> : null}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
-              Avbryt
-            </Button>
-            <Button onClick={handleConnectSubmit} disabled={!shopDomain.trim()}>
-              Koppla
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
