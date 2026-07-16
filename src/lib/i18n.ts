@@ -60,6 +60,8 @@ import svEcommerce from "@/locales/sv/ecommerce.json";
 import enEcommerce from "@/locales/en/ecommerce.json";
 import svInsights from "@/locales/sv/insights.json";
 import enInsights from "@/locales/en/insights.json";
+import svCustomers from "@/locales/sv/customers.json";
+import enCustomers from "@/locales/en/customers.json";
 
 export const i18n = i18next;
 
@@ -86,6 +88,7 @@ const NAMESPACES = [
   "marketing",
   "ecommerce",
   "insights",
+  "customers",
 ] as const;
 
 function applyLanguageSideEffects(lang: string): void {
@@ -127,6 +130,7 @@ export function initI18n(): void {
         marketing: svMarketing,
         ecommerce: svEcommerce,
         insights: svInsights,
+        customers: svCustomers,
       },
       en: {
         common: enCommon,
@@ -151,6 +155,7 @@ export function initI18n(): void {
         marketing: enMarketing,
         ecommerce: enEcommerce,
         insights: enInsights,
+        customers: enCustomers,
       },
     },
     lng: initialLanguage,
