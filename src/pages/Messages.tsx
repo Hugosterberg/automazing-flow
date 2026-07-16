@@ -56,8 +56,6 @@ import {
   MessageMailToolbar,
   MessageTriageBuckets,
   classifyMessageTriage,
-  compareByTriage,
-  countByTriageBucket,
   isTriageBucket,
   TRIAGE_BUCKET_LABELS,
   type TriageBucketFilter,
@@ -72,21 +70,11 @@ import { inboxCacheKey, writeInboxCache } from "@/features/messages/inboxCache";
 import { buildInboxLoadScope } from "@/features/messages/inboxLoadParams";
 import { useLoadUnifiedInbox } from "@/features/messages/useLoadUnifiedInbox";
 import { useMessagesKeyboardShortcuts } from "@/features/messages/useMessagesKeyboardShortcuts";
-import {
-  isSnoozed,
-  pruneSnoozeMap,
-  snoozeUntilNextWeek,
-  snoozeUntilTomorrowMorning,
-  type SnoozeMap,
-} from "@/features/messages/messageSnooze";
+import { useMessageTriageState } from "@/features/messages/useMessageTriageState";
+import { useFilteredInbox } from "@/features/messages/useFilteredInbox";
+import { useMessageAiAssist } from "@/features/messages/useMessageAiAssist";
 
 const MESSAGE_ACCOUNT_PLATFORMS = ["gmail", "outlook", "instagram", "facebook", "whatsapp"] as const;
-
-/** Cap for the persisted handled-ids list so the document stays bounded. */
-const MAX_HANDLED_IDS = 500;
-
-/** Cap for the persisted read-ids list so the document stays bounded. */
-const MAX_READ_IDS = 1000;
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
@@ -98,7 +86,6 @@ export default function MessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
-  const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zernioNote, setZernioNote] = useState<string | null>(null);
@@ -110,20 +97,17 @@ export default function MessagesPage() {
   const defaultedFilter = useRef(false);
   /** Once the user picks a row, keep it until context changes or it leaves the list. */
   const userPickedMessage = useRef(false);
-  const autoDraftForId = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusReplyRef = useRef<(() => void) | null>(null);
   const threadPrefetchCache = useRef<Map<string, ThreadMessage[]>>(new Map());
   const prefetchInflight = useRef<Set<string>>(new Set());
   const replyDraftCache = useRef<Map<string, string>>(new Map());
   const inboxPrefsRef = useRef<InboxPrefs>({});
-  const lastSummaryFingerprint = useRef("");
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [replyDraft, setReplyDraft] = useState("");
-  const [draftBusy, setDraftBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
   const [replySent, setReplySent] = useState(false);
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
@@ -138,11 +122,6 @@ export default function MessagesPage() {
   const [mailSort, setMailSortState] = useState<MailSortOrder>("triage");
   const [triageBucket, setTriageBucketState] = useState<TriageBucketFilter>("all");
 
-  // "Handled" is app-level triage (the providers don't expose mark-as-read):
-  // handled ids stop counting as unanswered in this inbox. Persisted per
-  // profile so the state follows the user across devices.
-  const handledDoc = useProfileDocument<string[]>("messages-handled", []);
-  const snoozeDoc = useProfileDocument<SnoozeMap>("messages-snoozed", {});
   const inboxPrefsDoc = useProfileDocument<InboxPrefs>("messages-inbox-prefs", {});
   inboxPrefsRef.current = inboxPrefsDoc.data ?? {};
   const patchInboxPrefs = useCallback(
@@ -153,87 +132,32 @@ export default function MessagesPage() {
     },
     [inboxPrefsDoc]
   );
-  const handledIds = useMemo(
-    () => new Set(Array.isArray(handledDoc.data) ? handledDoc.data : []),
-    [handledDoc.data]
-  );
-  const snoozeMap = useMemo(
-    () => pruneSnoozeMap(snoozeDoc.data && typeof snoozeDoc.data === "object" ? snoozeDoc.data : {}),
-    [snoozeDoc.data]
-  );
-  const snoozeMessage = useCallback(
-    (id: string, until: "tomorrow" | "week") => {
-      const untilIso = until === "week" ? snoozeUntilNextWeek() : snoozeUntilTomorrowMorning();
-      const next = pruneSnoozeMap({ ...snoozeMap, [id]: untilIso });
-      snoozeDoc.save(next);
-      sonnerToast.success(until === "week" ? "Uppskjutet till nästa vecka" : "Uppskjutet till imorgon");
-    },
-    [snoozeDoc, snoozeMap]
-  );
-  const markHandled = useCallback(
-    (ids: string[], opts?: { silent?: boolean }) => {
-      const fresh = ids.filter((id) => !handledIds.has(id));
-      if (fresh.length === 0) return;
-      const prev = Array.isArray(handledDoc.data) ? handledDoc.data : [];
-      const next = [...prev, ...fresh].slice(-MAX_HANDLED_IDS);
-      handledDoc.save(next);
-      if (opts?.silent) return;
-      if (fresh.length === 1) {
-        sonnerToast.success("Markerad som hanterad", {
-          action: { label: "Ångra", onClick: () => handledDoc.save(prev) },
-        });
-      } else {
-        sonnerToast.success(`${fresh.length} meddelanden markerade som hanterade`);
-      }
-    },
-    [handledDoc, handledIds]
-  );
-  const unmarkHandled = useCallback(
-    (ids: string[]) => {
-      const remove = new Set(ids);
-      const prev = Array.isArray(handledDoc.data) ? handledDoc.data : [];
-      const next = prev.filter((id) => !remove.has(id));
-      if (next.length === prev.length) return;
-      handledDoc.save(next);
-      sonnerToast.success("Meddelandet är öppet igen");
-    },
-    [handledDoc]
-  );
 
-  // Providers don't expose mark-as-read either, so track locally which
-  // unread messages have been opened in the reading pane: keeps the inbox
-  // list's unread badge/bold state in sync with what the user has actually
-  // seen, instead of only clearing once a message is explicitly "Handled".
-  const readDoc = useProfileDocument<string[]>("messages-read", []);
-  const readIds = useMemo(
-    () => new Set(Array.isArray(readDoc.data) ? readDoc.data : []),
-    [readDoc.data]
-  );
-  const markRead = useCallback(
-    (id: string) => {
-      if (readIds.has(id)) return;
-      const prev = Array.isArray(readDoc.data) ? readDoc.data : [];
-      readDoc.save([...prev, id].slice(-MAX_READ_IDS));
-    },
-    [readDoc, readIds]
-  );
-  const isUnanswered = useCallback(
-    // Stay in the open/queue until explicitly marked handled — opening to read
-    // must not empty the triage list (local readIds only softens the unread badge).
-    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id),
-    [handledIds]
-  );
-
-  const isVisuallyUnread = useCallback(
-    (msg: UnifiedMessage) => msg.isUnread && !handledIds.has(msg.id) && !readIds.has(msg.id),
-    [handledIds, readIds]
-  );
+  const {
+    handledIds,
+    snoozeMap,
+    markHandled,
+    unmarkHandled,
+    markRead,
+    snoozeMessage,
+    isUnanswered,
+    isVisuallyUnread,
+  } = useMessageTriageState();
 
   const selectedId = searchParams.get("id");
   const selectedMessage = useMemo(
     () => (selectedId ? messages.find((m) => m.id === selectedId) ?? null : null),
     [messages, selectedId]
   );
+
+  const { aiSummaries, draftBusy, setDraftBusy, draftReply, autoDraftForId } = useMessageAiAssist({
+    messages,
+    selectedMessage,
+    selectedId,
+    replySent,
+    sendBusy,
+    setReplyDraft,
+  });
 
   const selectMessage = useCallback(
     (msg: UnifiedMessage | null, opts?: { fromUser?: boolean }) => {
@@ -599,186 +523,31 @@ export default function MessagesPage() {
     setMailFolders(folders);
   }, []);
 
-  const selectedIdRef = useRef<string | null>(null);
-  selectedIdRef.current = selectedId;
-
-  useEffect(() => {
-    if (!selectedMessage || draftBusy || sendBusy || replySent) return;
-    if (autoDraftForId.current === selectedMessage.id) return;
-    const text = (selectedMessage.body || selectedMessage.snippet || "").trim();
-    if (!text) return;
-    // On phones/tablets, wait for an explicit AI tap so reading stays calm.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-      return;
-    }
-    // Debounce so rapid J/K navigation doesn't spam AI draft requests.
-    const messageId = selectedMessage.id;
-    const authorName = selectedMessage.from.name || selectedMessage.subject;
-    const kind = selectedMessage.kind === "email" ? "email" : "dm";
-    const bodyText = selectedMessage.body || selectedMessage.snippet;
-    const timer = window.setTimeout(() => {
-      if (autoDraftForId.current === messageId) return;
-      if (selectedIdRef.current !== messageId) return;
-      autoDraftForId.current = messageId;
-      void draftReplyFor(messageId, kind, authorName, bodyText);
-    }, 550);
-    return () => window.clearTimeout(timer);
-  }, [selectedMessage?.id, draftBusy, sendBusy, replySent]);
-
-  async function draftReplyFor(
-    forId: string,
-    kind: "email" | "dm",
-    authorName: string,
-    text: string
-  ) {
-    setDraftBusy(true);
-    try {
-      const payload = await apiJson<{ draft?: unknown }>("/api/ai/reply-draft", "Kunde inte skapa AI-utkast", {
-        body: { kind, authorName, text },
-      });
-      if (selectedIdRef.current !== forId) return;
-      setReplyDraft(String(payload?.draft || ""));
-    } catch (e) {
-      if (selectedIdRef.current !== forId) return;
-      toast({
-        title: "AI-utkast misslyckades",
-        description: e instanceof Error ? e.message : "Okänt fel",
-        variant: "destructive",
-      });
-    } finally {
-      setDraftBusy(false);
-    }
-  }
-
-  async function draftReply() {
-    if (!selectedMessage) return;
-    autoDraftForId.current = selectedMessage.id;
-    await draftReplyFor(
-      selectedMessage.id,
-      selectedMessage.kind === "email" ? "email" : "dm",
-      selectedMessage.from.name || selectedMessage.subject,
-      selectedMessage.body || selectedMessage.snippet
-    );
-  }
-
-  const summaryPayload = useMemo(
-    () =>
-      messages.slice(0, 10).map((m) => ({
-        id: m.id,
-        subject: m.subject,
-        snippet: m.snippet,
-        from: m.from,
-      })),
-    [messages]
-  );
-  const summaryFingerprint = useMemo(
-    () => summaryPayload.map((m) => `${m.id}\0${m.snippet}\0${m.subject}`).join("|"),
-    [summaryPayload]
-  );
-
-  useEffect(() => {
-    if (summaryPayload.length === 0) {
-      lastSummaryFingerprint.current = "";
-      setAiSummaries({});
-      return;
-    }
-    if (summaryFingerprint === lastSummaryFingerprint.current) return;
-    const ac = new AbortController();
-    void fetchWithTimeout(apiUrl("/api/messages/summaries"), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: summaryPayload }),
-      signal: ac.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("summary_failed"))))
-      .then((d) => {
-        if (ac.signal.aborted || !d || typeof d.summaries !== "object") return;
-        lastSummaryFingerprint.current = summaryFingerprint;
-        setAiSummaries(d.summaries);
-      })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [summaryFingerprint, summaryPayload]);
-
   const hasAnyMailConnected = mailAccounts.length > 0;
-  const filteredMessages = useMemo(() => {
-    const q = debouncedInboxSearch.trim().toLowerCase();
-    const rows = messages
-      .filter((msg) => messageMatchesTab(msg, activeTab))
-      .filter((msg) => {
-        if (inboxFilter === "open") return isUnanswered(msg);
-        if (inboxFilter === "handled") return handledIds.has(msg.id);
-        return true;
-      })
-      .filter((msg) => {
-        // Snoozed messages leave the work queues until they resurface.
-        if (inboxFilter === "handled" || inboxFilter === "all") return true;
-        return !isSnoozed(snoozeMap, msg.id);
-      })
-      .filter((msg) => {
-        if (activeTab !== "mail" || mailViewFilter === "all") return true;
-        if (mailViewFilter === "unread") return isVisuallyUnread(msg);
-        if (mailViewFilter === "starred") return Boolean(msg.isStarred);
-        return true;
-      })
-      .filter((msg) => {
-        if (triageBucket === "all") return true;
-        return classifyMessageTriage(msg).bucket === triageBucket;
-      })
-      .filter((msg) => {
-        if (!q) return true;
-        const haystack = [
-          msg.subject,
-          msg.from.name,
-          msg.from.email,
-          msg.snippet,
-          msg.body,
-          msg.accountLabel,
-        ]
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(q);
-      });
-    return rows.sort((a, b) => {
-      if (mailSort === "newest" || mailSort === "oldest") {
-        const aDate = Date.parse(a.date) || 0;
-        const bDate = Date.parse(b.date) || 0;
-        return mailSort === "oldest" ? aDate - bDate : bDate - aDate;
-      }
-      // Default "triage": action buckets first, then open-before-handled.
-      const triageCmp = compareByTriage(a, b);
-      if (triageCmp !== 0) return triageCmp;
-      const aOpen = isUnanswered(a);
-      const bOpen = isUnanswered(b);
-      if (aOpen !== bOpen) return aOpen ? -1 : 1;
-      return 0;
-    });
-  }, [
-    activeTab,
+
+  const {
+    filteredMessages,
+    triageCounts,
+    unansweredInTab,
+    inboxStats,
+    inboxLiveHint,
+    tabCounts,
+    hasMessagesInTab,
+    openTotal,
+  } = useFilteredInbox({
     messages,
+    activeTab,
     inboxFilter,
     debouncedInboxSearch,
-    isUnanswered,
-    isVisuallyUnread,
-    handledIds,
     mailViewFilter,
     mailSort,
     triageBucket,
+    handledIds,
     snoozeMap,
-  ]);
-
-  const triageCounts = useMemo(() => {
-    const inTab = messages
-      .filter((msg) => messageMatchesTab(msg, activeTab))
-      .filter((msg) => {
-        if (inboxFilter === "open") return isUnanswered(msg);
-        if (inboxFilter === "handled") return handledIds.has(msg.id);
-        if (inboxFilter === "queue") return true;
-        return true;
-      });
-    return countByTriageBucket(inTab);
-  }, [messages, activeTab, inboxFilter, isUnanswered, handledIds]);
+    isUnanswered,
+    isVisuallyUnread,
+    aiSummaries,
+  });
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -810,33 +579,6 @@ export default function MessagesPage() {
     () => (selectedId ? filteredMessages.findIndex((m) => m.id === selectedId) : -1),
     [filteredMessages, selectedId]
   );
-
-  const unansweredInTab = useMemo(
-    () => messages.filter((msg) => messageMatchesTab(msg, activeTab) && isUnanswered(msg)),
-    [messages, activeTab, isUnanswered]
-  );
-
-  const inboxStats = useMemo(() => {
-    const open = unansweredInTab;
-    let oldestWait: string | null = null;
-    if (open.length > 0) {
-      const oldest = open.reduce((a, b) => (Date.parse(a.date) < Date.parse(b.date) ? a : b));
-      oldestWait = formatWaitTime(oldest.date);
-    }
-    const aiReadyCount = open.filter((m) => Boolean(aiSummaries[m.id])).length;
-    return { openCount: open.length, oldestWait, aiReadyCount };
-  }, [unansweredInTab, aiSummaries]);
-
-  const inboxLiveHint = useMemo(() => {
-    if (triageCounts.today > 0) {
-      return `${triageCounts.today} att svara idag · ${triageCounts.week} denna vecka · filtrera hinkarna ovanför listan`;
-    }
-    if (inboxStats.openCount === 0) return null;
-    const parts = [`${inboxStats.openCount} öppna i inkorgen`];
-    if (inboxStats.oldestWait) parts.push(`äldsta väntar ${inboxStats.oldestWait}`);
-    if (inboxStats.aiReadyCount > 0) parts.push(`${inboxStats.aiReadyCount} med AI-utkast klara`);
-    return parts.join(" · ");
-  }, [inboxStats, triageCounts]);
 
   const pickNextAfter = useCallback(
     (fromId: string, list: UnifiedMessage[]) => {
@@ -1086,26 +828,6 @@ export default function MessagesPage() {
     [aiSummaries, handledIds, isUnanswered, isVisuallyUnread]
   );
 
-  const tabCounts = useMemo(
-    () =>
-      MESSAGE_TABS.reduce(
-        (acc, tab) => {
-          const rows = messages.filter((msg) => messageMatchesTab(msg, tab.value));
-          acc[tab.value] = {
-            total: rows.length,
-            unread: rows.filter(isUnanswered).length,
-          };
-          return acc;
-        },
-        {} as Record<MessageChannelTab, { total: number; unread: number }>
-      ),
-    [messages, isUnanswered]
-  );
-  const hasMessagesInTab = useMemo(
-    () => messages.some((msg) => messageMatchesTab(msg, activeTab)),
-    [messages, activeTab]
-  );
-
   const inboxEmptyState = useMemo(
     () =>
       inboxEmptyCopy({
@@ -1264,6 +986,7 @@ export default function MessagesPage() {
     aiSummaries,
     canReplyToSelected,
     draftBusy,
+    draftReply,
     filteredMessages,
     handledIds,
     isUnanswered,
@@ -1287,11 +1010,6 @@ export default function MessagesPage() {
     threadMessages,
     unmarkHandled,
   ]);
-
-  const openTotal = useMemo(
-    () => messages.filter((msg) => messageMatchesTab(msg, activeTab) && isUnanswered(msg)).length,
-    [messages, activeTab, isUnanswered]
-  );
 
   const isMobile = useIsMobile();
   const isStackedWorkspace = useStackedWorkspace();

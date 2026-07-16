@@ -61,7 +61,6 @@ import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/
 import { useLeads, isLeadOpen, isFollowUpDueToday, isFollowUpOverdue } from "@/features/leads";
 import { isoToLocalDateInputValue } from "@/lib/localDate";
 import { useAccountData } from "@/hooks/useAccountData";
-import type { ConnectedAccount } from "@/types/accounts";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { apiErrorMessage } from "@/lib/apiError";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -69,56 +68,19 @@ import { accountDataUrl } from "@/lib/accountDataUrl";
 import { useScheduledPosts, SCHEDULED_POST_STATUS_LABELS, type ScheduledPost } from "@/features/social";
 import { platformLabel } from "@/lib/platformLabels";
 import { isShortcutBlocked, isTypingTarget, isPlainLetterShortcut, matchesKey } from "@/lib/keyboardShortcuts";
-
-const STORAGE_KEY = "automazing-calendar-events";
-
-function sortCalendarAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
-  const rank = (p: string) => (p === "google_calendar" ? 0 : p === "outlook_calendar" ? 1 : 9);
-  const d = rank(a.platform) - rank(b.platform);
-  if (d !== 0) return d;
-  return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
-}
-
-function readLegacyEvents(): CalendarEvent[] | undefined {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CalendarEvent[]) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function writeLegacyEvents(events: CalendarEvent[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-  } catch {
-    /* ignore */
-  }
-}
-
-function sortByTime(events: CalendarEvent[]): CalendarEvent[] {
-  return [...events].sort((a, b) => {
-    if (!a.time) return 1;
-    if (!b.time) return -1;
-    return a.time.localeCompare(b.time);
-  });
-}
-
-function isExternalEvent(ev: CalendarEvent & { source?: string; readOnly?: boolean }): boolean {
-  return ev.source === "external" || Boolean(ev.readOnly);
-}
+import {
+  sortCalendarAccounts,
+  readLegacyEvents,
+  writeLegacyEvents,
+  sortByTime,
+  isExternalEvent,
+  localTimeOfIso,
+} from "@/features/calendar/calendarHelpers";
 
 type ViewMode = "day" | "week" | "month";
 
 /** Calendar row: a normal event, or a social post carried along for its dialog. */
 type CalendarItem = CalendarEvent & { post?: ScheduledPost };
-
-function localTimeOfIso(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 type CalendarProviderData = {
   source?: string;
