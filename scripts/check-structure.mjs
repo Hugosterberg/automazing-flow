@@ -34,6 +34,7 @@ function cronModulesContain(pathStr) {
 
 /** Soft budgets — fail if exceeded (keeps pages/routers composition-focused). */
 const FILE_BUDGETS = [
+  { file: "src/pages/Index.tsx", max: 1000 },
   { file: "src/pages/Messages.tsx", max: 1000 },
   { file: "src/pages/Content.tsx", max: 900 },
   { file: "src/pages/Ecommerce.tsx", max: 900 },
