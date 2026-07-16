@@ -10,6 +10,7 @@ export { MessageMailToolbar } from "./MessageMailToolbar";
 export { MessageTriageBuckets } from "./MessageTriageBuckets";
 export { MailReplyDraftsStrip } from "./MailReplyDraftsStrip";
 export type { MailReplyQueueItem } from "./MailReplyDraftsStrip";
+export { MailConnectEmptyCards } from "./MailConnectEmptyCards";
 export {
   classifyMessageTriage,
   compareByTriage,

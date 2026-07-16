@@ -8,15 +8,12 @@
  */
 
 import crypto from "crypto";
-import { automationSettingsRowToDomain, runAutoReplyForAllProfiles } from "../automation/autoReply.ts";
+import { automationSettingsRowToDomain } from "../automation/autoReply.ts";
 import { buildDigest } from "../lib/digest.ts";
 import { sendEmail, isEmailConfigured } from "../lib/email.ts";
 import {
   countPendingOutreachDrafts,
   runCartRecovery,
-  runContentPipeline,
-  runMailReplyAuto,
-  runReviewReplyAuto,
   runSalesOutreachAuto,
   runStaleLeadOutreach,
 } from "../lib/flowAutomationJobs.ts";
@@ -26,17 +23,22 @@ import { buildSocialStatsSnapshotRow } from "../lib/socialStatsSnapshots.ts";
 import { gatherMarketingData, readGoogleAdsConfig, readMetaGraphVersion } from "../lib/marketingData.ts";
 import { portfolioScoreDeltaFromSnapshots } from "../lib/marketingSnapshotTrend.ts";
 import { runMarketingActions } from "../lib/marketingCampaignActions.ts";
-import { runEngagementFollowup, runWeeklyInsightDigest } from "../lib/engagementFollowup.ts";
 import { loadProfileDocument } from "../lib/profileDocumentStore.ts";
 import { logActivity } from "../lib/activityLog.ts";
 import { recordAutomationRun } from "../lib/automationRunLog.ts";
 import { buildWeeklyReport } from "../lib/weeklyReport.ts";
 import { fetchMarketPulseForCron, DEFAULT_MARKET_PULSE_TOPIC } from "../lib/marketPulseFetch.ts";
-import { isJobEnabledForProfile, shouldRunProfileJob } from "../lib/profileJobSchedule.ts";
+import { shouldRunProfileJob } from "../lib/profileJobSchedule.ts";
 import { buildLeadReminder, buildTaskReminder } from "../lib/reminderEmails.ts";
-import { publishDueScheduledPosts } from "../lib/scheduledPostsPublisher.ts";
 import { registerCleanupOauthPendingCron } from "./cron/cleanupOauthPending.js";
 import { registerRefreshAiRecommendationsCron } from "./cron/refreshAiRecommendations.js";
+import { registerAutoReplyCron } from "./cron/autoReply.js";
+import { registerPublishScheduledPostsCron } from "./cron/publishScheduledPosts.js";
+import { registerContentPipelineCron } from "./cron/contentPipeline.js";
+import { registerMailReplyAutoCron } from "./cron/mailReplyAuto.js";
+import { registerReviewReplyAutoCron } from "./cron/reviewReplyAuto.js";
+import { registerWeeklyInsightDigestCron } from "./cron/weeklyInsightDigest.js";
+import { registerEngagementFollowupCron } from "./cron/engagementFollowup.js";
 
 /**
  * Resolve where a profile's notifications go: the explicit notification email
@@ -268,90 +270,22 @@ export function registerCronRoutes(app, deps) {
     isProfileJobDueNow,
   });
 
-  /**
-   * Auto-reply automation sweep: for every business_profile with
-   * `automation_settings.dm_auto_reply_enabled`, draft (or send, per the
-   * profile's mode) AI replies to unread Zernio inbox conversations.
-   * Idempotent via auto_reply_log — safe to trigger as often as you like
-   * (Vercel Cron on Pro, or any external scheduler with the CRON_SECRET).
-   */
-  app.get("/api/cron/auto-reply", withRunRecording("auto-reply", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    if (!supabaseAdmin || !zernio || !secretResolver) {
-      return res
-        .status(503)
-        .json({ error: "auto_reply_dependencies_not_configured" });
-    }
+  registerAutoReplyCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    zernio,
+    secretResolver,
+  });
 
-    try {
-      const result = await runAutoReplyForAllProfiles({
-        supabaseAdmin,
-        zernio,
-        resolveOpenAiKey: (bpId) => secretResolver.resolve(bpId, "OPENAI_API_KEY"),
-      });
-      const totals = result.summaries.reduce(
-        (acc, s) => ({
-          drafted: acc.drafted + s.drafted,
-          sent: acc.sent + s.sent,
-          failed: acc.failed + s.failed,
-        }),
-        { drafted: 0, sent: 0, failed: 0 }
-      );
-      console.log(
-        `[cron] auto-reply: profiles=${result.profiles} drafted=${totals.drafted} sent=${totals.sent} failed=${totals.failed} skippedForTime=${result.skippedForTime} skippedForSchedule=${result.skippedForSchedule}`
-      );
-      return res.json({
-        ok: true,
-        profiles: result.profiles,
-        skippedForTime: result.skippedForTime,
-        skippedForSchedule: result.skippedForSchedule,
-        ...totals,
-        summaries: result.summaries,
-      });
-    } catch (e) {
-      console.error("[cron] auto-reply unexpected:", e?.message || e);
-      return res.status(500).json({ error: "auto_reply_failed" });
-    }
-  }));
-
-  /**
-   * Scheduled-post publisher: sweeps every profile's "scheduled-posts"
-   * document and publishes due posts via Zernio (publishNow). Posts keep
-   * living in the document until this sweep fires, which is what makes them
-   * reschedulable from the Calendar. Runs every 15 minutes; no per-profile
-   * schedule gate — each post carries its own explicit publish time.
-   */
-  app.get("/api/cron/publish-scheduled-posts", withRunRecording("publish-scheduled-posts", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    if (!supabaseAdmin || !zernio || !tokenStore) {
-      return res.status(503).json({ error: "dependencies_not_configured" });
-    }
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const result = await publishDueScheduledPosts({
-        supabaseAdmin,
-        zernio,
-        tokenStore,
-        shouldPublishForProfile: (businessProfileId) => {
-          const row = settingsByProfile.get(businessProfileId);
-          if (!row) return true;
-          const settings = automationSettingsRowToDomain(row);
-          return isJobEnabledForProfile("publish-scheduled-posts", settings.jobSchedules);
-        },
-      });
-      console.log(
-        `[cron] publish-scheduled-posts: profiles=${result.profiles} due=${result.due} published=${result.published} failed=${result.failed}`
-      );
-      return res.json({ ok: true, ...result });
-    } catch (e) {
-      console.error("[cron] publish-scheduled-posts unexpected:", e?.message || e);
-      return res.status(500).json({ error: "publish_scheduled_posts_failed" });
-    }
-  }));
+  registerPublishScheduledPostsCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    zernio,
+    tokenStore,
+    loadAllAutomationSettings,
+  });
 
   /**
    * Daily digest: emails each active business profile its morning brief
@@ -1486,71 +1420,13 @@ export function registerCronRoutes(app, deps) {
     }
   }));
 
-  /**
-   * Content pipeline: moves queued content into scheduled-posts for publishing.
-   */
-  app.get("/api/cron/content-pipeline", withRunRecording("content-pipeline", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
-
-    const startedAt = Date.now();
-    const timeBudgetMs = 50_000;
-    const cronNow = new Date();
-
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const eligible = [];
-      for (const [bpId, row] of settingsByProfile) {
-        const settings = automationSettingsRowToDomain(row);
-        if (!settings.jobSchedules["content-pipeline"]?.enabled) continue;
-        if (!isProfileJobDueNow(row, "content-pipeline", cronNow)) continue;
-        eligible.push({ bpId, schedules: settings.jobSchedules });
-      }
-      if (eligible.length === 0) {
-        return res.json({ ok: true, scheduled: 0, note: "no_profiles_due" });
-      }
-
-      const { data: profiles } = await supabaseAdmin
-        .from("business_profiles")
-        .select("id,name")
-        .eq("status", "active")
-        .in("id", eligible.map((e) => e.bpId));
-      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
-
-      let scheduled = 0;
-      let skipped = 0;
-      let failed = 0;
-      let deferred = 0;
-
-      for (const entry of eligible) {
-        if (Date.now() - startedAt > timeBudgetMs) {
-          deferred += 1;
-          continue;
-        }
-        try {
-          const profile = profileById.get(entry.bpId);
-          const result = await runContentPipeline({
-            supabaseAdmin,
-            businessProfileId: entry.bpId,
-            schedules: entry.schedules,
-            businessName: profile?.name ? String(profile.name) : undefined,
-          });
-          scheduled += result.scheduled;
-          skipped += result.skipped;
-        } catch (err) {
-          failed += 1;
-          console.warn(
-            `[cron] content-pipeline bp=${entry.bpId} failed:`,
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-      }
-      return res.json({ ok: true, scheduled, skipped, failed, deferred });
-    } catch (e) {
-      console.error("[cron] content-pipeline unexpected:", e?.message || e);
-      return res.status(500).json({ error: "content_pipeline_failed" });
-    }
-  }));
+  registerContentPipelineCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
 
   /**
    * Cart recovery: emails customers who abandoned Shopify checkouts (deduped).
@@ -1650,163 +1526,28 @@ export function registerCronRoutes(app, deps) {
   }));
 
   /**
-   * Mail reply auto: drafts email replies into mail-reply-queue (never auto-sends).
-   */
-  app.get("/api/cron/mail-reply-auto", withRunRecording("mail-reply-auto", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (!supabaseAdmin || !tokenStore) {
-      return res.status(503).json({ error: "dependencies_not_configured" });
-    }
+  registerMailReplyAutoCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    secretResolver,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+    resolveRecipientEmail,
+  });
 
-    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
-    const startedAt = Date.now();
-    const timeBudgetMs = 50_000;
-    const cronNow = new Date();
-
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const eligible = [];
-      for (const [bpId, row] of settingsByProfile) {
-        const settings = automationSettingsRowToDomain(row);
-        if (!settings.jobSchedules["mail-reply-auto"]?.enabled) continue;
-        if (!isProfileJobDueNow(row, "mail-reply-auto", cronNow)) continue;
-        eligible.push({ bpId, email: settings.notificationEmail, row });
-      }
-      if (eligible.length === 0) {
-        return res.json({ ok: true, drafted: 0, note: "no_profiles_due" });
-      }
-
-      const { data: profiles } = await supabaseAdmin
-        .from("business_profiles")
-        .select("id,name,email,owner_user_id")
-        .eq("status", "active")
-        .in("id", eligible.map((e) => e.bpId));
-      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
-
-      let drafted = 0;
-      let notified = 0;
-      let scanned = 0;
-      let failed = 0;
-      let deferred = 0;
-
-      for (const entry of eligible) {
-        if (Date.now() - startedAt > timeBudgetMs) {
-          deferred += 1;
-          continue;
-        }
-        const profile = profileById.get(entry.bpId);
-        if (!profile) continue;
-        try {
-          const openaiKey = secretResolver?.resolve
-            ? await secretResolver.resolve(entry.bpId, "OPENAI_API_KEY")
-            : process.env.OPENAI_API_KEY;
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
-          const result = await runMailReplyAuto({
-            supabaseAdmin,
-            tokenStore,
-            businessProfileId: entry.bpId,
-            profile,
-            openaiKey: openaiKey || process.env.OPENAI_API_KEY || null,
-            notifyEmail: recipient || undefined,
-            appUrl: appUrl || undefined,
-          });
-          drafted += result.drafted;
-          scanned += result.scanned;
-          if (result.notified) notified += 1;
-        } catch (err) {
-          failed += 1;
-          console.warn(
-            `[cron] mail-reply-auto bp=${entry.bpId} failed:`,
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-      }
-      return res.json({ ok: true, drafted, notified, scanned, failed, deferred });
-    } catch (e) {
-      console.error("[cron] mail-reply-auto unexpected:", e?.message || e);
-      return res.status(500).json({ error: "mail_reply_auto_failed" });
-    }
-  }));
-
-  /**
-   * Review reply auto: drafts public review replies into review-reply-queue (no auto-post).
-   */
-  app.get("/api/cron/review-reply-auto", withRunRecording("review-reply-auto", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (!supabaseAdmin || !zernio || !tokenStore) {
-      return res.status(503).json({ error: "dependencies_not_configured" });
-    }
-
-    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
-    const startedAt = Date.now();
-    const timeBudgetMs = 50_000;
-    const cronNow = new Date();
-
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const eligible = [];
-      for (const [bpId, row] of settingsByProfile) {
-        const settings = automationSettingsRowToDomain(row);
-        if (!settings.jobSchedules["review-reply-auto"]?.enabled) continue;
-        if (!isProfileJobDueNow(row, "review-reply-auto", cronNow)) continue;
-        eligible.push({ bpId, email: settings.notificationEmail, row });
-      }
-      if (eligible.length === 0) {
-        return res.json({ ok: true, drafted: 0, note: "no_profiles_due" });
-      }
-
-      const { data: profiles } = await supabaseAdmin
-        .from("business_profiles")
-        .select("id,name,email,owner_user_id")
-        .eq("status", "active")
-        .in("id", eligible.map((e) => e.bpId));
-      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
-
-      let drafted = 0;
-      let notified = 0;
-      let urgentAlerts = 0;
-      let failed = 0;
-      let deferred = 0;
-
-      for (const entry of eligible) {
-        if (Date.now() - startedAt > timeBudgetMs) {
-          deferred += 1;
-          continue;
-        }
-        const profile = profileById.get(entry.bpId);
-        if (!profile) continue;
-        try {
-          const openaiKey = secretResolver?.resolve
-            ? await secretResolver.resolve(entry.bpId, "OPENAI_API_KEY")
-            : process.env.OPENAI_API_KEY;
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
-          const result = await runReviewReplyAuto({
-            supabaseAdmin,
-            tokenStore,
-            zernio,
-            businessProfileId: entry.bpId,
-            profile,
-            openaiKey: openaiKey || process.env.OPENAI_API_KEY || null,
-            notifyEmail: recipient || undefined,
-            appUrl: appUrl || undefined,
-          });
-          drafted += result.drafted;
-          if (result.notified) notified += 1;
-          urgentAlerts += result.urgentAlerts ?? 0;
-        } catch (err) {
-          failed += 1;
-          console.warn(
-            `[cron] review-reply-auto bp=${entry.bpId} failed:`,
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-      }
-      return res.json({ ok: true, drafted, notified, urgentAlerts, failed, deferred });
-    } catch (e) {
-      console.error("[cron] review-reply-auto unexpected:", e?.message || e);
-      return res.status(500).json({ error: "review_reply_auto_failed" });
-    }
-  }));
+  registerReviewReplyAutoCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    zernio,
+    tokenStore,
+    secretResolver,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+    resolveRecipientEmail,
+  });
 
   app.get("/api/cron/marketing-actions", withRunRecording("marketing-actions", supabaseAdmin, async (req, res) => {
     if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
@@ -1882,133 +1623,24 @@ export function registerCronRoutes(app, deps) {
     }
   }));
 
-  app.get("/api/cron/weekly-insight-digest", withRunRecording("weekly-insight-digest", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
-    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
+  registerWeeklyInsightDigestCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+    isSocialWorkflowEnabled,
+    resolveRecipientEmail,
+  });
 
-    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
-    const startedAt = Date.now();
-    const timeBudgetMs = 50_000;
-    const cronNow = new Date();
-
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const eligible = [];
-      for (const [bpId, row] of settingsByProfile) {
-        const settings = automationSettingsRowToDomain(row);
-        if (!settings.jobSchedules["weekly-insight-digest"]?.enabled) continue;
-        if (!isProfileJobDueNow(row, "weekly-insight-digest", cronNow)) continue;
-        if (!(await isSocialWorkflowEnabled(supabaseAdmin, bpId, "weekly-insight-digest"))) continue;
-        eligible.push({ bpId, email: settings.notificationEmail });
-      }
-      if (eligible.length === 0) return res.json({ ok: true, sent: 0, note: "no_profiles_due" });
-
-      const { data: profiles } = await supabaseAdmin
-        .from("business_profiles")
-        .select("id,name,email,owner_user_id")
-        .eq("status", "active")
-        .in("id", eligible.map((e) => e.bpId));
-      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
-
-      let sent = 0;
-      let failed = 0;
-      let deferred = 0;
-
-      for (const entry of eligible) {
-        if (Date.now() - startedAt > timeBudgetMs) {
-          deferred += 1;
-          continue;
-        }
-        const profile = profileById.get(entry.bpId);
-        if (!profile) continue;
-        try {
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
-          if (!recipient) continue;
-          const result = await runWeeklyInsightDigest({
-            supabaseAdmin,
-            businessProfileId: entry.bpId,
-            profileName: String(profile.name || "Your business"),
-            notifyEmail: recipient,
-            appUrl: appUrl || undefined,
-          });
-          if (result.sent) sent += 1;
-        } catch (err) {
-          failed += 1;
-          console.warn(`[cron] weekly-insight-digest bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
-        }
-      }
-      return res.json({ ok: true, sent, failed, deferred });
-    } catch (e) {
-      console.error("[cron] weekly-insight-digest unexpected:", e?.message || e);
-      return res.status(500).json({ error: "weekly_insight_digest_failed" });
-    }
-  }));
-
-  app.get("/api/cron/engagement-followup", withRunRecording("engagement-followup", supabaseAdmin, async (req, res) => {
-    if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (!supabaseAdmin || !zernio) return res.status(503).json({ error: "dependencies_not_configured" });
-    if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
-
-    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
-    const startedAt = Date.now();
-    const timeBudgetMs = 50_000;
-    const cronNow = new Date();
-
-    try {
-      const settingsByProfile = await loadAllAutomationSettings(supabaseAdmin);
-      const eligible = [];
-      for (const [bpId, row] of settingsByProfile) {
-        const settings = automationSettingsRowToDomain(row);
-        if (!settings.jobSchedules["engagement-followup"]?.enabled) continue;
-        if (!isProfileJobDueNow(row, "engagement-followup", cronNow)) continue;
-        if (!(await isSocialWorkflowEnabled(supabaseAdmin, bpId, "engagement-followup"))) continue;
-        eligible.push({ bpId, email: settings.notificationEmail });
-      }
-      if (eligible.length === 0) return res.json({ ok: true, emailed: 0, note: "no_profiles_due" });
-
-      const { data: profiles } = await supabaseAdmin
-        .from("business_profiles")
-        .select("id,name,email,owner_user_id,zernio_profile_id")
-        .eq("status", "active")
-        .in("id", eligible.map((e) => e.bpId));
-      const profileById = new Map((Array.isArray(profiles) ? profiles : []).map((p) => [String(p.id), p]));
-
-      let emailed = 0;
-      let unreadTotal = 0;
-      let failed = 0;
-      let deferred = 0;
-
-      for (const entry of eligible) {
-        if (Date.now() - startedAt > timeBudgetMs) {
-          deferred += 1;
-          continue;
-        }
-        const profile = profileById.get(entry.bpId);
-        const zernioProfileId = profile?.zernio_profile_id ? String(profile.zernio_profile_id) : "";
-        if (!profile || !zernioProfileId) continue;
-        try {
-          const recipient = await resolveRecipientEmail(supabaseAdmin, profile, entry.email);
-          const result = await runEngagementFollowup({
-            supabaseAdmin,
-            zernio,
-            businessProfileId: entry.bpId,
-            profileName: String(profile.name || "Your business"),
-            zernioProfileId,
-            notifyEmail: recipient || undefined,
-            appUrl: appUrl || undefined,
-          });
-          unreadTotal += result.unread;
-          if (result.emailed) emailed += 1;
-        } catch (err) {
-          failed += 1;
-          console.warn(`[cron] engagement-followup bp=${entry.bpId} failed:`, err instanceof Error ? err.message : String(err));
-        }
-      }
-      return res.json({ ok: true, emailed, unreadTotal, failed, deferred });
-    } catch (e) {
-      console.error("[cron] engagement-followup unexpected:", e?.message || e);
-      return res.status(500).json({ error: "engagement_followup_failed" });
-    }
-  }));
+  registerEngagementFollowupCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    zernio,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+    isSocialWorkflowEnabled,
+    resolveRecipientEmail,
+  });
 }
