@@ -62,6 +62,7 @@ import { useMessageReply } from "@/features/messages/useMessageReply";
 import { useSyncMessageAccounts, MESSAGE_ACCOUNT_PLATFORMS } from "@/features/messages/useSyncMessageAccounts";
 import { useMessageDetailProps } from "@/features/messages/useMessageDetailProps";
 import { useMessageAutoSelection } from "@/features/messages/useMessageAutoSelection";
+import { mergeDemoInboxMessages, useDemoMode } from "@/features/demo";
 
 export default function MessagesPage() {
   const { authMode, session } = useAuth();
@@ -121,10 +122,16 @@ export default function MessagesPage() {
     isVisuallyUnread,
   } = useMessageTriageState();
 
+  const { enabled: demoEnabled } = useDemoMode();
+  const inboxMessages = useMemo(
+    () => mergeDemoInboxMessages(messages, demoEnabled),
+    [messages, demoEnabled]
+  );
+
   const selectedId = searchParams.get("id");
   const selectedMessage = useMemo(
-    () => (selectedId ? messages.find((m) => m.id === selectedId) ?? null : null),
-    [messages, selectedId]
+    () => (selectedId ? inboxMessages.find((m) => m.id === selectedId) ?? null : null),
+    [inboxMessages, selectedId]
   );
 
   const { threadMessages, threadLoading, prefetchThread } = useMessageThread({
@@ -164,7 +171,7 @@ export default function MessagesPage() {
   });
 
   const { aiSummaries, draftBusy, setDraftBusy, draftReply, autoDraftForId } = useMessageAiAssist({
-    messages,
+    messages: inboxMessages,
     selectedMessage,
     selectedId,
     replySent,
@@ -335,9 +342,9 @@ export default function MessagesPage() {
       setInboxFilter(saved.filter);
       return;
     }
-    const unread = messages.filter(isUnanswered).length;
+    const unread = inboxMessages.filter(isUnanswered).length;
     if (unread > 0) setInboxFilter("queue");
-  }, [loading, messages, isUnanswered, inboxPrefsDoc.isLoading, inboxPrefsDoc.data, searchParams]);
+  }, [loading, inboxMessages, isUnanswered, inboxPrefsDoc.isLoading, inboxPrefsDoc.data, searchParams]);
 
   const setInboxFilterPersisted = useCallback(
     (filter: InboxFilter) => {
@@ -376,7 +383,7 @@ export default function MessagesPage() {
     hasMessagesInTab,
     openTotal,
   } = useFilteredInbox({
-    messages,
+    messages: inboxMessages,
     activeTab,
     inboxFilter,
     debouncedInboxSearch,
@@ -597,7 +604,7 @@ export default function MessagesPage() {
 
   useMessageAutoSelection({
     loading,
-    messages,
+    messages: inboxMessages,
     selectedId,
     selectedMessage,
     activeTab,
@@ -692,6 +699,7 @@ export default function MessagesPage() {
         inboxLiveHint={inboxLiveHint}
         openCount={inboxStats.openCount}
         hasAnyMailConnected={hasAnyMailConnected}
+        demoInboxActive={demoEnabled && inboxMessages.some((m) => m.kind === "email")}
         activeTabIsMail={activeTab === "mail"}
         businessProfileId={businessProfileId}
         onShowToday={() => setTriageBucket("today")}

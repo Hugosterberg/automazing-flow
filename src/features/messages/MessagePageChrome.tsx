@@ -2,6 +2,7 @@ import { MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { AutoReplyDraftsStrip } from "@/features/automation";
+import { DemoModeBanner } from "@/features/demo";
 import { MailConnectEmptyCards } from "@/features/messages/MailConnectEmptyCards";
 import { MailReplyDraftsStrip } from "@/features/messages/MailReplyDraftsStrip";
 
@@ -14,6 +15,8 @@ type Props = {
   inboxLiveHint: string | null;
   openCount: number;
   hasAnyMailConnected: boolean;
+  /** When demoläge fills the mail tab, skip connect-empty cards. */
+  demoInboxActive?: boolean;
   activeTabIsMail: boolean;
   businessProfileId: string | null;
   onShowToday: () => void;
@@ -30,6 +33,7 @@ export function MessagePageChrome({
   inboxLiveHint,
   openCount,
   hasAnyMailConnected,
+  demoInboxActive = false,
   activeTabIsMail,
   businessProfileId,
   onShowToday,
@@ -38,6 +42,7 @@ export function MessagePageChrome({
   if (focusedReading) return null;
 
   const hasTriageWork = triageCounts.today + triageCounts.week > 0;
+  const showMailEmpty = activeTabIsMail && !hasAnyMailConnected && !demoInboxActive;
 
   return (
     <>
@@ -79,7 +84,9 @@ export function MessagePageChrome({
         />
       ) : null}
 
-      {activeTabIsMail && !hasAnyMailConnected ? <MailConnectEmptyCards /> : null}
+      <DemoModeBanner offerEnable={showMailEmpty} />
+
+      {showMailEmpty ? <MailConnectEmptyCards /> : null}
 
       <div className="space-y-2">
         <AutoReplyDraftsStrip businessProfileId={businessProfileId} compact />

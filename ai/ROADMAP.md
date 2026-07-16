@@ -80,7 +80,9 @@ document `first-win-checklist` (no new tables)._
       company recommendations).
 - [x] Value-selling empty state on Meddelanden mail tab (draft-before-send).
 - [x] Home “klart idag” strip from success activity events.
-- [ ] Demo / sample-data mode for empty workspaces (optional seed).
+- [x] Demo / sample-data mode (profile doc `demo-mode`) — fake inbox + draft
+      queues; send is no-op for `demo-*` ids.
+- [x] Approve drafts hub on Home → Idag (DM/mail/outreach/reviews).
 - [ ] Deeper empty-state pass (Kalender, E-handel, Content, Sales) with same
       value-selling pattern.
 - [ ] Public landing / marketing site polish (outside app shell).

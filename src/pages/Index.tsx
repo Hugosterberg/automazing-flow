@@ -46,6 +46,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
 import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
+import { DemoModeBanner } from "@/features/demo";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
 import { SyncFreshnessStrip } from "@/features/connections";
@@ -771,6 +772,8 @@ export default function Index() {
           profile={businessProfile}
           connectedPlatforms={accounts.map((a) => a.platform)}
         />
+        <DemoModeBanner offerEnable={profileSummary.connectedCount === 0} />
+        <ApproveDraftsCard businessProfileId={homeBusinessProfileId} compact />
         <WinsTodayStrip businessProfileId={homeBusinessProfileId} />
       </div>
 
@@ -943,8 +946,6 @@ export default function Index() {
           </div>
         </HomeCollapsibleSection>
       ) : null}
-
-      <ApproveDraftsCard businessProfileId={homeBusinessProfileId} />
 
       <HomeCollapsibleSection title="Automationer som jobbar" ariaLabel="Automationer som jobbar">
         <FlowAutomationStatusCard businessProfileId={homeBusinessProfileId} />

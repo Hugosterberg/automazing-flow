@@ -1,4 +1,7 @@
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useProfileDocument } from "@/features/profile-documents";
+import { DEMO_MODE_DOC_KEY, type DemoModeDoc } from "@/features/demo/demoMode";
 import { fetchAutoReplyLog, type AutoReplyLogEntry } from "./automationService";
 
 export const PENDING_DM_DRAFTS_KEY = ["pending-dm-drafts"] as const;
@@ -10,8 +13,10 @@ function isPendingDmDraft(entry: AutoReplyLogEntry): boolean {
 /**
  * Pending DM auto-reply drafts for a business profile (draft-before-send queue).
  * Shared by Messages strip, Daily Brief, and Automations.
+ * When demoläge is on, merges client-only sample drafts from the demo-mode doc.
  */
 export function usePendingDmDrafts(businessProfileId: string | null | undefined) {
+  const demoDoc = useProfileDocument<DemoModeDoc>(DEMO_MODE_DOC_KEY, { enabled: false });
   const query = useQuery({
     queryKey: [...PENDING_DM_DRAFTS_KEY, businessProfileId ?? null],
     queryFn: async () => {
@@ -24,10 +29,18 @@ export function usePendingDmDrafts(businessProfileId: string | null | undefined)
     meta: { silent: true },
   });
 
+  const drafts = useMemo(() => {
+    const live = query.data ?? [];
+    if (!demoDoc.data?.enabled) return live;
+    const demo = (demoDoc.data.dmDrafts ?? []).filter(isPendingDmDraft) as AutoReplyLogEntry[];
+    const liveIds = new Set(live.map((d) => d.id));
+    return [...live, ...demo.filter((d) => !liveIds.has(d.id))];
+  }, [demoDoc.data?.dmDrafts, demoDoc.data?.enabled, query.data]);
+
   return {
-    drafts: query.data ?? [],
-    count: query.data?.length ?? 0,
-    isLoading: query.isLoading,
+    drafts,
+    count: drafts.length,
+    isLoading: query.isLoading || demoDoc.isLoading,
     refetch: query.refetch,
   };
 }

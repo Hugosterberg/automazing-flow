@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProfileDocument } from "@/features/profile-documents";
+import { isDemoId } from "@/features/demo";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { sendMailReplyDraft } from "./mailReplyClient";
 
@@ -79,6 +80,11 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
     setConfirmItem(null);
     setBusyId(item.id);
     try {
+      if (isDemoId(item.id)) {
+        markStatus(item.id, "sent");
+        toast.success("Demo — inget skickades på riktigt");
+        return;
+      }
       await sendMailReplyDraft({ item, businessProfileId });
       markStatus(item.id, "sent");
       toast.success("Svaret skickades");

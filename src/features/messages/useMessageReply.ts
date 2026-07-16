@@ -4,6 +4,7 @@ import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/hooks/use-toast";
 import { apiJson } from "@/lib/apiJson";
 import { UNREAD_DM_KEY } from "@/features/daily-brief/useUnreadDmCount";
+import { isDemoId } from "@/features/demo";
 import { providerMessageIdFor } from "./messagesUi";
 import type { UnifiedMessage } from "./types";
 
@@ -76,6 +77,14 @@ export function useMessageReply({
     const nextAfterSend = pickNextAfterRef.current(sentId, getFilteredMessagesRef.current());
     setSendBusy(true);
     try {
+      if (isDemoId(sentId)) {
+        setReplySent(true);
+        replyDraftCache.current.delete(sentId);
+        selectMessage(nextAfterSend);
+        markHandled([sentId], { silent: true });
+        sonnerToast.success("Demo — inget skickades på riktigt");
+        return;
+      }
       await apiJson("/api/messages/reply", "Kunde inte skicka svar", {
         body: {
           accountId: selectedMessage.accountId,

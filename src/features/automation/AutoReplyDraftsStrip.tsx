@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { isDemoId, useDemoMode } from "@/features/demo";
 import { sendAutomationDraft, type AutoReplyLogEntry } from "./automationService";
 import { useInvalidatePendingDmDrafts, usePendingDmDrafts } from "./usePendingDmDrafts";
 
@@ -21,6 +22,7 @@ type Props = {
  */
 export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: Props) {
   const { drafts, isLoading } = usePendingDmDrafts(businessProfileId);
+  const { dismissDmDraft } = useDemoMode();
   const invalidate = useInvalidatePendingDmDrafts();
   const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -30,6 +32,11 @@ export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: 
     if (!businessProfileId) return;
     setSendingId(entry.id);
     try {
+      if (isDemoId(entry.id)) {
+        dismissDmDraft(entry.id);
+        toast.success("Demo — inget skickades på riktigt");
+        return;
+      }
       await sendAutomationDraft(businessProfileId, entry.id);
       toast.success("Svaret skickades");
       invalidate(businessProfileId);

@@ -2,6 +2,14 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-07-16 — Demo mode is client sandbox via profile documents — **Active**
+
+Demoläge (`demo-mode` profile doc) injects sample `UnifiedMessage`s and seeds
+mail/outreach/review draft queues + in-doc DM drafts. No new tables, no OAuth.
+Ids prefixed `demo-` never call provider send APIs — UI toasts “Demo — inget
+skickades”. Brief overlay uses max(live, sample) so real data always wins.
+Approve drafts hub lives on Home → Idag (compact), not only under Mer.
+
 ## 2026-07-16 — First-win onboarding via profile documents — **Active**
 
 Post-create redirect goes to `/connections?wizard=1&next=company`. Home shows

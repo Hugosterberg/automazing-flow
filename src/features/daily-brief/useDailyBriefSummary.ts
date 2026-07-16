@@ -15,6 +15,7 @@ import {
 } from "@/features/automation";
 import { classifyMessageTriage, fetchUnifiedMessagesPreview } from "@/features/messages";
 import { useProfileDocument } from "@/features/profile-documents";
+import { buildDemoBriefOverlay, useDemoMode } from "@/features/demo";
 import { platformLabel } from "@/lib/platformLabels";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
@@ -50,6 +51,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const automationRuns = useAutomationRuns(businessProfileId ?? null);
   const { count: pendingDmDrafts } = usePendingDmDrafts(businessProfileId);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
+  const { enabled: demoEnabled } = useDemoMode();
   const { events: agentEvents } = useActivityFeed(businessProfileId, {
     module: "agent",
     limit: 5,
@@ -89,19 +91,23 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
       .filter((run) => run.lastRun?.status === "failed")
       .map((run) => ({ title: automationTitleForCronKey(run.key) }));
 
+    const demo = demoEnabled ? buildDemoBriefOverlay() : null;
+    const take = (live: number, sample: number | undefined) =>
+      demo ? Math.max(live, sample ?? 0) : live;
+
     return buildDailyBrief({
       connectionIssues: connections
         .filter((c) => c.health && c.health !== "healthy" && c.health !== "pending")
         .map((c) => ({ label: platformLabel(c.platform), health: c.health })),
-      unreadDms,
-      triageAttentionCount: triagePreview.data ?? 0,
+      unreadDms: take(unreadDms, demo?.unreadDms),
+      triageAttentionCount: take(triagePreview.data ?? 0, demo?.triageAttentionCount),
       underwaterRoas: marketingRoas != null && marketingRoas < 1 ? marketingRoas : null,
       marketingTrendDown,
-      reviewsNeedingReply,
+      reviewsNeedingReply: take(reviewsNeedingReply, demo?.reviewsNeedingReply),
       inventoryAlertCount,
       leadsToFollowUp,
-      outreachQueuePending,
-      pendingDmDrafts,
+      outreachQueuePending: take(outreachQueuePending, demo?.outreachQueuePending),
+      pendingDmDrafts: take(pendingDmDrafts, demo?.pendingDmDrafts),
       failedAutomations,
       overdueTasks: openTasks.filter((t) => isTaskOverdue(t, nowMs)).map((t) => ({ title: t.title })),
       dueTodayTasks: openTasks.filter((t) => isTaskDueToday(t, nowMs)).map((t) => ({ title: t.title })),
@@ -114,6 +120,7 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     agentUpdates,
     automationRuns.byKey,
     connections,
+    demoEnabled,
     inventoryAlertCount,
     leads,
     marketingRoas,
