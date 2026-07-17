@@ -80,9 +80,11 @@ export async function fetchXAccountData({
   const userId = xUserId || user.id;
   let tweets: Array<Record<string, unknown>> = [];
   if (userId) {
+    // exclude retweets/replies so engagement metrics reflect own posts only.
+    const tweetsQuery = "max_results=10&exclude=retweets,replies&tweet.fields=public_metrics,created_at,text";
     const tweetsEndpoints = [
-      `https://api.x.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
-      `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at,text`,
+      `https://api.x.com/2/users/${userId}/tweets?${tweetsQuery}`,
+      `https://api.twitter.com/2/users/${userId}/tweets?${tweetsQuery}`,
     ];
     let tweetsRes = await fetch(tweetsEndpoints[0], { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
     if (!tweetsRes.ok) {
@@ -109,6 +111,7 @@ export async function fetchXAccountData({
     mediaType: "tweet",
     likeCount: ((t.public_metrics as { like_count?: number })?.like_count) || 0,
     commentCount: ((t.public_metrics as { reply_count?: number })?.reply_count) || 0,
+    viewCount: (t.public_metrics as { impression_count?: number })?.impression_count,
     createdTime: t.created_at as string,
   }));
 

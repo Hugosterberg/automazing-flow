@@ -2,6 +2,7 @@ type XPublicMetrics = {
   like_count?: number | string | null;
   reply_count?: number | string | null;
   retweet_count?: number | string | null;
+  impression_count?: number | string | null;
 };
 
 type XTweet = {
@@ -24,8 +25,15 @@ export function calculateXMetrics(
     0
   );
 
+  const tweetsWithViews = tweetsWithMetrics.filter((t) => t.public_metrics?.impression_count != null);
+  const totalViews = tweetsWithViews.reduce(
+    (sum, t) => sum + (Number(t.public_metrics?.impression_count) || 0),
+    0
+  );
+
   const postCount = tweetsWithMetrics.length;
   const avgLikes = postCount > 0 ? Math.round(totalLikes / postCount) : undefined;
+  const avgViews = tweetsWithViews.length > 0 ? Math.round(totalViews / tweetsWithViews.length) : undefined;
 
   const engagementRate =
     followersCount && Number(followersCount) > 0 && postCount > 0
@@ -39,6 +47,9 @@ export function calculateXMetrics(
     mediaCount: tweetCount != null ? Number(tweetCount) : undefined,
     totalLikes,
     avgLikes,
+    totalComments: postCount > 0 ? totalReplies : undefined,
+    totalViews: tweetsWithViews.length > 0 ? totalViews : undefined,
+    avgViews,
     engagementRate,
     updatedAt: new Date().toISOString(),
   };

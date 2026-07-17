@@ -86,7 +86,9 @@ function formatShopifyErrors(data: unknown): string {
 }
 
 /** Shopify Admin REST API version — see https://shopify.dev/docs/api/admin-rest */
-const SHOPIFY_ADMIN_API_VERSION = "2025-01";
+// Shopify supports each version ~12 months; 2025-01 fell out of support in
+// early 2026 (unsupported versions get silently redirected server-side).
+const SHOPIFY_ADMIN_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-01";
 const LOW_STOCK_THRESHOLD = 5;
 
 function toNumber(value: unknown, fallback = 0): number {

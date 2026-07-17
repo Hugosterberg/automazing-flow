@@ -52,13 +52,16 @@ export interface GatherMarketingOptions {
 }
 
 export function readMetaGraphVersion(): string {
-  return String(process.env.META_GRAPH_VERSION || "v20.0").trim().replace(/^\/+|\/+$/g, "");
+  // v20.0 sunsets 2026-09-24; v23.0 is guaranteed through mid-2027.
+  return String(process.env.META_GRAPH_VERSION || "v23.0").trim().replace(/^\/+|\/+$/g, "");
 }
 
 export function readGoogleAdsConfig(): GoogleAdsConfig {
   return {
     developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
     loginCustomerId: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+    customerId: process.env.GOOGLE_ADS_CUSTOMER_ID,
+    apiVersion: process.env.GOOGLE_ADS_API_VERSION,
     googleClientId: process.env.GOOGLE_CLIENT_ID,
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   };

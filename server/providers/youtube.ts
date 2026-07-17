@@ -1,3 +1,11 @@
+import { calculateEngagementFromPosts } from "../analytics/socialMetrics.ts";
+
+type VideoStatistics = {
+  viewCount?: string;
+  likeCount?: string;
+  commentCount?: string;
+};
+
 type YouTubeChannelResponse = {
   items?: Array<{
     snippet?: Record<string, unknown>;
@@ -109,23 +117,59 @@ export async function fetchYouTubeAccountData(args: YouTubeFetchArgs) {
     }
   }
 
-  const media = videos.map((item) => ({
-    id: item.snippet?.resourceId?.videoId || item.id,
-    caption: item.snippet?.title || "",
-    picture: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || "",
-    permalink: item.snippet?.resourceId?.videoId ? `https://www.youtube.com/watch?v=${item.snippet.resourceId.videoId}` : "",
-    mediaType: "video",
-    likeCount: 0,
-    commentCount: 0,
-    createdTime: item.snippet?.publishedAt || "",
-  }));
+  // Per-video statistics come from the videos endpoint, not playlistItems —
+  // one batched call turns the hardcoded 0 likes/comments into real numbers.
+  const videoIds = videos
+    .map((item) => item.snippet?.resourceId?.videoId)
+    .filter((id): id is string => Boolean(id));
+  const statsById = new Map<string, VideoStatistics>();
+  if (videoIds.length > 0) {
+    const statsRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}&maxResults=${videoIds.length}`,
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) }
+    ).catch(() => null);
+    if (statsRes?.ok) {
+      const statsData = (await statsRes.json().catch(() => ({}))) as {
+        items?: Array<{ id?: string; statistics?: VideoStatistics }>;
+      };
+      for (const item of statsData.items || []) {
+        if (item.id && item.statistics) statsById.set(item.id, item.statistics);
+      }
+    }
+  }
+
+  const media = videos.map((item) => {
+    const videoId = item.snippet?.resourceId?.videoId;
+    const vStats = videoId ? statsById.get(videoId) : undefined;
+    return {
+      id: videoId || item.id,
+      caption: item.snippet?.title || "",
+      picture: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || "",
+      permalink: videoId ? `https://www.youtube.com/watch?v=${videoId}` : "",
+      mediaType: "video",
+      likeCount: Number(vStats?.likeCount || 0),
+      commentCount: Number(vStats?.commentCount || 0),
+      viewCount: vStats?.viewCount != null ? Number(vStats.viewCount) : undefined,
+      createdTime: item.snippet?.publishedAt || "",
+    };
+  });
+
+  const followersCount = Number(channel?.statistics?.subscriberCount || 0) || undefined;
+  const engagement = calculateEngagementFromPosts(media, followersCount);
 
   return {
     profile: channel?.snippet ? { ...channel.snippet, statistics: channel.statistics } : {},
     stats: channel?.statistics
       ? {
-          followersCount: Number(channel.statistics.subscriberCount || 0) || undefined,
+          followersCount,
           mediaCount: Number(channel.statistics.videoCount || 0) || media.length || undefined,
+          totalLikes: engagement.totalLikes,
+          totalComments: engagement.totalComments,
+          totalViews: engagement.totalViews,
+          avgLikes: engagement.avgLikes,
+          avgComments: engagement.avgComments,
+          avgViews: engagement.avgViews,
+          engagementRate: engagement.engagementRate,
           updatedAt: new Date().toISOString(),
         }
       : undefined,

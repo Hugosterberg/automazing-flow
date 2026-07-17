@@ -121,7 +121,10 @@ export function registerTikTokOAuthRoutes(
     const redirectUri = oauthCallbackUrl(req, "/api/auth/tiktok/callback");
     const url = new URL(TIKTOK_AUTH);
     url.searchParams.set("client_key", clientKey);
-    url.searchParams.set("scope", "user.info.basic,video.list");
+    // user.info.profile unlocks username/bio/profile link; user.info.stats
+    // unlocks follower/likes/video counts — both must be approved for the app
+    // in the TikTok developer portal alongside the Display API product.
+    url.searchParams.set("scope", "user.info.basic,user.info.profile,user.info.stats,video.list");
     url.searchParams.set("response_type", "code");
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("state", state);
