@@ -13,6 +13,7 @@
  */
 
 import type { PlatformHandlerResult } from "./types.ts";
+import { calculateEngagementFromPosts } from "../analytics/socialMetrics.ts";
 import {
   isInstagramAuthError,
   refreshLongLivedInstagramToken,
@@ -83,26 +84,55 @@ export async function handleInstagramOfficialAccountData({
       },
     };
   }
+  // like_count/comments_count/thumbnail_url are available on the same media
+  // edge — request them so posts render with engagement and video thumbnails
+  // (media_url is not an image for VIDEO items).
+  const mediaFields =
+    "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count";
   const mediaListRes = await fetch(
-    `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=${token}&limit=12`,
+    `https://graph.instagram.com/me/media?fields=${mediaFields}&access_token=${token}&limit=12`,
     { signal: AbortSignal.timeout(15_000) }
   );
   const mediaList: any = await mediaListRes.json().catch(() => ({}));
   let mediaCount = media.media_count != null && !media.error ? Number(media.media_count) : undefined;
-  const mediaListData = Array.isArray(mediaList?.data) ? mediaList.data : [];
+  const mediaListData: any[] = Array.isArray(mediaList?.data) ? mediaList.data : [];
   if (mediaCount == null && mediaListData.length > 0) {
     mediaCount = mediaListData.length;
   }
+
+  // Normalize to the SocialMediaApiPost shape the UI expects (same as the
+  // Zernio/TikTok/X handlers) — raw Graph fields never reach the client.
+  const normalizedPosts = mediaListData.map((m: any) => {
+    const mediaType = String(m.media_type || "IMAGE").toLowerCase();
+    return {
+      id: String(m.id || ""),
+      caption: String(m.caption || ""),
+      picture: String((mediaType === "video" ? m.thumbnail_url : m.media_url) || m.media_url || m.thumbnail_url || ""),
+      permalink: String(m.permalink || ""),
+      mediaType,
+      likeCount: Number(m.like_count ?? 0),
+      commentCount: Number(m.comments_count ?? 0),
+      createdTime: String(m.timestamp || ""),
+    };
+  });
+
   const followersCount =
     media.followers_count != null && !media.error ? Number(media.followers_count) : undefined;
   const followingCount =
     media.follows_count != null && !media.error ? Number(media.follows_count) : undefined;
+  const engagement = calculateEngagementFromPosts(normalizedPosts, followersCount);
   const hasAnyStat = followersCount != null || followingCount != null || mediaCount != null;
   const stats = hasAnyStat
     ? {
         followersCount: followersCount ?? undefined,
         followingCount: followingCount ?? undefined,
         mediaCount: mediaCount ?? undefined,
+        accountType: media.account_type ? String(media.account_type) : undefined,
+        totalLikes: engagement.totalLikes,
+        totalComments: engagement.totalComments,
+        avgLikes: engagement.avgLikes,
+        avgComments: engagement.avgComments,
+        engagementRate: engagement.engagementRate,
         updatedAt: new Date().toISOString(),
       }
     : undefined;
@@ -110,7 +140,7 @@ export async function handleInstagramOfficialAccountData({
     kind: "json",
     body: {
       profile: { ...media, ...(stats && { stats }) },
-      media: mediaListData,
+      media: normalizedPosts,
       stats,
     },
   };
