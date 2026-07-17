@@ -137,7 +137,7 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
     authPath: "/api/auth/google_ads?provider=official",
     message:
-      "Required to connect Google Ads. Add GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and optionally GOOGLE_ADS_LOGIN_CUSTOMER_ID before using live campaign API operations.",
+      "Required to connect Google Ads. Add GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID, and optionally GOOGLE_ADS_LOGIN_CUSTOMER_ID before using live campaign API operations. GOOGLE_ADS_API_VERSION overrides the API version (default v23).",
   },
   meta_business: {
     label: "Meta Business OAuth/API",
@@ -157,7 +157,8 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
   google_places: {
     label: "Google Places",
     requiredAny: [["GOOGLE_PLACES_API_KEY", "PAGESPEED_API_KEY", "GOOGLE_PAGESPEED_API_KEY"]],
-    message: "Optional. Enriches company lookups in Sales and Företag via Google Places Find Place.",
+    message:
+      "Optional. Enriches company lookups in Sales and Företag via Places API (New) Text Search; keys created before 2025-03 fall back to legacy Find Place.",
   },
   bolagsverket: {
     label: "Bolagsverket (värdefulla datamängder)",
@@ -180,7 +181,8 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     label: "Shopify OAuth",
     required: ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL"],
     authPath: "/api/auth/shopify",
-    message: "Required to connect Shopify. SHOPIFY_APP_URL must match your public app URL.",
+    message:
+      "Required to connect Shopify. SHOPIFY_APP_URL must match your public app URL. SHOPIFY_API_VERSION overrides the Admin API version (default 2026-01).",
   },
   instagram_direct: {
     label: "Instagram Direct Fallback",
@@ -192,7 +194,8 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     label: "TikTok OAuth",
     required: ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"],
     authPath: "/api/auth/tiktok",
-    message: "Required for official TikTok OAuth.",
+    message:
+      "Required for official TikTok OAuth. The app must have the user.info.basic, user.info.profile, user.info.stats and video.list scopes approved in the TikTok developer portal for follower/video stats.",
   },
   x: {
     label: "X / Twitter OAuth",
