@@ -52,7 +52,8 @@ export interface GatherMarketingOptions {
 }
 
 export function readMetaGraphVersion(): string {
-  return String(process.env.META_GRAPH_VERSION || "v20.0").trim().replace(/^\/+|\/+$/g, "");
+  // v20.0 sunsets 2026-09-24; v23.0 is guaranteed through mid-2027.
+  return String(process.env.META_GRAPH_VERSION || "v23.0").trim().replace(/^\/+|\/+$/g, "");
 }
 
 export function readGoogleAdsConfig(): GoogleAdsConfig {
