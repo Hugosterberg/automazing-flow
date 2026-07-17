@@ -12,7 +12,20 @@
 
 import type { AdAccountCampaigns, AdCampaign } from "./metaAds.ts";
 
-const ADS_API = "https://googleads.googleapis.com/v17";
+/**
+ * Google Ads API versions sunset roughly a year after release (v17 died
+ * 2025-06-04 and silently broke this provider). Default to a current version
+ * and allow overriding via env so the next sunset is a config change, not a
+ * code change.
+ */
+const DEFAULT_ADS_API_VERSION = "v23";
+
+function adsApiBase(version?: string): string {
+  const v = String(version || process.env.GOOGLE_ADS_API_VERSION || DEFAULT_ADS_API_VERSION)
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  return `https://googleads.googleapis.com/${v}`;
+}
 
 type GoogleAdsStored = Record<string, unknown> & {
   refreshToken?: string;
@@ -22,6 +35,9 @@ type GoogleAdsStored = Record<string, unknown> & {
 export interface GoogleAdsConfig {
   developerToken?: string;
   loginCustomerId?: string;
+  /** Explicit ads customer id (no dashes) — skips first-account discovery. */
+  customerId?: string;
+  apiVersion?: string;
   googleClientId?: string;
   googleClientSecret?: string;
 }
@@ -78,20 +94,25 @@ export async function fetchGoogleAdsActiveCampaigns(
   };
   if (config.loginCustomerId) headers["login-customer-id"] = String(config.loginCustomerId).replace(/-/g, "");
 
-  // 1. Discover the first accessible customer (ads account).
-  let customerId: string;
-  try {
-    const res = await fetch(`${ADS_API}/customers:listAccessibleCustomers`, {
-      headers,
-      signal: AbortSignal.timeout(15_000),
-    });
-    const body = (await res.json().catch(() => ({}))) as { resourceNames?: string[]; error?: unknown };
-    if (!res.ok || !Array.isArray(body.resourceNames) || body.resourceNames.length === 0) {
-      return { ...base, note: "No Google Ads account is accessible for this login." };
+  const ADS_API = adsApiBase(config.apiVersion);
+
+  // 1. Use the configured customer id when set; otherwise discover the first
+  //    accessible customer (ads account).
+  let customerId = String(config.customerId || "").replace(/-/g, "").trim();
+  if (!customerId) {
+    try {
+      const res = await fetch(`${ADS_API}/customers:listAccessibleCustomers`, {
+        headers,
+        signal: AbortSignal.timeout(15_000),
+      });
+      const body = (await res.json().catch(() => ({}))) as { resourceNames?: string[]; error?: unknown };
+      if (!res.ok || !Array.isArray(body.resourceNames) || body.resourceNames.length === 0) {
+        return { ...base, note: "No Google Ads account is accessible for this login." };
+      }
+      customerId = String(body.resourceNames[0]).split("/")[1] || "";
+    } catch {
+      return { ...base, note: "Couldn't reach the Google Ads API. Try again shortly." };
     }
-    customerId = String(body.resourceNames[0]).split("/")[1] || "";
-  } catch {
-    return { ...base, note: "Couldn't reach the Google Ads API. Try again shortly." };
   }
   if (!customerId) return { ...base, note: "No Google Ads account is accessible for this login." };
 
