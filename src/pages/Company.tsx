@@ -22,6 +22,7 @@ import {
   type ProfileFieldId,
 } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
+import { FortnoxCard, TaxDeadlinesCard } from "@/features/economy";
 import { AutomatedUpdatesCard } from "@/features/automation";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { platformLabel } from "@/lib/platformLabels";
@@ -109,13 +110,17 @@ export default function CompanyPage() {
   }
 
   const [searchParams, setSearchParams] = useSearchParams();
-  type CompanyTab = "profile" | "research" | "system";
-  const COMPANY_TABS: CompanyTab[] = ["profile", "research", "system"];
+  type CompanyTab = "profile" | "economy" | "research" | "system";
+  const COMPANY_TABS: CompanyTab[] = ["profile", "economy", "research", "system"];
   const rawCompanyTab = searchParams.get("tab");
+  // Efter Fortnox-OAuth landar callbacken på /company utan tab — öppna Ekonomi.
+  const oauthPlatform = searchParams.get("platform");
   const companyTab: CompanyTab =
     rawCompanyTab && (COMPANY_TABS as string[]).includes(rawCompanyTab)
       ? (rawCompanyTab as CompanyTab)
-      : "profile";
+      : oauthPlatform === "fortnox"
+        ? "economy"
+        : "profile";
 
   function setCompanyTab(next: CompanyTab) {
     const params = new URLSearchParams(searchParams);
@@ -154,6 +159,7 @@ export default function CompanyPage() {
         onChange={setCompanyTab}
         options={[
           { value: "profile", label: "Profil" },
+          { value: "economy", label: "Ekonomi" },
           { value: "research", label: "Research" },
           { value: "system", label: "System", count: activeConnections.length },
         ]}
@@ -223,6 +229,13 @@ export default function CompanyPage() {
               Steg 3 · Spara bolagsprofil
             </Button>
           </div>
+        </div>
+      ) : null}
+
+      {companyTab === "economy" ? (
+        <div className="space-y-4">
+          <FortnoxCard businessProfileId={businessProfileId} />
+          <TaxDeadlinesCard />
         </div>
       ) : null}
 

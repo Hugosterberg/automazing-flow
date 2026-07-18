@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { briefItemsForRoute, routeModuleLabel } from "@/features/daily-brief/briefForRoute";
 import {
+  Banknote,
   Bot,
   Gauge,
   ListChecks,
@@ -30,6 +31,7 @@ const KIND_ICON: Record<BriefItemKind, typeof MessageSquare> = {
   review: Star,
   automation: Zap,
   agent: Bot,
+  economy: Banknote,
 };
 
 const SEVERITY_CLASS = {

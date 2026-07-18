@@ -136,6 +136,13 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     message:
       "Required for the reel builder in Content → Create: clips upload directly to Cloudinary and are stitched into a 30/60s 9:16 mp4. Set CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET.",
   },
+  fortnox: {
+    label: "Fortnox OAuth",
+    required: ["FORTNOX_CLIENT_ID", "FORTNOX_CLIENT_SECRET"],
+    authPath: "/api/auth/fortnox",
+    message:
+      "Required to connect Fortnox (Company → Ekonomi: unpaid/overdue invoices). Create an integration at developer.fortnox.se; FORTNOX_APP_URL overrides the callback base when it differs from API_BASE_URL.",
+  },
   google_drive: {
     label: "Google Drive OAuth",
     required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],

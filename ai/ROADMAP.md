@@ -45,6 +45,13 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - **UX chrome trim** (2026-07-16): SmartBar/AI strips scoped to when they help;
   Mer-collapsibles closed by default; Digital Brand website edit → Företag;
   Reviews/Ecommerce connection status hidden when healthy.
+- **Economy: Fortnox + myndighetsdatum** (2026-07-18): Fortnox OAuth
+  (`companyinformation invoice` scopes, rotating refresh tokens) with an
+  unpaid/overdue invoice summary on Company → Ekonomi; rule-engine for
+  Skatteverket/Bolagsverket deadlines (moms/AGI/årsredovisning/INK,
+  `src/lib/taxDeadlines.ts` — Skatteverket's real APIs require partner
+  agreements, so deadlines are computed, not fetched). Daily Brief warns on
+  overdue invoices and deadlines ≤7 days (only after tax settings saved once).
 
 ## v1 — Trust the automation (make what exists visibly reliable)
 

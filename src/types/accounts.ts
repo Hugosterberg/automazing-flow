@@ -10,6 +10,8 @@ export type SocialPlatform =
   /** WhatsApp Business via Zernio ([docs](https://docs.zernio.com/platforms/whatsapp)) */
   | "whatsapp";
 export type EcommercePlatform = "shopify" | "notion";
+/** Bookkeeping/finance platforms (Company → Ekonomi). */
+export type EconomyPlatform = "fortnox";
 export type MailPlatform = "gmail" | "outlook";
 export type CalendarPlatform = "google_calendar" | "outlook_calendar";
 export type ReviewsPlatform = "google_reviews" | "tripadvisor";
@@ -42,6 +44,7 @@ export type IntelligencePlatform =
 export type AccountPlatform =
   | SocialPlatform
   | EcommercePlatform
+  | EconomyPlatform
   | MailPlatform
   | CalendarPlatform
   | ReviewsPlatform

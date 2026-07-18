@@ -21,7 +21,8 @@ export type BriefItemKind =
   | "recommendation"
   | "review"
   | "automation"
-  | "agent";
+  | "agent"
+  | "economy";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -78,6 +79,10 @@ export interface DailyBriefInput {
   newRecommendations: Array<{ title: string }>;
   /** Recent CMA / agent runs surfaced via activity_events (module=agent). */
   agentUpdates?: Array<{ title: string }>;
+  /** Overdue customer invoices from Fortnox — money waiting to be chased. */
+  overdueInvoices?: { count: number; sumLabel: string } | null;
+  /** Skatteverket/Bolagsverket deadlines ≤7 days away (pre-filtered, display-ready). */
+  taxDeadlinesSoon?: Array<{ title: string; dateLabel: string }>;
 }
 
 const SEVERITY_RANK: Record<BriefSeverity, number> = { critical: 0, warning: 1, info: 2 };
@@ -291,6 +296,36 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const overdueInvoices = input.overdueInvoices ?? null;
+  if (overdueInvoices && overdueInvoices.count > 0) {
+    items.push({
+      id: "economy-overdue-invoices",
+      kind: "economy",
+      severity: "warning",
+      title: t("dailyBrief:signals.overdueInvoices", { count: overdueInvoices.count }),
+      description: t("dailyBrief:signals.overdueInvoicesDesc", { sum: overdueInvoices.sumLabel }),
+      to: "/company?tab=economy",
+      count: overdueInvoices.count,
+    });
+  }
+
+  const taxDeadlinesSoon = input.taxDeadlinesSoon ?? [];
+  if (taxDeadlinesSoon.length > 0) {
+    const first = taxDeadlinesSoon[0];
+    items.push({
+      id: "economy-tax-deadline",
+      kind: "economy",
+      severity: "warning",
+      title: t("dailyBrief:signals.taxDeadline", { title: first.title, date: first.dateLabel }),
+      description:
+        taxDeadlinesSoon.length > 1
+          ? t("dailyBrief:signals.taxDeadlineMoreDesc", { count: taxDeadlinesSoon.length - 1 })
+          : t("dailyBrief:signals.taxDeadlineDesc"),
+      to: "/company?tab=economy",
+      count: taxDeadlinesSoon.length,
+    });
+  }
+
   const agentUpdates = input.agentUpdates ?? [];
   if (agentUpdates.length > 0) {
     const n = agentUpdates.length;
@@ -324,7 +359,9 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length +
-    agentUpdates.length;
+    agentUpdates.length +
+    (overdueInvoices?.count ?? 0) +
+    taxDeadlinesSoon.length;
 
   if (items.length === 0) {
     return {

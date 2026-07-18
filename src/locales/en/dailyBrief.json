@@ -60,7 +60,20 @@
     "ai_one": "1 new AI suggestion",
     "ai_other": "{{count}} new AI suggestions",
     "agents_one": "1 agent result to review",
-    "agents_other": "{{count}} agent results to review"
+    "agents_other": "{{count}} agent results to review",
+    "overdueInvoices_one": "1 invoice is overdue",
+    "overdueInvoices_other": "{{count}} invoices are overdue",
+    "overdueInvoicesDesc": "{{sum}} awaiting payment — time to remind your customers.",
+    "taxDeadline": "{{title}} due {{date}}",
+    "taxDeadlineDesc": "Government deadline within a week — see details under Company → Finance.",
+    "taxDeadlineMoreDesc_one": "Plus 1 more government deadline within a week.",
+    "taxDeadlineMoreDesc_other": "Plus {{count}} more government deadlines within a week."
+  },
+  "taxKinds": {
+    "moms": "VAT return",
+    "agi": "Employer declaration",
+    "arsredovisning": "Annual report",
+    "inkomstdeklaration": "Income declaration"
   },
   "allHandled": "All {{count}} handled — nice work.",
   "progressTitle": "{{done}} of {{total}} done today",

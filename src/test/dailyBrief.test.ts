@@ -135,6 +135,33 @@ describe("buildDailyBrief", () => {
     expect(brief.items[0].title).toBe("1 koppling behöver uppmärksamhet");
   });
 
+  it("warns about overdue Fortnox invoices and imminent tax deadlines", () => {
+    const brief = buildDailyBrief({
+      ...empty,
+      overdueInvoices: { count: 2, sumLabel: "12 500 kr" },
+      taxDeadlinesSoon: [{ title: "Momsdeklaration", dateLabel: "12 augusti" }],
+    });
+    const invoices = brief.items.find((i) => i.id === "economy-overdue-invoices");
+    const tax = brief.items.find((i) => i.id === "economy-tax-deadline");
+    expect(invoices).toMatchObject({
+      kind: "economy",
+      severity: "warning",
+      title: "2 fakturor har förfallit",
+      to: "/company?tab=economy",
+    });
+    expect(invoices?.description).toContain("12 500 kr");
+    expect(tax).toMatchObject({
+      kind: "economy",
+      severity: "warning",
+      title: "Momsdeklaration senast 12 augusti",
+    });
+    expect(brief.actionCount).toBe(3);
+
+    expect(
+      buildDailyBrief({ ...empty, overdueInvoices: null, taxDeadlinesSoon: [] }).allClear
+    ).toBe(true);
+  });
+
   it("pluralises and summarises counts correctly", () => {
     const brief = buildDailyBrief({
       ...empty,

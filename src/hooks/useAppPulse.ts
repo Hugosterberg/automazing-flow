@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   AlertTriangle,
+  Banknote,
   Bot,
   Gauge,
   ListChecks,
@@ -35,6 +36,7 @@ const KIND_ICON: Record<BriefItemKind, LucideIcon> = {
   review: Star,
   automation: Zap,
   agent: Bot,
+  economy: Banknote,
 };
 
 /**
