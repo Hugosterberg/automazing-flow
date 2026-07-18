@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -53,7 +53,7 @@ import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
 import { classifyMessageTriage, TRIAGE_BUCKET_LABELS } from "./messageTriage";
 import { MessageThread } from "./MessageThread";
-import { avatarGradient, formatFullMessageDate, formatMessageDate, senderInitial } from "./messagesUi";
+import { avatarGradient, formatFullMessageDate, formatMessageDate, senderInitial, withFullThreadBody } from "./messagesUi";
 import type { MailFolder, ThreadMessage, UnifiedMessage } from "./types";
 import type { MailMessageAction } from "./mailActionsClient";
 
@@ -132,7 +132,11 @@ export function MessageDetailPanel({
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const rawBody = (message.body || message.snippet || "").trim();
+  const fullMessage = useMemo(
+    () => withFullThreadBody(message, threadMessages),
+    [message, threadMessages]
+  );
+  const rawBody = (fullMessage.body || fullMessage.snippet || "").trim();
   const htmlEmail = message.kind === "email" && isHtmlEmailContent(rawBody);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -400,7 +404,7 @@ export function MessageDetailPanel({
               Hämtar tråd…
             </p>
           ) : null}
-          <MessageBody message={message} />
+          <MessageBody message={fullMessage} />
         </div>
       )}
     </div>

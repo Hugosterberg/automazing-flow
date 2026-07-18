@@ -126,6 +126,16 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     message:
       "Required to export Canva designs. Prefer CANVA_CLIENT_ID + CANVA_CLIENT_SECRET for OAuth login; CANVA_ACCESS_TOKEN remains a legacy fallback.",
   },
+  cloudinary: {
+    label: "Cloudinary (reel builder)",
+    requiredAny: [
+      ["CLOUDINARY_URL", "CLOUDINARY_CLOUD_NAME"],
+      ["CLOUDINARY_URL", "CLOUDINARY_API_KEY"],
+      ["CLOUDINARY_URL", "CLOUDINARY_API_SECRET"],
+    ],
+    message:
+      "Required for the reel builder in Content → Create: clips upload directly to Cloudinary and are stitched into a 30/60s 9:16 mp4. Set CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET.",
+  },
   google_drive: {
     label: "Google Drive OAuth",
     required: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
