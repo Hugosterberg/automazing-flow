@@ -20,6 +20,7 @@ import { PageAiSuggestionsStrip } from "@/features/ai-recommendations/PageAiSugg
 import { AutomationEnableHint } from "@/features/automation";
 import { PublishComposer } from "@/features/content/PublishComposer";
 import { CreateTab } from "@/features/content/CreateTab";
+import { ReelBuilderPanel } from "@/features/content/ReelBuilderPanel";
 import { ContentNextStepBar } from "@/features/content/ContentNextStepBar";
 import { isContentTab, type ContentTab } from "@/features/content/contentFlow";
 import { SelectedContentPanel } from "@/features/content/SelectedContentPanel";
@@ -200,6 +201,7 @@ export default function ContentPage() {
     selectedAssets,
     selectedIds,
     selectedImages,
+    selectedVideos,
     publishMediaUrls,
     uploadingBrowse,
     assetFromDriveFile,
@@ -477,6 +479,13 @@ export default function ContentPage() {
               goToTab("publish");
               toast.success(t("toasts.ideaAdded"));
             }}
+          />
+          <ReelBuilderPanel
+            businessProfileId={createBusinessProfileId}
+            selectedVideoAssets={selectedVideos}
+            onBeforeRequest={ensureBackendSession}
+            onSaveResult={(asset) => saveGeneratedToSelection(asset, { toolName: "Reel" })}
+            onGoPublish={() => goToTab("publish")}
           />
           <McpFeatureSection
             businessProfileId={createBusinessProfileId}

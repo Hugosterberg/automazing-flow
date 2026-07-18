@@ -7,6 +7,7 @@ import {
   messageMatchesTab,
   providerMessageIdFor,
   senderInitial,
+  withFullThreadBody,
 } from "@/features/messages/messagesUi";
 import type { UnifiedMessage } from "@/features/messages/types";
 import { initI18n, i18n } from "@/lib/i18n";
@@ -140,5 +141,39 @@ describe("inboxEmptyCopy / providerMessageIdFor", () => {
     expect(
       providerMessageIdFor(msg({ id: "email:gmail:abc", kind: "email", channel: "gmail" }))
     ).toBe("");
+  });
+});
+
+describe("withFullThreadBody", () => {
+  const base = msg({
+    id: "email:gmail:abc",
+    kind: "email",
+    channel: "gmail",
+    providerMessageId: "provider-1",
+    snippet: "Hej! Här är början av mailet…",
+    body: "Hej! Här är början av mailet…",
+  });
+  const threadRow = {
+    id: "provider-1",
+    date: "2026-07-16T12:00:00Z",
+    from: { name: "A", email: "a@example.com" },
+    snippet: "Hej! Här är början av mailet…",
+    body: "Hej! Här är början av mailet, och här kommer resten av hela innehållet som listan aldrig hämtar.",
+  };
+
+  it("swaps in the full thread body for the same provider message", () => {
+    const merged = withFullThreadBody(base, [threadRow]);
+    expect(merged.body).toBe(threadRow.body);
+    expect(merged.id).toBe(base.id);
+  });
+
+  it("keeps the list body when the thread has no matching or longer body", () => {
+    expect(withFullThreadBody(base, []).body).toBe(base.body);
+    expect(
+      withFullThreadBody(base, [{ ...threadRow, id: "other-id" }]).body
+    ).toBe(base.body);
+    expect(
+      withFullThreadBody(base, [{ ...threadRow, body: "Hej!" }]).body
+    ).toBe(base.body);
   });
 });

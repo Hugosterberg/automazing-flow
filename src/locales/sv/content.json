@@ -386,6 +386,35 @@
     "defaultLabel": "Släpp bilder eller videor här, eller klicka för att ladda upp",
     "readFailed": "Kunde inte läsa filen"
   },
+  "reel": {
+    "title": "Reel-klippare (30/60 s)",
+    "description": "Välj flera korta klipp som klipps ihop till en stående 9:16-video för Reels och TikTok.",
+    "pickFromDevice": "Välj klipp från mobilen",
+    "iphoneHint": "På iPhone öppnas bildbiblioteket — där finns även iCloud-bilder och delade album. Klipp från Valda (t.ex. Google Drive) kan läggas till med knapparna intill.",
+    "empty": "Inga klipp ännu — lägg till 2–10 korta videor så klipps de ihop i ordningen nedan.",
+    "targetLabel": "Längd",
+    "materialSummary": "{{count}} klipp · {{seconds}}s material",
+    "compose": "Skapa reel",
+    "maxClips": "Max {{count}} klipp per reel",
+    "tooLarge": "{{name}} är för stor (max 200 MB per klipp)",
+    "moveUp": "Flytta upp",
+    "moveDown": "Flytta ner",
+    "remove": "Ta bort klipp",
+    "resultTitle": "Klar — {{seconds}}s reel (1080×1920)",
+    "resultHint": "Första uppspelningen kan ta en stund medan videon renderas. Videon lagras i Cloudinary och länken fungerar för publicering.",
+    "useInPublish": "Lägg till i Valda och publicera",
+    "openVideo": "Öppna videon",
+    "assetName": "Reel {{seconds}}s",
+    "sourceName": "Reel-klippare",
+    "notConfigured": "Reel-klipparen behöver Cloudinary-nycklar. Lägg till CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY och CLOUDINARY_API_SECRET (eller CLOUDINARY_URL) under Inställningar → API-nycklar.",
+    "errors": {
+      "uploadParams": "Kunde inte förbereda uppladdningen",
+      "uploadFailed": "Uppladdningen av klippet misslyckades",
+      "importFailed": "Kunde inte hämta klippet från källan",
+      "noDuration": "Klippets längd kunde inte läsas — prova ett annat format",
+      "composeFailed": "Kunde inte skapa reelen"
+    }
+  },
   "quickActions": {
     "remove-background": {
       "title": "Ta bort bakgrund",

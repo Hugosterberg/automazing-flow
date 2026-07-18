@@ -44,6 +44,7 @@ import { registerMcpRoutes } from "./routes/mcpRoutes.ts";
 import { registerIntelligenceRoutes } from "./routes/intelligenceRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
 import { registerContentRoutes } from "./routes/contentRoutes.ts";
+import { registerReelRoutes } from "./routes/reelRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
@@ -551,6 +552,8 @@ registerContentRoutes(app, {
   zernio: zernioModule,
   secretResolver,
 });
+
+registerReelRoutes(app, { getSessionUserId });
 
 registerApiaiRoutes(app, {
   auth,

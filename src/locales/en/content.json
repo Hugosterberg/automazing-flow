@@ -386,6 +386,35 @@
     "defaultLabel": "Drop images or videos here, or click to upload",
     "readFailed": "Could not read file"
   },
+  "reel": {
+    "title": "Reel builder (30/60 s)",
+    "description": "Pick several short clips and they are stitched into one vertical 9:16 video for Reels and TikTok.",
+    "pickFromDevice": "Pick clips from your phone",
+    "iphoneHint": "On iPhone this opens the native photo library — including iCloud Photos and shared albums. Clips already in Selected (e.g. Google Drive) can be added with the buttons next to it.",
+    "empty": "No clips yet — add 2–10 short videos and they are stitched in the order below.",
+    "targetLabel": "Length",
+    "materialSummary": "{{count}} clips · {{seconds}}s of material",
+    "compose": "Create reel",
+    "maxClips": "Max {{count}} clips per reel",
+    "tooLarge": "{{name}} is too large (max 200 MB per clip)",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove clip",
+    "resultTitle": "Done — {{seconds}}s reel (1080×1920)",
+    "resultHint": "The first playback can take a moment while the video renders. It is stored in Cloudinary and the link works for publishing.",
+    "useInPublish": "Add to Selected and publish",
+    "openVideo": "Open video",
+    "assetName": "Reel {{seconds}}s",
+    "sourceName": "Reel builder",
+    "notConfigured": "The reel builder needs Cloudinary keys. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET (or CLOUDINARY_URL) under Settings → API keys.",
+    "errors": {
+      "uploadParams": "Could not prepare the upload",
+      "uploadFailed": "Uploading the clip failed",
+      "importFailed": "Could not fetch the clip from its source",
+      "noDuration": "Could not read the clip duration — try another format",
+      "composeFailed": "Could not create the reel"
+    }
+  },
   "quickActions": {
     "remove-background": {
       "title": "Remove background",

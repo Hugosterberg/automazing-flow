@@ -42,7 +42,8 @@ function sourceLabel(asset: SelectedContentAsset, t: (key: string) => string) {
 function assetSourceFilter(asset: SelectedContentAsset): SourceFilter {
   if (asset.sourceAccountId === "upload") return "upload";
   if (asset.sourceAccountId === "apiai") return "apiai";
-  if (asset.sourceAccountId === "openai" || asset.sourceAccountId === "canva") return "generated";
+  if (asset.sourceAccountId === "openai" || asset.sourceAccountId === "canva" || asset.sourceAccountId === "reel")
+    return "generated";
   return "drive";
 }
 

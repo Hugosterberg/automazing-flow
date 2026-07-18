@@ -1,4 +1,4 @@
-import type { InboxFilter, MessageChannelTab, UnifiedMessage } from "./types";
+import type { InboxFilter, MessageChannelTab, ThreadMessage, UnifiedMessage } from "./types";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
 import { t } from "@/lib/i18n";
 
@@ -39,6 +39,25 @@ export function avatarGradient(str: string): string {
 
 export function senderInitial(name: string): string {
   return (name || "?").charAt(0).toUpperCase();
+}
+
+/**
+ * The inbox list only carries a snippet-sized body (Gmail format=metadata,
+ * Outlook bodyPreview). When the thread fetch has loaded the same message
+ * with a full body, swap it in so the whole mail is readable — also for
+ * single-message threads, which the thread view itself does not render.
+ */
+export function withFullThreadBody(
+  message: UnifiedMessage,
+  threadMessages: ThreadMessage[]
+): UnifiedMessage {
+  const providerId = message.providerMessageId || message.id;
+  const match = threadMessages.find((t) => t.id === providerId);
+  const threadBody = (match?.body || "").trim();
+  if (threadBody && threadBody.length > (message.body || "").trim().length) {
+    return { ...message, body: threadBody };
+  }
+  return message;
 }
 
 export const formatMessageDate = formatSmartDate;
