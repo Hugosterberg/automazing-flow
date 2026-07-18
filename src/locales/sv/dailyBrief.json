@@ -60,7 +60,20 @@
     "ai_one": "1 nytt AI-förslag",
     "ai_other": "{{count}} nya AI-förslag",
     "agents_one": "1 agentresultat att granska",
-    "agents_other": "{{count}} agentresultat att granska"
+    "agents_other": "{{count}} agentresultat att granska",
+    "overdueInvoices_one": "1 faktura har förfallit",
+    "overdueInvoices_other": "{{count}} fakturor har förfallit",
+    "overdueInvoicesDesc": "{{sum}} väntar på betalning — dags att påminna kunderna.",
+    "taxDeadline": "{{title}} senast {{date}}",
+    "taxDeadlineDesc": "Myndighetsdatum inom en vecka — se detaljer under Företag → Ekonomi.",
+    "taxDeadlineMoreDesc_one": "Plus 1 myndighetsdatum till inom en vecka.",
+    "taxDeadlineMoreDesc_other": "Plus {{count}} myndighetsdatum till inom en vecka."
+  },
+  "taxKinds": {
+    "moms": "Momsdeklaration",
+    "agi": "Arbetsgivardeklaration",
+    "arsredovisning": "Årsredovisning",
+    "inkomstdeklaration": "Inkomstdeklaration"
   },
   "allHandled": "Alla {{count}} hanterade — bra jobbat.",
   "progressTitle": "{{done}} av {{total}} klara idag",

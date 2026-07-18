@@ -7,6 +7,7 @@ export type AppArea =
   | "social"
   | "marketing"
   | "ecommerce"
+  | "economy"
   | "messages"
   | "calendar"
   | "reviews"
@@ -17,6 +18,7 @@ export const AREA_ORDER: AppArea[] = [
   "social",
   "marketing",
   "ecommerce",
+  "economy",
   "messages",
   "calendar",
   "reviews",
@@ -210,6 +212,16 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageName: "E-commerce",
     connectSteps: "Öppna Kopplingar → Notion → Koppla.",
     serverNeeds: "NOTION_CLIENT_ID + NOTION_CLIENT_SECRET + public HTTPS NOTION_APP_URL for callbacks.",
+  },
+  {
+    platform: "fortnox",
+    label: "Fortnox",
+    areas: ["economy"],
+    pageHref: "/company?tab=economy",
+    pageName: "Company",
+    connectSteps: "Öppna Kopplingar → Fortnox → Koppla. Logga in med ditt Fortnox-konto och godkänn åtkomsten.",
+    serverNeeds:
+      "FORTNOX_CLIENT_ID + FORTNOX_CLIENT_SECRET from developer.fortnox.se; FORTNOX_APP_URL if the callback base differs from API_BASE_URL.",
   },
   {
     platform: "gmail",
@@ -445,6 +457,7 @@ const byAreaCache: Record<AppArea, ConnectionCatalogEntry[]> = {
   social: [],
   marketing: [],
   ecommerce: [],
+  economy: [],
   messages: [],
   calendar: [],
   reviews: [],

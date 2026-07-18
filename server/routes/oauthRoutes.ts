@@ -15,6 +15,7 @@ import { registerMailOAuthRoutes } from "./oauth/mailOAuthRoutes.ts";
 import { registerCanvaOAuthRoutes } from "./oauth/canvaOAuthRoutes.ts";
 import { registerShopifyOAuthRoutes } from "./oauth/shopifyOAuthRoutes.ts";
 import { registerNotionOAuthRoutes } from "./oauth/notionOAuthRoutes.ts";
+import { registerFortnoxOAuthRoutes } from "./oauth/fortnoxOAuthRoutes.ts";
 import { registerMcpOAuthRoutes } from "./oauth/mcpOAuthRoutes.ts";
 import { registerMetaSocialOAuthRoutes } from "./oauth/metaSocialOAuthRoutes.ts";
 import { registerTikTokOAuthRoutes } from "./oauth/tiktokOAuthRoutes.ts";
@@ -256,6 +257,9 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (platform === "shopify" || platform === "notion") {
       return "ecommerce";
     }
+    if (platform === "fortnox") {
+      return "company";
+    }
     if (platform === "google_ads" || platform === "meta_business") {
       return "marketing";
     }
@@ -427,6 +431,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
   });
 
   registerNotionOAuthRoutes(app, deps, {
+    parseOauthReturnPage,
+    requireSessionOrRedirect,
+    requestedAppBaseUrl,
+    postOauthBaseUrl,
+    postOauthPage,
+    isAllowedOAuthCallbackUser,
+    oauthRedirectTo,
+  });
+
+  registerFortnoxOAuthRoutes(app, deps, {
     parseOauthReturnPage,
     requireSessionOrRedirect,
     requestedAppBaseUrl,

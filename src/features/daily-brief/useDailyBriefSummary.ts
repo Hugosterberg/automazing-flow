@@ -20,6 +20,10 @@ import { platformLabel } from "@/lib/platformLabels";
 import { t } from "@/lib/i18n";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
+import { useFortnoxSummary } from "@/features/economy";
+import { formatCurrency, formatDateCustom } from "@/lib/format";
+import { isTaxSettings, upcomingTaxDeadlines } from "@/lib/taxDeadlines";
+import type { TaxSettings } from "@/lib/taxDeadlines";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
 /**
@@ -62,6 +66,27 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
     [outreachDoc.data]
   );
+
+  // Economy: overdue Fortnox invoices + tax deadlines ≤7 days. Both stay
+  // silent until the user has connected Fortnox / saved tax settings once.
+  const { overview: fortnoxOverview } = useFortnoxSummary(businessProfileId);
+  const overdueInvoices = useMemo(() => {
+    if (!fortnoxOverview?.connected || !fortnoxOverview.summary) return null;
+    const { overdueCount, overdueSum, currency } = fortnoxOverview.summary;
+    if (overdueCount === 0) return null;
+    return { count: overdueCount, sumLabel: formatCurrency(overdueSum, currency) };
+  }, [fortnoxOverview]);
+
+  const taxSettingsDoc = useProfileDocument<TaxSettings | null>("tax-settings", null);
+  const taxDeadlinesSoon = useMemo(() => {
+    const settings = taxSettingsDoc.data;
+    if (!isTaxSettings(settings)) return [];
+    const today = new Date().toLocaleDateString("sv-SE");
+    return upcomingTaxDeadlines(settings, today, 7).map((deadline) => ({
+      title: t(`dailyBrief:taxKinds.${deadline.kind}`),
+      dateLabel: formatDateCustom(`${deadline.date}T12:00:00`, { day: "numeric", month: "long" }),
+    }));
+  }, [taxSettingsDoc.data]);
 
   const agentUpdates = useMemo(() => {
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -116,9 +141,13 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
       agentUpdates,
+      overdueInvoices,
+      taxDeadlinesSoon,
     });
   }, [
     agentUpdates,
+    overdueInvoices,
+    taxDeadlinesSoon,
     automationRuns.byKey,
     connections,
     demoEnabled,

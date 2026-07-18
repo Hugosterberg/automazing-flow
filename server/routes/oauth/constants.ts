@@ -30,5 +30,9 @@ export const GOOGLE_ADS_SCOPES =
 export const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
 export const CANVA_SCOPES = "design:content:read";
+export const FORTNOX_AUTH = "https://apps.fortnox.se/oauth-v1/auth";
+export const FORTNOX_TOKEN = "https://apps.fortnox.se/oauth-v1/token";
+/** Fortnox scopes are read+write per resource — request only what Economy needs. */
+export const FORTNOX_SCOPES = "companyinformation invoice";
 
 

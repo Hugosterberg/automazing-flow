@@ -18,6 +18,7 @@ import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummar
 import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { useActivityFeed, type ActivityEventRow } from "./useActivityFeed";
 import {
+  Banknote,
   Bot,
   Gauge,
   ListChecks,
@@ -53,6 +54,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   review: Star,
   automation: Zap,
   agent: Bot,
+  economy: Banknote,
 };
 
 function timeAgo(iso: string): string {

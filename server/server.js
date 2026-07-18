@@ -45,6 +45,7 @@ import { registerIntelligenceRoutes } from "./routes/intelligenceRoutes.ts";
 import { registerReviewsRoutes } from "./routes/reviewsRoutes.ts";
 import { registerContentRoutes } from "./routes/contentRoutes.ts";
 import { registerReelRoutes } from "./routes/reelRoutes.ts";
+import { registerEconomyRoutes } from "./routes/economyRoutes.ts";
 import { registerApiaiRoutes } from "./routes/apiaiRoutes.ts";
 import { registerConnectionsRoutes } from "./routes/connectionsRoutes.ts";
 import { registerTeamRoutes } from "./routes/teamRoutes.ts";
@@ -554,6 +555,8 @@ registerContentRoutes(app, {
 });
 
 registerReelRoutes(app, { getSessionUserId });
+
+registerEconomyRoutes(app, { getSessionUserId, tokenStore, getStoredAccountAccess });
 
 registerApiaiRoutes(app, {
   auth,

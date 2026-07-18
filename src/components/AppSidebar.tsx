@@ -1,4 +1,4 @@
-import { Bot, Users, Zap, MoreHorizontal, Trash2 } from "lucide-react";
+import { Banknote, Bot, Users, Zap, MoreHorizontal, Trash2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
@@ -102,6 +102,7 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   whatsapp: WhatsAppIcon,
   shopify: ShopifyIcon,
   notion: NotionIcon,
+  fortnox: (props) => <Banknote className={props.className} aria-hidden />,
   gmail: GmailIcon,
   outlook: OutlookIcon,
   google_calendar: GoogleCalendarIcon,

@@ -17,6 +17,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp",
   shopify: "Shopify",
   notion: "Notion",
+  fortnox: "Fortnox",
   gmail: "Gmail",
   outlook: "Outlook",
   google_calendar: "Google Calendar",
