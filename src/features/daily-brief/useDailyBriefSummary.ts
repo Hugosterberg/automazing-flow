@@ -20,6 +20,8 @@ import { platformLabel } from "@/lib/platformLabels";
 import { t } from "@/lib/i18n";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
+import { usePlanningOverview } from "@/features/planning";
+import { formatDateCustom } from "@/lib/format";
 import { useUnreadDmCount } from "./useUnreadDmCount";
 
 /**
@@ -62,6 +64,18 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
     [outreachDoc.data]
   );
+
+  const { overview: planningOverview } = usePlanningOverview({ includeFx: false });
+  const upcomingHolidays = useMemo(() => {
+    if (!planningOverview?.today || planningOverview.holidays.length === 0) return [];
+    const limit = Date.parse(planningOverview.today) + 7 * 24 * 60 * 60 * 1000;
+    return planningOverview.holidays
+      .filter((h) => Date.parse(h.date) <= limit)
+      .map((h) => ({
+        name: h.kind === "squeeze" ? t("dailyBrief:squeezeDay") : h.name,
+        dateLabel: formatDateCustom(`${h.date}T12:00:00`, { weekday: "long", day: "numeric", month: "long" }),
+      }));
+  }, [planningOverview]);
 
   const agentUpdates = useMemo(() => {
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -116,9 +130,11 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
         .filter((r) => r.status === "new" || r.status === "seen")
         .map((r) => ({ title: r.title })),
       agentUpdates,
+      upcomingHolidays,
     });
   }, [
     agentUpdates,
+    upcomingHolidays,
     automationRuns.byKey,
     connections,
     demoEnabled,

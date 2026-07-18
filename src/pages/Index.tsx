@@ -52,6 +52,7 @@ import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfile
 import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
 import { DemoModeBanner } from "@/features/demo";
 import { WeeklyResultsCard } from "@/features/weekly-results";
+import { PlanningSignalsCard } from "@/features/planning";
 import { quickNavLabel } from "@/features/quick-nav/quickNavLabels";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceMode } from "@/features/workspace-mode";
@@ -579,6 +580,10 @@ export default function Index() {
         <WeeklyResultsCard
           businessProfileId={homeBusinessProfileId}
           businessName={businessProfile?.name || activeProfile?.name}
+        />
+        <PlanningSignalsCard
+          location={businessProfile?.location || activeProfile?.location || null}
+          showFx={mode === "business"}
         />
       </div>
 

@@ -15,6 +15,7 @@ import { platformLabel } from "@/lib/platformLabels";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useScheduledPosts, type ScheduledPost } from "@/features/social";
 import { absoluteMediaUrl } from "@/features/content/contentPublishMedia";
+import { usePlanningOverview } from "@/features/planning";
 
 /** Platforms we can publish to via Zernio. */
 const PUBLISHABLE_PLATFORMS: AccountPlatform[] = ["instagram", "facebook", "tiktok", "youtube", "x"];
@@ -71,6 +72,17 @@ export function PublishComposer({
   const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Helgdagsvarning: scheduling onto a röd dag/afton is often unintended —
+  // engagement and support coverage differ. Hint only, never blocking.
+  const { overview: planningOverview } = usePlanningOverview({ includeFx: false });
+  const scheduledHoliday = useMemo(() => {
+    const date = scheduledFor.slice(0, 10);
+    if (!date || !planningOverview?.holidays?.length) return null;
+    const hit = planningOverview.holidays.find((h) => h.date === date);
+    if (!hit) return null;
+    return { name: hit.kind === "squeeze" ? t("publish.squeezeDay") : hit.name };
+  }, [scheduledFor, planningOverview, t]);
 
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
   const resolvedMediaUrls = useMemo(
@@ -346,6 +358,11 @@ export function PublishComposer({
                 onChange={(e) => setScheduledFor(e.target.value)}
                 className="w-[220px]"
               />
+              {scheduledHoliday ? (
+                <p className="text-xs text-warning">
+                  {t("publish.holidayHint", { name: scheduledHoliday.name })}
+                </p>
+              ) : null}
             </div>
           )}
           {mode === "schedule" && resolvedMediaUrls.length > 0 ? (

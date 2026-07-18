@@ -9,6 +9,12 @@
     "automationsWorking": "Automations at work",
     "goTo": "Go to"
   },
+  "planning": {
+    "title": "Planning ahead",
+    "redDay": "public holiday",
+    "squeezeDay": "Bridge day",
+    "fxHint": "ECB rates · week-over-week"
+  },
   "editProfile": "Edit profile",
   "editProfileDesc": "Quick edit here — for a guided field-by-field walkthrough, go to"
 }

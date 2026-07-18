@@ -19,6 +19,7 @@ import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { useActivityFeed, type ActivityEventRow } from "./useActivityFeed";
 import {
   Bot,
+  CalendarHeart,
   Gauge,
   ListChecks,
   MessageSquare,
@@ -53,6 +54,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   review: Star,
   automation: Zap,
   agent: Bot,
+  planning: CalendarHeart,
 };
 
 function timeAgo(iso: string): string {

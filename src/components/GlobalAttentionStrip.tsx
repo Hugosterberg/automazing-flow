@@ -10,6 +10,7 @@ import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { briefItemsForRoute, routeModuleLabel } from "@/features/daily-brief/briefForRoute";
 import {
   Bot,
+  CalendarHeart,
   Gauge,
   ListChecks,
   MessageSquare,
@@ -30,6 +31,7 @@ const KIND_ICON: Record<BriefItemKind, typeof MessageSquare> = {
   review: Star,
   automation: Zap,
   agent: Bot,
+  planning: CalendarHeart,
 };
 
 const SEVERITY_CLASS = {

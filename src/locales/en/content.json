@@ -193,6 +193,8 @@
     "schedule": "Schedule",
     "dateTime": "Date & time",
     "scheduleMediaHint": "AI and Canva media links are temporary. Schedule media posts within 20 hours, or regenerate the media closer to publish time.",
+    "holidayHint": "Note: {{name}} — engagement may differ on this day. Double-check the time is intentional.",
+    "squeezeDay": "Bridge day",
     "sent": "Sent",
     "saveDraft": "Save draft",
     "publish": "Publish",

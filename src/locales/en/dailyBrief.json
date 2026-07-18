@@ -60,8 +60,13 @@
     "ai_one": "1 new AI suggestion",
     "ai_other": "{{count}} new AI suggestions",
     "agents_one": "1 agent result to review",
-    "agents_other": "{{count}} agent results to review"
+    "agents_other": "{{count}} agent results to review",
+    "planningHoliday": "{{name}} on {{date}}",
+    "planningHolidayDesc": "Plan content and scheduling around the day in advance.",
+    "planningHolidayMoreDesc_one": "Plus 1 more holiday within a week — plan content ahead.",
+    "planningHolidayMoreDesc_other": "Plus {{count}} more holidays within a week — plan content ahead."
   },
+  "squeezeDay": "Bridge day",
   "allHandled": "All {{count}} handled — nice work.",
   "progressTitle": "{{done}} of {{total}} done today",
   "quiet": {

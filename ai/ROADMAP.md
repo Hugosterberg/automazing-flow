@@ -45,6 +45,11 @@ ships, move its highlights to Shipped and renumber what's left. Last updated:
 - **UX chrome trim** (2026-07-16): SmartBar/AI strips scoped to when they help;
   Mer-collapsibles closed by default; Digital Brand website edit → Företag;
   Reviews/Ecommerce connection status hidden when healthy.
+- **Planning signals from free keyless APIs** (2026-07-18): Svenska Dagar
+  (helgdagar/klämdagar), Open-Meteo (weather for profile town), Frankfurter/ECB
+  (EUR/USD→SEK). `/api/planning/overview` + Home card, Daily Brief holiday
+  nudge (≤7 days), PublishComposer holiday warning on scheduled dates. No env
+  keys needed; upstream calls cached in-memory.
 
 ## v1 — Trust the automation (make what exists visibly reliable)
 

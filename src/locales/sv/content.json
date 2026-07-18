@@ -193,6 +193,8 @@
     "schedule": "Schemalägg",
     "dateTime": "Datum och tid",
     "scheduleMediaHint": "AI- och Canva-medialänkar är tillfälliga. Schemalägg mediainlägg inom 20 timmar, eller generera om media närmare publiceringstid.",
+    "holidayHint": "Obs: {{name}} — engagemanget kan avvika denna dag. Dubbelkolla att tiden är avsiktlig.",
+    "squeezeDay": "Klämdag",
     "sent": "Skickat",
     "saveDraft": "Spara utkast",
     "publish": "Publicera",

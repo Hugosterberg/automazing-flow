@@ -135,6 +135,24 @@ describe("buildDailyBrief", () => {
     expect(brief.items[0].title).toBe("1 koppling behöver uppmärksamhet");
   });
 
+  it("nudges about upcoming holidays as an info planning signal", () => {
+    const brief = buildDailyBrief({
+      ...empty,
+      upcomingHolidays: [
+        { name: "Midsommarafton", dateLabel: "fredag 19 juni" },
+        { name: "Midsommardagen", dateLabel: "lördag 20 juni" },
+      ],
+    });
+    expect(brief.items[0].kind).toBe("planning");
+    expect(brief.items[0].severity).toBe("info");
+    expect(brief.items[0].title).toBe("Midsommarafton på fredag 19 juni");
+    expect(brief.items[0].description).toMatch(/1 helgdag till/);
+    expect(brief.items[0].to).toBe("/content?tab=create");
+    expect(brief.actionCount).toBe(2);
+
+    expect(buildDailyBrief({ ...empty, upcomingHolidays: [] }).allClear).toBe(true);
+  });
+
   it("pluralises and summarises counts correctly", () => {
     const brief = buildDailyBrief({
       ...empty,

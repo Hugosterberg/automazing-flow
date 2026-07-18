@@ -60,8 +60,13 @@
     "ai_one": "1 nytt AI-förslag",
     "ai_other": "{{count}} nya AI-förslag",
     "agents_one": "1 agentresultat att granska",
-    "agents_other": "{{count}} agentresultat att granska"
+    "agents_other": "{{count}} agentresultat att granska",
+    "planningHoliday": "{{name}} på {{date}}",
+    "planningHolidayDesc": "Planera innehåll och schemaläggning runt dagen i förväg.",
+    "planningHolidayMoreDesc_one": "Plus 1 helgdag till inom en vecka — planera innehållet i förväg.",
+    "planningHolidayMoreDesc_other": "Plus {{count}} helgdagar till inom en vecka — planera innehållet i förväg."
   },
+  "squeezeDay": "Klämdag",
   "allHandled": "Alla {{count}} hanterade — bra jobbat.",
   "progressTitle": "{{done}} av {{total}} klara idag",
   "quiet": {

@@ -9,6 +9,12 @@
     "automationsWorking": "Automationer som jobbar",
     "goTo": "Gå till"
   },
+  "planning": {
+    "title": "Planering framåt",
+    "redDay": "röd dag",
+    "squeezeDay": "Klämdag",
+    "fxHint": "ECB-kurser · vecka-för-vecka"
+  },
   "editProfile": "Redigera profil",
   "editProfileDesc": "Snabb redigering här — för guide om varje fält, gå till"
 }

@@ -21,7 +21,8 @@ export type BriefItemKind =
   | "recommendation"
   | "review"
   | "automation"
-  | "agent";
+  | "agent"
+  | "planning";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -78,6 +79,11 @@ export interface DailyBriefInput {
   newRecommendations: Array<{ title: string }>;
   /** Recent CMA / agent runs surfaced via activity_events (module=agent). */
   agentUpdates?: Array<{ title: string }>;
+  /**
+   * Helgdagar/klämdagar within the next week (pre-filtered by the hook) —
+   * a planning nudge for content and scheduling, not an incident.
+   */
+  upcomingHolidays?: Array<{ name: string; dateLabel: string }>;
 }
 
 const SEVERITY_RANK: Record<BriefSeverity, number> = { critical: 0, warning: 1, info: 2 };
@@ -291,6 +297,26 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const upcomingHolidays = input.upcomingHolidays ?? [];
+  if (upcomingHolidays.length > 0) {
+    const first = upcomingHolidays[0];
+    items.push({
+      id: "planning-holidays",
+      kind: "planning",
+      severity: "info",
+      title: t("dailyBrief:signals.planningHoliday", {
+        name: first.name,
+        date: first.dateLabel,
+      }),
+      description:
+        upcomingHolidays.length > 1
+          ? t("dailyBrief:signals.planningHolidayMoreDesc", { count: upcomingHolidays.length - 1 })
+          : t("dailyBrief:signals.planningHolidayDesc"),
+      to: "/content?tab=create",
+      count: upcomingHolidays.length,
+    });
+  }
+
   const agentUpdates = input.agentUpdates ?? [];
   if (agentUpdates.length > 0) {
     const n = agentUpdates.length;
@@ -324,7 +350,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     input.overdueTasks.length +
     input.dueTodayTasks.length +
     input.newRecommendations.length +
-    agentUpdates.length;
+    agentUpdates.length +
+    upcomingHolidays.length;
 
   if (items.length === 0) {
     return {
