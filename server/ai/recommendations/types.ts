@@ -25,7 +25,10 @@ export type HeuristicSignal =
   | "sync_failed"
   | "stale_sync"
   | "no_integrations"
-  | "overdue_task";
+  | "overdue_task"
+  | "engagement_decline"
+  | "content_gap"
+  | "underperforming_campaign";
 
 export interface RecommendationCandidate {
   kind: AiRecommendationKind;

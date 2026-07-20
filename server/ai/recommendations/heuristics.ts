@@ -24,6 +24,12 @@ const STALE_SYNC_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 /** Hard cap on `overdue_task` recs emitted per run to avoid flooding the feed. */
 const OVERDUE_TASKS_CAP = 10;
 
+/** Engagement rate drop (percentage points) over the trend window that counts as a decline worth flagging. */
+const ENGAGEMENT_DECLINE_THRESHOLD_PP = 1.5;
+
+/** ROAS below this over the last 7 days counts as underwater. */
+const UNDERPERFORMING_ROAS_THRESHOLD = 1;
+
 // ---------------------------------------------------------------------------
 // Snapshot input shapes
 // ---------------------------------------------------------------------------
@@ -49,17 +55,47 @@ export type TaskSnapshot = {
   module: string | null;
 };
 
+/** Week-over-week engagement trend for one connected social account. */
+export type SocialEngagementTrend = {
+  accountId: string;
+  platform: string | null;
+  label: string;
+  latestEngagementRate: number;
+  baselineEngagementRate: number;
+  spanDays: number;
+};
+
+/** Latest known performance for one ad campaign (from the nightly snapshot cron). */
+export type CampaignSnapshot = {
+  campaignId: string;
+  platform: string;
+  name: string;
+  roas7d: number | null;
+  grade: string | null;
+  spend7d: number | null;
+};
+
 export interface TenantSnapshot {
   businessProfileId: string;
   accounts: AccountSnapshot[];
   tasks: TaskSnapshot[];
+  /** Engagement-rate trend per social account, when at least two snapshots exist. */
+  socialEngagementTrends: SocialEngagementTrend[];
+  /**
+   * Posts scheduled or drafted within the next few days, across all accounts.
+   * `null` means the lookup failed — treated as "unknown", not "zero", so a
+   * transient DB error doesn't fire a false content-gap recommendation.
+   */
+  upcomingPostsCount: number | null;
+  /** Latest snapshot per ad campaign (Meta/Google Ads), when marketing data exists. */
+  campaigns: CampaignSnapshot[];
 }
 
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function prettyAccountLabel(acc: AccountSnapshot): string {
+export function prettyAccountLabel(acc: AccountSnapshot): string {
   const platformLabel = acc.platform
     ? acc.platform.replace(/_/g, " ")
     : "account";
@@ -265,6 +301,104 @@ export function overdueTasksHeuristic(
   }));
 }
 
+/**
+ * Emit a `content` candidate when engagement rate on a social account has
+ * dropped by more than `ENGAGEMENT_DECLINE_THRESHOLD_PP` percentage points
+ * between the trend baseline and the latest snapshot. This is the growth/
+ * outreach counterpart to the maintenance heuristics above — it looks at
+ * whether the account is actually performing, not just whether it's synced.
+ */
+export function engagementDeclineHeuristic(
+  snapshot: TenantSnapshot
+): RecommendationCandidate[] {
+  return snapshot.socialEngagementTrends
+    .filter(
+      (s) =>
+        s.baselineEngagementRate - s.latestEngagementRate >=
+        ENGAGEMENT_DECLINE_THRESHOLD_PP
+    )
+    .map((s) => ({
+      kind: "content",
+      signal: "engagement_decline",
+      title: `Engagement falling on ${s.label}`,
+      summary: `Engagement rate slipped from ${s.baselineEngagementRate.toFixed(1)}% to ${s.latestEngagementRate.toFixed(1)}% over ${s.spanDays} days.`,
+      rationale:
+        "A sustained engagement drop usually means posting cadence slowed or the format stopped resonating. Try a new hook, post more consistently, or repurpose your best-performing post.",
+      confidence: 0.6,
+      module: "social",
+      relatedType: "connected_account",
+      relatedId: s.accountId,
+      suggestedAction: { type: "navigate", to: "/social-media" },
+      context: {
+        signal: "engagement_decline",
+        platform: s.platform,
+        latestEngagementRate: s.latestEngagementRate,
+        baselineEngagementRate: s.baselineEngagementRate,
+        spanDays: s.spanDays,
+      },
+    }));
+}
+
+/**
+ * Emit a single `content` candidate when the tenant has at least one social
+ * account but nothing scheduled or drafted in the near future — a quiet feed
+ * loses momentum with both the algorithm and the audience.
+ */
+export function contentGapHeuristic(
+  snapshot: TenantSnapshot
+): RecommendationCandidate[] {
+  if (snapshot.accounts.filter(isActive).length === 0) return [];
+  if (snapshot.upcomingPostsCount == null || snapshot.upcomingPostsCount > 0) return [];
+  return [
+    {
+      kind: "content",
+      signal: "content_gap",
+      title: "Nothing scheduled for the next few days",
+      summary: "Your content calendar is empty for the near future.",
+      rationale:
+        "Turn on the content-gap-filler automation in Social media → Mer, or queue a post manually, to keep a steady posting cadence.",
+      confidence: 0.65,
+      module: "social",
+      relatedType: "business_profile",
+      relatedId: snapshot.businessProfileId,
+      suggestedAction: { type: "navigate", to: "/social-media" },
+      context: { signal: "content_gap" },
+    },
+  ];
+}
+
+/**
+ * Emit an `outreach` candidate per ad campaign whose 7-day ROAS is underwater
+ * (spend outpacing revenue). Sourced from the nightly marketing snapshot
+ * cron, so this heuristic stays a pure read over already-gathered data.
+ */
+export function underperformingCampaignHeuristic(
+  snapshot: TenantSnapshot
+): RecommendationCandidate[] {
+  return snapshot.campaigns
+    .filter((c) => c.roas7d != null && c.roas7d < UNDERPERFORMING_ROAS_THRESHOLD)
+    .map((c) => ({
+      kind: "outreach",
+      signal: "underperforming_campaign",
+      title: `${c.name} is underwater`,
+      summary: `ROAS ${c.roas7d!.toFixed(2)}x over the last 7 days${c.grade ? ` (grade ${c.grade})` : ""}.`,
+      rationale:
+        "Ad spend is outpacing revenue on this campaign. Pause it, tighten targeting, or refresh the creative before spending more.",
+      confidence: 0.7,
+      module: "marketing",
+      relatedType: "campaign",
+      relatedId: c.campaignId,
+      suggestedAction: { type: "navigate", to: "/marketing" },
+      context: {
+        signal: "underperforming_campaign",
+        platform: c.platform,
+        roas7d: c.roas7d,
+        grade: c.grade,
+        spend7d: c.spend7d,
+      },
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -284,6 +418,9 @@ export const ALL_HEURISTICS: Array<{
   { name: "stale_sync", fn: staleSyncHeuristic },
   { name: "no_integrations", fn: noIntegrationsHeuristic },
   { name: "overdue_tasks", fn: overdueTasksHeuristic },
+  { name: "engagement_decline", fn: engagementDeclineHeuristic },
+  { name: "content_gap", fn: contentGapHeuristic },
+  { name: "underperforming_campaign", fn: underperformingCampaignHeuristic },
 ];
 
 /**

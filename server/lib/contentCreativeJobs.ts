@@ -7,7 +7,11 @@
 import crypto from "node:crypto";
 import { heuristicContentIdeas } from "../ai/contentIdeas.ts";
 import { loadProfileDocument, saveProfileDocument } from "./profileDocumentStore.ts";
-import { parseScheduledPostsDoc, type StoredScheduledPost } from "./scheduledPostsPublisher.ts";
+import {
+  parseScheduledPostsDoc,
+  ZERNIO_POST_PLATFORM,
+  type StoredScheduledPost,
+} from "./scheduledPostsPublisher.ts";
 import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
@@ -196,6 +200,40 @@ export function buildOptimizedCaption(title: string, hint?: string, platforms?: 
   return caption;
 }
 
+export interface PostableAccount {
+  id: string;
+  platform: string;
+}
+
+/**
+ * Active connected accounts on a platform the publish sweep can actually
+ * reach (i.e. present in `ZERNIO_POST_PLATFORM`). Content the gap-filler
+ * invents needs a real account attached — otherwise the scheduled post it
+ * produces has no publish target and always fails at publish time.
+ */
+async function loadPostableAccounts(
+  supabaseAdmin: SupabaseAdminLike,
+  businessProfileId: string
+): Promise<PostableAccount[]> {
+  const { data, error } = await supabaseAdmin
+    .from("connected_accounts")
+    .select("id,platform,disconnected_at")
+    .eq("business_profile_id", businessProfileId)
+    .in("platform", Object.keys(ZERNIO_POST_PLATFORM))
+    .is("disconnected_at", null);
+  if (error) {
+    console.warn(
+      `[content-creative] connected_accounts lookup failed bp=${businessProfileId}:`,
+      error.message
+    );
+    return [];
+  }
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .map((r) => ({ id: String((r as Record<string, unknown>)?.id || ""), platform: String((r as Record<string, unknown>)?.platform || "") }))
+    .filter((a) => a.id && Boolean(ZERNIO_POST_PLATFORM[a.platform]));
+}
+
 export interface ContentCreativeSeedResult {
   enqueued: number;
   repurpose: number;
@@ -244,20 +282,28 @@ export async function runContentCreativeSeed(deps: {
   if (gapFillOn && daysSince(workflows.lastGapFillAt, nowMs) >= 2) {
     const upcoming = countUpcomingPosts(posts, nowMs, 72);
     if (upcoming < 2) {
-      const ideas = heuristicContentIdeas({ businessName: deps.businessName || "your business", platform: "Instagram" });
-      for (const idea of ideas.slice(0, 2)) {
-        newItems.push({
-          id: crypto.randomUUID(),
-          title: idea.title,
-          captionHint: `${idea.hook}\n\nFormat: ${idea.format}. CTA: ${idea.cta}`,
-          accountIds: [],
-          platforms: ["instagram"],
-          mediaUrls: [],
-          scheduledFor: defaultScheduleIso(36 + gapFill * 12),
-          status: "queued",
-          createdAt: nowIso,
+      // Target every connected, publishable platform (not just Instagram) so the
+      // gap-filler actually covers the tenant's full social footprint, and attach
+      // each idea to a real account id — without one, the publish sweep has
+      // nothing to publish to and the post silently fails.
+      const targets = (await loadPostableAccounts(deps.supabaseAdmin, deps.businessProfileId)).slice(0, 3);
+      if (targets.length > 0) {
+        const ideas = heuristicContentIdeas({ businessName: deps.businessName || "your business" });
+        targets.forEach((target, i) => {
+          const idea = ideas[i % ideas.length];
+          newItems.push({
+            id: crypto.randomUUID(),
+            title: idea.title,
+            captionHint: `${idea.hook}\n\nFormat: ${idea.format}. CTA: ${idea.cta}`,
+            accountIds: [target.id],
+            platforms: [target.platform],
+            mediaUrls: [],
+            scheduledFor: defaultScheduleIso(36 + gapFill * 12),
+            status: "queued",
+            createdAt: nowIso,
+          });
+          gapFill += 1;
         });
-        gapFill += 1;
       }
     }
   }

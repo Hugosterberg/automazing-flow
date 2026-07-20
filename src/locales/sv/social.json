@@ -130,6 +130,14 @@
     "title": "Automationsflöden för social media",
     "description": "Aktivera flöden — sparas i molnet och styr content-pipeline-cron.",
     "activeCount": "{{count}} aktiva",
+    "autopilot": {
+      "title": "Helautomatiskt läge",
+      "description": "Slå på alla flöden nedan i ett klick: idé → text/hashtags → schemaläggning → publicering, dygnet runt via cron.",
+      "enabledToast": "Helautomatiskt läge aktiverat",
+      "enabledToastDesc": "Alla automationsflöden är nu på. Innehåll skapas, schemaläggs och publiceras automatiskt.",
+      "disabledToast": "Helautomatiskt läge avstängt",
+      "disabledToastDesc": "Alla automationsflöden är nu avstängda."
+    },
     "enableAria": "Aktivera {{title}}",
     "weekPlanTitle": "Generera veckoplan till kalendern",
     "weekPlanDesc": "Skapar kalenderaktiviteter och utkast i publiceringskön baserat på aktiva flöden.",

@@ -144,11 +144,25 @@ export function SocialAutomationPanel() {
   }, [automationWorkflows, workflowsDoc.data.enabled]);
 
   const activeAutomations = automationWorkflows.filter((workflow) => enabledAutomations[workflow.id]);
+  const isFullyAutomatic = automationWorkflows.length > 0 && activeAutomations.length === automationWorkflows.length;
 
   function handleToggleAutomation(workflowId: string, checked: boolean) {
     workflowsDoc.save({
       ...workflowsDoc.data,
       enabled: { ...enabledAutomations, [workflowId]: checked },
+    });
+  }
+
+  /** One switch that turns every content automation on (or off) at once. */
+  function handleToggleAutopilot(checked: boolean) {
+    const next = { ...enabledAutomations };
+    for (const workflow of automationWorkflows) next[workflow.id] = checked;
+    workflowsDoc.save({ ...workflowsDoc.data, enabled: next });
+    toast({
+      title: checked ? t("automation.autopilot.enabledToast") : t("automation.autopilot.disabledToast"),
+      description: checked
+        ? t("automation.autopilot.enabledToastDesc")
+        : t("automation.autopilot.disabledToastDesc"),
     });
   }
 
@@ -200,6 +214,25 @@ export function SocialAutomationPanel() {
 
   return (
     <>
+      <m.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <Card className="bg-card border-border glow-border">
+          <CardContent className="py-4 px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Zap className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{t("automation.autopilot.title")}</p>
+                <p className="text-xs text-muted-foreground">{t("automation.autopilot.description")}</p>
+              </div>
+            </div>
+            <Switch
+              checked={isFullyAutomatic}
+              onCheckedChange={handleToggleAutopilot}
+              aria-label={t("automation.autopilot.title")}
+            />
+          </CardContent>
+        </Card>
+      </m.div>
+
       <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
         <Card className="bg-card border-border glow-border">
           <CardHeader>

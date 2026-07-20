@@ -24,9 +24,15 @@
  */
 
 import { logActivity } from "../../lib/activityLog.ts";
+import { loadProfileDocument } from "../../lib/profileDocumentStore.ts";
+import { parseScheduledPostsDoc } from "../../lib/scheduledPostsPublisher.ts";
+import { countUpcomingPosts } from "../../lib/contentCreativeJobs.ts";
 import {
   runAllHeuristics,
+  prettyAccountLabel,
   type AccountSnapshot,
+  type CampaignSnapshot,
+  type SocialEngagementTrend,
   type TaskSnapshot,
   type TenantSnapshot,
 } from "./heuristics.ts";
@@ -38,6 +44,15 @@ import type {
 } from "./types.ts";
 
 import type { SupabaseAdminLike as SupabaseLike } from "../../lib/supabaseAdminLike.ts";
+
+/** Snapshots older than this are outside the engagement-trend lookback window. */
+const ENGAGEMENT_TREND_LOOKBACK_DAYS = 15;
+/** How close to the ideal 7-day-back baseline a snapshot has to be to qualify. */
+const ENGAGEMENT_TREND_TARGET_SPAN_DAYS = 7;
+/** How far ahead to look when counting "upcoming" posts for the content-gap heuristic. */
+const UPCOMING_POSTS_HORIZON_HOURS = 72;
+/** How many recent campaign snapshot rows to scan per tenant (dedupe keeps only the latest per campaign). */
+const CAMPAIGN_SNAPSHOT_SCAN_LIMIT = 200;
 
 const CONNECTED_ACCOUNTS_COLS = [
   "id",
@@ -117,6 +132,142 @@ async function loadTaskSnapshot(
   return Array.isArray(data) ? (data as TaskSnapshot[]) : [];
 }
 
+interface SocialStatsSnapshotRow {
+  account_id: string;
+  platform: string | null;
+  engagement_rate: number | null;
+  snapshot_date: string;
+}
+
+/**
+ * Week-over-week engagement trend per social account, from the daily
+ * `social_stats_snapshots` the cron writes. Mirrors the client-side trend
+ * computation in `src/features/social/socialStatsTrend.ts` but stays
+ * server-only since that module imports browser-only helpers.
+ */
+async function loadSocialEngagementTrends(
+  supabase: SupabaseLike,
+  businessProfileId: string,
+  accounts: AccountSnapshot[]
+): Promise<SocialEngagementTrend[]> {
+  const sinceDate = new Date(Date.now() - ENGAGEMENT_TREND_LOOKBACK_DAYS * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const { data, error } = await supabase
+    .from("social_stats_snapshots")
+    .select("account_id,platform,engagement_rate,snapshot_date")
+    .eq("business_profile_id", businessProfileId)
+    .gte("snapshot_date", sinceDate);
+  if (error) {
+    console.warn(
+      `[ai-recommendations] social_stats_snapshots lookup failed bp=${businessProfileId}:`,
+      error.message
+    );
+    return [];
+  }
+
+  const byAccount = new Map<string, SocialStatsSnapshotRow[]>();
+  for (const row of (Array.isArray(data) ? data : []) as SocialStatsSnapshotRow[]) {
+    if (row.engagement_rate == null) continue;
+    const list = byAccount.get(row.account_id) ?? [];
+    list.push(row);
+    byAccount.set(row.account_id, list);
+  }
+
+  const labelByAccount = new Map(accounts.map((a) => [a.id, prettyAccountLabel(a)]));
+  const trends: SocialEngagementTrend[] = [];
+  for (const [accountId, snapshots] of byAccount.entries()) {
+    const sorted = snapshots
+      .filter((s) => Number.isFinite(Date.parse(s.snapshot_date)))
+      .sort((a, b) => Date.parse(b.snapshot_date) - Date.parse(a.snapshot_date));
+    if (sorted.length < 2) continue;
+    const latest = sorted[0];
+    const latestMs = Date.parse(latest.snapshot_date);
+    const targetMs = latestMs - ENGAGEMENT_TREND_TARGET_SPAN_DAYS * 86400000;
+    const baseline = sorted.find((s) => Date.parse(s.snapshot_date) <= targetMs) ?? sorted[sorted.length - 1];
+    const baselineMs = Date.parse(baseline.snapshot_date);
+    if (baselineMs >= latestMs) continue;
+    trends.push({
+      accountId,
+      platform: latest.platform,
+      label: labelByAccount.get(accountId) ?? (latest.platform ? latest.platform.replace(/_/g, " ") : "account"),
+      latestEngagementRate: latest.engagement_rate!,
+      baselineEngagementRate: baseline.engagement_rate!,
+      spanDays: Math.max(1, Math.round((latestMs - baselineMs) / 86400000)),
+    });
+  }
+  return trends;
+}
+
+/**
+ * Posts scheduled or drafted within the content-gap horizon, across all
+ * accounts. Returns `null` (rather than throwing) on a lookup failure so a
+ * transient DB error can't crash the whole recommendations run — the
+ * content-gap heuristic treats `null` as "unknown" and stays silent instead
+ * of firing a false positive.
+ */
+async function loadUpcomingPostsCount(
+  supabase: SupabaseLike,
+  businessProfileId: string
+): Promise<number | null> {
+  try {
+    const doc = await loadProfileDocument(supabase, businessProfileId, "scheduled-posts");
+    const posts = parseScheduledPostsDoc(doc?.data);
+    return countUpcomingPosts(posts, Date.now(), UPCOMING_POSTS_HORIZON_HOURS);
+  } catch (err) {
+    console.warn(
+      `[ai-recommendations] scheduled-posts lookup failed bp=${businessProfileId}:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
+  }
+}
+
+interface CampaignSnapshotRow {
+  campaign_id: string;
+  campaign_name: string | null;
+  platform: string;
+  roas: number | null;
+  grade: string | null;
+  spend: number | null;
+}
+
+/** Latest snapshot per ad campaign, from the nightly `marketing_campaign_snapshots` cron. */
+async function loadLatestCampaignSnapshots(
+  supabase: SupabaseLike,
+  businessProfileId: string
+): Promise<CampaignSnapshot[]> {
+  const { data, error } = await supabase
+    .from("marketing_campaign_snapshots")
+    .select("campaign_id,campaign_name,platform,roas,grade,spend,snapshot_date")
+    .eq("business_profile_id", businessProfileId)
+    .order("snapshot_date", { ascending: false })
+    .limit(CAMPAIGN_SNAPSHOT_SCAN_LIMIT);
+  if (error) {
+    console.warn(
+      `[ai-recommendations] marketing_campaign_snapshots lookup failed bp=${businessProfileId}:`,
+      error.message
+    );
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const result: CampaignSnapshot[] = [];
+  for (const row of (Array.isArray(data) ? data : []) as CampaignSnapshotRow[]) {
+    if (!row.campaign_id || seen.has(row.campaign_id)) continue;
+    seen.add(row.campaign_id);
+    result.push({
+      campaignId: row.campaign_id,
+      platform: row.platform,
+      name: row.campaign_name || "Untitled campaign",
+      roas7d: row.roas,
+      grade: row.grade,
+      spend7d: row.spend,
+    });
+  }
+  return result;
+}
+
 async function loadLiveRecs(
   supabase: SupabaseLike,
   businessProfileId: string
@@ -186,10 +337,19 @@ export async function generateAiRecommendations(
     loadTaskSnapshot(supabase, input.businessProfileId),
   ]);
 
+  const [socialEngagementTrends, upcomingPostsCount, campaigns] = await Promise.all([
+    loadSocialEngagementTrends(supabase, input.businessProfileId, accounts),
+    loadUpcomingPostsCount(supabase, input.businessProfileId),
+    loadLatestCampaignSnapshots(supabase, input.businessProfileId),
+  ]);
+
   const snapshot: TenantSnapshot = {
     businessProfileId: input.businessProfileId,
     accounts,
     tasks,
+    socialEngagementTrends,
+    upcomingPostsCount,
+    campaigns,
   };
 
   const { candidates, errors } = runAllHeuristics(snapshot);

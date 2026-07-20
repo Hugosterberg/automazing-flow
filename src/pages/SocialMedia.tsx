@@ -727,6 +727,15 @@ export default function SocialMedia() {
         </m.div>
       )}
 
+      {socialMode === "stats" ? (
+      <SocialStatsSection
+        account={selectedAccount}
+        loading={statsLoading}
+        onRefresh={() => void refreshStats()}
+        posts={recentPosts}
+      />
+      ) : null}
+
       {socialMode === "stats" && !selectedAccount && showOverview && (
         <m.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
           <SocialOverviewCard accounts={socialAccounts} />
@@ -875,15 +884,6 @@ export default function SocialMedia() {
       </m.div>
 
       </>
-      ) : null}
-
-      {socialMode === "stats" ? (
-      <SocialStatsSection
-        account={selectedAccount}
-        loading={statsLoading}
-        onRefresh={() => void refreshStats()}
-        posts={recentPosts}
-      />
       ) : null}
 
       {socialMode === "more" ? (

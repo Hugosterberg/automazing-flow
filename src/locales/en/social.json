@@ -130,6 +130,14 @@
     "title": "Social media automation flows",
     "description": "Enable flows — saved in the cloud and drives the content-pipeline cron.",
     "activeCount": "{{count}} active",
+    "autopilot": {
+      "title": "Fully automatic mode",
+      "description": "Turn on every flow below in one click: idea → caption/hashtags → scheduling → publishing, around the clock via cron.",
+      "enabledToast": "Fully automatic mode enabled",
+      "enabledToastDesc": "All automation flows are now on. Content is created, scheduled, and published automatically.",
+      "disabledToast": "Fully automatic mode disabled",
+      "disabledToastDesc": "All automation flows are now off."
+    },
     "enableAria": "Enable {{title}}",
     "weekPlanTitle": "Generate week plan to calendar",
     "weekPlanDesc": "Creates calendar activities and drafts in the publishing queue based on active flows.",
