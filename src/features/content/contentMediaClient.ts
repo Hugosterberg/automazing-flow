@@ -73,3 +73,61 @@ export async function uploadContentMedia(payload: {
     filename: String(data.filename || payload.file.name),
   };
 }
+
+export interface CanvaBrandTemplateSummary {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+}
+
+/** Browse the caller's Canva Brand Templates — the style Brand Studio autofills into. */
+export async function listCanvaBrandTemplates(payload: {
+  businessProfileId: string | null;
+  query?: string;
+}): Promise<{ items: CanvaBrandTemplateSummary[] }> {
+  const qs = new URLSearchParams();
+  if (payload.businessProfileId) qs.set("business_profile_id", payload.businessProfileId);
+  if (payload.query?.trim()) qs.set("query", payload.query.trim());
+  const suffix = qs.toString();
+  return apiJson(
+    `/api/content/canva/brand-templates${suffix ? `?${suffix}` : ""}`,
+    t("content:errors.listCanvaTemplates"),
+    { method: "GET", timeoutMs: 20_000 }
+  );
+}
+
+export interface CanvaBrandGenerateResult {
+  title: string;
+  hook: string;
+  format: string;
+  cta: string;
+  designId: string;
+  editUrl: string | null;
+  imageUrl: string;
+}
+
+/** AI headlines + Canva Autofill → N on-brand design candidates from one Brand Template. */
+export async function generateCanvaBrandBatch(payload: {
+  businessProfileId: string | null;
+  brandTemplateId: string;
+  count: number;
+  businessName?: string;
+  audience?: string;
+  toneOfVoice?: string;
+  topics?: string;
+  maxHeadlineChars: number;
+}): Promise<{ ok: true; results: CanvaBrandGenerateResult[]; source: "ai" | "heuristic"; errors?: string[] }> {
+  return apiJson("/api/content/canva/brand-kit/generate", t("content:errors.generateCanvaBrandBatch"), {
+    body: {
+      business_profile_id: payload.businessProfileId,
+      brandTemplateId: payload.brandTemplateId,
+      count: payload.count,
+      businessName: payload.businessName,
+      audience: payload.audience,
+      toneOfVoice: payload.toneOfVoice,
+      topics: payload.topics,
+      maxHeadlineChars: payload.maxHeadlineChars,
+    },
+    timeoutMs: 120_000,
+  });
+}

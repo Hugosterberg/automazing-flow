@@ -29,7 +29,14 @@ export const GOOGLE_ADS_SCOPES =
   "openid email profile https://www.googleapis.com/auth/adwords";
 export const OUTLOOK_CALENDAR_SCOPES =
   "offline_access openid profile email User.Read Calendars.ReadWrite";
-export const CANVA_SCOPES = "design:content:read";
+/**
+ * `design:content:write` + `brandtemplate:*:read` unlock the Brand Studio
+ * (list templates, read their autofill dataset, create autofilled designs).
+ * Accounts connected before these were added carry only `design:content:read`
+ * and must reconnect Canva to pick up the wider scope.
+ */
+export const CANVA_SCOPES =
+  "design:content:read design:content:write brandtemplate:content:read brandtemplate:meta:read";
 export const FORTNOX_AUTH = "https://apps.fortnox.se/oauth-v1/auth";
 export const FORTNOX_TOKEN = "https://apps.fortnox.se/oauth-v1/token";
 /** Fortnox scopes are read+write per resource — request only what Economy needs. */

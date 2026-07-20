@@ -10,6 +10,12 @@ export interface ContentIdeaContext {
   description?: string;
   audience?: string;
   platform?: string;
+  /** Voice/style guidance, e.g. "Kort, käckt, lite crypto-slang. Undvik finansiella råd." */
+  toneOfVoice?: string;
+  /** Comma-separated subject hints, e.g. "Bitcoin, blockchain, ekonomisk frihet". */
+  topics?: string;
+  /** Hard budget for the "title" field — used when the idea is headed into a fixed-size design (e.g. a Canva template text box). */
+  maxHeadlineChars?: number;
 }
 
 export interface ContentIdea {
@@ -27,12 +33,18 @@ export function buildContentIdeaPrompt(ctx: ContentIdeaContext, count = MAX_IDEA
     ctx.description ? `What they do: ${ctx.description}` : "",
     ctx.audience ? `Audience: ${ctx.audience}` : "",
     ctx.platform ? `Platform focus: ${ctx.platform}` : "",
+    ctx.topics ? `Topics to draw from: ${ctx.topics}` : "",
+    ctx.toneOfVoice ? `Voice/tone: ${ctx.toneOfVoice}` : "",
   ].filter(Boolean);
+
+  const titleConstraint = ctx.maxHeadlineChars
+    ? ` "title" must be a punchy on-image headline of at most ${ctx.maxHeadlineChars} characters — it will be placed directly into a fixed-size design, so it must NOT be truncated or wrap awkwardly.`
+    : "";
 
   return (
     `You are a social media strategist. Propose ${count} concrete, ready-to-shoot post ideas for this business.\n\n` +
     `${lines.join("\n")}\n\n` +
-    `For each idea return: "title" (the post concept), "hook" (an attention-grabbing first line), ` +
+    `For each idea return: "title" (the post concept),${titleConstraint} "hook" (an attention-grabbing first line), ` +
     `"format" (e.g. Reel, carousel, story, photo), and "cta" (a clear call to action).\n` +
     `Return ONLY JSON: {"ideas":[{"title":"...","hook":"...","format":"...","cta":"..."}]}`
   );
@@ -67,21 +79,22 @@ export function parseContentIdeas(content: string): ContentIdea[] {
 /** Useful generic ideas when no OpenAI key is configured. */
 export function heuristicContentIdeas(ctx: ContentIdeaContext): ContentIdea[] {
   const who = ctx.businessName || "your business";
-  return [
+  const topic = ctx.topics?.split(",")[0]?.trim();
+  const ideas: ContentIdea[] = [
     {
-      title: "Behind the scenes of a typical day",
+      title: topic ? `Today's take on ${topic}` : "Behind the scenes of a typical day",
       hook: `Ever wondered how ${who} actually gets things done?`,
       format: "Reel",
       cta: "Follow for more behind-the-scenes.",
     },
     {
-      title: "Answer your 3 most common customer questions",
+      title: "Answer your 3 most common questions",
       hook: "You asked — here are the answers.",
       format: "Carousel",
       cta: "Save this for later.",
     },
     {
-      title: "A customer win / before-and-after",
+      title: topic ? `Why ${topic} matters right now` : "A customer win / before-and-after",
       hook: "Look at the difference.",
       format: "Photo",
       cta: "Want results like this? DM us.",
@@ -93,4 +106,6 @@ export function heuristicContentIdeas(ctx: ContentIdeaContext): ContentIdea[] {
       cta: "Try it and tell us how it went.",
     },
   ];
+  const maxChars = ctx.maxHeadlineChars;
+  return maxChars ? ideas.map((idea) => ({ ...idea, title: idea.title.slice(0, maxChars) })) : ideas;
 }
