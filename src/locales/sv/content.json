@@ -249,7 +249,8 @@
     "modes": {
       "generate": "Generera",
       "transform": "Transformera",
-      "batch": "Batch"
+      "batch": "Batch",
+      "brand": "Brand Studio"
     },
     "reloadTools": "Ladda om verktyg",
     "noProfileTitle": "Ingen aktiv profil",
@@ -453,6 +454,63 @@
     "ideasLoadFailed": "Kunde inte ladda innehållsidéer.",
     "generateImage": "Kunde inte generera bilden",
     "exportCanva": "Kunde inte exportera Canva-designen",
-    "uploadImage": "Kunde inte ladda upp bilden"
+    "uploadImage": "Kunde inte ladda upp bilden",
+    "listCanvaTemplates": "Kunde inte hämta dina Canva-mallar",
+    "generateCanvaBrandBatch": "Kunde inte generera inlägg från mallen"
+  },
+  "brandStudio": {
+    "title": "Canva Brand Studio",
+    "description": "Ställ in färger, typsnitt, textstorlek och format en gång — AI skapar sedan flera på-varumärke-inlägg från din Canva-mall som du väljer att publicera.",
+    "canvaNotConnected": "Canva är inte kopplad för den här profilen.",
+    "connectCanva": "Koppla Canva",
+    "labelField": "Konto/varumärke",
+    "labelPlaceholder": "t.ex. Bitcoinlivet",
+    "fontField": "Typsnitt",
+    "fontPlaceholder": "t.ex. Poppins Bold — ska matcha texttypsnittet i din Canva-mall",
+    "fontHint": "Rent informativt — det faktiska typsnittet styrs av din Canva-mall.",
+    "colorPrimary": "Primärfärg",
+    "colorSecondary": "Sekundärfärg",
+    "colorAccent": "Accentfärg",
+    "formatField": "Format på inlägg",
+    "formats": {
+      "feed_square": "Flöde, kvadrat",
+      "feed_portrait": "Flöde, stående",
+      "story": "Story"
+    },
+    "textSizeField": "Textstorlek",
+    "textSizes": {
+      "small": "Liten (kort rubrik, gott om luft)",
+      "medium": "Medium",
+      "large": "Stor (fyller bilden)"
+    },
+    "maxCharsField": "Max tecken i rubrik (textbredd)",
+    "maxCharsHint": "Styr hur långa AI-rubriker kan bli innan de klipps av i mallen.",
+    "useRecommended": "Använd rekommenderat ({{count}} tecken)",
+    "toneField": "Tonalitet",
+    "tonePlaceholder": "t.ex. Kort, käckt, lite crypto-slang. Undvik finansiella råd.",
+    "topicsField": "Ämnen",
+    "topicsPlaceholder": "t.ex. Bitcoin, blockchain, ekonomisk frihet",
+    "templateField": "Canva-mall för {{format}}",
+    "templateSearchPlaceholder": "Sök mallar…",
+    "templatesLoading": "Laddar dina Canva-mallar…",
+    "templatesLoadFailedTitle": "Kunde inte ladda mallar",
+    "templatesLoadFailed": "Kunde inte hämta Canva-mallar.",
+    "noTemplates": "Inga Brand Templates hittades. Skapa en mall i Canva med minst ett textfält, så dyker den upp här.",
+    "templateRequired": "Välj en Canva-mall för det här formatet först.",
+    "countField": "Antal",
+    "generate": "Generera {{count}} på-varumärke-inlägg",
+    "generating": "Genererar…",
+    "generateFailed": "Kunde inte generera inlägg",
+    "generateFailedTitle": "Generering misslyckades",
+    "generatedCount": "{{count}} inlägg genererade",
+    "generatedCount_other": "{{count}} inlägg genererade",
+    "partialFailure": "{{count}} variant kunde inte skapas — se de som lyckades nedan.",
+    "partialFailure_other": "{{count}} varianter kunde inte skapas — se de som lyckades nedan.",
+    "resultsCount": "{{count}} genererat inlägg",
+    "resultsCount_other": "{{count}} genererade inlägg",
+    "addToSelection": "Lägg till i valda",
+    "inSelection": "I valda",
+    "addedToSelection": "Tillagd i valda",
+    "editInCanva": "Öppna i Canva"
   }
 }

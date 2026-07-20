@@ -7,10 +7,42 @@
  */
 
 import { describeZernioFailure, type ZernioModule } from "../providers/zernioModule.ts";
-import { exportCanvaDesignImage, refreshCanvaAccessToken } from "../providers/canva.ts";
+import {
+  createCanvaAutofillDesign,
+  exportCanvaDesignImage,
+  fetchCanvaBrandTemplateDataset,
+  listCanvaBrandTemplates,
+  refreshCanvaAccessToken,
+  type CanvaTemplateDatasetField,
+} from "../providers/canva.ts";
 import { publicMediaUrl, readGeneratedMedia, storeGeneratedMedia } from "../lib/generatedMediaStore.ts";
-import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
+import {
+  accountInBusinessProfile,
+  readRequestBodyBusinessProfileId,
+  readRequestBusinessProfileId,
+} from "../lib/profileScope.ts";
 import { ZERNIO_POST_PLATFORM } from "../lib/scheduledPostsPublisher.ts";
+import { rateLimitMiddleware } from "../lib/rateLimit.ts";
+import {
+  buildContentIdeaPrompt,
+  heuristicContentIdeas,
+  parseContentIdeas,
+  type ContentIdea,
+  type ContentIdeaContext,
+} from "../ai/contentIdeas.ts";
+
+/** Preference order for which dataset text field gets the AI headline, when a template has more than one. */
+const PREFERRED_TEXT_FIELD_NAMES = ["headline", "heading", "title", "text", "hook", "body"];
+
+function pickAutofillTextField(fields: CanvaTemplateDatasetField[]): string | null {
+  const textFields = fields.filter((field) => field.type === "text");
+  if (textFields.length === 0) return null;
+  for (const preferred of PREFERRED_TEXT_FIELD_NAMES) {
+    const match = textFields.find((field) => field.name.toLowerCase().includes(preferred));
+    if (match) return match.name;
+  }
+  return textFields[0].name;
+}
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -56,6 +88,10 @@ function isHttpUrl(value: string): boolean {
 
 export function registerContentRoutes(app, deps: ContentRoutesDeps) {
   const { getSessionUserId, tokenStore, getStoredAccountAccess, zernio, secretResolver } = deps;
+
+  // Each Brand Studio batch fans out into several OpenAI + Canva calls — rate
+  // limit per user so a stuck retry loop can't rack up spend on either side.
+  const limitCanvaBrandGenerate = rateLimitMiddleware("canva:brand-generate", getSessionUserId, 6, 60_000);
 
   function canvaTokenFreshEnough(stored: StoredAccount): boolean {
     const raw = String(stored.expiresAt || "").trim();
@@ -259,6 +295,221 @@ export function registerContentRoutes(app, deps: ContentRoutesDeps) {
     }
 
     return res.json({ ok: true, url, canvaUrl: result.url, jobId: result.jobId, urls: result.urls, source: "canva" });
+  });
+
+  // Brand Studio: browse the caller's Canva Brand Templates (the style to autofill into).
+  app.get("/api/content/canva/brand-templates", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const businessProfileId = readRequestBusinessProfileId(req);
+    const query = typeof req.query?.query === "string" ? req.query.query.trim().slice(0, 200) : undefined;
+
+    const tokenResolution = await resolveCanvaOAuthToken({ userId, businessProfileId });
+    if (!tokenResolution.token) {
+      return res.status(400).json({
+        error: "canva_not_configured",
+        message: "Connect Canva from Connections to browse your Brand Templates.",
+      });
+    }
+
+    let result = await listCanvaBrandTemplates({ accessToken: tokenResolution.token, query });
+    if (
+      result.ok === false &&
+      result.status === 401 &&
+      tokenResolution.source === "oauth" &&
+      tokenResolution.accountId &&
+      tokenResolution.stored
+    ) {
+      const refreshed = await refreshStoredCanvaToken(tokenResolution.accountId, tokenResolution.stored);
+      if (refreshed) result = await listCanvaBrandTemplates({ accessToken: refreshed, query });
+    }
+    if (result.ok === false) {
+      return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({
+        error: "canva_brand_templates_failed",
+        message:
+          result.status === 403
+            ? "Canva denied this request — reconnect Canva from Connections to grant the newer Brand Studio permissions (brandtemplate:meta:read)."
+            : result.message,
+        details: result.details,
+      });
+    }
+    return res.json({ ok: true, items: result.items });
+  });
+
+  // Brand Studio: AI headlines + Canva Autofill → N on-brand design candidates.
+  app.post("/api/content/canva/brand-kit/generate", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    if (!limitCanvaBrandGenerate(req, res)) return;
+
+    const body = (req.body ?? {}) as {
+      brandTemplateId?: string;
+      count?: number;
+      businessName?: string;
+      audience?: string;
+      toneOfVoice?: string;
+      topics?: string;
+      maxHeadlineChars?: number;
+      business_profile_id?: string;
+    };
+    const businessProfileId = readRequestBodyBusinessProfileId(req);
+    const brandTemplateId = String(body.brandTemplateId || "").trim();
+    if (!businessProfileId) {
+      return res.status(400).json({ error: "business_profile_id is required" });
+    }
+    if (!brandTemplateId) {
+      return res.status(400).json({ error: "brandTemplateId is required" });
+    }
+    const count = Math.min(Math.max(Math.round(Number(body.count)) || 4, 1), 6);
+    const maxHeadlineChars =
+      Number.isFinite(Number(body.maxHeadlineChars)) && Number(body.maxHeadlineChars) > 0
+        ? Math.round(Number(body.maxHeadlineChars))
+        : 70;
+
+    const tokenResolution = await resolveCanvaOAuthToken({ userId, businessProfileId });
+    if (!tokenResolution.token) {
+      return res.status(400).json({
+        error: "canva_not_configured",
+        message:
+          "Connect Canva from Connections (or reconnect it — Brand Studio needs the newer design:content:write and brandtemplate:content:read permissions).",
+      });
+    }
+    const accessToken = tokenResolution.token;
+
+    const datasetResult = await fetchCanvaBrandTemplateDataset({ accessToken, brandTemplateId });
+    if (datasetResult.ok === false) {
+      return res.status(datasetResult.status >= 400 && datasetResult.status < 600 ? datasetResult.status : 502).json({
+        error: "canva_dataset_failed",
+        message:
+          datasetResult.status === 403
+            ? "Canva denied access to this Brand Template — reconnect Canva to grant the newer permissions, or confirm you can access this template."
+            : datasetResult.message,
+        details: datasetResult.details,
+      });
+    }
+    const textField = pickAutofillTextField(datasetResult.fields);
+    if (!textField) {
+      return res.status(400).json({
+        error: "canva_no_text_field",
+        message:
+          "This Brand Template has no autofillable text field. Add a text placeholder to it in Canva's editor, or choose a different template.",
+      });
+    }
+
+    const ctx: ContentIdeaContext = {
+      businessName: String(body.businessName || "").slice(0, 200),
+      audience: String(body.audience || "").slice(0, 200),
+      toneOfVoice: String(body.toneOfVoice || "").slice(0, 300),
+      topics: String(body.topics || "").slice(0, 200),
+      maxHeadlineChars,
+      platform: "Instagram",
+    };
+    const openaiKey = String(
+      (secretResolver ? await secretResolver.resolve(businessProfileId, "OPENAI_API_KEY") : process.env.OPENAI_API_KEY) ||
+        ""
+    ).trim();
+
+    let ideas: ContentIdea[] = [];
+    let ideaSource: "ai" | "heuristic" = "heuristic";
+    if (openaiKey) {
+      try {
+        const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: buildContentIdeaPrompt(ctx, count) }],
+            temperature: 0.8,
+            max_tokens: 900,
+            response_format: { type: "json_object" },
+          }),
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (aiRes.ok) {
+          const aiData = await aiRes.json().catch(() => ({}));
+          const parsed = parseContentIdeas(aiData?.choices?.[0]?.message?.content ?? "{}");
+          if (parsed.length > 0) {
+            ideas = parsed;
+            ideaSource = "ai";
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[content/canva/brand-kit/generate] OpenAI idea generation failed, using heuristic fallback:",
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+    if (ideas.length === 0) ideas = heuristicContentIdeas(ctx);
+    ideas = ideas.slice(0, count);
+
+    const settled = await Promise.allSettled(
+      ideas.map(async (idea) => {
+        const headline = idea.title.slice(0, maxHeadlineChars);
+        const autofill = await createCanvaAutofillDesign({
+          accessToken,
+          brandTemplateId,
+          title: headline,
+          data: { [textField]: { type: "text", text: headline } },
+        });
+        if (autofill.ok === false) throw new Error(autofill.message);
+
+        const exported = await exportCanvaDesignImage({ accessToken, designId: autofill.designId });
+        if (exported.ok === false) throw new Error(exported.message);
+
+        let imageUrl = exported.url;
+        try {
+          const downloaded = await fetch(exported.url, { signal: AbortSignal.timeout(20_000) });
+          if (downloaded.ok) {
+            const contentType = downloaded.headers.get("content-type") || "image/png";
+            const buffer = Buffer.from(await downloaded.arrayBuffer());
+            const id = storeGeneratedMedia(buffer, contentType);
+            imageUrl = publicMediaUrl(req, id);
+          }
+        } catch {
+          // The Canva export URL still works for immediate publish; it just expires sooner.
+        }
+
+        return {
+          title: idea.title,
+          hook: idea.hook,
+          format: idea.format,
+          cta: idea.cta,
+          designId: autofill.designId,
+          editUrl: autofill.editUrl,
+          imageUrl,
+        };
+      })
+    );
+
+    const results: Array<{
+      title: string;
+      hook: string;
+      format: string;
+      cta: string;
+      designId: string;
+      editUrl: string | null;
+      imageUrl: string;
+    }> = [];
+    const errors: string[] = [];
+    for (const outcome of settled) {
+      if (outcome.status === "fulfilled") results.push(outcome.value);
+      else errors.push(outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason));
+    }
+
+    if (results.length === 0) {
+      return res.status(502).json({
+        error: "canva_brand_generate_failed",
+        message: errors[0] || "Canva could not generate any designs from this template.",
+        errors,
+      });
+    }
+
+    return res.json({ ok: true, results, source: ideaSource, errors: errors.length ? errors : undefined });
   });
 
   app.post("/api/content/publish", async (req, res) => {

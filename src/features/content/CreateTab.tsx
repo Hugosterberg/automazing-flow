@@ -30,6 +30,7 @@ import {
 } from "./apiaiClient";
 import { ImageAssetPicker } from "./ImageAssetPicker";
 import { ContentAiImageCard } from "./ContentAiImageCard";
+import { CanvaBrandStudioCard } from "./CanvaBrandStudioCard";
 import { ApiaiStatusBar } from "./ApiaiStatusBar";
 import { ApiaiBatchPanel } from "./ApiaiBatchPanel";
 import { insightFromApiaiResult, type PublishReadiness } from "./apiaiResultInsights";
@@ -125,7 +126,7 @@ export function CreateTab({
     meta: { batchId: number; workflow?: string; addToSelection: boolean }
   ) => void;
   onOpenHistory?: () => void;
-  initialCreateMode?: "generate" | "transform" | "batch";
+  initialCreateMode?: "generate" | "transform" | "batch" | "brand";
   autoAddResultsToSelection?: boolean;
 }) {
   const { t } = useTranslation("content");
@@ -143,7 +144,7 @@ export function CreateTab({
   const [costEstimate, setCostEstimate] = useState<ApiaiCostEstimate | null>(null);
   const [estimating, setEstimating] = useState(false);
   const [publishInsight, setPublishInsight] = useState<PublishReadiness | null>(null);
-  const [createMode, setCreateMode] = useState<"generate" | "transform" | "batch">(
+  const [createMode, setCreateMode] = useState<"generate" | "transform" | "batch" | "brand">(
     initialCreateMode ?? "generate"
   );
 
@@ -416,6 +417,7 @@ export function CreateTab({
             { id: "generate", label: t("create.modes.generate") },
             { id: "transform", label: t("create.modes.transform") },
             { id: "batch", label: t("create.modes.batch") },
+            { id: "brand", label: t("create.modes.brand") },
           ] as const
         ).map((mode) => (
           <button
@@ -447,6 +449,16 @@ export function CreateTab({
             toast.message(t("toasts.savedToHistory"));
           }}
           onSaveToSelection={(asset) => onSaveResultToSelection?.(asset)}
+          onContinueToPublish={onContinueToPublish}
+        />
+      ) : null}
+
+      {createMode === "brand" ? (
+        <CanvaBrandStudioCard
+          businessProfileId={businessProfileId}
+          canvaConnected={canvaConnected}
+          onRecordGenerated={onRecordGenerated}
+          onSaveResultToSelection={onSaveResultToSelection}
           onContinueToPublish={onContinueToPublish}
         />
       ) : null}

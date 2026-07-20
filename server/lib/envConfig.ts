@@ -124,7 +124,9 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
       ["CANVA_ACCESS_TOKEN", "CANVA_CLIENT_SECRET"],
     ],
     message:
-      "Required to export Canva designs. Prefer CANVA_CLIENT_ID + CANVA_CLIENT_SECRET for OAuth login; CANVA_ACCESS_TOKEN remains a legacy fallback.",
+      "Required to export Canva designs and to use Brand Studio (AI-autofilled on-brand posts) in Content -> Create. " +
+      "Prefer CANVA_CLIENT_ID + CANVA_CLIENT_SECRET for OAuth login; CANVA_ACCESS_TOKEN remains a legacy fallback. " +
+      "Accounts connected before Brand Studio shipped only carry the read-only export scope — reconnect Canva from Connections to pick up design:content:write and brandtemplate:*:read.",
   },
   cloudinary: {
     label: "Cloudinary (reel builder)",

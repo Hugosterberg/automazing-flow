@@ -249,7 +249,8 @@
     "modes": {
       "generate": "Generate",
       "transform": "Transform",
-      "batch": "Batch"
+      "batch": "Batch",
+      "brand": "Brand Studio"
     },
     "reloadTools": "Reload tools",
     "noProfileTitle": "No active profile",
@@ -453,6 +454,63 @@
     "ideasLoadFailed": "Could not load content ideas.",
     "generateImage": "Could not generate image",
     "exportCanva": "Could not export Canva design",
-    "uploadImage": "Could not upload image"
+    "uploadImage": "Could not upload image",
+    "listCanvaTemplates": "Could not load your Canva templates",
+    "generateCanvaBrandBatch": "Could not generate posts from the template"
+  },
+  "brandStudio": {
+    "title": "Canva Brand Studio",
+    "description": "Set colors, font, text size, and format once — AI then creates several on-brand posts from your Canva template for you to pick and publish.",
+    "canvaNotConnected": "Canva isn't connected for this profile.",
+    "connectCanva": "Connect Canva",
+    "labelField": "Account/brand",
+    "labelPlaceholder": "e.g. Bitcoinlivet",
+    "fontField": "Font",
+    "fontPlaceholder": "e.g. Poppins Bold — should match the font used inside your Canva template",
+    "fontHint": "Informational only — the rendered font comes from your Canva template.",
+    "colorPrimary": "Primary color",
+    "colorSecondary": "Secondary color",
+    "colorAccent": "Accent color",
+    "formatField": "Post format",
+    "formats": {
+      "feed_square": "Feed, square",
+      "feed_portrait": "Feed, portrait",
+      "story": "Story"
+    },
+    "textSizeField": "Text size",
+    "textSizes": {
+      "small": "Small (short headline, lots of room)",
+      "medium": "Medium",
+      "large": "Large (fills the image)"
+    },
+    "maxCharsField": "Max headline characters (text width)",
+    "maxCharsHint": "Controls how long AI headlines can get before the template would truncate them.",
+    "useRecommended": "Use recommended ({{count}} chars)",
+    "toneField": "Tone of voice",
+    "tonePlaceholder": "e.g. Short, punchy, a bit of crypto slang. Avoid financial advice.",
+    "topicsField": "Topics",
+    "topicsPlaceholder": "e.g. Bitcoin, blockchain, financial freedom",
+    "templateField": "Canva template for {{format}}",
+    "templateSearchPlaceholder": "Search templates…",
+    "templatesLoading": "Loading your Canva templates…",
+    "templatesLoadFailedTitle": "Could not load templates",
+    "templatesLoadFailed": "Could not load Canva templates.",
+    "noTemplates": "No Brand Templates found. Create one in Canva with at least one text field and it'll show up here.",
+    "templateRequired": "Pick a Canva template for this format first.",
+    "countField": "Count",
+    "generate": "Generate {{count}} on-brand posts",
+    "generating": "Generating…",
+    "generateFailed": "Could not generate posts",
+    "generateFailedTitle": "Generation failed",
+    "generatedCount": "{{count}} post generated",
+    "generatedCount_other": "{{count}} posts generated",
+    "partialFailure": "{{count}} variant could not be created — see the ones that succeeded below.",
+    "partialFailure_other": "{{count}} variants could not be created — see the ones that succeeded below.",
+    "resultsCount": "{{count}} generated post",
+    "resultsCount_other": "{{count}} generated posts",
+    "addToSelection": "Add to selected",
+    "inSelection": "In selected",
+    "addedToSelection": "Added to selected",
+    "editInCanva": "Open in Canva"
   }
 }
