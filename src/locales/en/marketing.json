@@ -362,7 +362,12 @@
     "ordersTooltip": "Orders (7 d)"
   },
   "scoreBreakdown": {
-    "scale": "Scale"
+    "scale": "Scale",
+    "roasExplain": "ROAS (Return on Ad Spend) — revenue earned per currency unit spent on ads. 2x means every krona spent brought back 2 kr in revenue.",
+    "ctrExplain": "CTR (Click-Through Rate) — the share of people who clicked the ad out of everyone who saw it. Higher is better and suggests the ad feels relevant.",
+    "cvrExplain": "CVR (Conversion Rate) — the share of clicks that led to a purchase or goal. Shows how well the landing experience converts visitors.",
+    "scaleExplain": "Scale — how much of your budget/reach this campaign is actually using. A low value can mean the campaign is too small to get noticed.",
+    "audienceExplain": "Audience — how well the ad's targeting matches the people actually engaging with it."
   },
   "campaignTrend": {
     "title": "Vs ~7 days ago{{gradeHint}}",

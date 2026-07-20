@@ -30,6 +30,12 @@ const ENGAGEMENT_DECLINE_THRESHOLD_PP = 1.5;
 /** ROAS below this over the last 7 days counts as underwater. */
 const UNDERPERFORMING_ROAS_THRESHOLD = 1;
 
+/** An open lead with no follow-up scheduled and no activity for this long has gone quiet. */
+const STALE_LEAD_THRESHOLD_DAYS = 10;
+
+/** Hard cap on `stale_lead` recs emitted per run to avoid flooding the feed. */
+const STALE_LEADS_CAP = 5;
+
 // ---------------------------------------------------------------------------
 // Snapshot input shapes
 // ---------------------------------------------------------------------------
@@ -75,6 +81,17 @@ export type CampaignSnapshot = {
   spend7d: number | null;
 };
 
+/** An open lead in the pipeline, for the stale-lead heuristic. */
+export type LeadSnapshot = {
+  id: string;
+  name: string | null;
+  company: string | null;
+  status: string | null;
+  nextFollowUpAt: string | null;
+  updatedAt: string | null;
+  createdAt: string | null;
+};
+
 export interface TenantSnapshot {
   businessProfileId: string;
   accounts: AccountSnapshot[];
@@ -89,6 +106,8 @@ export interface TenantSnapshot {
   upcomingPostsCount: number | null;
   /** Latest snapshot per ad campaign (Meta/Google Ads), when marketing data exists. */
   campaigns: CampaignSnapshot[];
+  /** Open leads (new/contacted/qualified) currently in the pipeline. */
+  leads: LeadSnapshot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -399,6 +418,45 @@ export function underperformingCampaignHeuristic(
     }));
 }
 
+/**
+ * Emit an `outreach` candidate per open lead that has no follow-up scheduled
+ * and hasn't been touched in `STALE_LEAD_THRESHOLD_DAYS` — the silent-churn
+ * case where a lead doesn't look overdue (nothing is scheduled) but is
+ * quietly going cold. Capped like `overdueTasksHeuristic` so a large pipeline
+ * doesn't flood the feed; the rest stays visible on the Sales page itself.
+ */
+export function staleLeadHeuristic(snapshot: TenantSnapshot): RecommendationCandidate[] {
+  const now = Date.now();
+  const stale = snapshot.leads
+    .filter((lead) => lead.status && ["new", "contacted", "qualified"].includes(lead.status))
+    .filter((lead) => !lead.nextFollowUpAt)
+    .filter((lead) => {
+      const touched = parseIso(lead.updatedAt) ?? parseIso(lead.createdAt);
+      return touched !== null && (now - touched) / 86400000 >= STALE_LEAD_THRESHOLD_DAYS;
+    })
+    .slice(0, STALE_LEADS_CAP);
+
+  return stale.map((lead) => {
+    const touched = parseIso(lead.updatedAt) ?? parseIso(lead.createdAt) ?? now;
+    const daysQuiet = Math.floor((now - touched) / 86400000);
+    const label = lead.name || lead.company || "Lead";
+    return {
+      kind: "outreach",
+      signal: "stale_lead",
+      title: `${label} has gone quiet`,
+      summary: `No follow-up scheduled and no activity in ${daysQuiet} days.`,
+      rationale:
+        "Leads with nothing scheduled tend to go cold silently rather than obviously overdue. A short re-engagement message often revives them before they're lost for good.",
+      confidence: 0.55,
+      module: "leads",
+      relatedType: "lead",
+      relatedId: lead.id,
+      suggestedAction: { type: "navigate", to: "/sales" },
+      context: { signal: "stale_lead", daysQuiet, status: lead.status },
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -421,6 +479,7 @@ export const ALL_HEURISTICS: Array<{
   { name: "engagement_decline", fn: engagementDeclineHeuristic },
   { name: "content_gap", fn: contentGapHeuristic },
   { name: "underperforming_campaign", fn: underperformingCampaignHeuristic },
+  { name: "stale_lead", fn: staleLeadHeuristic },
 ];
 
 /**

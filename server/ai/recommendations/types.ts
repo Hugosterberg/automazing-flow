@@ -28,7 +28,8 @@ export type HeuristicSignal =
   | "overdue_task"
   | "engagement_decline"
   | "content_gap"
-  | "underperforming_campaign";
+  | "underperforming_campaign"
+  | "stale_lead";
 
 export interface RecommendationCandidate {
   kind: AiRecommendationKind;

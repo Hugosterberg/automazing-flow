@@ -362,7 +362,12 @@
     "ordersTooltip": "Ordrar (7 d)"
   },
   "scoreBreakdown": {
-    "scale": "Skala"
+    "scale": "Skala",
+    "roasExplain": "ROAS (Return on Ad Spend) — intäkt per spenderad krona på annonser. 2× betyder att varje satsad krona gav 2 kr tillbaka i intäkt.",
+    "ctrExplain": "CTR (Click-Through Rate) — andel som klickade på annonsen av alla som såg den. Högre är bättre och tyder på att annonsen känns relevant.",
+    "cvrExplain": "CVR (Conversion Rate) — andel klick som ledde till ett köp eller mål. Visar hur bra landningsupplevelsen konverterar besökare.",
+    "scaleExplain": "Skala — hur stor del av er budget/räckvidd den här kampanjen faktiskt använder. Lågt värde kan betyda att kampanjen är för liten för att synas.",
+    "audienceExplain": "Målgrupp — hur väl annonsens målgruppsinställningar matchar dem som faktiskt interagerar med den."
   },
   "campaignTrend": {
     "title": "Vs ~7 dagar sedan{{gradeHint}}",
