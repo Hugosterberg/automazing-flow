@@ -31,6 +31,7 @@ import { registerProductContentAutomationCron } from "./cron/productContentAutom
 import { registerFortnoxInvoiceSuggestCron } from "./cron/fortnoxInvoiceSuggest.js";
 import { registerFortnoxPaymentSyncCron } from "./cron/fortnoxPaymentSync.js";
 import { registerFortnoxRefundCreditSuggestCron } from "./cron/fortnoxRefundCreditSuggest.js";
+import { registerLowStockAlertCron } from "./cron/lowStockAlert.js";
 import { registerMarketingActionsCron } from "./cron/marketingActions.js";
 import { registerDailyDigestCron } from "./cron/dailyDigest.js";
 import { registerMarketingAlertsCron } from "./cron/marketingAlerts.js";
@@ -87,6 +88,7 @@ function automationTitleForKey(key) {
     "fortnox-invoice-suggest": "Fakturaförslag till Fortnox",
     "fortnox-payment-sync": "Fortnox-betalningssynk",
     "fortnox-refund-credit-suggest": "Kreditfakturaförslag till Fortnox",
+    "low-stock-alert": "Lagervarning",
   };
   return map[key] || key;
 }
@@ -443,6 +445,16 @@ export function registerCronRoutes(app, deps) {
     tokenStore,
     loadAllAutomationSettings,
     isProfileJobDueNow,
+  });
+
+  registerLowStockAlertCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+    resolveRecipientEmail,
   });
 
   registerMailReplyAutoCron(app, {

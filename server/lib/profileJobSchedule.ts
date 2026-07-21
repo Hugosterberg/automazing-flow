@@ -266,6 +266,13 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "15:00",
     enabled: false,
   },
+  "low-stock-alert": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "08:00",
+    endTime: "08:00",
+    enabled: false,
+  },
 };
 
 export interface LegacyAutomationFlags {
