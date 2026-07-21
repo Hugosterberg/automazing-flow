@@ -556,7 +556,12 @@ registerContentRoutes(app, {
 
 registerReelRoutes(app, { getSessionUserId });
 
-registerEconomyRoutes(app, { getSessionUserId, tokenStore, getStoredAccountAccess });
+registerEconomyRoutes(app, {
+  getSessionUserId,
+  tokenStore,
+  getStoredAccountAccess,
+  supabaseAdmin: supabaseServiceClient,
+});
 
 registerApiaiRoutes(app, {
   auth,
@@ -578,6 +583,8 @@ registerEcommerceRoutes(app, {
   getSessionUserId,
   getStoredAccountAccess,
   tokenStore,
+  supabaseAdmin: supabaseServiceClient,
+  requireMembership,
 });
 
 registerProductRoutes(app, {

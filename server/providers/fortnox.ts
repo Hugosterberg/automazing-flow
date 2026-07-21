@@ -52,6 +52,37 @@ async function fortnoxGet(path: string, accessToken: string): Promise<unknown | 
   }
 }
 
+/** POST/PUT helper that surfaces Fortnox's validation error text instead of swallowing it. */
+async function fortnoxWrite(
+  path: string,
+  accessToken: string,
+  body: unknown,
+  method: "POST" | "PUT" = "POST"
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; unauthorized: boolean; error: string }> {
+  try {
+    const res = await fetch(`${FORTNOX_API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (res.status === 401) return { ok: false, unauthorized: true, error: "fortnox_unauthorized" };
+    if (!res.ok) {
+      const errInfo = data?.ErrorInformation as Record<string, unknown> | undefined;
+      const message = String(errInfo?.message || errInfo?.Message || data?.message || `fortnox_error_${res.status}`);
+      return { ok: false, unauthorized: false, error: message };
+    }
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, unauthorized: false, error: e instanceof Error ? e.message : "fortnox_request_failed" };
+  }
+}
+
 function isUnauthorized(payload: unknown): boolean {
   return Boolean((payload as { __unauthorized?: boolean } | null)?.__unauthorized);
 }
@@ -164,4 +195,89 @@ export async function refreshFortnoxAccessToken(options: {
   } catch {
     return { ok: false, error: "refresh_failed" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Invoice creation (order → invoice queue approval flow).
+//
+// Fortnox invoices require a CustomerNumber pointing at an existing Customer
+// resource — there is no "ad-hoc" invoice without one. Rather than trying to
+// search Fortnox for a matching customer by email (their filter API doesn't
+// support that reliably), the caller is expected to remember which Fortnox
+// CustomerNumber it minted for a given Shopify customer (see
+// `server/lib/fortnoxInvoiceJobs.ts`) and only create a new Customer the
+// first time that email is billed.
+// ---------------------------------------------------------------------------
+
+export async function createFortnoxCustomer(
+  accessToken: string,
+  input: { name: string; email?: string }
+): Promise<{ ok: true; customerNumber: string } | { ok: false; unauthorized: boolean; error: string }> {
+  const result = await fortnoxWrite("/customers", accessToken, {
+    Customer: {
+      Name: input.name.slice(0, 100) || "Shopify customer",
+      ...(input.email ? { Email: input.email.slice(0, 200) } : {}),
+    },
+  });
+  if ("error" in result) return { ok: false, unauthorized: result.unauthorized, error: result.error };
+  const customer = (result.data.Customer || {}) as Record<string, unknown>;
+  const customerNumber = String(customer.CustomerNumber || "").trim();
+  if (!customerNumber) {
+    return { ok: false, unauthorized: false, error: "fortnox_customer_missing_number" };
+  }
+  return { ok: true, customerNumber };
+}
+
+export interface FortnoxInvoiceRowInput {
+  description: string;
+  /** Unit price, excluding VAT. */
+  price: number;
+  quantity: number;
+}
+
+export interface CreateFortnoxInvoiceInput {
+  customerNumber: string;
+  /** Shopify order name (e.g. "#1042") — stored on the invoice for traceability. */
+  yourOrderNumber?: string;
+  currency?: string;
+  rows: FortnoxInvoiceRowInput[];
+}
+
+/**
+ * Create a Fortnox invoice for a customer. Row prices are treated as
+ * VAT-exclusive — verify this matches how the tenant's Fortnox account and
+ * Shopify store handle tax before relying on this for bookkeeping, since
+ * Shopify prices are commonly VAT-inclusive and this integration does not
+ * attempt to back out tax automatically.
+ */
+export async function createFortnoxInvoice(
+  accessToken: string,
+  input: CreateFortnoxInvoiceInput
+): Promise<{ ok: true; invoiceNumber: string } | { ok: false; unauthorized: boolean; error: string }> {
+  if (!input.customerNumber) {
+    return { ok: false, unauthorized: false, error: "missing_customer_number" };
+  }
+  if (input.rows.length === 0) {
+    return { ok: false, unauthorized: false, error: "missing_invoice_rows" };
+  }
+
+  const result = await fortnoxWrite("/invoices", accessToken, {
+    Invoice: {
+      CustomerNumber: input.customerNumber,
+      ...(input.yourOrderNumber ? { YourOrderNumber: input.yourOrderNumber.slice(0, 50) } : {}),
+      ...(input.currency ? { Currency: input.currency.slice(0, 3) } : {}),
+      InvoiceRows: input.rows.slice(0, 100).map((row) => ({
+        Description: row.description.slice(0, 200),
+        Price: Math.round(row.price * 100) / 100,
+        DeliveredQuantity: row.quantity,
+      })),
+    },
+  });
+  if ("error" in result) return { ok: false, unauthorized: result.unauthorized, error: result.error };
+  const invoice = (result.data.Invoice || {}) as Record<string, unknown>;
+  const invoiceNumber = String(invoice.DocumentNumber || invoice.InvoiceNumber || "").trim();
+  if (!invoiceNumber) {
+    return { ok: false, unauthorized: false, error: "fortnox_invoice_missing_number" };
+  }
+  return { ok: true, invoiceNumber };
 }

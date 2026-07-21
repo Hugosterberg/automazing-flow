@@ -22,7 +22,7 @@ import {
   type ProfileFieldId,
 } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
-import { FortnoxCard, TaxDeadlinesCard } from "@/features/economy";
+import { FortnoxCard, FortnoxInvoiceQueueCard, TaxDeadlinesCard } from "@/features/economy";
 import { AutomatedUpdatesCard } from "@/features/automation";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { platformLabel } from "@/lib/platformLabels";
@@ -235,6 +235,7 @@ export default function CompanyPage() {
       {companyTab === "economy" ? (
         <div className="space-y-4">
           <FortnoxCard businessProfileId={businessProfileId} />
+          <FortnoxInvoiceQueueCard businessProfileId={businessProfileId} />
           <TaxDeadlinesCard />
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { BarChart3, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Banknote, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 /**
@@ -316,6 +316,67 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     icon: TrendingUp,
     businessOnly: true,
     cronKey: "market-pulse-snapshot",
+  },
+  {
+    id: "post-purchase-review-request",
+    topic: "reports",
+    title: "Recensionsförfrågan efter köp",
+    description:
+      "Mejlar kunder ~1,5 vecka efter en levererad Shopify-order och ber om ett omdöme (deduplicerat per order).",
+    cadence: "Konfigurerbart schema",
+    icon: Mail,
+    outputHref: "/ecommerce",
+    businessOnly: true,
+    cronKey: "post-purchase-review-request",
+    explainer:
+      "Jobbet letar upp betalda, levererade ordrar 10–24 dagar gamla och skickar ett kort tack-mejl med en förfrågan om omdöme. Mejlet går direkt — ingen granskning, ingen rabatt.",
+    trustNote: "Skickas direkt (deduplicerat per order) — inget kostar pengar eller kräver godkännande.",
+  },
+  {
+    id: "customer-winback",
+    topic: "reports",
+    title: "Vinn-tillbaka-mejl",
+    description:
+      "Mejlar kunder som inte handlat på 60–180 dagar en enkel 'vi saknar dig'-hälsning (max var 90:e dag per kund).",
+    cadence: "Konfigurerbart schema",
+    icon: Users,
+    outputHref: "/ecommerce",
+    businessOnly: true,
+    cronKey: "customer-winback",
+    explainer:
+      "Jobbet hittar Shopify-kunder som gått tysta och skickar en kort, rabattfri hälsning för att påminna om butiken. Samma kund kontaktas inte igen inom 90 dagar.",
+    trustNote: "Skickas direkt — ingen rabatt, ingen kostnad, bara en påminnelse.",
+  },
+  {
+    id: "product-content-automation",
+    topic: "content",
+    title: "Produkttext-automation",
+    description:
+      "Föreslår AI-förbättrad beskrivning och taggar för Shopify-produkter med tunn text — du godkänner innan något publiceras.",
+    cadence: "Konfigurerbart schema",
+    icon: Sparkles,
+    outputHref: "/ecommerce",
+    businessOnly: true,
+    cronKey: "product-content-automation",
+    explainer:
+      "Jobbet skannar synkade Shopify-produkter med kort/saknad beskrivning eller taggar och lägger ett förslag under Produkter. Godkänner du det uppdateras både katalogen här och (om möjligt) produkten i Shopify.",
+    exampleDraft: "En hållbar favorit för vardagsbruk — skön passform, robust material och snabb leverans.",
+    trustNote: "Bara förslag — du väljer vilka som publiceras.",
+  },
+  {
+    id: "fortnox-invoice-suggest",
+    topic: "reports",
+    title: "Fakturaförslag till Fortnox",
+    description:
+      "Föreslår fakturor i Fortnox för betalda, levererade Shopify-ordrar som inte fakturerats än — du väljer vilka som skapas.",
+    cadence: "Konfigurerbart schema",
+    icon: Banknote,
+    outputHref: "/company",
+    businessOnly: true,
+    cronKey: "fortnox-invoice-suggest",
+    explainer:
+      "Jobbet jämför betalda, levererade Shopify-ordrar mot Fortnox och lägger förslag under Företag → Ekonomi. Ingen faktura skapas i Fortnox förrän du klickar 'Skapa faktura' på en rad.",
+    trustNote: "Bara förslag — ingen faktura skapas i Fortnox utan ditt godkännande.",
   },
 ];
 

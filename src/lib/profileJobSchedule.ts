@@ -166,6 +166,34 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "17:00",
     enabled: false,
   },
+  "post-purchase-review-request": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "12:00",
+    endTime: "12:00",
+    enabled: false,
+  },
+  "customer-winback": {
+    days: [1],
+    timesPerDay: 1,
+    startTime: "13:00",
+    endTime: "13:00",
+    enabled: false,
+  },
+  "product-content-automation": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "10:30",
+    endTime: "10:30",
+    enabled: false,
+  },
+  "fortnox-invoice-suggest": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "14:00",
+    endTime: "14:00",
+    enabled: false,
+  },
 };
 
 export function expandRunTimes(schedule: ProfileJobSchedule): string[] {

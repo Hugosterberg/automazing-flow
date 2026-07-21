@@ -25,6 +25,10 @@ import { registerLeadReminderCron } from "./cron/leadReminder.js";
 import { registerTaskReminderCron } from "./cron/taskReminder.js";
 import { registerSalesOutreachAutoCron } from "./cron/salesOutreachAuto.js";
 import { registerCartRecoveryCron } from "./cron/cartRecovery.js";
+import { registerPostPurchaseReviewRequestCron } from "./cron/postPurchaseReviewRequest.js";
+import { registerCustomerWinbackCron } from "./cron/customerWinback.js";
+import { registerProductContentAutomationCron } from "./cron/productContentAutomation.js";
+import { registerFortnoxInvoiceSuggestCron } from "./cron/fortnoxInvoiceSuggest.js";
 import { registerMarketingActionsCron } from "./cron/marketingActions.js";
 import { registerDailyDigestCron } from "./cron/dailyDigest.js";
 import { registerMarketingAlertsCron } from "./cron/marketingAlerts.js";
@@ -75,6 +79,10 @@ function automationTitleForKey(key) {
     "marketing-actions": "Marknadsförings-åtgärder",
     "weekly-insight-digest": "Veckovis insiktsrapport",
     "engagement-followup": "Engagement-följdflöde",
+    "post-purchase-review-request": "Recensionsförfrågan efter köp",
+    "customer-winback": "Vinn-tillbaka-mejl",
+    "product-content-automation": "Produkttext-automation",
+    "fortnox-invoice-suggest": "Fakturaförslag till Fortnox",
   };
   return map[key] || key;
 }
@@ -370,6 +378,43 @@ export function registerCronRoutes(app, deps) {
   });
 
   registerCartRecoveryCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerPostPurchaseReviewRequestCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerCustomerWinbackCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerProductContentAutomationCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    secretResolver,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerFortnoxInvoiceSuggestCron(app, {
     withRunRecording,
     isAuthorisedCron,
     supabaseAdmin,

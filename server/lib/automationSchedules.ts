@@ -40,6 +40,10 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "social-stats-snapshot", cron: "30 2 * * *", perTenant: true },
   { key: "market-pulse-snapshot", cron: "15 5 * * *", perTenant: true },
   { key: "weekly-report", cron: "30 7 * * 1", perTenant: true },
+  { key: "post-purchase-review-request", cron: "0 12 * * *", perTenant: true },
+  { key: "customer-winback", cron: "0 13 * * 1", perTenant: true },
+  { key: "product-content-automation", cron: "30 10 * * *", perTenant: true },
+  { key: "fortnox-invoice-suggest", cron: "0 14 * * *", perTenant: true },
 ];
 
 export function getSchedule(key: string): AutomationSchedule | undefined {

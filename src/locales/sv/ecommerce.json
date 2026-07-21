@@ -41,6 +41,17 @@
       "action": "Till Kopplingar"
     }
   },
+  "productContent": {
+    "title": "Föreslagna produkttexter",
+    "description": "AI-förbättrade beskrivningar och taggar för produkter med tunn text — inget publiceras förrän du godkänner.",
+    "loading": "Laddar förslag…",
+    "apply": "Använd",
+    "dismiss": "Avfärda",
+    "appliedWithShopify": "Uppdaterat lokalt och i Shopify.",
+    "appliedLocalOnly": "Uppdaterat i produktkatalogen.",
+    "applyFailed": "Kunde inte använda förslaget.",
+    "dismissFailed": "Kunde inte avfärda förslaget."
+  },
   "errors": {
     "fetchStoreData": "Kunde inte hämta butiksdata.",
     "loadProducts": "Kunde inte ladda produkter.",

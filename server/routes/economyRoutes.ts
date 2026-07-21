@@ -17,6 +17,14 @@ import {
   type FortnoxInvoiceSummary,
 } from "../providers/fortnox.ts";
 import { accountInBusinessProfile, readRequestBusinessProfileId } from "../lib/profileScope.ts";
+import {
+  createQueuedFortnoxInvoice,
+  dismissFortnoxInvoiceSuggestion,
+  parseFortnoxInvoiceQueue,
+  FORTNOX_INVOICE_QUEUE_DOC_KEY,
+} from "../lib/fortnoxInvoiceJobs.ts";
+import { loadProfileDocument } from "../lib/profileDocumentStore.ts";
+import type { SupabaseAdminLike } from "../lib/supabaseAdminLike.ts";
 
 type StoredAccount = Record<string, unknown> & {
   platform?: string;
@@ -37,6 +45,7 @@ interface EconomyRoutesDeps {
     stored: StoredAccount | null | undefined,
     userId: string
   ) => { allowed: boolean; migrate: boolean };
+  supabaseAdmin: SupabaseAdminLike | null;
 }
 
 const SUMMARY_TTL_MS = 10 * 60 * 1000;
@@ -54,7 +63,25 @@ function tokenFreshEnough(stored: StoredAccount): boolean {
 }
 
 export function registerEconomyRoutes(app, deps: EconomyRoutesDeps) {
-  const { getSessionUserId, tokenStore, getStoredAccountAccess } = deps;
+  const { getSessionUserId, tokenStore, getStoredAccountAccess, supabaseAdmin } = deps;
+
+  /** Locate the tenant's connected Fortnox account (if any), migrating legacy rows as needed. */
+  async function findFortnoxAccount(
+    businessProfileId: string,
+    userId: string
+  ): Promise<{ accountId: string; stored: StoredAccount } | null> {
+    for (const [id, raw] of await tokenStore.entries()) {
+      if (String(raw?.platform || "") !== "fortnox") continue;
+      const access = getStoredAccountAccess(raw, userId);
+      if (!access.allowed) continue;
+      if (!accountInBusinessProfile(raw, businessProfileId)) continue;
+      if (access.migrate) {
+        await tokenStore.set(id, { ...raw, ownerUserId: userId });
+      }
+      return { accountId: id, stored: raw };
+    }
+    return null;
+  }
 
   async function freshAccessToken(
     accountId: string,
@@ -142,5 +169,75 @@ export function registerEconomyRoutes(app, deps: EconomyRoutesDeps) {
       companyName: String(stored.companyName || "Fortnox"),
       summary: result.summary,
     });
+  });
+
+  // Fortnox invoice suggestion queue (paid + fulfilled Shopify orders not yet
+  // billed — populated by the fortnox-invoice-suggest cron, never auto-created).
+  app.get("/api/economy/fortnox/invoice-queue", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!supabaseAdmin) return res.json({ queue: [] });
+    const businessProfileId = readRequestBusinessProfileId(req);
+    if (!businessProfileId) return res.status(400).json({ error: "business_profile_id is required" });
+
+    try {
+      const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_INVOICE_QUEUE_DOC_KEY);
+      const queue = parseFortnoxInvoiceQueue(doc?.data).filter(
+        (item) => item.status === "suggested" || item.status === "failed"
+      );
+      return res.json({ queue });
+    } catch (e) {
+      console.error("[economy] invoice-queue list failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "invoice_queue_load_failed" });
+    }
+  });
+
+  app.post("/api/economy/fortnox/invoice-queue/create", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    const businessProfileId = readRequestBusinessProfileId(req);
+    const orderId = String(req.body?.orderId || "").trim();
+    if (!businessProfileId) return res.status(400).json({ error: "business_profile_id is required" });
+    if (!orderId) return res.status(400).json({ error: "missing_order_id" });
+
+    const account = await findFortnoxAccount(businessProfileId, userId);
+    if (!account) return res.status(404).json({ error: "fortnox_not_connected" });
+
+    const accessToken = await freshAccessToken(account.accountId, account.stored);
+    if (!accessToken) return res.status(409).json({ error: "fortnox_token_expired" });
+
+    try {
+      const result = await createQueuedFortnoxInvoice({
+        supabaseAdmin,
+        businessProfileId,
+        orderId,
+        fortnoxAccessToken: accessToken,
+      });
+      if ("error" in result) return res.status(400).json({ error: result.error });
+      return res.json({ ok: true, invoiceNumber: result.invoiceNumber });
+    } catch (e) {
+      console.error("[economy] invoice-queue create failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "invoice_create_failed" });
+    }
+  });
+
+  app.post("/api/economy/fortnox/invoice-queue/dismiss", async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    const businessProfileId = readRequestBusinessProfileId(req);
+    const orderId = String(req.body?.orderId || "").trim();
+    if (!businessProfileId) return res.status(400).json({ error: "business_profile_id is required" });
+    if (!orderId) return res.status(400).json({ error: "missing_order_id" });
+
+    try {
+      const result = await dismissFortnoxInvoiceSuggestion({ supabaseAdmin, businessProfileId, orderId });
+      if ("error" in result) return res.status(400).json({ error: result.error });
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("[economy] invoice-queue dismiss failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "invoice_dismiss_failed" });
+    }
   });
 }
