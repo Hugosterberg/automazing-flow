@@ -22,7 +22,16 @@ import {
   type ProfileFieldId,
 } from "@/features/business-profiles";
 import { useConnections } from "@/features/connections/useConnections";
-import { FortnoxCard, FortnoxInvoiceQueueCard, TaxDeadlinesCard } from "@/features/economy";
+import {
+  FortnoxCard,
+  FortnoxInvoiceQueueCard,
+  FortnoxCreditQueueCard,
+  FortnoxFinancialSnapshotCard,
+  FortnoxInvoiceHistoryCard,
+  FortnoxSupplierInvoicesCard,
+  FortnoxArticlesCard,
+  TaxDeadlinesCard,
+} from "@/features/economy";
 import { AutomatedUpdatesCard } from "@/features/automation";
 import { McpFeatureSection, McpMultiSourceCompare, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence";
 import { platformLabel } from "@/lib/platformLabels";
@@ -236,6 +245,11 @@ export default function CompanyPage() {
         <div className="space-y-4">
           <FortnoxCard businessProfileId={businessProfileId} />
           <FortnoxInvoiceQueueCard businessProfileId={businessProfileId} />
+          <FortnoxCreditQueueCard businessProfileId={businessProfileId} />
+          <FortnoxFinancialSnapshotCard businessProfileId={businessProfileId} />
+          <FortnoxSupplierInvoicesCard businessProfileId={businessProfileId} />
+          <FortnoxInvoiceHistoryCard businessProfileId={businessProfileId} />
+          <FortnoxArticlesCard businessProfileId={businessProfileId} />
           <TaxDeadlinesCard />
         </div>
       ) : null}

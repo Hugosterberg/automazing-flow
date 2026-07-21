@@ -371,6 +371,87 @@ export async function fetchShopifyDormantCustomers(
   }
 }
 
+export interface ShopifyRefund {
+  id: string;
+  createdAt: string;
+  lineItems: Array<{ title: string; quantity: number; subtotal: number }>;
+}
+
+export interface ShopifyRefundedOrder {
+  orderId: string;
+  orderName: string;
+  email: string;
+  currency: string;
+  refunds: ShopifyRefund[];
+}
+
+type ShopifyRefundLineItem = {
+  quantity?: number;
+  subtotal?: string;
+  line_item?: { title?: string };
+};
+
+type ShopifyRefundRaw = {
+  id: number | string;
+  created_at?: string;
+  refund_line_items?: ShopifyRefundLineItem[];
+};
+
+type ShopifyOrderWithRefunds = ShopifyOrder & { refunds?: ShopifyRefundRaw[] };
+
+/**
+ * Orders with at least one refund, updated within the given window — for the
+ * refund → Fortnox credit-invoice suggestion job. `refunds` is included
+ * inline via the Shopify orders payload rather than a separate per-order
+ * call.
+ */
+export async function fetchShopifyRefundedOrders(
+  accessToken: string,
+  shop: string | undefined,
+  options: { minDaysAgo: number; maxDaysAgo: number; limit?: number }
+): Promise<ShopifyRefundedOrder[]> {
+  if (!shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since = isoNDaysAgo(options.maxDaysAgo);
+  const until = isoNDaysAgo(options.minDaysAgo);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 50));
+  const url =
+    `${apiBase}/orders.json?status=any&limit=${limit}&financial_status=any` +
+    `&updated_at_min=${encodeURIComponent(since)}&updated_at_max=${encodeURIComponent(until)}` +
+    `&fields=id,name,email,customer,currency,refunds`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { orders?: ShopifyOrderWithRefunds[] };
+    const orders = Array.isArray(body.orders) ? body.orders : [];
+    return orders
+      .filter((o) => Array.isArray(o.refunds) && o.refunds.length > 0)
+      .map((o) => ({
+        orderId: String(o.id),
+        orderName: String(o.name || `#${o.id}`),
+        email: String(o.email || o.customer?.email || "").trim(),
+        currency: String(o.currency || "USD"),
+        refunds: (o.refunds || []).map((r) => ({
+          id: String(r.id),
+          createdAt: String(r.created_at || ""),
+          lineItems: (r.refund_line_items || [])
+            .filter((li) => toNumber(li.subtotal) > 0)
+            .map((li) => ({
+              title: li.line_item?.title || "Refunded item",
+              quantity: toNumber(li.quantity, 1),
+              subtotal: toNumber(li.subtotal),
+            })),
+        })),
+      }))
+      .filter((o) => o.email && o.refunds.some((r) => r.lineItems.length > 0));
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchShopifyAccountData(accessToken: string, shop: string | undefined) {
   if (!shop) {
     return { error: "No shop domain stored for this account", status: 400 };

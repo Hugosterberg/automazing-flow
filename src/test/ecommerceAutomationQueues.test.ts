@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFortnoxInvoiceQueue } from "../../server/lib/fortnoxInvoiceJobs";
+import { parseFortnoxInvoiceQueue, parseFortnoxCreditQueue } from "../../server/lib/fortnoxInvoiceJobs";
 import { parseProductContentDrafts } from "../../server/lib/productContentJobs";
 
 describe("parseFortnoxInvoiceQueue", () => {
@@ -18,6 +18,31 @@ describe("parseFortnoxInvoiceQueue", () => {
   it("returns an empty array for non-array input", () => {
     expect(parseFortnoxInvoiceQueue(null)).toEqual([]);
     expect(parseFortnoxInvoiceQueue({})).toEqual([]);
+  });
+});
+
+describe("parseFortnoxCreditQueue", () => {
+  it("keeps only well-formed queue items", () => {
+    const raw = [
+      {
+        id: "r1",
+        orderId: "o1",
+        refundId: "r1",
+        orderName: "#1001",
+        invoiceReference: "1001",
+        lineItems: [{ title: "Mug", quantity: 1, subtotal: 100 }],
+        status: "suggested",
+        createdAt: "",
+      },
+      { id: "bad" }, // missing refundId
+    ];
+    const parsed = parseFortnoxCreditQueue(raw);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].refundId).toBe("r1");
+  });
+
+  it("returns an empty array for non-array input", () => {
+    expect(parseFortnoxCreditQueue(null)).toEqual([]);
   });
 });
 

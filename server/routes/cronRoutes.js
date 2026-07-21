@@ -29,6 +29,8 @@ import { registerPostPurchaseReviewRequestCron } from "./cron/postPurchaseReview
 import { registerCustomerWinbackCron } from "./cron/customerWinback.js";
 import { registerProductContentAutomationCron } from "./cron/productContentAutomation.js";
 import { registerFortnoxInvoiceSuggestCron } from "./cron/fortnoxInvoiceSuggest.js";
+import { registerFortnoxPaymentSyncCron } from "./cron/fortnoxPaymentSync.js";
+import { registerFortnoxRefundCreditSuggestCron } from "./cron/fortnoxRefundCreditSuggest.js";
 import { registerMarketingActionsCron } from "./cron/marketingActions.js";
 import { registerDailyDigestCron } from "./cron/dailyDigest.js";
 import { registerMarketingAlertsCron } from "./cron/marketingAlerts.js";
@@ -83,6 +85,8 @@ function automationTitleForKey(key) {
     "customer-winback": "Vinn-tillbaka-mejl",
     "product-content-automation": "Produkttext-automation",
     "fortnox-invoice-suggest": "Fakturaförslag till Fortnox",
+    "fortnox-payment-sync": "Fortnox-betalningssynk",
+    "fortnox-refund-credit-suggest": "Kreditfakturaförslag till Fortnox",
   };
   return map[key] || key;
 }
@@ -415,6 +419,24 @@ export function registerCronRoutes(app, deps) {
   });
 
   registerFortnoxInvoiceSuggestCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerFortnoxPaymentSyncCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
+  });
+
+  registerFortnoxRefundCreditSuggestCron(app, {
     withRunRecording,
     isAuthorisedCron,
     supabaseAdmin,

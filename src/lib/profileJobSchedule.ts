@@ -194,6 +194,20 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "14:00",
     enabled: false,
   },
+  "fortnox-payment-sync": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "14:30",
+    endTime: "14:30",
+    enabled: false,
+  },
+  "fortnox-refund-credit-suggest": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "15:00",
+    endTime: "15:00",
+    enabled: false,
+  },
 };
 
 export function expandRunTimes(schedule: ProfileJobSchedule): string[] {

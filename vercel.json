@@ -99,6 +99,14 @@
     {
       "path": "/api/cron/fortnox-invoice-suggest",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/fortnox-payment-sync",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/fortnox-refund-credit-suggest",
+      "schedule": "0 15 * * *"
     }
   ],
   "rewrites": [

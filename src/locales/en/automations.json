@@ -133,6 +133,18 @@
       "description": "Suggests Fortnox invoices for paid, fulfilled Shopify orders that haven't been billed yet — you choose which ones get created.",
       "explainer": "The job compares paid, fulfilled Shopify orders against Fortnox and lists suggestions under Company → Economy. No invoice is created in Fortnox until you click 'Create invoice' on a row.",
       "trustNote": "Suggestions only — no invoice is created in Fortnox without your approval."
+    },
+    "fortnox-payment-sync": {
+      "title": "Fortnox payment sync",
+      "description": "Automatically registers the payment in Fortnox for invoices this app created, as soon as the Shopify order shows as paid.",
+      "explainer": "The job matches unpaid Fortnox invoices (created by this app) against Shopify orders. If the order is already paid on Shopify, the payment is registered directly in Fortnox — it's just a status sync of something that already happened, not a new financial decision.",
+      "trustNote": "Runs automatically — only registers payments for invoices the app itself created."
+    },
+    "fortnox-refund-credit-suggest": {
+      "title": "Fortnox credit invoice suggestions",
+      "description": "Suggests a credit invoice in Fortnox when a Shopify order with an existing Fortnox invoice gets refunded.",
+      "explainer": "The job finds Shopify refunds on orders that already have a Fortnox invoice and lists a credit-invoice suggestion under Company → Economy. No credit invoice is created until you approve it.",
+      "trustNote": "Suggestions only — no credit invoice is created in Fortnox without your approval."
     }
   }
 }

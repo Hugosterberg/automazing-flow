@@ -378,6 +378,36 @@ export const automationCatalog: AutomationCatalogEntry[] = [
       "Jobbet jämför betalda, levererade Shopify-ordrar mot Fortnox och lägger förslag under Företag → Ekonomi. Ingen faktura skapas i Fortnox förrän du klickar 'Skapa faktura' på en rad.",
     trustNote: "Bara förslag — ingen faktura skapas i Fortnox utan ditt godkännande.",
   },
+  {
+    id: "fortnox-payment-sync",
+    topic: "insights",
+    title: "Fortnox-betalningssynk",
+    description:
+      "Bokför automatiskt betalningen i Fortnox för fakturor appen skapat, så fort Shopify-ordern visar betald.",
+    cadence: "Konfigurerbart schema",
+    icon: Banknote,
+    outputHref: "/company",
+    businessOnly: true,
+    cronKey: "fortnox-payment-sync",
+    explainer:
+      "Jobbet matchar obetalda Fortnox-fakturor (som appen skapat) mot Shopify-ordrar. Är ordern redan betald i Shopify bokförs betalningen direkt i Fortnox — det är bara en statussynk av något som redan hänt, inte ett nytt finansiellt beslut.",
+    trustNote: "Körs automatiskt — bokför bara betalningar för fakturor appen själv skapat.",
+  },
+  {
+    id: "fortnox-refund-credit-suggest",
+    topic: "reports",
+    title: "Kreditfakturaförslag till Fortnox",
+    description:
+      "Föreslår en kreditfaktura i Fortnox när en Shopify-order med en befintlig Fortnox-faktura återbetalas.",
+    cadence: "Konfigurerbart schema",
+    icon: Banknote,
+    outputHref: "/company",
+    businessOnly: true,
+    cronKey: "fortnox-refund-credit-suggest",
+    explainer:
+      "Jobbet letar upp Shopify-återbetalningar på ordrar som redan har en Fortnox-faktura och lägger ett kreditfaktura-förslag under Företag → Ekonomi. Ingen kreditfaktura skapas förrän du godkänner den.",
+    trustNote: "Bara förslag — ingen kreditfaktura skapas i Fortnox utan ditt godkännande.",
+  },
 ];
 
 export function catalogEntriesForTopic(

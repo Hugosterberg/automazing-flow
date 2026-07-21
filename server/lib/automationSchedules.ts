@@ -44,6 +44,8 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "customer-winback", cron: "0 13 * * 1", perTenant: true },
   { key: "product-content-automation", cron: "30 10 * * *", perTenant: true },
   { key: "fortnox-invoice-suggest", cron: "0 14 * * *", perTenant: true },
+  { key: "fortnox-payment-sync", cron: "30 14 * * *", perTenant: true },
+  { key: "fortnox-refund-credit-suggest", cron: "0 15 * * *", perTenant: true },
 ];
 
 export function getSchedule(key: string): AutomationSchedule | undefined {
