@@ -41,6 +41,7 @@ import {
 } from "@/lib/productStore";
 import type { Product, ProductImage, ProductInput, ProductVersion } from "@/types/ecommerce";
 import { toast } from "sonner";
+import { ProductContentDraftsCard } from "./ProductContentDraftsCard";
 
 type Props = {
   businessProfileId: string | null;
@@ -215,6 +216,8 @@ export function ProductsTab({
 
   return (
     <div className="space-y-6">
+      <ProductContentDraftsCard businessProfileId={businessProfileId} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">

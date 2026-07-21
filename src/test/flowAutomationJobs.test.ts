@@ -38,6 +38,14 @@ describe("flowAutomationJobs", () => {
     expect(map["publish-scheduled-posts"].enabled).toBe(true);
   });
 
+  it("includes the ecommerce automation job keys, opt-in by default", () => {
+    const map = parseJobSchedulesJson({});
+    expect(map["post-purchase-review-request"].enabled).toBe(false);
+    expect(map["customer-winback"].enabled).toBe(false);
+    expect(map["product-content-automation"].enabled).toBe(false);
+    expect(map["fortnox-invoice-suggest"].enabled).toBe(false);
+  });
+
   it("counts pending review reply drafts", async () => {
     const { countPendingReviewReplyDrafts } = await import("../../server/lib/flowAutomationJobs");
     expect(

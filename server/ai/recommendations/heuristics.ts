@@ -30,6 +30,12 @@ const ENGAGEMENT_DECLINE_THRESHOLD_PP = 1.5;
 /** ROAS below this over the last 7 days counts as underwater. */
 const UNDERPERFORMING_ROAS_THRESHOLD = 1;
 
+/** ROAS at or above this over the last 7 days is worth scaling up. */
+const HIGH_PERFORMING_ROAS_THRESHOLD = 3;
+
+/** Ignore campaigns spending less than this — too little signal to act on. */
+const HIGH_PERFORMING_MIN_SPEND = 50;
+
 // ---------------------------------------------------------------------------
 // Snapshot input shapes
 // ---------------------------------------------------------------------------
@@ -399,6 +405,45 @@ export function underperformingCampaignHeuristic(
     }));
 }
 
+/**
+ * Emit an `outreach` candidate per ad campaign whose 7-day ROAS is strongly
+ * profitable — the scale-up counterpart to `underperformingCampaignHeuristic`.
+ * A campaign already flagged as underwater can never also qualify here since
+ * the thresholds don't overlap. Low-spend campaigns are skipped: a couple of
+ * lucky conversions on $10 of spend isn't a signal worth acting on.
+ */
+export function highPerformingCampaignHeuristic(
+  snapshot: TenantSnapshot
+): RecommendationCandidate[] {
+  return snapshot.campaigns
+    .filter(
+      (c) =>
+        c.roas7d != null &&
+        c.roas7d >= HIGH_PERFORMING_ROAS_THRESHOLD &&
+        (c.spend7d ?? 0) >= HIGH_PERFORMING_MIN_SPEND
+    )
+    .map((c) => ({
+      kind: "outreach",
+      signal: "high_performing_campaign",
+      title: `${c.name} is a winner — scale it up`,
+      summary: `ROAS ${c.roas7d!.toFixed(2)}x over the last 7 days${c.grade ? ` (grade ${c.grade})` : ""}.`,
+      rationale:
+        "This campaign is returning well above break-even. Consider increasing its budget while it's performing, before the audience or offer fatigues.",
+      confidence: 0.65,
+      module: "marketing",
+      relatedType: "campaign",
+      relatedId: c.campaignId,
+      suggestedAction: { type: "navigate", to: "/marketing" },
+      context: {
+        signal: "high_performing_campaign",
+        platform: c.platform,
+        roas7d: c.roas7d,
+        grade: c.grade,
+        spend7d: c.spend7d,
+      },
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -421,6 +466,7 @@ export const ALL_HEURISTICS: Array<{
   { name: "engagement_decline", fn: engagementDeclineHeuristic },
   { name: "content_gap", fn: contentGapHeuristic },
   { name: "underperforming_campaign", fn: underperformingCampaignHeuristic },
+  { name: "high_performing_campaign", fn: highPerformingCampaignHeuristic },
 ];
 
 /**
