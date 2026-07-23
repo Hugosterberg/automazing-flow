@@ -11,6 +11,7 @@ export function registerLowStockAlertCron(
   app,
   {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -19,7 +20,7 @@ export function registerLowStockAlertCron(
     resolveRecipientEmail,
   }
 ) {
-  const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+  const appUrl = baseUrl;
 
   app.get(
     "/api/cron/low-stock-alert",

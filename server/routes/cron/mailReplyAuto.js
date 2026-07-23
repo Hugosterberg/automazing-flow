@@ -9,6 +9,7 @@ export function registerMailReplyAutoCron(
   app,
   {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -27,9 +28,7 @@ export function registerMailReplyAutoCron(
         return res.status(503).json({ error: "dependencies_not_configured" });
       }
 
-      const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "")
-        .trim()
-        .replace(/\/$/, "");
+      const appUrl = baseUrl;
       const startedAt = Date.now();
       const timeBudgetMs = 50_000;
       const cronNow = new Date();

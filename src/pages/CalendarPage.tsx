@@ -549,13 +549,27 @@ export default function CalendarPage() {
               .
             </p>
             <div className="flex items-center justify-between mt-3">
-              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navPrev}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 sm:h-8 sm:w-8"
+                onClick={navPrev}
+                title="Föregående period"
+                aria-label="Föregående period"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-medium capitalize truncate px-2 max-w-[160px]">
                 {navTitle}
               </span>
-              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={navNext}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 sm:h-8 sm:w-8"
+                onClick={navNext}
+                title="Nästa period"
+                aria-label="Nästa period"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

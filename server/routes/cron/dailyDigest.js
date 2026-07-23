@@ -13,6 +13,7 @@ export function registerDailyDigestCron(
   app,
   {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     resolveRecipientEmail,
@@ -39,7 +40,7 @@ export function registerDailyDigestCron(
       return res.json({ ok: true, skipped: "email_not_configured", sent: 0 });
     }
 
-    const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "").trim().replace(/\/$/, "");
+    const appUrl = baseUrl;
     const startedAt = Date.now();
     const timeBudgetMs = 50_000;
 

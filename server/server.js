@@ -423,6 +423,7 @@ registerCronRoutes(app, {
   zernio: zernioModule,
   secretResolver,
   tokenStore,
+  baseUrl: BASE_URL,
 });
 
 registerAuthRoutes(app, {

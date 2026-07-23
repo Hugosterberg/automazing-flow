@@ -204,14 +204,15 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     }
 
     try {
-      const shopifyImages = [];
-      for (let index = 0; index < imageUrls.length; index++) {
-        const { buffer, contentType } = await fetchAlibabaImage(imageUrls[index]);
-        shopifyImages.push({
-          filename: `product-${index + 1}.${imageExtension(contentType)}`,
-          attachment: buffer.toString("base64"),
-        });
-      }
+      const shopifyImages = await Promise.all(
+        imageUrls.map(async (url, index) => {
+          const { buffer, contentType } = await fetchAlibabaImage(url);
+          return {
+            filename: `product-${index + 1}.${imageExtension(contentType)}`,
+            attachment: buffer.toString("base64"),
+          };
+        })
+      );
 
       const result = await createShopifyDraftProduct(String(stored.accessToken || ""), String(stored.shop || ""), {
         title,
