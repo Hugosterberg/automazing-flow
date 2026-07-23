@@ -9,11 +9,13 @@
 import crypto from "crypto";
 import type { AuthHelpers } from "../lib/authHelpers.ts";
 import { AUTH_SESSION_COOKIE } from "../lib/authHelpers.ts";
+import { claimPendingInvitesForUser } from "../lib/inviteClaims.ts";
 
 interface AuthRoutesDeps {
   auth: AuthHelpers;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  supabaseAdmin?: unknown | null;
   debugLog: (
     runId: string,
     hypothesisId: string,
@@ -24,7 +26,7 @@ interface AuthRoutesDeps {
 }
 
 export function registerAuthRoutes(app, deps: AuthRoutesDeps) {
-  const { auth, supabaseUrl, supabaseAnonKey, debugLog } = deps;
+  const { auth, supabaseUrl, supabaseAnonKey, supabaseAdmin, debugLog } = deps;
 
   /**
    * Local (unauthenticated) sessions are a dev convenience, but combined with
@@ -73,6 +75,18 @@ export function registerAuthRoutes(app, deps: AuthRoutesDeps) {
       userIdPrefix: String(user.id).slice(0, 14),
       hasEmail: Boolean(user.email),
     });
+
+    // Best-effort safety net: claim any profile invite matching this user's
+    // email that the signup trigger missed (e.g. invited a second time while
+    // their auth.users row already existed). Never blocks the response.
+    if (supabaseAdmin) {
+      void claimPendingInvitesForUser(
+        supabaseAdmin as Parameters<typeof claimPendingInvitesForUser>[0],
+        String(user.id),
+        user.email || null
+      );
+    }
+
     return res.json({ ok: true, user: { id: user.id, email: user.email || null } });
   });
 
