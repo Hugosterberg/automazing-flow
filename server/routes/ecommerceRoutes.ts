@@ -94,7 +94,7 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     if (!limitImport(req, res)) return;
     const userId = getSessionUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: "not_authenticated" });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
@@ -117,7 +117,7 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     if (!limitImage(req, res)) return;
     const userId = getSessionUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: "not_authenticated" });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
@@ -140,7 +140,7 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     if (!limitZip(req, res)) return;
     const userId = getSessionUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: "not_authenticated" });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const images = Array.isArray(req.body?.images) ? req.body.images : [];
@@ -170,7 +170,7 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     if (!limitShopifyCreate(req, res)) return;
     const userId = getSessionUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: "not_authenticated" });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const { accountId } = req.params;

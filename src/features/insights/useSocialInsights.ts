@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { asUntypedSupabaseClient } from "@/lib/untypedSupabaseClient";
 import {
   computeSocialStatsTrend,
   type SocialStatsSnapshotPoint,
@@ -10,10 +11,6 @@ import {
 import { buildFollowerSeries, type FollowerPoint } from "./followerSeries";
 
 export const SOCIAL_INSIGHTS_KEY = ["social-insights"] as const;
-
-// `social_stats_snapshots` isn't in the generated Supabase types yet.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag the migration
-type SnapshotsClient = { from: (table: string) => any };
 
 export interface AccountInsight {
   accountId: string;
@@ -45,7 +42,7 @@ export function useSocialInsights(businessProfileId: string | null): {
     queryFn: async () => {
       if (!supabase || !businessProfileId) return [];
       const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const { data, error } = await (supabase as unknown as SnapshotsClient)
+      const { data, error } = await asUntypedSupabaseClient(supabase)
         .from("social_stats_snapshots")
         .select(
           "account_id, platform, snapshot_date, followers, following, media_count, avg_likes, avg_comments, avg_views, engagement_rate, average_rating, review_count"

@@ -316,7 +316,7 @@ export function registerDigitalBrandRoutes(app, deps: DigitalBrandRoutesDeps) {
   app.get("/api/digital-brand/audit", async (req, res) => {
     const userId = getSessionUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: "not_authenticated" });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     let url: URL;
