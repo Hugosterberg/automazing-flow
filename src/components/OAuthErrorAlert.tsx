@@ -3,13 +3,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { OAuthErrorDetails } from "@/lib/oauthErrors";
+import { isOperatorConfigErrorCode, type OAuthErrorDetails } from "@/lib/oauthErrors";
 import {
   isOAuthPermissionError,
   normalizeOAuthErrorCode,
   oauthPermissionGuidance,
 } from "@/lib/oauthPermissionErrors";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 type OAuthErrorAlertProps = {
   details: OAuthErrorDetails;
@@ -27,7 +28,15 @@ export function OAuthErrorAlert({ details, message, onDismiss, platform }: OAuth
     : null;
   const hasStatus = Boolean(details.statusCode && details.statusCode !== "not provided");
   const hasException = Boolean(details.exception && details.exception !== "not provided");
-  const hasTechnical = hasStatus || hasException || details.code !== normalizedCode;
+  // "_not_configured" (and a few dev-host-only codes) mean the app deployment
+  // itself is missing setup — a tenant business owner can't act on env vars
+  // or a provider's developer console, so swap in a generic message and move
+  // the technical detail into "Tekniska detaljer" instead of showing it as
+  // the primary, seemingly-actionable text.
+  const operatorConfigIssue =
+    isOperatorConfigErrorCode(normalizedCode) || isOperatorConfigErrorCode(details.code);
+  const displayMessage = operatorConfigIssue ? t("errors:operatorConfigMessage") : message;
+  const hasTechnical = hasStatus || hasException || details.code !== normalizedCode || operatorConfigIssue;
 
   return (
     <div
@@ -66,7 +75,7 @@ export function OAuthErrorAlert({ details, message, onDismiss, platform }: OAuth
               </span>
             ) : null}
           </div>
-          <p className="text-sm text-foreground/80 leading-relaxed">{message}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{displayMessage}</p>
         </div>
         <Button
           variant="ghost"
@@ -154,6 +163,11 @@ export function OAuthErrorAlert({ details, message, onDismiss, platform }: OAuth
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1.5 pt-2 text-xs text-muted-foreground">
+              {operatorConfigIssue ? (
+                <p className="break-words">
+                  <span className="font-medium text-foreground/85">Konfiguration:</span> {message}
+                </p>
+              ) : null}
               {hasStatus ? (
                 <p>
                   <span className="font-medium text-foreground/85">HTTP-status:</span>{" "}

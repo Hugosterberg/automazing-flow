@@ -4,6 +4,7 @@
   "scopeFallback": "Appen fick inte alla nödvändiga behörigheter. Försök koppla igen och godkänn alla efterfrågade rättigheter.",
   "fetchError": "Fel: {{error}} | Status: {{status}} | Undantag: {{exception}}",
   "reconnectGeneric": "Koppla den här integrationen igen.",
+  "operatorConfigMessage": "Den här kopplingen är inte färdigkonfigurerad ännu för er organisation. Det här är inget du kan åtgärda själv — kontakta den som administrerar Automazing för er, så kan de slutföra konfigurationen.",
   "oauth": {
     "not_authenticated": "Inloggningssessionen saknades när OAuth slutfördes. Öppna appen igen, håll dig inloggad och starta Koppla-flödet på nytt från samma sida.",
     "access_denied": "Leverantören nekade åtkomst. Försök koppla igen och godkänn de begärda behörigheterna.",
