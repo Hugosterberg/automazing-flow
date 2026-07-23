@@ -529,8 +529,9 @@ export default function PreferencesPage() {
                 Teamhantering
               </CardTitle>
               <CardDescription>
-                Bjud in kollegor och hantera åtkomst till detta företagsprofil. Varje person loggar
-                in med sitt eget konto och ser samma data.
+                Bjud in kollegor och hantera åtkomst till just denna profil. Varje person loggar in
+                med sitt eget konto och ser bara den här profilen — inga andra profiler du har
+                tillgång till. Den som skapade profilen är alltid ägare och kan aldrig tas bort.
               </CardDescription>
             </CardHeader>
             <CardContent>

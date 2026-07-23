@@ -429,6 +429,7 @@ registerAuthRoutes(app, {
   auth,
   supabaseUrl: SUPABASE_URL,
   supabaseAnonKey: SUPABASE_ANON_KEY,
+  supabaseAdmin: supabaseServiceClient,
   debugLog,
 });
 
