@@ -234,6 +234,7 @@
     "refreshSr": "Refresh campaigns",
     "needsAction_one": "{{count}} campaign needs action — sorted weakest first.",
     "needsAction_other": "{{count}} campaigns need action — sorted weakest first.",
+    "loadError": "Couldn't load campaign data right now. Your connected accounts aren't affected.",
     "noActiveCampaigns": "No active campaigns right now.",
     "platformSpend": "{{amount}} last 7 days",
     "statusActive": "Active",

@@ -10,6 +10,7 @@ export function registerEngagementFollowupCron(
   app,
   {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     zernio,
@@ -26,9 +27,7 @@ export function registerEngagementFollowupCron(
       if (!supabaseAdmin || !zernio) return res.status(503).json({ error: "dependencies_not_configured" });
       if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
 
-      const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "")
-        .trim()
-        .replace(/\/$/, "");
+      const appUrl = baseUrl;
       const startedAt = Date.now();
       const timeBudgetMs = 50_000;
       const cronNow = new Date();

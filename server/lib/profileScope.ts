@@ -8,6 +8,12 @@
  * business_profile_id set at OAuth connect), so these helpers let those routes
  * additionally narrow to the caller's *active* profile — otherwise one user's
  * profiles would see each other's ad accounts, mailboxes and DMs.
+ *
+ * This is deliberately separate from `server/middleware/requireMembership.js`,
+ * which gates DB/RLS-backed routes via `memberships` rows — token-store
+ * accounts aren't rows in a membership-checked table, so that middleware
+ * can't scope them. New tenant-scoped routes should use requireMembership for
+ * Supabase table access and these helpers for token-store/live-provider data.
  */
 
 /** A stored token account, as far as profile scoping cares. */

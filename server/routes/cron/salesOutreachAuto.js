@@ -9,6 +9,7 @@ export function registerSalesOutreachAutoCron(
   app,
   {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -23,9 +24,7 @@ export function registerSalesOutreachAutoCron(
       if (!isAuthorisedCron(req)) return res.status(401).json({ error: "Unauthorized" });
       if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
 
-      const appUrl = String(process.env.BASE_URL || process.env.VITE_APP_URL || "")
-        .trim()
-        .replace(/\/$/, "");
+      const appUrl = baseUrl;
       const startedAt = Date.now();
       const timeBudgetMs = 50_000;
       const cronNow = new Date();

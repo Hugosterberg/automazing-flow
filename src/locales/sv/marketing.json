@@ -234,6 +234,7 @@
     "refreshSr": "Uppdatera kampanjer",
     "needsAction_one": "{{count}} kampanj behöver åtgärd — sorterade svagast först.",
     "needsAction_other": "{{count}} kampanjer behöver åtgärd — sorterade svagast först.",
+    "loadError": "Kunde inte hämta kampanjdata just nu. Dina kopplade konton påverkas inte.",
     "noActiveCampaigns": "Inga aktiva kampanjer just nu.",
     "platformSpend": "{{amount}} senaste 7 dgr",
     "statusActive": "Aktiv",

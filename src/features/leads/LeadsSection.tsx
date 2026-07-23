@@ -220,7 +220,14 @@ function LeadRow({
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         ) : null}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive"
+          onClick={onDelete}
+          title={`Ta bort ${lead.company}`}
+          aria-label={`Ta bort ${lead.company}`}
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>

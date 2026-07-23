@@ -45,14 +45,56 @@ export function registerTeamRoutes(app, { requireMembership, supabaseAdmin, getS
     };
     auth: {
       admin: {
-        listUsers: () => Promise<{
+        listUsers: (params?: { page?: number; perPage?: number }) => Promise<{
           data: { users: { id: string; email?: string; user_metadata?: Record<string, unknown> }[] } | null;
+          error: unknown;
+        }>;
+        getUserById: (uid: string) => Promise<{
+          data: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null } | null;
           error: unknown;
         }>;
         inviteUserByEmail: (email: string, opts?: unknown) => Promise<{ data: unknown; error: SbError }>;
       };
     };
   };
+
+  type AuthUser = { id: string; email?: string; user_metadata?: Record<string, unknown> };
+
+  /**
+   * Resolve a bounded set of known user ids to their auth user records.
+   * Deliberately NOT `listUsers()` with no pagination — that defaults to the
+   * first 50 users of the *entire* Supabase project, not this tenant's team,
+   * so member emails/names would silently stop resolving once the platform
+   * passed 50 total users across all businesses.
+   */
+  async function getUsersByIds(userIds: string[]): Promise<Map<string, AuthUser>> {
+    const uniqueIds = [...new Set(userIds)];
+    const results = await Promise.all(uniqueIds.map((id) => sb().auth.admin.getUserById(id)));
+    const map = new Map<string, AuthUser>();
+    results.forEach((res, i) => {
+      if (res.data?.user) map.set(uniqueIds[i], res.data.user);
+    });
+    return map;
+  }
+
+  /**
+   * Search the whole Supabase project for a user by email. Unlike
+   * `getUsersByIds`, this genuinely has to look beyond a small known set, so
+   * it pages through `listUsers` (1000/page) until it finds a match or runs
+   * out — capped so a pathological project size can't hang the request.
+   */
+  async function findUserByEmail(email: string): Promise<AuthUser | null> {
+    const MAX_PAGES = 50; // 50 * 1000 = 50k users ceiling
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const { data, error } = await sb().auth.admin.listUsers({ page, perPage: 1000 });
+      if (error || !data?.users?.length) return null;
+      const match = data.users.find((u) => u.email?.toLowerCase() === email);
+      if (match) return match;
+      if (data.users.length < 1000) return null; // last page
+    }
+    console.warn("[team/invite] findUserByEmail hit MAX_PAGES without a match or a short page — project has 50k+ users?");
+    return null;
+  }
 
   /**
    * The frontend origin to send the invitee's email link back to. Only
@@ -110,26 +152,7 @@ export function registerTeamRoutes(app, { requireMembership, supabaseAdmin, getS
         (inv) => inv.status === "pending"
       );
 
-      const { data: usersData, error: usersErr } = await sb().auth.admin.listUsers();
-      if (usersErr) {
-        return res.json({
-          members: memberships.map((m) => ({
-            userId: m.user_id,
-            role: m.role,
-            email: null,
-            displayName: null,
-            createdAt: m.created_at,
-          })),
-          pendingInvites: pendingInvites.map((inv) => ({
-            id: inv.id,
-            email: inv.email,
-            role: inv.role,
-            createdAt: inv.created_at,
-          })),
-        });
-      }
-
-      const userMap = new Map((usersData?.users ?? []).map((u) => [u.id, u]));
+      const userMap = await getUsersByIds(memberships.map((m) => String(m.user_id)));
 
       const members = memberships.map((m) => {
         const authUser = userMap.get(m.user_id as string);
@@ -182,8 +205,7 @@ export function registerTeamRoutes(app, { requireMembership, supabaseAdmin, getS
 
     try {
       // Try to find if the user already has an account.
-      const { data: usersData } = await sb().auth.admin.listUsers();
-      const existing = usersData?.users.find((u) => u.email?.toLowerCase() === email);
+      const existing = await findUserByEmail(email);
 
       if (existing) {
         // User exists — add them directly to memberships, no email needed.
