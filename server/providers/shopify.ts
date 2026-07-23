@@ -24,6 +24,7 @@ type ShopifyCustomer = {
   total_spent?: string;
   currency?: string;
   created_at?: string;
+  updated_at?: string;
 };
 
 type ShopifyCheckout = {
@@ -239,6 +240,213 @@ export async function fetchShopifyAbandonedCheckouts(
         createdAt: String(c.created_at || ""),
       }))
       .filter((c) => c.total > 0 && c.email);
+  } catch {
+    return [];
+  }
+}
+
+export interface ShopifyFulfilledOrder {
+  id: string;
+  name: string;
+  email: string;
+  customerName: string | null;
+  total: number;
+  currency: string;
+  createdAt: string;
+  lineItems: Array<{ title: string; quantity: number; price: number }>;
+}
+
+/**
+ * Fulfilled + paid orders placed in a given day-range window, for jobs that
+ * react to "the order shipped a while ago" (review requests, invoicing) but
+ * don't have a reliable fulfillment timestamp to key off. Using the order's
+ * `created_at` plus a window is an approximation — good enough since these
+ * jobs are deduped by order id and re-run daily, not time-critical.
+ */
+export async function fetchShopifyFulfilledOrders(
+  accessToken: string,
+  shop: string | undefined,
+  options: { minDaysAgo: number; maxDaysAgo: number; limit?: number }
+): Promise<ShopifyFulfilledOrder[]> {
+  if (!shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since = isoNDaysAgo(options.maxDaysAgo);
+  const until = isoNDaysAgo(options.minDaysAgo);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 50));
+  const url =
+    `${apiBase}/orders.json?status=any&limit=${limit}&financial_status=paid&fulfillment_status=fulfilled` +
+    `&created_at_min=${encodeURIComponent(since)}&created_at_max=${encodeURIComponent(until)}` +
+    `&fields=id,name,email,total_price,currency,created_at,cancelled_at,customer,line_items`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { orders?: ShopifyOrder[] };
+    const orders = Array.isArray(body.orders) ? body.orders : [];
+    return orders
+      .filter((o) => !(o as { cancelled_at?: string | null }).cancelled_at)
+      .map((o) => ({
+        id: String(o.id),
+        name: String(o.name || `#${o.id}`),
+        email: String(o.email || o.customer?.email || "").trim(),
+        customerName:
+          [o.customer?.first_name, o.customer?.last_name].filter(Boolean).join(" ").trim() || null,
+        total: toNumber(o.total_price),
+        currency: String(o.currency || "USD"),
+        createdAt: String(o.created_at || ""),
+        lineItems: ((o as { line_items?: Array<Record<string, unknown>> }).line_items || [])
+          .slice(0, 25)
+          .map((li) => ({
+            title: String(li.title || "Item"),
+            quantity: toNumber(li.quantity, 1),
+            price: toNumber(li.price),
+          })),
+      }))
+      .filter((o) => o.email && o.total > 0);
+  } catch {
+    return [];
+  }
+}
+
+export interface ShopifyDormantCustomer {
+  id: string;
+  email: string;
+  name: string;
+  ordersCount: number;
+  totalSpent: number;
+  currency: string;
+  /** Best-known "last active" signal — Shopify updates this on new orders too. */
+  updatedAt: string;
+}
+
+/**
+ * Customers with at least one prior order whose `updated_at` (a proxy for
+ * "last activity" — Shopify bumps it on new orders, among other things)
+ * falls in the given dormancy window. Not a substitute for a true last-order
+ * date, but a reasonable, well-documented approximation for a win-back nudge.
+ */
+export async function fetchShopifyDormantCustomers(
+  accessToken: string,
+  shop: string | undefined,
+  options: { minDaysDormant: number; maxDaysDormant: number; limit?: number }
+): Promise<ShopifyDormantCustomer[]> {
+  if (!shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const limit = Math.min(250, Math.max(1, options.limit ?? 100));
+  const url =
+    `${apiBase}/customers.json?limit=${limit}&order=updated_at+desc` +
+    `&fields=id,first_name,last_name,email,orders_count,total_spent,currency,updated_at`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { customers?: ShopifyCustomer[] };
+    const customers = Array.isArray(body.customers) ? body.customers : [];
+    const now = Date.now();
+    const minMs = options.minDaysDormant * 86400000;
+    const maxMs = options.maxDaysDormant * 86400000;
+    return customers
+      .filter((c) => toNumber(c.orders_count) >= 1 && c.email)
+      .map((c) => ({
+        id: String(c.id),
+        email: String(c.email || "").trim(),
+        name: [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || String(c.email || ""),
+        ordersCount: toNumber(c.orders_count),
+        totalSpent: toNumber(c.total_spent),
+        currency: String(c.currency || "USD"),
+        updatedAt: String(c.updated_at || ""),
+      }))
+      .filter((c) => {
+        const updatedMs = Date.parse(c.updatedAt);
+        if (!Number.isFinite(updatedMs)) return false;
+        const dormantFor = now - updatedMs;
+        return dormantFor >= minMs && dormantFor <= maxMs;
+      });
+  } catch {
+    return [];
+  }
+}
+
+export interface ShopifyRefund {
+  id: string;
+  createdAt: string;
+  lineItems: Array<{ title: string; quantity: number; subtotal: number }>;
+}
+
+export interface ShopifyRefundedOrder {
+  orderId: string;
+  orderName: string;
+  email: string;
+  currency: string;
+  refunds: ShopifyRefund[];
+}
+
+type ShopifyRefundLineItem = {
+  quantity?: number;
+  subtotal?: string;
+  line_item?: { title?: string };
+};
+
+type ShopifyRefundRaw = {
+  id: number | string;
+  created_at?: string;
+  refund_line_items?: ShopifyRefundLineItem[];
+};
+
+type ShopifyOrderWithRefunds = ShopifyOrder & { refunds?: ShopifyRefundRaw[] };
+
+/**
+ * Orders with at least one refund, updated within the given window — for the
+ * refund → Fortnox credit-invoice suggestion job. `refunds` is included
+ * inline via the Shopify orders payload rather than a separate per-order
+ * call.
+ */
+export async function fetchShopifyRefundedOrders(
+  accessToken: string,
+  shop: string | undefined,
+  options: { minDaysAgo: number; maxDaysAgo: number; limit?: number }
+): Promise<ShopifyRefundedOrder[]> {
+  if (!shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const since = isoNDaysAgo(options.maxDaysAgo);
+  const until = isoNDaysAgo(options.minDaysAgo);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 50));
+  const url =
+    `${apiBase}/orders.json?status=any&limit=${limit}&financial_status=any` +
+    `&updated_at_min=${encodeURIComponent(since)}&updated_at_max=${encodeURIComponent(until)}` +
+    `&fields=id,name,email,customer,currency,refunds`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { orders?: ShopifyOrderWithRefunds[] };
+    const orders = Array.isArray(body.orders) ? body.orders : [];
+    return orders
+      .filter((o) => Array.isArray(o.refunds) && o.refunds.length > 0)
+      .map((o) => ({
+        orderId: String(o.id),
+        orderName: String(o.name || `#${o.id}`),
+        email: String(o.email || o.customer?.email || "").trim(),
+        currency: String(o.currency || "USD"),
+        refunds: (o.refunds || []).map((r) => ({
+          id: String(r.id),
+          createdAt: String(r.created_at || ""),
+          lineItems: (r.refund_line_items || [])
+            .filter((li) => toNumber(li.subtotal) > 0)
+            .map((li) => ({
+              title: li.line_item?.title || "Refunded item",
+              quantity: toNumber(li.quantity, 1),
+              subtotal: toNumber(li.subtotal),
+            })),
+        })),
+      }))
+      .filter((o) => o.email && o.refunds.some((r) => r.lineItems.length > 0));
   } catch {
     return [];
   }
@@ -748,4 +956,64 @@ export async function createShopifyDraftProduct(
       adminUrl: productId ? `${adminBase}/products/${productId}` : `${adminBase}/products`,
     },
   };
+}
+
+/**
+ * Push an AI-drafted description/tags update to an existing Shopify product
+ * (used by the product-content-automation approval flow — never called
+ * without an explicit user "apply" action). `description` is plain text and
+ * gets wrapped as a single HTML paragraph per line.
+ */
+export async function updateShopifyProductContent(
+  accessToken: string,
+  shop: string | undefined,
+  productId: string,
+  input: { description?: string; tags?: string[] }
+): Promise<{ ok: true } | { error: string; status: number }> {
+  if (!shop) {
+    return { error: "No shop domain stored for this account", status: 400 };
+  }
+  if (!productId) {
+    return { error: "missing_product_id", status: 400 };
+  }
+
+  const shopHeaders = { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" };
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+
+  const productPatch: Record<string, unknown> = {};
+  if (input.description != null) {
+    productPatch.body_html = input.description
+      .trim()
+      .split(/\n{2,}/)
+      .map((p) => `<p>${p.trim()}</p>`)
+      .join("\n");
+  }
+  if (input.tags != null) {
+    productPatch.tags = input.tags.slice(0, 25).join(", ");
+  }
+  if (Object.keys(productPatch).length === 0) {
+    return { error: "empty_patch", status: 400 };
+  }
+
+  const res = await fetch(`${apiBase}/products/${encodeURIComponent(productId)}.json`, {
+    method: "PUT",
+    headers: shopHeaders,
+    body: JSON.stringify({ product: { id: Number(productId) || productId, ...productPatch } }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const raw = await res.json().catch(() => ({}));
+    const detail = formatShopifyErrors(raw);
+    if (res.status === 401) {
+      return { error: detail || "Shopify rejected the access token. Reconnect the store.", status: 401 };
+    }
+    if (res.status === 403) {
+      return {
+        error: detail || "Shopify denied the update. Reconnect to grant write_products scope.",
+        status: 403,
+      };
+    }
+    return { error: detail || "Could not update the Shopify product", status: res.status };
+  }
+  return { ok: true };
 }

@@ -83,6 +83,30 @@
     {
       "path": "/api/cron/weekly-report",
       "schedule": "30 7 * * 1"
+    },
+    {
+      "path": "/api/cron/post-purchase-review-request",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/customer-winback",
+      "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/cron/product-content-automation",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/fortnox-invoice-suggest",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/fortnox-payment-sync",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/fortnox-refund-credit-suggest",
+      "schedule": "0 15 * * *"
     }
   ],
   "rewrites": [

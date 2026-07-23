@@ -41,6 +41,17 @@
       "action": "Go to Connections"
     }
   },
+  "productContent": {
+    "title": "Suggested product copy",
+    "description": "AI-improved descriptions and tags for products with thin copy — nothing publishes until you approve.",
+    "loading": "Loading suggestions…",
+    "apply": "Apply",
+    "dismiss": "Dismiss",
+    "appliedWithShopify": "Updated locally and on Shopify.",
+    "appliedLocalOnly": "Updated in the product catalogue.",
+    "applyFailed": "Could not apply the suggestion.",
+    "dismissFailed": "Could not dismiss the suggestion."
+  },
   "errors": {
     "fetchStoreData": "Could not fetch store data.",
     "loadProducts": "Could not load products.",

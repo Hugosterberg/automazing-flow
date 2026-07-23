@@ -7,8 +7,16 @@ import {
   normalizeAlibabaImageUrl,
   normalizeAlibabaProductUrl,
 } from "../providers/alibaba.ts";
-import { createShopifyDraftProduct } from "../providers/shopify.ts";
+import { createShopifyDraftProduct, updateShopifyProductContent } from "../providers/shopify.ts";
 import { accountInBusinessProfile, readRequestBodyBusinessProfileId } from "../lib/profileScope.ts";
+import {
+  applyProductContentDraft,
+  dismissProductContentDraft,
+  parseProductContentDrafts,
+  PRODUCT_CONTENT_DRAFTS_DOC_KEY,
+} from "../lib/productContentJobs.ts";
+import { loadProfileDocument } from "../lib/profileDocumentStore.ts";
+import type { SupabaseAdminLike } from "../lib/supabaseAdminLike.ts";
 
 interface EcommerceRoutesDeps {
   getSessionUserId: (req: unknown) => string | null;
@@ -19,6 +27,9 @@ interface EcommerceRoutesDeps {
   tokenStore: {
     get: (id: string) => Promise<Record<string, unknown> | null | undefined>;
   };
+  supabaseAdmin: SupabaseAdminLike | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  requireMembership: (req: any, res: any, next: () => void) => void;
 }
 
 function mapImportError(error: unknown): { status: number; error: string; message: string } {
@@ -73,7 +84,7 @@ function imageExtension(contentType: string): string {
 }
 
 export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
-  const { getSessionUserId, getStoredAccountAccess, tokenStore } = deps;
+  const { getSessionUserId, getStoredAccountAccess, tokenStore, supabaseAdmin, requireMembership } = deps;
   const limitImport = rateLimitMiddleware("ecommerce:alibaba:import", getSessionUserId, 10, 60_000);
   const limitImage = rateLimitMiddleware("ecommerce:alibaba:image", getSessionUserId, 60, 60_000);
   const limitZip = rateLimitMiddleware("ecommerce:alibaba:zip", getSessionUserId, 5, 60_000);
@@ -217,6 +228,63 @@ export function registerEcommerceRoutes(app, deps: EcommerceRoutesDeps) {
     } catch (error) {
       const mapped = mapImportError(error);
       return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+    }
+  });
+
+  // Product content automation: AI-drafted description/tag suggestions for
+  // thin Shopify listings, queued for approval (see productContentJobs.ts).
+  app.get("/api/ecommerce/product-content-drafts", requireMembership, async (req, res) => {
+    if (!supabaseAdmin) return res.json({ drafts: [] });
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    try {
+      const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, PRODUCT_CONTENT_DRAFTS_DOC_KEY);
+      const drafts = parseProductContentDrafts(doc?.data).filter((d) => d.status === "draft");
+      return res.json({ drafts });
+    } catch (e) {
+      console.error("[ecommerce] product-content-drafts list failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "product_content_drafts_load_failed" });
+    }
+  });
+
+  app.post("/api/ecommerce/product-content-drafts/apply", requireMembership, async (req, res) => {
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    const role = req.membershipRole;
+    if (role !== "owner" && role !== "admin" && role !== "editor") {
+      return res.status(403).json({ error: "forbidden_role" });
+    }
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const productId = String(req.body?.productId || "").trim();
+    if (!productId) return res.status(400).json({ error: "missing_product_id" });
+
+    try {
+      const result = await applyProductContentDraft({
+        supabaseAdmin,
+        tokenStore,
+        businessProfileId,
+        productId,
+        updateShopifyProductContent,
+      });
+      if ("error" in result) return res.status(400).json({ error: result.error });
+      return res.json({ ok: true, pushedToShopify: result.pushedToShopify });
+    } catch (e) {
+      console.error("[ecommerce] product-content-drafts apply failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "product_content_draft_apply_failed" });
+    }
+  });
+
+  app.post("/api/ecommerce/product-content-drafts/dismiss", requireMembership, async (req, res) => {
+    if (!supabaseAdmin) return res.status(503).json({ error: "supabase_service_role_not_configured" });
+    const businessProfileId = String(req.businessProfileId || "").trim();
+    const productId = String(req.body?.productId || "").trim();
+    if (!productId) return res.status(400).json({ error: "missing_product_id" });
+
+    try {
+      const result = await dismissProductContentDraft({ supabaseAdmin, businessProfileId, productId });
+      if ("error" in result) return res.status(400).json({ error: result.error });
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("[ecommerce] product-content-drafts dismiss failed:", e instanceof Error ? e.message : e);
+      return res.status(500).json({ error: "product_content_draft_dismiss_failed" });
     }
   });
 }

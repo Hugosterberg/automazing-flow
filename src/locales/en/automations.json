@@ -108,6 +108,43 @@
     "market-pulse-snapshot": {
       "title": "Market pulse snapshot",
       "description": "Fetches LunarCrush sentiment every night so Home loads without a live MCP call."
+    },
+    "post-purchase-review-request": {
+      "title": "Post-purchase review request",
+      "description": "Emails customers ~1.5 weeks after a fulfilled Shopify order asking for a review (deduplicated per order).",
+      "explainer": "The job finds paid, fulfilled orders 10–24 days old and sends a short thank-you email asking for a review. It sends directly — no review step, no discount.",
+      "trustNote": "Sends directly (deduplicated per order) — nothing here costs money or needs approval."
+    },
+    "customer-winback": {
+      "title": "Customer win-back emails",
+      "description": "Emails customers who haven't ordered in 60–180 days a simple 'we miss you' note (at most every 90 days per customer).",
+      "explainer": "The job finds Shopify customers who've gone quiet and sends a short, discount-free nudge to remind them about the store. The same customer isn't contacted again within 90 days.",
+      "trustNote": "Sends directly — no discount, no cost, just a reminder."
+    },
+    "product-content-automation": {
+      "title": "Product content automation",
+      "description": "Suggests AI-improved descriptions and tags for Shopify products with thin copy — you approve before anything publishes.",
+      "explainer": "The job scans synced Shopify products with a short/missing description or tags and adds a suggestion under Products. Approving it updates both the catalogue here and, when possible, the product on Shopify.",
+      "exampleDraft": "A durable everyday favorite — comfortable fit, sturdy materials, and fast delivery.",
+      "trustNote": "Suggestions only — you choose what gets published."
+    },
+    "fortnox-invoice-suggest": {
+      "title": "Fortnox invoice suggestions",
+      "description": "Suggests Fortnox invoices for paid, fulfilled Shopify orders that haven't been billed yet — you choose which ones get created.",
+      "explainer": "The job compares paid, fulfilled Shopify orders against Fortnox and lists suggestions under Company → Economy. No invoice is created in Fortnox until you click 'Create invoice' on a row.",
+      "trustNote": "Suggestions only — no invoice is created in Fortnox without your approval."
+    },
+    "fortnox-payment-sync": {
+      "title": "Fortnox payment sync",
+      "description": "Automatically registers the payment in Fortnox for invoices this app created, as soon as the Shopify order shows as paid.",
+      "explainer": "The job matches unpaid Fortnox invoices (created by this app) against Shopify orders. If the order is already paid on Shopify, the payment is registered directly in Fortnox — it's just a status sync of something that already happened, not a new financial decision.",
+      "trustNote": "Runs automatically — only registers payments for invoices the app itself created."
+    },
+    "fortnox-refund-credit-suggest": {
+      "title": "Fortnox credit invoice suggestions",
+      "description": "Suggests a credit invoice in Fortnox when a Shopify order with an existing Fortnox invoice gets refunded.",
+      "explainer": "The job finds Shopify refunds on orders that already have a Fortnox invoice and lists a credit-invoice suggestion under Company → Economy. No credit invoice is created until you approve it.",
+      "trustNote": "Suggestions only — no credit invoice is created in Fortnox without your approval."
     }
   }
 }

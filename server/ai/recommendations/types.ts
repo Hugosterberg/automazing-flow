@@ -29,6 +29,7 @@ export type HeuristicSignal =
   | "engagement_decline"
   | "content_gap"
   | "underperforming_campaign"
+  | "high_performing_campaign"
   | "stale_lead";
 
 export interface RecommendationCandidate {

@@ -9,7 +9,11 @@ import { generateReplyDraft } from "../ai/replyDraft.ts";
 import type { ZernioModule } from "../providers/zernioModule.ts";
 import { fetchGmailAccountData } from "../providers/gmail.ts";
 import { fetchOutlookMailData } from "../providers/outlookMail.ts";
-import { fetchShopifyAbandonedCheckouts } from "../providers/shopify.ts";
+import {
+  fetchShopifyAbandonedCheckouts,
+  fetchShopifyFulfilledOrders,
+  fetchShopifyDormantCustomers,
+} from "../providers/shopify.ts";
 import {
   loadProfileDocument,
   saveProfileDocument,
@@ -27,6 +31,8 @@ export const OUTREACH_QUEUE_DOC_KEY = "outreach-queue";
 export const SOCIAL_WORKFLOWS_DOC_KEY = "social-workflows";
 export const CONTENT_PIPELINE_DOC_KEY = "content-pipeline-queue";
 export const CART_RECOVERY_SENT_DOC_KEY = "cart-recovery-sent";
+export const POST_PURCHASE_REVIEW_SENT_DOC_KEY = "post-purchase-review-sent";
+export const CUSTOMER_WINBACK_SENT_DOC_KEY = "customer-winback-sent";
 export const REVIEW_REPLY_QUEUE_DOC_KEY = "review-reply-queue";
 export const NEGATIVE_REVIEW_ALERTS_DOC_KEY = "negative-review-alerts";
 export const MAIL_REPLY_QUEUE_DOC_KEY = "mail-reply-queue";
@@ -510,6 +516,180 @@ export async function runCartRecovery(deps: {
     const trimmed = newSentIds.slice(-200);
     await saveProfileDocument(supabaseAdmin, businessProfileId, CART_RECOVERY_SENT_DOC_KEY, {
       checkoutIds: trimmed,
+      lastRunAt: new Date().toISOString(),
+    });
+  }
+
+  return { emailed, skipped };
+}
+
+interface SentIdsDoc {
+  ids: string[];
+  lastRunAt?: string;
+}
+
+function parseSentIdsDoc(data: unknown): SentIdsDoc {
+  if (!data || typeof data !== "object") return { ids: [] };
+  const raw = data as Record<string, unknown>;
+  const ids = Array.isArray(raw.ids) ? raw.ids.map((id) => String(id)).filter(Boolean) : [];
+  return { ids, lastRunAt: raw.lastRunAt ? String(raw.lastRunAt) : undefined };
+}
+
+const POST_PURCHASE_REVIEW_MIN_DAYS = 10;
+const POST_PURCHASE_REVIEW_MAX_DAYS = 24;
+
+/**
+ * Email customers a review-request a couple of weeks after a fulfilled,
+ * paid order (deduped per order id, direct-send — this is a low-stakes,
+ * non-financial nudge, not one of the "suggest, then approve" actions).
+ */
+export async function runPostPurchaseReviewRequest(deps: {
+  supabaseAdmin: SupabaseAdminLike;
+  businessProfileId: string;
+  profile: BusinessProfileRow;
+  accessToken: string;
+  shop: string;
+  storefrontUrl?: string | null;
+}): Promise<{ emailed: number; skipped: number }> {
+  const { supabaseAdmin, businessProfileId, profile, accessToken, shop, storefrontUrl } = deps;
+
+  const orders = await fetchShopifyFulfilledOrders(accessToken, shop, {
+    minDaysAgo: POST_PURCHASE_REVIEW_MIN_DAYS,
+    maxDaysAgo: POST_PURCHASE_REVIEW_MAX_DAYS,
+    limit: 30,
+  });
+  if (orders.length === 0) return { emailed: 0, skipped: 0 };
+
+  const sentDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, POST_PURCHASE_REVIEW_SENT_DOC_KEY);
+  const sent = parseSentIdsDoc(sentDoc?.data);
+  const sentIds = new Set(sent.ids);
+
+  const businessName = String(profile.name || "our store");
+  let emailed = 0;
+  let skipped = 0;
+  const newSentIds: string[] = [...sent.ids];
+
+  for (const order of orders.slice(0, 8)) {
+    if (sentIds.has(order.id)) {
+      skipped += 1;
+      continue;
+    }
+
+    const firstName = (order.customerName || "").split(" ")[0] || "there";
+    const subject = `How was your order from ${businessName}?`;
+    const body =
+      `Hi ${firstName},\n\n` +
+      `Thanks again for your order ${order.name} from ${businessName}! We hope you're enjoying it.\n\n` +
+      `Would you mind sharing a quick review of your experience? Just reply to this email — we read every word.` +
+      (storefrontUrl ? `\n\nVisit us again: ${storefrontUrl}` : "") +
+      `\n\nThank you!\n${businessName}`;
+
+    const result: EmailResult = await sendEmail({
+      to: order.email,
+      subject,
+      html: `<div style="font-family:sans-serif;white-space:pre-wrap">${body.replace(/\n/g, "<br>")}</div>`,
+      text: body,
+    });
+
+    if (result.ok) {
+      emailed += 1;
+      newSentIds.push(order.id);
+    } else if (result.skipped) {
+      return { emailed: 0, skipped: orders.length };
+    }
+  }
+
+  if (newSentIds.length > sent.ids.length) {
+    await saveProfileDocument(supabaseAdmin, businessProfileId, POST_PURCHASE_REVIEW_SENT_DOC_KEY, {
+      ids: newSentIds.slice(-500),
+      lastRunAt: new Date().toISOString(),
+    });
+  }
+
+  return { emailed, skipped };
+}
+
+const CUSTOMER_WINBACK_MIN_DORMANT_DAYS = 60;
+const CUSTOMER_WINBACK_MAX_DORMANT_DAYS = 180;
+/** Don't re-target the same dormant customer more often than this. */
+const CUSTOMER_WINBACK_COOLDOWN_DAYS = 90;
+
+/**
+ * Email past customers who have gone quiet a gentle win-back nudge (deduped
+ * per customer id with a cooldown so the same person isn't re-emailed every
+ * run). Direct-send, like cart recovery — a discount-free "we miss you"
+ * touch, not a costly/financial action.
+ */
+export async function runCustomerWinback(deps: {
+  supabaseAdmin: SupabaseAdminLike;
+  businessProfileId: string;
+  profile: BusinessProfileRow;
+  accessToken: string;
+  shop: string;
+  storefrontUrl?: string | null;
+}): Promise<{ emailed: number; skipped: number }> {
+  const { supabaseAdmin, businessProfileId, profile, accessToken, shop, storefrontUrl } = deps;
+
+  const customers = await fetchShopifyDormantCustomers(accessToken, shop, {
+    minDaysDormant: CUSTOMER_WINBACK_MIN_DORMANT_DAYS,
+    maxDaysDormant: CUSTOMER_WINBACK_MAX_DORMANT_DAYS,
+    limit: 100,
+  });
+  if (customers.length === 0) return { emailed: 0, skipped: 0 };
+
+  const sentDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, CUSTOMER_WINBACK_SENT_DOC_KEY);
+  const rawSentAt =
+    sentDoc?.data && typeof sentDoc.data === "object" && !Array.isArray(sentDoc.data)
+      ? ((sentDoc.data as Record<string, unknown>).sentAt as Record<string, string> | undefined)
+      : undefined;
+  const sentAtByCustomer = new Map<string, number>(
+    Object.entries(rawSentAt || {}).map(([id, iso]) => [id, Date.parse(iso)])
+  );
+
+  const businessName = String(profile.name || "our store");
+  const now = Date.now();
+  let emailed = 0;
+  let skipped = 0;
+  const nextSentAt: Record<string, string> = { ...(rawSentAt || {}) };
+
+  for (const customer of customers.slice(0, 8)) {
+    const lastSentMs = sentAtByCustomer.get(customer.id);
+    if (lastSentMs && Number.isFinite(lastSentMs) && now - lastSentMs < CUSTOMER_WINBACK_COOLDOWN_DAYS * 86400000) {
+      skipped += 1;
+      continue;
+    }
+
+    const firstName = customer.name.split(" ")[0] || "there";
+    const subject = `We miss you at ${businessName}`;
+    const body =
+      `Hi ${firstName},\n\n` +
+      `It's been a while since your last order with ${businessName} — we wanted to check in and say hello.\n\n` +
+      `Take a look at what's new when you have a moment.` +
+      (storefrontUrl ? ` ${storefrontUrl}` : "") +
+      `\n\nWe'd love to have you back!\n${businessName}`;
+
+    const result: EmailResult = await sendEmail({
+      to: customer.email,
+      subject,
+      html: `<div style="font-family:sans-serif;white-space:pre-wrap">${body.replace(/\n/g, "<br>")}</div>`,
+      text: body,
+    });
+
+    if (result.ok) {
+      emailed += 1;
+      nextSentAt[customer.id] = new Date().toISOString();
+    } else if (result.skipped) {
+      return { emailed: 0, skipped: customers.length };
+    }
+  }
+
+  if (emailed > 0) {
+    // Trim to the 500 most recently emailed customers so the doc doesn't grow unbounded.
+    const trimmedEntries = Object.entries(nextSentAt)
+      .sort((a, b) => Date.parse(b[1]) - Date.parse(a[1]))
+      .slice(0, 500);
+    await saveProfileDocument(supabaseAdmin, businessProfileId, CUSTOMER_WINBACK_SENT_DOC_KEY, {
+      sentAt: Object.fromEntries(trimmedEntries),
       lastRunAt: new Date().toISOString(),
     });
   }
