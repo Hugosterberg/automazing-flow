@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { BarChart3, Banknote, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Banknote, Bot, CalendarClock, ClipboardList, Mail, MessageSquare, PackageX, Sparkles, TrendingUp, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 /**
@@ -407,6 +407,21 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     explainer:
       "Jobbet letar upp Shopify-återbetalningar på ordrar som redan har en Fortnox-faktura och lägger ett kreditfaktura-förslag under Företag → Ekonomi. Ingen kreditfaktura skapas förrän du godkänner den.",
     trustNote: "Bara förslag — ingen kreditfaktura skapas i Fortnox utan ditt godkännande.",
+  },
+  {
+    id: "low-stock-alert",
+    topic: "reports",
+    title: "Lagervarning",
+    description:
+      "Mejlar när produkter går lika eller slut i Shopify, med återbeställningslänk för Alibaba/1688-importerade produkter.",
+    cadence: "Konfigurerbart schema",
+    icon: PackageX,
+    outputHref: "/ecommerce",
+    businessOnly: true,
+    cronKey: "low-stock-alert",
+    explainer:
+      "Jobbet skannar Shopify-lagret dagligen och mejlar en sammanställning över produkter med lågt eller inget lager. Är produkten ursprungligen importerad från Alibaba/1688 länkas källan direkt i mejlet. Samma produkt nagar inte varje dag — bara vid försämring eller efter en vecka.",
+    trustNote: "Bara en informationsmejl — inget beställs eller köps automatiskt.",
   },
 ];
 

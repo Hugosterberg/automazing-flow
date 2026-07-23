@@ -202,6 +202,52 @@ export async function fetchShopifyLowStock(
   }
 }
 
+export interface ShopifyLowStockItem {
+  productId: string;
+  productTitle: string;
+  quantity: number;
+  status: "out_of_stock" | "low_stock";
+}
+
+/**
+ * Per-product detail behind {@link fetchShopifyLowStock}'s aggregate counts —
+ * used by the low-stock-alert automation, which needs to name products (and
+ * match them against the local catalogue for a reorder link), not just count
+ * them.
+ */
+export async function fetchShopifyLowStockItems(
+  accessToken: string,
+  shop: string | undefined,
+  threshold = LOW_STOCK_THRESHOLD
+): Promise<ShopifyLowStockItem[]> {
+  if (!accessToken || !shop) return [];
+  const apiBase = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}`;
+  const url = `${apiBase}/products.json?status=active&limit=250&fields=id,title,status,variants`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => ({}))) as { products?: ShopifyProduct[] };
+    const products = Array.isArray(body.products) ? body.products : [];
+    const items: ShopifyLowStockItem[] = [];
+    for (const product of products) {
+      const tracked = (product.variants || []).filter((v) => v.inventory_management);
+      if (tracked.length === 0) continue;
+      const maxQty = Math.max(...tracked.map((v) => toNumber(v.inventory_quantity)));
+      if (maxQty <= 0) {
+        items.push({ productId: String(product.id), productTitle: String(product.title || "Product"), quantity: maxQty, status: "out_of_stock" });
+      } else if (maxQty <= threshold) {
+        items.push({ productId: String(product.id), productTitle: String(product.title || "Product"), quantity: maxQty, status: "low_stock" });
+      }
+    }
+    return items.sort((a, b) => a.quantity - b.quantity);
+  } catch {
+    return [];
+  }
+}
+
 export interface ShopifyAbandonedCheckout {
   id: string;
   email: string;

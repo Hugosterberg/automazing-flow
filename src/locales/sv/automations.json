@@ -145,6 +145,12 @@
       "description": "Föreslår en kreditfaktura i Fortnox när en Shopify-order med en befintlig Fortnox-faktura återbetalas.",
       "explainer": "Jobbet letar upp Shopify-återbetalningar på ordrar som redan har en Fortnox-faktura och lägger ett kreditfaktura-förslag under Företag → Ekonomi. Ingen kreditfaktura skapas förrän du godkänner den.",
       "trustNote": "Bara förslag — ingen kreditfaktura skapas i Fortnox utan ditt godkännande."
+    },
+    "low-stock-alert": {
+      "title": "Lagervarning",
+      "description": "Mejlar när produkter går lika eller slut i Shopify, med återbeställningslänk för Alibaba/1688-importerade produkter.",
+      "explainer": "Jobbet skannar Shopify-lagret dagligen och mejlar en sammanställning över produkter med lågt eller inget lager. Är produkten ursprungligen importerad från Alibaba/1688 länkas källan direkt i mejlet. Samma produkt nagar inte varje dag — bara vid försämring eller efter en vecka.",
+      "trustNote": "Bara en informationsmejl — inget beställs eller köps automatiskt."
     }
   }
 }

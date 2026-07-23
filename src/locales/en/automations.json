@@ -145,6 +145,12 @@
       "description": "Suggests a credit invoice in Fortnox when a Shopify order with an existing Fortnox invoice gets refunded.",
       "explainer": "The job finds Shopify refunds on orders that already have a Fortnox invoice and lists a credit-invoice suggestion under Company → Economy. No credit invoice is created until you approve it.",
       "trustNote": "Suggestions only — no credit invoice is created in Fortnox without your approval."
+    },
+    "low-stock-alert": {
+      "title": "Low-stock alert",
+      "description": "Emails when products run low or out of stock on Shopify, with a reorder link for Alibaba/1688-imported products.",
+      "explainer": "The job scans Shopify inventory daily and emails a summary of products running low or out of stock. If the product was originally imported from Alibaba/1688, the source is linked directly in the email. The same product doesn't nag every day — only when it gets worse or after a week.",
+      "trustNote": "Just an informational email — nothing is ordered or purchased automatically."
     }
   }
 }
