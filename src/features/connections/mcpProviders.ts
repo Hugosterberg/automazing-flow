@@ -98,6 +98,12 @@ const MCP_PROVIDER_META: Record<IntelligencePlatform, McpProviderMeta> = {
   },
 };
 
+/**
+ * Every remote MCP provider. Derived from the exhaustive meta record, so it is
+ * the authoritative list even if the auth-split arrays above drift.
+ */
+export const MCP_PLATFORMS = Object.keys(MCP_PROVIDER_META) as IntelligencePlatform[];
+
 export function isMcpPlatform(platform: string): platform is IntelligencePlatform {
   return platform in MCP_PROVIDER_META;
 }

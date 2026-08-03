@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { CheckSquare2, ChevronRight, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2, TriangleAlert } from "lucide-react";
+import { BookOpen, CheckSquare2, ChevronRight, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,8 @@ import { t } from "@/lib/i18n";
 import type { Connection } from "@/types/connection";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { JudgemeConnectDialog } from "./JudgemeConnectDialog";
+import { ConnectGuide } from "./ConnectGuide";
+import { hasConnectGuide } from "./connectGuides";
 import { aggregateStatus, statusFromConnection } from "./connectionStatus";
 import { connectionFixHint, connectionTestToastMessage } from "./connectionFixHints";
 import type { ConnectionTestResult } from "./useConnections";
@@ -117,6 +119,7 @@ export function ConnectionCard({
   const [mcpCredentialError, setMcpCredentialError] = useState<string | null>(null);
   const [mcpConnecting, setMcpConnecting] = useState(false);
   const [judgemeDialogOpen, setJudgemeDialogOpen] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const { addAccountFromOAuth } = useAccounts();
   const mcpMeta = getMcpProviderMeta(entry.platform);
   const rows = useMemo(
@@ -127,6 +130,7 @@ export function ConnectionCard({
 
   const connectConfig = getConnectConfig(entry.platform);
   const pathOptions = getConnectionPathOptions(entry.platform);
+  const hasGuide = hasConnectGuide(entry.platform);
   const status = useMemo(() => aggregateStatus(rows), [rows]);
   const displayStatus = manuallyConnected ? "connected" : status;
   const reconnectNeeded = status === "reconnect_required";
@@ -377,7 +381,10 @@ export function ConnectionCard({
 
       {expanded ? (
       <div className="space-y-3 border-t border-border/60 px-3 pb-3 pt-2.5">
-        <p className="text-xs text-muted-foreground">{catalogConnectSteps(entry)}</p>
+        {/* The catalog one-liner ("Öppna Kopplingar → X → Koppla") only helps
+            somewhere else in the app — here the user is already on the row, so
+            the step-by-step guide below replaces it. */}
+        {!hasGuide ? <p className="text-xs text-muted-foreground">{catalogConnectSteps(entry)}</p> : null}
         {defaultPathOption ? (
           <p className="text-[11px] text-muted-foreground">
             Rekommenderad väg:{" "}
@@ -392,6 +399,23 @@ export function ConnectionCard({
         ) : null}
         {isMcpPlatform(entry.platform) && mcpReadiness ? (
           <McpReadinessHint readiness={mcpReadiness} />
+        ) : null}
+        {/* The guide leads for a row that is not connected yet — that is when
+            the user needs it. Once accounts exist it stays available but folded
+            away so the row keeps showing the accounts first. */}
+        {hasGuide && (rows.length === 0 || showGuide) ? (
+          <ConnectGuide platform={entry.platform} label={entry.label} serverNeeds={entry.serverNeeds} />
+        ) : null}
+        {hasGuide && rows.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowGuide((v) => !v)}
+            aria-expanded={showGuide}
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            <BookOpen className="h-3 w-3" aria-hidden />
+            {showGuide ? t("connections:guide.hide") : t("connections:guide.show")}
+          </button>
         ) : null}
         {entry.platform === "canva" && manuallyConnected ? (
           <div className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-xs text-success">

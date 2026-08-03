@@ -24,6 +24,24 @@
     "checkPrefs": "Granska integrationsinställningar under Inställningar.",
     "pending": "Synk pågår — testa igen om en stund."
   },
+  "guide": {
+    "title": "Så kopplar du {{label}}",
+    "aria": "Steg för steg: {{label}}",
+    "done": "Klart",
+    "reset": "Nollställ",
+    "prerequisites": "Innan du börjar",
+    "markDone": "Markera steg {{step}} som klart",
+    "markUndone": "Markera steg {{step}} som ogjort",
+    "copy": "Kopiera",
+    "copied": "Kopierat",
+    "copyFailed": "Kunde inte kopiera",
+    "copyFailedDesc": "Markera texten och kopiera manuellt.",
+    "resultLabel": "När det fungerar: ",
+    "troubleshooting": "Om något går fel",
+    "serverNeeds": "Serverkrav:",
+    "show": "Visa steg-för-steg-guide",
+    "hide": "Dölj guiden"
+  },
   "toast": {
     "ok": "Koppling OK",
     "okDesc": "Uppgifterna verifierades.",

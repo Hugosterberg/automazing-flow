@@ -150,3 +150,40 @@ Samma callback finns även under `.../late/instagram/callback` om du redan regis
 - `server/analytics/*` innehåller rena beräkningar (social/X/shopify metrics).
 - `src/hooks/useAccountData.ts` återanvänds för account + fetch + refresh + loading + error i flera pages.
 - `src/components/ZernioLinkDialog.tsx` + `src/hooks/useZernioAccounts.ts` isolerar Zernio-länkning från huvudsidebar.
+
+## Lägga till en ny integration (checklista)
+
+En koppling är utspridd över flera filer med flit — plattformsspecifik logik ska
+inte läcka. Ordningen nedan är den som `npm run verify` kontrollerar, så följ
+den och låt testerna säga till när något saknas.
+
+1. **Plattformstyp** — lägg till värdet i rätt union i `src/types/accounts.ts`
+   (`SocialPlatform`, `ReviewsPlatform`, …). Det här steget gör resten till
+   kompileringsfel istället för tysta luckor.
+2. **Serverrutt** — ny fil `server/routes/oauth/<platform>OAuthRoutes.ts` med en
+   `registerXOAuthRoutes`, wire:ad från `server/routes/oauthRoutes.ts`. Inline:a
+   aldrig `app.get("/api/auth/...")` i wiring-filen. Provider-anrop (fetch mot
+   leverantörens API) hör hemma i `server/providers/`.
+3. **Connect-path** — `src/features/connections/connectAuthPath.ts`:
+   `NATIVE_CONFIG` är `Record<NativePlatform, …>`, så en ny plattform som saknas
+   där är ett typfel. Lägg även till `NATIVE_PATH_OPTIONS` (exakt ett alternativ
+   med `isDefault`). MCP-plattformar genereras från `mcpProviders.ts` istället.
+4. **Katalog** — `src/lib/connectionCatalog.ts`: område(n), `pageHref`, och
+   `serverNeeds` (vilka env-variabler administratören måste sätta). Lägg till
+   `catalog.connect.<platform>` i både `src/locales/sv` och `src/locales/en`.
+5. **Steg-för-steg-guide** — `src/features/connections/connectGuides.ts`.
+   Återanvänd `zernioGuide()` / `googleOAuthGuide()` när flödet är ett standard-
+   flöde; annars skriv posten för hand. Guiden ska svara på: vilket konto ska
+   användas, var hittar man ett id som måste klistras in, och vad ser man i
+   appen när det fungerar. Skickar guiden med en `callbackPath` samlas den in
+   automatiskt och testas mot serverns faktiska rutter.
+6. **Verifiera** — `npm run verify`. Relevanta skydd:
+   - `connectGuides.test.ts` — varje katalogpost har en guide med minst två steg
+     och giltiga https-länkar.
+   - `connectionRegistration.test.ts` — katalog, connect-path och registrerad
+     serverrutt matchar varandra, och varje callback-URL som guiden ber
+     användaren whitelista finns verkligen på servern.
+
+Hoppa inte över steg 5. En koppling utan guide får bara en rad ur katalogen,
+och då står användaren kvar i leverantörens konsol utan att veta vilket konto
+eller vilket id som efterfrågas.

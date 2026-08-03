@@ -61,6 +61,14 @@ Business, TikTok, X, Tripadvisor. Pattern: OAuth **wiring** in
 `server/routes/oauth/*OAuthRoutes.ts`. Provider isolation in
 `server/providers/`. One connected account per (profile, platform).
 
+Client side, an integration is declared in three places that are kept in sync by
+tests: `src/lib/connectionCatalog.ts` (what it is, where it lives),
+`connectAuthPath.ts` (which server route starts the flow — exhaustive over
+non-MCP platforms, so a missing entry is a compile error), and
+`connectGuides.ts` (the step-by-step guide shown on the Connections row).
+`src/test/connectionRegistration.test.ts` asserts the three agree with the
+routes the server actually registers. Checklist: `docs/KOPPLINGAR.md`.
+
 ## Scheduled automation (Vercel Cron → modular cron modules)
 
 `vercel.json` lists cron paths. Implementations live in

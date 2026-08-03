@@ -1,5 +1,13 @@
-import type { AccountPlatform } from "@/types/accounts";
+import type { AccountPlatform, IntelligencePlatform } from "@/types/accounts";
 import { MCP_KEYED_PLATFORMS, MCP_OAUTH_PLATFORMS, getMcpProviderMeta } from "./mcpProviders";
+
+/**
+ * Everything that is not a remote MCP provider. MCP entries are generated from
+ * the provider lists; these are hand-written, so they are typed as an
+ * exhaustive record — adding a platform to `AccountPlatform` without wiring a
+ * connect path here is a compile error, not a dead Connect button.
+ */
+type NativePlatform = Exclude<AccountPlatform, IntelligencePlatform>;
 
 /**
  * Maps a catalog platform to the server-side OAuth start path.
@@ -20,7 +28,7 @@ export interface ConnectionPathOption {
   isDefault?: boolean;
 }
 
-const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
+const NATIVE_CONFIG: Record<NativePlatform, ConnectStartConfig> = {
   // Social — all via Zernio.
   instagram: { authPath: "instagram", provider: "zernio" },
   facebook: { authPath: "facebook", provider: "zernio" },
@@ -38,6 +46,9 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   shopify: { authPath: "shopify" },
   notion: { authPath: "notion" },
 
+  // Economy
+  fortnox: { authPath: "fortnox" },
+
   // Messaging
   gmail: { authPath: "gmail" },
   outlook: { authPath: "outlook" },
@@ -54,15 +65,20 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   // Content
   google_drive: { authPath: "google_drive" },
   canva: { authPath: "canva" },
+};
+
+const MCP_CONFIG = {
   ...Object.fromEntries(
     MCP_OAUTH_PLATFORMS.map((platform) => [platform, { authPath: `mcp/${platform}` }])
   ),
   ...Object.fromEntries(
     MCP_KEYED_PLATFORMS.map((platform) => [platform, { authPath: `mcp/${platform}`, manual: true }])
   ),
-} as Record<AccountPlatform, ConnectStartConfig>;
+} as Record<IntelligencePlatform, ConnectStartConfig>;
 
-const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
+const CONFIG: Record<AccountPlatform, ConnectStartConfig> = { ...NATIVE_CONFIG, ...MCP_CONFIG };
+
+const NATIVE_PATH_OPTIONS: Record<NativePlatform, ConnectionPathOption[]> = {
   instagram: [
     { id: "zernio", label: "Zernio", isDefault: true },
     { id: "official", label: "Instagram official" },
@@ -105,8 +121,12 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
     { id: "official", label: "Tripadvisor official" },
   ],
   judgeme: [{ id: "manual", label: "Shop-domän + API-token", isDefault: true }],
+  fortnox: [{ id: "official", label: "Fortnox official", isDefault: true }],
   google_drive: [{ id: "official", label: "Google official", isDefault: true }],
   canva: [{ id: "official", label: "Canva Connect", isDefault: true }],
+};
+
+const MCP_PATH_OPTIONS = {
   ...Object.fromEntries(
     MCP_OAUTH_PLATFORMS.map((platform) => [
       platform,
@@ -128,7 +148,21 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
       ];
     })
   ),
-} as Record<AccountPlatform, ConnectionPathOption[]>;
+} as Record<IntelligencePlatform, ConnectionPathOption[]>;
+
+const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
+  ...NATIVE_PATH_OPTIONS,
+  ...MCP_PATH_OPTIONS,
+};
+
+/**
+ * Every platform that has a connect path wired. `NATIVE_CONFIG` is compile-time
+ * exhaustive and the MCP half comes from the provider registry, so this is the
+ * list the catalog is checked against.
+ */
+export function listConnectablePlatforms(): AccountPlatform[] {
+  return Object.keys(CONFIG) as AccountPlatform[];
+}
 
 export function getConnectConfig(platform: AccountPlatform): ConnectStartConfig | null {
   return CONFIG[platform] ?? null;

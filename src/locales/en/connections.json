@@ -24,6 +24,24 @@
     "checkPrefs": "Review integration settings under Preferences.",
     "pending": "Sync in progress — try again in a moment."
   },
+  "guide": {
+    "title": "How to connect {{label}}",
+    "aria": "Step by step: {{label}}",
+    "done": "Done",
+    "reset": "Reset",
+    "prerequisites": "Before you start",
+    "markDone": "Mark step {{step}} as done",
+    "markUndone": "Mark step {{step}} as not done",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
+    "copyFailedDesc": "Select the text and copy it manually.",
+    "resultLabel": "When it works: ",
+    "troubleshooting": "If something goes wrong",
+    "serverNeeds": "Server requirements:",
+    "show": "Show step-by-step guide",
+    "hide": "Hide guide"
+  },
   "toast": {
     "ok": "Connection OK",
     "okDesc": "Credentials verified.",
