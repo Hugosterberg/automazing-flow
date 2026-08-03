@@ -38,6 +38,7 @@
     "outlook_calendar": "Öppna Kopplingar → Outlook Calendar → Koppla.",
     "google_reviews": "Öppna Kopplingar → Google Reviews → Koppla.",
     "tripadvisor": "Öppna Kopplingar → Tripadvisor → Koppla.",
+    "judgeme": "Öppna Kopplingar → Judge.me → Koppla. Ange shop-domän och privat API-token från Judge.me admin.",
     "google_drive": "Öppna Kopplingar → Google Drive → Koppla.",
     "canva": "Öppna Kopplingar → Canva → Koppla. Exportera sedan bilder från Social Media.",
     "dayai": "Öppna Kopplingar → Day.ai → Koppla via OAuth MCP.",

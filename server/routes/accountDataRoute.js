@@ -31,6 +31,7 @@ import { handleInstagramZernioAccountData } from "../platformHandlers/instagramZ
 import { handleInstagramOfficialAccountData } from "../platformHandlers/instagramOfficialHandler.ts";
 import { handleGoogleReviewsAccountData } from "../platformHandlers/googleReviewsHandler.ts";
 import { handleTripadvisorAccountData } from "../platformHandlers/tripadvisorHandler.ts";
+import { handleJudgemeAccountData } from "../platformHandlers/judgemeHandler.ts";
 
 function sendHandlerResult(res, result) {
   if (result.kind === "error") {
@@ -287,6 +288,11 @@ export function registerAccountDataRoute(app, deps) {
           zernioAccountId,
           getZernioApiKey,
         });
+        return sendHandlerResult(res, result);
+      }
+
+      if (platform === "judgeme") {
+        const result = await handleJudgemeAccountData({ stored });
         return sendHandlerResult(res, result);
       }
 

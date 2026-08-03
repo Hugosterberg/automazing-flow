@@ -167,6 +167,16 @@ export function TripadvisorIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Judge.me — femuddig stjärna i pratbubbla (recensionsplattform). */
+export function JudgemeIcon(props: SVGProps<SVGSVGElement>) {
+  const { width = defaultSize, height = defaultSize, ...rest } = props;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={width} height={height} {...rest}>
+      <path d="M12 2.5c5.2 0 9.5 3.7 9.5 8.3 0 4.6-4.3 8.3-9.5 8.3-.7 0-1.4-.1-2-.2L5 21.5l.9-3.6c-2-1.5-3.4-3.8-3.4-6.4C2.5 6.2 6.8 2.5 12 2.5Zm0 3.4-1.6 3.2-3.5.5 2.5 2.5-.6 3.5 3.2-1.7 3.2 1.7-.6-3.5 2.5-2.5-3.5-.5L12 5.9Z" />
+    </svg>
+  );
+}
+
 /** Tecknad lysande glödlampa – stroke-baserad, mjuk glow */
 export function LightbulbGlowIcon(props: SVGProps<SVGSVGElement>) {
   const { width = defaultSize, height = defaultSize, className, ...rest } = props;

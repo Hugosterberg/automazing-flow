@@ -6,6 +6,7 @@
 import { automationSettingsRowToDomain } from "../../automation/autoReply.ts";
 import { isEmailConfigured } from "../../lib/email.ts";
 import { runPostPurchaseReviewRequest } from "../../lib/flowAutomationJobs.ts";
+import { judgemeCredentialsFromStored } from "../../providers/judgeme.ts";
 
 export function registerPostPurchaseReviewRequestCron(
   app,
@@ -25,8 +26,6 @@ export function registerPostPurchaseReviewRequestCron(
       if (!supabaseAdmin || !tokenStore) {
         return res.status(503).json({ error: "dependencies_not_configured" });
       }
-      if (!isEmailConfigured()) return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
-
       const startedAt = Date.now();
       const timeBudgetMs = 50_000;
       const cronNow = new Date();
@@ -47,7 +46,7 @@ export function registerPostPurchaseReviewRequestCron(
         const { data: accountRows } = await supabaseAdmin
           .from("connected_accounts")
           .select("id,business_profile_id,platform,disconnected_at")
-          .eq("platform", "shopify")
+          .in("platform", ["shopify", "judgeme"])
           .is("disconnected_at", null)
           .in(
             "business_profile_id",
@@ -55,9 +54,22 @@ export function registerPostPurchaseReviewRequestCron(
           );
 
         const shopifyByProfile = new Map();
+        const judgemeByProfile = new Map();
         for (const row of Array.isArray(accountRows) ? accountRows : []) {
           const bpId = String(row?.business_profile_id || "").trim();
-          if (bpId && !shopifyByProfile.has(bpId)) shopifyByProfile.set(bpId, String(row.id));
+          if (!bpId) continue;
+          if (row.platform === "shopify" && !shopifyByProfile.has(bpId)) {
+            shopifyByProfile.set(bpId, String(row.id));
+          }
+          if (row.platform === "judgeme" && !judgemeByProfile.has(bpId)) {
+            judgemeByProfile.set(bpId, String(row.id));
+          }
+        }
+
+        // Without email transport we can still serve profiles where Judge.me
+        // sends the request; profiles without Judge.me are skipped as before.
+        if (!isEmailConfigured() && judgemeByProfile.size === 0) {
+          return res.json({ ok: true, skipped: "email_not_configured", emailed: 0 });
         }
 
         const { data: profiles } = await supabaseAdmin
@@ -96,6 +108,16 @@ export function registerPostPurchaseReviewRequestCron(
               skipped += 1;
               continue;
             }
+            let judgeme = null;
+            const judgemeAccountId = judgemeByProfile.get(entry.bpId);
+            if (judgemeAccountId) {
+              const judgemeStored = await tokenStore.get(judgemeAccountId);
+              judgeme = judgemeCredentialsFromStored(judgemeStored);
+            }
+            if (!judgeme && !isEmailConfigured()) {
+              skipped += 1;
+              continue;
+            }
             const result = await runPostPurchaseReviewRequest({
               supabaseAdmin,
               businessProfileId: entry.bpId,
@@ -103,6 +125,7 @@ export function registerPostPurchaseReviewRequestCron(
               accessToken,
               shop,
               storefrontUrl: `https://${shop}`,
+              judgeme,
             });
             emailed += result.emailed;
             skipped += result.skipped;

@@ -649,6 +649,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         outlook_calendar: "outlook.office.com/calendar",
         google_reviews: "google.com/maps",
         tripadvisor: "tripadvisor.com",
+        judgeme: "judge.me",
         google_drive: "drive.google.com",
         canva: "canva.com",
         facebook: "facebook.com",

@@ -60,6 +60,18 @@ const TENANT_SECRET_CATALOG: TenantSecretDef[] = [
     inputType: "text",
   },
   {
+    key: "JUDGEME_SHOP_DOMAIN",
+    label: "Judge.me shop domain",
+    description: "The store's myshopify.com domain used by Judge.me for this business.",
+    inputType: "text",
+  },
+  {
+    key: "JUDGEME_API_TOKEN",
+    label: "Judge.me private API token",
+    description: "Private API token from Judge.me admin -> Settings -> Integrations -> View API tokens.",
+    inputType: "password",
+  },
+  {
     key: "GOOGLE_ADS_CUSTOMER_ID",
     label: "Google Ads customer id",
     description: "Your Google Ads customer id (no dashes) for campaign reads.",

@@ -14,6 +14,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   meta_business: "Meta Business",
   google_reviews: "Google Reviews",
   tripadvisor: "Tripadvisor",
+  judgeme: "Judge.me",
   whatsapp: "WhatsApp",
   shopify: "Shopify",
   notion: "Notion",

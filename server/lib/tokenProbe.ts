@@ -20,6 +20,7 @@
  */
 
 import { refreshCanvaAccessToken } from "../providers/canva.ts";
+import { judgemeCredentialsFromStored, verifyJudgemeCredentials } from "../providers/judgeme.ts";
 
 type TokenStoreLike = {
   set: (accountId: string, value: Record<string, unknown>) => Promise<unknown>;
@@ -45,10 +46,16 @@ const GOOGLE_PLATFORMS = new Set([
 
 const MICROSOFT_PLATFORMS = new Set(["outlook", "outlook_calendar"]);
 const CANVA_PLATFORMS = new Set(["canva"]);
+const JUDGEME_PLATFORMS = new Set(["judgeme"]);
 
 /** Whether this platform's token can be actively verified by a refresh probe. */
 export function isProbeablePlatform(platform: string): boolean {
-  return GOOGLE_PLATFORMS.has(platform) || MICROSOFT_PLATFORMS.has(platform) || CANVA_PLATFORMS.has(platform);
+  return (
+    GOOGLE_PLATFORMS.has(platform) ||
+    MICROSOFT_PLATFORMS.has(platform) ||
+    CANVA_PLATFORMS.has(platform) ||
+    JUDGEME_PLATFORMS.has(platform)
+  );
 }
 
 /**
@@ -74,7 +81,32 @@ export async function probeOAuthConnection(args: {
   if (CANVA_PLATFORMS.has(platform)) {
     return probeCanva({ accountId, stored, refreshToken, tokenStore });
   }
+  if (JUDGEME_PLATFORMS.has(platform)) {
+    return probeJudgeme(stored);
+  }
   return { status: "unknown" };
+}
+
+/**
+ * Judge.me stores a long-lived private API token — no refresh flow. A cheap
+ * authenticated list call distinguishes a revoked token (401/403 → expired)
+ * from transient failures (unknown).
+ */
+async function probeJudgeme(stored: Record<string, unknown>): Promise<TokenProbeResult> {
+  const creds = judgemeCredentialsFromStored(stored);
+  if (!creds) {
+    return { status: "expired", error: "Judge.me credentials missing. Reconnect the account." };
+  }
+  try {
+    const result = await verifyJudgemeCredentials(creds);
+    if (result.ok) return { status: "healthy" };
+    if (result.status === 401 || result.status === 403) {
+      return { status: "expired", error: result.error };
+    }
+    return { status: "unknown", error: result.error };
+  } catch (e) {
+    return { status: "unknown", error: e instanceof Error ? e.message : "Judge.me probe failed" };
+  }
 }
 
 async function probeGoogle(args: {

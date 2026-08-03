@@ -8,6 +8,13 @@ import { sendEmail, isEmailConfigured } from "../../lib/email.ts";
 import { countPendingOutreachDrafts } from "../../lib/flowAutomationJobs.ts";
 import { portfolioScoreDeltaFromSnapshots } from "../../lib/marketingSnapshotTrend.ts";
 import { loadProfileDocument } from "../../lib/profileDocumentStore.ts";
+import { fetchShopifyLowStock } from "../../providers/shopify.ts";
+import {
+  parseFortnoxInvoiceQueue,
+  parseFortnoxCreditQueue,
+  FORTNOX_INVOICE_QUEUE_DOC_KEY,
+  FORTNOX_CREDIT_QUEUE_DOC_KEY,
+} from "../../lib/fortnoxInvoiceJobs.ts";
 
 export function registerDailyDigestCron(
   app,
@@ -15,6 +22,7 @@ export function registerDailyDigestCron(
     withRunRecording,
     isAuthorisedCron,
     supabaseAdmin,
+    tokenStore,
     resolveRecipientEmail,
     isProfileJobDueNow,
     loadFailedAutomationTitles,
@@ -202,6 +210,39 @@ export function registerDailyDigestCron(
             /* marketing snapshots optional */
           }
 
+          // E-commerce signals — best-effort, only when Shopify is connected.
+          let lowStockCount = 0;
+          let unbilledOrdersCount = 0;
+          let pendingCreditInvoicesCount = 0;
+          try {
+            const { data: shopifyAccount } = await supabaseAdmin
+              .from("connected_accounts")
+              .select("id")
+              .eq("business_profile_id", businessProfileId)
+              .eq("platform", "shopify")
+              .is("disconnected_at", null)
+              .maybeSingle();
+            if (shopifyAccount?.id && tokenStore) {
+              const stored = await tokenStore.get(String(shopifyAccount.id));
+              const accessToken = String(stored?.accessToken || "").trim();
+              const shop = String(stored?.shop || "").trim();
+              if (accessToken && shop) {
+                const stock = await fetchShopifyLowStock(accessToken, shop);
+                lowStockCount = (stock?.outOfStock ?? 0) + (stock?.lowStock ?? 0);
+              }
+            }
+            const invoiceQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_INVOICE_QUEUE_DOC_KEY);
+            unbilledOrdersCount = parseFortnoxInvoiceQueue(invoiceQueueDoc?.data).filter(
+              (q) => q.status === "suggested" || q.status === "failed"
+            ).length;
+            const creditQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_CREDIT_QUEUE_DOC_KEY);
+            pendingCreditInvoicesCount = parseFortnoxCreditQueue(creditQueueDoc?.data).filter(
+              (q) => q.status === "suggested" || q.status === "failed"
+            ).length;
+          } catch {
+            /* e-commerce signals optional */
+          }
+
           const digest = buildDigest({
             businessName: String(profile.name || "Your business"),
             appUrl: appUrl || undefined,
@@ -211,6 +252,9 @@ export function registerDailyDigestCron(
             underwaterRoas,
             marketingTrendDown,
             reviewsNeedingReply,
+            lowStockCount,
+            unbilledOrdersCount,
+            pendingCreditInvoicesCount,
             failedAutomations,
             overdueTasks,
             dueTodayTasks,

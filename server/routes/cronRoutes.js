@@ -298,6 +298,7 @@ export function registerCronRoutes(app, deps) {
     withRunRecording,
     isAuthorisedCron,
     supabaseAdmin,
+    tokenStore,
     resolveRecipientEmail,
     isProfileJobDueNow,
     loadFailedAutomationTitles,

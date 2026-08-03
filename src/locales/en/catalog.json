@@ -38,6 +38,7 @@
     "outlook_calendar": "Open Connections → Outlook Calendar → Connect.",
     "google_reviews": "Open Connections → Google Reviews → Connect.",
     "tripadvisor": "Open Connections → Tripadvisor → Connect.",
+    "judgeme": "Open Connections → Judge.me → Connect. Enter your shop domain and private API token from the Judge.me admin.",
     "google_drive": "Open Connections → Google Drive → Connect.",
     "canva": "Open Connections → Canva → Connect. Then export images from Social Media.",
     "dayai": "Open Connections → Day.ai → Connect via OAuth MCP.",

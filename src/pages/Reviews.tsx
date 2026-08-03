@@ -2,8 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
-import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search } from "lucide-react";
+import { Star, MessageSquare, RefreshCw, Loader2, ExternalLink, MapPin, Phone, Globe2, Info, Search, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -43,10 +52,11 @@ import { accountDataUrl } from "@/lib/accountDataUrl";
 import { LIVE_SYNC_REVIEWS } from "@/lib/liveSyncEvents";
 import { useVisibleIntervalRefetch } from "@/hooks/useVisibleIntervalRefetch";
 import { formatFullDateTime, formatSmartDate } from "@/lib/format";
+import { platformLabel } from "@/lib/platformLabels";
 import { senderInitial } from "@/features/messages";
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
-  const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
+  const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : p === "judgeme" ? 2 : 9);
   const d = rank(a.platform) - rank(b.platform);
   if (d !== 0) return d;
   return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
@@ -78,6 +88,14 @@ type ReviewsData = {
     rating?: number;
     reviewCount?: number;
     url?: string;
+    photos?: Array<{ id: string; caption?: string; url: string }>;
+  };
+  judgemeInfo?: {
+    source: "official";
+    shopDomain?: string;
+    website?: string;
+    verifiedCount?: number;
+    withPicturesCount?: number;
   };
   source?: "zernio" | "official";
   note?: string;
@@ -151,6 +169,11 @@ export default function ReviewsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [reviewSearch, setReviewSearch] = useState("");
   const debouncedReviewSearch = useDebouncedValue(reviewSearch, 160);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestName, setRequestName] = useState("");
+  const [requestOrderId, setRequestOrderId] = useState("");
+  const [requestBusy, setRequestBusy] = useState(false);
 
   const {
     scopedAccounts: reviewAccounts,
@@ -164,7 +187,9 @@ export default function ReviewsPage() {
     accounts,
     selectedAccountId,
     setSelectedAccountId: (id) => setSelectedAccountId("reviews", id),
-    accountFilter: (a) => (a.platform === "google_reviews" || a.platform === "tripadvisor") && Boolean(a.isOAuth),
+    accountFilter: (a) =>
+      (a.platform === "google_reviews" || a.platform === "tripadvisor" || a.platform === "judgeme") &&
+      Boolean(a.isOAuth),
     initialData: null,
     requestKey: activeBusinessProfileId ?? activeProfileId,
     scopeSort: sortReviewAccounts,
@@ -200,10 +225,15 @@ export default function ReviewsPage() {
         id: displayString(review.id) || String(index),
         author: displayString(review.author) || "Anonymous",
         rating: displayNumber(review.rating),
+        title: displayString(review.title) || undefined,
         text: displayString(review.text),
         createdAt: displayString(review.createdAt),
         url: displayString(review.url),
         source: displayString(review.source),
+        pictures: Array.isArray(review.pictures)
+          ? review.pictures.map(displayString).filter(Boolean)
+          : undefined,
+        verified: review.verified === true,
       })),
     [data]
   );
@@ -365,8 +395,36 @@ export default function ReviewsPage() {
         source: ta.source,
       };
     }
+    if (data?.judgemeInfo) {
+      const jm = data.judgemeInfo;
+      const verified = displayNumber(jm.verifiedCount);
+      const withPictures = displayNumber(jm.withPicturesCount);
+      const subtitleParts = [
+        verified != null ? `${verified} verifierade köp` : "",
+        withPictures != null && withPictures > 0 ? `${withPictures} med kundbilder` : "",
+      ].filter(Boolean);
+      return {
+        title: displayString(data.profile?.name) || displayString(jm.shopDomain) || "Judge.me",
+        subtitle: subtitleParts.join(" · "),
+        website: displayString(jm.website),
+        externalUrl: normalizeExternalUrl(displayString(jm.website)),
+        source: "official" as const,
+      };
+    }
     return null;
   }, [data]);
+
+  const placePhotos = useMemo(
+    () =>
+      (Array.isArray(data?.tripadvisorInfo?.photos) ? data.tripadvisorInfo.photos : [])
+        .map((photo, index) => ({
+          id: displayString(photo?.id) || String(index),
+          caption: displayString(photo?.caption) || undefined,
+          url: displayString(photo?.url),
+        }))
+        .filter((photo) => photo.url),
+    [data]
+  );
 
   const navigateRelative = useCallback(
     (delta: number) => {
@@ -453,6 +511,45 @@ export default function ReviewsPage() {
     selectedReview,
     toast,
   ]);
+
+  const sendJudgemeReviewRequest = useCallback(async () => {
+    if (!activeAccount || activeAccount.platform !== "judgeme") return;
+    const email = requestEmail.trim();
+    const orderId = requestOrderId.trim();
+    if (!email || !orderId) return;
+    setRequestBusy(true);
+    try {
+      const res = await fetchWithTimeout(apiUrl("/api/reviews/judgeme/send-request"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: activeAccount.id,
+          email,
+          name: requestName.trim() || undefined,
+          orderId,
+          business_profile_id: activeBusinessProfileId ?? activeProfileId,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(displayString(payload?.error) || "Kunde inte skicka recensionsförfrågan");
+      }
+      setRequestDialogOpen(false);
+      toast({
+        title: "Recensionsförfrågan skickad",
+        description: `Judge.me mailar ${email} en förfrågan med recensionsformulär.`,
+      });
+    } catch (e) {
+      toast({
+        title: "Kunde inte skicka",
+        description: e instanceof Error ? e.message : "Okänt fel",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestBusy(false);
+    }
+  }, [activeAccount, activeBusinessProfileId, activeProfileId, requestEmail, requestName, requestOrderId, toast]);
 
   const getRowMeta = useCallback(
     (review: ReviewItem) => ({
@@ -610,20 +707,37 @@ export default function ReviewsPage() {
         }
         actions={
           activeAccount ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void refresh()}
-              disabled={loading}
-              className="text-muted-foreground"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              <span className="ml-1.5 hidden sm:inline">{t("refresh")}</span>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {activeAccount.platform === "judgeme" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRequestEmail("");
+                    setRequestName("");
+                    setRequestOrderId("");
+                    setRequestDialogOpen(true);
+                  }}
+                >
+                  <Send className="h-4 w-4" />
+                  <span className="ml-1.5 hidden sm:inline">Recensionsförfrågan</span>
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void refresh()}
+                disabled={loading}
+                className="text-muted-foreground"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span className="ml-1.5 hidden sm:inline">{t("refresh")}</span>
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -634,13 +748,13 @@ export default function ReviewsPage() {
           isMobile
             ? reviewAccounts.length === 0
               ? [
-                  "Koppla Google Reviews eller Tripadvisor under Kopplingar",
+                  "Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar",
                   "Tryck en recension för att läsa när de synkats",
                   "Skicka svar och markera hanterad",
                 ]
               : ["Filtrera på betyg eller ”Behöver svar”", "Tryck en recension för att läsa", "Skicka svar och markera hanterad"]
             : [
-                "Koppla Google Reviews eller Tripadvisor under Kopplingar",
+                "Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar",
                 "Filtrera på betyg eller ”Behöver svar” i workspace",
                 "Skriv svar med AI-utkast och markera hanterade när du är klar",
               ]
@@ -752,7 +866,7 @@ export default function ReviewsPage() {
                   : "border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {acc.username} · {acc.platform === "google_reviews" ? "Google Reviews" : "Tripadvisor"}
+              {acc.username} · {platformLabel(acc.platform)}
             </button>
           ))}
         </m.div>
@@ -763,7 +877,7 @@ export default function ReviewsPage() {
           <EmptyState
             icon={Star}
             title={t("emptyAccountTitle")}
-            description="Koppla Google Reviews eller Tripadvisor under Kopplingar — sedan synkas omdömen hit automatiskt."
+            description="Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar — sedan synkas omdömen hit automatiskt."
             action={
               <Button asChild variant="outline" size="sm">
                 <Link to="/connections">Öppna Kopplingar</Link>
@@ -814,6 +928,25 @@ export default function ReviewsPage() {
                   <span>{(placeInfo.website || placeInfo.externalUrl).replace(/^https?:\/\//, "")}</span>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
+              ) : null}
+              {placePhotos.length > 0 ? (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Foton från Tripadvisor
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                    {placePhotos.map((photo) => (
+                      <img
+                        key={photo.id}
+                        src={photo.url}
+                        alt={photo.caption || "Tripadvisor-foto"}
+                        title={photo.caption}
+                        loading="lazy"
+                        className="aspect-square w-full rounded-md border border-border/60 object-cover"
+                      />
+                    ))}
+                  </div>
+                </div>
               ) : null}
             </CardContent>
           </Card>
@@ -958,6 +1091,61 @@ export default function ReviewsPage() {
           ) : null}
         </m.div>
       )}
+
+      <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Skicka recensionsförfrågan via Judge.me</DialogTitle>
+            <DialogDescription>
+              Judge.me mailar kunden en förfrågan med recensionsformulär och sköter påminnelser.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="judgeme-request-email">Kundens e-post</Label>
+              <Input
+                id="judgeme-request-email"
+                type="email"
+                placeholder="kund@example.com"
+                value={requestEmail}
+                onChange={(e) => setRequestEmail(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="judgeme-request-order">Order-id (från butiken)</Label>
+              <Input
+                id="judgeme-request-order"
+                placeholder="t.ex. 5678901234567"
+                value={requestOrderId}
+                onChange={(e) => setRequestOrderId(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="judgeme-request-name">Kundens namn (valfritt)</Label>
+              <Input
+                id="judgeme-request-name"
+                placeholder="Anna Andersson"
+                value={requestName}
+                onChange={(e) => setRequestName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void sendJudgemeReviewRequest()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestDialogOpen(false)} disabled={requestBusy}>
+              Avbryt
+            </Button>
+            <Button
+              onClick={() => void sendJudgemeReviewRequest()}
+              disabled={requestBusy || !requestEmail.trim() || !requestOrderId.trim()}
+            >
+              {requestBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Skicka
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -25,6 +25,12 @@ interface TripadvisorHandlerArgs {
 
 type TripadvisorSource = "zernio" | "official";
 
+type TripadvisorPhoto = {
+  id: string;
+  caption?: string;
+  url: string;
+};
+
 type TripadvisorInfo = {
   source: TripadvisorSource;
   locationId?: string;
@@ -37,11 +43,13 @@ type TripadvisorInfo = {
   rating?: number;
   reviewCount?: number;
   url?: string;
+  photos?: TripadvisorPhoto[];
   reviews: Array<ReturnType<typeof mapTripadvisorReview>>;
 };
 
 const TRIPADVISOR_DETAILS_CACHE_TTL_MS = 1000 * 60 * 60;
 const tripadvisorDetailsCache = new Map<string, { expiresAt: number; data: unknown }>();
+const tripadvisorPhotosCache = new Map<string, { expiresAt: number; photos: TripadvisorPhoto[] }>();
 
 function asRecord(value: unknown): Record<string, any> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -234,6 +242,50 @@ async function fetchTripadvisorDetails(apiKey: string, locationId: string, langu
   return { res, body, fromCache: false };
 }
 
+/**
+ * Location photos from the official Content API
+ * (`GET /location/{id}/photos`). Best-effort with the same 1h cache policy
+ * as details — photo sets change rarely and the endpoint counts against the
+ * key's monthly quota.
+ */
+async function fetchTripadvisorPhotos(
+  apiKey: string,
+  locationId: string,
+  language: string
+): Promise<TripadvisorPhoto[]> {
+  const cacheKey = `${locationId}:${language}`;
+  const cached = tripadvisorPhotosCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.photos;
+  try {
+    const res = await fetch(
+      `https://api.content.tripadvisor.com/api/v1/location/${encodeURIComponent(locationId)}/photos?key=${encodeURIComponent(apiKey)}&language=${encodeURIComponent(language)}`,
+      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
+    );
+    if (!res.ok) return [];
+    const body: any = await res.json().catch(() => ({}));
+    const rows: any[] = Array.isArray(body?.data) ? body.data : [];
+    const photos = rows
+      .slice(0, 12)
+      .map((row): TripadvisorPhoto | null => {
+        const images = asRecord(row?.images);
+        const sized =
+          asRecord(images?.medium) ?? asRecord(images?.large) ?? asRecord(images?.small) ?? asRecord(images?.original);
+        const url = safeString(sized?.url);
+        return url
+          ? { id: safeString(row?.id) || url, caption: safeString(row?.caption) || undefined, url }
+          : null;
+      })
+      .filter((p): p is TripadvisorPhoto => p !== null);
+    tripadvisorPhotosCache.set(cacheKey, {
+      expiresAt: Date.now() + TRIPADVISOR_DETAILS_CACHE_TTL_MS,
+      photos,
+    });
+    return photos;
+  } catch {
+    return [];
+  }
+}
+
 function tripadvisorApiError(body: any): string {
   const error = asRecord(body?.error);
   return (
@@ -301,12 +353,13 @@ export async function handleTripadvisorAccountData({
     };
   }
   const lang = "en";
-  const [detailsResult, reviewsResult] = await Promise.all([
+  const [detailsResult, reviewsResult, photos] = await Promise.all([
     fetchTripadvisorDetails(apiKey, locationId, lang),
     fetch(
       `https://api.content.tripadvisor.com/api/v1/location/${encodeURIComponent(locationId)}/reviews?key=${encodeURIComponent(apiKey)}&language=${lang}`,
       { headers: { Accept: "application/json" } }
     ),
+    fetchTripadvisorPhotos(apiKey, locationId, lang),
   ]);
   const reviewsBody: any = await reviewsResult.json().catch(() => ({}));
   if (!detailsResult.res.ok && !reviewsResult.ok) {
@@ -354,7 +407,7 @@ export async function handleTripadvisorAccountData({
       },
       stats: { averageRating, reviewCount },
       reviews,
-      ...(tripadvisorInfo ? { tripadvisorInfo: { ...tripadvisorInfo, reviews } } : {}),
+      ...(tripadvisorInfo ? { tripadvisorInfo: { ...tripadvisorInfo, photos, reviews } } : {}),
       source: "official",
       note: reviewsResult.ok
         ? undefined
