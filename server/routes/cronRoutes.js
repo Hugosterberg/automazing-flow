@@ -132,7 +132,7 @@ function platformLabel(platform) {
   const map = {
     instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", x: "X",
     facebook: "Facebook", google_business: "Google Business", google_ads: "Google Ads",
-    meta_business: "Meta Business", google_reviews: "Google Reviews", tripadvisor: "Tripadvisor",
+    meta_business: "Meta Business", google_reviews: "Google Reviews", tripadvisor: "Tripadvisor", judgeme: "Judge.me",
     whatsapp: "WhatsApp", shopify: "Shopify", notion: "Notion", gmail: "Gmail",
     outlook: "Outlook", google_calendar: "Google Calendar", outlook_calendar: "Outlook Calendar",
     google_drive: "Google Drive",

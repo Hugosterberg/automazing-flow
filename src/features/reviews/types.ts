@@ -8,8 +8,8 @@ export type ReviewItem = {
   createdAt?: string;
   url?: string;
   source?: string;
-  /** Customer photo URLs attached to the review (Judge.me). */
-  pictures?: string[];
+  /** Customer photos attached to the review (Judge.me): thumbnail + full-size. */
+  pictures?: Array<{ thumb: string; full: string }>;
   /** Verified-buyer flag from the review platform (Judge.me). */
   verified?: boolean;
 };

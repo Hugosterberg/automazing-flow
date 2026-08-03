@@ -411,7 +411,7 @@ export default function Index() {
     // Reviews are business-only (the Reviews page is fenced off in Private).
     if (mode !== "private") {
       const reviewAccounts = accounts.filter(
-        (a) => a.platform === "google_reviews" || a.platform === "tripadvisor"
+        (a) => a.platform === "google_reviews" || a.platform === "tripadvisor" || a.platform === "judgeme"
       );
       if (reviewAccounts.length > 0) {
         const ratings = reviewAccounts

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchJudgemeReviewCount,
   fetchJudgemeReviews,
   judgemeCredentialsFromStored,
   normalizeJudgemeShopDomain,
@@ -58,7 +59,9 @@ describe("fetchJudgemeReviews", () => {
               verified: "buyer",
               hidden: false,
               reviewer: { name: "Anna" },
-              pictures: [{ urls: { compact: "https://cdn.judge.me/p1.jpg" } }],
+              pictures: [
+                { urls: { small: "https://cdn.judge.me/p1-small.jpg", huge: "https://cdn.judge.me/p1-huge.jpg" } },
+              ],
               product_external_id: "555",
             },
           ],
@@ -77,7 +80,7 @@ describe("fetchJudgemeReviews", () => {
       title: "Great product",
       text: "Loved it!",
       verified: true,
-      pictures: ["https://cdn.judge.me/p1.jpg"],
+      pictures: [{ thumb: "https://cdn.judge.me/p1-small.jpg", full: "https://cdn.judge.me/p1-huge.jpg" }],
       productExternalId: "555",
       source: "judgeme",
     });
@@ -97,6 +100,21 @@ describe("fetchJudgemeReviews", () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe(401);
     expect(result.error).toMatch(/credentials/i);
+  });
+});
+
+describe("fetchJudgemeReviewCount", () => {
+  it("returns the published total from /reviews/count", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ count: 321 }), { status: 200 })
+    );
+    await expect(fetchJudgemeReviewCount(CREDS)).resolves.toBe(321);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/reviews/count");
+  });
+
+  it("degrades to null on errors instead of failing the page", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 500 }));
+    await expect(fetchJudgemeReviewCount(CREDS)).resolves.toBeNull();
   });
 });
 

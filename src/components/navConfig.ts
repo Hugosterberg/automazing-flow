@@ -173,7 +173,7 @@ export const navItems: NavItem[] = [
     key: "reviews",
     url: "/reviews",
     icon: Star,
-    platforms: ["google_reviews", "tripadvisor"] as AccountPlatform[],
+    platforms: ["google_reviews", "tripadvisor", "judgeme"] as AccountPlatform[],
     group: "work",
     modes: ["business"],
   },

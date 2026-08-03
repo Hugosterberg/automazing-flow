@@ -94,8 +94,11 @@ type ReviewsData = {
     source: "official";
     shopDomain?: string;
     website?: string;
+    totalCount?: number;
     verifiedCount?: number;
     withPicturesCount?: number;
+    /** Reviews per star ("1".."5") among the fetched reviews. */
+    ratingCounts?: Record<string, number>;
   };
   source?: "zernio" | "official";
   note?: string;
@@ -231,7 +234,13 @@ export default function ReviewsPage() {
         url: displayString(review.url),
         source: displayString(review.source),
         pictures: Array.isArray(review.pictures)
-          ? review.pictures.map(displayString).filter(Boolean)
+          ? review.pictures
+              .map((picture) => {
+                const thumb = displayString((picture as { thumb?: unknown })?.thumb);
+                const full = displayString((picture as { full?: unknown })?.full) || thumb;
+                return thumb ? { thumb, full } : null;
+              })
+              .filter((picture): picture is { thumb: string; full: string } => picture !== null)
           : undefined,
         verified: review.verified === true,
       })),
@@ -414,6 +423,17 @@ export default function ReviewsPage() {
     return null;
   }, [data]);
 
+  const ratingBreakdown = useMemo(() => {
+    const counts = data?.judgemeInfo?.ratingCounts;
+    if (!counts || typeof counts !== "object") return null;
+    const rows = [5, 4, 3, 2, 1].map((stars) => ({
+      stars,
+      count: displayNumber(counts[String(stars)]) ?? 0,
+    }));
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    return total > 0 ? { rows, total } : null;
+  }, [data]);
+
   const placePhotos = useMemo(
     () =>
       (Array.isArray(data?.tripadvisorInfo?.photos) ? data.tripadvisorInfo.photos : [])
@@ -468,9 +488,32 @@ export default function ReviewsPage() {
     [advanceToNextReview, markReplied]
   );
 
+  // Judge.me's public API has no reply endpoint — the "send" action instead
+  // copies the draft for pasting into the Judge.me admin and marks it handled.
+  const isCopyOnlyReplies = activeAccount?.platform === "judgeme";
+
   const sendReply = useCallback(async () => {
     if (!selectedReview || !activeAccount || !replyDraft.trim()) return;
     const reviewId = selectedReview.id;
+    if (isCopyOnlyReplies) {
+      try {
+        await navigator.clipboard.writeText(replyDraft.trim());
+        markReplied(reviewId);
+        setReplySent(true);
+        toast({
+          title: "Svar kopierat",
+          description: "Klistra in svaret i Judge.me admin (Reviews → Manage reviews).",
+        });
+        window.setTimeout(() => advanceToNextReview(reviewId), 500);
+      } catch {
+        toast({
+          title: "Kunde inte kopiera",
+          description: "Markera texten och kopiera manuellt.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     setSendBusy(true);
     try {
       const res = await fetchWithTimeout(apiUrl("/api/reviews/reply"), {
@@ -506,6 +549,7 @@ export default function ReviewsPage() {
     activeBusinessProfileId,
     activeProfileId,
     advanceToNextReview,
+    isCopyOnlyReplies,
     markReplied,
     replyDraft,
     selectedReview,
@@ -631,6 +675,9 @@ export default function ReviewsPage() {
       onSendReply: () => void sendReply(),
       onNextAfterSend: () => advanceToNextReview(selectedReview.id),
       onBack: () => selectReview(null),
+      ...(isCopyOnlyReplies
+        ? { sendLabel: "Kopiera svar", sentNotice: "Svar kopierat — klistra in i Judge.me admin" }
+        : {}),
       navigation:
         filteredReviews.length > 1 && selectedIndex >= 0
           ? {
@@ -648,6 +695,7 @@ export default function ReviewsPage() {
     draftBusy,
     draftReply,
     filteredReviews.length,
+    isCopyOnlyReplies,
     navigateRelative,
     repliedIds,
     replyDraft,
@@ -928,6 +976,27 @@ export default function ReviewsPage() {
                   <span>{(placeInfo.website || placeInfo.externalUrl).replace(/^https?:\/\//, "")}</span>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
+              ) : null}
+              {ratingBreakdown ? (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Betygsfördelning
+                  </p>
+                  {ratingBreakdown.rows.map((row) => (
+                    <div key={row.stars} className="flex items-center gap-2">
+                      <span className="w-8 shrink-0 text-xs tabular-nums text-muted-foreground">{row.stars} ★</span>
+                      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-amber-500/80"
+                          style={{ width: `${Math.round((row.count / ratingBreakdown.total) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                        {row.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               ) : null}
               {placePhotos.length > 0 ? (
                 <div className="space-y-2 pt-1">

@@ -21,6 +21,13 @@ export interface JudgemeCredentials {
   apiToken: string;
 }
 
+export interface JudgemeReviewPicture {
+  /** Small rendition for inline thumbnails. */
+  thumb: string;
+  /** Largest available rendition, for the click-through. */
+  full: string;
+}
+
 export interface JudgemeReview {
   id: string;
   author: string;
@@ -30,7 +37,7 @@ export interface JudgemeReview {
   createdAt?: string;
   verified?: boolean;
   hidden?: boolean;
-  pictures: string[];
+  pictures: JudgemeReviewPicture[];
   productExternalId?: string;
   source: "judgeme";
 }
@@ -96,11 +103,13 @@ function mapJudgemeReview(raw: unknown, index: number): JudgemeReview {
   const reviewer = asRecord(r.reviewer);
   const pictures = Array.isArray(r.pictures)
     ? (r.pictures as unknown[])
-        .map((p) => {
+        .map((p): JudgemeReviewPicture | null => {
           const urls = asRecord(asRecord(p)?.urls);
-          return str(urls?.compact) || str(urls?.small) || str(urls?.original) || str(urls?.huge);
+          const thumb = str(urls?.small) || str(urls?.compact) || str(urls?.original) || str(urls?.huge);
+          const full = str(urls?.huge) || str(urls?.original) || thumb;
+          return thumb ? { thumb, full } : null;
         })
-        .filter(Boolean)
+        .filter((p): p is JudgemeReviewPicture => p !== null)
     : [];
   const verifiedRaw = r.verified;
   return {
@@ -154,6 +163,26 @@ export async function fetchJudgemeReviews(
   const list = asRecord(body)?.reviews;
   const reviews = Array.isArray(list) ? list.map((r, i) => mapJudgemeReview(r, i)) : [];
   return { ok: true, reviews };
+}
+
+/**
+ * Total published review count via `GET /reviews/count`. Best-effort — the
+ * endpoint is cheap and gives the true total even when the list fetch is
+ * capped, but callers must tolerate `null` (older shops / transient errors).
+ */
+export async function fetchJudgemeReviewCount(creds: JudgemeCredentials): Promise<number | null> {
+  try {
+    const res = await fetch(judgemeUrl("/reviews/count", creds), {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(JUDGEME_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const body: unknown = await res.json().catch(() => ({}));
+    const count = num(asRecord(body)?.count);
+    return count != null && count >= 0 ? Math.trunc(count) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Connect-time credential check: one cheap authenticated list call. */

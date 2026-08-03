@@ -10,14 +10,17 @@ export type ReviewPreview = {
 };
 
 function sortReviewAccounts(a: ConnectedAccount, b: ConnectedAccount): number {
-  const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : 9);
+  const rank = (p: string) => (p === "google_reviews" ? 0 : p === "tripadvisor" ? 1 : p === "judgeme" ? 2 : 9);
   const d = rank(a.platform) - rank(b.platform);
   if (d !== 0) return d;
   return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
 }
 
 function isReviewAccount(account: ConnectedAccount): boolean {
-  return (account.platform === "google_reviews" || account.platform === "tripadvisor") && Boolean(account.isOAuth);
+  return (
+    (account.platform === "google_reviews" || account.platform === "tripadvisor" || account.platform === "judgeme") &&
+    Boolean(account.isOAuth)
+  );
 }
 
 /** Lightweight review index for ⌘K — pending replies only. */

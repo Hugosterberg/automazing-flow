@@ -27,7 +27,7 @@ import { MarketingTrendChart, useMarketingTrend } from "@/features/marketing";
 import { CompaniesOverview, SiteAnalyticsSection, useTrackingSite } from "@/features/site-analytics";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const REVIEW_PLATFORMS = new Set(["google_reviews", "tripadvisor", "google_business"]);
+const REVIEW_PLATFORMS = new Set(["google_reviews", "tripadvisor", "judgeme", "google_business"]);
 
 function formatChartDate(iso: string): string {
   return formatShortDate(`${iso}T00:00:00`) || iso;

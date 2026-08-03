@@ -39,6 +39,10 @@ export type ReviewDetailPanelProps = {
   onNextAfterSend?: () => void;
   onBack?: () => void;
   showBack?: boolean;
+  /** Send-button label override — e.g. "Kopiera svar" for platforms without a reply API. */
+  sendLabel?: string;
+  /** Post-send confirmation override — e.g. "Svar kopierat". */
+  sentNotice?: string;
   navigation?: {
     index: number;
     total: number;
@@ -51,15 +55,15 @@ export type ReviewDetailPanelProps = {
 
 const formatFullDate = formatFullDateTime;
 
-/** Customer photos attached to the review (Judge.me). */
-function ReviewPictures({ pictures }: { pictures?: string[] }) {
+/** Customer photos attached to the review (Judge.me): thumb inline, full on click. */
+function ReviewPictures({ pictures }: { pictures?: Array<{ thumb: string; full: string }> }) {
   if (!pictures || pictures.length === 0) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {pictures.slice(0, 6).map((url) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer">
+      {pictures.slice(0, 6).map((picture) => (
+        <a key={picture.thumb} href={picture.full || picture.thumb} target="_blank" rel="noreferrer">
           <img
-            src={url}
+            src={picture.thumb}
             alt="Kundbild från recensionen"
             loading="lazy"
             className="h-20 w-20 rounded-md border border-border/60 object-cover"
@@ -100,6 +104,8 @@ export function ReviewDetailPanel({
   onBack,
   showBack,
   navigation,
+  sendLabel,
+  sentNotice,
 }: ReviewDetailPanelProps) {
   const isStackedWorkspace = useStackedWorkspace();
   const keyboardInset = useKeyboardInset();
@@ -273,7 +279,7 @@ export function ReviewDetailPanel({
               <div className="flex flex-col gap-2">
                 <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                   <Send className="h-4 w-4" />
-                  Svar skickat
+                  {sentNotice ?? "Svar skickat"}
                 </p>
                 {onNextAfterSend ? (
                   <Button type="button" variant="secondary" className="h-11 w-full text-sm" onClick={onNextAfterSend}>
@@ -349,7 +355,7 @@ export function ReviewDetailPanel({
                     disabled={sendBusy || !replyDraft.trim()}
                   >
                     {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Skicka
+                    {sendLabel ?? "Skicka"}
                   </Button>
                 </div>
               </div>
@@ -495,7 +501,7 @@ export function ReviewDetailPanel({
             <div className="flex flex-wrap items-center gap-3">
               <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                 <Send className="h-4 w-4" />
-                Reply posted
+                {sentNotice ?? "Reply posted"}
               </p>
               {onNextAfterSend ? (
                 <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
@@ -545,7 +551,7 @@ export function ReviewDetailPanel({
                   ) : (
                     <Send className="mr-2 h-4 w-4" />
                   )}
-                  Skicka svar
+                  {sendLabel ?? "Skicka svar"}
                 </Button>
               </div>
               <p className="hidden text-[11px] text-muted-foreground lg:block">Tips: Ctrl+Enter för att skicka</p>

@@ -14,7 +14,12 @@ import {
   fetchShopifyFulfilledOrders,
   fetchShopifyDormantCustomers,
 } from "../providers/shopify.ts";
-import { sendJudgemeReviewRequest, type JudgemeCredentials } from "../providers/judgeme.ts";
+import {
+  fetchJudgemeReviews,
+  judgemeCredentialsFromStored,
+  sendJudgemeReviewRequest,
+  type JudgemeCredentials,
+} from "../providers/judgeme.ts";
 import {
   loadProfileDocument,
   saveProfileDocument,
@@ -798,7 +803,7 @@ export async function runReviewReplyAuto(deps: {
     .from("connected_accounts")
     .select("id,platform,disconnected_at")
     .eq("business_profile_id", businessProfileId)
-    .in("platform", ["google_reviews", "tripadvisor"])
+    .in("platform", ["google_reviews", "tripadvisor", "judgeme"])
     .is("disconnected_at", null);
   const accounts = Array.isArray(accountRows) ? accountRows : [];
   if (accounts.length === 0) return { drafted: 0, notified: false, urgentAlerts: 0 };
@@ -820,15 +825,28 @@ export async function runReviewReplyAuto(deps: {
     const accountId = String(row?.id || "");
     if (!accountId) continue;
     const stored = await tokenStore.get(accountId);
-    const zernioAccountId = String(stored?.zernioAccountId || stored?.lateAccountId || "").trim();
-    if (!zernioAccountId) continue;
 
-    const reviewsResult = await zernio.listReviews(zernioAccountId, {
-      candidates: ["generic", "account_nested", "google_business", "tripadvisor"],
-    });
-    if (!reviewsResult.ok) continue;
+    let reviews: Array<{ id: string; author: string; rating?: number; text: string }>;
+    if (String(row?.platform || "") === "judgeme") {
+      // Judge.me reviews come straight from the official API — no Zernio hop.
+      const creds = judgemeCredentialsFromStored(stored as Record<string, unknown> | null);
+      if (!creds) continue;
+      const judgemeResult = await fetchJudgemeReviews(creds, { perPage: 30 });
+      if (judgemeResult.ok === false) continue;
+      reviews = (judgemeResult.reviews ?? [])
+        .filter((r) => !r.hidden && r.text.trim().length > 0)
+        .map((r) => ({ id: r.id, author: r.author, rating: r.rating, text: r.text }));
+    } else {
+      const zernioAccountId = String(stored?.zernioAccountId || stored?.lateAccountId || "").trim();
+      if (!zernioAccountId) continue;
 
-    const reviews = extractReviewsFromZernioPayload(reviewsResult.data);
+      const reviewsResult = await zernio.listReviews(zernioAccountId, {
+        candidates: ["generic", "account_nested", "google_business", "tripadvisor"],
+      });
+      if (!reviewsResult.ok) continue;
+
+      reviews = extractReviewsFromZernioPayload(reviewsResult.data);
+    }
     for (const review of reviews) {
       const rating = review.rating != null ? Number(review.rating) : undefined;
       if (

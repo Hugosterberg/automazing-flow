@@ -215,7 +215,9 @@ function buildRecommendations(params: {
   const hasGoogleBusiness =
     connectedPlatforms.has("google_business") || connectedPlatforms.has("google_reviews");
   const hasReviews =
-    connectedPlatforms.has("google_reviews") || connectedPlatforms.has("tripadvisor");
+    connectedPlatforms.has("google_reviews") ||
+    connectedPlatforms.has("tripadvisor") ||
+    connectedPlatforms.has("judgeme");
   const hasSocial =
     connectedPlatforms.has("instagram") ||
     connectedPlatforms.has("facebook") ||
