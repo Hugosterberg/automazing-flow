@@ -1,0 +1,87 @@
+{
+  "wizard": {
+    "title": "Börja här — tre kopplingar som ger värde snabbt",
+    "badge": "Rekommenderat",
+    "blurbPersonal": "För privatliv: mail + kalender (+ Instagram om du vill samla DM:s).",
+    "blurbBusiness": "För företag: mail + Instagram (+ Shopify om du säljer online).",
+    "connect": "Koppla",
+    "open": "Öppna"
+  },
+  "priority": {
+    "gmail": {
+      "title": "Gmail",
+      "whyPersonal": "Få mail i Meddelanden och AI-utkast du godkänner innan sändning.",
+      "whyBusiness": "Triagera kundmail (Idag/Vecka) och svara med AI-utkast."
+    },
+    "google_calendar": {
+      "title": "Google Calendar",
+      "why": "Se dagens möten på Hem och i Kalender."
+    },
+    "instagram": {
+      "title": "Instagram",
+      "whyPersonal": "DM:s och social inkorg på ett ställe.",
+      "whyBusiness": "DM-automationer och social inkorg för kundkontakt."
+    },
+    "shopify": {
+      "title": "Shopify",
+      "why": "Ordrar, lager och kundvagnsåtervinning under E-handel."
+    }
+  },
+  "firstWin": {
+    "aria": "Kom igång på 10 minuter",
+    "ariaDone": "Kom igång — klart",
+    "title": "Kom igång — {{done}}/{{total}} klart ({{percent}}%)",
+    "subtitle": "Koppla, öppna inkorgen och aktivera en trygg automation. Du godkänner alltid innan sändning.",
+    "dismiss": "Dölj",
+    "dismissAria": "Dölj checklista",
+    "markDone": "Markera klar",
+    "allDoneTitle": "Du är igång",
+    "allDoneBody": "Brief, Meddelanden och Automationer har data att jobba med. Fortsätt under Hem varje morgon.",
+    "connectMail": {
+      "title": "Koppla mail",
+      "titleDone": "Mail är kopplat",
+      "detail": "Gmail eller Outlook — första steget till en inkorg som faktiskt hjälper dig.",
+      "detailDone": "Du kan triagera och svara under Meddelanden.",
+      "cta": "Koppla mail",
+      "ctaDone": "Öppna Kopplingar"
+    },
+    "connectChannel": {
+      "title": "Koppla en kanal till",
+      "titleDone": "Kanal kopplad",
+      "detailPersonal": "Kalender eller Instagram ger dig mer än bara mail.",
+      "detailBusiness": "Instagram eller Shopify ger dig DM:s och ordrar i samma arbetsyta.",
+      "detailDone": "Socialt, kalender eller butik synkas in i appen.",
+      "cta": "Välj kanal",
+      "ctaDone": "Hantera kopplingar"
+    },
+    "openInbox": {
+      "title": "Öppna Meddelanden",
+      "detail": "Se Idag-bucketen, AI-utkast och godkänn innan något skickas.",
+      "cta": "Öppna Meddelanden"
+    },
+    "enableAutomation": {
+      "title": "Slå på en automation",
+      "detail": "T.ex. AI-utkast för DM eller mail — utkast före sändning där det är känsligt.",
+      "cta": "Öppna Automationer"
+    },
+    "fillCompany": {
+      "title": "Fyll i Företag",
+      "titleDone": "Bolagsprofilen är redo",
+      "detail": "Beskrivning och webb gör utkast och leads mycket bättre.",
+      "detailDone": "AI och leads blir mer relevanta.",
+      "cta": "Fyll i Företag",
+      "ctaDone": "Öppna Företag"
+    }
+  },
+  "boost": {
+    "aria": "Förbättra upplevelsen",
+    "titlePending": "Gör appen smartare",
+    "titleReady": "Redo för mer automation",
+    "blurbPending": "Fyll i några saker — AI och automationer blir direkt mer användbara.",
+    "blurbReady": "Grunden är på plats. Titta igenom vad som redan kan köras automatiskt.",
+    "setupHeading": "Att fylla i · {{done}}/{{total}}",
+    "setupReady": "Profil och kopplingar är på plats ({{percent}}%). Nästa steg: aktivera automation.",
+    "automationsHeading": "Kan automatiseras",
+    "seeAutomations": "Se alla automationer"
+  }
+}

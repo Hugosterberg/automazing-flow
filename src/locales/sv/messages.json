@@ -21,5 +21,15 @@
     "minutes": "{{count}} min",
     "hours": "{{count}} tim",
     "days": "{{count}} d"
+  },
+  "mailEmpty": {
+    "title": "Inkorg som faktiskt hjälper dig",
+    "description": "Koppla Gmail eller Outlook så triagerar automazing mail till Idag / Denna vecka / FYI. AI skriver utkast — du godkänner alltid innan något skickas.",
+    "trust": "Utkast före sändning — ingen automation skickar utan dig.",
+    "demo": "Visa demoinkorg först",
+    "gmailHint": "Snabbast till värde — triagera och svara med AI-utkast.",
+    "outlookHint": "Microsoft 365 / Outlook — samma inkorg och utkastflöde.",
+    "connectGmail": "Koppla Gmail",
+    "connectOutlook": "Koppla Outlook"
   }
 }

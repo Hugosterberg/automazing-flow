@@ -19,6 +19,8 @@ interface Props {
   isResyncing?: boolean;
   resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
+  /** Opens the guided Connect Session for a catalog platform. */
+  onStartSession?: (platform: AccountPlatform) => void;
   /** When set, only catalog entries whose aggregate status matches are rendered. */
   statusFilter?: ConnectionStatus | null;
   /** When true, show only error and reconnect_required integrations. */
@@ -51,6 +53,7 @@ export function ConnectionsGrid({
   isResyncing,
   resyncingId,
   onViewDetails,
+  onStartSession,
   statusFilter,
   needsAttentionOnly,
   searchQuery = "",
@@ -206,6 +209,7 @@ export function ConnectionsGrid({
                 isResyncing={isResyncing}
                 resyncingId={resyncingId}
                 onViewDetails={onViewDetails}
+                onStartSession={onStartSession}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}
                 manuallyConnected={

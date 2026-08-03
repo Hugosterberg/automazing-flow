@@ -11,6 +11,10 @@ import {
 } from "@/lib/oauthCallbackState";
 import { CONNECTIONS_KEY } from "@/features/connections/useConnections";
 import { ACTIVITY_FEED_KEY } from "@/features/activity";
+import {
+  readPendingConnectSession,
+  writePendingConnectSession,
+} from "@/features/connections/connectSessionState";
 
 function safeDecodeUsername(raw: string): string {
   try {
@@ -63,6 +67,15 @@ export function useOAuthCallback() {
 
     if (oauthErr) {
       clearPendingOAuthReturn();
+      const pendingSession = readPendingConnectSession();
+      if (pendingSession && (!platform || pendingSession.platform === platform)) {
+        writePendingConnectSession({
+          ...pendingSession,
+          step: "error",
+          errorMessage: searchParams.get("oauth_error"),
+          errorFix: searchParams.get("oauth_hint"),
+        });
+      }
       setErrorDetails(parseOAuthErrorDetails(searchParams));
       setSearchParams(removeOAuthErrorParams(searchParams));
     } else if (oauthSuccess && platform && accountId && username) {
@@ -80,6 +93,16 @@ export function useOAuthCallback() {
         zernioAccountId ? { zernioAccountId } : undefined
       );
       setSelectedAccountId(sectionForPlatform(accountPlatform), accountId);
+
+      // Resume guided Connect Session on verify (auto-probe until healthy).
+      const pendingSession = readPendingConnectSession();
+      writePendingConnectSession({
+        platform: accountPlatform,
+        step: "verify",
+        returnTo: pendingSession?.returnTo ?? null,
+        accountId,
+      });
+
       window.setTimeout(() => {
         window.dispatchEvent(
           new CustomEvent("automazing:oauth-success", {
@@ -101,6 +124,14 @@ export function useOAuthCallback() {
           })
         );
       }, 500);
+      clearPendingOAuthReturn();
+      // Always finish in Connections Center so ConnectSession can auto-probe.
+      if (!window.location.pathname.includes("/connections")) {
+        window.location.replace(
+          `/connections?session=${encodeURIComponent(accountPlatform)}`
+        );
+        return;
+      }
       const next = new URLSearchParams(searchParams);
       next.delete("oauth_success");
       next.delete("platform");
@@ -109,7 +140,7 @@ export function useOAuthCallback() {
       next.delete("profile_id");
       next.delete("zernio_account_id");
       next.delete("late_account_id");
-      clearPendingOAuthReturn();
+      next.set("session", accountPlatform);
       setSearchParams(next);
     }
   }, [

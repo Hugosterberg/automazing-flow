@@ -160,5 +160,9 @@
     "pwaDismiss": "Not now",
     "fullOverview": "Full overview",
     "dismissSummary": "Dismiss summary"
+  },
+  "purposeStrip": {
+    "guide": "Guide",
+    "hide": "Hide"
   }
 }

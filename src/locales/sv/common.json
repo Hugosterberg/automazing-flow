@@ -160,5 +160,9 @@
     "pwaDismiss": "Inte nu",
     "fullOverview": "Full översikt",
     "dismissSummary": "Dölj sammanfattning"
+  },
+  "purposeStrip": {
+    "guide": "Guide",
+    "hide": "Dölj"
   }
 }

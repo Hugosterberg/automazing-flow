@@ -21,5 +21,15 @@
     "minutes": "{{count}} min",
     "hours": "{{count}} h",
     "days": "{{count}} d"
+  },
+  "mailEmpty": {
+    "title": "An inbox that actually helps",
+    "description": "Connect Gmail or Outlook so automazing triages mail into Today / This week / FYI. AI writes drafts — you always approve before anything is sent.",
+    "trust": "Draft-before-send — no automation sends without you.",
+    "demo": "Show demo inbox first",
+    "gmailHint": "Fastest to value — triage and reply with AI drafts.",
+    "outlookHint": "Microsoft 365 / Outlook — same inbox and draft flow.",
+    "connectGmail": "Connect Gmail",
+    "connectOutlook": "Connect Outlook"
   }
 }

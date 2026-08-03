@@ -94,6 +94,8 @@ document `first-win-checklist` (no new tables)._
 - [x] Sticky reconnect banner in app chrome + toast TTL 24h (not Connections-only).
 - [x] Automation explainers + example drafts (DM/mail/outreach/reviews).
 - [x] Value-selling empty states on Kalender, E-handel, Content, Sales.
+- [x] Guided Connect Session (connect → auto-test → done) for all catalog
+      platforms; first-win done = healthy probe; Home setup surfaces unified.
 - [ ] Public landing / marketing site polish (outside app shell).
 
 ## v3 — Multi-user SaaS readiness

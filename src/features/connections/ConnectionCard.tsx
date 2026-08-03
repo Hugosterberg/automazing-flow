@@ -71,6 +71,8 @@ interface Props {
   isResyncing?: boolean;
   resyncingId?: string;
   onViewDetails?: (connection: Connection) => void;
+  /** Prefer guided Connect Session over jumping straight into OAuth. */
+  onStartSession?: (platform: ConnectionCatalogEntry["platform"]) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   manuallyConnected?: boolean;
@@ -99,6 +101,7 @@ export function ConnectionCard({
   isResyncing,
   resyncingId,
   onViewDetails,
+  onStartSession,
   selectedIds,
   onToggleSelect,
   manuallyConnected = false,
@@ -272,9 +275,13 @@ export function ConnectionCard({
     connectConfig && (!connectConfig.manual || isMcpPlatform(entry.platform))
   );
 
-  /** Quick action on the collapsed row: connect directly when the path is
-   *  unambiguous, otherwise expand so the user can pick (or read setup steps). */
+  /** Quick action on the collapsed row: open guided session when available,
+   *  otherwise connect directly when the path is unambiguous. */
   function handleQuickConnect() {
+    if (onStartSession) {
+      onStartSession(entry.platform);
+      return;
+    }
     if (!hasDirectConnect || dualPath) {
       setExpanded(true);
       return;

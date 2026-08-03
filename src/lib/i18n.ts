@@ -32,6 +32,8 @@ import svMessages from "@/locales/sv/messages.json";
 import enMessages from "@/locales/en/messages.json";
 import svConnections from "@/locales/sv/connections.json";
 import enConnections from "@/locales/en/connections.json";
+import svOnboarding from "@/locales/sv/onboarding.json";
+import enOnboarding from "@/locales/en/onboarding.json";
 import svTasks from "@/locales/sv/tasks.json";
 import enTasks from "@/locales/en/tasks.json";
 import svReviews from "@/locales/sv/reviews.json";
@@ -80,6 +82,7 @@ const NAMESPACES = [
   "errors",
   "messages",
   "connections",
+  "onboarding",
   "tasks",
   "reviews",
   "automations",
@@ -125,6 +128,7 @@ export function initI18n(): void {
         errors: svErrors,
         messages: svMessages,
         connections: svConnections,
+        onboarding: svOnboarding,
         tasks: svTasks,
         reviews: svReviews,
         automations: svAutomations,
@@ -153,6 +157,7 @@ export function initI18n(): void {
         errors: enErrors,
         messages: enMessages,
         connections: enConnections,
+        onboarding: enOnboarding,
         tasks: enTasks,
         reviews: enReviews,
         automations: enAutomations,

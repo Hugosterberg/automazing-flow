@@ -49,14 +49,15 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
 import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
-import { FirstWinChecklist, WinsTodayStrip } from "@/features/onboarding";
+import { FirstWinChecklist, WinsTodayStrip, FIRST_WIN_DOC_KEY, type FirstWinDoc } from "@/features/onboarding";
 import { DemoModeBanner } from "@/features/demo";
 import { WeeklyResultsCard } from "@/features/weekly-results";
 import { quickNavLabel } from "@/features/quick-nav/quickNavLabels";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceMode } from "@/features/workspace-mode";
 import { useConnections } from "@/features/connections/useConnections";
-import { SyncFreshnessStrip } from "@/features/connections";
+import { SyncFreshnessStrip, healthyPlatformSet } from "@/features/connections";
+import { useProfileDocument } from "@/features/profile-documents";
 import { AiRecommendationsWidget } from "@/features/ai-recommendations";
 import { SmartDailyBrief } from "@/features/daily-brief";
 import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
@@ -97,6 +98,9 @@ export default function Index() {
   const { mode } = useWorkspaceMode();
   const isMobile = useIsMobile();
   const { connections } = useConnections(homeBusinessProfileId);
+  const healthyPlatforms = useMemo(() => healthyPlatformSet(connections), [connections]);
+  const firstWinDoc = useProfileDocument<FirstWinDoc>(FIRST_WIN_DOC_KEY, {});
+  const firstWinDismissed = Boolean(firstWinDoc.data?.dismissedAt);
   const { homeJumpDestinations } = useQuickNavPrefs();
   const prefetchFor = useRoutePrefetch();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -244,6 +248,9 @@ export default function Index() {
 
     return { connectedCount, platformText, withLoadedData, profileText };
   }, [accounts]);
+
+  const showPagePurpose =
+    !firstWinDismissed && healthyPlatforms.size === 0 && profileSummary.connectedCount === 0;
 
   /**
    * Desktop keeps insertion order. Mobile ranks by urgency (tasks → messages →
@@ -534,9 +541,10 @@ export default function Index() {
         }
       />
 
-      {/* SmartDailyBrief owns the teaching — keep SmartBar live-only. */}
+      {/* SmartDailyBrief owns the teaching — keep SmartBar live-only after first win. */}
       <PageSmartBar
         title={th("smartBarTitle")}
+        showPurpose={showPagePurpose}
         liveHintOverride={
           health.score < 100 && health.topReason
             ? `${health.label} (${health.score}/100) — ${health.topReason}`
@@ -571,6 +579,7 @@ export default function Index() {
       <div className="space-y-2 px-3 sm:px-0">
         <FirstWinChecklist
           profile={businessProfile}
+          healthyPlatforms={healthyPlatforms}
           connectedPlatforms={accounts.map((a) => a.platform)}
         />
         <DemoModeBanner offerEnable={profileSummary.connectedCount === 0} />
@@ -582,7 +591,7 @@ export default function Index() {
         />
       </div>
 
-      {mode === "business" && isMobile ? (
+      {mode === "business" && isMobile && firstWinDismissed ? (
         <ExperienceBoostCard
           profile={businessProfile}
           connectedCount={profileSummary.connectedCount}

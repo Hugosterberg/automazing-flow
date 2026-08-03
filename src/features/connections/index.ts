@@ -23,3 +23,12 @@ export { ConnectionsControlPanel } from "./ConnectionsControlPanel";
 export { useConnectionsHealthIssueCount } from "./connectionsHealthIssues";
 export { SyncFreshnessStrip } from "./SyncFreshnessStrip";
 export { computeSyncFreshness, formatAgoSv, STALE_AFTER_MS } from "./syncFreshness";
+export { ConnectSession } from "./ConnectSession";
+export {
+  connectionsSessionHref,
+  readPendingConnectSession,
+  writePendingConnectSession,
+  clearPendingConnectSession,
+} from "./connectSessionState";
+export { healthyPlatformSet, isConnectionVerified, isResyncSuccess } from "./connectionVerified";
+export { markConnectGuideComplete } from "./connectGuideProgress";

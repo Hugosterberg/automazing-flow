@@ -28,7 +28,6 @@ import {
   useConnections,
   reconcileConnections,
   useAutoReconcile,
-  buildConnectUrl,
   ConnectionsControlPanel,
   useConnectionsHealthIssueCount,
 } from "@/features/connections";
@@ -42,12 +41,17 @@ import {
   CONNECTION_STATUS_ORDER,
   type ConnectionStatus,
 } from "@/features/connections/connectionStatus";
-import { getConnectConfig } from "@/features/connections/connectAuthPath";
 import {
   useActiveBusinessProfileIdOptional,
   useBusinessProfiles,
 } from "@/features/business-profiles";
 import { ConnectPriorityWizard } from "@/features/onboarding";
+import { ConnectSession } from "@/features/connections/ConnectSession";
+import {
+  readPendingConnectSession,
+  type PendingConnectSession,
+} from "@/features/connections/connectSessionState";
+import { healthyPlatformSet } from "@/features/connections/connectionVerified";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/apiBase";
@@ -168,12 +172,61 @@ export default function ConnectionsPage() {
     [connections, detailsId]
   );
 
+  const [sessionPlatform, setSessionPlatform] = useState<AccountPlatform | null>(null);
+  const [sessionResume, setSessionResume] = useState<PendingConnectSession | null>(null);
+
+  const openConnectSession = useCallback((platform: AccountPlatform, resume?: PendingConnectSession | null) => {
+    setSessionResume(resume ?? null);
+    setSessionPlatform(platform);
+  }, []);
+
+  const closeConnectSession = useCallback((open: boolean) => {
+    if (!open) {
+      setSessionPlatform(null);
+      setSessionResume(null);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("session");
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [setSearchParams]);
+
+  // Deep-link ?session=<platform> or resume pending OAuth verify session.
+  useEffect(() => {
+    const fromQuery = searchParams.get("session");
+    const pending = readPendingConnectSession();
+    if (fromQuery) {
+      openConnectSession(fromQuery as AccountPlatform, pending?.platform === fromQuery ? pending : null);
+      return;
+    }
+    if (
+      pending &&
+      (pending.step === "verify" || pending.step === "error" || pending.step === "done")
+    ) {
+      openConnectSession(pending.platform, pending);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("session", pending.platform);
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [searchParams, openConnectSession, setSearchParams]);
+
   useEffect(() => {
     setReconcileState({ loading: false });
     setStatusFilter("all");
     setDetailsId(null);
     setSearchQuery("");
     setSelectedIds(new Set());
+    setSessionPlatform(null);
+    setSessionResume(null);
   }, [businessProfileId]);
 
   useEffect(() => {
@@ -243,12 +296,7 @@ export default function ConnectionsPage() {
   }
 
   function startReconnect(connection: Connection) {
-    if (!businessProfileId) return;
-    const config = getConnectConfig(connection.platform);
-    if (!config) return;
-    window.location.href = buildConnectUrl(config.authPath, businessProfileId, {
-      provider: config.provider,
-    });
+    openConnectSession(connection.platform);
   }
 
   async function handleBulkDisconnect() {
@@ -347,6 +395,13 @@ export default function ConnectionsPage() {
     }
   }
 
+  const healthyPlatforms = useMemo(() => healthyPlatformSet(connections), [connections]);
+  // Wizard "done" = healthy (verified), not merely present.
+  const wizardDonePlatforms = useMemo(
+    () => [...healthyPlatforms, ...manuallyConnectedPlatforms],
+    [healthyPlatforms, manuallyConnectedPlatforms]
+  );
+
   if (!businessProfileId) {
     return (
       <div className="max-w-3xl mx-auto py-16">
@@ -370,12 +425,6 @@ export default function ConnectionsPage() {
   const activeCount = connections.length + manualOnlyCount;
   const showConnectWizard =
     !isLoading && (searchParams.get("wizard") === "1" || activeCount === 0);
-  const connectedPlatforms = [
-    ...new Set<string>([
-      ...connections.map((c) => c.platform),
-      ...manuallyConnectedPlatforms,
-    ]),
-  ];
   const effectiveFilter =
     statusFilter === "all" || statusFilter === "needs_attention" ? null : statusFilter;
   const needsAttentionOnly = statusFilter === "needs_attention";
@@ -507,10 +556,11 @@ export default function ConnectionsPage() {
               connections={connections}
               onDisconnect={(id) => void disconnect(id)}
               isDisconnecting={isDisconnecting}
-              onResync={(id) => void resync(id)}
+              onResync={resync}
               isResyncing={isResyncing}
               resyncingId={resyncingId}
               onViewDetails={(c) => setDetailsId(c.id)}
+              onStartSession={openConnectSession}
               statusFilter={effectiveFilter}
               needsAttentionOnly={needsAttentionOnly}
               searchQuery={searchQuery}
@@ -528,8 +578,9 @@ export default function ConnectionsPage() {
       {showConnectWizard ? (
         <ConnectPriorityWizard
           kind={activeBusinessProfile?.kind}
-          connectedPlatforms={connectedPlatforms}
+          connectedPlatforms={wizardDonePlatforms}
           force={searchParams.get("wizard") === "1"}
+          onConnect={(platform) => openConnectSession(platform)}
         />
       ) : null}
 
@@ -708,10 +759,11 @@ export default function ConnectionsPage() {
           connections={connections}
           onDisconnect={(id) => void disconnect(id)}
           isDisconnecting={isDisconnecting}
-          onResync={(id) => void resync(id)}
+          onResync={resync}
           isResyncing={isResyncing}
           resyncingId={resyncingId}
           onViewDetails={(c) => setDetailsId(c.id)}
+          onStartSession={openConnectSession}
           statusFilter={effectiveFilter}
           needsAttentionOnly={needsAttentionOnly}
           searchQuery={searchQuery}
@@ -727,6 +779,19 @@ export default function ConnectionsPage() {
       </div>
         </TabsContent>
       </Tabs>
+
+      <ConnectSession
+        open={Boolean(sessionPlatform)}
+        onOpenChange={closeConnectSession}
+        platform={sessionPlatform}
+        businessProfileId={businessProfileId}
+        connections={connections}
+        resync={resync}
+        profileKind={activeBusinessProfile?.kind}
+        healthyPlatforms={healthyPlatforms}
+        resume={sessionResume}
+        onStartPlatform={(platform) => openConnectSession(platform)}
+      />
 
       <ConnectionDetailsDrawer
         connection={detailsConnection}

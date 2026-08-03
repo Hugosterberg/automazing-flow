@@ -13,6 +13,11 @@ type PageSmartBarProps = {
   className?: string;
   /** When false, only static copy is shown (e.g. home). */
   smart?: boolean;
+  /**
+   * When false, hide the purpose/guide strip (progressive disclosure after
+   * first-win / first healthy connection). Live hints still show when smart.
+   */
+  showPurpose?: boolean;
   /** Extra actions merged after brief-derived ones. */
   extraActions?: SmartHintAction[];
   /** Override live hint (page-specific data beats generic brief). */
@@ -44,6 +49,7 @@ export function PageSmartBar({
   tip,
   className,
   smart = true,
+  showPurpose = true,
   extraActions = [],
   liveHintOverride,
 }: PageSmartBarProps) {
@@ -58,7 +64,9 @@ export function PageSmartBar({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <PagePurposeStrip title={title} steps={steps} tip={!showLive ? visibleTip : undefined} />
+      {showPurpose ? (
+        <PagePurposeStrip title={title} steps={steps} tip={!showLive ? visibleTip : undefined} />
+      ) : null}
       {showLive ? (
         <div
           className={cn(
@@ -112,7 +120,7 @@ export function PageSmartBar({
           ) : null}
         </div>
       ) : null}
-      {showLive && visibleTip ? (
+      {showPurpose && showLive && visibleTip ? (
         <p className="text-xs leading-relaxed text-muted-foreground/80 px-1 sm:text-[11px]">{visibleTip}</p>
       ) : null}
     </div>

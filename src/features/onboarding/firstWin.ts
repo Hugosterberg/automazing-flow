@@ -1,5 +1,6 @@
 import type { ProfileKind } from "@/types/businessProfile";
 import type { AccountPlatform } from "@/types/accounts";
+import { connectionsSessionHref } from "@/features/connections/connectSessionState";
 
 export const FIRST_WIN_DOC_KEY = "first-win-checklist";
 
@@ -40,19 +41,19 @@ export function priorityConnectsForKind(kind: ProfileKind | null | undefined): P
       {
         platform: "gmail",
         title: "Gmail",
-        why: "Få mail i Meddelanden och AI-utkast du godkänner innan sändning.",
+        why: "Get mail in Messages and AI drafts you approve before send.",
         query: "gmail",
       },
       {
         platform: "google_calendar",
         title: "Google Calendar",
-        why: "Se dagens möten på Hem och i Kalender.",
+        why: "See today’s meetings on Home and in Calendar.",
         query: "calendar",
       },
       {
         platform: "instagram",
         title: "Instagram",
-        why: "DM:s och social inkorg på ett ställe.",
+        why: "DMs and social inbox in one place.",
         query: "instagram",
       },
     ];
@@ -61,92 +62,109 @@ export function priorityConnectsForKind(kind: ProfileKind | null | undefined): P
     {
       platform: "gmail",
       title: "Gmail",
-      why: "Triagera kundmail (Idag/Vecka) och svara med AI-utkast.",
+      why: "Triage customer mail (Today/Week) and reply with AI drafts.",
       query: "gmail",
     },
     {
       platform: "instagram",
       title: "Instagram",
-      why: "DM-automationer och social inkorg för kundkontakt.",
+      why: "DM automations and social inbox for customer contact.",
       query: "instagram",
     },
     {
       platform: "shopify",
       title: "Shopify",
-      why: "Ordrar, lager och kundvagnsåtervinning under E-handel.",
+      why: "Orders, stock and cart recovery under E-commerce.",
       query: "shopify",
     },
   ];
 }
 
+/**
+ * Build first-win steps. Connect steps are done only when the platform is
+ * *verified healthy* (passed via healthyPlatforms), not merely present.
+ */
 export function buildFirstWinSteps(args: {
   kind: ProfileKind | null | undefined;
-  connectedPlatforms: Iterable<string>;
+  /** Platforms with at least one healthy connection (verified). */
+  healthyPlatforms: Iterable<string>;
+  /** Platforms present but not necessarily healthy — for inbox unlock. */
+  connectedPlatforms?: Iterable<string>;
   profileStrong: boolean;
 }): FirstWinStep[] {
-  const platforms = new Set(
-    [...args.connectedPlatforms].map((p) => String(p || "").toLowerCase())
+  const healthy = new Set(
+    [...args.healthyPlatforms].map((p) => String(p || "").toLowerCase())
   );
-  const hasMail = platforms.has("gmail") || platforms.has("outlook");
+  const connected = new Set(
+    [...(args.connectedPlatforms ?? args.healthyPlatforms)].map((p) =>
+      String(p || "").toLowerCase()
+    )
+  );
+  const hasMail = healthy.has("gmail") || healthy.has("outlook");
   const hasChannel =
-    platforms.has("instagram") ||
-    platforms.has("facebook") ||
-    platforms.has("whatsapp") ||
-    platforms.has("tiktok") ||
-    platforms.has("shopify") ||
-    platforms.has("google_calendar") ||
-    platforms.has("outlook_calendar");
+    healthy.has("instagram") ||
+    healthy.has("facebook") ||
+    healthy.has("whatsapp") ||
+    healthy.has("tiktok") ||
+    healthy.has("shopify") ||
+    healthy.has("google_calendar") ||
+    healthy.has("outlook_calendar");
+  const canOpenInbox =
+    connected.has("gmail") ||
+    connected.has("outlook") ||
+    connected.has("instagram") ||
+    connected.has("facebook");
 
   const steps: FirstWinStep[] = [
     {
       id: "connect_mail",
-      title: hasMail ? "Mail är kopplat" : "Koppla mail",
+      title: hasMail ? "Mail is connected" : "Connect mail",
       detail: hasMail
-        ? "Du kan triagera och svara under Meddelanden."
-        : "Gmail eller Outlook — första steget till en inkorg som faktiskt hjälper dig.",
-      to: "/connections?wizard=1&q=gmail",
-      cta: hasMail ? "Öppna Kopplingar" : "Koppla mail",
+        ? "You can triage and reply under Messages."
+        : "Gmail or Outlook — the first step to an inbox that actually helps.",
+      to: connectionsSessionHref("gmail", { wizard: true }),
+      cta: hasMail ? "Open Connections" : "Connect mail",
       done: hasMail,
     },
     {
       id: "connect_channel",
-      title: hasChannel ? "Kanal kopplad" : "Koppla en kanal till",
+      title: hasChannel ? "Channel connected" : "Connect another channel",
       detail: hasChannel
-        ? "Socialt, kalender eller butik synkas in i appen."
+        ? "Social, calendar or store syncs into the app."
         : args.kind === "personal"
-          ? "Kalender eller Instagram ger dig mer än bara mail."
-          : "Instagram eller Shopify ger dig DM:s och ordrar i samma arbetsyta.",
+          ? "Calendar or Instagram gives you more than mail alone."
+          : "Instagram or Shopify brings DMs and orders into one workspace.",
       to: "/connections?wizard=1",
-      cta: hasChannel ? "Hantera kopplingar" : "Välj kanal",
+      cta: hasChannel ? "Manage connections" : "Choose channel",
       done: hasChannel,
     },
     {
       id: "open_inbox",
-      title: "Öppna Meddelanden",
-      detail: "Se Idag-bucketen, AI-utkast och godkänn innan något skickas.",
+      title: "Open Messages",
+      detail: "See the Today bucket, AI drafts, and approve before anything is sent.",
       to: "/messages?bucket=today",
-      cta: "Öppna Meddelanden",
-      done: hasMail || platforms.has("instagram") || platforms.has("facebook"),
+      cta: "Open Messages",
+      done: canOpenInbox,
     },
     {
       id: "enable_automation",
-      title: "Slå på en automation",
-      detail: "T.ex. AI-utkast för DM eller mail — utkast före sändning där det är känsligt.",
+      title: "Turn on an automation",
+      detail: "E.g. AI drafts for DM or mail — draft-before-send where it matters.",
       to: "/automations?tab=messages",
-      cta: "Öppna Automationer",
-      done: false, // user action; checked via completedStepIds in UI layer if needed
+      cta: "Open Automations",
+      done: false,
     },
   ];
 
   if (args.kind !== "personal") {
     steps.push({
       id: "fill_company",
-      title: args.profileStrong ? "Bolagsprofilen är redo" : "Fyll i Företag",
+      title: args.profileStrong ? "Company profile is ready" : "Fill in Company",
       detail: args.profileStrong
-        ? "AI och leads blir mer relevanta."
-        : "Beskrivning och webb gör utkast och leads mycket bättre.",
+        ? "AI and leads become more relevant."
+        : "Description and website make drafts and leads much better.",
       to: "/company",
-      cta: args.profileStrong ? "Öppna Företag" : "Fyll i Företag",
+      cta: args.profileStrong ? "Open Company" : "Fill in Company",
       done: args.profileStrong,
     });
   }

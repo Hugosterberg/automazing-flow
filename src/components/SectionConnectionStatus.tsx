@@ -138,8 +138,8 @@ export function SectionConnectionStatus({ area, className, hideWhenHealthy = fal
                   <Link
                     to={
                       state === "attention"
-                        ? `/connections?filter=attention&q=${encodeURIComponent(entry.label)}`
-                        : "/connections"
+                        ? `/connections?filter=attention&q=${encodeURIComponent(entry.label)}&session=${encodeURIComponent(entry.platform)}`
+                        : `/connections?session=${encodeURIComponent(entry.platform)}`
                     }
                     className="whitespace-nowrap font-medium text-foreground underline underline-offset-2 hover:text-foreground"
                   >

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ type PagePurposeStripProps = {
  * keeps the tip visible so tips about automation / fill-in aren't lost.
  */
 export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeStripProps) {
+  const { t } = useTranslation("common");
   const isDesktop = useIsDesktopWorkspace();
   const hasSteps = Boolean(steps && steps.length > 0);
   const [expanded, setExpanded] = useState(false);
@@ -40,7 +42,7 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
             className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
             aria-expanded={expanded}
           >
-            {expanded ? "Dölj" : "Guide"}
+            {expanded ? t("purposeStrip.hide") : t("purposeStrip.guide")}
             {expanded ? (
               <ChevronUp className="h-3 w-3" aria-hidden />
             ) : (

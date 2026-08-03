@@ -17,10 +17,8 @@ import { McpFeatureSection, MCP_PAGE_FEATURE_IDS } from "@/features/intelligence
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageModeTabs } from "@/components/ui/page-mode-tabs";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ValueSellEmpty } from "@/components/ValueSellEmpty";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
-import { ShopifyIcon } from "@/components/platform-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAccountData } from "@/hooks/useAccountData";
@@ -484,22 +482,8 @@ export default function Ecommerce() {
                   : t("valueSell.description.default")
             }
             trust={t("valueSell.trust")}
-            primary={{ label: t("valueSell.primary"), to: "/connections?wizard=1&q=shopify" }}
-            secondary={{ label: t("valueSell.secondary"), to: "/connections?q=shopify" }}
-          />
-          <EmptyState
-            icon={ShoppingBag}
-            title={t("empty.shopifyHome.title")}
-            description={t("empty.shopifyHome.description")}
-            size="compact"
-            action={
-              <Button asChild variant="outline" size="sm">
-                <Link to="/connections?q=shopify">
-                  <ShopifyIcon className="h-4 w-4 mr-2" />
-                  {t("empty.shopifyHome.action")}
-                </Link>
-              </Button>
-            }
+            primary={{ label: t("valueSell.primary"), to: "/connections?wizard=1&session=shopify" }}
+            secondary={{ label: t("valueSell.secondary"), to: "/connections?session=shopify" }}
           />
         </m.div>
       )}

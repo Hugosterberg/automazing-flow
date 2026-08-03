@@ -1,0 +1,87 @@
+{
+  "wizard": {
+    "title": "Start here — three connections that pay off fast",
+    "badge": "Recommended",
+    "blurbPersonal": "For personal use: mail + calendar (+ Instagram if you want DMs in one place).",
+    "blurbBusiness": "For business: mail + Instagram (+ Shopify if you sell online).",
+    "connect": "Connect",
+    "open": "Open"
+  },
+  "priority": {
+    "gmail": {
+      "title": "Gmail",
+      "whyPersonal": "Get mail in Messages and AI drafts you approve before send.",
+      "whyBusiness": "Triage customer mail (Today/Week) and reply with AI drafts."
+    },
+    "google_calendar": {
+      "title": "Google Calendar",
+      "why": "See today’s meetings on Home and in Calendar."
+    },
+    "instagram": {
+      "title": "Instagram",
+      "whyPersonal": "DMs and social inbox in one place.",
+      "whyBusiness": "DM automations and social inbox for customer contact."
+    },
+    "shopify": {
+      "title": "Shopify",
+      "why": "Orders, stock and cart recovery under E-commerce."
+    }
+  },
+  "firstWin": {
+    "aria": "Get started in 10 minutes",
+    "ariaDone": "Get started — done",
+    "title": "Get started — {{done}}/{{total}} done ({{percent}}%)",
+    "subtitle": "Connect, open the inbox, and enable a safe automation. You always approve before send.",
+    "dismiss": "Hide",
+    "dismissAria": "Hide checklist",
+    "markDone": "Mark done",
+    "allDoneTitle": "You’re up and running",
+    "allDoneBody": "Brief, Messages and Automations have data to work with. Check Home every morning.",
+    "connectMail": {
+      "title": "Connect mail",
+      "titleDone": "Mail is connected",
+      "detail": "Gmail or Outlook — the first step to an inbox that actually helps.",
+      "detailDone": "You can triage and reply under Messages.",
+      "cta": "Connect mail",
+      "ctaDone": "Open Connections"
+    },
+    "connectChannel": {
+      "title": "Connect another channel",
+      "titleDone": "Channel connected",
+      "detailPersonal": "Calendar or Instagram gives you more than mail alone.",
+      "detailBusiness": "Instagram or Shopify brings DMs and orders into one workspace.",
+      "detailDone": "Social, calendar or store syncs into the app.",
+      "cta": "Choose channel",
+      "ctaDone": "Manage connections"
+    },
+    "openInbox": {
+      "title": "Open Messages",
+      "detail": "See the Today bucket, AI drafts, and approve before anything is sent.",
+      "cta": "Open Messages"
+    },
+    "enableAutomation": {
+      "title": "Turn on an automation",
+      "detail": "E.g. AI drafts for DM or mail — draft-before-send where it matters.",
+      "cta": "Open Automations"
+    },
+    "fillCompany": {
+      "title": "Fill in Company",
+      "titleDone": "Company profile is ready",
+      "detail": "Description and website make drafts and leads much better.",
+      "detailDone": "AI and leads become more relevant.",
+      "cta": "Fill in Company",
+      "ctaDone": "Open Company"
+    }
+  },
+  "boost": {
+    "aria": "Improve the experience",
+    "titlePending": "Make the app smarter",
+    "titleReady": "Ready for more automation",
+    "blurbPending": "Fill in a few things — AI and automations become more useful right away.",
+    "blurbReady": "The basics are in place. Review what can already run automatically.",
+    "setupHeading": "To fill in · {{done}}/{{total}}",
+    "setupReady": "Profile and connections are set ({{percent}}%). Next: enable automation.",
+    "automationsHeading": "Can be automated",
+    "seeAutomations": "See all automations"
+  }
+}

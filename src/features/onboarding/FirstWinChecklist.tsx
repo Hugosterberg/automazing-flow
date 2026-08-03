@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, CheckCircle2, Circle, Rocket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,28 +16,44 @@ import {
 
 type Props = {
   profile?: BusinessProfile | null;
-  connectedPlatforms: Iterable<string>;
+  /** Platforms with healthy (verified) connections. */
+  healthyPlatforms: Iterable<string>;
+  /** Platforms present (any health) — unlocks inbox step. */
+  connectedPlatforms?: Iterable<string>;
   className?: string;
 };
 
 /**
  * Home first-win checklist — guided path to value in ~10 minutes.
  * Persisted dismiss + optional manual step completion via profile document.
+ * Connect steps require verified healthy connections.
  */
-export function FirstWinChecklist({ profile, connectedPlatforms, className }: Props) {
+export function FirstWinChecklist({
+  profile,
+  healthyPlatforms,
+  connectedPlatforms,
+  className,
+}: Props) {
+  const { t } = useTranslation("onboarding");
   const doc = useProfileDocument<FirstWinDoc>(FIRST_WIN_DOC_KEY, {});
   const completeness = getBusinessProfileCompleteness(profile);
   const completed = new Set(doc.data?.completedStepIds ?? []);
 
-  const steps = buildFirstWinSteps({
+  const rawSteps = buildFirstWinSteps({
     kind: profile?.kind,
-    connectedPlatforms,
+    healthyPlatforms,
+    connectedPlatforms: connectedPlatforms ?? healthyPlatforms,
     profileStrong: completeness.isStrong,
-  }).map((step) =>
-    step.id === "enable_automation" || step.id === "open_inbox"
-      ? { ...step, done: step.done || completed.has(step.id) }
-      : step
-  );
+  });
+
+  const steps = rawSteps.map((step) => {
+    const localized = localizeStep(step.id, step.done, profile?.kind === "personal", t);
+    const done =
+      step.id === "enable_automation" || step.id === "open_inbox"
+        ? step.done || completed.has(step.id)
+        : step.done;
+    return { ...step, ...localized, done };
+  });
 
   const { done, total, percent, allDone } = firstWinProgress(steps);
   const dismissed = Boolean(doc.data?.dismissedAt);
@@ -59,14 +76,12 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
           "rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5 sm:px-4",
           className
         )}
-        aria-label="Kom igång — klart"
+        aria-label={t("firstWin.ariaDone")}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">Du är igång</p>
-            <p className="text-xs text-muted-foreground">
-              Brief, Meddelanden och Automationer har data att jobba med. Fortsätt under Hem varje morgon.
-            </p>
+            <p className="text-sm font-medium text-foreground">{t("firstWin.allDoneTitle")}</p>
+            <p className="text-xs text-muted-foreground">{t("firstWin.allDoneBody")}</p>
           </div>
           <Button
             type="button"
@@ -75,7 +90,7 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
             className="h-7 shrink-0 px-2 text-xs"
             onClick={() => persist({ dismissedAt: new Date().toISOString() })}
           >
-            Dölj
+            {t("firstWin.dismiss")}
           </Button>
         </div>
       </section>
@@ -94,18 +109,16 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
         "rounded-lg border border-primary/25 bg-primary/[0.04] px-3 py-3 sm:px-4",
         className
       )}
-      aria-label="Kom igång på 10 minuter"
+      aria-label={t("firstWin.aria")}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
           <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
-              Kom igång — {done}/{total} klart ({percent}%)
+              {t("firstWin.title", { done, total, percent })}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Koppla, öppna inkorgen och aktivera en trygg automation. Du godkänner alltid innan sändning.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("firstWin.subtitle")}</p>
           </div>
         </div>
         <Button
@@ -113,7 +126,7 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
           size="sm"
           variant="ghost"
           className="h-7 w-7 shrink-0 p-0 text-muted-foreground"
-          aria-label="Dölj checklista"
+          aria-label={t("firstWin.dismissAria")}
           onClick={() => persist({ dismissedAt: new Date().toISOString() })}
         >
           <X className="h-3.5 w-3.5" />
@@ -155,7 +168,7 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
                   className="h-7 text-xs"
                   onClick={() => markStep(step.id)}
                 >
-                  Markera klar
+                  {t("firstWin.markDone")}
                 </Button>
               ) : null}
               <Button
@@ -176,4 +189,48 @@ export function FirstWinChecklist({ profile, connectedPlatforms, className }: Pr
       </ul>
     </section>
   );
+}
+
+function localizeStep(
+  id: FirstWinStepId,
+  done: boolean,
+  personal: boolean,
+  t: (key: string) => string
+): { title: string; detail: string; cta: string } {
+  switch (id) {
+    case "connect_mail":
+      return {
+        title: done ? t("firstWin.connectMail.titleDone") : t("firstWin.connectMail.title"),
+        detail: done ? t("firstWin.connectMail.detailDone") : t("firstWin.connectMail.detail"),
+        cta: done ? t("firstWin.connectMail.ctaDone") : t("firstWin.connectMail.cta"),
+      };
+    case "connect_channel":
+      return {
+        title: done ? t("firstWin.connectChannel.titleDone") : t("firstWin.connectChannel.title"),
+        detail: done
+          ? t("firstWin.connectChannel.detailDone")
+          : personal
+            ? t("firstWin.connectChannel.detailPersonal")
+            : t("firstWin.connectChannel.detailBusiness"),
+        cta: done ? t("firstWin.connectChannel.ctaDone") : t("firstWin.connectChannel.cta"),
+      };
+    case "open_inbox":
+      return {
+        title: t("firstWin.openInbox.title"),
+        detail: t("firstWin.openInbox.detail"),
+        cta: t("firstWin.openInbox.cta"),
+      };
+    case "enable_automation":
+      return {
+        title: t("firstWin.enableAutomation.title"),
+        detail: t("firstWin.enableAutomation.detail"),
+        cta: t("firstWin.enableAutomation.cta"),
+      };
+    case "fill_company":
+      return {
+        title: done ? t("firstWin.fillCompany.titleDone") : t("firstWin.fillCompany.title"),
+        detail: done ? t("firstWin.fillCompany.detailDone") : t("firstWin.fillCompany.detail"),
+        cta: done ? t("firstWin.fillCompany.ctaDone") : t("firstWin.fillCompany.cta"),
+      };
+  }
 }

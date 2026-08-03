@@ -6,33 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AccountPlatform } from "@/types/accounts";
 import { getConnectGuide } from "./connectGuides";
-
-const STORAGE_PREFIX = "automazing:connect-guide:";
-
-/**
- * Guide progress is per browser, not per tenant: it tracks "how far did I get
- * while setting this up", which is a personal scratchpad, not shared state.
- * localStorage keeps it out of the database entirely.
- */
-function readProgress(platform: string): number[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}${platform}`);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((n) => typeof n === "number") : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeProgress(platform: string, done: number[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(`${STORAGE_PREFIX}${platform}`, JSON.stringify(done));
-  } catch {
-    /* private mode / quota — progress is a convenience, never required */
-  }
-}
+import {
+  clearConnectGuideProgress,
+  readConnectGuideProgress,
+  writeConnectGuideProgress,
+} from "./connectGuideProgress";
 
 interface Props {
   platform: AccountPlatform;
@@ -44,18 +22,30 @@ interface Props {
 export function ConnectGuide({ platform, label, serverNeeds }: Props) {
   const { t } = useTranslation("connections");
   const guide = useMemo(() => getConnectGuide(platform, label), [platform, label]);
-  const [done, setDone] = useState<number[]>(() => readProgress(platform));
+  const [done, setDone] = useState<number[]>(() => readConnectGuideProgress(platform));
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
 
   useEffect(() => {
-    setDone(readProgress(platform));
+    setDone(readConnectGuideProgress(platform));
+  }, [platform]);
+
+  // Pick up auto-complete from ConnectSession after verify succeeds.
+  useEffect(() => {
+    function onDone(ev: Event) {
+      const detail = (ev as CustomEvent<{ platform?: string }>).detail;
+      if (detail?.platform === platform) {
+        setDone(readConnectGuideProgress(platform));
+      }
+    }
+    window.addEventListener("automazing:connect-session-done", onDone);
+    return () => window.removeEventListener("automazing:connect-session-done", onDone);
   }, [platform]);
 
   const toggleStep = useCallback(
     (index: number) => {
       setDone((prev) => {
         const next = prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index];
-        writeProgress(platform, next);
+        writeConnectGuideProgress(platform, next);
         return next;
       });
     },
@@ -64,7 +54,7 @@ export function ConnectGuide({ platform, label, serverNeeds }: Props) {
 
   const reset = useCallback(() => {
     setDone([]);
-    writeProgress(platform, []);
+    clearConnectGuideProgress(platform);
   }, [platform]);
 
   async function copy(value: string) {

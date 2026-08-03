@@ -2,6 +2,17 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-03 — Guided Connect Session until verified healthy — **Active**
+
+Every account link goes through an interactive Connect Session
+(`src/features/connections/ConnectSession.tsx`): why → prerequisites → connect
+→ auto-probe (`POST /api/connections/:id/resync`) → done or fix-and-retry.
+Pending session state lives in `sessionStorage` so full-page OAuth can resume
+on verify. First-win and priority wizard treat a platform as done only when
+health is `healthy` (not merely present). Deep links use
+`/connections?session=<platform>`. Preferences API keys remain operator secrets
+(labelled “Advanced”), not the user-facing connect path.
+
 ## 2026-07-16 — UI language: SE → sv, else en; Preferences override — **Active**
 
 Default UI language follows request country from Vercel’s `x-vercel-ip-country`
