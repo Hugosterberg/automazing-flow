@@ -72,6 +72,7 @@ import {
   GoogleDriveIcon,
   GoogleReviewsIcon,
   TripadvisorIcon,
+  JudgemeIcon,
   CanvaIcon,
 } from "@/components/platform-icons";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
@@ -111,6 +112,7 @@ const platformIcons: Record<AccountPlatform, (props: { className?: string }) => 
   canva: CanvaIcon,
   google_reviews: GoogleReviewsIcon,
   tripadvisor: TripadvisorIcon,
+  judgeme: JudgemeIcon,
   google_ads: GoogleBusinessIcon,
   meta_business: FacebookIcon,
   dayai: GenericMcpIcon,
@@ -257,6 +259,11 @@ export function AppSidebar() {
   const [tripadvisorApiKey, setTripadvisorApiKey] = useState("");
   const [tripadvisorConnecting, setTripadvisorConnecting] = useState(false);
   const [tripadvisorConnectError, setTripadvisorConnectError] = useState<string | null>(null);
+  const [judgemeDialogOpen, setJudgemeDialogOpen] = useState(false);
+  const [judgemeShopDomain, setJudgemeShopDomain] = useState("");
+  const [judgemeApiToken, setJudgemeApiToken] = useState("");
+  const [judgemeConnecting, setJudgemeConnecting] = useState(false);
+  const [judgemeConnectError, setJudgemeConnectError] = useState<string | null>(null);
   const [zernioOpen, setZernioOpen] = useState(false);
   const [zernioFilter, setZernioFilter] = useState<SocialPlatform | null>(null);
   const {
@@ -406,6 +413,13 @@ export function AppSidebar() {
       setTripadvisorDialogOpen(true);
       return;
     }
+    if (platform === "judgeme") {
+      setJudgemeShopDomain("");
+      setJudgemeApiToken("");
+      setJudgemeConnectError(null);
+      setJudgemeDialogOpen(true);
+      return;
+    }
     const params = new URLSearchParams();
     // Return to THIS origin after OAuth, not the server's BASE_URL — otherwise
     // a user on a different origin lands on BASE_URL and appears logged out.
@@ -487,6 +501,53 @@ export function AppSidebar() {
       setTripadvisorConnectError(err instanceof Error ? err.message : "Kunde inte koppla Tripadvisor (okänt fel).");
     } finally {
       setTripadvisorConnecting(false);
+    }
+  }
+
+  async function handleJudgemeManualConnect() {
+    const shopDomain = judgemeShopDomain.trim();
+    const apiToken = judgemeApiToken.trim();
+    if (!shopDomain || !apiToken) {
+      setJudgemeConnectError("Både shop-domän och privat API-token krävs.");
+      return;
+    }
+    setJudgemeConnecting(true);
+    setJudgemeConnectError(null);
+    try {
+      const res = await fetchWithTimeout(apiUrl("/api/auth/judgeme/manual-connect"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopDomain,
+          apiToken,
+          profileId: activeProfileId || undefined,
+          business_profile_id: aiBusinessProfileId || undefined,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          formatConnectFetchError({
+            status: res.status,
+            payload,
+            fallbackMessage: "Kunde inte koppla Judge.me.",
+          })
+        );
+      }
+      addAccountFromOAuth(
+        String(payload.account_id || ""),
+        "judgeme",
+        String(payload.username || shopDomain),
+        activeProfileId || undefined
+      );
+      setSelectedAccountId("reviews", String(payload.account_id || ""));
+      setJudgemeDialogOpen(false);
+      navigate("/reviews");
+    } catch (err) {
+      setJudgemeConnectError(err instanceof Error ? err.message : "Kunde inte koppla Judge.me (okänt fel).");
+    } finally {
+      setJudgemeConnecting(false);
     }
   }
 
@@ -799,6 +860,58 @@ export function AppSidebar() {
             </Button>
             <Button onClick={() => void handleTripadvisorManualConnect()} disabled={tripadvisorConnecting || !tripadvisorLocationId.trim()}>
               {tripadvisorConnecting ? "Connecting..." : "Connect"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={judgemeDialogOpen} onOpenChange={setJudgemeDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <JudgemeIcon className="h-4 w-4" />
+              Koppla Judge.me
+            </DialogTitle>
+            <DialogDescription>
+              Ange butikens .myshopify.com-domän och din privata API-token (Judge.me admin → Settings →
+              Integrations → View API tokens).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="judgeme-shop-domain">Shop-domän</Label>
+              <Input
+                id="judgeme-shop-domain"
+                placeholder="mystore.myshopify.com"
+                value={judgemeShopDomain}
+                onChange={(e) => setJudgemeShopDomain(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="judgeme-api-token">Privat API-token</Label>
+              <Input
+                id="judgeme-api-token"
+                type="password"
+                placeholder="Private API token"
+                value={judgemeApiToken}
+                onChange={(e) => setJudgemeApiToken(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void handleJudgemeManualConnect()}
+              />
+            </div>
+            {judgemeConnectError && (
+              <p className="text-xs text-destructive">{judgemeConnectError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setJudgemeDialogOpen(false)}>
+              Avbryt
+            </Button>
+            <Button
+              onClick={() => void handleJudgemeManualConnect()}
+              disabled={judgemeConnecting || !judgemeShopDomain.trim() || !judgemeApiToken.trim()}
+            >
+              {judgemeConnecting ? "Kopplar..." : "Koppla"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -24,6 +24,12 @@ export interface DigestInput {
   marketingTrendDown?: boolean;
   /** Reviews awaiting a reply. */
   reviewsNeedingReply?: number;
+  /** Shopify products low or out of stock. */
+  lowStockCount?: number;
+  /** Paid/fulfilled Shopify orders not yet invoiced in Fortnox. */
+  unbilledOrdersCount?: number;
+  /** Shopify refunds waiting for a Fortnox credit invoice. */
+  pendingCreditInvoicesCount?: number;
   /** Scheduled automations whose last run failed. */
   failedAutomations?: Array<{ title: string }>;
   overdueTasks: Array<{ title: string }>;
@@ -67,6 +73,9 @@ export function buildDigest(input: DigestInput): Digest {
   const leadsToFollowUp = Math.max(0, Math.trunc(input.leadsToFollowUp ?? 0));
   const outreachQueuePending = Math.max(0, Math.trunc(input.outreachQueuePending ?? 0));
   const reviewsNeedingReply = Math.max(0, Math.trunc(input.reviewsNeedingReply ?? 0));
+  const lowStockCount = Math.max(0, Math.trunc(input.lowStockCount ?? 0));
+  const unbilledOrdersCount = Math.max(0, Math.trunc(input.unbilledOrdersCount ?? 0));
+  const pendingCreditInvoicesCount = Math.max(0, Math.trunc(input.pendingCreditInvoicesCount ?? 0));
   const failedAutomations = input.failedAutomations ?? [];
   const underwaterRoas = input.underwaterRoas;
   const hasUnderwaterRoas =
@@ -114,6 +123,24 @@ export function buildDigest(input: DigestInput): Digest {
       items: ["Respond to recent customer feedback while it's still fresh."],
     });
   }
+  if (lowStockCount > 0) {
+    sections.push({
+      heading: `${lowStockCount} product(s) low or out of stock`,
+      items: ["Check inventory before ads or orders outrun the shelves — see Ecommerce."],
+    });
+  }
+  if (unbilledOrdersCount > 0) {
+    sections.push({
+      heading: `${unbilledOrdersCount} order(s) not yet invoiced in Fortnox`,
+      items: ["Suggested invoices are waiting for your approval — see Company → Economy."],
+    });
+  }
+  if (pendingCreditInvoicesCount > 0) {
+    sections.push({
+      heading: `${pendingCreditInvoicesCount} refund(s) awaiting a Fortnox credit invoice`,
+      items: ["Suggested credit invoices are waiting for your approval — see Company → Economy."],
+    });
+  }
   if (failedAutomations.length > 0) {
     sections.push({
       heading: `${failedAutomations.length} automation(s) failed`,
@@ -141,6 +168,9 @@ export function buildDigest(input: DigestInput): Digest {
     (hasUnderwaterRoas ? 1 : 0) +
     (hasTrendDown ? 1 : 0) +
     reviewsNeedingReply +
+    lowStockCount +
+    unbilledOrdersCount +
+    pendingCreditInvoicesCount +
     failedAutomations.length +
     input.overdueTasks.length +
     input.dueTodayTasks.length +

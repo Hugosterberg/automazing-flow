@@ -49,6 +49,7 @@ const CONFIG: Record<AccountPlatform, ConnectStartConfig> = {
   // Reviews
   google_reviews: { authPath: "google_reviews" },
   tripadvisor: { authPath: "tripadvisor" },
+  judgeme: { authPath: "judgeme" },
 
   // Content
   google_drive: { authPath: "google_drive" },
@@ -103,6 +104,7 @@ const PATH_OPTIONS: Record<AccountPlatform, ConnectionPathOption[]> = {
     { id: "zernio", label: "Zernio", isDefault: true },
     { id: "official", label: "Tripadvisor official" },
   ],
+  judgeme: [{ id: "manual", label: "Shop-domän + API-token", isDefault: true }],
   google_drive: [{ id: "official", label: "Google official", isDefault: true }],
   canva: [{ id: "official", label: "Canva Connect", isDefault: true }],
   ...Object.fromEntries(

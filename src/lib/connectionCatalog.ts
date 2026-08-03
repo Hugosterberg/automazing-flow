@@ -281,6 +281,17 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
       "Official Content API: TRIPADVISOR_API_KEY + TRIPADVISOR_LOCATION_ID (or per-account values). Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
+    platform: "judgeme",
+    label: "Judge.me",
+    areas: ["reviews", "ecommerce"],
+    pageHref: "/reviews",
+    pageName: "Reviews",
+    connectSteps:
+      "Öppna Kopplingar → Judge.me → Koppla. Ange butikens .myshopify.com-domän och din privata API-token från Judge.me admin → Settings → Integrations.",
+    serverNeeds:
+      "No server credentials required — shop domain + private API token are stored per profile. Optional fallback: JUDGEME_SHOP_DOMAIN + JUDGEME_API_TOKEN.",
+  },
+  {
     platform: "google_drive",
     label: "Google Drive",
     areas: ["content"],

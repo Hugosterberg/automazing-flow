@@ -26,6 +26,7 @@ import { registerOutlookCalendarOAuthRoutes } from "./oauth/outlookCalendarOAuth
 import { registerGoogleReviewsOAuthRoutes } from "./oauth/googleReviewsOAuthRoutes.ts";
 import { registerGoogleBusinessOAuthRoutes } from "./oauth/googleBusinessOAuthRoutes.ts";
 import { registerTripadvisorOAuthRoutes } from "./oauth/tripadvisorOAuthRoutes.ts";
+import { registerJudgemeOAuthRoutes } from "./oauth/judgemeOAuthRoutes.ts";
 
 export type { OAuthRoutesDeps } from "./oauth/types.ts";
 
@@ -251,7 +252,7 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     if (platform === "canva") {
       return "content";
     }
-    if (platform === "google_reviews" || platform === "tripadvisor") {
+    if (platform === "google_reviews" || platform === "tripadvisor" || platform === "judgeme") {
       return "reviews";
     }
     if (platform === "shopify" || platform === "notion") {
@@ -506,6 +507,16 @@ export function registerOAuthRoutes(app, deps: OAuthRoutesDeps): void {
     oauthRedirectTo,
     oauthCallbackUrl,
     getOptionalZernioProfileId,
+  });
+
+  registerJudgemeOAuthRoutes(app, deps, {
+    parseOauthReturnPage,
+    requireSessionOrRedirect,
+    requestedAppBaseUrl,
+    postOauthBaseUrl,
+    postOauthPage,
+    isAllowedOAuthCallbackUser,
+    oauthRedirectTo,
   });
 
   registerMailOAuthRoutes(app, deps, {

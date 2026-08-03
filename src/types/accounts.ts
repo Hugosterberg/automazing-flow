@@ -14,7 +14,7 @@ export type EcommercePlatform = "shopify" | "notion";
 export type EconomyPlatform = "fortnox";
 export type MailPlatform = "gmail" | "outlook";
 export type CalendarPlatform = "google_calendar" | "outlook_calendar";
-export type ReviewsPlatform = "google_reviews" | "tripadvisor";
+export type ReviewsPlatform = "google_reviews" | "tripadvisor" | "judgeme";
 export type ContentPlatform = "google_drive" | "canva";
 export type MarketingPlatform = "google_ads" | "meta_business";
 /**

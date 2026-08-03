@@ -233,4 +233,10 @@ export const INTEGRATION_CONFIG_CHECKS: Record<string, RequirementDefinition> = 
     required: ["TRIPADVISOR_API_KEY", "TRIPADVISOR_LOCATION_ID"],
     message: "Required for Tripadvisor API requests.",
   },
+  judgeme: {
+    label: "Judge.me API",
+    required: ["JUDGEME_SHOP_DOMAIN", "JUDGEME_API_TOKEN"],
+    message:
+      "Optional for the one-click Judge.me connect; the in-app dialog can also provide shop domain + private API token per profile.",
+  },
 };

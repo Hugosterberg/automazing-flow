@@ -115,6 +115,11 @@ export function ConnectionCard({
   const [mcpCredential, setMcpCredential] = useState("");
   const [mcpCredentialError, setMcpCredentialError] = useState<string | null>(null);
   const [mcpConnecting, setMcpConnecting] = useState(false);
+  const [judgemeDialogOpen, setJudgemeDialogOpen] = useState(false);
+  const [judgemeShopDomain, setJudgemeShopDomain] = useState("");
+  const [judgemeApiToken, setJudgemeApiToken] = useState("");
+  const [judgemeError, setJudgemeError] = useState<string | null>(null);
+  const [judgemeConnecting, setJudgemeConnecting] = useState(false);
   const { addAccountFromOAuth } = useAccounts();
   const mcpMeta = getMcpProviderMeta(entry.platform);
   const rows = useMemo(
@@ -156,6 +161,48 @@ export function ConnectionCard({
     setShopifyShop("");
     setShopifyShopError(null);
     startConnect(undefined, { shop });
+  }
+
+  function startJudgemeConnect() {
+    setJudgemeShopDomain("");
+    setJudgemeApiToken("");
+    setJudgemeError(null);
+    setJudgemeDialogOpen(true);
+  }
+
+  async function submitJudgemeConnect() {
+    const shopDomain = judgemeShopDomain.trim();
+    const apiToken = judgemeApiToken.trim();
+    if (!shopDomain || !apiToken) {
+      setJudgemeError("Både shop-domän och privat API-token krävs.");
+      return;
+    }
+    setJudgemeConnecting(true);
+    setJudgemeError(null);
+    try {
+      const payload = await apiJson<Record<string, unknown>>(
+        "/api/auth/judgeme/manual-connect",
+        "Kunde inte koppla Judge.me.",
+        { body: { shopDomain, apiToken, profileId: businessProfileId, business_profile_id: businessProfileId } }
+      );
+      setJudgemeDialogOpen(false);
+      setJudgemeShopDomain("");
+      setJudgemeApiToken("");
+      toast.success("Judge.me kopplad");
+      if (payload.account_id) {
+        addAccountFromOAuth(
+          String(payload.account_id),
+          "judgeme",
+          String(payload.username || shopDomain),
+          payload.profile_id ? String(payload.profile_id) : businessProfileId
+        );
+      }
+      window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
+    } catch (err) {
+      setJudgemeError(err instanceof Error ? err.message : "Kunde inte koppla Judge.me.");
+    } finally {
+      setJudgemeConnecting(false);
+    }
   }
 
   function startMcpConnect() {
@@ -279,6 +326,10 @@ export function ConnectionCard({
     }
     if (entry.platform === "shopify") {
       startShopifyConnect();
+      return;
+    }
+    if (entry.platform === "judgeme") {
+      startJudgemeConnect();
       return;
     }
     startConnect();
@@ -550,6 +601,10 @@ export function ConnectionCard({
                     startShopifyConnect();
                     return;
                   }
+                  if (entry.platform === "judgeme") {
+                    startJudgemeConnect();
+                    return;
+                  }
                   startConnect();
                 }}
                 disabled={mcpConnecting && mcpMeta?.auth === "keyless"}
@@ -645,6 +700,58 @@ export function ConnectionCard({
           </Button>
           <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
             Fortsätt
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={judgemeDialogOpen} onOpenChange={setJudgemeDialogOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Koppla Judge.me</DialogTitle>
+          <DialogDescription>
+            Ange butikens .myshopify.com-domän och den privata API-token från Judge.me admin → Settings →
+            Integrations → View API tokens. Uppgifterna verifieras mot Judge.me innan de sparas.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor={`judgeme-shop-${entry.platform}`}>Shop-domän</Label>
+            <Input
+              id={`judgeme-shop-${entry.platform}`}
+              value={judgemeShopDomain}
+              onChange={(event) => {
+                setJudgemeShopDomain(event.target.value);
+                setJudgemeError(null);
+              }}
+              placeholder={SHOPIFY_DOMAIN_EXAMPLE}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`judgeme-token-${entry.platform}`}>Privat API-token</Label>
+            <Input
+              id={`judgeme-token-${entry.platform}`}
+              type="password"
+              value={judgemeApiToken}
+              onChange={(event) => {
+                setJudgemeApiToken(event.target.value);
+                setJudgemeError(null);
+              }}
+              onKeyDown={(event) => event.key === "Enter" && void submitJudgemeConnect()}
+              placeholder="Private API token"
+            />
+          </div>
+          {judgemeError ? <p className="text-xs text-destructive">{judgemeError}</p> : null}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setJudgemeDialogOpen(false)} disabled={judgemeConnecting}>
+            Avbryt
+          </Button>
+          <Button
+            onClick={() => void submitJudgemeConnect()}
+            disabled={judgemeConnecting || !judgemeShopDomain.trim() || !judgemeApiToken.trim()}
+          >
+            {judgemeConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Koppla"}
           </Button>
         </DialogFooter>
       </DialogContent>

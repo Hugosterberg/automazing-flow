@@ -32,6 +32,8 @@
     "google_reviews_accounts_api_failed": "Google Business Accounts API failed. Check that Business Profile APIs are enabled in Google Cloud and the OAuth app is approved.",
     "google_reviews_locations_api_failed": "Google Business Locations API failed. Check API enablement and permissions for Business Profile.",
     "tripadvisor_not_configured": "Tripadvisor official is missing an API key or location id. Add TRIPADVISOR_API_KEY and TRIPADVISOR_LOCATION_ID in the environment or under Preferences → API keys.",
+    "judgeme_not_configured": "Judge.me is missing a shop domain or API token. Connect via the dialog (shop domain + private API token) or add JUDGEME_SHOP_DOMAIN and JUDGEME_API_TOKEN under Preferences → API keys.",
+    "judgeme_rejected": "Judge.me rejected the credentials. Check the shop domain and private API token in Judge.me admin → Settings → Integrations.",
     "shopify_not_configured": "Shopify is missing app configuration. Check SHOPIFY_API_KEY, SHOPIFY_API_SECRET, and the callback URL in the Shopify app.",
     "shopify_public_url_missing": "Shopify requires a public HTTPS host (e.g. a tunnel). Set SHOPIFY_APP_URL in the environment before connecting.",
     "shopify_public_url_must_be_https": "SHOPIFY_APP_URL must start with https://. Use the tunnel’s HTTPS URL.",

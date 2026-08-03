@@ -51,6 +51,25 @@ export type ReviewDetailPanelProps = {
 
 const formatFullDate = formatFullDateTime;
 
+/** Customer photos attached to the review (Judge.me). */
+function ReviewPictures({ pictures }: { pictures?: string[] }) {
+  if (!pictures || pictures.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {pictures.slice(0, 6).map((url) => (
+        <a key={url} href={url} target="_blank" rel="noreferrer">
+          <img
+            src={url}
+            alt="Kundbild från recensionen"
+            loading="lazy"
+            className="h-20 w-20 rounded-md border border-border/60 object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function Stars({ rating }: { rating?: number }) {
   if (rating == null) return <span className="text-sm text-muted-foreground">Inget betyg</span>;
   return (
@@ -209,6 +228,11 @@ export function ReviewDetailPanel({
                     {review.source}
                   </Badge>
                 ) : null}
+                {review.verified ? (
+                  <Badge variant="outline" className="border-emerald-500/40 text-[10px] uppercase tracking-wide text-emerald-600">
+                    Verifierat köp
+                  </Badge>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -221,6 +245,11 @@ export function ReviewDetailPanel({
           )}
         >
           <div className="message-reading-card px-4 py-4">
+            {review.title ? (
+              <p className={cn("mb-1.5 font-semibold text-foreground", composeOpen ? "text-[13px]" : "text-[15px]")}>
+                {review.title}
+              </p>
+            ) : null}
             <p
               className={cn(
                 "whitespace-pre-wrap break-words text-foreground",
@@ -229,6 +258,7 @@ export function ReviewDetailPanel({
             >
               {review.text || "Ingen recensionstext."}
             </p>
+            <ReviewPictures pictures={review.pictures} />
           </div>
         </div>
 
@@ -448,9 +478,13 @@ export function ReviewDetailPanel({
       <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="w-full">
           <div className="message-reading-card px-4 py-4 sm:px-5 sm:py-5">
+            {review.title ? (
+              <p className="mb-1.5 text-[15px] font-semibold text-foreground">{review.title}</p>
+            ) : null}
             <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
               {review.text || "Ingen recensionstext."}
             </p>
+            <ReviewPictures pictures={review.pictures} />
           </div>
         </div>
       </div>

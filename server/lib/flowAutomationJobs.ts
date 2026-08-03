@@ -14,6 +14,7 @@ import {
   fetchShopifyFulfilledOrders,
   fetchShopifyDormantCustomers,
 } from "../providers/shopify.ts";
+import { sendJudgemeReviewRequest, type JudgemeCredentials } from "../providers/judgeme.ts";
 import {
   loadProfileDocument,
   saveProfileDocument,
@@ -550,8 +551,14 @@ export async function runPostPurchaseReviewRequest(deps: {
   accessToken: string;
   shop: string;
   storefrontUrl?: string | null;
+  /**
+   * When Judge.me is connected for the profile, requests go through Judge.me's
+   * own branded review-request email (with the review form + reminders)
+   * instead of our plain email. Falls back to email per order on failure.
+   */
+  judgeme?: JudgemeCredentials | null;
 }): Promise<{ emailed: number; skipped: number }> {
-  const { supabaseAdmin, businessProfileId, profile, accessToken, shop, storefrontUrl } = deps;
+  const { supabaseAdmin, businessProfileId, profile, accessToken, shop, storefrontUrl, judgeme } = deps;
 
   const orders = await fetchShopifyFulfilledOrders(accessToken, shop, {
     minDaysAgo: POST_PURCHASE_REVIEW_MIN_DAYS,
@@ -575,6 +582,20 @@ export async function runPostPurchaseReviewRequest(deps: {
       continue;
     }
 
+    if (judgeme) {
+      const judgemeResult = await sendJudgemeReviewRequest(judgeme, {
+        orderId: order.id,
+        email: order.email,
+        name: order.customerName || undefined,
+      });
+      if (judgemeResult.ok) {
+        emailed += 1;
+        newSentIds.push(order.id);
+        continue;
+      }
+      // Fall through to the plain email for this order.
+    }
+
     const firstName = (order.customerName || "").split(" ")[0] || "there";
     const subject = `How was your order from ${businessName}?`;
     const body =
@@ -595,7 +616,10 @@ export async function runPostPurchaseReviewRequest(deps: {
       emailed += 1;
       newSentIds.push(order.id);
     } else if (result.skipped) {
-      return { emailed: 0, skipped: orders.length };
+      // Email transport not configured — stop trying the email fallback but
+      // keep any Judge.me sends recorded below so they are not re-sent.
+      skipped += 1;
+      break;
     }
   }
 
