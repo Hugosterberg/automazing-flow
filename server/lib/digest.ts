@@ -168,7 +168,11 @@ export function buildDigest(input: DigestInput): Digest {
     (hasUnderwaterRoas ? 1 : 0) +
     (hasTrendDown ? 1 : 0) +
     reviewsNeedingReply +
-    lowStockCount +
+    // One "go check inventory" action regardless of how many SKUs are low —
+    // counting them raw made the subject line read "47 things need attention"
+    // for what is really a handful of areas. The section heading still shows
+    // the real product count.
+    (lowStockCount > 0 ? 1 : 0) +
     unbilledOrdersCount +
     pendingCreditInvoicesCount +
     failedAutomations.length +
@@ -178,7 +182,7 @@ export function buildDigest(input: DigestInput): Digest {
   const hasContent = actionCount > 0;
 
   const subject = hasContent
-    ? `${input.businessName}: ${actionCount} thing${actionCount === 1 ? "" : "s"} need attention today`
+    ? `${input.businessName}: ${actionCount} ${actionCount === 1 ? "thing needs" : "things need"} attention today`
     : `${input.businessName}: you're all caught up`;
 
   const appUrl = (input.appUrl || "").replace(/\/$/, "");

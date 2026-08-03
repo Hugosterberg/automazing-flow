@@ -353,7 +353,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     pendingDmDrafts +
     hasUnderwaterRoas +
     hasTrendDown +
-    inventoryAlertCount +
+    // One attention item, not one per SKU — a store with dozens of low-stock
+    // variants would otherwise dominate the badge count. The signal's own
+    // `count` still carries the real number.
+    (inventoryAlertCount > 0 ? 1 : 0) +
     reviewsNeedingReply +
     failedAutomations.length +
     input.overdueTasks.length +

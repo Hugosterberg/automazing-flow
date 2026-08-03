@@ -18,6 +18,21 @@ describe("buildDigest", () => {
     expect(d.html).toMatch(/nothing new to review/i);
   });
 
+  it("counts a low-stock shelf as one action, not one per product", () => {
+    // A store with dozens of low SKUs must not produce a subject line
+    // claiming dozens of things need attention.
+    const d = buildDigest({ ...empty, lowStockCount: 43 });
+    expect(d.actionCount).toBe(1);
+    expect(d.subject).toMatch(/1 thing needs attention/i);
+    // The real product count still surfaces in the section itself.
+    expect(d.sections.some((s) => s.heading.includes("43"))).toBe(true);
+  });
+
+  it("keeps invoice queues counted per item — each one is its own approval", () => {
+    const d = buildDigest({ ...empty, unbilledOrdersCount: 3, pendingCreditInvoicesCount: 2 });
+    expect(d.actionCount).toBe(5);
+  });
+
   it("summarises outstanding work across sources", () => {
     const d = buildDigest({
       businessName: "Acme",

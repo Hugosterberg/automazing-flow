@@ -112,6 +112,14 @@ describe("buildDailyBrief", () => {
     expect(stock.items[0].title).toMatch(/lågt lager/i);
   });
 
+  it("counts a low-stock shelf as one attention item regardless of SKU count", () => {
+    // The badge answers "how many things need me", and low stock is one of
+    // them — the signal's own count still carries the real number.
+    const stock = buildDailyBrief({ ...empty, inventoryAlertCount: 40 });
+    expect(stock.actionCount).toBe(1);
+    expect(stock.items[0].count).toBe(40);
+  });
+
   it("nudges when ad ROAS trend is down without being underwater", () => {
     const brief = buildDailyBrief({ ...empty, marketingTrendDown: true, underwaterRoas: 1.2 });
     expect(brief.items[0].kind).toBe("marketing");

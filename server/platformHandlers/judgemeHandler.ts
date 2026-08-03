@@ -132,7 +132,7 @@ export async function handleJudgemeAccountData(args: {
       status: 400,
       body: {
         error:
-          "Judge.me needs a shop domain and private API token. Reconnect via Connections → Judge.me.",
+          "Judge.me saknar shop-domän eller API-token. Koppla om under Kopplingar → Judge.me.",
       },
     };
   }

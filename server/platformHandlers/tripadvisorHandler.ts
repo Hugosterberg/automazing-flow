@@ -332,7 +332,7 @@ export async function handleTripadvisorAccountData({
         source: "zernio",
         note:
           reviews.length === 0 && !tripadvisorInfo
-            ? "No Tripadvisor review or location information payload returned via Zernio yet."
+            ? "Zernio har inte returnerat några omdömen eller platsuppgifter för Tripadvisor ännu."
             : undefined,
       },
     };
@@ -412,8 +412,8 @@ export async function handleTripadvisorAccountData({
       note: reviewsResult.ok
         ? undefined
         : reviewError
-          ? `Tripadvisor location information loaded, but reviews could not be loaded: ${reviewError}`
-          : "Tripadvisor location information loaded, but reviews could not be loaded from the official API.",
+          ? `Platsuppgifterna lästes in, men omdömena kunde inte hämtas: ${reviewError}`
+          : "Platsuppgifterna lästes in, men omdömena kunde inte hämtas från Tripadvisors officiella API.",
     },
   };
 }

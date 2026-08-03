@@ -211,7 +211,9 @@ export function registerDailyDigestCron(
             /* marketing snapshots optional */
           }
 
-          // E-commerce signals — best-effort, only when Shopify is connected.
+          // E-commerce signals. Each is isolated: the Shopify stock lookup is a
+          // live API call, and a network blip there must not also blank the
+          // Fortnox queue counts, which are read straight from the database.
           let lowStockCount = 0;
           let unbilledOrdersCount = 0;
           let pendingCreditInvoicesCount = 0;
@@ -232,16 +234,24 @@ export function registerDailyDigestCron(
                 lowStockCount = (stock?.outOfStock ?? 0) + (stock?.lowStock ?? 0);
               }
             }
+          } catch {
+            /* Shopify stock signal optional */
+          }
+          try {
             const invoiceQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_INVOICE_QUEUE_DOC_KEY);
             unbilledOrdersCount = parseFortnoxInvoiceQueue(invoiceQueueDoc?.data).filter(
               (q) => q.status === "suggested" || q.status === "failed"
             ).length;
+          } catch {
+            /* invoice queue optional */
+          }
+          try {
             const creditQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_CREDIT_QUEUE_DOC_KEY);
             pendingCreditInvoicesCount = parseFortnoxCreditQueue(creditQueueDoc?.data).filter(
               (q) => q.status === "suggested" || q.status === "failed"
             ).length;
           } catch {
-            /* e-commerce signals optional */
+            /* credit queue optional */
           }
 
           const digest = buildDigest({

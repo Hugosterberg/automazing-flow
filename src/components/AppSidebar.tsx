@@ -76,6 +76,7 @@ import {
   CanvaIcon,
 } from "@/components/platform-icons";
 import { JudgemeConnectDialog } from "@/features/connections/JudgemeConnectDialog";
+import { normalizeShopifyShopDomain } from "@/features/ecommerce/shopifyConnect";
 import type { AccountPlatform, ConnectedAccount, SocialPlatform } from "@/types/accounts";
 import { apiUrl } from "@/lib/apiBase";
 
@@ -441,7 +442,9 @@ export function AppSidebar() {
   }
 
   function handleShopifyConnect() {
-    const shop = shopDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    // Same normalizer the Connections page uses, so both entry points accept
+    // bare handles and admin.shopify.com links rather than only the raw domain.
+    const shop = normalizeShopifyShopDomain(shopDomain);
     if (!shop) return;
     const params = new URLSearchParams({ shop });
     params.set("app_origin", window.location.origin);
@@ -455,7 +458,7 @@ export function AppSidebar() {
     const locationId = tripadvisorLocationId.trim();
     const apiKey = tripadvisorApiKey.trim();
     if (!locationId) {
-      setTripadvisorConnectError("Error: locationId is required | Status: 400 | Exception: not provided");
+      setTripadvisorConnectError("Ange platsens Tripadvisor-id för att koppla.");
       return;
     }
     setTripadvisorConnecting(true);
@@ -737,29 +740,33 @@ export function AppSidebar() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShopifyIcon className="h-4 w-4" />
-              Connect Shopify
+              Koppla Shopify
             </DialogTitle>
             <DialogDescription>
-              Enter your Shopify store domain to get started.
+              Ange butikens permanenta Shopify-domän för att komma igång.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="shop-domain">Store domain</Label>
+            <Label htmlFor="shop-domain">Butiksdomän</Label>
             <Input
               id="shop-domain"
               placeholder="mystore.myshopify.com"
               value={shopDomain}
               onChange={(e) => setShopDomain(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleShopifyConnect()}
+              aria-describedby="shop-domain-hint"
               autoFocus
             />
+            <p id="shop-domain-hint" className="text-xs text-muted-foreground">
+              Du kan också klistra in en Shopify Admin-länk, t.ex. admin.shopify.com/store/mystore.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>
-              Cancel
+              Avbryt
             </Button>
             <Button onClick={handleShopifyConnect} disabled={!shopDomain.trim()}>
-              Connect
+              Koppla
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -770,10 +777,10 @@ export function AppSidebar() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TripadvisorIcon className="h-4 w-4" />
-              Connect Tripadvisor
+              Koppla Tripadvisor
             </DialogTitle>
             <DialogDescription>
-              Enter Tripadvisor Location ID and optionally API key (if not set in .env.local).
+              Ange platsens Tripadvisor-id. API-nyckeln behövs bara om den inte redan är sparad för profilen.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -781,32 +788,44 @@ export function AppSidebar() {
               <Label htmlFor="tripadvisor-location-id">Location ID</Label>
               <Input
                 id="tripadvisor-location-id"
-                placeholder="e.g. 304554"
+                placeholder="t.ex. 304554"
                 value={tripadvisorLocationId}
-                onChange={(e) => setTripadvisorLocationId(e.target.value)}
+                onChange={(e) => {
+                  setTripadvisorLocationId(e.target.value);
+                  setTripadvisorConnectError(null);
+                }}
+                aria-describedby="tripadvisor-location-id-hint"
                 autoFocus
               />
+              <p id="tripadvisor-location-id-hint" className="text-xs text-muted-foreground">
+                Hittas i adressen till platsens Tripadvisor-sida (siffrorna efter <code>-d</code>).
+              </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="tripadvisor-api-key">API Key (optional)</Label>
+              <Label htmlFor="tripadvisor-api-key">API-nyckel (valfri)</Label>
               <Input
                 id="tripadvisor-api-key"
                 type="password"
-                placeholder="Leave empty to use .env"
+                placeholder="Lämna tom för att använda sparad nyckel"
                 value={tripadvisorApiKey}
-                onChange={(e) => setTripadvisorApiKey(e.target.value)}
+                onChange={(e) => {
+                  setTripadvisorApiKey(e.target.value);
+                  setTripadvisorConnectError(null);
+                }}
               />
             </div>
             {tripadvisorConnectError && (
-              <p className="text-xs text-destructive">{tripadvisorConnectError}</p>
+              <p className="text-xs text-destructive" role="alert">
+                {tripadvisorConnectError}
+              </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTripadvisorDialogOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => setTripadvisorDialogOpen(false)} disabled={tripadvisorConnecting}>
+              Avbryt
             </Button>
             <Button onClick={() => void handleTripadvisorManualConnect()} disabled={tripadvisorConnecting || !tripadvisorLocationId.trim()}>
-              {tripadvisorConnecting ? "Connecting..." : "Connect"}
+              {tripadvisorConnecting ? "Kopplar…" : "Koppla"}
             </Button>
           </DialogFooter>
         </DialogContent>

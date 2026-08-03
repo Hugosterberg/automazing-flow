@@ -120,6 +120,9 @@ const COLORS = [
   "bg-pink-500", "bg-teal-500", "bg-red-500", "bg-yellow-500",
 ];
 
+/** How long a review must stay selected before its AI draft is requested. */
+const AUTO_DRAFT_DELAY_MS = 500;
+
 function normalizeExternalUrl(url?: string) {
   if (!url) return "";
   return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
@@ -371,12 +374,21 @@ export default function ReviewsPage() {
 
   // Auto-draft one AI reply per selected review. The autoDraftForId guard makes
   // this idempotent even when the review list refreshes with new object identities.
+  //
+  // The short delay matters: J/K moves the selection on every keypress, so
+  // skimming a list used to fire one OpenAI request per review passed over.
+  // Waiting for the selection to settle keeps the "open a review, get a draft"
+  // behaviour while only paying for reviews the user actually stops on.
   useEffect(() => {
     if (!selectedReview || repliedIds.has(selectedReview.id)) return;
     if (draftBusy || sendBusy || replySent) return;
     if (autoDraftForId.current === selectedReview.id) return;
-    autoDraftForId.current = selectedReview.id;
-    void draftReply(selectedReview);
+    const reviewToDraft = selectedReview;
+    const timer = window.setTimeout(() => {
+      autoDraftForId.current = reviewToDraft.id;
+      void draftReply(reviewToDraft);
+    }, AUTO_DRAFT_DELAY_MS);
+    return () => window.clearTimeout(timer);
   }, [selectedReview, draftBusy, sendBusy, replySent, repliedIds, draftReply]);
 
   const placeInfo = useMemo<PlaceInfo | null>(() => {

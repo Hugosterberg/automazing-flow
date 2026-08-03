@@ -80,7 +80,7 @@ export function registerReviewsRoutes(app, deps: ReviewsRoutesDeps) {
       return res.status(400).json({
         error: "review_reply_not_supported_judgeme",
         message:
-          "Judge.me's API does not support posting replies. Copy your reply and post it in the Judge.me admin (Reviews → Manage reviews).",
+          "Judge.me:s API stöder inte att publicera svar. Kopiera svaret och lägg in det i Judge.me admin (Reviews → Manage reviews).",
       });
     }
 

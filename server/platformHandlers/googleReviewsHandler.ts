@@ -232,7 +232,7 @@ export async function handleGoogleReviewsAccountData({
         source: "zernio",
         note:
           reviews.length === 0 && !infoAvailable
-            ? "No review or business information payload returned via Zernio for this account yet."
+            ? "Zernio har inte returnerat några omdömen eller företagsuppgifter för det här kontot ännu."
             : enrichment.zernioEnrichmentNotes.length > 0
               ? enrichment.zernioEnrichmentNotes.join(" ")
             : undefined,
@@ -375,7 +375,7 @@ export async function handleGoogleReviewsAccountData({
       ...(googleBusiness ? { googleBusiness } : {}),
       source: "official",
       note: !infoRes.ok
-        ? "Google reviews loaded, but Business Profile information could not be loaded from the official Business Information API."
+        ? "Omdömena lästes in, men företagsuppgifterna kunde inte hämtas från Google Business Information API."
         : undefined,
     },
   };
