@@ -423,12 +423,14 @@ registerCronRoutes(app, {
   zernio: zernioModule,
   secretResolver,
   tokenStore,
+  baseUrl: BASE_URL,
 });
 
 registerAuthRoutes(app, {
   auth,
   supabaseUrl: SUPABASE_URL,
   supabaseAnonKey: SUPABASE_ANON_KEY,
+  supabaseAdmin: supabaseServiceClient,
   debugLog,
 });
 

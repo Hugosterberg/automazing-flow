@@ -2,13 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { asUntypedSupabaseClient } from "@/lib/untypedSupabaseClient";
 import { computeMarketingTrend, type MarketingSnapshot, type MarketingTrend } from "./marketingTrend";
 
 export const MARKETING_TREND_KEY = ["marketing-trend"] as const;
-
-// `marketing_snapshots` isn't in the generated Supabase types yet.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag the migration
-type SnapshotsClient = { from: (table: string) => any };
 
 interface MarketingTrendData {
   trend: MarketingTrend;
@@ -32,7 +29,7 @@ export function useMarketingTrend(): {
     queryKey: [...MARKETING_TREND_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
       if (!supabase || !businessProfileId) return { trend: computeMarketingTrend([]), snapshots: [] };
-      const { data, error } = await (supabase as unknown as SnapshotsClient)
+      const { data, error } = await asUntypedSupabaseClient(supabase)
         .from("marketing_snapshots")
         .select("snapshot_date, ad_spend, revenue, orders, roas, currency, portfolio_score, portfolio_grade, campaigns_poor")
         .eq("business_profile_id", businessProfileId)

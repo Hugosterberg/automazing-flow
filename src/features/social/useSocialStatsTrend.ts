@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { asUntypedSupabaseClient } from "@/lib/untypedSupabaseClient";
 import {
   computeSocialStatsTrend,
   type SocialStatsSnapshotPoint,
@@ -8,10 +9,6 @@ import {
 } from "./socialStatsTrend";
 
 export const SOCIAL_STATS_TREND_KEY = ["social-stats-trend"] as const;
-
-// `social_stats_snapshots` isn't in the generated Supabase types yet.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag the migration
-type SnapshotsClient = { from: (table: string) => any };
 
 /**
  * Week-over-week KPI trend for one connected account, read from the daily
@@ -27,7 +24,7 @@ export function useSocialStatsTrend(accountId: string | null): {
     queryKey: [...SOCIAL_STATS_TREND_KEY, user?.id ?? null, accountId ?? null],
     queryFn: async () => {
       if (!supabase || !accountId) return null;
-      const { data, error } = await (supabase as unknown as SnapshotsClient)
+      const { data, error } = await asUntypedSupabaseClient(supabase)
         .from("social_stats_snapshots")
         .select(
           "snapshot_date, followers, following, media_count, avg_likes, avg_comments, avg_views, engagement_rate, average_rating, review_count"

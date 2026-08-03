@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Mail, Shield, Trash2, UserPlus, Users } from "lucide-react";
+import { Loader2, Mail, RotateCw, Shield, Trash2, UserPlus, Users } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,13 @@ type Member = {
   role: string;
   email: string | null;
   displayName: string | null;
-  invitedEmail: string | null;
+  createdAt: string;
+};
+
+type PendingInvite = {
+  id: string;
+  email: string;
+  role: string;
   createdAt: string;
 };
 
@@ -68,11 +74,12 @@ export function TeamManager({ businessProfileId }: Props) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("editor");
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<PendingInvite | null>(null);
 
-  const { data, isLoading } = useQuery<{ members: Member[] }>({
+  const { data, isLoading } = useQuery<{ members: Member[]; pendingInvites: PendingInvite[] }>({
     queryKey: ["team-members", businessProfileId],
     queryFn: () =>
-      apiJson<{ members: Member[] }>(
+      apiJson<{ members: Member[]; pendingInvites: PendingInvite[] }>(
         `/api/team/members?business_profile_id=${encodeURIComponent(businessProfileId)}`,
         "Kunde inte hämta teammedlemmar"
       ),
@@ -85,7 +92,12 @@ export function TeamManager({ businessProfileId }: Props) {
         "/api/team/invite",
         "Inbjudan misslyckades",
         {
-          body: { email, role, business_profile_id: businessProfileId },
+          body: {
+            email,
+            role,
+            business_profile_id: businessProfileId,
+            app_origin: window.location.origin,
+          },
         }
       );
     },
@@ -110,6 +122,40 @@ export function TeamManager({ businessProfileId }: Props) {
     },
   });
 
+  const resendMut = useMutation({
+    mutationFn: async (inviteId: string) => {
+      return apiJson(
+        `/api/team/invite/${encodeURIComponent(inviteId)}/resend?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+        "Kunde inte skicka om inbjudan",
+        { body: { business_profile_id: businessProfileId, app_origin: window.location.origin } }
+      );
+    },
+    onSuccess: () => {
+      toast({ title: "Inbjudan skickad igen" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Kunde inte skicka om", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const revokeMut = useMutation({
+    mutationFn: async (inviteId: string) => {
+      await apiJson(
+        `/api/team/invite/${encodeURIComponent(inviteId)}?business_profile_id=${encodeURIComponent(businessProfileId)}`,
+        "Kunde inte avbryta inbjudan",
+        { method: "DELETE" }
+      );
+    },
+    onSuccess: () => {
+      toast({ title: "Inbjudan avbruten" });
+      setRevokeTarget(null);
+      void qc.invalidateQueries({ queryKey: ["team-members", businessProfileId] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Kunde inte avbryta", description: err.message, variant: "destructive" });
+    },
+  });
+
   const removeMut = useMutation({
     mutationFn: async (userId: string) => {
       await apiJson(
@@ -129,6 +175,7 @@ export function TeamManager({ businessProfileId }: Props) {
   });
 
   const members = data?.members ?? [];
+  const pendingInvites = data?.pendingInvites ?? [];
   const currentUserRole = members.find((m) => m.userId === user?.id)?.role ?? null;
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
 
@@ -168,7 +215,7 @@ export function TeamManager({ businessProfileId }: Props) {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {member.displayName ?? member.email ?? member.invitedEmail ?? "Okänd"}
+                    {member.displayName ?? member.email ?? "Okänd"}
                   </p>
                   {member.displayName && member.email && (
                     <p className="text-xs text-muted-foreground truncate">{member.email}</p>
@@ -196,6 +243,58 @@ export function TeamManager({ businessProfileId }: Props) {
           </ul>
         )}
       </div>
+
+      {/* Pending invites */}
+      {!isLoading && pendingInvites.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span>Väntande inbjudningar</span>
+            <span className="text-muted-foreground font-normal">({pendingInvites.length})</span>
+          </div>
+          <ul className="divide-y divide-border rounded-lg border border-dashed border-border overflow-hidden">
+            {pendingInvites.map((invite) => (
+              <li key={invite.id} className="flex items-center gap-3 px-4 py-3 bg-muted/30">
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarFallback className="text-xs bg-muted">
+                    {initials(null, invite.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{invite.email}</p>
+                  <p className="text-xs text-muted-foreground">Väntar på att gå med</p>
+                </div>
+                <Badge variant="outline" className={`text-xs shrink-0 ${ROLE_COLORS[invite.role] ?? ""}`}>
+                  {ROLE_LABELS[invite.role] ?? invite.role}
+                </Badge>
+                {canManage && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                      onClick={() => resendMut.mutate(invite.id)}
+                      disabled={resendMut.isPending}
+                      aria-label={`Skicka om inbjudan till ${invite.email}`}
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setRevokeTarget(invite)}
+                      aria-label={`Avbryt inbjudan till ${invite.email}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Invite form */}
       {canManage && (
@@ -238,15 +337,15 @@ export function TeamManager({ businessProfileId }: Props) {
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
             <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              <strong>Admin</strong> kan hantera kopplingar och teammedlemmar.{" "}
-              <strong>Redaktör</strong> kan se och använda alla funktioner.{" "}
+              De ser bara denna profil, inga andra. <strong>Admin</strong> kan hantera kopplingar och
+              teammedlemmar. <strong>Redaktör</strong> kan se och använda alla funktioner.{" "}
               <strong>Läsare</strong> kan bara se data.
             </span>
           </div>
         </div>
       )}
 
-      {/* Remove confirm dialog */}
+      {/* Remove member confirm dialog */}
       <AlertDialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -264,6 +363,29 @@ export function TeamManager({ businessProfileId }: Props) {
             >
               {removeMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke invite confirm dialog */}
+      <AlertDialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Avbryt inbjudan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {revokeTarget?.email} kommer inte längre kunna gå med genom länken i mailet. Du kan
+              bjuda in samma e-postadress igen senare.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stäng</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => revokeTarget && revokeMut.mutate(revokeTarget.id)}
+            >
+              {revokeMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Avbryt inbjudan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

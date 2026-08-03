@@ -260,7 +260,7 @@ function withRunRecording(automationKey, supabaseAdmin, handler) {
  * }} deps
  */
 export function registerCronRoutes(app, deps) {
-  const { oauthPendingStore, supabaseAdmin, zernio, secretResolver, tokenStore } = deps;
+  const { oauthPendingStore, supabaseAdmin, zernio, secretResolver, tokenStore, baseUrl } = deps;
 
   registerCleanupOauthPendingCron(app, {
     oauthPendingStore,
@@ -296,6 +296,7 @@ export function registerCronRoutes(app, deps) {
 
   registerDailyDigestCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -307,6 +308,7 @@ export function registerCronRoutes(app, deps) {
 
   registerMarketingAlertsCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -342,6 +344,7 @@ export function registerCronRoutes(app, deps) {
 
   registerWeeklyReportCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -351,6 +354,7 @@ export function registerCronRoutes(app, deps) {
 
   registerLeadReminderCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -360,6 +364,7 @@ export function registerCronRoutes(app, deps) {
 
   registerTaskReminderCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -369,6 +374,7 @@ export function registerCronRoutes(app, deps) {
 
   registerSalesOutreachAutoCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -450,6 +456,7 @@ export function registerCronRoutes(app, deps) {
 
   registerLowStockAlertCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -460,6 +467,7 @@ export function registerCronRoutes(app, deps) {
 
   registerMailReplyAutoCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -471,6 +479,7 @@ export function registerCronRoutes(app, deps) {
 
   registerReviewReplyAutoCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     zernio,
@@ -483,6 +492,7 @@ export function registerCronRoutes(app, deps) {
 
   registerMarketingActionsCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     tokenStore,
@@ -493,6 +503,7 @@ export function registerCronRoutes(app, deps) {
 
   registerWeeklyInsightDigestCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     loadAllAutomationSettings,
@@ -503,6 +514,7 @@ export function registerCronRoutes(app, deps) {
 
   registerEngagementFollowupCron(app, {
     withRunRecording,
+    baseUrl,
     isAuthorisedCron,
     supabaseAdmin,
     zernio,

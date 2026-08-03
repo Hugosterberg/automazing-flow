@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { asUntypedSupabaseClient } from "@/lib/untypedSupabaseClient";
 import {
   computeCampaignTrends,
   campaignTrendKey,
@@ -10,9 +11,6 @@ import {
 } from "./campaignTrend";
 
 export const MARKETING_CAMPAIGN_TREND_KEY = ["marketing-campaign-trend"] as const;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SnapshotsClient = { from: (table: string) => any };
 
 /**
  * Week-over-week trends per campaign from daily marketing_campaign_snapshots.
@@ -27,7 +25,7 @@ export function useMarketingCampaignTrends(): {
     queryKey: [...MARKETING_CAMPAIGN_TREND_KEY, user?.id ?? null, businessProfileId ?? null],
     queryFn: async () => {
       if (!supabase || !businessProfileId) return new Map();
-      const { data, error } = await (supabase as unknown as SnapshotsClient)
+      const { data, error } = await asUntypedSupabaseClient(supabase)
         .from("marketing_campaign_snapshots")
         .select(
           "snapshot_date, platform, campaign_id, campaign_name, spend, roas, score, grade",

@@ -81,10 +81,8 @@ export async function runMarketingActions(deps: {
   const actedIds = new Set(log.entries.map((e) => `${e.platform}:${e.campaignId}`));
 
   const accounts = { meta: [] as Record<string, unknown>[], google: [] as Record<string, unknown>[], shopify: null as Record<string, unknown> | null };
-  for (const accountId of metaAccountIds) {
-    const stored = await tokenStore.get(accountId);
-    if (stored) accounts.meta.push(stored);
-  }
+  const metaStored = await Promise.all(metaAccountIds.map((accountId) => tokenStore.get(accountId)));
+  accounts.meta = metaStored.filter((stored): stored is Record<string, unknown> => Boolean(stored));
 
   const { data: googleRows } = await supabaseAdmin
     .from("connected_accounts")
@@ -92,10 +90,10 @@ export async function runMarketingActions(deps: {
     .eq("business_profile_id", businessProfileId)
     .eq("platform", "google_ads")
     .is("disconnected_at", null);
-  for (const row of Array.isArray(googleRows) ? googleRows : []) {
-    const stored = await tokenStore.get(String(row.id));
-    if (stored) accounts.google.push(stored);
-  }
+  const googleStored = await Promise.all(
+    (Array.isArray(googleRows) ? googleRows : []).map((row) => tokenStore.get(String(row.id)))
+  );
+  accounts.google = googleStored.filter((stored): stored is Record<string, unknown> => Boolean(stored));
 
   const { data: shopRow } = await supabaseAdmin
     .from("connected_accounts")

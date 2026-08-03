@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/apiBase";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import type { SelectedContentAsset } from "@/lib/contentSelection";
 import {
   composeReel,
@@ -162,7 +163,8 @@ export function ReelBuilderPanel({
     setImportingId(asset.id);
     try {
       const url = /^https?:\/\//i.test(asset.previewUrl) ? asset.previewUrl : apiUrl(asset.previewUrl);
-      const res = await fetch(url, { credentials: "include" });
+      // Generous timeout — this downloads a video clip, not a JSON response.
+      const res = await fetchWithTimeout(url, { credentials: "include" }, 90_000);
       if (!res.ok) throw new Error(t("reel.errors.importFailed"));
       const blob = await res.blob();
       await uploadBlob(blob, asset.name);

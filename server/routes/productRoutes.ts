@@ -295,7 +295,7 @@ export function registerProductRoutes(app, deps: ProductRoutesDeps) {
 
     const businessProfileId = String(req.businessProfileId || "").trim();
     const userId = getSessionUserId(req);
-    if (!userId) return res.status(401).json({ error: "not_authenticated" });
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
     const accountId = String((req.body as Record<string, unknown>)?.accountId || "").trim();
     if (!accountId) return res.status(400).json({ error: "missing_account_id" });

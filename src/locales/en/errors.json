@@ -4,6 +4,7 @@
   "scopeFallback": "The app did not receive all required permissions. Try connecting again and approve every requested right.",
   "fetchError": "Error: {{error}} | Status: {{status}} | Exception: {{exception}}",
   "reconnectGeneric": "Connect this integration again.",
+  "operatorConfigMessage": "This connection isn't fully set up yet for your organization. This isn't something you can fix yourself — contact whoever administers Automazing for your team so they can finish the configuration.",
   "oauth": {
     "not_authenticated": "The sign-in session was missing when OAuth finished. Open the app again, stay signed in, and restart Connect from the same page.",
     "access_denied": "The provider denied access. Try connecting again and approve the requested permissions.",

@@ -329,11 +329,11 @@ export async function fetchAlibabaImage(rawUrl: unknown): Promise<{ buffer: Buff
 
 export async function fetchAlibabaImagesForZip(imageUrls: unknown[]): Promise<Array<{ name: string; data: Buffer }>> {
   const urls = Array.isArray(imageUrls) ? imageUrls.slice(0, 24) : [];
-  const entries: Array<{ name: string; data: Buffer }> = [];
-  for (let index = 0; index < urls.length; index++) {
-    const { buffer, contentType } = await fetchAlibabaImage(urls[index]);
-    const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-    entries.push({ name: `product-${index + 1}.${extension}`, data: buffer });
-  }
-  return entries;
+  return Promise.all(
+    urls.map(async (url, index) => {
+      const { buffer, contentType } = await fetchAlibabaImage(url);
+      const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+      return { name: `product-${index + 1}.${extension}`, data: buffer };
+    })
+  );
 }

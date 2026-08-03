@@ -16,6 +16,8 @@
  *   3. "en"                — safe default while the first geo lookup runs.
  */
 
+import { fetchWithTimeout } from "./fetchWithTimeout";
+
 export type AppLanguage = "sv" | "en";
 
 export const APP_LANGUAGES: { value: AppLanguage; label: string }[] = [
@@ -89,7 +91,7 @@ export function languageFromCountry(country: string | null | undefined): AppLang
  */
 export async function detectGeoLanguage(): Promise<AppLanguage | null> {
   try {
-    const res = await fetch("/api/geo", { credentials: "include" });
+    const res = await fetchWithTimeout("/api/geo", { credentials: "include" });
     if (!res.ok) return null;
     const body = (await res.json()) as { country?: string | null };
     const lang = languageFromCountry(body.country);

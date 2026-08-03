@@ -144,6 +144,28 @@ export const DEFAULT_OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "OAuth-appen begärde scopes som inte är godkända eller tillåtna. Kontrollera leverantörens developer-portal och miljövariabler för extra scopes.",
 };
 
+/**
+ * Config-only codes have zero tenant-actionable content — they mean the app
+ * deployment itself is missing an OAuth client id/secret or a dev-only host
+ * setting (e.g. "Kontrollera GOOGLE_CLIENT_ID..."). A tenant business owner
+ * has no access to env vars or the provider's developer console, so these
+ * must never be shown as the primary message — only whoever administers the
+ * Automazing deployment can act on them. `OAuthErrorAlert` uses this to swap
+ * in a generic, tenant-appropriate message and tuck the technical detail
+ * into the collapsible "Tekniska detaljer" section instead.
+ */
+const OPERATOR_ONLY_EXTRA_CODES = new Set([
+  "backend_unavailable",
+  "shopify_public_url_missing",
+  "shopify_public_url_must_be_https",
+  "notion_public_url_must_be_https",
+]);
+
+export function isOperatorConfigErrorCode(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return code.endsWith("_not_configured") || OPERATOR_ONLY_EXTRA_CODES.has(code);
+}
+
 export function parseOAuthErrorDetails(searchParams: URLSearchParams): OAuthErrorDetails | null {
   const code = searchParams.get("oauth_error");
   if (!code) return null;

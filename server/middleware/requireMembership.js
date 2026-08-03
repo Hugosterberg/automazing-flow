@@ -9,6 +9,15 @@
  *     Multi-tenancy enforcement relies on RLS in cloud mode.
  *   - If supabaseServiceClient is not configured the middleware fails closed
  *     (503) except for local-mode users.
+ *
+ * This is one of two tenant-scoping mechanisms in the app, by design, not
+ * duplication: this one gates routes backed by Postgres/RLS (`memberships`
+ * rows). Routes that instead fan out over the OAuth token store (marketing
+ * campaigns, unified inbox, unread counts) use `server/lib/profileScope.ts`
+ * to narrow to the active profile, because token-store accounts aren't rows
+ * in a membership-checked table. Adding a new tenant-scoped route: use this
+ * middleware if it reads/writes Supabase tables; use profileScope helpers if
+ * it reads live provider data from the token store instead.
  */
 export function createRequireMembership({ supabaseServiceClient, getSessionUserId }) {
   return async function requireMembership(req, res, next) {

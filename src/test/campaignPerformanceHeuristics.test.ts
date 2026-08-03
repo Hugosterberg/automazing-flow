@@ -14,6 +14,7 @@ function snapshotWithCampaigns(campaigns: CampaignSnapshot[]): TenantSnapshot {
     socialEngagementTrends: [],
     upcomingPostsCount: null,
     campaigns,
+    leads: [],
   };
 }
 

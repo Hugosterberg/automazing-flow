@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { asUntypedSupabaseClient, type UntypedSupabaseClient } from "@/lib/untypedSupabaseClient";
 import type { LeadStatus } from "./leadHelpers";
 
 export interface Lead {
@@ -31,12 +32,8 @@ export interface LeadInput {
   nextFollowUpAt?: string | null;
 }
 
-// `leads` isn't in the generated Supabase types yet, so route through a loose
-// view of the client (same approach as profile_documents).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag the migration
-type LeadsClient = { from: (table: string) => any };
-function client(): LeadsClient | null {
-  return supabase ? (supabase as unknown as LeadsClient) : null;
+function client(): UntypedSupabaseClient | null {
+  return supabase ? asUntypedSupabaseClient(supabase) : null;
 }
 
 function rowToLead(r: Record<string, unknown>): Lead {

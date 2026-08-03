@@ -169,11 +169,16 @@ function PlatformGroup({
  */
 export function MarketingCampaigns() {
   const { t } = useTranslation("marketing");
-  const { platforms, connected, analytics, isLoading, refetch } = useMarketingCampaigns();
+  const { platforms, connected, analytics, isLoading, isError, refetch } = useMarketingCampaigns();
   const { trends } = useMarketingCampaignTrends();
   const anyConnected = connected.meta_business || connected.google_ads;
 
-  if (!isLoading && !anyConnected && platforms.length === 0) {
+  // A fetch error also leaves `connected`/`platforms` at their empty
+  // defaults — without the isError check, a transient API failure would be
+  // indistinguishable from "no ad platform connected" and the whole card
+  // (including for users who genuinely do have ads connected) would just
+  // silently vanish instead of showing a retry path.
+  if (!isLoading && !isError && !anyConnected && platforms.length === 0) {
     return null;
   }
 
@@ -201,6 +206,11 @@ export function MarketingCampaigns() {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {isError ? (
+          <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 px-3 py-2">
+            {t("campaigns.loadError")}
+          </p>
+        ) : null}
         {analytics && analytics.campaignsPoor > 0 ? (
           <p className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
             {t("campaigns.needsAction", { count: analytics.campaignsPoor })}

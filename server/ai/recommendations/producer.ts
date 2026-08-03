@@ -32,6 +32,7 @@ import {
   prettyAccountLabel,
   type AccountSnapshot,
   type CampaignSnapshot,
+  type LeadSnapshot,
   type SocialEngagementTrend,
   type TaskSnapshot,
   type TenantSnapshot,
@@ -268,6 +269,43 @@ async function loadLatestCampaignSnapshots(
   return result;
 }
 
+const OPEN_LEAD_STATUSES = ["new", "contacted", "qualified"];
+
+interface LeadRow {
+  id: string;
+  name: string | null;
+  company: string | null;
+  status: string | null;
+  next_follow_up_at: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+}
+
+/** Open leads in the pipeline, for the stale-lead heuristic. Best-effort like the task snapshot. */
+async function loadLeadSnapshot(
+  supabase: SupabaseLike,
+  businessProfileId: string
+): Promise<LeadSnapshot[]> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id,name,company,status,next_follow_up_at,updated_at,created_at")
+    .eq("business_profile_id", businessProfileId)
+    .in("status", OPEN_LEAD_STATUSES);
+  if (error) {
+    console.warn(`[ai-recommendations] leads lookup failed bp=${businessProfileId}:`, error.message);
+    return [];
+  }
+  return ((Array.isArray(data) ? data : []) as LeadRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    company: row.company,
+    status: row.status,
+    nextFollowUpAt: row.next_follow_up_at,
+    updatedAt: row.updated_at,
+    createdAt: row.created_at,
+  }));
+}
+
 async function loadLiveRecs(
   supabase: SupabaseLike,
   businessProfileId: string
@@ -337,10 +375,11 @@ export async function generateAiRecommendations(
     loadTaskSnapshot(supabase, input.businessProfileId),
   ]);
 
-  const [socialEngagementTrends, upcomingPostsCount, campaigns] = await Promise.all([
+  const [socialEngagementTrends, upcomingPostsCount, campaigns, leads] = await Promise.all([
     loadSocialEngagementTrends(supabase, input.businessProfileId, accounts),
     loadUpcomingPostsCount(supabase, input.businessProfileId),
     loadLatestCampaignSnapshots(supabase, input.businessProfileId),
+    loadLeadSnapshot(supabase, input.businessProfileId),
   ]);
 
   const snapshot: TenantSnapshot = {
@@ -350,6 +389,7 @@ export async function generateAiRecommendations(
     socialEngagementTrends,
     upcomingPostsCount,
     campaigns,
+    leads,
   };
 
   const { candidates, errors } = runAllHeuristics(snapshot);

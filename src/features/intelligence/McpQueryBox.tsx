@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,13 +51,21 @@ export function McpQueryBox({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<McpQueryResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current !== null) window.clearTimeout(copiedTimeoutRef.current);
+    };
+  }, []);
 
   async function copyResult() {
     if (!result?.text) return;
     try {
       await navigator.clipboard.writeText(result.text);
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      if (copiedTimeoutRef.current !== null) window.clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
     }
