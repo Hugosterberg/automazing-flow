@@ -26,6 +26,7 @@
   },
   "guide": {
     "title": "Så kopplar du {{label}}",
+    "titleShort": "Checklista",
     "aria": "Steg för steg: {{label}}",
     "done": "Klart",
     "reset": "Nollställ",
@@ -60,8 +61,20 @@
     },
     "whyFallback": "Koppla {{label}} så den här profilen kan synka data in i Automazing.",
     "whyTrust": "Du har kontroll — utkast godkänns innan något skickas.",
+    "whyFlow": "Nästa steg: eventuella förkrav, koppla kontot, sedan testar vi automatiskt.",
     "noGuide": "Inga extra steg för den här leverantören. Fortsätt till koppling.",
     "recommendedPath": "Rekommenderad väg:",
+    "choosePath": "Välj hur du kopplar",
+    "pathDefault": "rekommenderad",
+    "connectHint": "Du loggar in hos {{label}} och ger åtkomst. Vi publicerar eller skickar aldrig utan ditt godkännande.",
+    "progressAria": "Kopplingsförlopp",
+    "stepShort": {
+      "why": "Varför",
+      "prerequisites": "Förkrav",
+      "connect": "Koppla",
+      "verify": "Testa",
+      "done": "Klart"
+    },
     "continue": "Fortsätt",
     "continueToConnect": "Fortsätt till koppling",
     "back": "Tillbaka",
@@ -77,6 +90,7 @@
     "verifyNoAccount": "Inget konto ännu. Försök koppla igen.",
     "verifyFailed": "Kopplingstestet gick inte igenom.",
     "errorTitle": "Kopplingen är inte verifierad ännu",
+    "fixLabel": "Prova så här:",
     "retry": "Försök igen",
     "close": "Stäng",
     "doneTitle": "{{label}} är kopplad och verifierad",
@@ -92,5 +106,10 @@
     "nextCompany": "Öppna Företag",
     "nextIntelligence": "Öppna Intelligence",
     "nextConnections": "Tillbaka till Kopplingar"
+  },
+  "card": {
+    "connect": "Koppla",
+    "reconnect": "Koppla om",
+    "add": "Lägg till"
   }
 }

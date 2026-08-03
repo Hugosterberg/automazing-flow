@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { BookOpen, CheckSquare2, ChevronRight, Info, Layers, Link2, Loader2, PlugZap, RefreshCw, Square, Trash2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function ConnectionCard({
   onToggleSelect,
   manuallyConnected = false,
 }: Props) {
+  const { t } = useTranslation("connections");
   // Rows that need action start expanded so the fix hint is visible at once.
   const [expanded, setExpanded] = useState(() => {
     const initialStatus = aggregateStatus(
@@ -259,7 +261,12 @@ export function ConnectionCard({
     }
   }
 
-  const primaryLabel = active.length === 0 ? "Koppla" : reconnectNeeded ? "Koppla om" : "Lägg till / koppla om";
+  const primaryLabel =
+    active.length === 0
+      ? t("card.connect")
+      : reconnectNeeded
+        ? t("card.reconnect")
+        : t("card.add");
   const PrimaryIcon = active.length === 0 ? Link2 : RefreshCw;
   const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
   const extraPathLabels = pathOptions
@@ -382,7 +389,11 @@ export function ConnectionCard({
           {mcpConnecting && mcpMeta?.auth === "keyless" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : null}
-          {active.length === 0 ? "Koppla" : reconnectNeeded ? "Koppla om" : "Lägg till"}
+          {active.length === 0
+            ? t("card.connect")
+            : reconnectNeeded
+              ? t("card.reconnect")
+              : t("card.add")}
         </Button>
       </div>
 
@@ -537,9 +548,20 @@ export function ConnectionCard({
 
         <div className="flex flex-wrap gap-2 pt-1">
           {connectConfig && (!connectConfig.manual || isMcpPlatform(entry.platform)) ? (
-            entry.platform === "google_ads" ||
-            entry.platform === "google_business" ||
-            entry.platform === "tripadvisor" ? (
+            onStartSession ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={active.length === 0 || reconnectNeeded ? "default" : "outline"}
+                className="gap-1.5"
+                onClick={() => onStartSession(entry.platform)}
+              >
+                <PrimaryIcon className="h-3.5 w-3.5" />
+                {primaryLabel}
+              </Button>
+            ) : entry.platform === "google_ads" ||
+              entry.platform === "google_business" ||
+              entry.platform === "tripadvisor" ? (
               <>
                 <Button
                   type="button"

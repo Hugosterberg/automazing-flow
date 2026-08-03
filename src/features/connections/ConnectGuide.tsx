@@ -17,9 +17,11 @@ interface Props {
   label: string;
   /** Server-side requirements from the catalog, shown as an admin note. */
   serverNeeds?: string;
+  /** Tighter chrome for embedding inside ConnectSession. */
+  compact?: boolean;
 }
 
-export function ConnectGuide({ platform, label, serverNeeds }: Props) {
+export function ConnectGuide({ platform, label, serverNeeds, compact = false }: Props) {
   const { t } = useTranslation("connections");
   const guide = useMemo(() => getConnectGuide(platform, label), [platform, label]);
   const [done, setDone] = useState<number[]>(() => readConnectGuideProgress(platform));
@@ -73,10 +75,18 @@ export function ConnectGuide({ platform, label, serverNeeds }: Props) {
   const allDone = completed === total;
 
   return (
-    <section className="rounded-lg border border-border/70 bg-muted/20 p-3" aria-label={t("guide.aria", { label })}>
+    <section
+      className={cn(
+        "rounded-lg border border-border/70 bg-muted/20",
+        compact ? "p-2.5" : "p-3"
+      )}
+      aria-label={t("guide.aria", { label })}
+    >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold text-foreground">{t("guide.title", { label })}</p>
+          <p className={cn("font-semibold text-foreground", compact ? "text-[11px]" : "text-xs")}>
+            {compact ? t("guide.titleShort") : t("guide.title", { label })}
+          </p>
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums",

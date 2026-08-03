@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Circle, Rocket, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, Rocket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -106,86 +106,109 @@ export function FirstWinChecklist({
   return (
     <section
       className={cn(
-        "rounded-lg border border-primary/25 bg-primary/[0.04] px-3 py-3 sm:px-4",
+        "overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-b from-primary/[0.06] to-background",
         className
       )}
       aria-label={t("firstWin.aria")}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2">
-          <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">
-              {t("firstWin.title", { done, total, percent })}
-            </p>
-            <p className="text-xs text-muted-foreground">{t("firstWin.subtitle")}</p>
-          </div>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 shrink-0 p-0 text-muted-foreground"
-          aria-label={t("firstWin.dismissAria")}
-          onClick={() => persist({ dismissedAt: new Date().toISOString() })}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-[width]"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-
-      <ul className="mt-3 space-y-1.5">
-        {steps.map((step) => (
-          <li
-            key={step.id}
-            className="flex flex-col gap-1.5 rounded-md border border-border/60 bg-background/70 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 items-start gap-2">
-              {step.done ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-              ) : (
-                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-              )}
-              <div className="min-w-0">
-                <p className={cn("text-xs font-medium", step.done && "text-muted-foreground")}>
-                  {step.title}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-snug">{step.detail}</p>
-              </div>
+      <div className="space-y-2 border-b border-border/50 px-3.5 py-3 sm:px-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-2">
+            <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Rocket className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                {t("firstWin.title", { done, total, percent })}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t("firstWin.subtitle")}</p>
             </div>
-            <div className="flex shrink-0 gap-1 sm:pl-6">
-              {!step.done && (step.id === "enable_automation" || step.id === "open_inbox") ? (
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 p-0 text-muted-foreground"
+            aria-label={t("firstWin.dismissAria")}
+            onClick={() => persist({ dismissedAt: new Date().toISOString() })}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `${Math.max(6, percent)}%` }}
+          />
+        </div>
+      </div>
+
+      <ul className="space-y-2 p-3 sm:p-3.5">
+        {steps.map((step, index) => {
+          const isNext = !step.done && steps.slice(0, index).every((s) => s.done);
+          return (
+            <li
+              key={step.id}
+              className={cn(
+                "flex flex-col gap-1.5 rounded-xl border px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between",
+                step.done
+                  ? "border-border/50 bg-background/50"
+                  : isNext
+                    ? "border-primary/25 bg-background/90 shadow-sm"
+                    : "border-border/60 bg-background/70"
+              )}
+            >
+              <div className="flex min-w-0 items-start gap-2">
+                {step.done ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                ) : (
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold tabular-nums",
+                      isNext
+                        ? "border border-primary/50 bg-primary/10 text-primary"
+                        : "border border-muted-foreground/30 text-muted-foreground"
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className={cn("text-xs font-medium", step.done && "text-muted-foreground")}>
+                    {step.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{step.detail}</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-1 sm:pl-6">
+                {!step.done && (step.id === "enable_automation" || step.id === "open_inbox") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    onClick={() => markStep(step.id)}
+                  >
+                    {t("firstWin.markDone")}
+                  </Button>
+                ) : null}
                 <Button
+                  asChild
                   type="button"
                   size="sm"
-                  variant="ghost"
+                  variant={step.done ? "ghost" : isNext ? "default" : "outline"}
                   className="h-7 text-xs"
-                  onClick={() => markStep(step.id)}
                 >
-                  {t("firstWin.markDone")}
+                  <Link to={step.to}>
+                    {step.cta}
+                    <ArrowRight className="ml-1 h-3 w-3" aria-hidden />
+                  </Link>
                 </Button>
-              ) : null}
-              <Button
-                asChild
-                type="button"
-                size="sm"
-                variant={step.done ? "ghost" : "outline"}
-                className="h-7 text-xs"
-              >
-                <Link to={step.to}>
-                  {step.cta}
-                  <ArrowRight className="ml-1 h-3 w-3" aria-hidden />
-                </Link>
-              </Button>
-            </div>
-          </li>
-        ))}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Loader2,
   PlugZap,
+  ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CONNECTION_CATALOG } from "@/lib/connectionCatalog";
+import { AREA_LABELS, CONNECTION_CATALOG } from "@/lib/connectionCatalog";
 import type { AccountPlatform, IntelligencePlatform } from "@/types/accounts";
 import type { Connection } from "@/types/connection";
 import { useAccounts } from "@/context/AccountsContext";
@@ -382,63 +383,121 @@ export function ConnectSession({
     persist("connect");
   }
 
+  function goForwardFromWhy() {
+    if (guide) {
+      setStep("prerequisites");
+      persist("prerequisites");
+    } else {
+      goConnect();
+    }
+  }
+
+  function goBackFromConnect() {
+    if (guide) {
+      setStep("prerequisites");
+      persist("prerequisites");
+    } else {
+      setStep("why");
+      persist("why");
+    }
+  }
+
   if (!platform || !entry) return null;
 
   const dualPath =
     platform === "google_ads" || platform === "google_business" || platform === "tripadvisor";
+  const primaryArea = entry.areas[0];
+  const areaLabel = AREA_LABELS[primaryArea] ?? primaryArea;
+
+  const progressSteps = guide
+    ? (["why", "prerequisites", "connect", "verify", "done"] as const)
+    : (["why", "connect", "verify", "done"] as const);
+
+  function stepIndex(s: ConnectSessionStep): number {
+    const mapped = s === "error" ? "verify" : s;
+    const idx = progressSteps.indexOf(mapped as (typeof progressSteps)[number]);
+    return idx < 0 ? 0 : idx;
+  }
+  const currentIdx = stepIndex(step);
 
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <PlugZap className="h-4 w-4 text-primary" aria-hidden />
-              {t("session.title", { label })}
-            </DialogTitle>
-            <DialogDescription>{t(`session.step.${step}`)}</DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.07] via-background to-muted/30 px-5 pb-4 pt-5">
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                  <PlugZap className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {areaLabel}
+                </span>
+              </div>
+              <DialogTitle className="text-lg leading-snug">
+                {t("session.title", { label })}
+              </DialogTitle>
+              <DialogDescription className="text-sm">
+                {t(`session.step.${step === "error" ? "error" : step}`)}
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-1">
-            {/* Progress dots */}
-            <ol className="flex flex-wrap gap-1.5" aria-hidden>
-              {(["why", "prerequisites", "connect", "verify", "done"] as const).map((s) => {
-                const active =
-                  step === s ||
-                  (step === "error" && s === "verify") ||
-                  (["prerequisites", "connect", "verify", "done"].includes(step) && s === "why") ||
-                  (["connect", "verify", "done"].includes(step) && s === "prerequisites") ||
-                  (["verify", "done"].includes(step) && s === "connect") ||
-                  (step === "done" && s === "verify");
-                const current = step === s || (step === "error" && s === "verify");
+            <ol className="mt-4 flex gap-1" aria-label={t("session.progressAria")}>
+              {progressSteps.map((s, i) => {
+                const done = i < currentIdx || step === "done";
+                const current = i === currentIdx && step !== "done";
                 return (
-                  <li
-                    key={s}
-                    className={cn(
-                      "h-1.5 flex-1 min-w-[2rem] rounded-full",
-                      current ? "bg-primary" : active ? "bg-primary/40" : "bg-muted"
-                    )}
-                  />
+                  <li key={s} className="min-w-0 flex-1 space-y-1">
+                    <div
+                      className={cn(
+                        "h-1.5 rounded-full transition-colors",
+                        done || current ? "bg-primary" : "bg-muted"
+                      )}
+                    />
+                    <p
+                      className={cn(
+                        "truncate text-[10px] font-medium",
+                        current ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {t(`session.stepShort.${s}`)}
+                    </p>
+                  </li>
                 );
               })}
             </ol>
+          </div>
 
+          <div className="max-h-[50vh] space-y-4 overflow-y-auto px-5 py-4 sm:max-h-[55vh]">
             {step === "why" ? (
               <div className="space-y-3">
-                <p className="text-sm text-foreground leading-relaxed">{whyText}</p>
-                <p className="text-xs text-muted-foreground">{t("session.whyTrust")}</p>
+                <div className="rounded-xl border border-border/70 bg-card/60 px-3.5 py-3">
+                  <p className="text-sm leading-relaxed text-foreground">{whyText}</p>
+                </div>
+                <p className="inline-flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                  {t("session.whyTrust")}
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground/90">
+                  {t("session.whyFlow")}
+                </p>
               </div>
             ) : null}
 
             {step === "prerequisites" ? (
               <div className="space-y-3">
                 {guide ? (
-                  <ConnectGuide platform={platform} label={label} serverNeeds={entry.serverNeeds} />
+                  <ConnectGuide
+                    platform={platform}
+                    label={label}
+                    serverNeeds={entry.serverNeeds}
+                    compact
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("session.noGuide")}</p>
                 )}
                 {defaultPath ? (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="rounded-md border border-border/60 bg-muted/20 px-2.5 py-2 text-[11px] text-muted-foreground">
                     {t("session.recommendedPath")}{" "}
                     <span className="font-medium text-foreground">{defaultPath.label}</span>
                   </p>
@@ -448,22 +507,35 @@ export function ConnectSession({
 
             {step === "connect" ? (
               <div className="space-y-3">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {t("session.connectHint", { label })}
+                </p>
                 {dualPath || pathOptions.length > 1 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {pathOptions
-                      .filter((o) => o.id === "zernio" || o.id === "official")
-                      .map((o) => (
-                        <Button
-                          key={o.id}
-                          type="button"
-                          size="sm"
-                          variant={provider === o.id ? "default" : "outline"}
-                          className="h-8 text-xs"
-                          onClick={() => setProvider(o.id as "zernio" | "official")}
-                        >
-                          {o.label}
-                        </Button>
-                      ))}
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-medium text-foreground/80">
+                      {t("session.choosePath")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {pathOptions
+                        .filter((o) => o.id === "zernio" || o.id === "official")
+                        .map((o) => (
+                          <Button
+                            key={o.id}
+                            type="button"
+                            size="sm"
+                            variant={provider === o.id ? "default" : "outline"}
+                            className="h-8 text-xs"
+                            onClick={() => setProvider(o.id as "zernio" | "official")}
+                          >
+                            {o.label}
+                            {o.isDefault ? (
+                              <span className="ml-1 text-[10px] opacity-70">
+                                ({t("session.pathDefault")})
+                              </span>
+                            ) : null}
+                          </Button>
+                        ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -475,6 +547,7 @@ export function ConnectSession({
                       value={shopifyShop}
                       onChange={(e) => setShopifyShop(e.target.value)}
                       placeholder={SHOPIFY_DOMAIN_EXAMPLE}
+                      autoFocus
                     />
                     {shopifyError ? (
                       <p className="text-xs text-destructive">{shopifyError}</p>
@@ -491,6 +564,7 @@ export function ConnectSession({
                       onChange={(e) => setMcpCredential(e.target.value)}
                       placeholder={mcpMeta.credentialPlaceholder}
                       type={mcpMeta.auth === "api_key" ? "password" : "text"}
+                      autoFocus
                     />
                     {mcpError ? <p className="text-xs text-destructive">{mcpError}</p> : null}
                   </div>
@@ -507,24 +581,33 @@ export function ConnectSession({
             ) : null}
 
             {step === "verify" ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-                <p className="text-sm font-medium">{t("session.verifying")}</p>
-                <p className="text-xs text-muted-foreground">{t("session.verifyingHint")}</p>
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                  <Loader2 className="h-7 w-7 animate-spin text-primary" aria-hidden />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">{t("session.verifying")}</p>
+                  <p className="max-w-xs text-xs text-muted-foreground leading-relaxed">
+                    {t("session.verifyingHint")}
+                  </p>
+                </div>
               </div>
             ) : null}
 
             {step === "error" ? (
-              <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-3">
-                <div className="flex items-start gap-2">
-                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-sm font-medium text-foreground">{t("session.errorTitle")}</p>
+              <div className="space-y-3 rounded-xl border border-amber-500/35 bg-amber-500/[0.06] px-3.5 py-3.5">
+                <div className="flex items-start gap-2.5">
+                  <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="text-sm font-semibold text-foreground">{t("session.errorTitle")}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {errorMessage || t("session.verifyFailed")}
                     </p>
                     {errorFix ? (
-                      <p className="text-xs text-foreground/90 leading-relaxed">{errorFix}</p>
+                      <p className="rounded-md border border-amber-500/20 bg-background/60 px-2.5 py-2 text-xs leading-relaxed text-foreground/90">
+                        <span className="font-medium">{t("session.fixLabel")} </span>
+                        {errorFix}
+                      </p>
                     ) : null}
                   </div>
                 </div>
@@ -532,35 +615,41 @@ export function ConnectSession({
             ) : null}
 
             {step === "done" ? (
-              <div className="space-y-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-3">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-sm font-medium">{t("session.doneTitle", { label })}</p>
-                    <p className="text-xs text-muted-foreground">{t("session.doneHint")}</p>
-                  </div>
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600" aria-hidden />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-base font-semibold text-foreground">
+                    {t("session.doneTitle", { label })}
+                  </p>
+                  <p className="max-w-sm text-xs text-muted-foreground leading-relaxed">
+                    {t("session.doneHint")}
+                  </p>
                 </div>
               </div>
             ) : null}
           </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+          <DialogFooter className="flex-col gap-2 border-t border-border/60 bg-muted/10 px-5 py-4 sm:flex-col sm:space-x-0">
             {step === "why" ? (
-              <Button type="button" className="w-full gap-1" onClick={() => {
-                setStep("prerequisites");
-                persist("prerequisites");
-              }}>
-                {t("session.continue")}
+              <Button type="button" className="w-full gap-1" onClick={goForwardFromWhy}>
+                {guide ? t("session.continue") : t("session.continueToConnect")}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Button>
             ) : null}
 
             {step === "prerequisites" ? (
               <div className="flex w-full flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => {
-                  setStep("why");
-                  persist("why");
-                }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setStep("why");
+                    persist("why");
+                  }}
+                >
                   {t("session.back")}
                 </Button>
                 <Button type="button" className="flex-1 gap-1" onClick={goConnect}>
@@ -572,15 +661,7 @@ export function ConnectSession({
 
             {step === "connect" ? (
               <div className="flex w-full flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setStep("prerequisites");
-                    persist("prerequisites");
-                  }}
-                >
+                <Button type="button" variant="outline" className="flex-1" onClick={goBackFromConnect}>
                   {t("session.back")}
                 </Button>
                 <Button

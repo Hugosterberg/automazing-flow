@@ -26,6 +26,7 @@
   },
   "guide": {
     "title": "How to connect {{label}}",
+    "titleShort": "Checklist",
     "aria": "Step by step: {{label}}",
     "done": "Done",
     "reset": "Reset",
@@ -60,8 +61,20 @@
     },
     "whyFallback": "Connect {{label}} so this profile can sync data into Automazing.",
     "whyTrust": "You stay in control — drafts are approved before anything is sent.",
+    "whyFlow": "Next you’ll see any prerequisites, connect your account, then we test it automatically.",
     "noGuide": "No extra setup steps for this provider. Continue to connect.",
     "recommendedPath": "Recommended path:",
+    "choosePath": "Choose how to connect",
+    "pathDefault": "recommended",
+    "connectHint": "You’ll sign in with {{label}} and grant access. We never post or send without your approval.",
+    "progressAria": "Connection progress",
+    "stepShort": {
+      "why": "Why",
+      "prerequisites": "Prep",
+      "connect": "Connect",
+      "verify": "Test",
+      "done": "Done"
+    },
     "continue": "Continue",
     "continueToConnect": "Continue to connect",
     "back": "Back",
@@ -77,6 +90,7 @@
     "verifyNoAccount": "No account row yet. Try connecting again.",
     "verifyFailed": "The connection test did not pass.",
     "errorTitle": "Connection not verified yet",
+    "fixLabel": "What to try:",
     "retry": "Try again",
     "close": "Close",
     "doneTitle": "{{label}} is connected and verified",
@@ -92,5 +106,10 @@
     "nextCompany": "Open Company",
     "nextIntelligence": "Open Intelligence",
     "nextConnections": "Back to Connections"
+  },
+  "card": {
+    "connect": "Connect",
+    "reconnect": "Reconnect",
+    "add": "Add"
   }
 }
