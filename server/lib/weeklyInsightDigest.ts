@@ -2,6 +2,8 @@
  * Weekly social/marketing insight digest — emailed when the social workflow is on.
  */
 
+import { escapeHtml } from "./htmlEscape.ts";
+
 export interface WeeklyInsightDigestInput {
   businessName: string;
   appUrl?: string;
@@ -18,14 +20,6 @@ export interface WeeklyInsightDigest {
   subject: string;
   html: string;
   text: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export function buildWeeklyInsightDigest(input: WeeklyInsightDigestInput): WeeklyInsightDigest {

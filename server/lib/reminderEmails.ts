@@ -2,6 +2,8 @@
  * Focused reminder emails for lead follow-ups and task due dates.
  */
 
+import { escapeHtml } from "./htmlEscape.ts";
+
 export interface LeadReminderInput {
   businessName: string;
   appUrl?: string;
@@ -21,15 +23,6 @@ export interface ReminderEmail {
   subject: string;
   html: string;
   text: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function listHtml(items: string[]): string {

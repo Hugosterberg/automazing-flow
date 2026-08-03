@@ -104,30 +104,131 @@ export function registerDailyDigestCron(
           continue;
         }
         try {
-          // Connection issues (anything not healthy/pending and still active).
-          const { data: accounts } = await supabaseAdmin
-            .from("connected_accounts")
-            .select("platform,health,disconnected_at")
-            .eq("business_profile_id", businessProfileId);
-          const connectionIssues = (Array.isArray(accounts) ? accounts : [])
-            .filter((a) => !a?.disconnected_at)
-            .filter((a) => a?.health && a.health !== "healthy" && a.health !== "pending" && a.health !== "disconnected")
-            .map((a) => ({ label: platformLabel(a.platform), health: String(a.health) }));
-
-          // Open tasks with due dates → overdue vs due-today.
-          const { data: taskRows } = await supabaseAdmin
-            .from("tasks")
-            .select("title,status,due_at")
-            .eq("business_profile_id", businessProfileId)
-            .in("status", ["open", "in_progress", "blocked"]);
           const now = new Date();
           const startOfToday = new Date(now);
           startOfToday.setHours(0, 0, 0, 0);
           const endOfToday = new Date(now);
           endOfToday.setHours(23, 59, 59, 999);
+
+          // These reads are independent of each other, so they run concurrently:
+          // sequentially they were ~10 round trips per profile against a 50s
+          // budget, which silently deferred later profiles out of their digest.
+          // Each signal still owns its own error handling, so one failing source
+          // degrades to a neutral value instead of taking the others with it.
+          const [
+            accounts,
+            taskRows,
+            recRows,
+            leadsToFollowUp,
+            outreachQueuePending,
+            reviewsNeedingReply,
+            marketing,
+            unbilledOrdersCount,
+            pendingCreditInvoicesCount,
+          ] = await Promise.all([
+            // Also carries `id`/`platform` so the Shopify lookup below needs no
+            // second query against the same table.
+            (async () => {
+              const { data } = await supabaseAdmin
+                .from("connected_accounts")
+                .select("id,platform,health,disconnected_at")
+                .eq("business_profile_id", businessProfileId);
+              return Array.isArray(data) ? data : [];
+            })().catch(() => []),
+
+            (async () => {
+              const { data } = await supabaseAdmin
+                .from("tasks")
+                .select("title,status,due_at")
+                .eq("business_profile_id", businessProfileId)
+                .in("status", ["open", "in_progress", "blocked"]);
+              return Array.isArray(data) ? data : [];
+            })().catch(() => []),
+
+            (async () => {
+              const { data } = await supabaseAdmin
+                .from("ai_recommendations")
+                .select("title,status")
+                .eq("business_profile_id", businessProfileId)
+                .in("status", ["new", "seen"]);
+              return Array.isArray(data) ? data : [];
+            })().catch(() => []),
+
+            // Open leads whose follow-up is overdue or due today (best-effort —
+            // the table may not exist before its migration is applied).
+            (async () => {
+              const { data } = await supabaseAdmin
+                .from("leads")
+                .select("status,next_follow_up_at")
+                .eq("business_profile_id", businessProfileId)
+                .in("status", ["new", "contacted", "qualified"])
+                .not("next_follow_up_at", "is", null)
+                .lte("next_follow_up_at", endOfToday.toISOString());
+              return Array.isArray(data) ? data.length : 0;
+            })().catch(() => 0),
+
+            (async () => {
+              const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, "outreach-queue");
+              return countPendingOutreachDrafts(doc?.data);
+            })().catch(() => 0),
+
+            (async () => {
+              const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, "review-replies");
+              const raw = doc?.data;
+              if (!raw || typeof raw !== "object") return 0;
+              const pending = Number(raw.pendingCount ?? 0);
+              const updatedAt = String(raw.updatedAt || "");
+              const age = updatedAt ? Date.now() - Date.parse(updatedAt) : Number.POSITIVE_INFINITY;
+              const isFresh = Number.isFinite(age) && age < 48 * 60 * 60 * 1000;
+              return Number.isFinite(pending) && pending > 0 && isFresh ? Math.trunc(pending) : 0;
+            })().catch(() => 0),
+
+            (async () => {
+              const { data } = await supabaseAdmin
+                .from("marketing_snapshots")
+                .select("snapshot_date,roas,portfolio_score")
+                .eq("business_profile_id", businessProfileId)
+                .order("snapshot_date", { ascending: false })
+                .limit(14);
+              const rows = Array.isArray(data) ? data : [];
+              const latestRoas = rows[0]?.roas == null ? null : Number(rows[0].roas);
+              if (latestRoas != null && Number.isFinite(latestRoas) && latestRoas < 1) {
+                return { underwaterRoas: latestRoas, marketingTrendDown: false };
+              }
+              const delta = portfolioScoreDeltaFromSnapshots(
+                rows.map((r) => ({
+                  snapshotDate: String(r.snapshot_date || ""),
+                  portfolioScore: r.portfolio_score == null ? null : Number(r.portfolio_score),
+                })),
+              );
+              return { underwaterRoas: null, marketingTrendDown: delta != null && delta <= -10 };
+            })().catch(() => ({ underwaterRoas: null, marketingTrendDown: false })),
+
+            (async () => {
+              const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_INVOICE_QUEUE_DOC_KEY);
+              return parseFortnoxInvoiceQueue(doc?.data).filter(
+                (q) => q.status === "suggested" || q.status === "failed"
+              ).length;
+            })().catch(() => 0),
+
+            (async () => {
+              const doc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_CREDIT_QUEUE_DOC_KEY);
+              return parseFortnoxCreditQueue(doc?.data).filter(
+                (q) => q.status === "suggested" || q.status === "failed"
+              ).length;
+            })().catch(() => 0),
+          ]);
+
+          // Connection issues (anything not healthy/pending and still active).
+          const connectionIssues = accounts
+            .filter((a) => !a?.disconnected_at)
+            .filter((a) => a?.health && a.health !== "healthy" && a.health !== "pending" && a.health !== "disconnected")
+            .map((a) => ({ label: platformLabel(a.platform), health: String(a.health) }));
+
+          // Open tasks with due dates → overdue vs due-today.
           const overdueTasks = [];
           const dueTodayTasks = [];
-          for (const t of Array.isArray(taskRows) ? taskRows : []) {
+          for (const t of taskRows) {
             if (!t?.due_at) continue;
             const due = new Date(t.due_at);
             if (Number.isNaN(due.getTime())) continue;
@@ -135,96 +236,19 @@ export function registerDailyDigestCron(
             else if (due <= endOfToday) dueTodayTasks.push({ title: String(t.title || "Task") });
           }
 
-          // Fresh recommendations.
-          const { data: recRows } = await supabaseAdmin
-            .from("ai_recommendations")
-            .select("title,status")
-            .eq("business_profile_id", businessProfileId)
-            .in("status", ["new", "seen"]);
-          const newRecommendations = (Array.isArray(recRows) ? recRows : []).map((r) => ({
+          const newRecommendations = recRows.map((r) => ({
             title: String(r?.title || "Recommendation"),
           }));
 
-          // Open leads whose follow-up is overdue or due today (best-effort —
-          // the table may not exist before its migration is applied).
-          let leadsToFollowUp = 0;
-          try {
-            const { data: leadRows } = await supabaseAdmin
-              .from("leads")
-              .select("status,next_follow_up_at")
-              .eq("business_profile_id", businessProfileId)
-              .in("status", ["new", "contacted", "qualified"])
-              .not("next_follow_up_at", "is", null)
-              .lte("next_follow_up_at", endOfToday.toISOString());
-            leadsToFollowUp = Array.isArray(leadRows) ? leadRows.length : 0;
-          } catch {
-            /* leads table not available yet */
-          }
+          const { underwaterRoas, marketingTrendDown } = marketing;
 
-          let outreachQueuePending = 0;
-          try {
-            const outreachDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "outreach-queue");
-            outreachQueuePending = countPendingOutreachDrafts(outreachDoc?.data);
-          } catch {
-            /* profile_documents not available yet */
-          }
-
-          let reviewsNeedingReply = 0;
-          try {
-            const reviewDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, "review-replies");
-            const raw = reviewDoc?.data;
-            if (raw && typeof raw === "object") {
-              const pending = Number((raw).pendingCount ?? 0);
-              const updatedAt = String((raw).updatedAt || "");
-              const age = updatedAt ? Date.now() - Date.parse(updatedAt) : Number.POSITIVE_INFINITY;
-              if (Number.isFinite(pending) && pending > 0 && Number.isFinite(age) && age < 48 * 60 * 60 * 1000) {
-                reviewsNeedingReply = Math.trunc(pending);
-              }
-            }
-          } catch {
-            /* review state optional */
-          }
-
-          let underwaterRoas = null;
-          let marketingTrendDown = false;
-          try {
-            const { data: snaps } = await supabaseAdmin
-              .from("marketing_snapshots")
-              .select("snapshot_date,roas,portfolio_score")
-              .eq("business_profile_id", businessProfileId)
-              .order("snapshot_date", { ascending: false })
-              .limit(14);
-            const rows = Array.isArray(snaps) ? snaps : [];
-            const latestRoas = rows[0]?.roas == null ? null : Number(rows[0].roas);
-            if (latestRoas != null && Number.isFinite(latestRoas) && latestRoas < 1) {
-              underwaterRoas = latestRoas;
-            } else {
-              const delta = portfolioScoreDeltaFromSnapshots(
-                rows.map((r) => ({
-                  snapshotDate: String(r.snapshot_date || ""),
-                  portfolioScore: r.portfolio_score == null ? null : Number(r.portfolio_score),
-                })),
-              );
-              marketingTrendDown = delta != null && delta <= -10;
-            }
-          } catch {
-            /* marketing snapshots optional */
-          }
-
-          // E-commerce signals. Each is isolated: the Shopify stock lookup is a
-          // live API call, and a network blip there must not also blank the
-          // Fortnox queue counts, which are read straight from the database.
+          // Live Shopify stock lookup — depends on the accounts read above, so
+          // it cannot join the parallel batch.
           let lowStockCount = 0;
-          let unbilledOrdersCount = 0;
-          let pendingCreditInvoicesCount = 0;
           try {
-            const { data: shopifyAccount } = await supabaseAdmin
-              .from("connected_accounts")
-              .select("id")
-              .eq("business_profile_id", businessProfileId)
-              .eq("platform", "shopify")
-              .is("disconnected_at", null)
-              .maybeSingle();
+            const shopifyAccount = accounts.find(
+              (a) => a?.platform === "shopify" && !a?.disconnected_at && a?.id
+            );
             if (shopifyAccount?.id && tokenStore) {
               const stored = await tokenStore.get(String(shopifyAccount.id));
               const accessToken = String(stored?.accessToken || "").trim();
@@ -236,22 +260,6 @@ export function registerDailyDigestCron(
             }
           } catch {
             /* Shopify stock signal optional */
-          }
-          try {
-            const invoiceQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_INVOICE_QUEUE_DOC_KEY);
-            unbilledOrdersCount = parseFortnoxInvoiceQueue(invoiceQueueDoc?.data).filter(
-              (q) => q.status === "suggested" || q.status === "failed"
-            ).length;
-          } catch {
-            /* invoice queue optional */
-          }
-          try {
-            const creditQueueDoc = await loadProfileDocument(supabaseAdmin, businessProfileId, FORTNOX_CREDIT_QUEUE_DOC_KEY);
-            pendingCreditInvoicesCount = parseFortnoxCreditQueue(creditQueueDoc?.data).filter(
-              (q) => q.status === "suggested" || q.status === "failed"
-            ).length;
-          } catch {
-            /* credit queue optional */
           }
 
           const digest = buildDigest({

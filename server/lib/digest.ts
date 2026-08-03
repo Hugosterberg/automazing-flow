@@ -8,6 +8,8 @@
  * inbox version and the in-app version tell the same story.
  */
 
+import { escapeHtml } from "./htmlEscape.ts";
+
 export interface DigestInput {
   businessName: string;
   /** Absolute app URL for the "open dashboard" link (no trailing slash). */
@@ -49,15 +51,6 @@ export interface Digest {
   sections: DigestSection[];
   html: string;
   text: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function titles(rows: Array<{ title: string }>, max = 5): string[] {

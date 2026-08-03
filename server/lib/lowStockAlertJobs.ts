@@ -14,6 +14,7 @@
 import { fetchShopifyLowStockItems, type ShopifyLowStockItem } from "../providers/shopify.ts";
 import { loadProfileDocument, saveProfileDocument } from "./profileDocumentStore.ts";
 import { sendEmail } from "./email.ts";
+import { escapeHtml } from "./htmlEscape.ts";
 import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 const LOW_STOCK_ALERTED_DOC_KEY = "low-stock-alerted";
@@ -66,7 +67,10 @@ export function pickItemsToAlert(items: ShopifyLowStockItem[], alerted: Record<s
     if (!prior) return true;
     if (item.quantity < prior.quantity) return true;
     const daysSince = (now - Date.parse(prior.alertedAt)) / 86400000;
-    return Number.isFinite(daysSince) && daysSince >= REALERT_AFTER_DAYS;
+    // An unparseable stored timestamp must not silence the product forever —
+    // fail open and re-alert instead.
+    if (!Number.isFinite(daysSince)) return true;
+    return daysSince >= REALERT_AFTER_DAYS;
   });
 }
 
@@ -88,41 +92,67 @@ export async function runLowStockAlert(deps: {
   const alerted = parseAlertedMap(doc?.data);
   const toAlert = pickItemsToAlert(items, alerted);
 
-  // Always persist the current low-stock set (drops restocked items from the
-  // dedup map) even when nothing new needs alerting this run.
+  // Restocked products drop out of the dedup map regardless of what happens
+  // below, so a later dip alerts fresh.
   const currentIds = new Set(items.map((i) => i.productId));
   const nextAlerted: Record<string, AlertedState> = {};
   for (const [id, state] of Object.entries(alerted)) {
     if (currentIds.has(id)) nextAlerted[id] = state;
   }
-  for (const item of toAlert) {
-    nextAlerted[item.productId] = { quantity: item.quantity, alertedAt: new Date().toISOString() };
-  }
-  await saveProfileDocument(supabaseAdmin, businessProfileId, LOW_STOCK_ALERTED_DOC_KEY, nextAlerted);
 
-  if (toAlert.length === 0) return { alerted: 0, notified: false };
+  async function persist() {
+    await saveProfileDocument(supabaseAdmin, businessProfileId, LOW_STOCK_ALERTED_DOC_KEY, nextAlerted);
+  }
+
+  if (toAlert.length === 0) {
+    await persist();
+    return { alerted: 0, notified: false };
+  }
 
   let notified = false;
   if (notifyEmail) {
     const reorderMap = await loadReorderUrlMap(supabaseAdmin, businessProfileId);
     const ecommerceUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/ecommerce` : "/ecommerce";
-    const lines = toAlert.slice(0, MAX_ITEMS_IN_EMAIL).map((item) => {
+    const shown = toAlert.slice(0, MAX_ITEMS_IN_EMAIL);
+    const rows = shown.map((item) => {
       const reorderUrl = reorderMap.get(item.productTitle.trim().toLowerCase());
       const statusLabel = item.status === "out_of_stock" ? "slut" : `${item.quantity} kvar`;
-      return `${item.productTitle} — ${statusLabel}${reorderUrl ? ` (återbeställ: ${reorderUrl})` : ""}`;
+      const text = `${item.productTitle} — ${statusLabel}${reorderUrl ? ` (återbeställ: ${reorderUrl})` : ""}`;
+      // The reorder link is clickable in the HTML part; the plaintext part
+      // keeps the bare URL so it survives text-only clients.
+      const html =
+        `${escapeHtml(item.productTitle)} — ${escapeHtml(statusLabel)}` +
+        (reorderUrl ? ` — <a href="${escapeHtml(reorderUrl)}">återbeställ</a>` : "");
+      return { text, html };
     });
     const count = toAlert.length;
+    const more = count > shown.length ? count - shown.length : 0;
     const result = await sendEmail({
       to: notifyEmail,
       subject: `${businessName}: ${count} produkt${count === 1 ? "" : "er"} med lågt lager`,
       html:
         `<p>${count} produkt${count === 1 ? "" : "er"} behöver påfyllning:</p>` +
-        `<ul>${lines.map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("")}</ul>` +
-        `<p><a href="${ecommerceUrl}">Öppna produkter</a></p>`,
-      text: `${count} produkt(er) med lågt lager:\n${lines.map((l) => `• ${l}`).join("\n")}\n\nÖppna: ${ecommerceUrl}`,
+        `<ul>${rows.map((r) => `<li>${r.html}</li>`).join("")}</ul>` +
+        (more > 0 ? `<p>…och ${more} till.</p>` : "") +
+        `<p><a href="${escapeHtml(ecommerceUrl)}">Öppna produkter</a></p>`,
+      text:
+        `${count} produkt(er) med lågt lager:\n${rows.map((r) => `• ${r.text}`).join("\n")}` +
+        (more > 0 ? `\n…och ${more} till.` : "") +
+        `\n\nÖppna: ${ecommerceUrl}`,
     });
     notified = result.ok;
   }
 
-  return { alerted: toAlert.length, notified };
+  // Only suppress future alerts for products the user was actually told about.
+  // Recording them before the send meant a failed email silenced the product
+  // for a week while its stock stayed low.
+  if (notified) {
+    const alertedAt = new Date().toISOString();
+    for (const item of toAlert) {
+      nextAlerted[item.productId] = { quantity: item.quantity, alertedAt };
+    }
+  }
+  await persist();
+
+  return { alerted: notified ? toAlert.length : 0, notified };
 }

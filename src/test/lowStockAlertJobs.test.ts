@@ -55,4 +55,9 @@ describe("pickItemsToAlert", () => {
     const alerted: Record<string, AlertedState> = { p1: { quantity: 3, alertedAt: eightDaysAgo } };
     expect(pickItemsToAlert([item({ quantity: 3 })], alerted)).toHaveLength(1);
   });
+
+  it("fails open on an unreadable timestamp rather than silencing the product", () => {
+    const alerted: Record<string, AlertedState> = { p1: { quantity: 3, alertedAt: "garbage" } };
+    expect(pickItemsToAlert([item({ quantity: 3 })], alerted)).toHaveLength(1);
+  });
 });

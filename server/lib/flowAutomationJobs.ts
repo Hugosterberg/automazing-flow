@@ -31,6 +31,7 @@ import {
 } from "./scheduledPostsPublisher.ts";
 import { isJobEnabledForProfile, type JobSchedulesMap } from "./profileJobSchedule.ts";
 import { sendEmail, type EmailResult } from "./email.ts";
+import { escapeHtml } from "./htmlEscape.ts";
 import type { SupabaseAdminLike } from "./supabaseAdminLike.ts";
 
 export const OUTREACH_QUEUE_DOC_KEY = "outreach-queue";
@@ -901,7 +902,7 @@ export async function runReviewReplyAuto(deps: {
       subject: `⚠ ${businessName}: ${newUrgent.length} urgent review${newUrgent.length === 1 ? "" : "s"} (≤2★)`,
       html:
         `<p><strong>${newUrgent.length} low-star review${newUrgent.length === 1 ? "" : "s"} need immediate attention.</strong></p>` +
-        `<pre style="white-space:pre-wrap;font-family:sans-serif">${lines.replace(/</g, "&lt;")}</pre>` +
+        `<pre style="white-space:pre-wrap;font-family:sans-serif">${escapeHtml(lines)}</pre>` +
         `<p><a href="${reviewsUrl}">Open Reviews</a></p>`,
       text: `${newUrgent.length} urgent review(s):\n${lines}\nOpen Reviews: ${reviewsUrl}`,
     });

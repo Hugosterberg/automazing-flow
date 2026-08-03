@@ -4,6 +4,7 @@
  */
 
 import type { MarketingRecommendation } from "./marketingAnalytics.ts";
+import { escapeHtml } from "./htmlEscape.ts";
 
 export interface MarketingAlertCampaign {
   name: string;
@@ -42,15 +43,6 @@ export interface MarketingAlert {
   subject: string;
   html: string;
   text: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function money(amount: number | null | undefined, currency: string | null | undefined): string {
