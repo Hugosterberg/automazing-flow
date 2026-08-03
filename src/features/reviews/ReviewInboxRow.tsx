@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Circle, ExternalLink, Star } from "lucide-react";
+import { BadgeCheck, Circle, ExternalLink, ImageIcon, Star } from "lucide-react";
 import { SearchHighlight } from "@/features/messages/SearchHighlight";
 import { cn } from "@/lib/utils";
 import type { ReviewItem } from "./types";
@@ -36,6 +36,7 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
   ref
 ) {
   const snippet = (review.text || "Ingen text").slice(0, 140);
+  const pictureCount = review.pictures?.length ?? 0;
 
   return (
     <div
@@ -87,8 +88,35 @@ export const ReviewInboxRow = forwardRef<HTMLButtonElement, Props>(function Revi
               {review.rating != null ? (
                 <span className="text-xs tabular-nums text-muted-foreground sm:text-[11px]">{review.rating}/5</span>
               ) : null}
+              {review.verified ? (
+                <BadgeCheck
+                  className="h-3.5 w-3.5 shrink-0 text-emerald-600 sm:h-3 sm:w-3"
+                  aria-label="Verifierat köp"
+                />
+              ) : null}
+              {pictureCount > 0 ? (
+                <span
+                  className="inline-flex items-center gap-0.5 text-xs text-muted-foreground sm:text-[11px]"
+                  aria-label={`${pictureCount} kundbild${pictureCount === 1 ? "" : "er"}`}
+                >
+                  <ImageIcon className="h-3.5 w-3.5 sm:h-3 sm:w-3" aria-hidden />
+                  {pictureCount}
+                </span>
+              ) : null}
             </div>
-            <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground sm:mt-0.5 sm:line-clamp-1 sm:text-xs">
+            {/* Judge.me reviews carry a headline — it scans far better than the
+                body's first line, so it leads when present. */}
+            {review.title ? (
+              <p className="mt-1 truncate text-sm font-medium leading-snug text-foreground/90 sm:mt-0.5 sm:text-xs">
+                <SearchHighlight text={review.title} query={searchQuery} />
+              </p>
+            ) : null}
+            <p
+              className={cn(
+                "line-clamp-2 text-sm leading-snug text-muted-foreground sm:line-clamp-1 sm:text-xs",
+                review.title ? "mt-0.5" : "mt-1 sm:mt-0.5"
+              )}
+            >
               <SearchHighlight text={snippet} query={searchQuery} />
             </p>
             <div className="mt-1.5 sm:mt-1">

@@ -1,4 +1,4 @@
-export { useReviewReplyState } from "./useReviewReplyState";
+export { useReviewReplyState, shouldSyncPendingCount } from "./useReviewReplyState";
 export { fetchReviewsPreview, type ReviewPreview } from "./reviewsClient";
 export { ReviewReplyQueueSection, type ReviewReplyQueueItem } from "./ReviewReplyQueueSection";
 export { ReviewWorkspace } from "./ReviewWorkspace";

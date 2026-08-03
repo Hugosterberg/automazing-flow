@@ -95,6 +95,7 @@ type ReviewsData = {
     shopDomain?: string;
     website?: string;
     totalCount?: number;
+    loadedCount?: number;
     verifiedCount?: number;
     withPicturesCount?: number;
     /** Reviews per star ("1".."5") among the fetched reviews. */
@@ -262,6 +263,7 @@ export default function ReviewsPage() {
         (r) =>
           r.author.toLowerCase().includes(q) ||
           r.text.toLowerCase().includes(q) ||
+          (r.title ?? "").toLowerCase().includes(q) ||
           String(r.rating).includes(q)
       );
     }
@@ -408,8 +410,13 @@ export default function ReviewsPage() {
       const jm = data.judgemeInfo;
       const verified = displayNumber(jm.verifiedCount);
       const withPictures = displayNumber(jm.withPicturesCount);
+      const loaded = displayNumber(jm.loadedCount);
       const subtitleParts = [
-        verified != null ? `${verified} verifierade köp` : "",
+        verified != null && loaded != null
+          ? `${verified} av ${loaded} verifierade köp`
+          : verified != null
+            ? `${verified} verifierade köp`
+            : "",
         withPictures != null && withPictures > 0 ? `${withPictures} med kundbilder` : "",
       ].filter(Boolean);
       return {

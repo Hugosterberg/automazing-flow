@@ -461,7 +461,7 @@ export function ReviewDetailPanel({
                 {isReplied ? (
                   <Badge variant="outline" className="h-8 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600">
                     <Send className="h-3 w-3" />
-                    Replied
+                    Besvarad
                   </Badge>
                 ) : null}
               </div>
@@ -501,11 +501,11 @@ export function ReviewDetailPanel({
             <div className="flex flex-wrap items-center gap-3">
               <p className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                 <Send className="h-4 w-4" />
-                {sentNotice ?? "Reply posted"}
+                {sentNotice ?? "Svar skickat"}
               </p>
               {onNextAfterSend ? (
                 <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onNextAfterSend}>
-                  Next review
+                  Nästa recension
                   <ChevronRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               ) : null}

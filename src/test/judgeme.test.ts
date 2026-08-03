@@ -103,6 +103,48 @@ describe("fetchJudgemeReviews", () => {
   });
 });
 
+describe("fetchJudgemeReviews ordering and resilience", () => {
+  function reviewPayload(rows: Array<{ id: number; created_at?: string }>) {
+    return new Response(
+      JSON.stringify({
+        reviews: rows.map((row) => ({ ...row, body: `body ${row.id}`, rating: 5, reviewer: { name: "X" } })),
+      }),
+      { status: 200 }
+    );
+  }
+
+  it("sorts newest first regardless of the order the API returns", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      reviewPayload([
+        { id: 1, created_at: "2026-01-01T00:00:00Z" },
+        { id: 3, created_at: "2026-06-01T00:00:00Z" },
+        { id: 2, created_at: "2026-03-01T00:00:00Z" },
+      ])
+    );
+    const result = await fetchJudgemeReviews(CREDS);
+    expect(result.reviews?.map((r) => r.id)).toEqual(["3", "2", "1"]);
+  });
+
+  it("keeps undated reviews last instead of floating them to the top", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      reviewPayload([{ id: 1 }, { id: 2, created_at: "2026-03-01T00:00:00Z" }])
+    );
+    const result = await fetchJudgemeReviews(CREDS);
+    expect(result.reviews?.map((r) => r.id)).toEqual(["2", "1"]);
+  });
+
+  it("retries once when Judge.me rate-limits the request", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("{}", { status: 429 }))
+      .mockResolvedValueOnce(reviewPayload([{ id: 7, created_at: "2026-05-01T00:00:00Z" }]));
+    const result = await fetchJudgemeReviews(CREDS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(true);
+    expect(result.reviews?.[0].id).toBe("7");
+  });
+});
+
 describe("fetchJudgemeReviewCount", () => {
   it("returns the published total from /reviews/count", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(

@@ -7,14 +7,21 @@
  * ever used server-side here.
  *
  * Endpoints used:
- *   GET  /api/v1/reviews                              — list reviews (paginated)
+ *   GET  /api/v1/reviews                              — list reviews (paginated, max 100/page)
+ *   GET  /api/v1/reviews/count                        — published total
  *   POST /api/v1/orders/send_manual_review_request    — trigger a review-request email
+ *
+ * The API documents no reply endpoint — public replies are posted in the
+ * Judge.me admin, which is why the app's reply flow offers a copy action for
+ * Judge.me accounts instead of a send.
  */
 
 import { normalizeShopifyShopDomain } from "../lib/shopifyShopDomain.ts";
 
 const JUDGEME_API_BASE = "https://judge.me/api/v1";
 const JUDGEME_TIMEOUT_MS = 15_000;
+/** One retry is enough to ride out Judge.me's short rate-limit windows. */
+const JUDGEME_RETRY_DELAY_MS = 1_200;
 
 export interface JudgemeCredentials {
   shopDomain: string;
@@ -69,6 +76,24 @@ function judgemeUrl(path: string, creds: JudgemeCredentials, params?: Record<str
     url.searchParams.set(key, String(value));
   }
   return url.toString();
+}
+
+/**
+ * GET with a single retry on 429/503. Judge.me rate-limits per shop, and a
+ * cron run plus an open Reviews page can collide; failing the whole fetch for
+ * a transient throttle would blank the page.
+ */
+async function judgemeGet(url: string): Promise<Response> {
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(JUDGEME_TIMEOUT_MS),
+  });
+  if (res.status !== 429 && res.status !== 503) return res;
+  await new Promise((resolve) => setTimeout(resolve, JUDGEME_RETRY_DELAY_MS));
+  return fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(JUDGEME_TIMEOUT_MS),
+  });
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -128,6 +153,23 @@ function mapJudgemeReview(raw: unknown, index: number): JudgemeReview {
 }
 
 /**
+ * Newest first. The API documents no ordering guarantee, and callers that
+ * only take a slice (the ≤2★ alert cron reads 30) would silently miss new
+ * reviews if the server happened to return oldest-first. Undated reviews
+ * sort last rather than jumping to the top.
+ */
+function sortNewestFirst(reviews: JudgemeReview[]): JudgemeReview[] {
+  return [...reviews].sort((a, b) => {
+    const aTime = a.createdAt ? Date.parse(a.createdAt) : NaN;
+    const bTime = b.createdAt ? Date.parse(b.createdAt) : NaN;
+    if (!Number.isFinite(aTime) && !Number.isFinite(bTime)) return 0;
+    if (!Number.isFinite(aTime)) return 1;
+    if (!Number.isFinite(bTime)) return -1;
+    return bTime - aTime;
+  });
+}
+
+/**
  * Flat result shape on purpose: the repo compiles with `strictNullChecks:
  * false`, where boolean-discriminated unions do not narrow — callers check
  * `ok` and read the optional fields directly.
@@ -152,17 +194,14 @@ export async function fetchJudgemeReviews(
     per_page: Math.min(Math.max(options?.perPage ?? 50, 1), 100),
   };
   if (options?.rating) params.rating = options.rating;
-  const res = await fetch(judgemeUrl("/reviews", creds, params), {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(JUDGEME_TIMEOUT_MS),
-  });
+  const res = await judgemeGet(judgemeUrl("/reviews", creds, params));
   const body: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
     return { ok: false, status: res.status, error: judgemeApiError(body, res.status) };
   }
   const list = asRecord(body)?.reviews;
   const reviews = Array.isArray(list) ? list.map((r, i) => mapJudgemeReview(r, i)) : [];
-  return { ok: true, reviews };
+  return { ok: true, reviews: sortNewestFirst(reviews) };
 }
 
 /**
@@ -172,10 +211,7 @@ export async function fetchJudgemeReviews(
  */
 export async function fetchJudgemeReviewCount(creds: JudgemeCredentials): Promise<number | null> {
   try {
-    const res = await fetch(judgemeUrl("/reviews/count", creds), {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(JUDGEME_TIMEOUT_MS),
-    });
+    const res = await judgemeGet(judgemeUrl("/reviews/count", creds));
     if (!res.ok) return null;
     const body: unknown = await res.json().catch(() => ({}));
     const count = num(asRecord(body)?.count);
@@ -196,6 +232,9 @@ export async function verifyJudgemeCredentials(creds: JudgemeCredentials): Promi
  * (`POST /orders/send_manual_review_request`). Judge.me handles the template,
  * review form link, and reminder logic — much stronger than a plain email.
  */
+// Deliberately not retried: a request that timed out may still have queued the
+// email on Judge.me's side, and a duplicate review request to a customer is
+// worse than a failed one. Callers retry on their next run instead.
 export async function sendJudgemeReviewRequest(
   creds: JudgemeCredentials,
   request: { orderId: string; email: string; name?: string; platform?: string }

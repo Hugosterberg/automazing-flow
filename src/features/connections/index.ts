@@ -15,6 +15,9 @@ export {
 } from "./connectionStatus";
 export type { ConnectionStatus } from "./connectionStatus";
 export { ConnectionStatusBadge } from "./ConnectionStatusBadge";
+export { JudgemeConnectDialog } from "./JudgemeConnectDialog";
+export type { JudgemeConnectResult } from "./JudgemeConnectDialog";
+export { normalizeJudgemeShopDomain } from "./judgemeConnect";
 export { ConnectionDetailsDrawer } from "./ConnectionDetailsDrawer";
 export { ConnectionsControlPanel } from "./ConnectionsControlPanel";
 export { useConnectionsHealthIssueCount } from "./connectionsHealthIssues";

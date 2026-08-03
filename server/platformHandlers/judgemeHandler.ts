@@ -21,7 +21,18 @@ import {
 import type { PlatformHandlerResult } from "./types.ts";
 
 const JUDGEME_DATA_CACHE_TTL_MS = 90_000;
+/** How many reviews the two-page fetch can return at most. */
+const JUDGEME_FETCH_CAP = 200;
 const judgemeDataCache = new Map<string, { expiresAt: number; body: unknown }>();
+
+/**
+ * Cache per shop *and* token: two business profiles may connect the same shop
+ * with different tokens (a public token sees less than a private one), and
+ * they must not read each other's cached payload.
+ */
+function cacheKey(creds: JudgemeCredentials): string {
+  return `${creds.shopDomain}::${creds.apiToken.slice(-8)}`;
+}
 
 function averageRating(reviews: JudgemeReview[]): number | undefined {
   const rated = reviews.filter((r) => typeof r.rating === "number" && r.rating > 0);
@@ -61,6 +72,7 @@ async function buildJudgemeAccountData(
     const second = await fetchJudgemeReviews(creds, { page: 2, perPage: 100 });
     if (second.ok) reviews = reviews.concat(second.reviews ?? []);
   }
+  const capped = reviews.length >= JUDGEME_FETCH_CAP;
 
   const visible = reviews.filter((r) => !r.hidden);
   const withPictures = visible.filter((r) => r.pictures.length > 0).length;
@@ -94,6 +106,7 @@ async function buildJudgemeAccountData(
         shopDomain: creds.shopDomain,
         website: `https://${creds.shopDomain}`,
         totalCount: totalCount ?? undefined,
+        loadedCount: visible.length,
         verifiedCount,
         withPicturesCount: withPictures,
         ratingCounts: ratingCounts(visible),
@@ -101,8 +114,10 @@ async function buildJudgemeAccountData(
       source: "official",
       note:
         visible.length === 0
-          ? "Judge.me returned no reviews yet. New reviews appear here as customers submit them."
-          : undefined,
+          ? "Judge.me har inga recensioner ännu. Nya recensioner dyker upp här när kunderna skickar in dem."
+          : capped && totalCount != null && totalCount > visible.length
+            ? `Visar de ${visible.length} senaste av ${totalCount} recensioner. Statistiken nedan gäller de inlästa.`
+            : undefined,
     },
   };
 }
@@ -122,14 +137,15 @@ export async function handleJudgemeAccountData(args: {
     };
   }
 
-  const cached = judgemeDataCache.get(creds.shopDomain);
+  const key = cacheKey(creds);
+  const cached = judgemeDataCache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
     return { kind: "json", body: cached.body };
   }
 
   const result = await buildJudgemeAccountData(creds, args.stored);
   if (result.kind === "json") {
-    judgemeDataCache.set(creds.shopDomain, {
+    judgemeDataCache.set(key, {
       expiresAt: Date.now() + JUDGEME_DATA_CACHE_TTL_MS,
       body: result.body,
     });

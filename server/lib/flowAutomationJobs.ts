@@ -621,10 +621,11 @@ export async function runPostPurchaseReviewRequest(deps: {
       emailed += 1;
       newSentIds.push(order.id);
     } else if (result.skipped) {
-      // Email transport not configured — stop trying the email fallback but
-      // keep any Judge.me sends recorded below so they are not re-sent.
       skipped += 1;
-      break;
+      // No email transport. With Judge.me connected the remaining orders can
+      // still be served by it, so only abort the whole run when email was the
+      // only available path.
+      if (!judgeme) break;
     }
   }
 
