@@ -74,6 +74,18 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /*
+   * Nothing in the app is allowed to push the page sideways. `clip` (not
+   * `hidden`) is deliberate: it stops horizontal overflow without turning
+   * the element into a scroll container, so `position: sticky` headers and
+   * toolbars keep working. Views that genuinely need horizontal scrolling
+   * opt in locally with `overflow-x-auto`.
+   */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     /*
@@ -106,6 +118,38 @@
   .font-display {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
     letter-spacing: -0.015em;
+  }
+
+  /*
+   * iOS Safari auto-zooms the viewport whenever a focused text field
+   * computes to less than 16px, and never zooms back out. Dense `text-sm`
+   * / `text-xs` controls are fine with a mouse but make every form on the
+   * phone jump. Force the 16px floor on touch phones only — desktop keeps
+   * the compact type scale.
+   */
+  @media (pointer: coarse) and (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
+  /*
+   * Kill the 300ms tap delay and double-tap zoom on controls. Applied to
+   * roles rather than every element so pinch-zoom on content still works.
+   */
+  button,
+  a,
+  label,
+  summary,
+  select,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  [role="switch"] {
+    touch-action: manipulation;
   }
 
   /* Honor reduced-motion: kill transforms/animations for sensitive users. */
@@ -453,6 +497,34 @@
   .touch-target {
     min-height: 2.75rem;
     min-width: 2.75rem;
+  }
+
+  /* Scrollable without a visible scrollbar (tab strips, chip rows, …). */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /*
+   * Wide data grids (order tables, breakdowns) that can't collapse. Scrolls
+   * edge-to-edge on phones with a fade hinting there is more to the right.
+   */
+  .data-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .data-scroll-x::-webkit-scrollbar {
+    height: 6px;
+  }
+  .data-scroll-x::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
   }
 
   /* Shared pressable language for mobile app surfaces. */

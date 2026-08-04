@@ -69,7 +69,7 @@ export function LandingPage() {
   }
 
   return (
-    <div className="landing-root relative min-h-screen overflow-x-clip bg-black text-foreground">
+    <div className="landing-root relative min-h-dvh overflow-x-clip bg-black text-foreground">
       <LandingAtmosphere />
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/55 backdrop-blur-xl safe-top safe-x">

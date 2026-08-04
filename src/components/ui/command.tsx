@@ -29,12 +29,12 @@ type CommandDialogProps = DialogProps & {
 const CommandDialog = ({ children, title = "Command palette", ...props }: CommandDialogProps) => {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:translate-x-0 max-sm:translate-y-0 max-sm:max-h-[min(88dvh,calc(100dvh-1rem))] max-sm:w-full max-sm:rounded-t-[1.35rem] max-sm:border-t max-sm:border-border/60 sm:max-w-lg">
+      <DialogContent
+        hideClose
+        className="overflow-hidden p-0 shadow-lg max-sm:max-h-[min(88dvh,calc(100dvh-1rem))] max-sm:gap-0 max-sm:pb-0 max-sm:pt-2 sm:max-w-lg"
+      >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <div className="flex justify-center pb-1 pt-2 sm:hidden" aria-hidden>
-          <span className="h-1 w-10 rounded-full bg-muted-foreground/35" />
-        </div>
-        <Command className="max-sm:max-h-[min(82dvh,calc(100dvh-3rem))] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 max-sm:[&_[cmdk-item]]:min-h-11 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+        <Command className="max-sm:max-h-[min(82dvh,calc(100dvh-3rem))] max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 max-sm:[&_[cmdk-item]]:min-h-11 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           {children}
         </Command>
       </DialogContent>

@@ -653,7 +653,7 @@ export function MessageDetailPanel({
                   value={replyDraft}
                   onChange={(e) => onReplyDraftChange(e.target.value)}
                   placeholder="Skriv ditt svar…"
-                  className="min-h-[64px] max-h-[22vh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
+                  className="min-h-[64px] max-h-[22dvh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
                       e.preventDefault();

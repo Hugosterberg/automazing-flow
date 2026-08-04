@@ -77,7 +77,7 @@ export function LeadResearchDialog({
         ) : error ? (
           <p className="py-4 text-sm text-destructive">{error}</p>
         ) : result ? (
-          <pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap rounded-md bg-muted/30 p-3 text-xs text-muted-foreground font-sans">
+          <pre className="max-h-[50dvh] overflow-auto whitespace-pre-wrap rounded-md bg-muted/30 p-3 text-xs text-muted-foreground font-sans">
             {result.text || "The provider returned no content."}
           </pre>
         ) : null}

@@ -66,7 +66,7 @@ function RouteFallback() {
  */
 function RootErrorFallback({ error }: { error: Error }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+    <div className="min-h-dvh flex items-center justify-center bg-background p-8">
       <div className="w-full max-w-md space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
         <div className="inline-flex items-center justify-center rounded-full bg-destructive/10 p-3">
           <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />

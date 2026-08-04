@@ -409,13 +409,14 @@ export function ConnectSession({
   const primaryArea = entry.areas[0];
   const areaLabel = AREA_LABELS[primaryArea] ?? primaryArea;
 
-  const progressSteps = guide
-    ? (["why", "prerequisites", "connect", "verify", "done"] as const)
-    : (["why", "connect", "verify", "done"] as const);
+  // Typed as the wide step union so `indexOf` accepts every step — the two
+  // literal tuples would otherwise narrow it to their common members.
+  const progressSteps: readonly ConnectSessionStep[] = guide
+    ? ["why", "prerequisites", "connect", "verify", "done"]
+    : ["why", "connect", "verify", "done"];
 
   function stepIndex(s: ConnectSessionStep): number {
-    const mapped = s === "error" ? "verify" : s;
-    const idx = progressSteps.indexOf(mapped as (typeof progressSteps)[number]);
+    const idx = progressSteps.indexOf(s === "error" ? "verify" : s);
     return idx < 0 ? 0 : idx;
   }
   const currentIdx = stepIndex(step);
@@ -423,7 +424,7 @@ export function ConnectSession({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] gap-0 overflow-hidden p-0 sm:max-w-lg">
           <div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.07] via-background to-muted/30 px-5 pb-4 pt-5">
             <DialogHeader className="space-y-2 text-left">
               <div className="flex flex-wrap items-center gap-2">
@@ -468,7 +469,7 @@ export function ConnectSession({
             </ol>
           </div>
 
-          <div className="max-h-[50vh] space-y-4 overflow-y-auto px-5 py-4 sm:max-h-[55vh]">
+          <div className="max-h-[50dvh] space-y-4 overflow-y-auto px-5 py-4 sm:max-h-[55dvh]">
             {step === "why" ? (
               <div className="space-y-3">
                 <div className="rounded-xl border border-border/70 bg-card/60 px-3.5 py-3">

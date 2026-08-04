@@ -568,7 +568,7 @@ function ProductEditDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[88dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("products.dialog.editTitle")}</DialogTitle>
           <DialogDescription>

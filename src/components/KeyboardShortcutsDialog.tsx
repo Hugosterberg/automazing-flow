@@ -41,7 +41,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Tangentbordsgenvägar</DialogTitle>
           <DialogDescription>
