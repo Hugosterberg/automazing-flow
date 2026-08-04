@@ -22,9 +22,15 @@ import { ActiveBusinessProfileProvider, ActiveProfileGuard } from "@/features/bu
  * landing page. Everything else streams in on navigation.
  *
  * Kept eagerly imported:
- *   - `Index` (landing page — always the first paint after sign-in)
  *   - `Layout`, providers, `AuthGate` (chrome rendered on every route)
+ *
+ * `Index` is lazy like every other route. It used to be eager "because it is
+ * the first paint after sign-in", but that made every signed-out visitor
+ * download the whole home dashboard — and through it most of the feature
+ * graph — before the landing page could render. Signed-in users get the
+ * chunk warmed by `useRoutePrefetch` instead.
  */
+const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const SocialMedia = lazy(() => import("./pages/SocialMedia"));
 const Ecommerce = lazy(() => import("./pages/Ecommerce"));
@@ -46,7 +52,6 @@ const AutomationsPage = lazy(() => import("./pages/Automations"));
 const IntelligencePage = lazy(() => import("./pages/IntelligencePage"));
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
 
-import Index from "./pages/Index";
 import Layout from "./components/Layout";
 
 /**

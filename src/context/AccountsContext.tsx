@@ -13,7 +13,7 @@ import type { ProfileKind } from "@/types/businessProfile";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
-import { useBusinessProfileBridge } from "@/features/business-profiles";
+import { useBusinessProfileBridge } from "@/features/business-profiles/useBusinessProfileBridge";
 import {
   applyAccountLimit,
   dedupeAccountsByProfilePlatform,

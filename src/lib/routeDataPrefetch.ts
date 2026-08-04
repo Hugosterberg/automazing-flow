@@ -1,10 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { TypedSupabaseClient } from "@/lib/supabase";
-import { AI_RECS_KEY } from "@/features/ai-recommendations";
+import { AI_RECS_KEY } from "@/features/ai-recommendations/useAiRecommendations";
 import { listAiRecommendations } from "@/features/ai-recommendations/aiRecommendationsService";
-import { CONNECTIONS_KEY } from "@/features/connections";
+import { CONNECTIONS_KEY } from "@/features/connections/useConnections";
 import { listConnectionsForBusinessProfile } from "@/features/connections/connectionsService";
-import { TASKS_KEY } from "@/features/tasks";
+import { TASKS_KEY } from "@/features/tasks/useTasks";
 import { listTasks } from "@/features/tasks/tasksService";
 
 /**

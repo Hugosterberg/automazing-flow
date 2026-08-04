@@ -1,26 +1,40 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+/*
+ * Deep module imports, deliberately — never the `@/features/<x>` barrels.
+ *
+ * This hook feeds the notifications bell, which the app shell renders on
+ * every route. Importing a barrel here pulls that whole feature (including
+ * its workspace and detail-panel components) into the eager bundle, because
+ * the shell is not lazy-loaded. Going through barrels once cost ~370 modules
+ * and 1.8 MB of source on first paint, and dragged recharts in with it.
+ * Keep every import below pointed at the module that owns the symbol.
+ */
 import { useConnections } from "@/features/connections/useConnections";
-import { useAiRecommendations } from "@/features/ai-recommendations";
-import { useTasks, isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks";
-import { useCachedMarketingRoas } from "@/features/marketing";
-import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
-import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
-import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
-import { useReviewReplyState } from "@/features/reviews";
+import { useAiRecommendations } from "@/features/ai-recommendations/useAiRecommendations";
+import { useTasks } from "@/features/tasks/useTasks";
+import { isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks/taskFilters";
 import {
-  useAutomationRuns,
-  automationTitleForCronKey,
-  usePendingDmDrafts,
-} from "@/features/automation";
-import { classifyMessageTriage, fetchUnifiedMessagesPreview } from "@/features/messages";
-import { useProfileDocument } from "@/features/profile-documents";
-import { buildDemoBriefOverlay, useDemoMode } from "@/features/demo";
+  useCachedMarketingRoas,
+  useMarketingCampaigns,
+} from "@/features/marketing/useMarketingCampaigns";
+import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
+import { useLeads } from "@/features/leads/useLeads";
+import { isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads/leadHelpers";
+import { useReviewReplyState } from "@/features/reviews/useReviewReplyState";
+import { useAutomationRuns } from "@/features/automation/useAutomationRuns";
+import { automationTitleForCronKey } from "@/features/automation/automationCatalog";
+import { usePendingDmDrafts } from "@/features/automation/usePendingDmDrafts";
+import { classifyMessageTriage } from "@/features/messages/messageTriage";
+import { fetchUnifiedMessagesPreview } from "@/features/messages/messagesClient";
+import { useProfileDocument } from "@/features/profile-documents/useProfileDocument";
+import { buildDemoBriefOverlay } from "@/features/demo/sampleData";
+import { useDemoMode } from "@/features/demo/useDemoMode";
 import { platformLabel } from "@/lib/platformLabels";
 import { t } from "@/lib/i18n";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
-import { useFortnoxSummary } from "@/features/economy";
+import { useFortnoxSummary } from "@/features/economy/useFortnoxSummary";
 import { formatCurrency, formatDateCustom } from "@/lib/format";
 import { isTaxSettings, upcomingTaxDeadlines } from "@/lib/taxDeadlines";
 import type { TaxSettings } from "@/lib/taxDeadlines";

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "packageManager": "npm@11.15.0",
   "engines": {
     "node": "22.x"
