@@ -95,7 +95,7 @@ export default function Layout() {
       >
         {t("common.skipToContent")}
       </a>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-dvh flex w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
           {!readingFocus ? (

@@ -11,6 +11,32 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "url": "/messages",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "url": "/tasks",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Reviews",
+      "short_name": "Reviews",
+      "url": "/reviews",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Connections",
+      "short_name": "Connections",
+      "url": "/connections",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

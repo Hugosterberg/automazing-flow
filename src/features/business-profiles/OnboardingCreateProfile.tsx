@@ -95,7 +95,7 @@ export function OnboardingCreateProfile() {
 
   if (step === "welcome") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+      <div className="min-h-dvh flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
         <div className="w-full max-w-xl space-y-6">
           <div className="text-center space-y-2">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary mx-auto">
@@ -138,7 +138,7 @@ export function OnboardingCreateProfile() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+    <div className="min-h-dvh flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
       <form onSubmit={handleSubmit} className="w-full max-w-lg">
         <Card className="border-border/80 shadow-md">
           <CardHeader className="space-y-1 pb-2">

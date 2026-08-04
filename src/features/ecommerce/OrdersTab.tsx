@@ -6,11 +6,9 @@ import {
   Receipt,
   Box,
   ArrowUpRight,
-  ChevronDown,
   Download,
   ExternalLink,
 } from "lucide-react";
-import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,14 +21,10 @@ import {
 } from "@/components/ui/select";
 import { AutomationEnableHint } from "@/features/automation";
 import { AbandonedCheckoutRecoveryButton } from "@/features/ecommerce/AbandonedCheckoutRecoveryButton";
+import { OrdersList } from "@/features/ecommerce/OrdersList";
 import { formatCurrency } from "@/lib/format";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
-import {
-  statusColors,
-  fulfillmentColors,
-  paymentStatusLabel,
-  fulfillmentStatusLabel,
-} from "@/features/ecommerce/orderDisplay";
+import { paymentStatusLabel, fulfillmentStatusLabel } from "@/features/ecommerce/orderDisplay";
 import { formatDate, type ShopifyData, type ShopifyOrder } from "@/features/ecommerce/ecommerceOrg";
 
 export type ActionNeeded = {
@@ -325,108 +319,15 @@ export function OrdersTab({
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                {filteredOrders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">{t("orders.filters.noMatch")}</p>
-                ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground text-xs">
-                      <th className="text-left px-5 py-3 font-medium">{t("orders.table.order")}</th>
-                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.customer")}</th>
-                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.lines")}</th>
-                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.payment")}</th>
-                      <th className="text-left px-3 py-3 font-medium">{t("orders.table.fulfillment")}</th>
-                      <th className="text-right px-5 py-3 font-medium">{t("orders.table.total")}</th>
-                      <th className="text-right px-5 py-3 font-medium">{t("orders.table.date")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOrders.map((order, i) => {
-                      const orderId = String(order.id);
-                      const isExpanded = expandedOrderId === orderId;
-                      const lineItems = order.lineItems ?? [];
-                      return (
-                        <Fragment key={order.id}>
-                          <m.tr
-                            {...fadeUp}
-                            transition={{ duration: 0.3, delay: i * 0.03 }}
-                            onClick={() => onExpandedOrderIdChange(isExpanded ? null : orderId)}
-                            className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                            aria-expanded={isExpanded}
-                          >
-                            <td className="px-5 py-3 font-medium">
-                              <span className="inline-flex items-center gap-1.5">
-                                <ChevronDown
-                                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`}
-                                  aria-hidden
-                                />
-                                {order.name}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground truncate max-w-[140px]">
-                              {order.customer || order.email || "—"}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">{order.lineItemCount}</td>
-                            <td className="px-3 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[order.status] ?? "bg-muted text-muted-foreground"}`}>
-                                {paymentStatusLabel(order.status)}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${fulfillmentColors[order.fulfillment] ?? "bg-muted text-muted-foreground"}`}>
-                                {fulfillmentStatusLabel(order.fulfillment || "unfulfilled")}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3 text-right font-medium">
-                              {formatCurrency(order.total, order.currency)}
-                            </td>
-                            <td className="px-5 py-3 text-right text-muted-foreground text-xs">
-                              {formatDate(order.createdAt)}
-                            </td>
-                          </m.tr>
-                          {isExpanded ? (
-                            <tr className="border-b border-border/50 last:border-0 bg-muted/20">
-                              <td colSpan={7} className="px-5 py-3">
-                                {lineItems.length === 0 ? (
-                                  <p className="text-xs text-muted-foreground">
-                                    {t("orders.table.missingLineItems")}
-                                  </p>
-                                ) : (
-                                  <div className="space-y-1.5">
-                                    {lineItems.map((item, itemIndex) => (
-                                      <div
-                                        key={item.id ?? `${orderId}-item-${itemIndex}`}
-                                        className="flex items-center justify-between gap-3 text-xs"
-                                      >
-                                        <span className="min-w-0 truncate text-foreground">
-                                          {item.title}
-                                          {item.variantTitle ? (
-                                            <span className="text-muted-foreground"> · {item.variantTitle}</span>
-                                          ) : null}
-                                        </span>
-                                        <span className="shrink-0 tabular-nums text-muted-foreground">
-                                          {item.quantity} × {formatCurrency(item.price, order.currency, { detailed: true })}
-                                        </span>
-                                      </div>
-                                    ))}
-                                    {order.lineItemCount > lineItems.length ? (
-                                      <p className="text-[11px] text-muted-foreground/70">
-                                        {t("orders.table.moreLines", { count: order.lineItemCount - lineItems.length })}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                )}
-              </div>
+              {filteredOrders.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">{t("orders.filters.noMatch")}</p>
+              ) : (
+                <OrdersList
+                  orders={filteredOrders}
+                  expandedOrderId={expandedOrderId}
+                  onExpandedOrderIdChange={onExpandedOrderIdChange}
+                />
+              )}
             </CardContent>
           </Card>
         </m.div>

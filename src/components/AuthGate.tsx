@@ -46,7 +46,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!enabled) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+      <div className="min-h-dvh flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
         <Card className="w-full max-w-lg border-border/80 shadow-md">
           <CardHeader className="space-y-1 pb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border mb-1">
@@ -79,7 +79,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background landing-grid-bg"
+        className="min-h-dvh flex flex-col items-center justify-center gap-4 bg-background landing-grid-bg"
         role="status"
         aria-live="polite"
         aria-busy="true"

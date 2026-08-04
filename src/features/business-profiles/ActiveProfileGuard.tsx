@@ -44,7 +44,7 @@ export function ActiveProfileGuard({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"
+        className="min-h-dvh flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"
         role="status"
         aria-busy="true"
       >
@@ -63,7 +63,7 @@ export function ActiveProfileGuard({ children }: { children: ReactNode }) {
   if (!activeId) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"
+        className="min-h-dvh flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"
         role="status"
         aria-busy="true"
       >

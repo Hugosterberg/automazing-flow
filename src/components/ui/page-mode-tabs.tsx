@@ -28,15 +28,20 @@ export function PageModeTabs<T extends string>({
 }: Props<T>) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as T)} className={cn("w-full", className)}>
+      {/*
+       * Phones keep every tab on one swipeable row — wrapping five or six
+       * labels produced ragged two-line strips that pushed the page content
+       * down. From `sm` up there is room to wrap as before.
+       */}
       <TabsList
         aria-label={ariaLabel}
-        className="h-auto w-full flex-wrap justify-start gap-1 rounded-none border-b border-border bg-transparent p-0"
+        className="h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
       >
         {options.map((opt) => (
           <TabsTrigger
             key={opt.value}
             value={opt.value}
-            className="rounded-b-none border-b-2 border-transparent px-3 py-2 text-xs data-[state=active]:border-primary data-[state=active]:bg-muted/60 data-[state=active]:shadow-none"
+            className="min-h-11 rounded-b-none border-b-2 border-transparent px-3 py-2 text-xs data-[state=active]:border-primary data-[state=active]:bg-muted/60 data-[state=active]:shadow-none sm:min-h-0"
           >
             {opt.label}
             {opt.count != null && opt.count > 0 ? (
