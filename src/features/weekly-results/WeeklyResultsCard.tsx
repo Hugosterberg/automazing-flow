@@ -3,9 +3,10 @@ import { Copy, Printer, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
-import { useLeads, isLeadOpen, isFollowUpDueToday, isFollowUpOverdue } from "@/features/leads";
+import { useLeads } from "@/features/leads/useLeads";
+import { isLeadOpen, isFollowUpDueToday, isFollowUpOverdue } from "@/features/leads/leadHelpers";
 import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
-import { useTasks } from "@/features/tasks";
+import { useTasks } from "@/features/tasks/useTasks";
 import { cn } from "@/lib/utils";
 import { buildWeeklyResultsSummary } from "./buildWeeklyResultsSummary";
 

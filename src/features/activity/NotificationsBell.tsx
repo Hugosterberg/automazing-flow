@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { SheetGrabber } from "@/components/ui/sheet-grabber";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles/useActiveBusinessProfileId";
 import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
 import type { BriefItemKind } from "@/features/daily-brief/buildDailyBrief";
 import { useActivityFeed, type ActivityEventRow } from "./useActivityFeed";

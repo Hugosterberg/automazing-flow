@@ -57,13 +57,28 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            /*
+             * Vite's dynamic-import preload helper is a virtual module, so it
+             * never matches the node_modules rules below. Left unassigned,
+             * Rollup parked it in the chart vendor chunk — and since the entry
+             * needs the helper, that made all 395 kB of recharts a first-paint
+             * dependency. Pinning it next to React keeps it in a chunk the
+             * entry loads anyway.
+             */
+            if (id.includes("vite/preload-helper")) {
+              return "react-vendor";
+            }
+
             if (!id.includes("node_modules")) {
               return;
             }
 
+            // `react-is` is claimed here so it cannot be stranded inside a
+            // heavy chunk it happens to share with a charting dependency.
             if (
               id.includes("/react/") ||
               id.includes("/react-dom/") ||
+              id.includes("/react-is/") ||
               id.includes("/react-router-dom/")
             ) {
               return "react-vendor";
@@ -81,17 +96,15 @@ export default defineConfig(({ mode }) => {
               return "radix-vendor";
             }
 
-            // recharts (+ its d3 dependency tree) is ~300 kB and only changes
-            // when the dependency is bumped — keep it out of page chunks so
-            // Ecommerce/analytics pages stay small and the vendor chunk stays
-            // cached across deploys.
-            if (
-              id.includes("/recharts/") ||
-              id.includes("/d3-") ||
-              id.includes("/victory-vendor/")
-            ) {
-              return "charts-vendor";
-            }
+            /*
+             * recharts (+ its d3 tree) is ~395 kB and only used by four lazy
+             * routes. It is deliberately NOT grouped into a manual chunk:
+             * a hand-named chunk collects whatever shared modules Rollup
+             * decides to park in it, and a single one of those reached from
+             * the app shell turns the whole 395 kB into a first-paint
+             * dependency. Letting Rollup derive the chunk keeps it reachable
+             * only from the routes that actually render a chart.
+             */
 
             if (id.includes("/@supabase/")) {
               return "supabase-vendor";

@@ -1,0 +1,285 @@
+{
+  "ui": {
+    "trigger": "Guide",
+    "triggerAria": "Öppna guide: {{title}}",
+    "why": "Varför",
+    "steps": "Så gör du",
+    "result": "Klart när",
+    "progress": "{{done}} av {{total}} klara",
+    "done": "Alla steg klara",
+    "reset": "Nollställ",
+    "close": "Stäng",
+    "goThere": "Gå dit",
+    "markDone": "Markera som klart",
+    "commandGroup": "Guider",
+    "commandPrefix": "Guide"
+  },
+  "connections": {
+    "title": "Koppla ett konto",
+    "why": "Allt i portalen — inkorg, recensioner, kampanjer, AI-förslag — matas av dina kopplingar. Utan minst en koppling är sidorna tomma.",
+    "steps": [
+      {
+        "title": "Välj plattform i katalogen",
+        "detail": "Sök på namnet. Varje kort visar vad kopplingen låser upp och vad som krävs innan du börjar."
+      },
+      {
+        "title": "Kör den guidade anslutningen",
+        "detail": "Klicka Anslut. Du loggar in hos leverantören och godkänner behörigheterna — portalen sparar aldrig ditt lösenord."
+      },
+      {
+        "title": "Vänta in verifieringen",
+        "detail": "Portalen gör ett riktigt testanrop efter inloggningen. Grön status betyder att data faktiskt kommer in, inte bara att inloggningen gick igenom."
+      },
+      {
+        "title": "Se datan landa på startsidan",
+        "detail": "Första synken börjar direkt. Dagens överblick fylls i inom någon minut."
+      }
+    ],
+    "result": "Kopplingen är grön och du ser siffror på startsidan."
+  },
+  "home": {
+    "title": "Jobba av dagen på startsidan",
+    "why": "Startsidan är dagens arbetsordning: den samlar det som faktiskt kräver dig just nu, så du slipper leta igenom varje flik.",
+    "steps": [
+      {
+        "title": "Läs Dagens överblick först",
+        "detail": "Den rankar allt efter vad som kostar dig mest om det ligger kvar — obesvarat, försenat, trasigt."
+      },
+      {
+        "title": "Klicka dig direkt in i ärendet",
+        "detail": "Varje rad är en genväg till rätt ställe med rätt filter redan satt."
+      },
+      {
+        "title": "Kolla AI-rekommendationerna",
+        "detail": "Konkreta förslag från din faktiska data. Du godkänner alltid innan något skickas."
+      },
+      {
+        "title": "Åtgärda röda kopplingar samma dag",
+        "detail": "En trasig koppling gör tyst alla siffror som hänger på den missvisande."
+      }
+    ],
+    "result": "Överblicken är tom eller grön — då är dagen avklarad."
+  },
+  "messages": {
+    "title": "Beta av inkorgen",
+    "why": "Mail och DM från alla konton hamnar i en inkorg, sorterad efter vad som väntar på svar — inte efter vad som kom senast.",
+    "steps": [
+      {
+        "title": "Börja i Behöver svar",
+        "detail": "Triagen skiljer verkliga frågor från nyhetsbrev och notiser."
+      },
+      {
+        "title": "Öppna och läs hela tråden",
+        "detail": "Hela mailet visas i panelen — du behöver inte hoppa ut till Gmail eller Outlook."
+      },
+      {
+        "title": "Låt AI skriva ett utkast",
+        "detail": "Utkastet använder din företagsprofil för ton och fakta. Läs igenom, ändra och skicka — inget går iväg av sig självt."
+      },
+      {
+        "title": "Slå på autosvar när du litar på tonen",
+        "detail": "Automationen lägger utkast i kö åt dig i stället för att du börjar från tomt varje gång."
+      }
+    ],
+    "result": "Behöver svar är tom."
+  },
+  "reviews": {
+    "title": "Svara på recensioner",
+    "why": "Svar på recensioner syns publikt och påverkar både betyg och hur ofta du dyker upp i sök. Obesvarade negativa omdömen kostar mest.",
+    "steps": [
+      {
+        "title": "Filtrera på Behöver svar",
+        "detail": "Portalen vet vilka som redan är besvarade hos leverantören."
+      },
+      {
+        "title": "Ta de låga betygen först",
+        "detail": "Ett snabbt, sakligt svar på en etta gör mer nytta än tio svar på femmor."
+      },
+      {
+        "title": "Använd AI-utkastet som start",
+        "detail": "Det plockar upp vad kunden faktiskt skrev. Personalisera en mening — det märks."
+      },
+      {
+        "title": "Automatisera svaren på de positiva",
+        "detail": "Låt automationen förbereda svar på 4-5 stjärnor så du lägger tiden på de svåra."
+      }
+    ],
+    "result": "Inga obesvarade recensioner kvar."
+  },
+  "tasks": {
+    "title": "Håll ihop uppgifterna",
+    "why": "Uppgifter är det som portalen inte kan automatisera åt dig. Ligger de här i stället för i huvudet syns de i Dagens överblick.",
+    "steps": [
+      {
+        "title": "Lägg upp uppgiften med förfallodatum",
+        "detail": "Utan datum kan portalen inte påminna dig, och den syns inte i överblicken."
+      },
+      {
+        "title": "Sätt prioritet",
+        "detail": "Prioriteten styr ordningen i Dagens överblick."
+      },
+      {
+        "title": "Dela upp stora uppgifter i checklistan",
+        "detail": "Delmål gör att du kan lämna och återuppta utan att tappa tråden."
+      },
+      {
+        "title": "Flytta till Klar när den är gjord",
+        "detail": "Försenade uppgifter fortsätter annars att larma på startsidan."
+      }
+    ],
+    "result": "Inga försenade uppgifter."
+  },
+  "content": {
+    "title": "Skapa och publicera innehåll",
+    "why": "Ett utkast blir en färdig post för flera kanaler samtidigt — samma budskap anpassat per plattform, utan att du skriver om det tre gånger.",
+    "steps": [
+      {
+        "title": "Beskriv vad du vill säga",
+        "detail": "AI:n använder din företagsprofil för ton och erbjudanden."
+      },
+      {
+        "title": "Välj kanaler",
+        "detail": "Texten anpassas per plattform — längd, hashtags och format skiljer sig."
+      },
+      {
+        "title": "Granska förhandsvisningen",
+        "detail": "Kontrollera bild, länk och första raden. Det är den som avgör om någon stannar."
+      },
+      {
+        "title": "Publicera nu eller schemalägg",
+        "detail": "Schemalagda inlägg syns i kalendern och går att flytta fram till publicering."
+      }
+    ],
+    "result": "Inlägget ligger publicerat eller i kön."
+  },
+  "automations": {
+    "title": "Slå på en automation tryggt",
+    "why": "Automationer gör jobbet mellan dina inloggningar. Alla börjar i utkastläge — ingenting skickas till en kund utan att du godkänt det.",
+    "steps": [
+      {
+        "title": "Läs vad automationen faktiskt gör",
+        "detail": "Varje kort säger vad som händer, hur ofta, och vilken koppling den behöver."
+      },
+      {
+        "title": "Slå på den och låt den samla utkast",
+        "detail": "Kör den några dagar innan du litar på den blint."
+      },
+      {
+        "title": "Granska utkasten innan de går iväg",
+        "detail": "Godkänn eller ändra. Det är här du lär den din ton."
+      },
+      {
+        "title": "Följ körningarna i Aktivitet",
+        "detail": "Där ser du vad som kördes, vad som skickades och vad som fastnade."
+      }
+    ],
+    "result": "Automationen kör grönt och utkasten känns rätt."
+  },
+  "ecommerce": {
+    "title": "Sköta butiken",
+    "why": "Ordrar, produkter och lager på ett ställe — så du ser vad som behöver åtgärdas innan kunden hör av sig.",
+    "steps": [
+      {
+        "title": "Börja med åtgärdsraden",
+        "detail": "Den lyfter obetalda ordrar, ohanterade leveranser och lågt lager."
+      },
+      {
+        "title": "Öppna en order för radnivå",
+        "detail": "Du ser artiklar, belopp och status utan att gå in i Shopify."
+      },
+      {
+        "title": "Håll koll på lågt lager",
+        "detail": "Varningen går innan varan tar slut, inte efter."
+      },
+      {
+        "title": "Låt AI skriva produkttexterna",
+        "detail": "Beskrivningar och SEO-titlar från din faktiska produktdata."
+      }
+    ],
+    "result": "Inga ordrar eller lagernivåer som kräver åtgärd."
+  },
+  "sales": {
+    "title": "Följ upp leads",
+    "why": "De flesta affärer tappas på uteblivna uppföljningar, inte på dåliga samtal. Portalen håller reda på vem som väntar på dig.",
+    "steps": [
+      {
+        "title": "Lägg in leadet med nästa steg",
+        "detail": "Ett lead utan uppföljningsdatum försvinner ur flödet."
+      },
+      {
+        "title": "Jobba av Försenade först",
+        "detail": "De är sorterade efter hur länge de legat."
+      },
+      {
+        "title": "Skicka utskick från kön",
+        "detail": "Utkasten är skrivna utifrån vad ni senast pratade om."
+      },
+      {
+        "title": "Uppdatera status efter kontakt",
+        "detail": "Statusen styr både påminnelser och vad du ser på startsidan."
+      }
+    ],
+    "result": "Inga försenade uppföljningar."
+  },
+  "marketing": {
+    "title": "Läs av annonseringen",
+    "why": "Kampanjdata från alla plattformar räknas om till samma mått, så du kan jämföra kanaler rakt av.",
+    "steps": [
+      {
+        "title": "Börja med ROAS",
+        "detail": "Intäkt delat med annonskostnad. Under 1 betyder att kampanjen går back."
+      },
+      {
+        "title": "Jämför kanalerna mot varandra",
+        "detail": "Samma mått överallt — då syns det var pengarna gör mest nytta."
+      },
+      {
+        "title": "Titta på trenden, inte dagen",
+        "detail": "En enskild dag säger nästan ingenting. Kurvan gör det."
+      },
+      {
+        "title": "Agera på de svaga kampanjerna",
+        "detail": "Pausa eller flytta budget — portalen visar vilka som drar ner snittet."
+      }
+    ],
+    "result": "Du vet vilken kanal som ska ha nästa krona."
+  },
+  "company": {
+    "title": "Fyll i företagsprofilen",
+    "why": "Profilen är det AI:n vet om er. Är den tom blir varje utkast generiskt — det är den enskilt största kvalitetsskillnaden i portalen.",
+    "steps": [
+      {
+        "title": "Skriv vad ni gör och för vem",
+        "detail": "Två-tre meningar räcker. Konkret slår snyggt."
+      },
+      {
+        "title": "Lägg in webbadressen",
+        "detail": "Portalen läser sajten och fyller på med tonläge, tjänster och erbjudanden."
+      },
+      {
+        "title": "Se skillnaden i ett AI-förslag",
+        "detail": "Generera om ett förslag och jämför med hur det lät innan."
+      }
+    ],
+    "result": "Profilen är komplett och utkasten låter som ni."
+  },
+  "calendar": {
+    "title": "Planera veckan",
+    "why": "Publiceringar, uppgifter och möten i samma vy — så du ser var det är tomt och var det krockar.",
+    "steps": [
+      {
+        "title": "Börja i veckovyn",
+        "detail": "Månadsvyn är för överblick, veckovyn för planering."
+      },
+      {
+        "title": "Fyll de tomma dagarna",
+        "detail": "Luckor i publiceringen syns direkt som tomma kolumner."
+      },
+      {
+        "title": "Väg in planeringssignalerna",
+        "detail": "Helgdagar, klämdagar och väder påverkar när folk faktiskt läser."
+      }
+    ],
+    "result": "Veckan har en jämn plan utan luckor."
+  }
+}

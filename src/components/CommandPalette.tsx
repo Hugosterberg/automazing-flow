@@ -54,6 +54,7 @@ import { briefItemsForRoute } from "@/features/daily-brief/briefForRoute";
 import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummary";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useCommandPaletteEntities } from "@/hooks/useCommandPaletteEntities";
+import { GuideCommandGroup } from "@/features/guides/GuideCommandGroup";
 
 type CommandPaletteProps = {
   onOpenShortcuts?: () => void;
@@ -320,6 +321,9 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
               <CommandSeparator />
             </>
           ) : null}
+
+          <GuideCommandGroup mode={mode} onSelect={() => setOpen(false)} />
+          <CommandSeparator />
 
           <CommandGroup heading={t("commandPalette.actions")}>
             <CommandItem

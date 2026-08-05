@@ -8,7 +8,8 @@ import {
   listBusinessProfiles,
   updateBusinessProfile,
 } from "./businessProfilesService";
-import { logActivity, ACTIVITY_FEED_KEY } from "@/features/activity";
+import { logActivity } from "@/features/activity/activityLog";
+import { ACTIVITY_FEED_KEY } from "@/features/activity/useActivityFeed";
 
 export const BUSINESS_PROFILES_KEY = ["business-profiles"] as const;
 

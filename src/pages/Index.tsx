@@ -48,30 +48,34 @@ import {
 } from "@/components/home-widgets";
 import { useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/context/AccountsContext";
-import { useActiveBusinessProfileIdOptional, useBusinessProfiles, CompanyProfileNudge, ExperienceBoostCard } from "@/features/business-profiles";
-import { FirstWinChecklist, WinsTodayStrip, FIRST_WIN_DOC_KEY, type FirstWinDoc } from "@/features/onboarding";
-import { DemoModeBanner } from "@/features/demo";
-import { WeeklyResultsCard } from "@/features/weekly-results";
+import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles/useActiveBusinessProfileId";
+import { useBusinessProfiles } from "@/features/business-profiles/useBusinessProfiles";
+import { CompanyProfileNudge } from "@/features/business-profiles/CompanyProfileNudge";
+import { ExperienceBoostCard } from "@/features/business-profiles/ExperienceBoostCard";
+import { FirstWinChecklist } from "@/features/onboarding/FirstWinChecklist";
+import { WinsTodayStrip } from "@/features/onboarding/WinsTodayStrip";
+import { FIRST_WIN_DOC_KEY, type FirstWinDoc } from "@/features/onboarding/firstWin";
+import { DemoModeBanner } from "@/features/demo/DemoModeBanner";
+import { WeeklyResultsCard } from "@/features/weekly-results/WeeklyResultsCard";
 import { quickNavLabel } from "@/features/quick-nav/quickNavLabels";
 import { useTranslation } from "react-i18next";
-import { useWorkspaceMode } from "@/features/workspace-mode";
+import { useWorkspaceMode } from "@/features/workspace-mode/useWorkspaceMode";
 import { useConnections } from "@/features/connections/useConnections";
-import { SyncFreshnessStrip, healthyPlatformSet } from "@/features/connections";
-import { useProfileDocument } from "@/features/profile-documents";
-import { AiRecommendationsWidget } from "@/features/ai-recommendations";
-import { SmartDailyBrief } from "@/features/daily-brief";
+import { SyncFreshnessStrip } from "@/features/connections/SyncFreshnessStrip";
+import { healthyPlatformSet } from "@/features/connections/connectionVerified";
+import { useProfileDocument } from "@/features/profile-documents/useProfileDocument";
+import { AiRecommendationsWidget } from "@/features/ai-recommendations/AiRecommendationsWidget";
+import { SmartDailyBrief } from "@/features/daily-brief/SmartDailyBrief";
 import { useUnreadDmCount } from "@/features/daily-brief/useUnreadDmCount";
-import { useLeads, isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads";
-import { useReviewReplyState } from "@/features/reviews";
-import { MarketPulseCard } from "@/features/intelligence";
-import { ApproveDraftsCard, FlowAutomationStatusCard } from "@/features/automation";
-import { useAiRecommendations } from "@/features/ai-recommendations";
-import {
-  useTasks,
-  isTaskOpen,
-  isTaskOverdue,
-  isTaskDueToday,
-} from "@/features/tasks";
+import { useLeads } from "@/features/leads/useLeads";
+import { isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads/leadHelpers";
+import { useReviewReplyState } from "@/features/reviews/useReviewReplyState";
+import { MarketPulseCard } from "@/features/intelligence/MarketPulseCard";
+import { ApproveDraftsCard } from "@/features/automation/ApproveDraftsCard";
+import { FlowAutomationStatusCard } from "@/features/automation/FlowAutomationStatusCard";
+import { useAiRecommendations } from "@/features/ai-recommendations/useAiRecommendations";
+import { useTasks } from "@/features/tasks/useTasks";
+import { isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks/taskFilters";
 import { pageFadeUp } from "@/lib/motion";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
 import { PageHeader } from "@/components/ui/page-header";
@@ -80,8 +84,8 @@ import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
 import { formatNumber } from "@/lib/format";
-import { useMarketingCampaigns } from "@/features/marketing";
-import { useQuickNavPrefs } from "@/features/quick-nav";
+import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
+import { useQuickNavPrefs } from "@/features/quick-nav/useQuickNavPrefs";
 
 export default function Index() {
   const { t } = useTranslation();

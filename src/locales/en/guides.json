@@ -1,0 +1,285 @@
+{
+  "ui": {
+    "trigger": "Guide",
+    "triggerAria": "Open guide: {{title}}",
+    "why": "Why",
+    "steps": "How to",
+    "result": "Done when",
+    "progress": "{{done}} of {{total}} done",
+    "done": "All steps done",
+    "reset": "Reset",
+    "close": "Close",
+    "goThere": "Take me there",
+    "markDone": "Mark as done",
+    "commandGroup": "Guides",
+    "commandPrefix": "Guide"
+  },
+  "connections": {
+    "title": "Connect an account",
+    "why": "Everything in the portal — inbox, reviews, campaigns, AI suggestions — is fed by your connections. Without at least one, the pages stay empty.",
+    "steps": [
+      {
+        "title": "Pick a platform from the catalog",
+        "detail": "Search by name. Each card shows what the connection unlocks and what you need before you start."
+      },
+      {
+        "title": "Run the guided connect",
+        "detail": "Click Connect, sign in at the provider and approve the permissions — the portal never stores your password."
+      },
+      {
+        "title": "Wait for verification",
+        "detail": "The portal makes a real test call after sign-in. Green means data is actually arriving, not just that the login worked."
+      },
+      {
+        "title": "Watch the data land on Home",
+        "detail": "The first sync starts immediately. Your daily overview fills in within a minute."
+      }
+    ],
+    "result": "The connection is green and Home shows real numbers."
+  },
+  "home": {
+    "title": "Work through your day on Home",
+    "why": "Home is the day's running order: it collects what actually needs you right now, so you don't have to dig through every tab.",
+    "steps": [
+      {
+        "title": "Read the daily overview first",
+        "detail": "It ranks everything by what costs you most if it sits untouched — unanswered, overdue, broken."
+      },
+      {
+        "title": "Click straight into the item",
+        "detail": "Every row is a shortcut to the right place with the right filter already applied."
+      },
+      {
+        "title": "Check the AI recommendations",
+        "detail": "Concrete suggestions from your own data. You always approve before anything is sent."
+      },
+      {
+        "title": "Fix red connections the same day",
+        "detail": "A broken connection quietly makes every number that depends on it misleading."
+      }
+    ],
+    "result": "The overview is empty or green — the day is done."
+  },
+  "messages": {
+    "title": "Clear the inbox",
+    "why": "Mail and DMs from every account land in one inbox, sorted by what is waiting on a reply — not by what arrived last.",
+    "steps": [
+      {
+        "title": "Start with Needs reply",
+        "detail": "Triage separates real questions from newsletters and notifications."
+      },
+      {
+        "title": "Open and read the full thread",
+        "detail": "The whole message renders in the panel — no jumping out to Gmail or Outlook."
+      },
+      {
+        "title": "Let AI draft the reply",
+        "detail": "The draft uses your company profile for tone and facts. Read it, edit it, send it — nothing leaves on its own."
+      },
+      {
+        "title": "Turn on auto-reply once you trust the tone",
+        "detail": "The automation queues drafts for you instead of starting from a blank box every time."
+      }
+    ],
+    "result": "Needs reply is empty."
+  },
+  "reviews": {
+    "title": "Reply to reviews",
+    "why": "Review replies are public and move both your rating and how often you surface in search. Unanswered negative reviews cost the most.",
+    "steps": [
+      {
+        "title": "Filter on Needs reply",
+        "detail": "The portal knows which ones are already answered at the provider."
+      },
+      {
+        "title": "Take the low ratings first",
+        "detail": "One quick, factual reply to a 1-star does more than ten replies to 5-stars."
+      },
+      {
+        "title": "Start from the AI draft",
+        "detail": "It picks up what the customer actually wrote. Personalise one sentence — it shows."
+      },
+      {
+        "title": "Automate the positive ones",
+        "detail": "Let the automation prepare replies to 4-5 stars so your time goes to the hard ones."
+      }
+    ],
+    "result": "No unanswered reviews left."
+  },
+  "tasks": {
+    "title": "Keep tasks together",
+    "why": "Tasks are what the portal can't automate for you. Kept here instead of in your head, they show up in the daily overview.",
+    "steps": [
+      {
+        "title": "Add the task with a due date",
+        "detail": "Without a date the portal can't remind you, and it won't appear in the overview."
+      },
+      {
+        "title": "Set a priority",
+        "detail": "Priority drives the order in the daily overview."
+      },
+      {
+        "title": "Break big tasks into the checklist",
+        "detail": "Sub-steps let you leave and resume without losing your place."
+      },
+      {
+        "title": "Move it to Done when it's done",
+        "detail": "Otherwise overdue tasks keep raising alarms on Home."
+      }
+    ],
+    "result": "No overdue tasks."
+  },
+  "content": {
+    "title": "Create and publish content",
+    "why": "One draft becomes a finished post for several channels at once — the same message adapted per platform, without writing it three times.",
+    "steps": [
+      {
+        "title": "Describe what you want to say",
+        "detail": "The AI uses your company profile for tone and offers."
+      },
+      {
+        "title": "Pick your channels",
+        "detail": "The text adapts per platform — length, hashtags and format all differ."
+      },
+      {
+        "title": "Review the preview",
+        "detail": "Check the image, the link and the first line. The first line decides whether anyone stays."
+      },
+      {
+        "title": "Publish now or schedule",
+        "detail": "Scheduled posts appear in the calendar and can be moved right up until they go out."
+      }
+    ],
+    "result": "The post is published or queued."
+  },
+  "automations": {
+    "title": "Turn on an automation safely",
+    "why": "Automations do the work between your logins. They all start in draft mode — nothing reaches a customer without your approval.",
+    "steps": [
+      {
+        "title": "Read what the automation actually does",
+        "detail": "Each card states what happens, how often, and which connection it needs."
+      },
+      {
+        "title": "Turn it on and let it collect drafts",
+        "detail": "Run it for a few days before you trust it blindly."
+      },
+      {
+        "title": "Review drafts before they go out",
+        "detail": "Approve or edit. This is where you teach it your tone."
+      },
+      {
+        "title": "Follow the runs in Activity",
+        "detail": "That's where you see what ran, what was sent and what got stuck."
+      }
+    ],
+    "result": "The automation runs green and the drafts feel right."
+  },
+  "ecommerce": {
+    "title": "Run the store",
+    "why": "Orders, products and stock in one place — so you catch what needs handling before the customer gets in touch.",
+    "steps": [
+      {
+        "title": "Start with the action strip",
+        "detail": "It surfaces unpaid orders, unfulfilled shipments and low stock."
+      },
+      {
+        "title": "Open an order for line detail",
+        "detail": "You get items, amounts and status without opening Shopify."
+      },
+      {
+        "title": "Watch low stock",
+        "detail": "The warning fires before an item runs out, not after."
+      },
+      {
+        "title": "Let AI write the product copy",
+        "detail": "Descriptions and SEO titles from your real product data."
+      }
+    ],
+    "result": "No orders or stock levels needing action."
+  },
+  "sales": {
+    "title": "Follow up on leads",
+    "why": "Most deals are lost to missed follow-ups, not bad calls. The portal keeps track of who is waiting on you.",
+    "steps": [
+      {
+        "title": "Add the lead with a next step",
+        "detail": "A lead without a follow-up date drops out of the flow."
+      },
+      {
+        "title": "Clear Overdue first",
+        "detail": "They're sorted by how long they've been sitting."
+      },
+      {
+        "title": "Send outreach from the queue",
+        "detail": "Drafts are written from what you last talked about."
+      },
+      {
+        "title": "Update the status after contact",
+        "detail": "Status drives both reminders and what you see on Home."
+      }
+    ],
+    "result": "No overdue follow-ups."
+  },
+  "marketing": {
+    "title": "Read your advertising",
+    "why": "Campaign data from every platform is converted to the same measures, so you can compare channels directly.",
+    "steps": [
+      {
+        "title": "Start with ROAS",
+        "detail": "Revenue divided by ad spend. Below 1 means the campaign is losing money."
+      },
+      {
+        "title": "Compare channels side by side",
+        "detail": "Same measure everywhere — that's what shows where the money works hardest."
+      },
+      {
+        "title": "Look at the trend, not the day",
+        "detail": "A single day says almost nothing. The curve does."
+      },
+      {
+        "title": "Act on the weak campaigns",
+        "detail": "Pause or move budget — the portal shows which ones drag the average down."
+      }
+    ],
+    "result": "You know which channel gets the next krona."
+  },
+  "company": {
+    "title": "Fill in the company profile",
+    "why": "The profile is what the AI knows about you. Leave it empty and every draft turns generic — it's the single biggest quality difference in the portal.",
+    "steps": [
+      {
+        "title": "Write what you do and for whom",
+        "detail": "Two or three sentences is enough. Specific beats polished."
+      },
+      {
+        "title": "Add your website",
+        "detail": "The portal reads the site and fills in tone, services and offers."
+      },
+      {
+        "title": "See the difference in an AI suggestion",
+        "detail": "Regenerate a suggestion and compare it with how it read before."
+      }
+    ],
+    "result": "The profile is complete and drafts sound like you."
+  },
+  "calendar": {
+    "title": "Plan the week",
+    "why": "Publishing, tasks and meetings in one view — so you see where it's empty and where things collide.",
+    "steps": [
+      {
+        "title": "Start in the week view",
+        "detail": "Month view is for overview, week view is for planning."
+      },
+      {
+        "title": "Fill the empty days",
+        "detail": "Gaps in publishing show up immediately as empty columns."
+      },
+      {
+        "title": "Factor in the planning signals",
+        "detail": "Public holidays, bridge days and weather all move when people actually read."
+      }
+    ],
+    "result": "The week has an even plan with no gaps."
+  }
+}
