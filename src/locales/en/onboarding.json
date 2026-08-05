@@ -71,7 +71,9 @@
       "detailDone": "AI and leads become more relevant.",
       "cta": "Fill in Company",
       "ctaDone": "Open Company"
-    }
+    },
+    "guide": "Guide",
+    "guideAria": "Open the guide for this step"
   },
   "boost": {
     "aria": "Improve the experience",
@@ -83,5 +85,39 @@
     "setupReady": "Profile and connections are set ({{percent}}%). Next: enable automation.",
     "automationsHeading": "Can be automated",
     "seeAutomations": "See all automations"
+  },
+  "tour": {
+    "title": "Welcome to Automazing",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Start working",
+    "welcome": {
+      "title": "Welcome to Automazing",
+      "body": "One workspace where mail, social, reviews and your store come together — with AI preparing drafts you approve. The tour takes a minute.",
+      "chip1": "One inbox for everything",
+      "chip2": "AI drafts you approve",
+      "chip3": "Automations that work for you"
+    },
+    "connect": {
+      "title": "Connections are the engine",
+      "body": "Everything in the portal is fed by your connections. Start with these — each one runs through a guided flow that verifies data is actually arriving.",
+      "note": "You always sign in at the provider — Automazing never stores your password.",
+      "cta": "Start your first connection"
+    },
+    "safety": {
+      "title": "All AI is draft-first",
+      "body": "You can turn on automations without worry — one rule applies everywhere:",
+      "point1": "Nothing is sent to a customer without your approval.",
+      "point2": "Automations collect drafts in a queue you clear when it suits you.",
+      "point3": "Every run is logged under Activity so you can see what happened."
+    },
+    "daily": {
+      "title": "How you work day to day",
+      "body": "Home is the day's running order — it collects what is waiting on you. Three things that make you fast:",
+      "point1": "The daily overview ranks everything by what costs most to leave sitting. Click a row to land in the right place.",
+      "point2": "The Guide button at the top of every page opens a short interactive walkthrough of that page.",
+      "point3": "Ctrl+K (⌘K) opens the command palette — pages, tasks, leads and every guide, from anywhere."
+    }
   }
 }

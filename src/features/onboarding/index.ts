@@ -18,3 +18,5 @@ export {
 export { FirstWinChecklist } from "./FirstWinChecklist";
 export { ConnectPriorityWizard } from "./ConnectPriorityWizard";
 export { WinsTodayStrip } from "./WinsTodayStrip";
+export { WelcomeTour } from "./WelcomeTour";
+export { WELCOME_TOUR_DOC_KEY, openWelcomeTour, welcomeTourSeen, type WelcomeTourDoc } from "./welcomeTourState";

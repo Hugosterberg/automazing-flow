@@ -98,7 +98,8 @@
     "ctxFilterErrors": "Filtrera: fel",
     "ctxConnectionHealth": "Kopplingshälsa",
     "ctxCreateEvent": "Skapa händelse",
-    "ctxCompanyProfile": "Företagsprofil"
+    "ctxCompanyProfile": "Företagsprofil",
+    "showWelcomeTour": "Visa välkomstrundturen"
   },
   "notFound": {
     "documentTitle": "Sidan finns inte · Automazing",

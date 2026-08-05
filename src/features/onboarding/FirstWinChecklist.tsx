@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, CheckCircle2, Rocket, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, HelpCircle, Rocket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { openGuide } from "@/features/guides/guideEvents";
+import type { GuideId } from "@/features/guides/guideCatalog";
 import { useProfileDocument } from "@/features/profile-documents";
 import { getBusinessProfileCompleteness } from "@/features/business-profiles";
 import type { BusinessProfile } from "@/types/businessProfile";
@@ -13,6 +15,15 @@ import {
   type FirstWinDoc,
   type FirstWinStepId,
 } from "./firstWin";
+
+/** Which interactive guide explains each first-win step. */
+const GUIDE_FOR_STEP: Record<FirstWinStepId, GuideId> = {
+  connect_mail: "connections",
+  connect_channel: "connections",
+  open_inbox: "messages",
+  enable_automation: "automations",
+  fill_company: "company",
+};
 
 type Props = {
   profile?: BusinessProfile | null;
@@ -182,6 +193,19 @@ export function FirstWinChecklist({
                 </div>
               </div>
               <div className="flex shrink-0 gap-1 sm:pl-6">
+                {!step.done ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 text-xs text-muted-foreground"
+                    aria-label={t("firstWin.guideAria")}
+                    onClick={() => openGuide(GUIDE_FOR_STEP[step.id])}
+                  >
+                    <HelpCircle className="h-3 w-3" aria-hidden />
+                    {t("firstWin.guide")}
+                  </Button>
+                ) : null}
                 {!step.done && (step.id === "enable_automation" || step.id === "open_inbox") ? (
                   <Button
                     type="button"

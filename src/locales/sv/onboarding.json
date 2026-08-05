@@ -71,7 +71,9 @@
       "detailDone": "AI och leads blir mer relevanta.",
       "cta": "Fyll i Företag",
       "ctaDone": "Öppna Företag"
-    }
+    },
+    "guide": "Guide",
+    "guideAria": "Öppna guiden för det här steget"
   },
   "boost": {
     "aria": "Förbättra upplevelsen",
@@ -83,5 +85,39 @@
     "setupReady": "Profil och kopplingar är på plats ({{percent}}%). Nästa steg: aktivera automation.",
     "automationsHeading": "Kan automatiseras",
     "seeAutomations": "Se alla automationer"
+  },
+  "tour": {
+    "title": "Välkommen till Automazing",
+    "skip": "Hoppa över",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "finish": "Börja jobba",
+    "welcome": {
+      "title": "Välkommen till Automazing",
+      "body": "En arbetsyta där mail, sociala medier, recensioner och butik samlas — och där AI förbereder utkast som du godkänner. Rundturen tar en minut.",
+      "chip1": "En inkorg för allt",
+      "chip2": "AI-utkast du godkänner",
+      "chip3": "Automationer som jobbar åt dig"
+    },
+    "connect": {
+      "title": "Kopplingar är motorn",
+      "body": "Allt i portalen matas av dina kopplingar. Börja med de här — varje koppling går genom ett guidat flöde som verifierar att data faktiskt kommer in.",
+      "note": "Du loggar alltid in hos leverantören — Automazing sparar aldrig ditt lösenord.",
+      "cta": "Starta första kopplingen"
+    },
+    "safety": {
+      "title": "Allt AI är utkast först",
+      "body": "Du kan slå på automationer utan oro — grundregeln gäller överallt:",
+      "point1": "Inget skickas till en kund utan att du godkänt det.",
+      "point2": "Automationer samlar utkast i en kö som du betar av när det passar.",
+      "point3": "Varje körning loggas under Aktivitet så du ser vad som hänt."
+    },
+    "daily": {
+      "title": "Så jobbar du varje dag",
+      "body": "Startsidan är dagens arbetsordning — den samlar det som väntar på dig. Tre saker som gör dig snabb:",
+      "point1": "Dagens överblick rankar allt efter vad som kostar mest att låta ligga. Klicka en rad så landar du rätt.",
+      "point2": "Guide-knappen uppe på varje sida öppnar en kort interaktiv genomgång av just den sidan.",
+      "point3": "Ctrl+K (⌘K) öppnar sökpaletten — sidor, uppgifter, leads och alla guider, varifrån som helst."
+    }
   }
 }

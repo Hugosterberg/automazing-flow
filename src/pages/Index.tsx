@@ -53,6 +53,7 @@ import { useBusinessProfiles } from "@/features/business-profiles/useBusinessPro
 import { CompanyProfileNudge } from "@/features/business-profiles/CompanyProfileNudge";
 import { ExperienceBoostCard } from "@/features/business-profiles/ExperienceBoostCard";
 import { FirstWinChecklist } from "@/features/onboarding/FirstWinChecklist";
+import { WelcomeTour } from "@/features/onboarding/WelcomeTour";
 import { WinsTodayStrip } from "@/features/onboarding/WinsTodayStrip";
 import { FIRST_WIN_DOC_KEY, type FirstWinDoc } from "@/features/onboarding/firstWin";
 import { DemoModeBanner } from "@/features/demo/DemoModeBanner";
@@ -564,6 +565,10 @@ export default function Index() {
             : []
         }
       />
+
+      {/* First-login tour; renders nothing once seen. Mounted outside the
+          tab conditional so it greets the user regardless of active tab. */}
+      <WelcomeTour kind={businessProfile?.kind} connectedCount={accounts.length} />
 
       <PageModeTabs
         value={homeTab === "pulse" && !showPulseTab ? "today" : homeTab}

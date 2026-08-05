@@ -55,6 +55,7 @@ import { useDailyBriefSummary } from "@/features/daily-brief/useDailyBriefSummar
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
 import { useCommandPaletteEntities } from "@/hooks/useCommandPaletteEntities";
 import { GuideCommandGroup } from "@/features/guides/GuideCommandGroup";
+import { openWelcomeTour } from "@/features/onboarding/welcomeTourState";
 
 type CommandPaletteProps = {
   onOpenShortcuts?: () => void;
@@ -333,6 +334,18 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
               <Keyboard className="mr-2 h-4 w-4 text-muted-foreground" />
               {t("commandPalette.showShortcuts")}
               <CommandShortcut>?</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              value={t("commandPalette.showWelcomeTour")}
+              onSelect={() => {
+                setOpen(false);
+                // Tour lives on Home — navigate there first so it can mount.
+                navigate("/");
+                openWelcomeTour();
+              }}
+            >
+              <Sparkles className="mr-2 h-4 w-4 text-muted-foreground" />
+              {t("commandPalette.showWelcomeTour")}
             </CommandItem>
             <CommandItem
               value={

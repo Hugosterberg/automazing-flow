@@ -98,7 +98,8 @@
     "ctxFilterErrors": "Filter: errors",
     "ctxConnectionHealth": "Connection health",
     "ctxCreateEvent": "Create event",
-    "ctxCompanyProfile": "Company profile"
+    "ctxCompanyProfile": "Company profile",
+    "showWelcomeTour": "Show the welcome tour"
   },
   "notFound": {
     "documentTitle": "Page not found · Automazing",
