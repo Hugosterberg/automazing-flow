@@ -168,6 +168,13 @@ export const DEFAULT_SCHEDULES_BY_KEY: Record<string, Partial<ProfileJobSchedule
     endTime: "23:59",
     enabled: true,
   },
+  "instagram-drive-queue": {
+    days: [1, 2, 3, 4, 5, 6, 7],
+    timesPerDay: 1,
+    startTime: "09:00",
+    endTime: "09:00",
+    enabled: false,
+  },
   "sales-outreach-auto": {
     days: [1, 2, 3, 4, 5],
     timesPerDay: 1,

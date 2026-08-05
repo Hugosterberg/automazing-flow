@@ -145,6 +145,20 @@ export const automationCatalog: AutomationCatalogEntry[] = [
     cronKey: "content-pipeline",
   },
   {
+    id: "instagram-drive-queue",
+    topic: "content",
+    title: "Instagram från Drive-mapp",
+    description:
+      "Tar en bild per dag från en Google Drive to-post-mapp, schemalägger till Instagram och flyttar filen till posted efter publicering.",
+    cadence: "Konfigurerbart schema",
+    icon: Sparkles,
+    outputHref: "/social-media",
+    cronKey: "instagram-drive-queue",
+    explainer:
+      "Lägg bilder i Drive-mappen to-post. Automationen plockar en per dag, publicerar via Instagram och flyttar filen till posted. iCloud-album stöds inte via API — synka till Drive först.",
+    trustNote: "Kräver omkopplad Google Drive (skrivrättighet) plus Instagram via Zernio.",
+  },
+  {
     id: "cart-recovery",
     topic: "reports",
     title: "Kundvagnsåtervinning",

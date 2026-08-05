@@ -19,8 +19,13 @@ export const YOUTUBE_SCOPES =
   "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile";
 export const GMAIL_SCOPES =
   "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email";
+/**
+ * Full Drive scope is required for the Instagram to-post queue: list images,
+ * download bytes for Zernio, and move each file into a "posted" folder after
+ * a successful publish. Accounts connected under drive.readonly must reconnect.
+ */
 export const GOOGLE_DRIVE_SCOPES =
-  "openid email profile https://www.googleapis.com/auth/drive.readonly";
+  "openid email profile https://www.googleapis.com/auth/drive";
 export const GOOGLE_CALENDAR_SCOPES =
   "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
 export const GOOGLE_REVIEWS_SCOPES =

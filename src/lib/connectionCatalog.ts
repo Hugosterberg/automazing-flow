@@ -297,7 +297,8 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["content"],
     pageHref: "/content",
     pageName: "Content",
-    connectSteps: "Öppna Kopplingar → Google Drive → Koppla.",
+    connectSteps:
+      "Öppna Kopplingar → Google Drive → Koppla. Omkoppla efter scope-uppgradering om Instagram Drive-kön ska flytta filer.",
     serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Drive scope enabled for your OAuth client).",
   },
   {

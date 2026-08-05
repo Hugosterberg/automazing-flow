@@ -268,5 +268,97 @@
       "caption": "Caption",
       "cta": "CTA"
     }
+  },
+  "driveQueue": {
+    "title": "Instagram från Drive-mapp",
+    "description": "Publicera en bild per dag från en Google Drive to-post-mapp — captions reklamför den här företagsprofilen, sedan flyttas filen till posted.",
+    "icloudNote": "iCloud delade album har inget server-API här — synka albumet till Google Drive (eller kopiera filer till to-post-mappen) först.",
+    "reconnectNote": "Koppla om Google Drive en gång så att appen kan flytta filer efter publicering.",
+    "reconnectLink": "Koppla om Drive",
+    "enable": "Aktivera daglig kö",
+    "enableHint": "Postar en gång per dag när schemat under Automationer är due (standard ~09:00).",
+    "driveAccount": "Google Drive-konto",
+    "instagramAccount": "Instagram-konto",
+    "selectAccount": "Välj konto",
+    "toPostFolder": "To-post-mapp",
+    "postedFolder": "Posted-mapp",
+    "folderPlaceholder": "Mappnamn, ID eller Drive-URL",
+    "folderNameOptional": "Mappnamn (valfritt)",
+    "browse": "Bläddra",
+    "captionTemplate": "Caption-mall",
+    "captionHint": "Token: {{name}} {{company}} {{business}} {{website}} {{location}}",
+    "includeHashtags": "Lägg till Instagram-hashtags om de saknas",
+    "daysAhead": "Hur långt framåt ska kön fyllas",
+    "daysAheadOption": "{{count}} dagar",
+    "daysAheadHint": "Varje cron-körning fyller saknade dagar upp till det här fönstret (en bild per dag).",
+    "abTesting": "A/B-testa captions (välj mellan två varianter)",
+    "matchShopify": "Matcha filnamn mot Shopify-produkter i captions",
+    "useVision": "Beskriv bilden med AI-vision (AI-läge)",
+    "lastExperiment": "Senaste A/B-experimentet",
+    "experimentPicked": "Variant {{n}} valdes",
+    "matchedProduct": "Matchad produkt: {{title}}",
+    "previewLabel": "Caption-förhandsvisning (exempel)",
+    "previewAiNote": "Riktiga AI-captions skrivs vid enqueue från Företag-profil + bild (vision om aktiverat).",
+    "remainingImages": "{{count}} bilder kvar i to-post (efter senaste körning)",
+    "lastEnqueued": "Senast köad {{at}} UTC",
+    "save": "Spara",
+    "saved": "Drive-kö sparad",
+    "scheduleHintTitle": "När ska det postas?",
+    "scheduleHint": "Justera dagar och tid under Automationer → Innehåll → Instagram från Drive-mapp.",
+    "scheduleCta": "Öppna schema",
+    "guide": {
+      "title": "Så funkar det",
+      "step1": "Skapa två Drive-mappar: to-post (kö) och posted (arkiv).",
+      "step2": "Lägg produkt-/livsstilsbilder i to-post — äldst publiceras först.",
+      "step3": "Varje dag schemaläggs en bild till Instagram med caption för den här företagsprofilen.",
+      "step4": "Efter lyckad post flyttas filen till posted så den inte upprepas.",
+      "trust": "Inget publiceras förrän Instagram är kopplat via Zernio och schemat är på.",
+      "example": "Exempelcaption: “Summer drop — Acme Studio. Länk i bio. #smallbusiness”"
+    },
+    "setup": {
+      "title": "Kom igång",
+      "description": "Klara de här stegen innan du aktiverar den dagliga kön.",
+      "drive": "Koppla Google Drive",
+      "driveHint": "Behövs för att läsa to-post och flytta filer efter publicering.",
+      "instagram": "Koppla Instagram",
+      "instagramHint": "Publicering går via ditt kopplade Instagram-konto.",
+      "folders": "Välj to-post + posted",
+      "foldersHint": "Använd Bläddra eller klistra in en Drive-mapp-URL.",
+      "company": "Fyll i Företag-profilen",
+      "companyHint": "Namn, webbplats och anteckningar förbättrar brand/AI-captions.",
+      "action": "Öppna"
+    },
+    "captionMode": {
+      "label": "Hur ska captions skrivas?",
+      "brand": {
+        "title": "Varumärke (rekommenderas)",
+        "hint": "Filnamn + företagsnamn, anteckningar, webbplats och hashtags — utan AI-kostnad."
+      },
+      "ai": {
+        "title": "AI-caption",
+        "hint": "OpenAI skriver en kort promo-caption från Företag-profilen (faller tillbaka till Varumärke)."
+      },
+      "template": {
+        "title": "Egen mall",
+        "hint": "Du styr varje rad med token."
+      }
+    },
+    "picker": {
+      "description": "Öppna en mapp och använd den till kön.",
+      "root": "Min Drive",
+      "loading": "Hämtar mappar…",
+      "loadError": "Kunde inte ladda Drive-mappar",
+      "emptyFolders": "Inga undermappar här — gå upp eller välj en annan väg.",
+      "imageCount": "{{count}} bilder här",
+      "pickSubfolder": "Öppna en mapp först (roten kan inte användas).",
+      "cancel": "Avbryt",
+      "useFolder": "Använd den här mappen"
+    },
+    "errors": {
+      "accountsRequired": "Välj både Google Drive och Instagram.",
+      "foldersRequired": "Ange både to-post- och posted-mapp.",
+      "foldersDistinct": "To-post och posted måste vara olika mappar.",
+      "saveFailed": "Kunde inte spara Drive-kön."
+    }
   }
 }

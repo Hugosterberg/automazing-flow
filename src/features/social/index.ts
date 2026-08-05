@@ -1,4 +1,5 @@
 export { SocialAutomationPanel } from "./SocialAutomationPanel";
+export { InstagramDriveQueueCard } from "./InstagramDriveQueueCard";
 export { GoogleBusinessCard } from "./GoogleBusinessCard";
 export { SocialVideoDraftCard } from "./SocialVideoDraftCard";
 export { SocialStatsSection } from "./SocialStatsSection";

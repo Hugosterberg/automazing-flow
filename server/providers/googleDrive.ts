@@ -59,16 +59,14 @@ async function runWithFreshToken<T>({
     if (!(error instanceof Error) || error.message !== "unauthorized") throw error;
     const nextToken = await refreshGoogleToken({ refreshToken, googleClientId, googleClientSecret });
     if (!nextToken) {
-      throw new Error("Google Drive token invalid. Reconnect the account.", { cause: error });
+      throw new Error("Google Drive token invalid. Reconnect the account.");
     }
     await tokenStore.set(accountId, { ...stored, accessToken: nextToken });
     try {
       return await request(nextToken);
     } catch (refreshError) {
       if (refreshError instanceof Error && refreshError.message === "unauthorized") {
-        throw new Error("Google Drive token refresh succeeded but the request is still unauthorized.", {
-          cause: refreshError,
-        });
+        throw new Error("Google Drive token refresh succeeded but the request is still unauthorized.");
       }
       throw refreshError;
     }
@@ -266,6 +264,116 @@ export async function fetchGoogleDriveFileResponse(
         headers: { Authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(15_000),
       });
+    },
+  });
+}
+
+export type DriveImageFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  modifiedTime: string;
+};
+
+/** List image files directly under a folder (no recursion). Oldest first. */
+export async function listDriveFolderImages(
+  args: GoogleDriveArgs & { folderId: string }
+): Promise<DriveImageFile[]> {
+  const folderId = String(args.folderId || "").trim();
+  if (!folderId) return [];
+
+  const files = await runWithFreshToken({
+    ...args,
+    request: async (token) =>
+      driveList(token, {
+        orderBy: "modifiedTime asc",
+        q: `'${folderId}' in parents and trashed = false and mimeType contains 'image/'`,
+      }),
+  });
+
+  return files
+    .map((file) => {
+      const mimeType = String(file.mimeType || "");
+      if (!mimeType.startsWith("image/")) return null;
+      const id = String(file.id || "").trim();
+      if (!id) return null;
+      return {
+        id,
+        name: String(file.name || "image"),
+        mimeType,
+        modifiedTime: String(file.modifiedTime || ""),
+      } satisfies DriveImageFile;
+    })
+    .filter((f): f is DriveImageFile => Boolean(f));
+}
+
+/** Download raw file bytes for durable media storage / Zernio publish. */
+export async function downloadDriveFileBytes(
+  args: GoogleDriveArgs & { fileId: string }
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const fileId = String(args.fileId || "").trim();
+  if (!fileId) throw new Error("Missing Drive file id");
+
+  return runWithFreshToken({
+    ...args,
+    request: async (token) => {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(60_000),
+        }
+      );
+      if (res.status === 401) throw new Error("unauthorized");
+      if (!res.ok) {
+        throw new Error(`Drive download failed (${res.status})`);
+      }
+      const contentType = String(res.headers.get("content-type") || "application/octet-stream");
+      const arrayBuffer = await res.arrayBuffer();
+      return { buffer: Buffer.from(arrayBuffer), contentType };
+    },
+  });
+}
+
+/**
+ * Move a file from one parent folder to another (to-post → posted).
+ * Requires Drive write scope (`https://www.googleapis.com/auth/drive`).
+ */
+export async function moveDriveFileToFolder(
+  args: GoogleDriveArgs & {
+    fileId: string;
+    fromFolderId: string;
+    toFolderId: string;
+  }
+): Promise<void> {
+  const fileId = String(args.fileId || "").trim();
+  const fromFolderId = String(args.fromFolderId || "").trim();
+  const toFolderId = String(args.toFolderId || "").trim();
+  if (!fileId || !fromFolderId || !toFolderId) {
+    throw new Error("Missing Drive move parameters");
+  }
+  if (fromFolderId === toFolderId) return;
+
+  await runWithFreshToken({
+    ...args,
+    request: async (token) => {
+      const url = new URL(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`
+      );
+      url.searchParams.set("addParents", toFolderId);
+      url.searchParams.set("removeParents", fromFolderId);
+      url.searchParams.set("supportsAllDrives", "true");
+      url.searchParams.set("fields", "id,parents");
+      const res = await fetch(url.toString(), {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (res.status === 401) throw new Error("unauthorized");
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Drive move failed (${res.status})${body ? `: ${body.slice(0, 200)}` : ""}`);
+      }
     },
   });
 }

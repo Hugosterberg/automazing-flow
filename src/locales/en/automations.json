@@ -43,6 +43,12 @@
       "title": "Content pipeline",
       "description": "Seeds repurpose/gap/evergreen ideas and moves queued posts into scheduled publishing."
     },
+    "instagram-drive-queue": {
+      "title": "Instagram from Drive folder",
+      "description": "Takes one image per day from a Google Drive to-post folder, schedules it to Instagram, and moves the file to posted after publishing.",
+      "explainer": "Put images in the Drive to-post folder. The automation picks one per day, publishes via Instagram, and moves the file to posted. iCloud albums are not supported via API — sync to Drive first.",
+      "trustNote": "Requires reconnected Google Drive (write access) plus Instagram via Zernio."
+    },
     "cart-recovery": {
       "title": "Cart recovery",
       "description": "Sends recovery emails to customers who left a Shopify cart (deduplicated)."

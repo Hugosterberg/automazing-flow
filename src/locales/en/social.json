@@ -268,5 +268,97 @@
       "caption": "Caption",
       "cta": "CTA"
     }
+  },
+  "driveQueue": {
+    "title": "Instagram from Drive folder",
+    "description": "Post one image per day from a Google Drive to-post folder — captions promote this business profile, then the file moves to posted.",
+    "icloudNote": "iCloud shared albums have no server API here — sync the album into Google Drive (or copy files into the to-post folder) first.",
+    "reconnectNote": "Reconnect Google Drive once so the app can move files after posting.",
+    "reconnectLink": "Reconnect Drive",
+    "enable": "Enable daily queue",
+    "enableHint": "Posts once per day when the Automations schedule is due (default ~09:00).",
+    "driveAccount": "Google Drive account",
+    "instagramAccount": "Instagram account",
+    "selectAccount": "Select account",
+    "toPostFolder": "To-post folder",
+    "postedFolder": "Posted folder",
+    "folderPlaceholder": "Folder name, ID or Drive URL",
+    "folderNameOptional": "Folder name (optional)",
+    "browse": "Browse",
+    "captionTemplate": "Caption template",
+    "captionHint": "Tokens: {{name}} {{company}} {{business}} {{website}} {{location}}",
+    "includeHashtags": "Add Instagram hashtags when missing",
+    "daysAhead": "How far ahead to fill",
+    "daysAheadOption": "{{count}} days",
+    "daysAheadHint": "Each cron run fills missing days up to this window (one image per day).",
+    "abTesting": "A/B test captions (pick between two variants)",
+    "matchShopify": "Match filename to Shopify products in captions",
+    "useVision": "Describe the image with AI vision (AI mode)",
+    "lastExperiment": "Last A/B experiment",
+    "experimentPicked": "Variant {{n}} was selected",
+    "matchedProduct": "Matched product: {{title}}",
+    "previewLabel": "Caption preview (sample)",
+    "previewAiNote": "Live AI captions are written at enqueue time from Company profile + image (vision when enabled).",
+    "remainingImages": "{{count}} images left in to-post (after last run)",
+    "lastEnqueued": "Last queued {{at}} UTC",
+    "save": "Save",
+    "saved": "Drive queue saved",
+    "scheduleHintTitle": "When should it post?",
+    "scheduleHint": "Fine-tune days and time under Automations → Content → Instagram from Drive folder.",
+    "scheduleCta": "Open schedule",
+    "guide": {
+      "title": "How it works",
+      "step1": "Create two Drive folders: to-post (queue) and posted (archive).",
+      "step2": "Drop product/lifestyle photos into to-post — oldest posts first.",
+      "step3": "Each day we schedule one image to Instagram with a caption for this company profile.",
+      "step4": "After a successful post the file is moved to posted so it never repeats.",
+      "trust": "Nothing posts until Instagram is connected via Zernio and the schedule is enabled.",
+      "example": "Example caption: “Summer drop — Acme Studio. Link in bio. #smallbusiness”"
+    },
+    "setup": {
+      "title": "Get ready",
+      "description": "Finish these steps before enabling the daily queue.",
+      "drive": "Connect Google Drive",
+      "driveHint": "Needed to read the to-post folder and move files after publish.",
+      "instagram": "Connect Instagram",
+      "instagramHint": "Publishing goes through your connected Instagram account.",
+      "folders": "Pick to-post + posted folders",
+      "foldersHint": "Use Browse or paste a Drive folder URL.",
+      "company": "Fill in Company profile",
+      "companyHint": "Name, website and notes improve brand/AI captions.",
+      "action": "Open"
+    },
+    "captionMode": {
+      "label": "How should captions be written?",
+      "brand": {
+        "title": "Brand (recommended)",
+        "hint": "Filename + company name, notes, website and hashtags — no AI cost."
+      },
+      "ai": {
+        "title": "AI caption",
+        "hint": "OpenAI writes a short promo caption from Company profile (falls back to Brand)."
+      },
+      "template": {
+        "title": "Custom template",
+        "hint": "You control every line with tokens."
+      }
+    },
+    "picker": {
+      "description": "Open a folder, then use it for the queue.",
+      "root": "My Drive",
+      "loading": "Loading folders…",
+      "loadError": "Could not load Drive folders",
+      "emptyFolders": "No subfolders here — go up or pick another path.",
+      "imageCount": "{{count}} images here",
+      "pickSubfolder": "Open a folder first (root cannot be used).",
+      "cancel": "Cancel",
+      "useFolder": "Use this folder"
+    },
+    "errors": {
+      "accountsRequired": "Pick both Google Drive and Instagram accounts.",
+      "foldersRequired": "Set both to-post and posted folders.",
+      "foldersDistinct": "To-post and posted must be different folders.",
+      "saveFailed": "Could not save Drive queue."
+    }
   }
 }

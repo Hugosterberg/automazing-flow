@@ -17,6 +17,7 @@ import { registerRefreshAiRecommendationsCron } from "./cron/refreshAiRecommenda
 import { registerAutoReplyCron } from "./cron/autoReply.js";
 import { registerPublishScheduledPostsCron } from "./cron/publishScheduledPosts.js";
 import { registerContentPipelineCron } from "./cron/contentPipeline.js";
+import { registerInstagramDriveQueueCron } from "./cron/instagramDriveQueue.js";
 import { registerMailReplyAutoCron } from "./cron/mailReplyAuto.js";
 import { registerReviewReplyAutoCron } from "./cron/reviewReplyAuto.js";
 import { registerWeeklyInsightDigestCron } from "./cron/weeklyInsightDigest.js";
@@ -76,6 +77,7 @@ function automationTitleForKey(key) {
     "social-stats-snapshot": "Social statistik-snapshot",
     "sales-outreach-auto": "Automatisk outreach",
     "content-pipeline": "Innehållspipeline",
+    "instagram-drive-queue": "Instagram från Drive-mapp",
     "cart-recovery": "Kundvagnsåtervinning",
     "review-reply-auto": "Automatiska review-svar",
     "mail-reply-auto": "Automatiska mail-utkast",
@@ -292,6 +294,17 @@ export function registerCronRoutes(app, deps) {
     zernio,
     tokenStore,
     loadAllAutomationSettings,
+  });
+
+  registerInstagramDriveQueueCron(app, {
+    withRunRecording,
+    isAuthorisedCron,
+    supabaseAdmin,
+    tokenStore,
+    baseUrl,
+    secretResolver,
+    loadAllAutomationSettings,
+    isProfileJobDueNow,
   });
 
   registerDailyDigestCron(app, {

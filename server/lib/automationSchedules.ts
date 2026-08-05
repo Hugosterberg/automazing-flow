@@ -26,6 +26,7 @@ export const AUTOMATION_SCHEDULES: AutomationSchedule[] = [
   { key: "refresh-ai-recommendations", cron: "0 5 * * *", perTenant: true },
   { key: "auto-reply", cron: "*/15 * * * *", perTenant: true },
   { key: "publish-scheduled-posts", cron: "*/15 * * * *", perTenant: true },
+  { key: "instagram-drive-queue", cron: "0 9 * * *", perTenant: true },
   { key: "sales-outreach-auto", cron: "0 8 * * 1-5", perTenant: true },
   { key: "content-pipeline", cron: "0 10 * * *", perTenant: true },
   { key: "cart-recovery", cron: "0 11 * * *", perTenant: true },

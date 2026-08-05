@@ -12,6 +12,7 @@
 
 import type { ZernioModule } from "../providers/zernioModule.ts";
 import { describeZernioFailure } from "../providers/zernioModule.ts";
+import { movePublishedDriveQueueFile } from "./instagramDriveQueue.ts";
 import { accountInBusinessProfile } from "./profileScope.ts";
 
 /** Map our app platform to the Zernio post platform slug. */
@@ -35,6 +36,12 @@ export interface StoredScheduledPost {
   updatedAt: string;
   error?: string;
   retryCount?: number;
+  /** Optional provenance for Drive to-post queue (and future sources). */
+  source?: string;
+  driveFileId?: string;
+  driveAccountId?: string;
+  toPostFolderId?: string;
+  postedFolderId?: string;
 }
 
 /** A post is due when it is scheduled and its time has passed. */
@@ -57,6 +64,7 @@ export function parseScheduledPostsDoc(data: unknown): StoredScheduledPost[] {
 
 interface TokenStoreLike {
   get(accountId: string): Promise<Record<string, unknown> | null | undefined>;
+  set?(accountId: string, value: Record<string, unknown>): Promise<unknown>;
 }
 
 interface SupabaseAdminLike {
@@ -209,6 +217,19 @@ export async function publishDueScheduledPosts(deps: {
         }
         updates.set(post.id, { status: "published", error: undefined });
         result.published += 1;
+        if (post.source === "instagram-drive-queue" && post.driveFileId) {
+          const moveResult = await movePublishedDriveQueueFile({
+            tokenStore: deps.tokenStore,
+            businessProfileId: String(row.business_profile_id),
+            post,
+          });
+          if (!moveResult.moved && moveResult.error) {
+            console.warn(
+              `[cron] publish-scheduled-posts drive move failed bp=${row.business_profile_id} file=${post.driveFileId}:`,
+              moveResult.error
+            );
+          }
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         updates.set(post.id, { status: "failed", error: message.slice(0, 300) });

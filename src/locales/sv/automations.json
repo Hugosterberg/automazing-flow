@@ -43,6 +43,12 @@
       "title": "Innehållspipeline",
       "description": "Seedar repurpose/gap/evergreen-idéer och flyttar köade inlägg till schemalagd publicering."
     },
+    "instagram-drive-queue": {
+      "title": "Instagram från Drive-mapp",
+      "description": "Tar en bild per dag från en Google Drive to-post-mapp, schemalägger till Instagram och flyttar filen till posted efter publicering.",
+      "explainer": "Lägg bilder i Drive-mappen to-post. Automationen plockar en per dag, publicerar via Instagram och flyttar filen till posted. iCloud-album stöds inte via API — synka till Drive först.",
+      "trustNote": "Kräver omkopplad Google Drive (skrivrättighet) plus Instagram via Zernio."
+    },
     "cart-recovery": {
       "title": "Kundvagnsåtervinning",
       "description": "Skickar återvinningsmejl till kunder som lämnat varukorgen i Shopify (deduplicerat)."

@@ -29,6 +29,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/instagram-drive-queue",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/sales-outreach-auto",
       "schedule": "0 8 * * 1-5"
     },

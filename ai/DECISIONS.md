@@ -2,7 +2,25 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
-## 2026-08-03 — Guided Connect Session until verified healthy — **Active**
+## 2026-08-05 — Instagram daily queue from Google Drive to-post folders — **Active**
+
+Daily Instagram posting from a folder uses profile document
+`instagram-drive-queue` (Drive account, to-post / posted folder ids, Instagram
+account, caption mode, `daysAhead` 1–7, A/B captions, Shopify match, vision)
+plus cron `instagram-drive-queue` (default 09:00 UTC, opt-in via
+`job_schedules`). Each run fills missing days in the window (one image/day)
+into durable `/api/content/media`, enqueues `scheduled-posts`, and reuses the
+existing Zernio publish sweep. After a successful publish the Drive file is
+moved to the posted folder. Captions default to **brand** mode; optional
+**AI** mode can use OpenAI vision on image bytes; **template** mode supports
+`{{name}}/{{company}}/{{website}}/…`. Optional A/B picks between two variants
+(logged in `captionExperiments`). Optional Shopify product match enriches the
+caption from filename ↔ catalogue. Google Drive OAuth scope is full `drive`
+(reconnect required). iCloud shared albums have no server API — sync into
+Drive first. UI: checklist + how-it-works + folder picker on Social →
+Schedule & more.
+
+
 
 Every account link goes through an interactive Connect Session
 (`src/features/connections/ConnectSession.tsx`): why → prerequisites → connect

@@ -23,6 +23,7 @@ import { absoluteMediaUrl, publishMediaUrlsFromAssets } from "@/features/content
 import { useGeneratedContentHistory } from "@/features/content/useGeneratedContentHistory";
 import {
   SocialAutomationPanel,
+  InstagramDriveQueueCard,
   ScheduledPostsList,
   useScheduledPosts,
   GoogleBusinessCard,
@@ -954,6 +955,8 @@ export default function SocialMedia() {
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
         <ScheduledPostsList onEdit={setEditingPost} />
       </m.div>
+
+      <InstagramDriveQueueCard />
 
       <SocialAutomationPanel />
 
