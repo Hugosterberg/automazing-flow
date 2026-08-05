@@ -9,10 +9,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-glow-sm",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-glow-sm",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:border-border",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        // Vertical gradient + inset highlight give the white primary a
+        // machined, slightly convex read instead of a flat fill.
+        default:
+          "bg-gradient-to-b from-primary to-primary/85 text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_1px_2px_rgb(0_0_0/0.5)] hover:from-primary hover:to-primary hover:shadow-glow-md",
+        destructive:
+          "bg-gradient-to-b from-destructive to-destructive/85 text-destructive-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.15)] hover:to-destructive hover:shadow-glow-sm",
+        outline:
+          "border border-input bg-background/60 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.04)] hover:bg-accent hover:text-accent-foreground hover:border-muted-foreground/40 hover:shadow-glow-sm",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)] hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

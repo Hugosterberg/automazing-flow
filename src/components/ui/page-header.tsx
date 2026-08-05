@@ -52,10 +52,20 @@ export function PageHeader({
   if (isValidElement(icon)) {
     iconNode = icon;
   } else if (icon) {
-    iconNode = createElement(icon as LucideIcon, {
-      className: "h-6 w-6 text-muted-foreground",
-      "aria-hidden": true,
-    });
+    // Standard icons sit in a machined chip — bordered, top-lit, faint glow —
+    // so every page opens with the same engineered mark. Pages that pass a
+    // pre-rendered branded node keep their custom treatment untouched.
+    iconNode = (
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-card/70 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)] glow-sm"
+        aria-hidden
+      >
+        {createElement(icon as LucideIcon, {
+          className: "h-5 w-5 text-muted-foreground",
+          "aria-hidden": true,
+        })}
+      </div>
+    );
   }
 
   return (
@@ -64,10 +74,13 @@ export function PageHeader({
       transition={{ duration: 0.4 }}
       className={cn("flex items-start justify-between gap-3 flex-wrap", className)}
     >
-      <div className="flex items-start gap-2 min-w-0">
-        {iconNode ? <div className="shrink-0 mt-1">{iconNode}</div> : null}
+      <div className="flex items-start gap-3 min-w-0">
+        {iconNode ? <div className="shrink-0 mt-0.5">{iconNode}</div> : null}
         <div className="min-w-0">
-          <h1 className="select-none cursor-default text-lg font-bold tracking-tight sm:text-3xl">{title}</h1>
+          {/* Display face + white→grey gradient: the brand voice on every page. */}
+          <h1 className="select-none cursor-default font-display gradient-text text-lg font-bold tracking-tight sm:text-3xl">
+            {title}
+          </h1>
           {description ? (
             <p className="text-muted-foreground mt-0.5 text-xs leading-snug sm:mt-1 sm:text-sm sm:leading-normal line-clamp-2 sm:line-clamp-none">{description}</p>
           ) : null}

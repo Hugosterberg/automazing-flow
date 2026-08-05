@@ -99,7 +99,7 @@ export default function Layout() {
         <AppSidebar />
         <main className="flex-1 flex flex-col">
           {!readingFocus ? (
-          <header className="sticky top-0 z-30 glass safe-top safe-x flex h-12 items-center gap-1.5 border-b border-border/70 px-2.5 min-w-0 sm:h-14 sm:gap-2 sm:px-4">
+          <header className="sticky top-0 z-30 glass hairline-b safe-top safe-x flex h-12 items-center gap-1.5 border-b border-border/40 px-2.5 min-w-0 sm:h-14 sm:gap-2 sm:px-4">
             <SidebarTrigger className="touch-target text-muted-foreground hover:text-foreground shrink-0 -ml-0.5" />
             {!isMobile ? <WorkspaceModeTabs /> : null}
             <ActiveProfileContextBar />

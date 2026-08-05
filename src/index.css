@@ -98,11 +98,18 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     text-rendering: optimizeLegibility;
     min-height: 100dvh;
-    /* Subtle ambient depth: two faint radial pools on the pure-black base. */
+    /*
+     * Ambient depth: two faint radial pools plus a barely-there dot grid on
+     * the pure-black base. The grid is the "engineered surface" cue — at
+     * 0.02 alpha it reads as texture through translucent cards without ever
+     * competing with content.
+     */
     background-color: hsl(var(--background));
     background-image:
       radial-gradient(60rem 60rem at 12% -10%, hsl(var(--glow) / 0.05), transparent 60%),
-      radial-gradient(50rem 50rem at 110% 10%, hsl(var(--glow) / 0.035), transparent 55%);
+      radial-gradient(50rem 50rem at 110% 10%, hsl(var(--glow) / 0.035), transparent 55%),
+      radial-gradient(hsl(var(--glow) / 0.022) 1px, transparent 1.5px);
+    background-size: auto, auto, 26px 26px;
     background-attachment: fixed;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
@@ -113,6 +120,12 @@
     outline: none;
     box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--glow) / 0.45);
     border-radius: var(--radius);
+  }
+
+  /* Inverted selection — small, everywhere, unmistakably deliberate. */
+  ::selection {
+    background: hsl(var(--foreground) / 0.9);
+    color: hsl(var(--background));
   }
 
   .font-display {
@@ -250,6 +263,30 @@
     background-color: hsl(var(--card) / 0.6);
     backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+
+  /*
+   * Gradient hairline along the bottom edge — brightest under the content's
+   * centre of gravity, fading toward the edges. Replaces a flat border on
+   * the app header so the chrome reads as lit, not drawn.
+   */
+  .hairline-b {
+    position: relative;
+  }
+  .hairline-b::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--glow) / 0.22) 18%,
+      hsl(var(--glow) / 0.1) 55%,
+      transparent
+    );
+    pointer-events: none;
   }
 
   /* Gradient text for hero numbers / brand headings. */
@@ -583,13 +620,30 @@
   }
 
   .mobile-tab-bar {
-    border-top: 1px solid hsl(var(--border) / 0.75);
+    position: relative;
+    border-top: 1px solid hsl(var(--border) / 0.55);
     background: hsl(var(--background) / 0.92);
     backdrop-filter: saturate(180%) blur(18px);
     -webkit-backdrop-filter: saturate(180%) blur(18px);
     box-shadow:
       0 -1px 0 hsl(var(--foreground) / 0.04),
       0 -12px 32px -20px rgb(0 0 0 / 0.55);
+  }
+  /* Lit hairline along the top edge — mirrors the app header's. */
+  .mobile-tab-bar::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -1px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--glow) / 0.18) 30%,
+      hsl(var(--glow) / 0.18) 70%,
+      transparent
+    );
+    pointer-events: none;
   }
 
   .mobile-tab-item {

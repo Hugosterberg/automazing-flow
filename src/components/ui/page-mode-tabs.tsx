@@ -41,7 +41,7 @@ export function PageModeTabs<T extends string>({
           <TabsTrigger
             key={opt.value}
             value={opt.value}
-            className="min-h-11 rounded-b-none border-b-2 border-transparent px-3 py-2 text-xs data-[state=active]:border-primary data-[state=active]:bg-muted/60 data-[state=active]:shadow-none sm:min-h-0"
+            className="min-h-11 rounded-b-none border-b-2 border-transparent px-3 py-2 text-xs transition-all duration-200 hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-muted/60 data-[state=active]:shadow-[0_10px_18px_-14px_hsl(var(--primary)/0.55)] sm:min-h-0"
           >
             {opt.label}
             {opt.count != null && opt.count > 0 ? (

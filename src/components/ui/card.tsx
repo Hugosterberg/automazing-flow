@@ -6,8 +6,15 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
-      "transition-[box-shadow,border-color,transform] duration-300 ease-spring hover:shadow-glow-sm",
+      /*
+       * Layered surface: base fill, a faint top-light gradient, and an inset
+       * 1px highlight along the upper edge. Together they make cards read as
+       * milled panels instead of flat grey rectangles — the single biggest
+       * "premium" cue in a monochrome UI.
+       */
+      "rounded-lg border border-border/80 bg-card bg-gradient-to-b from-white/[0.035] to-transparent text-card-foreground",
+      "shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05),0_1px_2px_rgb(0_0_0/0.4)]",
+      "transition-[box-shadow,border-color,transform] duration-300 ease-spring hover:border-border hover:shadow-glow-sm",
       className,
     )}
     {...props}

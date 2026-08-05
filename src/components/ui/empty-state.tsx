@@ -42,7 +42,9 @@ export function EmptyState({
     <div
       className={cn(
         "flex flex-col items-center justify-center text-center",
-        "rounded-xl border border-dashed border-border/70 bg-muted/10",
+        // Dashed border says "slot waiting to be filled"; the faint radial
+        // pool behind the icon keeps it from reading as dead grey space.
+        "rounded-xl border border-dashed border-border/70 bg-[radial-gradient(24rem_12rem_at_50%_0%,hsl(var(--glow)/0.04),transparent_70%)] bg-muted/10",
         compact ? "px-4 py-6 gap-2" : "px-6 py-10 gap-3",
         className
       )}
@@ -52,8 +54,8 @@ export function EmptyState({
       {Icon ? (
         <div
           className={cn(
-            "flex items-center justify-center rounded-full bg-muted/60 text-muted-foreground",
-            compact ? "h-8 w-8" : "h-12 w-12"
+            "flex items-center justify-center rounded-2xl border border-border/60 bg-card/70 text-muted-foreground shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)] glow-sm",
+            compact ? "h-9 w-9" : "h-12 w-12"
           )}
           aria-hidden
         >
