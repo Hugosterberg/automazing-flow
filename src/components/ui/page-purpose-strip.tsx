@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
+import { GuideLauncher } from "@/features/guides/GuideLauncher";
 import { cn } from "@/lib/utils";
 
 type PagePurposeStripProps = {
@@ -35,21 +36,28 @@ export function PagePurposeStrip({ title, steps, tip, className }: PagePurposeSt
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug text-foreground/90">{title}</p>
-        {!isDesktop && hasSteps ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-            aria-expanded={expanded}
-          >
-            {expanded ? t("purposeStrip.hide") : t("purposeStrip.guide")}
-            {expanded ? (
-              <ChevronUp className="h-3 w-3" aria-hidden />
-            ) : (
-              <ChevronDown className="h-3 w-3" aria-hidden />
-            )}
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/*
+           * Interactive walkthrough for this route. Renders nothing where no
+           * guide exists, so every page can mount it unconditionally.
+           */}
+          <GuideLauncher />
+          {!isDesktop && hasSteps ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+              aria-expanded={expanded}
+            >
+              {expanded ? t("purposeStrip.hide") : t("purposeStrip.steps")}
+              {expanded ? (
+                <ChevronUp className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              )}
+            </button>
+          ) : null}
+        </div>
       </div>
       {showSteps && steps && steps.length > 0 ? (
         <ol className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-x-5 sm:gap-y-1">
