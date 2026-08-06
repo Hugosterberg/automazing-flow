@@ -72,6 +72,12 @@
     "contact": "Kontakt",
     "pickLeadInList": "Välj en lead i listan",
     "statusDate": "Status & datum",
-    "followUpDateAria": "Uppföljningsdatum för {{company}}"
+    "followUpDateAria": "Uppföljningsdatum för {{company}}",
+    "backToList": "Tillbaka till listan",
+    "notes": "Anteckningar",
+    "writeDraft": "Skriv utkast",
+    "research": "Research",
+    "addToPipeline": "Lägg i pipeline",
+    "edit": "Redigera"
   }
 }

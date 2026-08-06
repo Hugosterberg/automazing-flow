@@ -72,6 +72,12 @@
     "contact": "Contact",
     "pickLeadInList": "Select a lead in the list",
     "statusDate": "Status & dates",
-    "followUpDateAria": "Follow-up date for {{company}}"
+    "followUpDateAria": "Follow-up date for {{company}}",
+    "backToList": "Back to list",
+    "notes": "Notes",
+    "writeDraft": "Write draft",
+    "research": "Research",
+    "addToPipeline": "Add to pipeline",
+    "edit": "Edit"
   }
 }

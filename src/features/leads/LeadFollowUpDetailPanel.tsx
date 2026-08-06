@@ -83,7 +83,7 @@ export function LeadFollowUpDetailPanel({
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              {isStackedWorkspace ? <span>Leads</span> : <span className="sr-only">Tillbaka till listan</span>}
+              {isStackedWorkspace ? <span>Leads</span> : <span className="sr-only">{t("followUps.backToList")}</span>}
             </Button>
           ) : null}
           <div className="min-w-0 flex-1 space-y-2">
@@ -185,7 +185,7 @@ export function LeadFollowUpDetailPanel({
 
           {lead.notes ? (
             <div className="message-reading-card px-4 py-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Anteckningar</p>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("followUps.notes")}</p>
               <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{lead.notes}</p>
             </div>
           ) : null}
@@ -197,25 +197,25 @@ export function LeadFollowUpDetailPanel({
           {onDraftOutreach ? (
             <Button type="button" size="sm" className="h-8 text-xs" onClick={onDraftOutreach}>
               <Mail className="mr-1.5 h-3.5 w-3.5" />
-              Skriv utkast
+              {t("followUps.writeDraft")}
             </Button>
           ) : null}
           {onResearch ? (
             <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={onResearch}>
               <Search className="mr-1.5 h-3.5 w-3.5" />
-              Research
+              {t("followUps.research")}
             </Button>
           ) : null}
           {onAddToPipeline ? (
             <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={onAddToPipeline}>
               <Target className="mr-1.5 h-3.5 w-3.5" />
-              Lägg i pipeline
+              {t("followUps.addToPipeline")}
             </Button>
           ) : null}
           {onEdit ? (
             <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={onEdit}>
               <Pencil className="mr-1.5 h-3.5 w-3.5" />
-              Redigera
+              {t("followUps.edit")}
             </Button>
           ) : null}
         </div>
