@@ -70,6 +70,8 @@
     "nextLead": "Nästa lead",
     "dueToday": "Uppföljning idag",
     "contact": "Kontakt",
-    "pickLeadInList": "Välj en lead i listan"
+    "pickLeadInList": "Välj en lead i listan",
+    "statusDate": "Status & datum",
+    "followUpDateAria": "Uppföljningsdatum för {{company}}"
   }
 }

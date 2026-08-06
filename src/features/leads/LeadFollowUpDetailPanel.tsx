@@ -155,7 +155,7 @@ export function LeadFollowUpDetailPanel({
           </div>
 
           <div className="message-reading-card px-4 py-3 space-y-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status & datum</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("followUps.statusDate")}</p>
             <div className="flex flex-wrap gap-2">
               <Select value={lead.status} onValueChange={(v) => onStatusChange(v as LeadStatus)}>
                 <SelectTrigger className={cn("h-8 w-[140px] text-xs", STATUS_TONE[lead.status])}>
@@ -171,7 +171,7 @@ export function LeadFollowUpDetailPanel({
               </Select>
               <Input
                 type="date"
-                aria-label={`Uppföljningsdatum för ${lead.company}`}
+                aria-label={t("followUps.followUpDateAria", { company: lead.company })}
                 value={lead.nextFollowUpAt ? isoToLocalDateInputValue(lead.nextFollowUpAt) : ""}
                 onChange={(e) => onFollowUpChange(e.target.value)}
                 className={cn(

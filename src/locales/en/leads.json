@@ -70,6 +70,8 @@
     "nextLead": "Next lead",
     "dueToday": "Follow-up today",
     "contact": "Contact",
-    "pickLeadInList": "Select a lead in the list"
+    "pickLeadInList": "Select a lead in the list",
+    "statusDate": "Status & dates",
+    "followUpDateAria": "Follow-up date for {{company}}"
   }
 }
