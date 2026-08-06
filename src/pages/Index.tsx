@@ -354,7 +354,7 @@ export default function Index() {
           ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
           : "Lågt lager — pausa annonser eller fyll på",
         icon: ShoppingBag,
-        to: "/ecommerce",
+        to: "/ecommerce?tab=products",
         tone: "warning",
       });
     }

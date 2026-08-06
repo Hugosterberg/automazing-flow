@@ -40,6 +40,7 @@ import {
   MarketingSetupCard,
   MetaAdCommentsPanel,
   useMarketingCampaigns,
+  useMetaAdComments,
   type FollowUpCampaign,
 } from "@/features/marketing";
 import { formatRoas } from "@/features/marketing/format";
@@ -247,6 +248,9 @@ export default function MarketingPage() {
       ? (rawMarketingTab as MarketingTab)
       : "campaigns";
 
+  const { data: adCommentsData } = useMetaAdComments(marketingTab === "ads");
+  const adCommentCount = adCommentsData?.comments?.length ?? 0;
+
   const setMarketingTab = useCallback(
     (tab: MarketingTab) => {
       setSearchParams(
@@ -420,15 +424,29 @@ export default function MarketingPage() {
         steps={[tPage("marketing.step1"), tPage("marketing.step2"), tPage("marketing.step3")]}
         tip={tPage("marketing.tip")}
         liveHintOverride={
-          activeCampaigns.length > 0
-            ? isMobile
-              ? tPage("marketing.liveActiveMobile", { count: activeCampaigns.length })
-              : tPage("marketing.liveActiveDesktop", { count: activeCampaigns.length })
-            : campaignTasks.length > 0
+          marketingTab === "ads" && adCommentCount > 0
+            ? tPage("marketing.liveAdComments", { count: adCommentCount })
+            : activeCampaigns.length > 0
               ? isMobile
-                ? tPage("marketing.livePlannedMobile", { count: campaignTasks.length })
-                : tPage("marketing.livePlannedDesktop", { count: campaignTasks.length })
-              : null
+                ? tPage("marketing.liveActiveMobile", { count: activeCampaigns.length })
+                : tPage("marketing.liveActiveDesktop", { count: activeCampaigns.length })
+              : campaignTasks.length > 0
+                ? isMobile
+                  ? tPage("marketing.livePlannedMobile", { count: campaignTasks.length })
+                  : tPage("marketing.livePlannedDesktop", { count: campaignTasks.length })
+                : null
+        }
+        extraActions={
+          marketingTab === "ads"
+            ? [
+                {
+                  label: tPage("marketing.openAdComments"),
+                  onClick: () => {
+                    document.getElementById("ad-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  },
+                },
+              ]
+            : undefined
         }
       />
 
@@ -438,7 +456,7 @@ export default function MarketingPage() {
         onChange={setMarketingTab}
         options={[
           { value: "campaigns", label: t("tabs.campaigns"), count: campaignTasks.length },
-          { value: "ads", label: t("tabs.ads") },
+          { value: "ads", label: t("tabs.ads"), count: adCommentCount > 0 ? adCommentCount : undefined },
           { value: "ideas", label: t("tabs.ideas") },
           { value: "paths", label: t("tabs.paths") },
         ]}
@@ -624,7 +642,7 @@ export default function MarketingPage() {
       <m.div {...pageFadeUp} transition={{ delay: 0.05 }}>
         <MarketingPerformance />
       </m.div>
-      <m.div {...pageFadeUp} transition={{ delay: 0.055 }}>
+      <m.div {...pageFadeUp} transition={{ delay: 0.055 }} id="ad-comments" className="scroll-mt-24">
         <MetaAdCommentsPanel />
       </m.div>
       </>

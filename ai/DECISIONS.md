@@ -2,6 +2,14 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-06 — Operator speed pass (ecommerce + marketing triage) — **Active**
+
+Make ecommerce/business daily work one-click: Ecommerce SmartBar triage actions,
+clickable stats strip, Overview abandoned → Orders, Products empty import CTAs +
+product-content automation hint, Marketing Paid ad-comments badge/jump,
+Tasks SmartBar on mobile, inventory brief/home deep-link to Products, `G`→`E`
+and Ecommerce letter shortcuts (O/R/P/I/U/B). No new architecture.
+
 ## 2026-08-06 — Meta ad comments inbox (Marketing → Paid) — **Active**
 
 Minimal read path for comments on Meta ads: Marketing API ads →

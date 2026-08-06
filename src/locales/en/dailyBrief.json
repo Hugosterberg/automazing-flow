@@ -46,7 +46,7 @@
     "roasDownDesc": "Week-over-week return is down — check what changed under Marketing.",
     "inventory_one": "1 product is low on stock",
     "inventory_other": "{{count}} products are low on stock",
-    "inventoryDesc": "Active ads may point at items that need restocking.",
+    "inventoryDesc": "Open Products to restock — active ads may still point at these items.",
     "automations_one": "1 automation failed last run",
     "automations_other": "{{count}} automations failed last run",
     "automationsDesc": "{{names}} — review and retry under Automations.",

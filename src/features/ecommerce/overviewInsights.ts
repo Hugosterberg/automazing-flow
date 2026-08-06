@@ -15,7 +15,7 @@ export type OverviewSignal = {
   titleKey: string;
   detailKey: string;
   detailParams?: Record<string, string | number>;
-  action?: "open-section" | "filter-stale" | "filter-pending" | "open-marketing" | "open-economy" | "open-products";
+  action?: "open-section" | "filter-stale" | "filter-pending" | "open-marketing" | "open-economy" | "open-products" | "open-orders";
 };
 
 export type ProductOverviewRow = {
@@ -199,7 +199,7 @@ export function buildOverviewSignals(args: {
       titleKey: "abandonedTitle",
       detailKey: "abandonedDetail",
       detailParams: { count: abandonedCount, value: Math.round(abandonedValue) },
-      action: "open-section",
+      action: "open-orders",
     });
   }
 

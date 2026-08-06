@@ -37,6 +37,8 @@ describe("keyboardShortcuts", () => {
     expect(goTargetForKey("m", "private")?.url).toBe("/messages");
     expect(goTargetForKey("u", "business")?.url).toBe("/handbook");
     expect(goTargetForKey("u", "private")?.url).toBe("/handbook");
+    expect(goTargetForKey("e", "business")?.url).toBe("/ecommerce");
+    expect(goTargetForKey("e", "private")).toBeNull();
   });
 
   it("buildShortcutSections uses English-first-letter keys for triage pages", () => {

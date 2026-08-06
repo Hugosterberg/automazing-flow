@@ -50,7 +50,10 @@
     "livePlannedMobile_one": "{{count}} campaign planned — tap New campaign.",
     "livePlannedMobile_other": "{{count}} campaigns planned — tap New campaign.",
     "livePlannedDesktop_one": "{{count}} campaign planned — press N for new.",
-    "livePlannedDesktop_other": "{{count}} campaigns planned — press N for new."
+    "livePlannedDesktop_other": "{{count}} campaigns planned — press N for new.",
+    "liveAdComments_one": "{{count}} ad comment to review",
+    "liveAdComments_other": "{{count}} ad comments to review",
+    "openAdComments": "Jump to ad comments"
   },
   "ecommerce": {
     "title": "E-commerce",
@@ -60,10 +63,18 @@
     "step1": "Connect Shopify under Connections",
     "step2": "Sync products and track orders under Overview",
     "step3": "Import from Alibaba or manage the catalog under Products",
-    "tip": "Daily automations sync orders and inventory. Orders waiting for fulfillment are marked in the action row.",
+    "tip": "Shortcuts: O Overview · R Orders · P Products · U Unfulfilled · B Pending pay. Daily automations sync orders and inventory.",
     "liveActions_one": "{{count}} action waiting — orders or low stock",
     "liveActions_other": "{{count}} actions waiting — orders or low stock",
-    "liveOk": "No urgent e-commerce actions right now."
+    "liveOk": "No urgent e-commerce actions right now.",
+    "triageUnfulfilled_one": "Clear {{count}} unfulfilled order",
+    "triageUnfulfilled_other": "Clear {{count}} unfulfilled orders",
+    "triagePending_one": "Review {{count}} pending payment",
+    "triagePending_other": "Review {{count}} pending payments",
+    "triageLowStock_one": "Check {{count}} low-stock variant",
+    "triageLowStock_other": "Check {{count}} low-stock variants",
+    "openOrders": "Open orders",
+    "connectShopify": "Connect Shopify"
   },
   "activity": {
     "title": "Activity",

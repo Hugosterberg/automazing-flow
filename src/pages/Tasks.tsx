@@ -532,6 +532,22 @@ export default function TasksPage() {
             }
           />
         ) : null
+      ) : tasks.length === 0 ? (
+        <PageSmartBar
+          title={t("smartEmpty")}
+          steps={[t("step1"), t("step2")]}
+          tip={t("tip")}
+          extraActions={[{ label: t("handbookCta"), to: "/handbook" }]}
+        />
+      ) : overdueCount > 0 || dueTodayCount > 0 ? (
+        <PageSmartBar
+          title={t("title")}
+          liveHintOverride={
+            overdueCount > 0
+              ? t("overdueHint", { count: overdueCount })
+              : t("dueTodayHint", { count: dueTodayCount })
+          }
+        />
       ) : null}
 
       <PageModeTabs

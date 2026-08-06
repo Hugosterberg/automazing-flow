@@ -47,6 +47,12 @@ import { apiErrorMessage } from "@/lib/apiError";
 import { accountDataUrl } from "@/lib/accountDataUrl";
 import { downloadCsv, shopifyOrdersToCsv } from "@/lib/exportCsv";
 import {
+  isPlainLetterShortcut,
+  isShortcutBlocked,
+  isTypingTarget,
+  matchesKey,
+} from "@/lib/keyboardShortcuts";
+import {
   orderFiltersStorageKey,
   readPersistedOrderFilters,
 } from "@/features/ecommerce/orderDisplay";
@@ -127,6 +133,47 @@ export default function Ecommerce() {
     () => readPersistedOrderFilters(activeBusinessProfileId ?? activeProfileId).fulfillment
   );
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (isShortcutBlocked() || isTypingTarget(e.target) || !isPlainLetterShortcut(e)) return;
+      if (matchesKey(e, "o")) {
+        e.preventDefault();
+        setTab("overview");
+        return;
+      }
+      if (matchesKey(e, "r")) {
+        e.preventDefault();
+        setTab("orders");
+        return;
+      }
+      if (matchesKey(e, "p")) {
+        e.preventDefault();
+        setTab("products");
+        return;
+      }
+      if (matchesKey(e, "i")) {
+        e.preventDefault();
+        setTab("insights");
+        return;
+      }
+      if (matchesKey(e, "u")) {
+        e.preventDefault();
+        setTab("orders");
+        setOrderPaymentFilter("all");
+        setOrderFulfillmentFilter("unfulfilled");
+        return;
+      }
+      if (matchesKey(e, "b")) {
+        e.preventDefault();
+        setTab("orders");
+        setOrderPaymentFilter("pending");
+        setOrderFulfillmentFilter("all");
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setTab]);
 
   // Persist the chosen order filters per profile so they survive reloads.
   // The hydrated-key guard prevents a profile switch from overwriting the new
@@ -360,6 +407,52 @@ export default function Ecommerce() {
               ? tPage("ecommerce.liveOk")
               : null
         }
+        extraActions={
+          actionNeeded && actionNeeded.total > 0
+            ? [
+                ...(actionNeeded.staleUnfulfilled > 0
+                  ? [
+                      {
+                        label: tPage("ecommerce.triageUnfulfilled", {
+                          count: actionNeeded.staleUnfulfilled,
+                        }),
+                        onClick: () => {
+                          setTab("orders");
+                          setOrderPaymentFilter("all");
+                          setOrderFulfillmentFilter("unfulfilled");
+                        },
+                      },
+                    ]
+                  : []),
+                ...(actionNeeded.pendingPayments > 0
+                  ? [
+                      {
+                        label: tPage("ecommerce.triagePending", {
+                          count: actionNeeded.pendingPayments,
+                        }),
+                        onClick: () => {
+                          setTab("orders");
+                          setOrderPaymentFilter("pending");
+                          setOrderFulfillmentFilter("all");
+                        },
+                      },
+                    ]
+                  : []),
+                ...(actionNeeded.lowStock > 0
+                  ? [
+                      {
+                        label: tPage("ecommerce.triageLowStock", {
+                          count: actionNeeded.lowStock,
+                        }),
+                        onClick: () => setTab("products"),
+                      },
+                    ]
+                  : []),
+              ]
+            : shopifyData
+              ? [{ label: tPage("ecommerce.openOrders"), onClick: () => setTab("orders") }]
+              : [{ label: tPage("ecommerce.connectShopify"), to: "/connections?session=shopify" }]
+        }
       />
 
       <m.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -384,20 +477,50 @@ export default function Ecommerce() {
 
         {(tab === "overview" || tab === "orders" || tab === "insights") ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          <button
+            type="button"
+            onClick={() => setTab("products")}
+            className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 text-left transition-colors hover:border-border hover:bg-muted/20"
+          >
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.products")}</p>
             <p className="text-xs font-semibold tabular-nums">{products.length}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("orders")}
+            className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 text-left transition-colors hover:border-border hover:bg-muted/20"
+          >
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.orders")}</p>
             <p className="text-xs font-semibold tabular-nums">{shopifyData?.orders.length ?? 0}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (actionNeeded && actionNeeded.staleUnfulfilled > 0) {
+                setTab("orders");
+                setOrderPaymentFilter("all");
+                setOrderFulfillmentFilter("unfulfilled");
+                return;
+              }
+              if (actionNeeded && actionNeeded.pendingPayments > 0) {
+                setTab("orders");
+                setOrderPaymentFilter("pending");
+                setOrderFulfillmentFilter("all");
+                return;
+              }
+              if (actionNeeded && actionNeeded.lowStock > 0) {
+                setTab("products");
+                return;
+              }
+              setTab("orders");
+            }}
+            className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 text-left transition-colors hover:border-border hover:bg-muted/20"
+          >
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.actions")}</p>
             <p className={`text-xs font-semibold tabular-nums ${actionNeeded && actionNeeded.total > 0 ? "text-warning" : ""}`}>
               {actionNeeded ? actionNeeded.total : "—"}
             </p>
-          </div>
+          </button>
         </div>
         ) : null}
 

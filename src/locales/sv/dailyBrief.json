@@ -46,7 +46,7 @@
     "roasDownDesc": "Vecka-mot-vecka-avkastning är ner — kolla vad som ändrats under Marketing.",
     "inventory_one": "1 produkt har lågt lager",
     "inventory_other": "{{count}} produkter har lågt lager",
-    "inventoryDesc": "Aktiva annonser kan peka mot varor som behöver påfyllning.",
+    "inventoryDesc": "Öppna Produkter för påfyllning — aktiva annonser kan fortfarande peka på dem.",
     "automations_one": "1 automation misslyckades senast",
     "automations_other": "{{count}} automationer misslyckades senast",
     "automationsDesc": "{{names}} — granska och kör om under Automationer.",

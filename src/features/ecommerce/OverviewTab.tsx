@@ -531,6 +531,9 @@ export function OverviewTab({
       case "open-products":
         openSection("products");
         break;
+      case "open-orders":
+        onOpenTab("orders");
+        break;
       default:
         openSection(signal.section);
     }
@@ -564,7 +567,7 @@ export function OverviewTab({
     {
       id: "recover",
       label: t("overview.quick.recover"),
-      onClick: () => openSection("sales"),
+      onClick: () => onOpenTab("orders"),
       show: (stats?.abandonedCheckouts30d ?? 0) > 0,
     },
     {

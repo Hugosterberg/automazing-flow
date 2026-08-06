@@ -50,7 +50,10 @@
     "livePlannedMobile_one": "{{count}} kampanj planerad — tryck Ny kampanj.",
     "livePlannedMobile_other": "{{count}} kampanjer planerade — tryck Ny kampanj.",
     "livePlannedDesktop_one": "{{count}} kampanj planerad — tryck N för ny.",
-    "livePlannedDesktop_other": "{{count}} kampanjer planerade — tryck N för ny."
+    "livePlannedDesktop_other": "{{count}} kampanjer planerade — tryck N för ny.",
+    "liveAdComments_one": "{{count}} annonskommentar att granska",
+    "liveAdComments_other": "{{count}} annonskommentarer att granska",
+    "openAdComments": "Hoppa till annonskommentarer"
   },
   "ecommerce": {
     "title": "E-handel",
@@ -60,10 +63,18 @@
     "step1": "Koppla Shopify under Kopplingar",
     "step2": "Synka produkter och följ ordrar under Översikt",
     "step3": "Importera från Alibaba eller hantera katalogen under Produkter",
-    "tip": "Dagliga automationer synkar ordrar och lager. Ordrar som väntar på leverans markeras i åtgärdsraden.",
+    "tip": "Genvägar: O Översikt · R Ordrar · P Produkter · U Ofullständiga · B Väntande betalning. Dagliga automationer synkar ordrar och lager.",
     "liveActions_one": "{{count}} åtgärd väntar — ordrar eller lågt lager",
     "liveActions_other": "{{count}} åtgärder väntar — ordrar eller lågt lager",
-    "liveOk": "Inga brådskande e-handelsåtgärder just nu."
+    "liveOk": "Inga brådskande e-handelsåtgärder just nu.",
+    "triageUnfulfilled_one": "Rensa {{count}} ofullständig order",
+    "triageUnfulfilled_other": "Rensa {{count}} ofullständiga ordrar",
+    "triagePending_one": "Granska {{count}} väntande betalning",
+    "triagePending_other": "Granska {{count}} väntande betalningar",
+    "triageLowStock_one": "Kolla {{count}} variant med lågt lager",
+    "triageLowStock_other": "Kolla {{count}} varianter med lågt lager",
+    "openOrders": "Öppna ordrar",
+    "connectShopify": "Koppla Shopify"
   },
   "activity": {
     "title": "Aktivitet",

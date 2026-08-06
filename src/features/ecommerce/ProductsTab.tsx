@@ -22,6 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ShopifyIcon } from "@/components/platform-icons";
+import { AutomationEnableHint } from "@/features/automation";
+import { Link } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -313,17 +315,55 @@ export function ProductsTab({
           ))}
         </div>
       ) : products.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title={t("products.emptyTitle")}
-          description={t("products.emptyDescriptionLong")}
-          action={
-            <Button onClick={() => setNewOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("products.createProduct")}
+        <div className="space-y-4">
+          <EmptyState
+            icon={Package}
+            title={t("products.emptyTitle")}
+            description={t("products.emptyDescriptionLong")}
+            action={
+              shopifyAccountId ? (
+                <Button onClick={() => void onImportShopify()} disabled={importingShopify}>
+                  {importingShopify ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ShopifyIcon className="h-4 w-4 mr-2" />
+                  )}
+                  {t("products.importFromShopify")}
+                </Button>
+              ) : (
+                <Button onClick={() => setNewOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("products.createProduct")}
+                </Button>
+              )
+            }
+            secondaryAction={
+              shopifyAccountId ? (
+                <Button variant="outline" onClick={() => setNewOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("products.createProduct")}
+                </Button>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link to="/connections?session=shopify">{t("products.connectShopify")}</Link>
+                </Button>
+              )
+            }
+          />
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="/content">{t("products.openContent")}</Link>
             </Button>
-          }
-        />
+          </div>
+          <AutomationEnableHint
+            compact
+            tab="content"
+            focus="product-content-automation"
+            title={t("products.autoHintTitle")}
+            description={t("products.autoHintDesc")}
+            ctaLabel={t("products.autoHintCta")}
+          />
+        </div>
       ) : visibleProducts.length === 0 ? (
         <Card className="bg-card border-border border-dashed">
           <CardContent className="py-10 text-center space-y-3">

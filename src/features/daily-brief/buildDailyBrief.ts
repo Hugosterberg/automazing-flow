@@ -223,7 +223,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
       severity: "warning",
       title: t("dailyBrief:signals.inventory", { count: inventoryAlertCount }),
       description: t("dailyBrief:signals.inventoryDesc"),
-      to: "/marketing",
+      to: "/ecommerce?tab=products",
       count: inventoryAlertCount,
     });
   }

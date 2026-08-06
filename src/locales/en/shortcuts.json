@@ -7,6 +7,7 @@
     "sales": "Sales",
     "tasks": "Tasks",
     "customers": "Customers",
+    "ecommerce": "E-commerce",
     "content": "Content",
     "automations": "Automations",
     "marketing": "Marketing",
@@ -19,6 +20,7 @@
     "messages": "Go to Messages",
     "sales": "Go to Sales (business mode)",
     "company": "Go to Company (business mode)",
+    "ecommerce": "Go to E-commerce (business mode)",
     "intelligence": "Go to MCP Intelligence",
     "preferences": "Go to Preferences",
     "handbook": "Go to User handbook",
@@ -78,6 +80,14 @@
     "prev": "Previous customer",
     "search": "Search",
     "close": "Close"
+  },
+  "ecommerce": {
+    "overview": "Overview tab",
+    "orders": "Orders tab",
+    "products": "Products tab",
+    "insights": "Insights tab",
+    "unfulfilled": "Filter unfulfilled orders",
+    "pending": "Filter pending payments"
   },
   "content": {
     "next": "Next file (Browse)",

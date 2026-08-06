@@ -7,6 +7,7 @@
     "sales": "Sales",
     "tasks": "Uppgifter",
     "customers": "Kunder",
+    "ecommerce": "E-handel",
     "content": "Innehåll",
     "automations": "Automationer",
     "marketing": "Marknadsföring",
@@ -19,6 +20,7 @@
     "messages": "Gå till Meddelanden",
     "sales": "Gå till Försäljning (företagsläge)",
     "company": "Gå till Företag (företagsläge)",
+    "ecommerce": "Gå till E-handel (företagsläge)",
     "intelligence": "Gå till MCP Intelligence",
     "preferences": "Gå till Inställningar",
     "handbook": "Gå till Användarhandbok",
@@ -78,6 +80,14 @@
     "prev": "Föregående kund",
     "search": "Sök",
     "close": "Stäng"
+  },
+  "ecommerce": {
+    "overview": "Flik: Översikt",
+    "orders": "Flik: Ordrar",
+    "products": "Flik: Produkter",
+    "insights": "Flik: Insikter",
+    "unfulfilled": "Filtrera ofullständiga ordrar",
+    "pending": "Filtrera väntande betalningar"
   },
   "content": {
     "next": "Nästa fil (Bläddra)",
