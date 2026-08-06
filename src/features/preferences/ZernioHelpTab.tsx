@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, ExternalLink, Layers, Link2, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const zernioConnectPaths = [
@@ -16,6 +17,24 @@ const zernioConnectPaths = [
 export function ZernioHelpTab() {
   return (
     <div className="space-y-5">
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base">User handbook</CardTitle>
+          <CardDescription>
+            English map of every page, tab and feature — with Ready / Needs setup / Under development status.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            to="/handbook"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Open user handbook
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        </CardContent>
+      </Card>
+
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

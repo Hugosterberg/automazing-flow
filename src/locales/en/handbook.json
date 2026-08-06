@@ -1,0 +1,55 @@
+{
+  "title": "User handbook",
+  "description": "What you can do in every part of Automazing Flow — and whether each capability is ready.",
+  "howTo": {
+    "title": "How to read this handbook",
+    "body": "Each page lists what you can do, then breaks it down by tab and feature. Status tells you if it works today or still needs setup.",
+    "step1Label": "1",
+    "step1": "Pick a page below and expand it.",
+    "step2Label": "2",
+    "step2": "Read “What you can do here”, then open the matching tab.",
+    "step3Label": "3",
+    "step3": "Use Open page / Open tab to jump straight into the product."
+  },
+  "startHere": {
+    "title": "New here? Do this first",
+    "connect": "Connect accounts",
+    "company": "Fill company profile",
+    "home": "Open Home · Today"
+  },
+  "youCanHere": "What you can do here",
+  "youCanPrefix": "You can",
+  "whyLabel": "Why:",
+  "needsLabel": "Needs:",
+  "needsGeneric": "Needs: matching connection, API key or MCP provider.",
+  "byTab": "By tab",
+  "languageNote": "Capability text is in English for consistency. App chrome is Swedish/English.",
+  "statusNote": "Ready = works end-to-end. Needs setup = works after OAuth/keys/MCP. Under development = incomplete.",
+  "statusHint": {
+    "ready": "Works end-to-end for the core job.",
+    "beta": "Works after you connect the right accounts or keys.",
+    "wip": "Visible in the app but not fully wired yet."
+  },
+  "searchPlaceholder": "Search what you can do… (e.g. publish, ROAS, inbox)",
+  "searchAria": "Search handbook",
+  "filterAll": "All features",
+  "featureCount": "{{count}} features",
+  "pageCount": "{{count}} pages",
+  "tabsAndFeatures": "{{tabs}} tabs · {{features}} features",
+  "expandAll": "Expand all",
+  "collapseAll": "Collapse",
+  "empty": "No matches — try another word or clear the status filter.",
+  "openPage": "Open page",
+  "openTab": "Open tab",
+  "groups": {
+    "home": "Home",
+    "work": "Work",
+    "productivity": "Productivity",
+    "system": "System"
+  },
+  "status": {
+    "ready": "Ready",
+    "beta": "Needs setup",
+    "wip": "Under development"
+  }
+}

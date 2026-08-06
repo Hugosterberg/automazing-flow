@@ -51,6 +51,7 @@ const ActivityPage = lazy(() => import("./pages/Activity"));
 const AutomationsPage = lazy(() => import("./pages/Automations"));
 const IntelligencePage = lazy(() => import("./pages/IntelligencePage"));
 const InsightsPage = lazy(() => import("./pages/InsightsPage"));
+const HandbookPage = lazy(() => import("./pages/Handbook"));
 
 import Layout from "./components/Layout";
 
@@ -140,6 +141,7 @@ const App = () => {
                       <Route path="/connections" element={<ConnectionsPage />} />
                       <Route path="/intelligence" element={<IntelligencePage />} />
                       <Route path="/company" element={<CompanyPage />} />
+                      <Route path="/handbook" element={<HandbookPage />} />
                       <Route path="/integrations" element={<ConnectionsPage />} />
                       {/*
                        * Back-compat redirects. `/connect-accounts` lives on

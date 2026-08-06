@@ -2,6 +2,23 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-06 — English user handbook page — **Active**
+
+`/handbook` lists every main page, tab and feature with a short English
+description (what it does / problem it solves) and readiness status
+(`ready` | `beta` | `wip`). Catalog lives in
+`src/features/handbook/handbookCatalog.ts` (keep tab ids/defaults aligned with
+real `?tab=` / `?view=` / `?severity=` behavior). UI chrome is bilingual.
+Linked from top nav (System) and Preferences → Help.
+
+## 2026-08-06 — Ecommerce Overview tab aggregates store + ads + purchases — **Active**
+
+Ecommerce default tab is **Overview** (`/ecommerce`). KPI cards and section
+chips open a detail sheet with deeper stats and quick actions (export CSV, add
+lead, filter unfulfilled/pending, cart recovery, Fortnox margin). Smart signals
+surface stale orders, low ROAS, low stock, abandoned carts and overdue
+supplier invoices from existing Shopify + marketing + Fortnox data — no new APIs.
+
 ## 2026-08-05 — Instagram daily queue from Google Drive to-post folders — **Active**
 
 Daily Instagram posting from a folder uses profile document

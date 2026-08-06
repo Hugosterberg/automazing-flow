@@ -18,6 +18,7 @@ import {
   Building2,
   Zap,
   Bot,
+  BookOpen,
 } from "lucide-react";
 import { LightbulbGlowIcon } from "@/components/platform-icons";
 import type { AccountPlatform } from "@/types/accounts";
@@ -84,6 +85,13 @@ export const topNavItems: TopNavItem[] = [
     key: "preferences",
     url: "/preferences",
     icon: Settings,
+    platforms: [] as AccountPlatform[],
+    hideAccounts: true,
+  },
+  {
+    key: "handbook",
+    url: "/handbook",
+    icon: BookOpen,
     platforms: [] as AccountPlatform[],
     hideAccounts: true,
   },

@@ -72,6 +72,8 @@ import svGuides from "@/locales/sv/guides.json";
 import enGuides from "@/locales/en/guides.json";
 import svAiRecommendations from "@/locales/sv/aiRecommendations.json";
 import enAiRecommendations from "@/locales/en/aiRecommendations.json";
+import svHandbook from "@/locales/sv/handbook.json";
+import enHandbook from "@/locales/en/handbook.json";
 
 export const i18n = i18next;
 
@@ -104,6 +106,7 @@ const NAMESPACES = [
   "content",
   "aiRecommendations",
   "guides",
+  "handbook",
 ] as const;
 
 function applyLanguageSideEffects(lang: string): void {
@@ -151,6 +154,7 @@ export function initI18n(): void {
         content: svContent,
         aiRecommendations: svAiRecommendations,
         guides: svGuides,
+        handbook: svHandbook,
       },
       en: {
         common: enCommon,
@@ -181,6 +185,7 @@ export function initI18n(): void {
         content: enContent,
         aiRecommendations: enAiRecommendations,
         guides: enGuides,
+        handbook: enHandbook,
       },
     },
     lng: initialLanguage,

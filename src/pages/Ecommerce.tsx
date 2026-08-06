@@ -28,6 +28,7 @@ import { AlibabaImportCard } from "@/features/ecommerce/AlibabaImportCard";
 import { ProductsTab } from "@/features/ecommerce/ProductsTab";
 import { OrdersTab } from "@/features/ecommerce/OrdersTab";
 import { InsightsTab } from "@/features/ecommerce/InsightsTab";
+import { OverviewTab } from "@/features/ecommerce/OverviewTab";
 import { NotionWorkspacePanel } from "@/features/ecommerce/NotionWorkspacePanel";
 import { useLeads } from "@/features/leads";
 import { alibabaImportToInput } from "@/lib/productStore";
@@ -96,22 +97,20 @@ export default function Ecommerce() {
     },
   });
   const [searchParams, setSearchParams] = useSearchParams();
-  type EcommerceTab = "orders" | "products" | "insights" | "tools";
-  const ECOMMERCE_TABS: EcommerceTab[] = ["orders", "products", "insights", "tools"];
+  type EcommerceTab = "overview" | "orders" | "products" | "insights" | "tools";
+  const ECOMMERCE_TABS: EcommerceTab[] = ["overview", "orders", "products", "insights", "tools"];
   const rawEcommerceTab = searchParams.get("tab");
   const tab: EcommerceTab =
-    rawEcommerceTab === "overview"
-      ? "orders"
-      : rawEcommerceTab && (ECOMMERCE_TABS as string[]).includes(rawEcommerceTab)
-        ? (rawEcommerceTab as EcommerceTab)
-        : "orders";
+    rawEcommerceTab && (ECOMMERCE_TABS as string[]).includes(rawEcommerceTab)
+      ? (rawEcommerceTab as EcommerceTab)
+      : "overview";
 
   const setTab = useCallback(
     (next: EcommerceTab) => {
       setSearchParams(
         (prev) => {
           const params = new URLSearchParams(prev);
-          if (next === "orders") params.delete("tab");
+          if (next === "overview") params.delete("tab");
           else params.set("tab", next);
           return params;
         },
@@ -374,6 +373,7 @@ export default function Ecommerce() {
             aria-label={t("tabs.ariaLabel")}
             onChange={setTab}
             options={[
+              { value: "overview", label: t("tabs.overview") },
               { value: "orders", label: t("tabs.orders"), count: shopifyData?.orders.length },
               { value: "products", label: t("tabs.products"), count: products.length },
               { value: "insights", label: t("tabs.insights") },
@@ -382,7 +382,7 @@ export default function Ecommerce() {
           />
         </div>
 
-        {(tab === "orders" || tab === "insights") ? (
+        {(tab === "overview" || tab === "orders" || tab === "insights") ? (
         <div className="app-workspace-stats grid grid-cols-3 gap-2 px-3 py-2 sm:px-4">
           <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("statsStrip.products")}</p>
@@ -420,7 +420,7 @@ export default function Ecommerce() {
         </div>
       )}
 
-      {(tab === "orders" || tab === "insights" || tab === "tools") && (
+      {(tab === "overview" || tab === "orders" || tab === "insights" || tab === "tools") && (
       <div className="space-y-8">
       {authMode === "local" && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
@@ -465,7 +465,7 @@ export default function Ecommerce() {
         </m.div>
       )}
 
-      {orgAccounts.length === 0 && (
+      {orgAccounts.length === 0 && tab !== "overview" && (
         <m.div
           {...fadeUp}
           transition={{ duration: 0.4, delay: 0.1 }}
@@ -527,6 +527,29 @@ export default function Ecommerce() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {tab === "overview" && !loading && (
+        <OverviewTab
+          shopifyData={shopifyData}
+          products={products}
+          currency={currency}
+          businessProfileId={productProfileId}
+          actionNeeded={actionNeeded}
+          onOpenTab={(next) => setTab(next)}
+          onCreateLead={createLead}
+          onFilterStaleUnfulfilled={() => {
+            setTab("orders");
+            setOrderPaymentFilter("all");
+            setOrderFulfillmentFilter("unfulfilled");
+          }}
+          onFilterPendingPayments={() => {
+            setTab("orders");
+            setOrderPaymentFilter("pending");
+            setOrderFulfillmentFilter("all");
+          }}
+          onExportOrders={exportOrders}
+        />
       )}
 
       {tab === "orders" && !loading && shopifyData && actionNeeded && (

@@ -1,0 +1,55 @@
+{
+  "title": "Användarhandbok",
+  "description": "Vad du kan göra i varje del av Automazing Flow — och om funktionen är klar.",
+  "howTo": {
+    "title": "Så läser du handboken",
+    "body": "Varje sida listar vad du kan göra, sedan flik för flik. Status visar om det fungerar nu eller kräver setup.",
+    "step1Label": "1",
+    "step1": "Välj en sida nedan och expandera den.",
+    "step2Label": "2",
+    "step2": "Läs “Vad du kan göra här”, öppna sedan rätt flik.",
+    "step3Label": "3",
+    "step3": "Använd Öppna sida / Öppna flik för att hoppa in i produkten."
+  },
+  "startHere": {
+    "title": "Ny här? Börja med detta",
+    "connect": "Koppla konton",
+    "company": "Fyll i företagsprofil",
+    "home": "Öppna Hem · Idag"
+  },
+  "youCanHere": "Vad du kan göra här",
+  "youCanPrefix": "Du kan",
+  "whyLabel": "Varför:",
+  "needsLabel": "Kräver:",
+  "needsGeneric": "Kräver: rätt koppling, API-nyckel eller MCP-leverantör.",
+  "byTab": "Per flik",
+  "languageNote": "Funktionsbeskrivningarna är på engelska för konsekvens. App-chromen är svenska/engelska.",
+  "statusNote": "Ready = fungerar från ände till ände. Needs setup = fungerar efter OAuth/nycklar/MCP. Under development = ofullständig.",
+  "statusHint": {
+    "ready": "Fungerar från ände till ände för kärnjobbet.",
+    "beta": "Fungerar när du kopplat rätt konton eller nycklar.",
+    "wip": "Syns i appen men är inte helt inkopplad ännu."
+  },
+  "searchPlaceholder": "Sök vad du kan göra… (t.ex. publish, ROAS, inbox)",
+  "searchAria": "Sök i handboken",
+  "filterAll": "Alla funktioner",
+  "featureCount": "{{count}} funktioner",
+  "pageCount": "{{count}} sidor",
+  "tabsAndFeatures": "{{tabs}} flikar · {{features}} funktioner",
+  "expandAll": "Expandera alla",
+  "collapseAll": "Fäll ihop",
+  "empty": "Inga träffar — prova ett annat ord eller rensa statusfiltret.",
+  "openPage": "Öppna sida",
+  "openTab": "Öppna flik",
+  "groups": {
+    "home": "Hem",
+    "work": "Arbete",
+    "productivity": "Produktivitet",
+    "system": "System"
+  },
+  "status": {
+    "ready": "Klar",
+    "beta": "Kräver setup",
+    "wip": "Under utveckling"
+  }
+}
