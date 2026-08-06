@@ -22,6 +22,13 @@
     "openAutomations": "Open Automations",
     "openConnections": "Open Connections"
   },
+  "alerts": {
+    "mailTokenExpired": "{{provider}} — token expired. Reconnect to load messages.",
+    "reconnect": "Reconnect",
+    "socialUnavailable": "Social DM inbox unavailable: {{note}}",
+    "fixInbox": "Open Connections",
+    "inboxAddonHint": "Enable the Zernio Inbox add-on, then reconnect the channel."
+  },
   "wait": {
     "minutes": "{{count}} min",
     "hours": "{{count}} h",

@@ -800,6 +800,13 @@ export default function MessagesPage() {
           onReconnectOutlook={() => navigate("/connections?filter=attention&q=outlook")}
           zernioNote={zernioNote}
           showZernioNote={showZernioNote}
+          zernioConnectHref={
+            activeTab === "whatsapp"
+              ? "/connections?session=whatsapp"
+              : activeTab === "messenger"
+                ? "/connections?session=facebook"
+                : "/connections?session=instagram"
+          }
         />
         ) : null}
 

@@ -146,7 +146,14 @@
     "step3": "Skapa egna händelser eller följ upp från Uppgifter och Sales",
     "tip": "Uppgifter och leads med datum syns automatiskt i vyn.",
     "liveDue_one": "{{count}} uppgift eller lead förfaller idag — lägg till i kalendern",
-    "liveDue_other": "{{count}} uppgifter eller leads förfaller idag — lägg till i kalendern"
+    "liveDue_other": "{{count}} uppgifter eller leads förfaller idag — lägg till i kalendern",
+    "add": "Lägg till",
+    "retry": "Försök igen",
+    "connectHint": "Koppla Google/Outlook under",
+    "connections": "Kopplingar",
+    "officialReconnect": "Koppla om via Official API",
+    "prevPeriod": "Föregående period",
+    "nextPeriod": "Nästa period"
   },
   "company": {
     "title": "Företag",

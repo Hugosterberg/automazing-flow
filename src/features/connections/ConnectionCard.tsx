@@ -587,7 +587,7 @@ export function ConnectionCard({
                   }
                 >
                   <PrimaryIcon className="h-3.5 w-3.5" />
-                  {defaultPathOption?.id === "zernio" ? "Koppla via Zernio" : "Koppla (rekommenderat)"}
+                  {defaultPathOption?.id === "zernio" ? t("card.connectZernio") : t("card.connectRecommended")}
                 </Button>
                 <Button
                   type="button"
@@ -601,7 +601,7 @@ export function ConnectionCard({
                   }
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  {defaultPathOption?.id === "zernio" ? "Använd Official API" : "Koppla via Zernio"}
+                  {defaultPathOption?.id === "zernio" ? t("card.useOfficialApi") : t("card.connectZernio")}
                 </Button>
               </>
             ) : (

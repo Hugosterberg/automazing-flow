@@ -459,7 +459,7 @@ export default function CalendarPage() {
         actions={
           <Button onClick={openDialog}>
             <Plus className="h-4 w-4 mr-2" />
-            Lägg till
+            {t("calendar.add")}
           </Button>
         }
       />
@@ -511,15 +511,26 @@ export default function CalendarPage() {
           <CardContent className="py-3 px-4 flex items-center justify-between">
             <p className="text-sm text-destructive">{providerError}</p>
             <Button variant="ghost" size="sm" onClick={() => void refreshProviderEvents()}>
-              Försök igen
+              {t("calendar.retry")}
             </Button>
           </CardContent>
         </Card>
       )}
       {providerData?.note && (
         <Card className="bg-muted/40 border-border">
-          <CardContent className="py-3 px-4">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 px-4">
             <p className="text-sm text-muted-foreground">{providerData.note}</p>
+            <Button asChild variant="outline" size="sm" className="h-8 shrink-0 text-xs">
+              <Link
+                to={`/connections?session=${
+                  activeCalendarAccount?.platform === "outlook_calendar"
+                    ? "outlook_calendar"
+                    : "google_calendar"
+                }`}
+              >
+                {t("calendar.officialReconnect")}
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -542,9 +553,9 @@ export default function CalendarPage() {
               }}
             />
             <p className="mt-4 text-[11px] text-muted-foreground">
-              Koppla Google/Outlook under{" "}
-              <Link to="/connections?q=calendar" className="underline underline-offset-2 hover:text-foreground">
-                Kopplingar
+              {t("calendar.connectHint")}{" "}
+              <Link to="/connections?session=google_calendar" className="underline underline-offset-2 hover:text-foreground">
+                {t("calendar.connections")}
               </Link>
               .
             </p>
@@ -554,8 +565,8 @@ export default function CalendarPage() {
                 size="icon"
                 className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={navPrev}
-                title="Föregående period"
-                aria-label="Föregående period"
+                title={t("calendar.prevPeriod")}
+                aria-label={t("calendar.prevPeriod")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -567,8 +578,8 @@ export default function CalendarPage() {
                 size="icon"
                 className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={navNext}
-                title="Nästa period"
-                aria-label="Nästa period"
+                title={t("calendar.nextPeriod")}
+                aria-label={t("calendar.nextPeriod")}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>

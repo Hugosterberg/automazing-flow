@@ -146,7 +146,14 @@
     "step3": "Create your own events or follow up from Tasks and Sales",
     "tip": "Tasks and leads with dates show automatically in the view.",
     "liveDue_one": "{{count}} task or lead is due today — add it to the calendar",
-    "liveDue_other": "{{count}} tasks or leads are due today — add them to the calendar"
+    "liveDue_other": "{{count}} tasks or leads are due today — add them to the calendar",
+    "add": "Add",
+    "retry": "Try again",
+    "connectHint": "Connect Google/Outlook under",
+    "connections": "Connections",
+    "officialReconnect": "Reconnect via Official API",
+    "prevPeriod": "Previous period",
+    "nextPeriod": "Next period"
   },
   "company": {
     "title": "Company",

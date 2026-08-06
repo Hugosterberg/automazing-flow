@@ -14,5 +14,8 @@
   "emptyRatingDesc": "Prova ett annat stjärnfilter eller visa alla betyg.",
   "emptyReviewsDesc": "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar.",
   "emptyConnectCta": "Öppna Kopplingar",
-  "emptyAutoHintCta": "Aktivera recensionsautomation"
+  "emptyAutoHintCta": "Aktivera recensionsautomation",
+  "emptyAccountDesc": "Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar — sedan synkas omdömen hit automatiskt.",
+  "officialReconnect": "Koppla om via Official API",
+  "noteOfficialHint": "Om kontot kopplades via Zernio: byt till Official API under Kopplingar."
 }

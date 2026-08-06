@@ -81,8 +81,8 @@ export function useReplyMetaAdComment() {
 }
 
 /**
- * Cache-only ad-comment count for Daily Brief / Home. Cold until Marketing
- * Paid has loaded comments this session — never triggers a Meta fetch.
+ * Cache-only ad-comment count for surfaces that must not hit Meta (e.g. offline
+ * demos). Prefer `useMetaAdComments(enabled)` when Meta Business is connected.
  */
 export function useCachedMetaAdCommentCount(): number {
   const { user } = useAuth();

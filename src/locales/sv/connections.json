@@ -111,6 +111,9 @@
   "card": {
     "connect": "Koppla",
     "reconnect": "Koppla om",
-    "add": "Lägg till"
+    "add": "Lägg till",
+    "connectRecommended": "Koppla (rekommenderat)",
+    "connectZernio": "Koppla via Zernio",
+    "useOfficialApi": "Använd Official API"
   }
 }

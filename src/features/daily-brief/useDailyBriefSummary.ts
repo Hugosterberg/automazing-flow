@@ -15,7 +15,7 @@ import { useAiRecommendations } from "@/features/ai-recommendations/useAiRecomme
 import { useTasks } from "@/features/tasks/useTasks";
 import { isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks/taskFilters";
 import { useCachedMarketingRoas, useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
-import { useCachedMetaAdCommentCount } from "@/features/marketing/useMetaAdComments";
+import { useMetaAdComments } from "@/features/marketing/useMetaAdComments";
 import { useCachedShopifyOps } from "@/features/ecommerce/shopifyOpsCache";
 import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads } from "@/features/leads/useLeads";
@@ -65,7 +65,13 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   });
   const cachedRoas = useCachedMarketingRoas();
   const cachedShopifyOps = useCachedShopifyOps();
-  const cachedAdCommentCount = useCachedMetaAdCommentCount();
+  const metaBusinessConnected = connections.some(
+    (c) => c.platform === "meta_business" && (c.health === "healthy" || c.health === "pending")
+  );
+  // Prefetch when Meta Business is connected so Home/Brief aren't cold until
+  // Marketing → Paid is visited. Same query key as the Paid panel.
+  const adCommentsQuery = useMetaAdComments(metaBusinessConnected);
+  const cachedAdCommentCount = adCommentsQuery.data?.comments?.length ?? 0;
   const { trend: marketingTrend } = useMarketingTrend();
   const { inventoryAlert, performance } = useMarketingCampaigns();
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);

@@ -914,8 +914,26 @@ export default function ReviewsPage() {
       {(reviewsTab === "inbox" || focusedReading) && data?.note && (
         <m.div {...fadeUp} transition={{ duration: 0.3 }}>
           <Card className="bg-muted/40 border-border">
-            <CardContent className="py-3 px-4">
-              <p className="text-sm text-muted-foreground">{data.note}</p>
+            <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 px-4">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm text-muted-foreground">{data.note}</p>
+                {data?.source === "zernio" ? (
+                  <p className="text-[11px] text-muted-foreground">{t("noteOfficialHint")}</p>
+                ) : null}
+              </div>
+              <Button asChild variant="outline" size="sm" className="h-8 shrink-0 text-xs">
+                <Link
+                  to={`/connections?session=${
+                    activeAccount?.platform === "tripadvisor"
+                      ? "tripadvisor"
+                      : activeAccount?.platform === "judgeme"
+                        ? "judgeme"
+                        : "google_reviews"
+                  }`}
+                >
+                  {t("officialReconnect")}
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </m.div>
@@ -944,10 +962,10 @@ export default function ReviewsPage() {
           <EmptyState
             icon={Star}
             title={t("emptyAccountTitle")}
-            description="Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar — sedan synkas omdömen hit automatiskt."
+            description={t("emptyAccountDesc")}
             action={
               <Button asChild variant="outline" size="sm">
-                <Link to="/connections">Öppna Kopplingar</Link>
+                <Link to="/connections?session=google_reviews">{t("emptyConnectCta")}</Link>
               </Button>
             }
           />
@@ -1051,16 +1069,26 @@ export default function ReviewsPage() {
           <EmptyState
             icon={MessageSquare}
             title={t("emptyReviewsTitle")}
-            description="Kontot returnerade inga omdömen. Uppdatera, eller kontrollera kopplingen under Kopplingar."
+            description={t("emptyReviewsDesc")}
             action={
               <Button variant="outline" size="sm" onClick={() => void refresh()}>
                 <RefreshCw className="h-4 w-4 mr-1.5" aria-hidden />
-                Uppdatera
+                {t("refresh")}
               </Button>
             }
             secondaryAction={
               <Button asChild variant="ghost" size="sm">
-                <Link to="/connections">Kopplingar</Link>
+                <Link
+                  to={`/connections?session=${
+                    activeAccount?.platform === "tripadvisor"
+                      ? "tripadvisor"
+                      : activeAccount?.platform === "judgeme"
+                        ? "judgeme"
+                        : "google_reviews"
+                  }`}
+                >
+                  {data?.source === "zernio" ? t("officialReconnect") : t("emptyConnectCta")}
+                </Link>
               </Button>
             }
           />

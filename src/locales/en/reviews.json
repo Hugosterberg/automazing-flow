@@ -14,5 +14,8 @@
   "emptyRatingDesc": "Try another star filter or show all ratings.",
   "emptyReviewsDesc": "The account returned no reviews. Tap Refresh or check the connection under Connections.",
   "emptyConnectCta": "Open Connections",
-  "emptyAutoHintCta": "Enable review automation"
+  "emptyAutoHintCta": "Enable review automation",
+  "emptyAccountDesc": "Connect Google Reviews, Tripadvisor or Judge.me under Connections — reviews sync here automatically.",
+  "officialReconnect": "Reconnect via Official API",
+  "noteOfficialHint": "If this account was connected via Zernio, switch to Official API under Connections."
 }

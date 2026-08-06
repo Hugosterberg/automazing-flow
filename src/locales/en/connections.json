@@ -111,6 +111,9 @@
   "card": {
     "connect": "Connect",
     "reconnect": "Reconnect",
-    "add": "Add"
+    "add": "Add",
+    "connectRecommended": "Connect (recommended)",
+    "connectZernio": "Connect via Zernio",
+    "useOfficialApi": "Use Official API"
   }
 }
