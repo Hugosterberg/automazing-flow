@@ -161,10 +161,10 @@ export default function Index() {
     if (overdueTasks.length > 0) {
       const dueTodayHint =
         dueTodayTasks.length > 0
-          ? `+${dueTodayTasks.length} idag`
-          : `${openTasks.length - overdueTasks.length} fler öppna`;
+          ? th("attention.tasksPlusToday", { count: dueTodayTasks.length })
+          : th("attention.tasksMoreOpen", { count: openTasks.length - overdueTasks.length });
       return {
-        title: "Försenade uppgifter",
+        title: th("attention.tasksOverdue"),
         value: overdueTasks.length,
         hint: dueTodayHint,
         tone: "warning" as const,
@@ -173,30 +173,30 @@ export default function Index() {
     }
     if (dueTodayTasks.length > 0) {
       return {
-        title: "Klart idag",
+        title: th("attention.tasksDueToday"),
         value: dueTodayTasks.length,
-        hint: `${openTasks.length - dueTodayTasks.length} fler öppna`,
+        hint: th("attention.tasksMoreOpen", { count: openTasks.length - dueTodayTasks.length }),
         tone: "info" as const,
         to: "/tasks",
       };
     }
     if (openTasks.length > 0) {
       return {
-        title: "Öppna uppgifter",
+        title: th("attention.tasksOpen"),
         value: openTasks.length,
-        hint: `${tasks.length - openTasks.length} klara`,
+        hint: th("attention.tasksDoneCount", { count: tasks.length - openTasks.length }),
         tone: "default" as const,
         to: "/tasks",
       };
     }
     return {
-      title: "Öppna uppgifter",
+      title: th("attention.tasksOpen"),
       value: 0,
-      hint: "Allt klart — bra jobbat.",
+      hint: th("attention.tasksAllClear"),
       tone: "success" as const,
       to: "/tasks",
     };
-  }, [openTasks, overdueTasks, dueTodayTasks, tasks.length]);
+  }, [openTasks, overdueTasks, dueTodayTasks, tasks.length, th]);
   const activeRecs = useMemo(
     () =>
       recommendations.filter(
@@ -279,12 +279,18 @@ export default function Index() {
     const tiles: TodayTileConfig[] = [];
 
     if (mode === "business") {
+      const healthLabel =
+        health.label === "Excellent"
+          ? th("health.excellent")
+          : health.label === "Good"
+            ? th("health.good")
+            : th("health.needsAttention");
       tiles.push({
         id: "health",
         urgency: 40,
-        title: `Business health · ${health.label}`,
+        title: th("health.title", { label: healthLabel }),
         value: health.score,
-        hint: health.topReason ?? "Allt ser bra ut",
+        hint: health.topReason ?? th("health.allGood"),
         icon: HeartPulse,
         to: "/activity",
         tone: health.tone,
@@ -313,9 +319,9 @@ export default function Index() {
     tiles.push({
       id: "messages",
       urgency: 300 + unreadDms,
-      title: "Olästa meddelanden",
+      title: th("attention.unreadMessages"),
       value: unreadDms,
-      hint: unreadDms === 0 ? "Inkorgen är tom" : "Svar väntar under Meddelanden",
+      hint: unreadDms === 0 ? th("attention.inboxEmpty") : th("attention.repliesWaiting"),
       icon: MessageSquare,
       to: "/messages",
       tone: unreadDms > 0 ? "info" : "default",
@@ -325,9 +331,9 @@ export default function Index() {
       tiles.push({
         id: "leads",
         urgency: 200 + leadsToFollowUp,
-        title: "Leads att följa upp",
+        title: th("attention.leadsFollowUp"),
         value: leadsToFollowUp,
-        hint: leadsToFollowUp === 0 ? "Pipelinen ser bra ut" : "Idag eller försenade",
+        hint: leadsToFollowUp === 0 ? th("attention.pipelineGood") : th("attention.leadsDueOrOverdue"),
         icon: UserPlus,
         to: "/sales?view=followups",
         tone: leadsToFollowUp > 0 ? "warning" : "default",
@@ -338,9 +344,9 @@ export default function Index() {
       tiles.push({
         id: "reviews",
         urgency: 250 + reviewsNeedingReply,
-        title: "Recensioner att svara på",
+        title: th("attention.reviewsReply"),
         value: reviewsNeedingReply,
-        hint: "Kundfeedback väntar",
+        hint: th("attention.reviewsHint"),
         icon: Star,
         to: "/reviews?filter=needs_reply",
         tone: "warning",
@@ -351,11 +357,11 @@ export default function Index() {
       tiles.push({
         id: "store",
         urgency: 150 + storeAttentionCount,
-        title: "Butik behöver uppmärksamhet",
+        title: th("attention.storeAttention"),
         value: storeAttentionCount,
         hint: inventoryAlert?.outOfStock
-          ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
-          : "Lågt lager — pausa annonser eller fyll på",
+          ? th("attention.storeOutOfStock", { count: inventoryAlert.outOfStock })
+          : th("attention.storeLowStock"),
         icon: ShoppingBag,
         to:
           (cachedShopifyOps?.staleUnfulfilled ?? 0) > 0 ||
@@ -369,12 +375,12 @@ export default function Index() {
     tiles.push({
       id: "recs",
       urgency: 50 + activeRecs.length,
-      title: "Aktiva AI-rekommendationer",
+      title: th("attention.aiRecs"),
       value: activeRecs.length,
       hint:
         activeRecs.length === 0
-          ? "Kör Generera under AI-rekommendationer"
-          : "Granska och acceptera eller avfärda",
+          ? th("attention.aiRecsEmpty")
+          : th("attention.aiRecsHint"),
       icon: Sparkles,
       to: "/ai-recommendations",
       tone: activeRecs.length > 0 ? "info" : "default",
@@ -383,9 +389,9 @@ export default function Index() {
     tiles.push({
       id: "connections",
       urgency: connectionIssues.length > 0 ? 80 + connectionIssues.length : 20,
-      title: "Kopplingsproblem",
+      title: th("attention.connectionIssues"),
       value: connectionIssues.length,
-      hint: connectionIssues.length === 0 ? "Allt fungerar" : "Återkoppla eller synka om",
+      hint: connectionIssues.length === 0 ? th("attention.connectionsOk") : th("attention.connectionsFix"),
       icon: AlertTriangle,
       to: "/connections",
       tone: connectionIssues.length > 0 ? "warning" : "success",
@@ -411,6 +417,7 @@ export default function Index() {
     cachedShopifyOps?.pendingPayments,
     activeRecs.length,
     connectionIssues.length,
+    th,
   ]);
 
   /**
@@ -447,8 +454,11 @@ export default function Index() {
           icon: Star,
           iconClass: "text-yellow-500",
           value: avgRating > 0 ? avgRating.toFixed(1) : "–",
-          label: "Snittbetyg",
-          hint: totalReviews > 0 ? `${formatNumber(totalReviews)} recensioner` : "Inga recensioner än",
+          label: th("overview.avgRating"),
+          hint:
+            totalReviews > 0
+              ? th("overview.reviewsCount", { count: formatNumber(totalReviews) })
+              : th("overview.noReviews"),
         });
       }
     }
@@ -463,7 +473,7 @@ export default function Index() {
         icon: CalendarDays,
         iconClass: "text-blue-500",
         value: calAccounts.length,
-        label: calAccounts.length === 1 ? "Kalender" : "Kalendrar",
+        label: th("overview.calendar", { count: calAccounts.length }),
         hint: calAccounts.map((a) => a.username).join(", "),
       });
     }
@@ -478,13 +488,13 @@ export default function Index() {
         icon: MessageSquare,
         iconClass: "text-primary",
         value: mailAccounts.length,
-        label: mailAccounts.length === 1 ? "E-postkonto" : "E-postkonton",
+        label: th("overview.mail", { count: mailAccounts.length }),
         hint: mailAccounts.map((a) => (a.platform === "gmail" ? "Gmail" : "Outlook")).join(", "),
       });
     }
 
     return cards;
-  }, [accounts, mode]);
+  }, [accounts, mode, th]);
 
   const { primaryTodayTiles, moreTodayTiles } = useMemo(() => {
     if (!isMobile) {
@@ -545,12 +555,11 @@ export default function Index() {
         description={
           profileSummary.connectedCount > 0 ? (
             <>
-              {profileSummary.connectedCount} kopplat
-              {profileSummary.connectedCount === 1 ? " konto" : "a konton"}
+              {th("header.connected", { count: profileSummary.connectedCount })}
               {profileSummary.platformText ? ` · ${profileSummary.platformText}` : ""}
             </>
           ) : (
-            "Inga kopplingar än. Börja under Kopplingar."
+            th("header.none")
           )
         }
       />
@@ -561,16 +570,22 @@ export default function Index() {
         showPurpose={showPagePurpose}
         liveHintOverride={
           health.score < 100 && health.topReason
-            ? `${health.label} (${health.score}/100) — ${health.topReason}`
+            ? `${
+                health.label === "Excellent"
+                  ? th("health.excellent")
+                  : health.label === "Good"
+                    ? th("health.good")
+                    : th("health.needsAttention")
+              } (${health.score}/100) — ${health.topReason}`
             : health.score >= 100
-              ? "Allt ser bra ut idag — inget brådskande i briefen."
+              ? th("header.allClear")
               : profileSummary.connectedCount === 0
-                ? "Inga kopplingar än — börja under Kopplingar."
+                ? th("header.noneBrief")
                 : null
         }
         extraActions={
           profileSummary.connectedCount === 0
-            ? [{ label: "Öppna Kopplingar", to: "/connections?wizard=1" }]
+            ? [{ label: th("header.openConnections"), to: "/connections?wizard=1" }]
             : []
         }
       />
@@ -581,12 +596,12 @@ export default function Index() {
 
       <PageModeTabs
         value={homeTab === "pulse" && !showPulseTab ? "today" : homeTab}
-        aria-label="Startsida-flikar"
+        aria-label={th("tabs.aria")}
         onChange={setHomeTab}
         options={[
-          { value: "today", label: "Idag" },
-          ...(showPulseTab ? [{ value: "pulse" as const, label: "Marknadspuls" }] : []),
-          { value: "more", label: "Mer" },
+          { value: "today", label: th("tabs.today") },
+          ...(showPulseTab ? [{ value: "pulse" as const, label: th("tabs.pulse") }] : []),
+          { value: "more", label: th("tabs.more") },
         ]}
       />
 
@@ -617,15 +632,15 @@ export default function Index() {
         />
       ) : null}
 
-      <section aria-label="Idag" className="app-workspace-shell !min-h-0 space-y-3 p-3 sm:space-y-2 sm:p-4">
+      <section aria-label={th("today.aria")} className="app-workspace-shell !min-h-0 space-y-3 p-3 sm:space-y-2 sm:p-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground sm:text-sm">Idag</h2>
+          <h2 className="text-base font-semibold text-foreground sm:text-sm">{th("today.heading")}</h2>
           <Link
             to="/activity"
             className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1 sm:text-xs"
           >
             <ActivityIcon className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
-            Aktivitet
+            {th("today.activity")}
           </Link>
         </div>
         <SyncFreshnessStrip businessProfileId={homeBusinessProfileId} />
@@ -698,7 +713,7 @@ export default function Index() {
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
                   className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
-                  aria-label={`Ta bort profil ${activeProfile.name}`}
+                  aria-label={th("profile.deleteAria", { name: activeProfile.name })}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -709,9 +724,11 @@ export default function Index() {
           <Card className="border-border bg-card">
             <CardContent className="space-y-2 p-4 text-sm">
               <p className="text-muted-foreground">
-                Profildata laddad från {profileSummary.withLoadedData} av{" "}
-                {profileSummary.connectedCount} kopplat
-                {profileSummary.connectedCount === 1 ? " konto" : "a konton"}.
+                {th("profile.loaded", {
+                  loaded: profileSummary.withLoadedData,
+                  total: profileSummary.connectedCount,
+                  accountsSuffix: th("header.accountsSuffix", { count: profileSummary.connectedCount }),
+                })}
               </p>
               {profileSummary.profileText ? (
                 <p className="text-foreground border-t border-border/70 pt-2">
@@ -725,25 +742,25 @@ export default function Index() {
                 <dl className="grid gap-1 border-t border-border/70 pt-2 text-xs text-muted-foreground/80">
                   {activeProfile.website ? (
                     <div className="flex flex-wrap gap-x-2">
-                      <dt className="shrink-0 font-medium text-muted-foreground">Webb</dt>
+                      <dt className="shrink-0 font-medium text-muted-foreground">{th("profile.web")}</dt>
                       <dd className="min-w-0 break-all">{activeProfile.website}</dd>
                     </div>
                   ) : null}
                   {activeProfile.email ? (
                     <div className="flex flex-wrap gap-x-2">
-                      <dt className="shrink-0 font-medium text-muted-foreground">E-post</dt>
+                      <dt className="shrink-0 font-medium text-muted-foreground">{th("profile.email")}</dt>
                       <dd className="min-w-0 break-all">{activeProfile.email}</dd>
                     </div>
                   ) : null}
                   {activeProfile.phone ? (
                     <div className="flex flex-wrap gap-x-2">
-                      <dt className="shrink-0 font-medium text-muted-foreground">Telefon</dt>
+                      <dt className="shrink-0 font-medium text-muted-foreground">{th("profile.phone")}</dt>
                       <dd className="min-w-0">{activeProfile.phone}</dd>
                     </div>
                   ) : null}
                   {activeProfile.location ? (
                     <div className="flex flex-wrap gap-x-2">
-                      <dt className="shrink-0 font-medium text-muted-foreground">Plats</dt>
+                      <dt className="shrink-0 font-medium text-muted-foreground">{th("profile.location")}</dt>
                       <dd className="min-w-0">{activeProfile.location}</dd>
                     </div>
                   ) : null}
@@ -808,16 +825,16 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>{th("editProfile")}</DialogTitle>
             <DialogDescription>
-              Snabb redigering här — för guide om varje fält, gå till{" "}
+              {th("editProfileDesc")}{" "}
               <Link to="/company" className="font-medium text-primary underline underline-offset-2">
-                Företag
+                {th("editProfileCompanyLink")}
               </Link>
               .
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-name">Profilnamn</Label>
+              <Label htmlFor="profile-name">{th("profileName")}</Label>
               <Input
                 id="profile-name"
                 value={profileForm.name}
@@ -827,7 +844,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-company">Företag</Label>
+              <Label htmlFor="profile-company">{th("profile.company")}</Label>
               <Input
                 id="profile-company"
                 value={profileForm.company}
@@ -837,7 +854,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-location">Plats</Label>
+              <Label htmlFor="profile-location">{th("profile.location")}</Label>
               <Input
                 id="profile-location"
                 value={profileForm.location}
@@ -847,7 +864,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-email">E-post</Label>
+              <Label htmlFor="profile-email">{th("profile.email")}</Label>
               <Input
                 id="profile-email"
                 type="email"
@@ -858,7 +875,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="profile-phone">Telefon</Label>
+              <Label htmlFor="profile-phone">{th("profile.phone")}</Label>
               <Input
                 id="profile-phone"
                 value={profileForm.phone}
@@ -868,7 +885,7 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-website">Webbplats</Label>
+              <Label htmlFor="profile-website">{th("profile.website")}</Label>
               <Input
                 id="profile-website"
                 placeholder="https://example.com"
@@ -879,10 +896,10 @@ export default function Index() {
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="profile-notes">Beskrivning av verksamheten</Label>
+              <Label htmlFor="profile-notes">{th("profileNotes")}</Label>
               <Textarea
                 id="profile-notes"
-                placeholder="Vad ni säljer, till vem och hur ni skiljer er — viktigast för AI i Sales och outreach."
+                placeholder={th("profileNotesPlaceholder")}
                 value={profileForm.notes}
                 rows={3}
                 className="text-sm resize-y min-h-[72px]"
@@ -894,10 +911,10 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Avbryt
+              {th("profile.cancel")}
             </Button>
             <Button onClick={saveProfileEdits} disabled={!activeProfile}>
-              Spara
+              {th("profile.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -910,14 +927,14 @@ export default function Index() {
         <AlertDialogContent className="sm:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Ta bort profilen &quot;{activeProfile?.name || ""}&quot;?
+              {th("profile.deleteTitle", { name: activeProfile?.name || "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              All analys från kopplade konton för denna profil tas bort.
+              {th("profile.deleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{th("profile.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -925,7 +942,7 @@ export default function Index() {
                 setConfirmDeleteOpen(false);
               }}
             >
-              Ta bort
+              {th("profile.deleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

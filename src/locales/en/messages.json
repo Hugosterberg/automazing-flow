@@ -99,9 +99,13 @@
     "reopenShort": "Reopen",
     "openExternal": "Open on platform",
     "copyMessage": "Copy message",
+    "copyEmail": "Copy email",
+    "copy": "Copy",
     "copied": "Message copied.",
     "copyFailed": "Could not copy.",
     "emailCopied": "Email address copied.",
+    "noSubject": "(No subject)",
+    "backToInbox": "Back to inbox",
     "writeReply": "Write your reply…",
     "writeReplyAi": "Write your reply… (AI draft loads automatically)",
     "writeAReply": "Write a reply…",
@@ -243,5 +247,14 @@
     "filter": "Filter",
     "channel": "Channel",
     "send": "Send"
+  },
+  "list": {
+    "needsReply": "Needs reply",
+    "other": "Other"
+  },
+  "body": {
+    "empty": "No content.",
+    "hideQuoted": "Hide quoted",
+    "showQuoted": "Show quoted"
   }
 }

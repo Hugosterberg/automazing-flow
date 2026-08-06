@@ -10,5 +10,88 @@
     "goTo": "Gå till"
   },
   "editProfile": "Redigera profil",
-  "editProfileDesc": "Snabb redigering här — för guide om varje fält, gå till"
+  "editProfileDesc": "Snabb redigering här — för guide om varje fält, gå till",
+  "editProfileCompanyLink": "Företag",
+  "profileName": "Profilnamn",
+  "profileNotes": "Beskrivning av verksamheten",
+  "profileNotesPlaceholder": "Vad ni säljer, till vem och hur ni skiljer er — viktigast för AI i Sales och outreach.",
+  "tabs": {
+    "aria": "Startsida-flikar",
+    "today": "Idag",
+    "pulse": "Marknadspuls",
+    "more": "Mer"
+  },
+  "today": {
+    "heading": "Idag",
+    "aria": "Idag",
+    "activity": "Aktivitet"
+  },
+  "header": {
+    "connected_one": "{{count}} kopplat konto",
+    "connected_other": "{{count}} kopplade konton",
+    "none": "Inga kopplingar än. Börja under Kopplingar.",
+    "noneBrief": "Inga kopplingar än — börja under Kopplingar.",
+    "allClear": "Allt ser bra ut idag — inget brådskande i briefen.",
+    "openConnections": "Öppna Kopplingar",
+    "accountsSuffix_one": " konto",
+    "accountsSuffix_other": "a konton"
+  },
+  "health": {
+    "title": "Business health · {{label}}",
+    "excellent": "Utmärkt",
+    "good": "Bra",
+    "needsAttention": "Behöver uppmärksamhet",
+    "allGood": "Allt ser bra ut"
+  },
+  "attention": {
+    "tasksOverdue": "Försenade uppgifter",
+    "tasksDueToday": "Klart idag",
+    "tasksOpen": "Öppna uppgifter",
+    "tasksPlusToday": "+{{count}} idag",
+    "tasksMoreOpen": "{{count}} fler öppna",
+    "tasksDoneCount": "{{count}} klara",
+    "tasksAllClear": "Allt klart — bra jobbat.",
+    "unreadMessages": "Olästa meddelanden",
+    "inboxEmpty": "Inkorgen är tom",
+    "repliesWaiting": "Svar väntar under Meddelanden",
+    "leadsFollowUp": "Leads att följa upp",
+    "pipelineGood": "Pipelinen ser bra ut",
+    "leadsDueOrOverdue": "Idag eller försenade",
+    "reviewsReply": "Recensioner att svara på",
+    "reviewsHint": "Kundfeedback väntar",
+    "storeAttention": "Butik behöver uppmärksamhet",
+    "storeOutOfStock": "{{count}} slut i lager · kolla annonser och lager",
+    "storeLowStock": "Lågt lager — pausa annonser eller fyll på",
+    "aiRecs": "Aktiva AI-rekommendationer",
+    "aiRecsEmpty": "Kör Generera under AI-rekommendationer",
+    "aiRecsHint": "Granska och acceptera eller avfärda",
+    "connectionIssues": "Kopplingsproblem",
+    "connectionsOk": "Allt fungerar",
+    "connectionsFix": "Återkoppla eller synka om"
+  },
+  "overview": {
+    "avgRating": "Snittbetyg",
+    "reviewsCount": "{{count}} recensioner",
+    "noReviews": "Inga recensioner än",
+    "calendar_one": "Kalender",
+    "calendar_other": "Kalendrar",
+    "mail_one": "E-postkonto",
+    "mail_other": "E-postkonton"
+  },
+  "profile": {
+    "web": "Webb",
+    "website": "Webbplats",
+    "company": "Företag",
+    "email": "E-post",
+    "phone": "Telefon",
+    "location": "Plats",
+    "name": "Namn",
+    "loaded": "Profildata laddad från {{loaded}} av {{total}} kopplat{{accountsSuffix}}.",
+    "deleteAria": "Ta bort profil {{name}}",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "deleteTitle": "Ta bort profilen “{{name}}”?",
+    "deleteDesc": "All analys från kopplade konton för denna profil tas bort.",
+    "deleteConfirm": "Ta bort"
+  }
 }

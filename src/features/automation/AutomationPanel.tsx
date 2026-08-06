@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Bot, Loader2, Play, RefreshCw, Save, Send } from "lucide-react";
 import {
   AlertDialog,
@@ -29,10 +30,10 @@ import {
 } from "./automationService";
 import { useInvalidatePendingDmDrafts } from "./usePendingDmDrafts";
 
-const STATUS_LABELS: Record<AutoReplyLogEntry["status"], { label: string; className: string }> = {
-  drafted: { label: "Utkast", className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
-  sent: { label: "Skickat", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
-  failed: { label: "Misslyckades", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+const STATUS_CLASS: Record<AutoReplyLogEntry["status"], string> = {
+  drafted: "border-amber-500/30 bg-amber-500/10 text-amber-700",
+  sent: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  failed: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 /**
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<AutoReplyLogEntry["status"], { label: string; classN
  * business profile.
  */
 export function AutomationPanel({ businessProfileId }: { businessProfileId: string }) {
+  const { t } = useTranslation("automations");
   const { toast } = useToast();
   const invalidatePendingDrafts = useInvalidatePendingDmDrafts();
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,12 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
   const [logLoading, setLogLoading] = useState(false);
   const [sendingDraftId, setSendingDraftId] = useState<string | null>(null);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
+
+  const statusLabel = (status: AutoReplyLogEntry["status"]) => {
+    if (status === "sent") return t("panel.statusSent");
+    if (status === "failed") return t("panel.statusFailed");
+    return t("panel.statusDrafted");
+  };
 
   const loadLog = useCallback(async () => {
     setLogLoading(true);
@@ -81,8 +89,8 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
       } catch (error) {
         if (!ignore) {
           toast({
-            title: "Kunde inte ladda automationen",
-            description: error instanceof Error ? error.message : "Okänt fel",
+            title: t("panel.toastLoadFailed"),
+            description: error instanceof Error ? error.message : t("panel.toastUnknown"),
             variant: "destructive",
           });
         }
@@ -95,7 +103,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
     return () => {
       ignore = true;
     };
-  }, [businessProfileId, loadLog, toast]);
+  }, [businessProfileId, loadLog, toast, t]);
 
   function patchSettings(patch: Partial<AutomationSettings>) {
     setSettings((current) => (current ? { ...current, ...patch } : current));
@@ -110,17 +118,17 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
       setSettings(payload.settings);
       setDirty(false);
       toast({
-        title: "Automation sparad",
+        title: t("panel.toastSaved"),
         description: settings.dmAutoReplyEnabled
           ? settings.dmAutoReplyMode === "send"
-            ? "AI:n svarar nu automatiskt på nya DM:s för den här profilen."
-            : "AI:n skapar nu svarsutkast för nya DM:s (inget skickas automatiskt)."
-          : "Auto-svar är avstängt för den här profilen.",
+            ? t("panel.toastSavedSend")
+            : t("panel.toastSavedDraft")
+          : t("panel.toastSavedOff"),
       });
     } catch (error) {
       toast({
-        title: "Kunde inte spara",
-        description: error instanceof Error ? error.message : "Okänt fel",
+        title: t("panel.toastSaveFailed"),
+        description: error instanceof Error ? error.message : t("panel.toastUnknown"),
         variant: "destructive",
       });
     } finally {
@@ -132,13 +140,13 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
     setSendingDraftId(entry.id);
     try {
       await sendAutomationDraft(businessProfileId, entry.id);
-      toast({ title: "Svar skickat", description: "Utkastet skickades via Zernio." });
+      toast({ title: t("panel.toastSent"), description: t("panel.toastSentDesc") });
       await loadLog();
       invalidatePendingDrafts(businessProfileId);
     } catch (error) {
       toast({
-        title: "Kunde inte skicka utkastet",
-        description: error instanceof Error ? error.message : "Okänt fel",
+        title: t("panel.toastSendFailed"),
+        description: error instanceof Error ? error.message : t("panel.toastUnknown"),
         variant: "destructive",
       });
     } finally {
@@ -162,27 +170,31 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
       const blocked = s.note && s.scanned === 0 && s.sent + s.drafted === 0;
       if (blocked) {
         toast({
-          title: "Automationen kunde inte läsa inboxen",
+          title: t("panel.toastInboxBlocked"),
           description:
             s.note === "no_zernio_profile_for_tenant"
-              ? "Profilen har ingen Zernio-koppling ännu — koppla minst en kanal via Zernio först."
+              ? t("panel.toastNoZernio")
               : s.note,
           variant: "destructive",
         });
       } else {
+        const summary = t("panel.toastRunSummary", {
+          scanned: s.scanned,
+          sent: s.sent,
+          drafted: s.drafted,
+          failed: s.failed,
+        });
         toast({
-          title: "Automation körd",
-          description: `Skannade ${s.scanned} konversationer — ${s.sent} skickade, ${s.drafted} utkast, ${s.failed} misslyckade.${
-            s.note ? ` (${s.note})` : ""
-          }`,
+          title: t("panel.toastRunOk"),
+          description: s.note ? `${summary} (${s.note})` : summary,
         });
       }
       await loadLog();
       invalidatePendingDrafts(businessProfileId);
     } catch (error) {
       toast({
-        title: "Kunde inte köra automationen",
-        description: error instanceof Error ? error.message : "Okänt fel",
+        title: t("panel.toastRunFailed"),
+        description: error instanceof Error ? error.message : t("panel.toastUnknown"),
         variant: "destructive",
       });
     } finally {
@@ -191,17 +203,31 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground pt-2">Laddar automation…</p>;
+    return <p className="text-sm text-muted-foreground pt-2">{t("panel.loading")}</p>;
   }
 
   if (!storeEnabled || !settings) {
     return (
       <p className="text-sm text-muted-foreground pt-2">
-        Automationen kräver att servern har <code className="text-xs mx-1">SUPABASE_SERVICE_ROLE_KEY</code>
-        konfigurerad.
+        {t("panel.needsServiceRoleBefore")}{" "}
+        <code className="text-xs mx-1">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+        {t("panel.needsServiceRoleAfter")}
       </p>
     );
   }
+
+  const modeOptions = [
+    {
+      value: "draft" as const,
+      label: t("panel.modeDraft"),
+      desc: t("panel.modeDraftDesc"),
+    },
+    {
+      value: "send" as const,
+      label: t("panel.modeSend"),
+      desc: t("panel.modeSendDesc"),
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -209,20 +235,15 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            Auto-svar på DM:s
+            {t("panel.title")}
           </CardTitle>
-          <CardDescription>
-            AI:n läser olästa konversationer (Instagram, Facebook, WhatsApp via Zernio) för den här
-            profilen och skriver svar. I utkastläge skickas inget — allt hamnar i loggen nedan.
-          </CardDescription>
+          <CardDescription>{t("panel.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
             <div className="space-y-0.5">
-              <Label htmlFor="automation-enabled">Aktivera auto-svar</Label>
-              <p className="text-xs text-muted-foreground">
-                Körs schemalagt på servern och kan triggas manuellt med &quot;Kör nu&quot;.
-              </p>
+              <Label htmlFor="automation-enabled">{t("panel.enable")}</Label>
+              <p className="text-xs text-muted-foreground">{t("panel.enableHint")}</p>
             </div>
             <Switch
               id="automation-enabled"
@@ -232,22 +253,9 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
           </div>
 
           <div className="space-y-1.5">
-            <Label>Läge</Label>
+            <Label>{t("panel.mode")}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(
-                [
-                  {
-                    value: "draft",
-                    label: "Utkast (rekommenderas)",
-                    desc: "AI:n förbereder svar — du granskar och skickar själv.",
-                  },
-                  {
-                    value: "send",
-                    label: "Skicka automatiskt",
-                    desc: "AI:n skickar svaret direkt utan granskning.",
-                  },
-                ] as const
-              ).map((option) => (
+              {modeOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -269,17 +277,14 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
             {settings.dmAutoReplyMode === "send" ? (
               <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                <p>
-                  Auto-skick är valt — spara för att tillämpa. Då går svar ut utan manuell
-                  granskning. Utkastläge är säkrare för de flesta.
-                </p>
+                <p>{t("panel.modeSendWarning")}</p>
               </div>
             ) : null}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="automation-tone">Ton</Label>
+              <Label htmlFor="automation-tone">{t("panel.tone")}</Label>
               <Input
                 id="automation-tone"
                 value={settings.tone}
@@ -288,7 +293,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="automation-language">Språk</Label>
+              <Label htmlFor="automation-language">{t("panel.language")}</Label>
               <Input
                 id="automation-language"
                 value={settings.language}
@@ -299,12 +304,12 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="automation-instructions">Extra instruktioner (valfritt)</Label>
+            <Label htmlFor="automation-instructions">{t("panel.instructions")}</Label>
             <Textarea
               id="automation-instructions"
               value={settings.instructions}
               onChange={(e) => patchSettings({ instructions: e.target.value })}
-              placeholder="t.ex. Hänvisa bokningsfrågor till bokning@exempel.se, nämn aldrig priser."
+              placeholder={t("panel.instructionsPlaceholder")}
               rows={3}
             />
           </div>
@@ -314,14 +319,14 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
               variant="outline"
               onClick={() => void handleRunNow()}
               disabled={running || !settings.dmAutoReplyEnabled || dirty}
-              title={dirty ? "Spara inställningarna först" : undefined}
+              title={dirty ? t("panel.saveFirst") : undefined}
             >
               {running ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-              Kör nu
+              {t("panel.runNow")}
             </Button>
             <Button onClick={() => void handleSave()} disabled={saving || !dirty}>
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Spara automation
+              {t("panel.save")}
             </Button>
           </div>
         </CardContent>
@@ -331,8 +336,8 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-base">Automationslogg</CardTitle>
-              <CardDescription>Senaste utkast och skickade svar för den här profilen.</CardDescription>
+              <CardTitle className="text-base">{t("panel.logTitle")}</CardTitle>
+              <CardDescription>{t("panel.logDescription")}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={() => void loadLog()} disabled={logLoading}>
               {logLoading ? (
@@ -345,17 +350,15 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
         </CardHeader>
         <CardContent className="space-y-2">
           {logEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Inga händelser ännu. När automationen hanterar ett meddelande visas det här.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("panel.logEmpty")}</p>
           ) : (
             logEntries.map((entry) => {
-              const status = STATUS_LABELS[entry.status] ?? STATUS_LABELS.drafted;
+              const statusClass = STATUS_CLASS[entry.status] ?? STATUS_CLASS.drafted;
               return (
                 <div key={entry.id} className="rounded-lg border border-border bg-background p-3 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 ${status.className}`}>
-                      {status.label}
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 ${statusClass}`}>
+                      {statusLabel(entry.status)}
                     </span>
                     {entry.platform ? <span className="text-muted-foreground capitalize">{entry.platform}</span> : null}
                     {entry.author_name ? <span className="font-medium">{entry.author_name}</span> : null}
@@ -365,12 +368,13 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
                   </div>
                   {entry.incoming_text ? (
                     <p className="text-xs text-muted-foreground line-clamp-2">
-                      <span className="font-medium text-foreground">Inkommande:</span> {entry.incoming_text}
+                      <span className="font-medium text-foreground">{t("panel.incoming")}</span>{" "}
+                      {entry.incoming_text}
                     </p>
                   ) : null}
                   {entry.draft_text ? (
                     <p className="text-xs line-clamp-3">
-                      <span className="font-medium">Svar:</span> {entry.draft_text}
+                      <span className="font-medium">{t("panel.reply")}</span> {entry.draft_text}
                     </p>
                   ) : null}
                   {entry.error ? <p className="text-xs text-destructive">{entry.error}</p> : null}
@@ -388,7 +392,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
                         ) : (
                           <Send className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        Skicka svaret
+                        {t("panel.sendReply")}
                       </Button>
                     </div>
                   ) : null}
@@ -402,15 +406,11 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
       <AlertDialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Skicka DM-svar automatiskt?</AlertDialogTitle>
-            <AlertDialogDescription>
-              I det här läget skickar AI:n svar direkt till kunder utan att du godkänner dem först.
-              Det går inte att ångra ett skickat meddelande. Utkastläge rekommenderas för startups
-              och mindre team.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("panel.confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("panel.confirmDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("panel.confirmCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -418,7 +418,7 @@ export function AutomationPanel({ businessProfileId }: { businessProfileId: stri
                 setConfirmSendOpen(false);
               }}
             >
-              Ja, aktivera auto-skick
+              {t("panel.confirmEnable")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

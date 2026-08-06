@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Bot, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ type Props = {
  * so draft-before-send does not require opening Automations first.
  */
 export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: Props) {
+  const { t } = useTranslation("automations");
   const { drafts, isLoading } = usePendingDmDrafts(businessProfileId);
   const { dismissDmDraft } = useDemoMode();
   const invalidate = useInvalidatePendingDmDrafts();
@@ -34,14 +36,14 @@ export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: 
     try {
       if (isDemoId(entry.id)) {
         dismissDmDraft(entry.id);
-        toast.success("Demo — inget skickades på riktigt");
+        toast.success(t("dmDrafts.demoSent"));
         return;
       }
       await sendAutomationDraft(businessProfileId, entry.id);
-      toast.success("Svaret skickades");
+      toast.success(t("dmDrafts.sent"));
       invalidate(businessProfileId);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte skicka utkastet.");
+      toast.error(err instanceof Error ? err.message : t("dmDrafts.sendFailed"));
     } finally {
       setSendingId(null);
     }
@@ -56,22 +58,20 @@ export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: 
         "rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 sm:px-4",
         className
       )}
-      aria-label="AI-utkast att granska"
+      aria-label={t("dmDrafts.aria")}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Bot className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
-              {drafts.length === 1 ? "1 AI-utkast väntar" : `${drafts.length} AI-utkast väntar`}
+              {t("dmDrafts.title", { count: drafts.length })}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Auto-svar i utkastläge — granska och skicka, eller öppna Automationer.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("dmDrafts.subtitle")}</p>
           </div>
         </div>
         <Button asChild type="button" size="sm" variant="ghost" className="h-7 shrink-0 text-xs">
-          <Link to="/automations?tab=messages&focus=auto-reply">Automationer</Link>
+          <Link to="/automations?tab=messages&focus=auto-reply">{t("dmDrafts.automations")}</Link>
         </Button>
       </div>
 
@@ -83,7 +83,7 @@ export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: 
           >
             <div className="min-w-0">
               <p className="truncate text-xs font-medium">
-                {entry.author_name || "Okänd"}
+                {entry.author_name || t("dmDrafts.unknown")}
                 {entry.platform ? (
                   <span className="ml-1.5 font-normal capitalize text-muted-foreground">
                     · {entry.platform}
@@ -112,16 +112,16 @@ export function AutoReplyDraftsStrip({ businessProfileId, className, compact }: 
               ) : (
                 <Send className="mr-1.5 h-3.5 w-3.5" />
               )}
-              Skicka
+              {t("dmDrafts.send")}
             </Button>
           </li>
         ))}
       </ul>
       {rest > 0 ? (
         <p className="mt-1.5 text-xs text-muted-foreground">
-          +{rest} till under{" "}
+          {t("dmDrafts.moreUnder", { count: rest })}{" "}
           <Link to="/automations?tab=messages&focus=auto-reply" className="underline underline-offset-2">
-            Automationer
+            {t("dmDrafts.automations")}
           </Link>
         </p>
       ) : null}

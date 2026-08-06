@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CheckSquare, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ type Props = {
  * product content. Primary approve hub — surface on Home Idag, not buried under Mer.
  */
 export function ApproveDraftsCard({ businessProfileId, className, compact }: Props) {
+  const { t } = useTranslation("automations");
   const { count: dmDrafts } = usePendingDmDrafts(businessProfileId);
   const mailDoc = useProfileDocument<Array<{ status?: string }>>(MAIL_REPLY_QUEUE_DOC_KEY, []);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>(OUTREACH_QUEUE_DOC_KEY, []);
@@ -41,11 +43,11 @@ export function ApproveDraftsCard({ businessProfileId, className, compact }: Pro
   ).length;
 
   const rows = [
-    { label: "DM-svar", count: dmDrafts, to: "/messages?tab=instagram" },
-    { label: "Mail-svar", count: mailDrafts, to: "/messages" },
-    { label: "Outreach", count: outreachDrafts, to: "/sales?view=outreach-queue" },
-    { label: "Recensioner", count: reviewDrafts, to: "/reviews?filter=needs_reply" },
-    { label: "Produkttexter", count: productDrafts, to: "/ecommerce?tab=products" },
+    { label: t("approveDrafts.dm"), count: dmDrafts, to: "/messages?tab=instagram" },
+    { label: t("approveDrafts.mail"), count: mailDrafts, to: "/messages" },
+    { label: t("approveDrafts.outreach"), count: outreachDrafts, to: "/sales?view=outreach-queue" },
+    { label: t("approveDrafts.reviews"), count: reviewDrafts, to: "/reviews?filter=needs_reply" },
+    { label: t("approveDrafts.products"), count: productDrafts, to: "/ecommerce?tab=products" },
   ].filter((r) => r.count > 0);
 
   if (!businessProfileId || rows.length === 0) return null;
@@ -59,22 +61,20 @@ export function ApproveDraftsCard({ businessProfileId, className, compact }: Pro
           "rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 sm:px-4",
           className
         )}
-        aria-label="Godkänn utkast"
+        aria-label={t("approveDrafts.aria")}
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-2">
             <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden />
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
-                {total === 1 ? "1 AI-utkast att godkänna" : `${total} AI-utkast att godkänna`}
+                {t("approveDrafts.titleCompact", { count: total })}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Utkast före sändning — granska innan något går ut.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("approveDrafts.subtitleCompact")}</p>
             </div>
           </div>
           <Button asChild type="button" size="sm" variant="outline" className="h-7 shrink-0 text-xs">
-            <Link to={rows[0]?.to ?? "/messages"}>Öppna första</Link>
+            <Link to={rows[0]?.to ?? "/messages"}>{t("approveDrafts.openFirst")}</Link>
           </Button>
         </div>
         <ul className="mt-2 space-y-1">
@@ -100,16 +100,13 @@ export function ApproveDraftsCard({ businessProfileId, className, compact }: Pro
   return (
     <section
       className={cn("rounded-lg border border-border bg-card px-3 py-3 sm:px-4", className)}
-      aria-label="Godkänn utkast"
+      aria-label={t("approveDrafts.aria")}
     >
       <div className="flex items-start gap-2 pb-2">
         <CheckSquare className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         <div className="min-w-0">
-          <p className="text-sm font-medium">Godkänn utkast</p>
-          <p className="text-xs text-muted-foreground">
-            {total === 1 ? "1 AI-utkast väntar på dig" : `${total} AI-utkast väntar på dig`} — granska
-            innan något skickas.
-          </p>
+          <p className="text-sm font-medium">{t("approveDrafts.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("approveDrafts.subtitle", { count: total })}</p>
         </div>
       </div>
       <ul className="space-y-1.5">

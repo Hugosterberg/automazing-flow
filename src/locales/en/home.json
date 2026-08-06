@@ -10,5 +10,88 @@
     "goTo": "Go to"
   },
   "editProfile": "Edit profile",
-  "editProfileDesc": "Quick edit here — for a guided field-by-field walkthrough, go to"
+  "editProfileDesc": "Quick edit here — for a guided field-by-field walkthrough, go to",
+  "editProfileCompanyLink": "Company",
+  "profileName": "Profile name",
+  "profileNotes": "Business description",
+  "profileNotesPlaceholder": "What you sell, to whom, and how you stand out — most important for AI in Sales and outreach.",
+  "tabs": {
+    "aria": "Home tabs",
+    "today": "Today",
+    "pulse": "Market pulse",
+    "more": "More"
+  },
+  "today": {
+    "heading": "Today",
+    "aria": "Today",
+    "activity": "Activity"
+  },
+  "header": {
+    "connected_one": "{{count}} connected account",
+    "connected_other": "{{count}} connected accounts",
+    "none": "No connections yet. Start under Connections.",
+    "noneBrief": "No connections yet — start under Connections.",
+    "allClear": "Everything looks good today — nothing urgent in the brief.",
+    "openConnections": "Open Connections",
+    "accountsSuffix_one": " account",
+    "accountsSuffix_other": " accounts"
+  },
+  "health": {
+    "title": "Business health · {{label}}",
+    "excellent": "Excellent",
+    "good": "Good",
+    "needsAttention": "Needs attention",
+    "allGood": "Everything looks good"
+  },
+  "attention": {
+    "tasksOverdue": "Overdue tasks",
+    "tasksDueToday": "Due today",
+    "tasksOpen": "Open tasks",
+    "tasksPlusToday": "+{{count}} today",
+    "tasksMoreOpen": "{{count}} more open",
+    "tasksDoneCount": "{{count}} done",
+    "tasksAllClear": "All clear — nice work.",
+    "unreadMessages": "Unread messages",
+    "inboxEmpty": "Inbox is empty",
+    "repliesWaiting": "Replies waiting under Messages",
+    "leadsFollowUp": "Leads to follow up",
+    "pipelineGood": "Pipeline looks good",
+    "leadsDueOrOverdue": "Today or overdue",
+    "reviewsReply": "Reviews to reply to",
+    "reviewsHint": "Customer feedback waiting",
+    "storeAttention": "Store needs attention",
+    "storeOutOfStock": "{{count}} out of stock · check ads and inventory",
+    "storeLowStock": "Low stock — pause ads or restock",
+    "aiRecs": "Active AI recommendations",
+    "aiRecsEmpty": "Run Generate under AI recommendations",
+    "aiRecsHint": "Review and accept or dismiss",
+    "connectionIssues": "Connection issues",
+    "connectionsOk": "Everything works",
+    "connectionsFix": "Reconnect or sync again"
+  },
+  "overview": {
+    "avgRating": "Avg. rating",
+    "reviewsCount": "{{count}} reviews",
+    "noReviews": "No reviews yet",
+    "calendar_one": "Calendar",
+    "calendar_other": "Calendars",
+    "mail_one": "Email account",
+    "mail_other": "Email accounts"
+  },
+  "profile": {
+    "web": "Web",
+    "website": "Website",
+    "company": "Company",
+    "email": "Email",
+    "phone": "Phone",
+    "location": "Location",
+    "name": "Name",
+    "loaded": "Profile data loaded from {{loaded}} of {{total}}{{accountsSuffix}}.",
+    "deleteAria": "Delete profile {{name}}",
+    "save": "Save",
+    "cancel": "Cancel",
+    "deleteTitle": "Delete profile “{{name}}”?",
+    "deleteDesc": "All analysis from connected accounts for this profile will be removed.",
+    "deleteConfirm": "Delete"
+  }
 }

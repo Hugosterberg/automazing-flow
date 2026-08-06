@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,13 +57,14 @@ function FormattedBlock({ text, quoted }: { text: string; quoted?: boolean }) {
  * collapsible quoted history, and a height clamp for long emails.
  */
 export function MessageBody({ message }: { message: UnifiedMessage }) {
+  const { t } = useTranslation("messages");
   const [showQuoted, setShowQuoted] = useState(false);
   useEffect(() => {
     setShowQuoted(false);
   }, [message.id]);
   const raw = (message.body || message.snippet || "").trim();
   if (!raw) {
-    return <p className="text-sm text-muted-foreground">Inget innehåll.</p>;
+    return <p className="text-sm text-muted-foreground">{t("body.empty")}</p>;
   }
 
   if (message.kind === "email") {
@@ -94,7 +96,7 @@ export function MessageBody({ message }: { message: UnifiedMessage }) {
               onClick={() => setShowQuoted((v) => !v)}
               aria-expanded={showQuoted}
             >
-              {showQuoted ? "Dölj citerat" : "Visa citerat"}
+              {showQuoted ? t("body.hideQuoted") : t("body.showQuoted")}
               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showQuoted && "rotate-180")} />
             </Button>
             {showQuoted ? (

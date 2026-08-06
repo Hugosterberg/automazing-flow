@@ -99,9 +99,13 @@
     "reopenShort": "Återöppna",
     "openExternal": "Öppna i plattformen",
     "copyMessage": "Kopiera meddelande",
+    "copyEmail": "Kopiera e-post",
+    "copy": "Kopiera",
     "copied": "Meddelande kopierat.",
     "copyFailed": "Kunde inte kopiera.",
     "emailCopied": "E-postadress kopierad.",
+    "noSubject": "(Utan ämne)",
+    "backToInbox": "Tillbaka till inkorgen",
     "writeReply": "Skriv ditt svar…",
     "writeReplyAi": "Skriv ditt svar… (AI-utkast laddas automatiskt)",
     "writeAReply": "Skriv ett svar…",
@@ -243,5 +247,14 @@
     "filter": "Filter",
     "channel": "Kanal",
     "send": "Skicka"
+  },
+  "list": {
+    "needsReply": "Behöver svar",
+    "other": "Övriga"
+  },
+  "body": {
+    "empty": "Inget innehåll.",
+    "hideQuoted": "Dölj citerat",
+    "showQuoted": "Visa citerat"
   }
 }

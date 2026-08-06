@@ -438,7 +438,7 @@ export function MessageDetailPanel({
                 onClick={onBack}
               >
                 <ArrowLeft className={cn(composeOpen ? "h-4 w-4" : "h-5 w-5")} />
-                {composeOpen ? <span className="sr-only">Inkorg</span> : <span>Inkorg</span>}
+                {composeOpen ? <span className="sr-only">{t("mailBar.inbox")}</span> : <span>{t("mailBar.inbox")}</span>}
               </Button>
             ) : (
               <div className={cn(composeOpen ? "h-9 w-2" : "h-11 w-2")} />
@@ -448,7 +448,7 @@ export function MessageDetailPanel({
               <div className="min-w-0 flex-1 px-1">
                 <p className="truncate text-xs font-medium text-muted-foreground">{fromName}</p>
                 <p className="truncate text-sm font-semibold leading-tight">
-                  {message.subject || "(Utan ämne)"}
+                  {message.subject || t("actions.noSubject")}
                 </p>
               </div>
             ) : null}
@@ -542,7 +542,7 @@ export function MessageDetailPanel({
                     {fromEmail ? (
                       <DropdownMenuItem onSelect={copyEmail}>
                         <Mail className="mr-2 h-4 w-4" />
-                        Kopiera e-post
+                        {t("actions.copyEmail")}
                       </DropdownMenuItem>
                     ) : null}
                     {renderMailActionMenuItems()}
@@ -550,12 +550,12 @@ export function MessageDetailPanel({
                       <DropdownMenuItem asChild>
                         <a href={message.externalUrl} target="_blank" rel="noreferrer">
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          Öppna externt
+                          {t("actions.openExternal")}
                         </a>
                       </DropdownMenuItem>
                     ) : null}
                     {isHandled && onUnmarkHandled ? (
-                      <DropdownMenuItem onSelect={onUnmarkHandled}>Återöppna</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={onUnmarkHandled}>{t("actions.reopenShort")}</DropdownMenuItem>
                     ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -610,7 +610,7 @@ export function MessageDetailPanel({
               </div>
 
               <h2 className="mt-3 px-2 text-[20px] font-semibold leading-snug tracking-tight">
-                {message.subject || "(Utan ämne)"}
+                {message.subject || t("actions.noSubject")}
               </h2>
               {showMailActions ? <div className="px-2">{renderMailActionBar(true)}</div> : null}
             </>
@@ -798,7 +798,7 @@ export function MessageDetailPanel({
               onClick={onBack}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Tillbaka till inkorgen</span>
+              <span className="sr-only">{t("actions.backToInbox")}</span>
             </Button>
           ) : null}
 
@@ -815,7 +815,7 @@ export function MessageDetailPanel({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <h2 className="min-w-0 text-base font-semibold leading-snug tracking-tight lg:text-[15px]">
-                {message.subject || "(Utan ämne)"}
+                {message.subject || t("actions.noSubject")}
               </h2>
               <div className="flex shrink-0 items-center gap-0.5">
                 {navigation ? (
@@ -916,7 +916,7 @@ export function MessageDetailPanel({
               ) : null}
               {fromEmail ? (
                 <Button type="button" variant="link" className="h-auto p-0 text-[11px]" onClick={copyEmail}>
-                  Kopiera
+                  {t("actions.copy")}
                 </Button>
               ) : null}
             </div>

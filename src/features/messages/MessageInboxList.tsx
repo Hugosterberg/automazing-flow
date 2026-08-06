@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Inbox } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageInboxRow } from "./MessageInboxRow";
@@ -47,10 +48,11 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
 }
 
 function InboxListHeader({ count, loading }: { count: number; loading: boolean }) {
+  const { t } = useTranslation("messages");
   if (loading || count === 0) return null;
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-1.5 py-0.5">
-      <p className="text-[8px] font-medium text-foreground/70">Inkorg</p>
+      <p className="text-[8px] font-medium text-foreground/70">{t("mailBar.inbox")}</p>
       <span className="text-[8px] tabular-nums text-muted-foreground">{count}</span>
     </div>
   );
@@ -71,6 +73,7 @@ export function MessageInboxList({
   onMarkHandled,
   onPrefetch,
 }: Props) {
+  const { t } = useTranslation("messages");
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const { openMessages, restMessages } = useMemo(() => {
@@ -145,14 +148,14 @@ export function MessageInboxList({
           <div>
             {showSections && openMessages.length > 0 ? (
               <>
-                <SectionLabel count={openMessages.length}>Behöver svar</SectionLabel>
+                <SectionLabel count={openMessages.length}>{t("list.needsReply")}</SectionLabel>
                 {openMessages.map(renderRow)}
               </>
             ) : null}
             {showSections && restMessages.length > 0 ? (
               <>
                 {openMessages.length > 0 ? (
-                  <SectionLabel count={restMessages.length}>Övriga</SectionLabel>
+                  <SectionLabel count={restMessages.length}>{t("list.other")}</SectionLabel>
                 ) : null}
                 {restMessages.map(renderRow)}
               </>
