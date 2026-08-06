@@ -15,7 +15,12 @@
     "noHistory": "No history yet",
     "noHistoryDesc": "Messages you mark as handled land here.",
     "queueEmpty": "The queue is empty",
-    "queueEmptyDesc": "Nothing needs a reply right now. Enable auto-reply and follow-up under Automations to reduce queue work over time."
+    "queueEmptyDesc": "Nothing needs a reply right now. Enable auto-reply and follow-up under Automations to reduce queue work over time.",
+    "clearSearch": "Clear search",
+    "showAllBuckets": "Show all buckets",
+    "showAllMessages": "Show all messages",
+    "openAutomations": "Open Automations",
+    "openConnections": "Open Connections"
   },
   "wait": {
     "minutes": "{{count}} min",

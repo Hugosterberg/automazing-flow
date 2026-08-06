@@ -75,6 +75,10 @@ export interface DailyBriefInput {
   } | null;
   /** Cached Meta ad-comment count from a prior Marketing Paid visit. */
   metaAdCommentCount?: number;
+  /** Suggested Fortnox invoices waiting for approval (profile doc). */
+  fortnoxInvoiceSuggestions?: number;
+  /** Product content drafts waiting for approval (profile doc). */
+  productContentDrafts?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
   /** Automated outreach drafts waiting for review in Sales. */
@@ -288,6 +292,32 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const fortnoxInvoiceSuggestions = Math.max(0, Math.trunc(input.fortnoxInvoiceSuggestions ?? 0));
+  if (fortnoxInvoiceSuggestions > 0) {
+    items.push({
+      id: "fortnox-invoice-queue",
+      kind: "economy",
+      severity: "warning",
+      title: t("dailyBrief:signals.fortnoxInvoices", { count: fortnoxInvoiceSuggestions }),
+      description: t("dailyBrief:signals.fortnoxInvoicesDesc"),
+      to: "/company?tab=economy",
+      count: fortnoxInvoiceSuggestions,
+    });
+  }
+
+  const productContentDrafts = Math.max(0, Math.trunc(input.productContentDrafts ?? 0));
+  if (productContentDrafts > 0) {
+    items.push({
+      id: "product-content-drafts",
+      kind: "store",
+      severity: "info",
+      title: t("dailyBrief:signals.productDrafts", { count: productContentDrafts }),
+      description: t("dailyBrief:signals.productDraftsDesc"),
+      to: "/ecommerce?tab=products",
+      count: productContentDrafts,
+    });
+  }
+
   const failedAutomations = input.failedAutomations ?? [];
   if (failedAutomations.length > 0) {
     const n = failedAutomations.length;
@@ -421,6 +451,8 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     (pendingPayments > 0 ? 1 : 0) +
     (abandonedCheckouts > 0 ? 1 : 0) +
     (metaAdCommentCount > 0 ? 1 : 0) +
+    (fortnoxInvoiceSuggestions > 0 ? 1 : 0) +
+    (productContentDrafts > 0 ? 1 : 0) +
     reviewsNeedingReply +
     failedAutomations.length +
     input.overdueTasks.length +

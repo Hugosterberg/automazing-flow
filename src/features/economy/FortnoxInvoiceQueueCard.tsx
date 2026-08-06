@@ -3,6 +3,7 @@ import { FileText, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AutomationEnableHint } from "@/features/automation/AutomationEnableHint";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import {
@@ -20,7 +21,7 @@ import {
  */
 export function FortnoxInvoiceQueueCard({ businessProfileId }: { businessProfileId: string | null }) {
   const [queue, setQueue] = useState<FortnoxInvoiceQueueItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(businessProfileId));
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -73,7 +74,20 @@ export function FortnoxInvoiceQueueCard({ businessProfileId }: { businessProfile
     }
   }
 
-  if (!businessProfileId || (!loading && queue.length === 0)) return null;
+  if (!businessProfileId) return null;
+
+  if (!loading && queue.length === 0) {
+    return (
+      <AutomationEnableHint
+        compact
+        tab="reports"
+        focus="fortnox-invoice-suggest"
+        title="Få fakturaförslag automatiskt"
+        description="Aktivera jobbet som föreslår Fortnox-fakturor för betalda, levererade Shopify-ordrar — du godkänner innan något skapas."
+        ctaLabel="Öppna Automationer"
+      />
+    );
+  }
 
   return (
     <Card className="border-border">

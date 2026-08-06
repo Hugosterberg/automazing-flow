@@ -11,6 +11,7 @@ const ROUTE_KINDS: Record<string, BriefItemKind[]> = {
   "/marketing": ["marketing"],
   "/content": ["marketing", "recommendation"],
   "/ecommerce": ["marketing", "store"],
+  "/company": ["economy"],
   "/customers": ["lead", "message"],
   "/activity": ["automation", "task", "lead", "agent"],
   "/ai-recommendations": ["recommendation"],
@@ -53,5 +54,6 @@ export function routeModuleLabel(pathname: string): string | null {
   if (pathname.startsWith("/marketing")) return "Marketing";
   if (pathname.startsWith("/content")) return "Content";
   if (pathname.startsWith("/ecommerce")) return "E-handel";
+  if (pathname.startsWith("/company")) return "Företag";
   return null;
 }

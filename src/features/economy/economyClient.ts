@@ -52,6 +52,9 @@ export type FortnoxInvoiceQueueItem = {
   createdAt: string;
 };
 
+/** Profile-document key — must match server `FORTNOX_INVOICE_QUEUE_DOC_KEY`. */
+export const FORTNOX_INVOICE_QUEUE_DOC_KEY = "fortnox-invoice-queue";
+
 /**
  * Paid + fulfilled Shopify orders not yet billed in Fortnox — a suggestion
  * queue, never auto-created. See `fortnox-invoice-suggest` cron.

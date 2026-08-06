@@ -19,6 +19,7 @@ import { toast as sonnerToast } from "sonner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFocusedWorkspaceReading, useIsMobile, useStackedWorkspace } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 import { LIVE_SYNC_MESSAGES } from "@/lib/liveSyncEvents";
 import {
   MessageWorkspace,
@@ -595,23 +596,23 @@ export default function MessagesPage() {
 
   const inboxEmptyAction = inboxEmptyState.showClearSearch ? (
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxSearch("")}>
-      Rensa sökning
+      {t("messages:empty.clearSearch")}
     </Button>
   ) : triageBucket !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setTriageBucket("all")}>
-      Visa alla hinkar
+      {t("messages:empty.showAllBuckets")}
     </Button>
   ) : inboxFilter !== "all" && hasMessagesInTab && filteredMessages.length === 0 && !debouncedInboxSearch.trim() ? (
     <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setInboxFilterPersisted("all")}>
-      Visa alla meddelanden
+      {t("messages:empty.showAllMessages")}
     </Button>
   ) : inboxEmptyState.showAutomations ? (
     <Button asChild type="button" size="sm" variant="outline" className="h-8 text-xs">
-      <Link to="/automations?tab=messages&focus=auto-reply">Öppna Automationer</Link>
+      <Link to="/automations?tab=messages&focus=auto-reply">{t("messages:empty.openAutomations")}</Link>
     </Button>
   ) : inboxEmptyState.showConnect ? (
     <Button asChild type="button" size="sm" variant="outline" className="h-8 text-xs">
-      <Link to="/connections">Öppna Kopplingar</Link>
+      <Link to="/connections">{t("messages:empty.openConnections")}</Link>
     </Button>
   ) : undefined;
 

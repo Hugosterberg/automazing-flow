@@ -7,6 +7,7 @@ import { MAIL_REPLY_QUEUE_DOC_KEY } from "@/features/messages/MailReplyDraftsStr
 import { OUTREACH_QUEUE_DOC_KEY } from "@/features/outreach/outreachQueueTypes";
 import { REVIEW_REPLY_QUEUE_DOC_KEY } from "@/features/reviews/ReviewReplyQueueSection";
 import { usePendingDmDrafts } from "./usePendingDmDrafts";
+import { PRODUCT_CONTENT_DRAFTS_DOC_KEY } from "@/features/ecommerce/productContentClient";
 
 type Props = {
   businessProfileId: string | null | undefined;
@@ -16,14 +17,15 @@ type Props = {
 };
 
 /**
- * Single attention surface for pending AI drafts across DM / mail / outreach / reviews.
- * Primary approve hub — surface on Home Idag, not buried under Mer.
+ * Single attention surface for pending AI drafts across DM / mail / outreach / reviews /
+ * product content. Primary approve hub — surface on Home Idag, not buried under Mer.
  */
 export function ApproveDraftsCard({ businessProfileId, className, compact }: Props) {
   const { count: dmDrafts } = usePendingDmDrafts(businessProfileId);
   const mailDoc = useProfileDocument<Array<{ status?: string }>>(MAIL_REPLY_QUEUE_DOC_KEY, []);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>(OUTREACH_QUEUE_DOC_KEY, []);
   const reviewDoc = useProfileDocument<Array<{ status?: string }>>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
+  const productDoc = useProfileDocument<Array<{ status?: string }>>(PRODUCT_CONTENT_DRAFTS_DOC_KEY, []);
 
   const mailDrafts = (Array.isArray(mailDoc.data) ? mailDoc.data : []).filter(
     (i) => i?.status === "draft" || !i?.status
@@ -34,12 +36,16 @@ export function ApproveDraftsCard({ businessProfileId, className, compact }: Pro
   const reviewDrafts = (Array.isArray(reviewDoc.data) ? reviewDoc.data : []).filter(
     (i) => i?.status === "draft" || !i?.status
   ).length;
+  const productDrafts = (Array.isArray(productDoc.data) ? productDoc.data : []).filter(
+    (i) => i?.status === "draft" || !i?.status
+  ).length;
 
   const rows = [
     { label: "DM-svar", count: dmDrafts, to: "/messages?tab=instagram" },
     { label: "Mail-svar", count: mailDrafts, to: "/messages" },
     { label: "Outreach", count: outreachDrafts, to: "/sales?view=outreach-queue" },
     { label: "Recensioner", count: reviewDrafts, to: "/reviews?filter=needs_reply" },
+    { label: "Produkttexter", count: productDrafts, to: "/ecommerce?tab=products" },
   ].filter((r) => r.count > 0);
 
   if (!businessProfileId || rows.length === 0) return null;

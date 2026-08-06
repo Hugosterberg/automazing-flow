@@ -34,6 +34,8 @@ import { t } from "@/lib/i18n";
 import { buildDailyBrief, type DailyBrief } from "./buildDailyBrief";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
 import { useFortnoxSummary } from "@/features/economy/useFortnoxSummary";
+import { FORTNOX_INVOICE_QUEUE_DOC_KEY } from "@/features/economy/economyClient";
+import { PRODUCT_CONTENT_DRAFTS_DOC_KEY } from "@/features/ecommerce/productContentClient";
 import { formatCurrency, formatDateCustom } from "@/lib/format";
 import { isTaxSettings, upcomingTaxDeadlines } from "@/lib/taxDeadlines";
 import type { TaxSettings } from "@/lib/taxDeadlines";
@@ -71,6 +73,8 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const automationRuns = useAutomationRuns(businessProfileId ?? null);
   const { count: pendingDmDrafts } = usePendingDmDrafts(businessProfileId);
   const outreachDoc = useProfileDocument<Array<{ status?: string }>>("outreach-queue", []);
+  const invoiceQueueDoc = useProfileDocument<Array<{ status?: string }>>(FORTNOX_INVOICE_QUEUE_DOC_KEY, []);
+  const productDraftsDoc = useProfileDocument<Array<{ status?: string }>>(PRODUCT_CONTENT_DRAFTS_DOC_KEY, []);
   const { enabled: demoEnabled } = useDemoMode();
   const { events: agentEvents } = useActivityFeed(businessProfileId, {
     module: "agent",
@@ -80,6 +84,16 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
   const outreachQueuePending = useMemo(
     () => outreachDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
     [outreachDoc.data]
+  );
+
+  const fortnoxInvoiceSuggestions = useMemo(
+    () => invoiceQueueDoc.data.filter((item) => item?.status === "suggested").length,
+    [invoiceQueueDoc.data]
+  );
+
+  const productContentDrafts = useMemo(
+    () => productDraftsDoc.data.filter((item) => item?.status === "draft" || !item?.status).length,
+    [productDraftsDoc.data]
   );
 
   // Economy: overdue Fortnox invoices + tax deadlines ≤7 days. Both stay
@@ -154,6 +168,8 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
           }
         : null,
       metaAdCommentCount: cachedAdCommentCount,
+      fortnoxInvoiceSuggestions,
+      productContentDrafts,
       leadsToFollowUp,
       outreachQueuePending: take(outreachQueuePending, demo?.outreachQueuePending),
       pendingDmDrafts: take(pendingDmDrafts, demo?.pendingDmDrafts),
@@ -177,6 +193,8 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     inventoryAlertCount,
     cachedShopifyOps,
     cachedAdCommentCount,
+    fortnoxInvoiceSuggestions,
+    productContentDrafts,
     leads,
     marketingRoas,
     marketingTrendDown,

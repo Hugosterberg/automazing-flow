@@ -29,4 +29,23 @@ describe("buildDailyBrief shopify + ad comment signals", () => {
       "/marketing?tab=ads"
     );
   });
+
+  it("surfaces Fortnox invoice suggestions and product content drafts", async () => {
+    initI18n();
+    await i18n.changeLanguage("en");
+    const brief = buildDailyBrief({
+      connectionIssues: [],
+      overdueTasks: [],
+      dueTodayTasks: [],
+      newRecommendations: [],
+      fortnoxInvoiceSuggestions: 2,
+      productContentDrafts: 3,
+    });
+    expect(brief.items.some((i) => i.id === "fortnox-invoice-queue")).toBe(true);
+    expect(brief.items.some((i) => i.id === "product-content-drafts")).toBe(true);
+    expect(brief.items.find((i) => i.id === "fortnox-invoice-queue")?.to).toBe("/company?tab=economy");
+    expect(brief.items.find((i) => i.id === "product-content-drafts")?.to).toBe(
+      "/ecommerce?tab=products"
+    );
+  });
 });

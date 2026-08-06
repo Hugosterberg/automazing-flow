@@ -1,10 +1,7 @@
-/**
- * Client for the product content automation endpoints (server: ecommerceRoutes).
- * Drafts are AI-suggested description/tag improvements for thin Shopify
- * listings — nothing is written to the catalogue or Shopify until approved.
- */
-
 import { apiJson } from "@/lib/apiJson";
+
+/** Profile-document key — must match server `PRODUCT_CONTENT_DRAFTS_DOC_KEY`. */
+export const PRODUCT_CONTENT_DRAFTS_DOC_KEY = "product-content-drafts";
 
 export interface ProductContentDraft {
   id: string;

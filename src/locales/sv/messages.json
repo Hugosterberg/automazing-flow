@@ -15,7 +15,12 @@
     "noHistory": "Ingen historik än",
     "noHistoryDesc": "Meddelanden du markerar som hanterade hamnar här.",
     "queueEmpty": "Kön är tom",
-    "queueEmptyDesc": "Inget behöver svar just nu. Aktivera auto-svar och uppföljning under Automationer så köarbetet minskar över tid."
+    "queueEmptyDesc": "Inget behöver svar just nu. Aktivera auto-svar och uppföljning under Automationer så köarbetet minskar över tid.",
+    "clearSearch": "Rensa sökning",
+    "showAllBuckets": "Visa alla hinkar",
+    "showAllMessages": "Visa alla meddelanden",
+    "openAutomations": "Öppna Automationer",
+    "openConnections": "Öppna Kopplingar"
   },
   "wait": {
     "minutes": "{{count}} min",
