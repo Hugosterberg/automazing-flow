@@ -14,10 +14,9 @@ import { useConnections } from "@/features/connections/useConnections";
 import { useAiRecommendations } from "@/features/ai-recommendations/useAiRecommendations";
 import { useTasks } from "@/features/tasks/useTasks";
 import { isTaskOpen, isTaskOverdue, isTaskDueToday } from "@/features/tasks/taskFilters";
-import {
-  useCachedMarketingRoas,
-  useMarketingCampaigns,
-} from "@/features/marketing/useMarketingCampaigns";
+import { useCachedMarketingRoas, useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
+import { useCachedMetaAdCommentCount } from "@/features/marketing/useMetaAdComments";
+import { useCachedShopifyOps } from "@/features/ecommerce/shopifyOpsCache";
 import { useMarketingTrend } from "@/features/marketing/useMarketingTrend";
 import { useLeads } from "@/features/leads/useLeads";
 import { isLeadOpen, isFollowUpOverdue, isFollowUpDueToday } from "@/features/leads/leadHelpers";
@@ -63,6 +62,8 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     meta: { silent: true },
   });
   const cachedRoas = useCachedMarketingRoas();
+  const cachedShopifyOps = useCachedShopifyOps();
+  const cachedAdCommentCount = useCachedMetaAdCommentCount();
   const { trend: marketingTrend } = useMarketingTrend();
   const { inventoryAlert, performance } = useMarketingCampaigns();
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(businessProfileId);
@@ -145,6 +146,14 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
       marketingTrendDown,
       reviewsNeedingReply: take(reviewsNeedingReply, demo?.reviewsNeedingReply),
       inventoryAlertCount,
+      shopifyOps: cachedShopifyOps
+        ? {
+            staleUnfulfilled: cachedShopifyOps.staleUnfulfilled,
+            pendingPayments: cachedShopifyOps.pendingPayments,
+            abandonedCheckouts: cachedShopifyOps.abandonedCheckouts,
+          }
+        : null,
+      metaAdCommentCount: cachedAdCommentCount,
       leadsToFollowUp,
       outreachQueuePending: take(outreachQueuePending, demo?.outreachQueuePending),
       pendingDmDrafts: take(pendingDmDrafts, demo?.pendingDmDrafts),
@@ -166,6 +175,8 @@ export function useDailyBriefSummary(businessProfileId: string | null | undefine
     connections,
     demoEnabled,
     inventoryAlertCount,
+    cachedShopifyOps,
+    cachedAdCommentCount,
     leads,
     marketingRoas,
     marketingTrendDown,

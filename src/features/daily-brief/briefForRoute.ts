@@ -10,7 +10,7 @@ const ROUTE_KINDS: Record<string, BriefItemKind[]> = {
   "/connections": ["connection"],
   "/marketing": ["marketing"],
   "/content": ["marketing", "recommendation"],
-  "/ecommerce": ["marketing"],
+  "/ecommerce": ["marketing", "store"],
   "/customers": ["lead", "message"],
   "/activity": ["automation", "task", "lead", "agent"],
   "/ai-recommendations": ["recommendation"],

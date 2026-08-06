@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReviewInboxRow } from "./ReviewInboxRow";
@@ -19,6 +19,8 @@ type Props = {
   needsReplyCount?: number;
   emptyTitle: string;
   emptyDescription: string;
+  emptyAction?: ReactNode;
+  emptySecondaryAction?: ReactNode;
   getRowMeta: (review: ReviewItem) => RowMeta;
   onSelect: (review: ReviewItem) => void;
   searchQuery?: string;
@@ -31,6 +33,8 @@ export function ReviewInboxList({
   needsReplyCount = 0,
   emptyTitle,
   emptyDescription,
+  emptyAction,
+  emptySecondaryAction,
   getRowMeta,
   onSelect,
   searchQuery = "",
@@ -103,7 +107,14 @@ export function ReviewInboxList({
           </div>
         ) : (
           <div className="flex h-full min-h-[240px] items-center justify-center p-6">
-            <EmptyState icon={MessageSquare} title={emptyTitle} description={emptyDescription} size="compact" />
+            <EmptyState
+              icon={MessageSquare}
+              title={emptyTitle}
+              description={emptyDescription}
+              action={emptyAction}
+              secondaryAction={emptySecondaryAction}
+              size="compact"
+            />
           </div>
         )}
       </div>

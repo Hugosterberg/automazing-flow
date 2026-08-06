@@ -2,6 +2,15 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-06 — Cache-only store ops + first-win Ecommerce — **Active**
+
+Daily Brief surfaces Shopify order signals (stale unfulfilled, pending pay,
+abandoned carts) and Meta ad-comment counts from React Query session cache
+only — Ecommerce/Marketing seed the cache; Home never fans out provider
+fetches. First-win for business adds `open_ecommerce` after Shopify is healthy.
+Overview shows cart-recovery enable hint; Reviews empty states link to
+automations/connections.
+
 ## 2026-08-06 — Operator speed pass (ecommerce + marketing triage) — **Active**
 
 Make ecommerce/business daily work one-click: Ecommerce SmartBar triage actions,

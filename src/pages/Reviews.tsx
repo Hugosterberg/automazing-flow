@@ -1153,6 +1153,28 @@ export default function ReviewsPage() {
               needsReplyCount={needsReplyReviews.length}
               emptyTitle={emptyTitle}
               emptyDescription={emptyDescription}
+              emptyAction={
+                replyFilter === "needs_reply" && needsReplyReviews.length === 0 ? (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/automations?tab=messages&focus=review-reply-auto">
+                      {t("emptyAllHandledCta")}
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/connections?q=reviews">{t("emptyConnectCta")}</Link>
+                  </Button>
+                )
+              }
+              emptySecondaryAction={
+                replyFilter === "needs_reply" && needsReplyReviews.length === 0 ? undefined : (
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link to="/automations?tab=messages&focus=review-reply-auto">
+                      {t("emptyAutoHintCta")}
+                    </Link>
+                  </Button>
+                )
+              }
               getRowMeta={getRowMeta}
               onSelect={selectReview}
               detailProps={detailProps}

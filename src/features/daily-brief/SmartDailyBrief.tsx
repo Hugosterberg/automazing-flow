@@ -18,6 +18,7 @@ import {
   Bot,
   Zap,
   Banknote,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ const KIND_ICON: Record<BriefItemKind, React.ComponentType<{ className?: string 
   automation: Zap,
   agent: Bot,
   economy: Banknote,
+  store: ShoppingBag,
 };
 
 const SEVERITY_STYLES: Record<BriefSeverity, { icon: string; chip: string }> = {

@@ -86,6 +86,7 @@ import { platformLabel } from "@/lib/platformLabels";
 import { computeBusinessHealth } from "@/lib/businessHealth";
 import { formatNumber } from "@/lib/format";
 import { useMarketingCampaigns } from "@/features/marketing/useMarketingCampaigns";
+import { useCachedShopifyOps } from "@/features/ecommerce/shopifyOpsCache";
 import { useQuickNavPrefs } from "@/features/quick-nav/useQuickNavPrefs";
 
 export default function Index() {
@@ -126,8 +127,10 @@ export default function Index() {
   const { leads } = useLeads(homeBusinessProfileId);
   const { briefPendingCount: reviewsNeedingReply } = useReviewReplyState(homeBusinessProfileId);
   const { inventoryAlert } = useMarketingCampaigns();
+  const cachedShopifyOps = useCachedShopifyOps();
   const storeAttentionCount =
-    inventoryAlert != null ? inventoryAlert.lowStock + inventoryAlert.outOfStock : 0;
+    (inventoryAlert != null ? inventoryAlert.lowStock + inventoryAlert.outOfStock : 0) +
+    (cachedShopifyOps?.totalActions ?? 0);
 
   const leadsToFollowUp = useMemo(() => {
     const nowMs = Date.now();
@@ -354,7 +357,11 @@ export default function Index() {
           ? `${inventoryAlert.outOfStock} slut i lager · kolla annonser och lager`
           : "Lågt lager — pausa annonser eller fyll på",
         icon: ShoppingBag,
-        to: "/ecommerce?tab=products",
+        to:
+          (cachedShopifyOps?.staleUnfulfilled ?? 0) > 0 ||
+          (cachedShopifyOps?.pendingPayments ?? 0) > 0
+            ? "/ecommerce?tab=orders"
+            : "/ecommerce?tab=products",
         tone: "warning",
       });
     }
@@ -400,6 +407,8 @@ export default function Index() {
     reviewsNeedingReply,
     storeAttentionCount,
     inventoryAlert?.outOfStock,
+    cachedShopifyOps?.staleUnfulfilled,
+    cachedShopifyOps?.pendingPayments,
     activeRecs.length,
     connectionIssues.length,
   ]);

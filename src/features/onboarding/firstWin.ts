@@ -15,6 +15,7 @@ export type FirstWinStepId =
   | "connect_mail"
   | "connect_channel"
   | "open_inbox"
+  | "open_ecommerce"
   | "enable_automation"
   | "fill_company";
 
@@ -109,6 +110,7 @@ export function buildFirstWinSteps(args: {
     healthy.has("shopify") ||
     healthy.has("google_calendar") ||
     healthy.has("outlook_calendar");
+  const hasShopify = healthy.has("shopify");
   const canOpenInbox =
     connected.has("gmail") ||
     connected.has("outlook") ||
@@ -146,15 +148,29 @@ export function buildFirstWinSteps(args: {
       cta: "Open Messages",
       done: canOpenInbox,
     },
-    {
-      id: "enable_automation",
-      title: "Turn on an automation",
-      detail: "E.g. AI drafts for DM or mail — draft-before-send where it matters.",
-      to: "/automations?tab=messages",
-      cta: "Open Automations",
-      done: false,
-    },
   ];
+
+  if (args.kind !== "personal") {
+    steps.push({
+      id: "open_ecommerce",
+      title: hasShopify ? "Open E-commerce" : "Connect Shopify for orders",
+      detail: hasShopify
+        ? "Check orders, stock and cart recovery in one place."
+        : "Shopify unlocks orders, stock alerts and recovery under E-commerce.",
+      to: hasShopify ? "/ecommerce?tab=orders" : connectionsSessionHref("shopify", { wizard: true }),
+      cta: hasShopify ? "Open Orders" : "Connect Shopify",
+      done: hasShopify,
+    });
+  }
+
+  steps.push({
+    id: "enable_automation",
+    title: "Turn on an automation",
+    detail: "E.g. AI drafts for DM or mail — draft-before-send where it matters.",
+    to: "/automations?tab=messages",
+    cta: "Open Automations",
+    done: false,
+  });
 
   if (args.kind !== "personal") {
     steps.push({

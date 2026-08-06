@@ -1,4 +1,5 @@
 import { AnimatePresence, m } from "framer-motion";
+import type { ReactNode } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useIsDesktopWorkspace } from "@/hooks/use-mobile";
 import { ReviewDetailPanel, ReviewDetailPlaceholder, type ReviewDetailPanelProps } from "./ReviewDetailPanel";
@@ -21,6 +22,8 @@ type Props = {
   needsReplyCount: number;
   emptyTitle: string;
   emptyDescription: string;
+  emptyAction?: ReactNode;
+  emptySecondaryAction?: ReactNode;
   getRowMeta: (review: ReviewItem) => RowMeta;
   onSelect: (review: ReviewItem | null) => void;
   detailProps: Omit<ReviewDetailPanelProps, "review"> | null;
@@ -68,6 +71,8 @@ function InboxPane(
     needsReplyCount,
     emptyTitle,
     emptyDescription,
+    emptyAction,
+    emptySecondaryAction,
     getRowMeta,
     onSelect,
     searchQuery = "",
@@ -83,6 +88,8 @@ function InboxPane(
         needsReplyCount={needsReplyCount}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
+        emptyAction={emptyAction}
+        emptySecondaryAction={emptySecondaryAction}
         getRowMeta={getRowMeta}
         onSelect={onSelect}
         searchQuery={searchQuery}
@@ -99,6 +106,8 @@ export function ReviewWorkspace({
   needsReplyCount,
   emptyTitle,
   emptyDescription,
+  emptyAction,
+  emptySecondaryAction,
   getRowMeta,
   onSelect,
   detailProps,
@@ -118,6 +127,8 @@ export function ReviewWorkspace({
             needsReplyCount={needsReplyCount}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
+            emptyAction={emptyAction}
+            emptySecondaryAction={emptySecondaryAction}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
             searchQuery={searchQuery}
@@ -142,6 +153,8 @@ export function ReviewWorkspace({
             needsReplyCount={needsReplyCount}
             emptyTitle={emptyTitle}
             emptyDescription={emptyDescription}
+            emptyAction={emptyAction}
+            emptySecondaryAction={emptySecondaryAction}
             getRowMeta={getRowMeta}
             onSelect={onSelect}
             searchQuery={searchQuery}

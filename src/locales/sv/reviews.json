@@ -9,7 +9,10 @@
   "emptyReviewsTitle": "Inga recensioner ännu",
   "emptyAllHandled": "Inget kvar att svara på",
   "emptyAllHandledDesc": "Alla omdömen i den här vyn har redan svar.",
+  "emptyAllHandledCta": "Automatisera svarsutkast",
   "emptyRating": "Inga recensioner med det betyget",
   "emptyRatingDesc": "Prova ett annat stjärnfilter eller visa alla betyg.",
-  "emptyReviewsDesc": "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar."
+  "emptyReviewsDesc": "Kontot returnerade inga omdömen. Tryck Uppdatera eller kontrollera kopplingen under Kopplingar.",
+  "emptyConnectCta": "Öppna Kopplingar",
+  "emptyAutoHintCta": "Aktivera recensionsautomation"
 }

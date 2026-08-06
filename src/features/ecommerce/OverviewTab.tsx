@@ -55,6 +55,7 @@ import { formatCurrency, formatNumber } from "@/lib/format";
 import { pageFadeUp as fadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types/ecommerce";
+import { AutomationEnableHint } from "@/features/automation";
 
 type Props = {
   shopifyData: ShopifyData | null;
@@ -666,6 +667,17 @@ export function OverviewTab({
             )
           )}
         </m.div>
+      ) : null}
+
+      {(stats?.abandonedCheckouts30d ?? 0) > 0 ? (
+        <AutomationEnableHint
+          compact
+          tab="reports"
+          focus="cart-recovery"
+          title={t("orders.automationHint.title")}
+          description={t("orders.automationHint.description")}
+          ctaLabel={t("orders.automationHint.cta")}
+        />
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3">

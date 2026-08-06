@@ -79,3 +79,20 @@ export function useReplyMetaAdComment() {
     },
   });
 }
+
+/**
+ * Cache-only ad-comment count for Daily Brief / Home. Cold until Marketing
+ * Paid has loaded comments this session — never triggers a Meta fetch.
+ */
+export function useCachedMetaAdCommentCount(): number {
+  const { user } = useAuth();
+  const businessProfileId = useActiveBusinessProfileIdOptional();
+  const query = useQuery<MetaAdCommentsResponse>({
+    queryKey: [...META_AD_COMMENTS_KEY, user?.id ?? null, businessProfileId ?? null],
+    queryFn: async () => {
+      throw new Error("cache-only");
+    },
+    enabled: false,
+  });
+  return query.data?.comments?.length ?? 0;
+}

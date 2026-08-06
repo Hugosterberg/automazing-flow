@@ -22,7 +22,8 @@ export type BriefItemKind =
   | "review"
   | "automation"
   | "agent"
-  | "economy";
+  | "economy"
+  | "store";
 export type BriefSeverity = "critical" | "warning" | "info";
 
 export interface BriefItem {
@@ -66,6 +67,14 @@ export interface DailyBriefInput {
   reviewsNeedingReply?: number;
   /** Low-stock or out-of-stock variants while ads are running. */
   inventoryAlertCount?: number;
+  /** Cached Shopify ops from a prior Ecommerce visit this session. */
+  shopifyOps?: {
+    staleUnfulfilled: number;
+    pendingPayments: number;
+    abandonedCheckouts: number;
+  } | null;
+  /** Cached Meta ad-comment count from a prior Marketing Paid visit. */
+  metaAdCommentCount?: number;
   /** Open leads whose follow-up is overdue or due today. */
   leadsToFollowUp?: number;
   /** Automated outreach drafts waiting for review in Sales. */
@@ -228,6 +237,57 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     });
   }
 
+  const shopifyOps = input.shopifyOps;
+  const staleUnfulfilled = Math.max(0, Math.trunc(shopifyOps?.staleUnfulfilled ?? 0));
+  if (staleUnfulfilled > 0) {
+    items.push({
+      id: "shopify-stale-unfulfilled",
+      kind: "store",
+      severity: "critical",
+      title: t("dailyBrief:signals.staleUnfulfilled", { count: staleUnfulfilled }),
+      description: t("dailyBrief:signals.staleUnfulfilledDesc"),
+      to: "/ecommerce?tab=orders",
+      count: staleUnfulfilled,
+    });
+  }
+  const pendingPayments = Math.max(0, Math.trunc(shopifyOps?.pendingPayments ?? 0));
+  if (pendingPayments > 0) {
+    items.push({
+      id: "shopify-pending-payments",
+      kind: "store",
+      severity: "warning",
+      title: t("dailyBrief:signals.pendingPayments", { count: pendingPayments }),
+      description: t("dailyBrief:signals.pendingPaymentsDesc"),
+      to: "/ecommerce?tab=orders",
+      count: pendingPayments,
+    });
+  }
+  const abandonedCheckouts = Math.max(0, Math.trunc(shopifyOps?.abandonedCheckouts ?? 0));
+  if (abandonedCheckouts > 0) {
+    items.push({
+      id: "shopify-abandoned",
+      kind: "store",
+      severity: "info",
+      title: t("dailyBrief:signals.abandonedCarts", { count: abandonedCheckouts }),
+      description: t("dailyBrief:signals.abandonedCartsDesc"),
+      to: "/ecommerce?tab=orders",
+      count: abandonedCheckouts,
+    });
+  }
+
+  const metaAdCommentCount = Math.max(0, Math.trunc(input.metaAdCommentCount ?? 0));
+  if (metaAdCommentCount > 0) {
+    items.push({
+      id: "meta-ad-comments",
+      kind: "marketing",
+      severity: "info",
+      title: t("dailyBrief:signals.adComments", { count: metaAdCommentCount }),
+      description: t("dailyBrief:signals.adCommentsDesc"),
+      to: "/marketing?tab=ads#ad-comments",
+      count: metaAdCommentCount,
+    });
+  }
+
   const failedAutomations = input.failedAutomations ?? [];
   if (failedAutomations.length > 0) {
     const n = failedAutomations.length;
@@ -357,6 +417,10 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBrief {
     // variants would otherwise dominate the badge count. The signal's own
     // `count` still carries the real number.
     (inventoryAlertCount > 0 ? 1 : 0) +
+    (staleUnfulfilled > 0 ? 1 : 0) +
+    (pendingPayments > 0 ? 1 : 0) +
+    (abandonedCheckouts > 0 ? 1 : 0) +
+    (metaAdCommentCount > 0 ? 1 : 0) +
     reviewsNeedingReply +
     failedAutomations.length +
     input.overdueTasks.length +

@@ -9,7 +9,10 @@
   "emptyReviewsTitle": "No reviews yet",
   "emptyAllHandled": "Nothing left to reply to",
   "emptyAllHandledDesc": "All reviews in this view already have a reply.",
+  "emptyAllHandledCta": "Automate reply drafts",
   "emptyRating": "No reviews with that rating",
   "emptyRatingDesc": "Try another star filter or show all ratings.",
-  "emptyReviewsDesc": "The account returned no reviews. Tap Refresh or check the connection under Connections."
+  "emptyReviewsDesc": "The account returned no reviews. Tap Refresh or check the connection under Connections.",
+  "emptyConnectCta": "Open Connections",
+  "emptyAutoHintCta": "Enable review automation"
 }

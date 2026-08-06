@@ -30,6 +30,7 @@ import { OrdersTab } from "@/features/ecommerce/OrdersTab";
 import { InsightsTab } from "@/features/ecommerce/InsightsTab";
 import { OverviewTab } from "@/features/ecommerce/OverviewTab";
 import { NotionWorkspacePanel } from "@/features/ecommerce/NotionWorkspacePanel";
+import { useSeedShopifyOpsCache } from "@/features/ecommerce/shopifyOpsCache";
 import { useLeads } from "@/features/leads";
 import { alibabaImportToInput } from "@/lib/productStore";
 import {
@@ -210,6 +211,7 @@ export default function Ecommerce() {
     [orgAccounts]
   );
   const shopifyData = isShopifyData(data) ? data : null;
+  useSeedShopifyOpsCache(shopifyData);
   const notionData = isNotionData(data) ? data : null;
 
   const filteredOrders = useMemo(() => {

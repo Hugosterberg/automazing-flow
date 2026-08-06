@@ -61,6 +61,26 @@ describe("buildFirstWinSteps", () => {
     expect(steps.find((s) => s.id === "connect_mail")?.to).toContain("session=gmail");
   });
 
+  it("adds open_ecommerce for business when Shopify is healthy", () => {
+    const steps = buildFirstWinSteps({
+      kind: "company",
+      healthyPlatforms: ["gmail", "shopify"],
+      profileStrong: false,
+    });
+    const ecom = steps.find((s) => s.id === "open_ecommerce");
+    expect(ecom?.done).toBe(true);
+    expect(ecom?.to).toContain("/ecommerce");
+  });
+
+  it("omits open_ecommerce for personal profiles", () => {
+    const steps = buildFirstWinSteps({
+      kind: "personal",
+      healthyPlatforms: ["shopify"],
+      profileStrong: false,
+    });
+    expect(steps.find((s) => s.id === "open_ecommerce")).toBeUndefined();
+  });
+
   it("omits company step for personal profiles", () => {
     const steps = buildFirstWinSteps({
       kind: "personal",
