@@ -408,10 +408,10 @@ export default function ConnectionsPage() {
         <EmptyState
           icon={PlugZap}
           title={t("noProfileTitle")}
-          description="Välj eller skapa en företagsprofil för att hantera kopplingar."
+          description={t("page.noProfileDesc")}
           action={
             <Button variant="outline" size="sm" asChild>
-              <Link to="/company">Gå till Företag</Link>
+              <Link to="/company">{t("page.goToCompany")}</Link>
             </Button>
           }
         />
@@ -509,11 +509,11 @@ export default function ConnectionsPage() {
 
       <PageModeTabs
         value={activeTab}
-        aria-label="Kopplingsflikar"
+        aria-label={t("page.tabsAria")}
         onChange={setActiveTab}
         options={[
-          { value: "integrations", label: "Integrationer" },
-          { value: "health", label: "Hälsa", count: healthIssueCount },
+          { value: "integrations", label: t("page.tabIntegrations") },
+          { value: "health", label: t("page.tabHealth"), count: healthIssueCount },
           { value: "mcp", label: "MCP" },
         ]}
       />
@@ -532,7 +532,8 @@ export default function ConnectionsPage() {
             <CardContent className="pt-4 pb-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-xs text-muted-foreground max-w-xl">
-                  Alla {getConnectionEntriesForArea("intelligence").length} MCP-dataleverantörer — koppla här, kör multi-source-jämförelse och frågor på{" "}
+                  {t("page.mcpBlurbBefore")} {getConnectionEntriesForArea("intelligence").length}{" "}
+                  {t("page.mcpBlurbAfter")}{" "}
                   <Link to="/intelligence" className="text-primary hover:underline">
                     MCP Intelligence
                   </Link>
@@ -540,7 +541,7 @@ export default function ConnectionsPage() {
                 </p>
                 <Button variant="outline" size="sm" className="shrink-0 gap-1.5" asChild>
                   <Link to="/intelligence">
-                    Öppna MCP Intelligence
+                    {t("page.openMcp")}
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                   </Link>
                 </Button>
@@ -587,13 +588,13 @@ export default function ConnectionsPage() {
       {searchParams.get("next") === "company" ? (
         <Alert className="border-primary/30 bg-primary/[0.04]">
           <Building2 className="h-4 w-4" />
-          <AlertTitle>Nästa steg: fyll i bolagsprofilen</AlertTitle>
+          <AlertTitle>{t("page.nextCompanyTitle")}</AlertTitle>
           <AlertDescription className="text-sm leading-relaxed">
-            När du kopplat det du behöver här, gå till{" "}
+            {t("page.nextCompanyBefore")}{" "}
             <Link to="/company" className="font-medium text-primary underline underline-offset-2">
-              Företag
+              {t("page.companyLink")}
             </Link>{" "}
-            och hämta data med org.nr — det gör lead-förslagen mycket bättre.
+            {t("page.nextCompanyAfter")}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -603,7 +604,7 @@ export default function ConnectionsPage() {
           <div className="min-w-0 flex-1 space-y-1.5">
             <Label htmlFor="business-website" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Globe2 className="h-3.5 w-3.5" />
-              Webbplats
+              {t("page.website")}
             </Label>
             <Input
               id="business-website"
@@ -615,7 +616,7 @@ export default function ConnectionsPage() {
               disabled={!legacy.activeProfile}
             />
             <p className="text-[11px] text-muted-foreground">
-              Används av Digitalt varumärke för SEO, förtroende och innehållsrekommendationer.
+              {t("page.websiteHint")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -623,7 +624,7 @@ export default function ConnectionsPage() {
               <Button type="button" size="sm" variant="outline" asChild>
                 <a href={safeWebsiteUrl(legacy.activeProfile?.website) ?? "#"} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Öppna sajt
+                  {t("page.openSite")}
                 </a>
               </Button>
             ) : null}
@@ -687,7 +688,7 @@ export default function ConnectionsPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
-            placeholder="Sök plattform eller konto…"
+            placeholder={t("page.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 pl-8 w-[220px] text-xs"
@@ -698,11 +699,11 @@ export default function ConnectionsPage() {
           onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
         >
           <SelectTrigger className="h-8 w-[180px] text-xs">
-            <SelectValue placeholder="Filtrera på status" />
+            <SelectValue placeholder={t("page.filterStatus")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alla statusar</SelectItem>
-            <SelectItem value="needs_attention">Behöver uppmärksamhet</SelectItem>
+            <SelectItem value="all">{t("page.filterAll")}</SelectItem>
+            <SelectItem value="needs_attention">{t("page.filterAttention")}</SelectItem>
             {CONNECTION_STATUS_ORDER.map((s) => (
               <SelectItem key={s} value={s}>
                 {CONNECTION_STATUS_LABELS[s]}
@@ -712,8 +713,7 @@ export default function ConnectionsPage() {
         </Select>
         {reconcileState.updated != null ? (
           <span className="text-[11px] text-success">
-            Uppdaterade {reconcileState.updated} koppling
-            {reconcileState.updated === 1 ? "" : "ar"}
+            {t("page.updated", { count: reconcileState.updated })}
           </span>
         ) : null}
         {reconcileState.error ? (
@@ -726,11 +726,11 @@ export default function ConnectionsPage() {
 
       <div className="app-workspace-stats flex flex-wrap gap-2 px-3 py-2 sm:px-4">
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Kopplade</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("page.connectedLabel")}</p>
           <p className="text-xs font-semibold tabular-nums">{activeCount}</p>
         </div>
         <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Behöver åtgärd</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("page.needsAction")}</p>
           <p className="text-xs font-semibold tabular-nums text-destructive">{healthIssueCount}</p>
         </div>
         <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">

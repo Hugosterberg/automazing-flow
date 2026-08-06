@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { PartyPopper } from "lucide-react";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { useActivityFeed } from "@/features/activity/useActivityFeed";
@@ -19,6 +20,7 @@ function startOfTodayIso() {
  * Home strip: success events from today — "what automazing (and you) got done".
  */
 export function WinsTodayStrip({ businessProfileId, className }: Props) {
+  const { t } = useTranslation("onboarding");
   const { events, isLoading } = useActivityFeed(businessProfileId, { limit: 30 });
   const since = startOfTodayIso();
 
@@ -39,20 +41,20 @@ export function WinsTodayStrip({ businessProfileId, className }: Props) {
         "rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5 sm:px-4",
         className
       )}
-      aria-label="Det som blev gjort idag"
+      aria-label={t("winsToday.aria")}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <PartyPopper className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
           <p className="text-sm font-medium text-foreground">
-            {wins.length === 1 ? "1 sak klart idag" : `${wins.length} saker klart idag`}
+            {t("winsToday.title", { count: wins.length })}
           </p>
         </div>
         <Link
           to="/activity"
           className="text-xs text-muted-foreground underline-offset-2 hover:underline hover:text-foreground"
         >
-          Visa aktivitet
+          {t("winsToday.showActivity")}
         </Link>
       </div>
       <ul className="mt-2 space-y-1">
@@ -66,7 +68,9 @@ export function WinsTodayStrip({ businessProfileId, className }: Props) {
         ))}
       </ul>
       {rest > 0 ? (
-        <p className="mt-1.5 text-[11px] text-muted-foreground">+{rest} till i Aktivitet</p>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          {t("winsToday.moreInActivity", { count: rest })}
+        </p>
       ) : null}
     </section>
   );

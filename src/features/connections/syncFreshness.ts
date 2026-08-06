@@ -52,14 +52,21 @@ export function computeSyncFreshness(
   return { latestSyncedAt: latestIso, stale, neverSynced, total: active.length };
 }
 
-/** "just nu" · "35 min sedan" · "3 h sedan" · "2 d sedan" for the strip copy. */
-export function formatAgoSv(iso: string, nowMs: number = Date.now()): string {
+/** Relative ago for sync strips — respects UI language (sv/en). */
+export function formatAgo(iso: string, lang: string = "sv", nowMs: number = Date.now()): string {
+  const en = lang.toLowerCase().startsWith("en");
   const ms = nowMs - Date.parse(iso);
-  if (!Number.isFinite(ms) || ms < 0) return "just nu";
+  if (!Number.isFinite(ms) || ms < 0) return en ? "just now" : "just nu";
   const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return "just nu";
-  if (mins < 60) return `${mins} min sedan`;
+  if (mins < 1) return en ? "just now" : "just nu";
+  if (mins < 60) return en ? `${mins} min ago` : `${mins} min sedan`;
   const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours} h sedan`;
-  return `${Math.floor(hours / 24)} d sedan`;
+  if (hours < 48) return en ? `${hours} h ago` : `${hours} h sedan`;
+  const days = Math.floor(hours / 24);
+  return en ? `${days} d ago` : `${days} d sedan`;
+}
+
+/** @deprecated Prefer formatAgo(iso, lang). Kept for callers/tests that expect Swedish. */
+export function formatAgoSv(iso: string, nowMs: number = Date.now()): string {
+  return formatAgo(iso, "sv", nowMs);
 }

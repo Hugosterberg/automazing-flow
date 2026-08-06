@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BellRing, Loader2, Mail, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +27,13 @@ export function AutomatedUpdatesCard({
   /** Shown as placeholder/help when no notification email is set. */
   fallbackEmail?: string;
 }) {
+  const { t } = useTranslation("automations");
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const fallback = fallbackEmail?.trim() || "kontots ägar-e-post";
+  const fallback = fallbackEmail?.trim() || t("updates.fallbackOwner");
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +51,7 @@ export function AutomatedUpdatesCard({
         }
       })
       .catch((err) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : "Kunde inte ladda inställningar.");
+        if (!cancelled) toast.error(err instanceof Error ? err.message : t("updates.loadFailed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -57,7 +59,7 @@ export function AutomatedUpdatesCard({
     return () => {
       cancelled = true;
     };
-  }, [businessProfileId]);
+  }, [businessProfileId, t]);
 
   function patch(next: Partial<AutomationSettings>) {
     setSettings((prev) => (prev ? { ...prev, ...next } : prev));
@@ -71,9 +73,9 @@ export function AutomatedUpdatesCard({
       const payload = await saveAutomationSettings(businessProfileId, settings);
       setSettings(payload.settings);
       setDirty(false);
-      toast.success("Inställningar sparade");
+      toast.success(t("updates.saved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte spara.");
+      toast.error(err instanceof Error ? err.message : t("updates.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -84,25 +86,22 @@ export function AutomatedUpdatesCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <BellRing className="h-4 w-4 text-primary" />
-          Automatiska uppdateringar
+          {t("updates.title")}
         </CardTitle>
-        <CardDescription>
-          Välj vart uppdateringar mejlas. Schema (dagar och körningstider) ställer du in på respektive
-          automationskort nedan.
-        </CardDescription>
+        <CardDescription>{t("updates.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
-            <Loader2 className="h-4 w-4 animate-spin" /> Laddar inställningar…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("updates.loading")}
           </div>
         ) : !settings ? (
-          <p className="text-sm text-muted-foreground py-2">Välj en aktiv profil för att hantera uppdateringar.</p>
+          <p className="text-sm text-muted-foreground py-2">{t("updates.needProfile")}</p>
         ) : (
           <>
             <div className="space-y-1.5">
               <Label htmlFor="notification-email" className="flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" /> E-post för uppdateringar
+                <Mail className="h-3.5 w-3.5" /> {t("updates.emailLabel")}
               </Label>
               <Input
                 id="notification-email"
@@ -112,17 +111,14 @@ export function AutomatedUpdatesCard({
                 onChange={(e) => patch({ notificationEmail: e.target.value })}
               />
               <p className="text-[11px] text-muted-foreground">
-                Lämna tomt för att använda profilens kontakt-e-post ({fallback}).
+                {t("updates.emailHint", { fallback })}
               </p>
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 px-3.5 py-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Daglig översikt</p>
-                <p className="text-xs text-muted-foreground">
-                  Morgonmejl varje vardag med vad som behöver göras (connections, tasks, rekommendationer).
-                  Slår också på veckorapporten på måndagar.
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("updates.dailyTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("updates.dailyDesc")}</p>
               </div>
               <Switch
                 checked={settings.dailyDigestEnabled}
@@ -132,10 +128,8 @@ export function AutomatedUpdatesCard({
 
             <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 px-3.5 py-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Marknadsförings-larm</p>
-                <p className="text-xs text-muted-foreground">
-                  Mejl när ROAS går back (&lt; 1×) eller annonser körs mot tomma hyllor.
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("updates.marketingTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("updates.marketingDesc")}</p>
               </div>
               <Switch
                 checked={settings.marketingAlertsEnabled}
@@ -146,7 +140,7 @@ export function AutomatedUpdatesCard({
             <div className="flex justify-end">
               <Button size="sm" onClick={() => void save()} disabled={saving || !dirty}>
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                Spara
+                {t("updates.save")}
               </Button>
             </div>
           </>

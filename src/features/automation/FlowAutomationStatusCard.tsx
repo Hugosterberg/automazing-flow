@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Mail, MessageSquare, ShoppingCart, Sparkles, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProfileDocument } from "@/features/profile-documents";
@@ -34,6 +35,7 @@ function formatWhen(iso?: string): string {
 }
 
 export function FlowAutomationStatusCard({ businessProfileId }: { businessProfileId: string | null }) {
+  const { t } = useTranslation("automations");
   const outreachDoc = useProfileDocument<OutreachQueueItem[]>(OUTREACH_QUEUE_DOC_KEY, []);
   const reviewDoc = useProfileDocument<ReviewReplyQueueItem[]>(REVIEW_REPLY_QUEUE_DOC_KEY, []);
   const cartDoc = useProfileDocument<CartRecoverySentDoc>("cart-recovery-sent", {});
@@ -54,29 +56,34 @@ export function FlowAutomationStatusCard({ businessProfileId }: { businessProfil
   const rows = [
     {
       icon: Users,
-      label: "Outreach-kö",
-      value: `${stats.outreachPending} utkast`,
+      label: t("flowStatus.outreach"),
+      value: t("flowStatus.drafts", { count: stats.outreachPending }),
       href: "/sales?view=outreach-queue",
     },
     {
       icon: MessageSquare,
-      label: "Review-svar",
-      value: `${stats.reviewPending} utkast`,
+      label: t("flowStatus.reviews"),
+      value: t("flowStatus.drafts", { count: stats.reviewPending }),
       href: "/reviews?filter=needs_reply",
     },
     {
       icon: ShoppingCart,
-      label: "Cart recovery",
-      value: `${stats.cartSent} mejl skickade`,
-      detail: cartDoc.data.lastRunAt ? `Senast ${formatWhen(cartDoc.data.lastRunAt)}` : undefined,
+      label: t("flowStatus.cart"),
+      value: t("flowStatus.emailsSent", { count: stats.cartSent }),
+      detail: cartDoc.data.lastRunAt
+        ? t("flowStatus.lastRun", { when: formatWhen(cartDoc.data.lastRunAt) })
+        : undefined,
       href: "/ecommerce",
     },
     {
       icon: Sparkles,
-      label: "Content-pipeline",
-      value: `${stats.pipelineQueued} i kö · ${stats.activeWorkflows} flöden aktiva`,
+      label: t("flowStatus.pipeline"),
+      value: t("flowStatus.pipelineValue", {
+        queued: stats.pipelineQueued,
+        active: stats.activeWorkflows,
+      }),
       detail: workflowsDoc.data.lastPipelineRunAt
-        ? `Senast ${formatWhen(workflowsDoc.data.lastPipelineRunAt)}`
+        ? t("flowStatus.lastRun", { when: formatWhen(workflowsDoc.data.lastPipelineRunAt) })
         : undefined,
       href: "/social-media",
     },
@@ -87,16 +94,16 @@ export function FlowAutomationStatusCard({ businessProfileId }: { businessProfil
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Mail className="h-4 w-4" />
-          Flödesstatus
+          {t("flowStatus.title")}
         </CardTitle>
-        <CardDescription>Live-state från automatiserade flöden — vad som väntar på dig just nu.</CardDescription>
+        <CardDescription>{t("flowStatus.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-2">
         {rows.map((row) => {
           const Icon = row.icon;
           return (
             <Link
-              key={row.label}
+              key={row.href}
               to={row.href}
               className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 transition-colors hover:border-primary/40 hover:bg-accent/30"
             >

@@ -80,6 +80,35 @@
     "toastRunSummary": "Scanned {{scanned}} conversations — {{sent}} sent, {{drafted}} drafts, {{failed}} failed.",
     "toastRunFailed": "Could not run automation"
   },
+  "updates": {
+    "title": "Automated updates",
+    "description": "Choose where updates are emailed. Schedule (days and run times) is set on each automation card below.",
+    "loading": "Loading settings…",
+    "needProfile": "Select an active profile to manage updates.",
+    "emailLabel": "Email for updates",
+    "emailHint": "Leave empty to use the profile contact email ({{fallback}}).",
+    "fallbackOwner": "the account owner email",
+    "dailyTitle": "Daily digest",
+    "dailyDesc": "Morning email every weekday with what needs doing (connections, tasks, recommendations). Also enables the weekly report on Mondays.",
+    "marketingTitle": "Marketing alerts",
+    "marketingDesc": "Email when ROAS drops below 1× or ads run against empty shelves.",
+    "save": "Save",
+    "saved": "Settings saved",
+    "loadFailed": "Could not load settings.",
+    "saveFailed": "Could not save."
+  },
+  "flowStatus": {
+    "title": "Flow status",
+    "description": "Live state from automated flows — what’s waiting on you right now.",
+    "outreach": "Outreach queue",
+    "reviews": "Review replies",
+    "cart": "Cart recovery",
+    "pipeline": "Content pipeline",
+    "drafts": "{{count}} drafts",
+    "emailsSent": "{{count}} emails sent",
+    "pipelineValue": "{{queued}} queued · {{active}} flows active",
+    "lastRun": "Last {{when}}"
+  },
   "topics": {
     "messages": {
       "title": "Messages & inbox",

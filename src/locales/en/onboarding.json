@@ -119,5 +119,12 @@
       "point2": "The Guide button at the top of every page opens a short interactive walkthrough of that page.",
       "point3": "Ctrl+K (⌘K) opens the command palette — pages, tasks, leads and every guide, from anywhere."
     }
+  },
+  "winsToday": {
+    "aria": "What got done today",
+    "title_one": "1 thing done today",
+    "title_other": "{{count}} things done today",
+    "showActivity": "Show activity",
+    "moreInActivity": "+{{count}} more in Activity"
   }
 }

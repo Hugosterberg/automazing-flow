@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { platformLabel } from "@/lib/platformLabels";
 import { useConnections } from "./useConnections";
-import { computeSyncFreshness, formatAgoSv } from "./syncFreshness";
+import { computeSyncFreshness, formatAgo } from "./syncFreshness";
 
-/** How many stale connections one click on "Synka om" will resync. */
+/** How many stale connections one click on resync will refresh. */
 const MAX_RESYNC_BATCH = 5;
 
 /**
@@ -21,6 +22,7 @@ export function SyncFreshnessStrip({
 }: {
   businessProfileId: string | null;
 }) {
+  const { t, i18n } = useTranslation("connections");
   const { connections, resync } = useConnections(businessProfileId);
   const [resyncing, setResyncing] = useState(false);
 
@@ -45,11 +47,9 @@ export function SyncFreshnessStrip({
     }
     setResyncing(false);
     if (failed === 0) {
-      toast.success(`${ok} koppling${ok === 1 ? "" : "ar"} omsynkade.`);
+      toast.success(t("freshness.toastOk", { count: ok }));
     } else {
-      toast.warning(
-        `${ok} omsynkade, ${failed} misslyckades — se Kopplingar för detaljer.`
-      );
+      toast.warning(t("freshness.toastPartial", { ok, failed }));
     }
   }
 
@@ -58,20 +58,20 @@ export function SyncFreshnessStrip({
     .slice(0, 2)
     .map((c) => platformLabel(c.platform))
     .join(", ");
+  const namesPart = staleNames ? ` (${staleNames}${staleCount > 2 ? "…" : ""})` : "";
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
       <span className="inline-flex items-center gap-1">
         <RefreshCw className="h-3 w-3" aria-hidden />
         {freshness.latestSyncedAt
-          ? `Data uppdaterad ${formatAgoSv(freshness.latestSyncedAt)}`
-          : "Ingen synk registrerad än"}
+          ? t("freshness.updated", { ago: formatAgo(freshness.latestSyncedAt, i18n.language) })
+          : t("freshness.never")}
       </span>
       {staleCount > 0 ? (
         <>
           <span className="text-warning">
-            {staleCount} koppling{staleCount === 1 ? "" : "ar"} inte synkad på 24&nbsp;h
-            {staleNames ? ` (${staleNames}${staleCount > 2 ? "…" : ""})` : ""}
+            {t("freshness.stale", { count: staleCount, names: namesPart })}
           </span>
           <button
             type="button"
@@ -84,7 +84,7 @@ export function SyncFreshnessStrip({
             )}
           >
             <RefreshCw className={cn("h-3 w-3", resyncing && "animate-spin")} aria-hidden />
-            {resyncing ? "Synkar…" : "Synka om"}
+            {resyncing ? t("freshness.resyncing") : t("freshness.resync")}
           </button>
         </>
       ) : null}
@@ -92,7 +92,7 @@ export function SyncFreshnessStrip({
         to={staleCount > 0 ? "/connections?filter=attention" : "/connections"}
         className="underline-offset-2 hover:underline hover:text-foreground"
       >
-        Kopplingar
+        {t("freshness.connections")}
       </Link>
     </div>
   );

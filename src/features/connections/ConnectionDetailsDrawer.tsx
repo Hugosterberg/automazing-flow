@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { CheckCircle2, Loader2, PlugZap, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,7 @@ export function ConnectionDetailsDrawer({
   onDisconnect,
   isDisconnecting,
 }: Props) {
+  const { t } = useTranslation("connections");
   const [removeOpen, setRemoveOpen] = useState(false);
   const { runs, lastSuccessfulAt: derivedLastOk, isLoading: runsLoading } = useSyncRuns(
     connection?.id
@@ -169,28 +171,28 @@ export function ConnectionDetailsDrawer({
                     </dd>
                   </>
                 ) : null}
-                <dt className="text-muted-foreground">Kopplings-ID</dt>
+                <dt className="text-muted-foreground">{t("details.connectionId")}</dt>
                 <dd className="col-span-2 font-mono truncate">{connection.id}</dd>
               </dl>
             </section>
 
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Status
+                {t("details.status")}
               </h3>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <ConnectionStatusBadge status={status} />
               </div>
               <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
-                <dt className="text-muted-foreground">Kopplad</dt>
+                <dt className="text-muted-foreground">{t("details.connected")}</dt>
                 <dd className="col-span-2">{connectedAgo ?? "—"}</dd>
-                <dt className="text-muted-foreground">Senaste synk</dt>
+                <dt className="text-muted-foreground">{t("details.lastSync")}</dt>
                 <dd className="col-span-2">{lastSyncAgo ?? "—"}</dd>
-                <dt className="text-muted-foreground">Senaste lyckade synk</dt>
+                <dt className="text-muted-foreground">{t("details.lastOkSync")}</dt>
                 <dd className="col-span-2">{lastOkAgo ?? "—"}</dd>
                 {connection.lastSyncError ? (
                   <>
-                    <dt className="text-muted-foreground">Senaste fel</dt>
+                    <dt className="text-muted-foreground">{t("details.lastError")}</dt>
                     <dd className="col-span-2 text-destructive break-words">
                       {connection.lastSyncError}
                     </dd>
@@ -207,18 +209,16 @@ export function ConnectionDetailsDrawer({
             <section className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Senaste synkkörningar
+                  {t("details.syncRuns")}
                 </h3>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {runs.length}
                 </span>
               </div>
               {runsLoading ? (
-                <p className="text-xs text-muted-foreground">Laddar körningar…</p>
+                <p className="text-xs text-muted-foreground">{t("details.loadingRuns")}</p>
               ) : runs.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Inga synkkörningar registrerade för den här kopplingen ännu.
-                </p>
+                <p className="text-xs text-muted-foreground">{t("details.noRuns")}</p>
               ) : (
                 <ul className="space-y-1.5">
                   {runs.map((r) => (
@@ -231,7 +231,7 @@ export function ConnectionDetailsDrawer({
             <section className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Senaste aktivitet
+                  {t("details.recentActivity")}
                 </h3>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {activityEvents.length}
@@ -240,7 +240,7 @@ export function ConnectionDetailsDrawer({
               <ActivityFeed
                 events={activityEvents}
                 isLoading={activityLoading}
-                emptyMessage="Ingen aktivitet registrerad för den här kopplingen ännu."
+                emptyMessage={t("details.noActivity")}
                 maxRows={10}
               />
             </section>
@@ -257,7 +257,7 @@ export function ConnectionDetailsDrawer({
               className="gap-1.5"
               onClick={() => onReconnect(connection)}
             >
-              Koppla om
+              {t("details.reconnect")}
             </Button>
           ) : null}
           {onResync ? (
@@ -268,7 +268,7 @@ export function ConnectionDetailsDrawer({
               onClick={() => void onResync(connection)}
             >
               <PlugZap className="h-3.5 w-3.5" />
-              Testa koppling
+              {t("details.testConnection")}
             </Button>
           ) : null}
           {onDisconnect ? (
@@ -280,7 +280,7 @@ export function ConnectionDetailsDrawer({
               disabled={isDisconnecting}
             >
               {isDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              Koppla från
+              {t("card.disconnectConfirm")}
             </Button>
           ) : null}
         </div>
@@ -290,15 +290,14 @@ export function ConnectionDetailsDrawer({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Koppla från {connection?.displayName || connection?.username}?
+              {t("card.disconnectConfirmTitle", {
+                name: connection?.displayName || connection?.username,
+              })}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Kontot tas bort och sparade tokens rensas. Du kan koppla ett annat konto i stället.
-              Detta går inte att ångra.
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("card.disconnectConfirmDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -306,7 +305,7 @@ export function ConnectionDetailsDrawer({
                 setRemoveOpen(false);
               }}
             >
-              Koppla från
+              {t("card.disconnectConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -80,6 +80,35 @@
     "toastRunSummary": "Skannade {{scanned}} konversationer — {{sent}} skickade, {{drafted}} utkast, {{failed}} misslyckade.",
     "toastRunFailed": "Kunde inte köra automationen"
   },
+  "updates": {
+    "title": "Automatiska uppdateringar",
+    "description": "Välj vart uppdateringar mejlas. Schema (dagar och körningstider) ställer du in på respektive automationskort nedan.",
+    "loading": "Laddar inställningar…",
+    "needProfile": "Välj en aktiv profil för att hantera uppdateringar.",
+    "emailLabel": "E-post för uppdateringar",
+    "emailHint": "Lämna tomt för att använda profilens kontakt-e-post ({{fallback}}).",
+    "fallbackOwner": "kontots ägar-e-post",
+    "dailyTitle": "Daglig översikt",
+    "dailyDesc": "Morgonmejl varje vardag med vad som behöver göras (connections, tasks, rekommendationer). Slår också på veckorapporten på måndagar.",
+    "marketingTitle": "Marknadsförings-larm",
+    "marketingDesc": "Mejl när ROAS går back (< 1×) eller annonser körs mot tomma hyllor.",
+    "save": "Spara",
+    "saved": "Inställningar sparade",
+    "loadFailed": "Kunde inte ladda inställningar.",
+    "saveFailed": "Kunde inte spara."
+  },
+  "flowStatus": {
+    "title": "Flödesstatus",
+    "description": "Live-state från automatiserade flöden — vad som väntar på dig just nu.",
+    "outreach": "Outreach-kö",
+    "reviews": "Review-svar",
+    "cart": "Cart recovery",
+    "pipeline": "Content-pipeline",
+    "drafts": "{{count}} utkast",
+    "emailsSent": "{{count}} mejl skickade",
+    "pipelineValue": "{{queued}} i kö · {{active}} flöden aktiva",
+    "lastRun": "Senast {{when}}"
+  },
   "topics": {
     "messages": {
       "title": "Meddelanden & inbox",

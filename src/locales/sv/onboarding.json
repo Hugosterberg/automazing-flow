@@ -119,5 +119,12 @@
       "point2": "Guide-knappen uppe på varje sida öppnar en kort interaktiv genomgång av just den sidan.",
       "point3": "Ctrl+K (⌘K) öppnar sökpaletten — sidor, uppgifter, leads och alla guider, varifrån som helst."
     }
+  },
+  "winsToday": {
+    "aria": "Det som blev gjort idag",
+    "title_one": "1 sak klart idag",
+    "title_other": "{{count}} saker klart idag",
+    "showActivity": "Visa aktivitet",
+    "moreInActivity": "+{{count}} till i Aktivitet"
   }
 }

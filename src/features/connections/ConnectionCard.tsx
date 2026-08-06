@@ -165,7 +165,7 @@ export function ConnectionCard({
   function submitShopifyConnect() {
     const shop = normalizeShopifyShopDomain(shopifyShop);
     if (!shop) {
-      setShopifyShopError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
+      setShopifyShopError(t("card.shopifyDomainError", { example: SHOPIFY_DOMAIN_EXAMPLE }));
       return;
     }
     setShopifyDialogOpen(false);
@@ -195,11 +195,11 @@ export function ConnectionCard({
     if (mcpMeta.auth === "shop_domain") {
       const shop = normalizeShopifyShopDomain(trimmed);
       if (!shop) {
-        setMcpCredentialError(`Ange butikens .myshopify.com-domän, till exempel ${SHOPIFY_DOMAIN_EXAMPLE}.`);
+        setMcpCredentialError(t("card.shopifyDomainError", { example: SHOPIFY_DOMAIN_EXAMPLE }));
         return;
       }
     } else if (!options?.keyless && !trimmed && entry.platform !== "sprouts") {
-      setMcpCredentialError("Credential krävs.");
+      setMcpCredentialError(t("card.credentialRequired"));
       return;
     }
     setMcpConnecting(true);
@@ -211,12 +211,12 @@ export function ConnectionCard({
           : { apiKey: trimmed, profileId: businessProfileId };
       const payload = await apiJson<Record<string, unknown>>(
         mcpManualConnectPath(entry.platform as IntelligencePlatform),
-        `Kunde inte koppla ${entry.label}.`,
+        t("card.mcpConnectFailed", { label: entry.label }),
         { body }
       );
       setMcpDialogOpen(false);
       setMcpCredential("");
-      toast.success(`${entry.label} kopplad`);
+      toast.success(t("card.mcpConnectOk", { label: entry.label }));
       if (payload.account_id && payload.platform) {
         addAccountFromOAuth(
           String(payload.account_id),
@@ -228,7 +228,7 @@ export function ConnectionCard({
       }
       window.dispatchEvent(new CustomEvent("automazing:connections-changed"));
     } catch (err) {
-      setMcpCredentialError(err instanceof Error ? err.message : "Kunde inte ansluta.");
+      setMcpCredentialError(err instanceof Error ? err.message : t("card.mcpConnectError"));
     } finally {
       setMcpConnecting(false);
     }
@@ -412,12 +412,12 @@ export function ConnectionCard({
         {!hasGuide ? <p className="text-xs text-muted-foreground">{catalogConnectSteps(entry)}</p> : null}
         {defaultPathOption ? (
           <p className="text-[11px] text-muted-foreground">
-            Rekommenderad väg:{" "}
+            {t("card.recommendedPath")}{" "}
             <span className="font-medium text-foreground/90">{defaultPathOption.label}</span>
             {extraPathLabels.length > 0 ? (
               <span className="text-muted-foreground/80">
                 {" "}
-                · Alternativ: {extraPathLabels.join(" / ")}
+                · {t("card.alternatives")} {extraPathLabels.join(" / ")}
               </span>
             ) : null}
           </p>
@@ -444,7 +444,7 @@ export function ConnectionCard({
         ) : null}
         {entry.platform === "canva" && manuallyConnected ? (
           <div className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-xs text-success">
-            Redo för Canva-exporter från den här företagsprofilen.
+            {t("card.canvaReady")}
           </div>
         ) : rows.length > 0 ? (
           <ul className="space-y-1.5">
@@ -458,7 +458,7 @@ export function ConnectionCard({
                     type="button"
                     onClick={() => onToggleSelect(c.id)}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
-                    aria-label={selectedIds?.has(c.id) ? "Avmarkera" : "Markera"}
+                    aria-label={selectedIds?.has(c.id) ? t("card.deselect") : t("card.select")}
                   >
                     {selectedIds?.has(c.id) ? (
                       <CheckSquare2 className="h-3.5 w-3.5 text-primary" />
@@ -473,10 +473,11 @@ export function ConnectionCard({
                     <span className="text-muted-foreground font-normal"> · @{c.username}</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    Kopplad{" "}
-                    {c.connectedAt
-                      ? formatRelativeTime(c.connectedAt) ?? c.connectedAt.slice(0, 10)
-                      : ""}
+                    {t("card.connectedAgo", {
+                      ago: c.connectedAt
+                        ? formatRelativeTime(c.connectedAt) ?? c.connectedAt.slice(0, 10)
+                        : "",
+                    })}
                   </p>
                   {c.health !== "healthy" ? (
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 leading-snug">
@@ -493,7 +494,7 @@ export function ConnectionCard({
                       variant="ghost"
                       className="h-7 px-2 text-xs"
                       onClick={() => onViewDetails(c)}
-                      aria-label={`Visa detaljer för ${c.displayName || c.username}`}
+                      aria-label={t("card.viewDetailsAria", { name: c.displayName || c.username })}
                     >
                       <Info className="h-3 w-3" />
                     </Button>
@@ -506,15 +507,15 @@ export function ConnectionCard({
                       className="h-7 px-2 text-[11px] gap-1"
                       onClick={() => void handleTestConnection(c.id)}
                       disabled={isResyncing}
-                      aria-label={`Testa koppling för ${c.displayName || c.username}`}
-                      title="Testa koppling"
+                      aria-label={t("card.testAria", { name: c.displayName || c.username })}
+                      title={t("card.testTitle")}
                     >
                       {isResyncing && resyncingId === c.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <PlugZap className="h-3 w-3" />
                       )}
-                      Testa
+                      {t("card.test")}
                     </Button>
                   ) : null}
                   <Button
@@ -524,8 +525,8 @@ export function ConnectionCard({
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
                     onClick={() => setRemoveTarget(c)}
                     disabled={isDisconnecting}
-                    aria-label={`Koppla från ${c.displayName || c.username}`}
-                    title="Koppla från — tar bort kontot permanent"
+                    aria-label={t("card.disconnectAria", { name: c.displayName || c.username })}
+                    title={t("card.disconnectTitle")}
                   >
                     {isDisconnecting ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -539,9 +540,7 @@ export function ConnectionCard({
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
-            {active.length === 0
-              ? "Inte kopplat för den här företagsprofilen ännu."
-              : "Konto kopplat för den här företagsprofilen."}
+            {active.length === 0 ? t("card.notConnected") : t("card.accountConnected")}
           </p>
         )}
 
@@ -550,7 +549,7 @@ export function ConnectionCard({
         ) : null}
 
         {lastSync ? (
-          <p className="text-[11px] text-muted-foreground">Senaste synk {lastSync}</p>
+          <p className="text-[11px] text-muted-foreground">{t("card.lastSync", { ago: lastSync })}</p>
         ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1">
@@ -664,13 +663,15 @@ export function ConnectionCard({
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Koppla från {removeTarget?.displayName || removeTarget?.username}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Kontot tas bort och sparade tokens rensas. Du kan koppla ett annat konto i stället. Detta går inte att ångra.
-            </AlertDialogDescription>
+            <AlertDialogTitle>
+              {t("card.disconnectConfirmTitle", {
+                name: removeTarget?.displayName || removeTarget?.username,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t("card.disconnectConfirmDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("card.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -678,7 +679,7 @@ export function ConnectionCard({
                 setRemoveTarget(null);
               }}
             >
-              Koppla från
+              {t("card.disconnectConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -687,14 +688,12 @@ export function ConnectionCard({
     <Dialog open={shopifyDialogOpen} onOpenChange={setShopifyDialogOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Koppla Shopify</DialogTitle>
-          <DialogDescription>
-            Koppla rätt butik genom att ange butikens permanenta Shopify-domän.
-          </DialogDescription>
+          <DialogTitle>{t("card.shopifyTitle")}</DialogTitle>
+          <DialogDescription>{t("card.shopifyDesc")}</DialogDescription>
         </DialogHeader>
         <ShopifyConnectGuide />
         <div className="space-y-2">
-          <Label htmlFor={`shopify-shop-${entry.platform}`}>Shop domain</Label>
+          <Label htmlFor={`shopify-shop-${entry.platform}`}>{t("card.shopifyDomainLabel")}</Label>
           <Input
             id={`shopify-shop-${entry.platform}`}
             value={shopifyShop}
@@ -707,17 +706,15 @@ export function ConnectionCard({
             aria-invalid={Boolean(shopifyShopError)}
             autoFocus
           />
-          <p className="text-xs text-muted-foreground">
-            Du kan också klistra in en Shopify Admin-länk, t.ex. admin.shopify.com/store/mystore.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("card.shopifyAdminHint")}</p>
           {shopifyShopError ? <p className="text-xs text-destructive">{shopifyShopError}</p> : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShopifyDialogOpen(false)}>
-            Avbryt
+            {t("card.cancel")}
           </Button>
           <Button onClick={submitShopifyConnect} disabled={!shopifyShop.trim()}>
-            Fortsätt
+            {t("card.continue")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -727,7 +724,7 @@ export function ConnectionCard({
       onOpenChange={setJudgemeDialogOpen}
       businessProfileId={businessProfileId}
       onConnected={(result) => {
-        toast.success("Judge.me kopplad");
+        toast.success(t("card.judgemeConnected"));
         if (result.accountId) {
           addAccountFromOAuth(result.accountId, "judgeme", result.username, result.profileId ?? businessProfileId);
         }
@@ -737,12 +734,14 @@ export function ConnectionCard({
     <Dialog open={mcpDialogOpen} onOpenChange={setMcpDialogOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Koppla {entry.label}</DialogTitle>
+          <DialogTitle>{t("card.mcpTitle", { label: entry.label })}</DialogTitle>
           <DialogDescription>{catalogConnectSteps(entry)}</DialogDescription>
         </DialogHeader>
         {mcpMeta?.auth === "shop_domain" ? <ShopifyConnectGuide /> : null}
         <div className="space-y-2">
-          <Label htmlFor={`mcp-credential-${entry.platform}`}>{mcpMeta?.credentialLabel ?? "Credential"}</Label>
+          <Label htmlFor={`mcp-credential-${entry.platform}`}>
+            {mcpMeta?.credentialLabel ?? t("card.credentialFallback")}
+          </Label>
           <Input
             id={`mcp-credential-${entry.platform}`}
             type={mcpMeta?.auth === "api_key" ? "password" : "text"}
@@ -760,7 +759,7 @@ export function ConnectionCard({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setMcpDialogOpen(false)} disabled={mcpConnecting}>
-            Avbryt
+            {t("card.cancel")}
           </Button>
           <Button
             onClick={() => void submitMcpManualConnect()}
@@ -770,7 +769,7 @@ export function ConnectionCard({
               (mcpMeta?.auth === "api_key" && entry.platform !== "sprouts" && !mcpCredential.trim())
             }
           >
-            {mcpConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Koppla"}
+            {mcpConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("card.connect")}
           </Button>
         </DialogFooter>
       </DialogContent>

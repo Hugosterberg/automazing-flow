@@ -26,7 +26,7 @@ import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { getRecentPages } from "@/lib/keyboardShortcuts";
 import { softFade } from "@/lib/motion";
 import { useConnections } from "@/features/connections/useConnections";
-import { computeSyncFreshness, formatAgoSv } from "@/features/connections/syncFreshness";
+import { computeSyncFreshness, formatAgo } from "@/features/connections/syncFreshness";
 import { useAutomationRuns } from "@/features/automation";
 import { type BriefItem, type BriefItemKind, type BriefSeverity } from "./buildDailyBrief";
 import { getBriefDayState, markBriefItemDone, snoozeBriefItem } from "./dailyBriefDismiss";
@@ -125,7 +125,7 @@ export function SmartDailyBrief({
 }: {
   businessProfileId: string | null | undefined;
 }) {
-  const { t } = useTranslation("dailyBrief");
+  const { t, i18n } = useTranslation("dailyBrief");
   const { t: tNav } = useTranslation();
   const prefetchFor = useRoutePrefetch();
   const [dayState, setDayState] = useState(() => getBriefDayState());
@@ -272,7 +272,7 @@ export function SmartDailyBrief({
             {syncFreshness.total > 0 ? (
               <li>
                 {syncFreshness.latestSyncedAt
-                  ? t("quiet.synced", { ago: formatAgoSv(syncFreshness.latestSyncedAt) })
+                  ? t("quiet.synced", { ago: formatAgo(syncFreshness.latestSyncedAt, i18n.language) })
                   : t("quiet.waitingSync")}
                 {syncFreshness.stale.length > 0
                   ? t("quiet.stale", { count: syncFreshness.stale.length })
