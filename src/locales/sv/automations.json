@@ -265,5 +265,46 @@
       "explainer": "Jobbet skannar Shopify-lagret dagligen och mejlar en sammanställning över produkter med lågt eller inget lager. Är produkten ursprungligen importerad från Alibaba/1688 länkas källan direkt i mejlet. Samma produkt nagar inte varje dag — bara vid försämring eller efter en vecka.",
       "trustNote": "Bara en informationsmejl — inget beställs eller köps automatiskt."
     }
+  },
+  "schedule": {
+    "enabled": "Aktiverad",
+    "off": "Av — körs inte",
+    "days": "Dagar",
+    "timesPerDay": "Gånger per dag",
+    "firstRun": "Första körning",
+    "lastRun": "Sista körning",
+    "timezone": "Tidszon",
+    "runsPreview": "Körningar: {{times}}",
+    "save": "Spara schema",
+    "saved": "Schema sparat",
+    "saveFailed": "Kunde inte spara schema.",
+    "day1": "Mån",
+    "day2": "Tis",
+    "day3": "Ons",
+    "day4": "Tor",
+    "day5": "Fre",
+    "day6": "Lör",
+    "day7": "Sön"
+  },
+  "runStatus": {
+    "nextRun": "Nästa körning {{when}}",
+    "loading": "Hämtar körstatus…",
+    "loadFailed": "Kunde inte hämta körstatus",
+    "never": "Har inte körts än",
+    "ran": "Kördes",
+    "failed": "Misslyckades",
+    "retry": "Kör igen",
+    "retrying": "Kör igen…",
+    "sent": "skickade",
+    "drafted": "utkast",
+    "written": "sparade",
+    "created": "skapade",
+    "removed": "rensade",
+    "skipped": "hoppade över",
+    "failedCount": "misslyckade"
+  },
+  "explainer": {
+    "title": "Vad händer om jag slår på det här?",
+    "exampleDraft": "Exempelutkast: “{{draft}}”"
   }
 }

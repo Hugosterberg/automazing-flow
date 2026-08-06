@@ -26,6 +26,20 @@ export const WEEKDAY_LABELS_SV: Record<number, string> = {
   7: "Sön",
 };
 
+export const WEEKDAY_LABELS_EN: Record<number, string> = {
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
+  7: "Sun",
+};
+
+export function weekdayLabelsForLang(lang: string = "sv"): Record<number, string> {
+  return lang.toLowerCase().startsWith("en") ? WEEKDAY_LABELS_EN : WEEKDAY_LABELS_SV;
+}
+
 const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
 function parseTime(value: string): { hours: number; minutes: number } | null {
@@ -244,20 +258,35 @@ export function expandRunTimes(schedule: ProfileJobSchedule): string[] {
   return times;
 }
 
-export function formatScheduleSummarySv(schedule: ProfileJobSchedule): string {
+export function formatScheduleSummary(schedule: ProfileJobSchedule, lang: string = "sv"): string {
+  const en = lang.toLowerCase().startsWith("en");
+  const labels = weekdayLabelsForLang(lang);
   const dayPart =
     schedule.days.length === 7
-      ? "Varje dag"
+      ? en
+        ? "Every day"
+        : "Varje dag"
       : schedule.days.length === 5 &&
           schedule.days.every((d, i) => d === [1, 2, 3, 4, 5][i])
-        ? "Vardagar"
-        : schedule.days.map((d) => WEEKDAY_LABELS_SV[d]).join(", ");
+        ? en
+          ? "Weekdays"
+          : "Vardagar"
+        : schedule.days.map((d) => labels[d]).join(", ");
   const times = expandRunTimes(schedule);
   const timesPart =
     schedule.timesPerDay === 1
-      ? `kl. ${times[0]}`
-      : `${schedule.timesPerDay} ggr/dag (${times.join(", ")})`;
+      ? en
+        ? `at ${times[0]}`
+        : `kl. ${times[0]}`
+      : en
+        ? `${schedule.timesPerDay}×/day (${times.join(", ")})`
+        : `${schedule.timesPerDay} ggr/dag (${times.join(", ")})`;
   return `${dayPart}, ${timesPart}`;
+}
+
+/** @deprecated Prefer formatScheduleSummary(schedule, lang). */
+export function formatScheduleSummarySv(schedule: ProfileJobSchedule): string {
+  return formatScheduleSummary(schedule, "sv");
 }
 
 export function defaultScheduleForKey(key: string): ProfileJobSchedule {

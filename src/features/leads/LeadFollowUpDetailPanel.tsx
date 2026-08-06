@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Globe, Info, Mail, Pencil, Search, Target } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { useStackedWorkspace } from "@/hooks/use-mobile";
 import { isoToLocalDateInputValue } from "@/lib/localDate";
 import {
-  LEAD_STATUS_LABELS,
   LEAD_STATUS_ORDER,
   isFollowUpDueToday,
   isFollowUpOverdue,
@@ -62,6 +62,7 @@ export function LeadFollowUpDetailPanel({
   onEdit,
   navigation,
 }: Props) {
+  const { t } = useTranslation("leads");
   const isStackedWorkspace = useStackedWorkspace();
   const overdue = isFollowUpOverdue(lead.nextFollowUpAt);
   const dueToday = isFollowUpDueToday(lead.nextFollowUpAt);
@@ -94,7 +95,7 @@ export function LeadFollowUpDetailPanel({
                 </Badge>
               ) : dueToday ? (
                 <Badge variant="outline" className="h-5 border-warning/40 bg-warning/10 text-[10px] text-warning">
-                  Uppföljning idag
+                  {t("followUps.dueToday")}
                 </Badge>
               ) : null}
               {lead.source ? <span className="font-mono text-[11px]">{lead.source}</span> : null}
@@ -102,13 +103,13 @@ export function LeadFollowUpDetailPanel({
           </div>
           {navigation ? (
             <div className="flex shrink-0 items-center gap-1">
-              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasPrev} onClick={navigation.onPrev} aria-label="Föregående lead">
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasPrev} onClick={navigation.onPrev} aria-label={t("followUps.prevLead")}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="min-w-[3rem] text-center text-[11px] tabular-nums text-muted-foreground">
                 {navigation.index + 1}/{navigation.total}
               </span>
-              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasNext} onClick={navigation.onNext} aria-label="Nästa lead">
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!navigation.hasNext} onClick={navigation.onNext} aria-label={t("followUps.nextLead")}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -119,7 +120,7 @@ export function LeadFollowUpDetailPanel({
       <div className="message-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         <div className="w-full space-y-4">
           <div className="message-reading-card px-4 py-3 space-y-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Kontakt</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("followUps.contact")}</p>
             <dl className="grid gap-2 text-sm">
               {lead.contactName ? (
                 <div>
@@ -163,7 +164,7 @@ export function LeadFollowUpDetailPanel({
                 <SelectContent>
                   {LEAD_STATUS_ORDER.map((s) => (
                     <SelectItem key={s} value={s} className="text-xs">
-                      {LEAD_STATUS_LABELS[s]}
+                      {t(`status.${s}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -224,6 +225,7 @@ export function LeadFollowUpDetailPanel({
 }
 
 export function LeadFollowUpDetailPlaceholder() {
+  const { t } = useTranslation("leads");
   return (
     <div className="message-reading-pane flex h-full min-h-[280px] flex-col items-center justify-center gap-5 px-6 text-center">
       <m.div
@@ -237,9 +239,9 @@ export function LeadFollowUpDetailPlaceholder() {
         </div>
       </m.div>
       <div className="max-w-sm space-y-1.5">
-        <p className="font-display text-base font-semibold">Välj en lead</p>
+        <p className="font-display text-base font-semibold">{t("followUps.pickLead")}</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Uppdatera status, skriv outreach-utkast och planera nästa steg — listan stannar kvar till vänster.
+          {t("followUps.pickLeadDesc")}
         </p>
       </div>
     </div>

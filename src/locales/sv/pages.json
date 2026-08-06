@@ -122,7 +122,19 @@
     "actionFailed": "{{count}} misslyckade — granska",
     "aiStrip": "AI underhållsförslag",
     "retryOk": "\"{{title}}\" kördes om.",
-    "retryFail": "Kunde inte köra om automationen."
+    "retryFail": "Kunde inte köra om automationen.",
+    "failuresTitle_one": "1 automation misslyckades vid senaste körning",
+    "failuresTitle_other": "{{count}} automationer misslyckades vid senaste körning",
+    "failuresHint": "Kör om direkt här eller scrolla till jobbkortet för mer detalj.",
+    "retry": "Kör om",
+    "loadingSchedule": "Laddar schema…",
+    "pickProfileSchedule": "Välj profil för att ställa in schema.",
+    "statJobs": "Jobb",
+    "statLastOk": "Senaste OK",
+    "statLastFail": "Senaste fel",
+    "statNever": "Aldrig körda",
+    "mcpTitle": "MCP-utvecklarverktyg",
+    "mcpDesc": "Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
   },
   "intelligence": {
     "title": "MCP Intelligence",

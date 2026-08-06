@@ -49,5 +49,27 @@
     "followUpFail": "Kunde inte uppdatera uppföljningsdatum.",
     "updateFail": "Kunde inte uppdatera lead.",
     "suggestionAdded": "Tillagd som lead"
+  },
+  "followUps": {
+    "needProfile": "Välj en affärsprofil för att se uppföljningar.",
+    "emptyTitle": "Inga uppföljningar just nu",
+    "emptyDesc": "Alla leads är ikapp — bra jobbat.",
+    "openSales": "Öppna Försäljning",
+    "searchPlaceholder": "Sök leads…",
+    "searchAria": "Sök uppföljningar",
+    "searchActive": " · sök aktiv",
+    "loading": "Laddar…",
+    "countSummary": "{{filtered}} av {{total}} att följa upp",
+    "noMatchTitle": "Inga leads matchar",
+    "noMatchDesc": "Prova ett annat sökord eller rensa filtret.",
+    "pickLead": "Välj en lead",
+    "dateUpdateFail": "Kunde inte uppdatera datum.",
+    "fillCompany": "Fyll i Företag",
+    "pickLeadDesc": "Uppdatera status, skriv outreach-utkast och planera nästa steg — listan stannar kvar till vänster.",
+    "prevLead": "Föregående lead",
+    "nextLead": "Nästa lead",
+    "dueToday": "Uppföljning idag",
+    "contact": "Kontakt",
+    "pickLeadInList": "Välj en lead i listan"
   }
 }

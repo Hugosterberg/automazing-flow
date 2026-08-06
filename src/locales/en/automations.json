@@ -265,5 +265,46 @@
       "explainer": "The job scans Shopify inventory daily and emails a summary of products running low or out of stock. If the product was originally imported from Alibaba/1688, the source is linked directly in the email. The same product doesn't nag every day — only when it gets worse or after a week.",
       "trustNote": "Just an informational email — nothing is ordered or purchased automatically."
     }
+  },
+  "schedule": {
+    "enabled": "Enabled",
+    "off": "Off — not running",
+    "days": "Days",
+    "timesPerDay": "Times per day",
+    "firstRun": "First run",
+    "lastRun": "Last run",
+    "timezone": "Timezone",
+    "runsPreview": "Runs: {{times}}",
+    "save": "Save schedule",
+    "saved": "Schedule saved",
+    "saveFailed": "Could not save schedule.",
+    "day1": "Mon",
+    "day2": "Tue",
+    "day3": "Wed",
+    "day4": "Thu",
+    "day5": "Fri",
+    "day6": "Sat",
+    "day7": "Sun"
+  },
+  "runStatus": {
+    "nextRun": "Next run {{when}}",
+    "loading": "Fetching run status…",
+    "loadFailed": "Could not fetch run status",
+    "never": "Has not run yet",
+    "ran": "Ran",
+    "failed": "Failed",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "sent": "sent",
+    "drafted": "drafts",
+    "written": "saved",
+    "created": "created",
+    "removed": "cleared",
+    "skipped": "skipped",
+    "failedCount": "failed"
+  },
+  "explainer": {
+    "title": "What happens if I turn this on?",
+    "exampleDraft": "Sample draft: “{{draft}}”"
   }
 }

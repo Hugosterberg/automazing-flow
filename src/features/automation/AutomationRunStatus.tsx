@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -12,28 +13,29 @@ import { formatDateTimeMedium } from "@/lib/format";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { AutomationRunStatus as AutomationRunStatusData } from "./automationService";
 
-/** Swedish labels for the count fields the jobs report, in display order. */
-const RESULT_LABELS: Array<{ key: string; label: string }> = [
-  { key: "sent", label: "skickade" },
-  { key: "drafted", label: "utkast" },
-  { key: "written", label: "sparade" },
-  { key: "created", label: "skapade" },
-  { key: "removed", label: "rensade" },
-  { key: "skipped", label: "hoppade över" },
-  { key: "failed", label: "misslyckade" },
-];
+const RESULT_KEYS = [
+  "sent",
+  "drafted",
+  "written",
+  "created",
+  "removed",
+  "skipped",
+  "failed",
+] as const;
 
 /**
- * Compact one-line summary of the counts a run reported, e.g. "3 skickade ·
- * 1 misslyckade". Only positive numeric fields are shown so quiet runs stay
- * quiet. Returns null when there is nothing worth showing.
+ * Compact one-line summary of the counts a run reported.
+ * Returns null when there is nothing worth showing.
  */
-function summariseResult(result: Record<string, unknown>): string | null {
+function summariseResult(
+  result: Record<string, unknown>,
+  labelFor: (key: (typeof RESULT_KEYS)[number]) => string
+): string | null {
   const parts: string[] = [];
-  for (const { key, label } of RESULT_LABELS) {
+  for (const key of RESULT_KEYS) {
     const value = result[key];
     if (typeof value === "number" && value > 0) {
-      parts.push(`${value} ${label}`);
+      parts.push(`${value} ${labelFor(key)}`);
     }
   }
   return parts.length > 0 ? parts.join(" · ") : null;
@@ -41,9 +43,7 @@ function summariseResult(result: Record<string, unknown>): string | null {
 
 /**
  * Per-automation run status shown under each schedule card: last run (relative
- * time + success/failure) and the next scheduled run. Handles every state
- * explicitly — loading, error, and "never run" all render quietly rather than
- * as failures.
+ * time + success/failure) and the next scheduled run.
  */
 export function AutomationRunStatus({
   run,
@@ -59,6 +59,11 @@ export function AutomationRunStatus({
   onRetry?: () => void;
   retrying?: boolean;
 }) {
+  const { t } = useTranslation("automations");
+
+  const labelFor = (key: (typeof RESULT_KEYS)[number]) =>
+    key === "failed" ? t("runStatus.failedCount") : t(`runStatus.${key}`);
+
   const nextRunRelative = run?.nextRunAt ? formatRelativeTime(run.nextRunAt) : null;
   const nextRunAbsolute = run?.nextRunAt ? formatDateTimeMedium(run.nextRunAt) : null;
 
@@ -69,7 +74,7 @@ export function AutomationRunStatus({
         title={nextRunAbsolute ?? undefined}
       >
         <Clock className="h-3 w-3" aria-hidden />
-        Nästa körning {nextRunRelative}
+        {t("runStatus.nextRun", { when: nextRunRelative })}
       </span>
     ) : null;
 
@@ -78,7 +83,7 @@ export function AutomationRunStatus({
     lastRunLine = (
       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
         <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-        Hämtar körstatus…
+        {t("runStatus.loading")}
       </span>
     );
   } else if (error) {
@@ -88,22 +93,21 @@ export function AutomationRunStatus({
         title={error}
       >
         <AlertTriangle className="h-3 w-3" aria-hidden />
-        Kunde inte hämta körstatus
+        {t("runStatus.loadFailed")}
       </span>
     );
   } else if (!run || !run.lastRun) {
-    // A cron that has never run: quiet, not an error.
     lastRunLine = (
       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
         <CircleDashed className="h-3 w-3" aria-hidden />
-        Har inte körts än
+        {t("runStatus.never")}
       </span>
     );
   } else {
     const { lastRun } = run;
     const when = formatRelativeTime(lastRun.finishedAt ?? lastRun.startedAt);
     const ok = lastRun.status === "ok";
-    const resultSummary = summariseResult(lastRun.result);
+    const resultSummary = summariseResult(lastRun.result, labelFor);
     const title = ok
       ? resultSummary ?? undefined
       : lastRun.errorMessage ?? resultSummary ?? undefined;
@@ -119,7 +123,7 @@ export function AutomationRunStatus({
         ) : (
           <XCircle className="h-3 w-3" aria-hidden />
         )}
-        {ok ? "Kördes" : "Misslyckades"}
+        {ok ? t("runStatus.ran") : t("runStatus.failed")}
         {when ? ` ${when}` : ""}
         {resultSummary ? (
           <span className="text-muted-foreground">· {resultSummary}</span>
@@ -148,7 +152,7 @@ export function AutomationRunStatus({
           ) : (
             <RotateCcw className="h-3 w-3" aria-hidden />
           )}
-          <span className="ml-1">{retrying ? "Kör igen…" : "Kör igen"}</span>
+          <span className="ml-1">{retrying ? t("runStatus.retrying") : t("runStatus.retry")}</span>
         </Button>
       ) : null}
     </div>

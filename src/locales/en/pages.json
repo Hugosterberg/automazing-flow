@@ -122,7 +122,19 @@
     "actionFailed": "{{count}} failed — review",
     "aiStrip": "AI maintenance suggestions",
     "retryOk": "\"{{title}}\" was rerun.",
-    "retryFail": "Could not rerun the automation."
+    "retryFail": "Could not rerun the automation.",
+    "failuresTitle_one": "1 automation failed on the last run",
+    "failuresTitle_other": "{{count}} automations failed on the last run",
+    "failuresHint": "Retry here or scroll to the job card for more detail.",
+    "retry": "Retry",
+    "loadingSchedule": "Loading schedule…",
+    "pickProfileSchedule": "Select a profile to set the schedule.",
+    "statJobs": "Jobs",
+    "statLastOk": "Last OK",
+    "statLastFail": "Last failed",
+    "statNever": "Never run",
+    "mcpTitle": "MCP developer tools",
+    "mcpDesc": "Documentation search and Era context questions for automation flows."
   },
   "intelligence": {
     "title": "MCP Intelligence",

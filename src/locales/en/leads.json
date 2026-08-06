@@ -49,5 +49,27 @@
     "followUpFail": "Could not update follow-up date.",
     "updateFail": "Could not update lead.",
     "suggestionAdded": "Added as lead"
+  },
+  "followUps": {
+    "needProfile": "Select a business profile to see follow-ups.",
+    "emptyTitle": "No follow-ups right now",
+    "emptyDesc": "All leads are caught up — nice work.",
+    "openSales": "Open Sales",
+    "searchPlaceholder": "Search leads…",
+    "searchAria": "Search follow-ups",
+    "searchActive": " · search active",
+    "loading": "Loading…",
+    "countSummary": "{{filtered}} of {{total}} to follow up",
+    "noMatchTitle": "No leads match",
+    "noMatchDesc": "Try another search term or clear the filter.",
+    "pickLead": "Select a lead",
+    "dateUpdateFail": "Could not update date.",
+    "fillCompany": "Fill in Company",
+    "pickLeadDesc": "Update status, write outreach drafts and plan next steps — the list stays on the left.",
+    "prevLead": "Previous lead",
+    "nextLead": "Next lead",
+    "dueToday": "Follow-up today",
+    "contact": "Contact",
+    "pickLeadInList": "Select a lead in the list"
   }
 }

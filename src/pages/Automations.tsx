@@ -116,12 +116,10 @@ function AutomationFailuresStrip({
         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" aria-hidden />
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">
-            {failedEntries.length === 1
-              ? "1 automation misslyckades vid senaste körning"
-              : `${failedEntries.length} automationer misslyckades vid senaste körning`}
+            {t("automations.failuresTitle", { count: failedEntries.length })}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Kör om direkt här eller scrolla till jobbkortet för mer detalj.
+            {t("automations.failuresHint")}
           </p>
         </div>
       </div>
@@ -149,7 +147,7 @@ function AutomationFailuresStrip({
               ) : (
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Kör om
+              {t("automations.retry")}
             </Button>
           </li>
         ))}
@@ -257,7 +255,7 @@ function ScheduleList({
               ) : null}
               {cronKey && businessProfileId ? (
                 schedules.loading ? (
-                  <p className="text-xs text-muted-foreground">Laddar schema…</p>
+                  <p className="text-xs text-muted-foreground">{t("automations.loadingSchedule")}</p>
                 ) : (
                   <AutomationScheduleEditor
                     cronKey={cronKey}
@@ -270,7 +268,7 @@ function ScheduleList({
                   />
                 )
               ) : !businessProfileId ? (
-                <p className="text-xs text-muted-foreground">Välj profil för att ställa in schema.</p>
+                <p className="text-xs text-muted-foreground">{t("automations.pickProfileSchedule")}</p>
               ) : null}
             </CardContent>
           </Card>
@@ -438,19 +436,19 @@ export default function AutomationsPage() {
       <div className="app-workspace-shell !min-h-0 space-y-6 p-3 sm:p-4">
       <div className="app-workspace-stats grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Jobb</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("automations.statJobs")}</p>
           <p className="text-xs font-semibold tabular-nums">{runStats.total}</p>
         </div>
         <div className="rounded-lg border border-success/30 bg-success/5 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Senaste OK</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("automations.statLastOk")}</p>
           <p className="text-xs font-semibold tabular-nums text-success">{runStats.ok}</p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Senaste fel</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("automations.statLastFail")}</p>
           <p className="text-xs font-semibold tabular-nums text-destructive">{runStats.failed}</p>
         </div>
         <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Aldrig körda</p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{t("automations.statNever")}</p>
           <p className="text-xs font-semibold tabular-nums">{runStats.never}</p>
         </div>
       </div>
@@ -470,8 +468,8 @@ export default function AutomationsPage() {
             <McpFeatureSection
               businessProfileId={businessProfileId}
               featureIds={MCP_PAGE_FEATURE_IDS.automations}
-              title="MCP-utvecklarverktyg"
-              description="Dokumentationssökning och Era-kontextfrågor för automatiseringsflöden."
+              title={t("automations.mcpTitle")}
+              description={t("automations.mcpDesc")}
             />
           </m.div>
         </>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   fetchAutomationSettings,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/profileJobSchedule";
 
 export function useAutomationSchedules(businessProfileId: string | null) {
+  const { t } = useTranslation("automations");
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function useAutomationSchedules(businessProfileId: string | null) {
       })
       .catch((err) => {
         if (!cancelled) {
-          toast.error(err instanceof Error ? err.message : "Kunde inte ladda scheman.");
+          toast.error(err instanceof Error ? err.message : t("schedule.saveFailed"));
         }
       })
       .finally(() => {
@@ -45,7 +47,7 @@ export function useAutomationSchedules(businessProfileId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [businessProfileId]);
+  }, [businessProfileId, t]);
 
   const patchSchedule = useCallback((cronKey: string, next: ProfileJobSchedule) => {
     setDraftSchedules((prev) => {
@@ -83,14 +85,14 @@ export function useAutomationSchedules(businessProfileId: string | null) {
           next.delete(cronKey);
           return next;
         });
-        toast.success("Schema sparat");
+        toast.success(t("schedule.saved"));
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Kunde inte spara schema.");
+        toast.error(err instanceof Error ? err.message : t("schedule.saveFailed"));
       } finally {
         setSavingKey(null);
       }
     },
-    [businessProfileId, draftSchedules, scheduleFor, settings]
+    [businessProfileId, draftSchedules, scheduleFor, settings, t]
   );
 
   return {

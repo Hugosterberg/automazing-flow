@@ -1,4 +1,5 @@
 import { Loader2, Save } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import {
   expandRunTimes,
-  formatScheduleSummarySv,
+  formatScheduleSummary,
   ISO_WEEKDAYS,
-  WEEKDAY_LABELS_SV,
   type ProfileJobSchedule,
 } from "@/lib/profileJobSchedule";
 
@@ -37,6 +37,8 @@ export function AutomationScheduleEditor({
   onChange,
   onSave,
 }: AutomationScheduleEditorProps) {
+  const { t, i18n } = useTranslation("automations");
+
   function toggleDay(day: number) {
     const has = schedule.days.includes(day);
     const days = has
@@ -51,9 +53,11 @@ export function AutomationScheduleEditor({
     <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-foreground">Aktiverad</p>
+          <p className="text-xs font-medium text-foreground">{t("schedule.enabled")}</p>
           <p className="text-[11px] text-muted-foreground">
-            {schedule.enabled ? formatScheduleSummarySv(schedule) : "Av — körs inte"}
+            {schedule.enabled
+              ? formatScheduleSummary(schedule, i18n.language)
+              : t("schedule.off")}
           </p>
         </div>
         <Switch
@@ -64,7 +68,7 @@ export function AutomationScheduleEditor({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs">Dagar</Label>
+        <Label className="text-xs">{t("schedule.days")}</Label>
         <div className="flex flex-wrap gap-1.5">
           {ISO_WEEKDAYS.map((day) => (
             <label
@@ -76,7 +80,7 @@ export function AutomationScheduleEditor({
                 disabled={disabled}
                 onCheckedChange={() => toggleDay(day)}
               />
-              {WEEKDAY_LABELS_SV[day]}
+              {t(`schedule.day${day}`)}
             </label>
           ))}
         </div>
@@ -84,7 +88,7 @@ export function AutomationScheduleEditor({
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="space-y-1">
-          <Label className="text-xs">Gånger per dag</Label>
+          <Label className="text-xs">{t("schedule.timesPerDay")}</Label>
           <Select
             value={String(schedule.timesPerDay)}
             disabled={disabled}
@@ -103,7 +107,7 @@ export function AutomationScheduleEditor({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Första körning</Label>
+          <Label className="text-xs">{t("schedule.firstRun")}</Label>
           <Input
             type="time"
             className="h-8 text-xs"
@@ -113,7 +117,7 @@ export function AutomationScheduleEditor({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Sista körning</Label>
+          <Label className="text-xs">{t("schedule.lastRun")}</Label>
           <Input
             type="time"
             className="h-8 text-xs"
@@ -123,7 +127,7 @@ export function AutomationScheduleEditor({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Tidszon</Label>
+          <Label className="text-xs">{t("schedule.timezone")}</Label>
           <Input
             className="h-8 text-xs"
             value={schedule.timezone}
@@ -136,14 +140,14 @@ export function AutomationScheduleEditor({
 
       {schedule.timesPerDay > 1 ? (
         <p className="text-[11px] text-muted-foreground">
-          Körningar: {previewTimes.join(" · ")}
+          {t("schedule.runsPreview", { times: previewTimes.join(" · ") })}
         </p>
       ) : null}
 
       <div className="flex justify-end">
         <Button size="sm" variant="secondary" disabled={disabled || saving || !dirty} onClick={onSave}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-          Spara schema
+          {t("schedule.save")}
         </Button>
       </div>
     </div>

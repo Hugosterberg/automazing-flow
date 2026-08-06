@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AnimatePresence, m } from "framer-motion";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ type Props = {
 };
 
 export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onAddToPipeline }: Props) {
+  const { t } = useTranslation("leads");
   const isDesktopWorkspace = useIsDesktopWorkspace();
   const { leads, updateLead, isLoading } = useLeads(businessProfileId);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -222,20 +224,20 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
       : undefined;
 
   if (!businessProfileId) {
-    return <p className="text-sm text-muted-foreground px-4 py-6">Välj en affärsprofil för att se uppföljningar.</p>;
+    return <p className="text-sm text-muted-foreground px-4 py-6">{t("followUps.needProfile")}</p>;
   }
 
   if (!isLoading && dueLeads.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border px-6 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">Inga uppföljningar just nu</p>
-        <p className="mt-1 text-xs text-muted-foreground">Alla leads är ikapp — bra jobbat.</p>
+        <p className="text-sm font-medium text-foreground">{t("followUps.emptyTitle")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("followUps.emptyDesc")}</p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-            <Link to="/sales">Öppna Försäljning</Link>
+            <Link to="/sales">{t("followUps.openSales")}</Link>
           </Button>
           <Button asChild size="sm" variant="ghost" className="h-8 text-xs">
-            <Link to="/company">Fyll i Företag</Link>
+            <Link to="/company">{t("followUps.fillCompany")}</Link>
           </Button>
         </div>
       </div>
@@ -260,7 +262,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
                     patch: { nextFollowUpAt: value ? dateInputToEndOfDayIso(value) : null },
                   });
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Kunde inte uppdatera datum.");
+                  toast.error(e instanceof Error ? e.message : t("followUps.dateUpdateFail"));
                 }
               }}
               onDraftOutreach={
@@ -318,17 +320,19 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
               id="sales-followups-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Sök leads…"
+              placeholder={t("followUps.searchPlaceholder")}
               className={cn(
                 "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
                 !isDesktopWorkspace ? "h-10" : "h-8 text-xs"
               )}
-              aria-label="Sök uppföljningar"
+              aria-label={t("followUps.searchAria")}
             />
           </div>
           <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
-            {isLoading ? "Laddar…" : `${filtered.length} av ${dueLeads.length} att följa upp`}
-            {debouncedSearch.trim() ? " · sök aktiv" : ""}
+            {isLoading
+              ? t("followUps.loading")
+              : t("followUps.countSummary", { filtered: filtered.length, total: dueLeads.length })}
+            {debouncedSearch.trim() ? t("followUps.searchActive") : ""}
           </p>
         </div>
         ) : null}
@@ -341,8 +345,8 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
                   <LeadFollowUpInboxList
                     leads={filtered}
                     selectedId={selectedId}
-                    emptyTitle="Inga leads matchar"
-                    emptyDescription="Prova ett annat sökord eller rensa filtret."
+                    emptyTitle={t("followUps.noMatchTitle")}
+                    emptyDescription={t("followUps.noMatchDesc")}
                     onSelect={selectLead}
                     searchQuery={debouncedSearch}
                   />
@@ -360,8 +364,8 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
                 <LeadFollowUpInboxList
                   leads={filtered}
                   selectedId={selectedId}
-                  emptyTitle="Inga leads matchar"
-                  emptyDescription="Prova ett annat sökord eller rensa filtret."
+                  emptyTitle={t("followUps.noMatchTitle")}
+                  emptyDescription={t("followUps.noMatchDesc")}
                   onSelect={selectLead}
                   searchQuery={debouncedSearch}
                 />
@@ -388,7 +392,7 @@ export function LeadFollowUpsWorkspace({ businessProfileId, onDraftOutreach, onA
                 ) : null}
               </>
             ) : (
-              "Välj en lead i listan"
+              {t("followUps.pickLeadInList")}
             )}
           </span>
           <span className="hidden sm:inline">J/K · O Outreach · / Search</span>
