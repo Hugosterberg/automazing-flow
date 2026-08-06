@@ -14,7 +14,7 @@ type UseGlobalKeyboardShortcutsOptions = {
 };
 
 /**
- * Global keyboard layer: G-chord navigation (G then H/T/M/…) and ? for the
+ * Global keyboard layer: G-chord navigation (G then H/T/M/U/…) and ? for the
  * shortcuts cheatsheet. Skips when focus is in an input or a dialog is open.
  */
 export function useGlobalKeyboardShortcuts({

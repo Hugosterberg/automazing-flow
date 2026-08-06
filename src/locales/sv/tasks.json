@@ -11,6 +11,7 @@
   "step2": "Filtrera på Idag eller Försenade när du triagerar",
   "step3": "Dra kort mellan Att göra → Pågår → Klart",
   "tip": "Automationer kan påminna om försenade uppgifter — se Automationer.",
+  "handbookCta": "Öppna användarhandboken",
   "overdueHint": "{{count}} försenade — filtrera på Försenade för att triagera.",
   "dueTodayHint": "{{count}} förfaller idag.",
   "viewAria": "Uppgiftsvy",

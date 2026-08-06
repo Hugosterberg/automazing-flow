@@ -363,6 +363,9 @@ export const featureClarity: Record<string, FeatureClarity> = {
   "product-catalog": {
     youCan: "Create/edit products and versions, or import the Shopify catalog.",
   },
+  "product-content-drafts": {
+    youCan: "Approve AI description/tag drafts for thin listings before they write to the catalog or Shopify.",
+  },
   "store-insights": {
     youCan: "See 30-day revenue, top products/customers and promotions; add buyers as leads.",
   },

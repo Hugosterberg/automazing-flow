@@ -434,6 +434,13 @@ export const handbookPages: HandbookPage[] = [
               "Create/edit products and versions in-app, or import from Shopify into the profile catalog.",
             status: "ready",
           },
+          {
+            id: "product-content-drafts",
+            name: "Product content drafts",
+            description:
+              "Review AI-suggested description and tag improvements for thin Shopify listings — approve before anything writes back to the catalog or store.",
+            status: "ready",
+          },
         ],
       },
       {

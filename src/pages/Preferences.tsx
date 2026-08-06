@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
 import {
   Bell,
+  BookOpen,
   HelpCircle,
   CheckCircle2,
   ExternalLink,
@@ -9,7 +10,6 @@ import {
   LayoutGrid,
   Loader2,
   Lock,
-  Palette,
   Save,
   Shield,
   Sparkles,
@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { TeamManager } from "@/components/TeamManager";
 import { AiSettingsSection } from "@/features/ai-status";
 import { useActiveBusinessProfileIdOptional } from "@/features/business-profiles";
+import { openWelcomeTour } from "@/features/onboarding";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -294,9 +295,16 @@ export default function PreferencesPage() {
   const activeTab = parsePreferencesTab(rawTab);
 
   const overviewFeatures = [
-    { icon: Bell, title: t("features.notifications"), desc: t("features.notificationsDesc") },
-    { icon: Palette, title: t("features.appearance"), desc: t("features.appearanceDesc") },
-    { icon: Shield, title: t("features.security"), desc: t("features.securityDesc") },
+    {
+      icon: Bell,
+      title: t("features.notifications"),
+      desc: t("features.notificationsDesc"),
+    },
+    {
+      icon: Shield,
+      title: t("features.security"),
+      desc: t("features.securityDesc"),
+    },
   ];
   const setActiveTab = useCallback(
     (tab: PreferencesTab) => {
@@ -502,17 +510,71 @@ export default function PreferencesPage() {
         <TabsContent value="overview" className="space-y-4 pt-2">
           <LanguageSettingsSection />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <m.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-card border-border glow-border h-full">
+                <CardContent className="p-5 space-y-3">
+                  <BookOpen className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">{t("features.handbook")}</p>
+                  <p className="text-xs text-muted-foreground">{t("features.handbookDesc")}</p>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/handbook">{t("features.handbookCta")}</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </m.div>
+            <m.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.06 }}
+            >
+              <Card className="bg-card border-border glow-border h-full">
+                <CardContent className="p-5 space-y-3">
+                  <Sparkles className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">{t("features.welcomeTour")}</p>
+                  <p className="text-xs text-muted-foreground">{t("features.welcomeTourDesc")}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                      navigate("/");
+                      openWelcomeTour();
+                    }}
+                  >
+                    {t("features.welcomeTourCta")}
+                  </Button>
+                </CardContent>
+              </Card>
+            </m.div>
+            <m.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <Card className="bg-card border-border glow-border h-full">
+                <CardContent className="p-5 space-y-2">
+                  <LayoutGrid className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">{t("features.appearance")}</p>
+                  <p className="text-xs text-muted-foreground">{t("features.appearanceDesc")}</p>
+                </CardContent>
+              </Card>
+            </m.div>
             {overviewFeatures.map((feature, index) => (
               <m.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.06 }}
+                transition={{ duration: 0.3, delay: 0.14 + index * 0.06 }}
               >
-                <Card className="bg-card border-border glow-border">
+                <Card className="bg-card border-border glow-border h-full">
                   <CardContent className="p-5 space-y-2">
                     <feature.icon className="h-6 w-6 text-muted-foreground" />
-                    <p className="text-sm font-medium">{feature.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">{feature.title}</p>
+                      <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        {t("features.comingSoon")}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground">{feature.desc}</p>
                   </CardContent>
                 </Card>

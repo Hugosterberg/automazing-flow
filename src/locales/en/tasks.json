@@ -11,6 +11,7 @@
   "step2": "Filter on Today or Overdue when you triage",
   "step3": "Drag cards between To do → Doing → Done",
   "tip": "Automations can remind you about overdue tasks — see Automations.",
+  "handbookCta": "Open user handbook",
   "overdueHint": "{{count}} overdue — filter on Overdue to triage.",
   "dueTodayHint": "{{count}} due today.",
   "viewAria": "Task view",

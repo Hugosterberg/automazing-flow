@@ -21,6 +21,7 @@
     "company": "Go to Company (business mode)",
     "intelligence": "Go to MCP Intelligence",
     "preferences": "Go to Preferences",
+    "handbook": "Go to User handbook",
     "help": "Show shortcut list",
     "sidebar": "Show/hide sidebar"
   },

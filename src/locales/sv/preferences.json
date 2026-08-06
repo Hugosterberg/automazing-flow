@@ -20,11 +20,18 @@
     "help": "Hjälp"
   },
   "features": {
+    "handbook": "Användarhandbok",
+    "handbookDesc": "Vad varje sida gör, vad du kan göra där, och vad som fortfarande behöver sättas upp.",
+    "handbookCta": "Öppna handboken",
+    "welcomeTour": "Välkomsttour",
+    "welcomeTourDesc": "Spela om den korta genomgången av Startsida och daglig brief.",
+    "welcomeTourCta": "Spela om tour",
     "notifications": "Aviseringar",
     "notificationsDesc": "Hantera påminnelser och varningar",
     "appearance": "Utseende",
-    "appearanceDesc": "Tema och visuella inställningar",
+    "appearanceDesc": "Automazing använder en mörk arbetsyta — ljust tema finns inte ännu.",
     "security": "Säkerhet",
-    "securityDesc": "Lösenord och tvåfaktorsautentisering"
+    "securityDesc": "Lösenord och tvåfaktorsautentisering",
+    "comingSoon": "Kommer snart"
   }
 }

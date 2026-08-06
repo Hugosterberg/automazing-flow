@@ -41,6 +41,7 @@ export const GO_NAV_TARGETS: GoNavTarget[] = [
   { key: "c", url: "/company", modes: ["business"] },
   { key: "i", url: "/intelligence" },
   { key: "p", url: "/preferences" },
+  { key: "u", url: "/handbook" },
 ];
 
 export function isMacLike(): boolean {
@@ -136,6 +137,7 @@ export function buildShortcutSections(modKey: string): ShortcutSection[] {
         { keys: ["G", "C"], description: t("shortcuts:global.company") },
         { keys: ["G", "I"], description: t("shortcuts:global.intelligence") },
         { keys: ["G", "P"], description: t("shortcuts:global.preferences") },
+        { keys: ["G", "U"], description: t("shortcuts:global.handbook") },
         { keys: ["?"], description: t("shortcuts:global.help") },
         { keys: [`${modKey}`, "B"], description: t("shortcuts:global.sidebar") },
       ],

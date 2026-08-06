@@ -2,6 +2,24 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-06 — Ecommerce Overview surfaces denser stats on the page — **Active**
+
+Overview keeps KPI cards, then adds a clickable pulse strip (AOV, fulfillment,
+abandoned carts, conversion estimate, promotions, ad conversions/CPO,
+attributed revenue, Fortnox margin, unpaid invoices, matched product revenue,
+top-customer spend), an order mix (fulfillment/payment bars), and an ads &
+purchases pulse card. Section chips also show money metrics where available.
+No new APIs — reuses Shopify stats, marketing performance, and Fortnox snapshot.
+
+## 2026-08-06 — Discoverability for handbook + honest Preferences WIP — **Active**
+
+Keep shipping small UX findability wins without inventing themes or settings:
+handbook in quick-nav, command palette, Daily Brief quiet-state, `G` then `U`,
+and Preferences Overview cards (handbook + replay tour). Appearance stays
+dark-only; Notifications/Security remain explicit “coming soon”. Ecommerce
+Overview empty sections get CTAs (Products / Insights / Orders / Shopify /
+ads / Fortnox) matching the ads/purchases pattern.
+
 ## 2026-08-06 — English user handbook page — **Active**
 
 `/handbook` lists every main page, tab and feature with a short English

@@ -44,7 +44,8 @@
     "ecommerce": "Shop",
     "insights": "Insights",
     "ai-recommendations": "AI",
-    "drive-library": "Drive"
+    "drive-library": "Drive",
+    "handbook": "Guide"
   },
   "quickNav": {
     "driveLibrary": "Content library",
@@ -100,7 +101,8 @@
     "ctxConnectionHealth": "Connection health",
     "ctxCreateEvent": "Create event",
     "ctxCompanyProfile": "Company profile",
-    "showWelcomeTour": "Show the welcome tour"
+    "showWelcomeTour": "Show the welcome tour",
+    "openHandbook": "Open user handbook"
   },
   "notFound": {
     "documentTitle": "Page not found · Automazing",

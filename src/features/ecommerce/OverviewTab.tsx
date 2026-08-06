@@ -35,7 +35,10 @@ import {
 import {
   buildOverviewSignals,
   buildProductRows,
+  fulfillmentBreakdown,
   matchesQuery,
+  paymentBreakdown,
+  shareOfTotal,
   type OverviewSectionId,
   type OverviewSignal,
 } from "@/features/ecommerce/overviewInsights";
@@ -209,6 +212,166 @@ export function OverviewTab({
     };
   }, [orderRows, stats]);
 
+  const fulfillmentMix = useMemo(
+    () => fulfillmentBreakdown(shopifyData?.orders ?? []),
+    [shopifyData?.orders]
+  );
+  const paymentMix = useMemo(
+    () => paymentBreakdown(shopifyData?.orders ?? []),
+    [shopifyData?.orders]
+  );
+  const ordersForMix = shopifyData?.orders?.length ?? 0;
+
+  const marginPct = useMemo(() => {
+    if (!snapshot || !(snapshot.revenue > 0)) return null;
+    return Math.round(((snapshot.revenue - snapshot.costs) / snapshot.revenue) * 100);
+  }, [snapshot]);
+
+  const pulseStats = useMemo(() => {
+    const tiles: Array<{
+      id: string;
+      section: OverviewSectionId;
+      label: string;
+      value: string;
+      hint?: string;
+      show: boolean;
+    }> = [
+      {
+        id: "aov",
+        section: "sales",
+        label: t("overview.pulse.aov"),
+        value: formatCurrency(stats?.avgOrderValue ?? 0, storeCurrency),
+        hint: t("overview.pulse.aovHint"),
+        show: Boolean(shopifyData),
+      },
+      {
+        id: "fulfillment",
+        section: "sales",
+        label: t("overview.pulse.fulfillment"),
+        value:
+          stats?.fulfillmentRate30d != null ? `${stats.fulfillmentRate30d}%` : "—",
+        hint: t("overview.pulse.fulfillmentHint"),
+        show: Boolean(shopifyData),
+      },
+      {
+        id: "abandoned",
+        section: "sales",
+        label: t("overview.pulse.abandoned"),
+        value: formatNumber(stats?.abandonedCheckouts30d ?? 0),
+        hint: formatCurrency(stats?.abandonedValue30d ?? 0, storeCurrency),
+        show: Boolean(shopifyData),
+      },
+      {
+        id: "conversion",
+        section: "sales",
+        label: t("overview.pulse.conversion"),
+        value:
+          stats?.conversionEstimate30d != null
+            ? `${stats.conversionEstimate30d}%`
+            : "—",
+        hint: t("overview.pulse.conversionHint"),
+        show: Boolean(shopifyData),
+      },
+      {
+        id: "promotions",
+        section: "sales",
+        label: t("overview.pulse.promotions"),
+        value: formatNumber(stats?.activePromotions ?? 0),
+        hint: t("overview.pulse.promotionsHint"),
+        show: Boolean(shopifyData),
+      },
+      {
+        id: "ad-conv",
+        section: "ads",
+        label: t("overview.pulse.adConversions"),
+        value: formatNumber(adTotals.conversions),
+        hint:
+          performance?.costPerOrder != null
+            ? t("overview.pulse.cpo", {
+                value: formatCurrency(
+                  performance.costPerOrder,
+                  performance.adSpendCurrency || storeCurrency
+                ),
+              })
+            : t("overview.pulse.adConversionsHint"),
+        show: adsConnected.meta_business || adsConnected.google_ads,
+      },
+      {
+        id: "ad-revenue",
+        section: "ads",
+        label: t("overview.pulse.adAttributedRevenue"),
+        value:
+          performance?.revenue != null
+            ? formatCurrency(
+                performance.revenue,
+                performance.revenueCurrency || storeCurrency
+              )
+            : "—",
+        hint:
+          performance?.orders != null
+            ? t("overview.pulse.adAttributedOrders", { count: performance.orders })
+            : undefined,
+        show: adsConnected.meta_business || adsConnected.google_ads,
+      },
+      {
+        id: "margin",
+        section: "purchases",
+        label: t("overview.pulse.margin"),
+        value: marginPct != null ? `${marginPct}%` : "—",
+        hint: snapshot
+          ? formatCurrency(snapshot.resultEstimate, purchaseCurrency)
+          : t("overview.kpi.purchasesConnect"),
+        show: Boolean(snapshot || suppliers),
+      },
+      {
+        id: "unpaid",
+        section: "purchases",
+        label: t("overview.pulse.unpaid"),
+        value: formatNumber(suppliers?.unpaidCount ?? 0),
+        hint: suppliers
+          ? formatCurrency(suppliers.unpaidSum, purchaseCurrency)
+          : undefined,
+        show: Boolean(suppliers),
+      },
+      {
+        id: "product-revenue",
+        section: "products",
+        label: t("overview.pulse.matchedProductRevenue"),
+        value: formatCurrency(productTotals.revenue, storeCurrency),
+        hint: t("overview.pulse.matchedProductSold", {
+          count: formatNumber(productTotals.sold),
+        }),
+        show: productTotals.count > 0,
+      },
+      {
+        id: "top-customer-spend",
+        section: "customers",
+        label: t("overview.pulse.topCustomerSpend"),
+        value: formatCurrency(customerTotals.spent, storeCurrency),
+        hint: t("overview.pulse.topCustomerOrders", {
+          count: formatNumber(customerTotals.orders),
+        }),
+        show: customerTotals.listed > 0,
+      },
+    ];
+    return tiles.filter((tile) => tile.show);
+  }, [
+    t,
+    stats,
+    storeCurrency,
+    shopifyData,
+    adTotals.conversions,
+    performance,
+    adsConnected.meta_business,
+    adsConnected.google_ads,
+    marginPct,
+    snapshot,
+    suppliers,
+    purchaseCurrency,
+    productTotals,
+    customerTotals,
+  ]);
+
   const supplierRows = useMemo(
     () =>
       (suppliers?.invoices ?? []).filter((inv) =>
@@ -230,12 +393,44 @@ export function OverviewTab({
     [shopifyData, campaigns, performance?.roas, suppliers, snapshot, actionNeeded]
   );
 
-  const sections: Array<{ id: OverviewSectionId; label: string; count: number }> = [
-    { id: "products", label: t("overview.nav.products"), count: productTotals.count },
-    { id: "customers", label: t("overview.nav.customers"), count: customerTotals.totalCustomers },
-    { id: "ads", label: t("overview.nav.ads"), count: adTotals.count },
-    { id: "sales", label: t("overview.nav.sales"), count: orderTotals.windowOrders },
-    { id: "purchases", label: t("overview.nav.purchases"), count: suppliers?.unpaidCount ?? 0 },
+  const sections: Array<{ id: OverviewSectionId; label: string; count: number; metric?: string }> = [
+    {
+      id: "products",
+      label: t("overview.nav.products"),
+      count: productTotals.count,
+      metric: productTotals.revenue > 0 ? formatCurrency(productTotals.revenue, storeCurrency) : undefined,
+    },
+    {
+      id: "customers",
+      label: t("overview.nav.customers"),
+      count: customerTotals.totalCustomers,
+      metric: customerTotals.spent > 0 ? formatCurrency(customerTotals.spent, storeCurrency) : undefined,
+    },
+    {
+      id: "ads",
+      label: t("overview.nav.ads"),
+      count: adTotals.count,
+      metric:
+        adTotals.spend != null
+          ? formatCurrency(adTotals.spend, performance?.adSpendCurrency || storeCurrency)
+          : undefined,
+    },
+    {
+      id: "sales",
+      label: t("overview.nav.sales"),
+      count: orderTotals.windowOrders,
+      metric: formatCurrency(orderTotals.revenue30d, storeCurrency),
+    },
+    {
+      id: "purchases",
+      label: t("overview.nav.purchases"),
+      count: suppliers?.unpaidCount ?? 0,
+      metric: snapshot
+        ? formatCurrency(snapshot.costs, purchaseCurrency)
+        : suppliers
+          ? formatCurrency(suppliers.unpaidSum, purchaseCurrency)
+          : undefined,
+    },
   ];
 
   const kpiCards: Array<{
@@ -410,6 +605,9 @@ export function OverviewTab({
             >
               {section.label}
               <span className="tabular-nums text-foreground/80">{formatNumber(section.count)}</span>
+              {section.metric ? (
+                <span className="tabular-nums text-foreground/60">{section.metric}</span>
+              ) : null}
               <ChevronRight className="h-3 w-3 opacity-60" />
             </button>
           ))}
@@ -467,7 +665,7 @@ export function OverviewTab({
         </m.div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3">
         {kpiCards.map((card, i) => (
           <m.div key={card.id} {...fadeUp} transition={{ duration: 0.35, delay: i * 0.04 }}>
             <button
@@ -494,12 +692,172 @@ export function OverviewTab({
         ))}
       </div>
 
+      {pulseStats.length > 0 ? (
+        <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.08 }} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">{t("overview.pulse.heading")}</p>
+            <p className="text-[11px] text-muted-foreground/70">{t("overview.pulse.subheading")}</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+            {pulseStats.map((tile) => (
+              <button
+                key={tile.id}
+                type="button"
+                onClick={() => openSection(tile.section)}
+                className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-muted/20"
+              >
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{tile.label}</p>
+                <p className="text-base font-semibold tabular-nums tracking-tight">{tile.value}</p>
+                {tile.hint ? (
+                  <p className="text-[11px] text-muted-foreground/80 mt-0.5 line-clamp-1">{tile.hint}</p>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </m.div>
+      ) : null}
+
       {shopifyData ? (
         <RevenueTrendCard
           revenueTrend={shopifyData.revenueTrend}
           revenue30d={shopifyData.stats.revenue30d}
           currency={storeCurrency}
         />
+      ) : null}
+
+      {ordersForMix > 0 || adsConnected.meta_business || adsConnected.google_ads || snapshot ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {ordersForMix > 0 ? (
+            <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
+              <Card className="bg-card border-border h-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t("overview.mix.title")}</CardTitle>
+                  <CardDescription>
+                    {t("overview.mix.description", { count: ordersForMix })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {t("overview.detail.byFulfillment")}
+                    </p>
+                    <OverviewBreakdownBars data={fulfillmentMix} total={ordersForMix} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {t("overview.detail.byPayment")}
+                    </p>
+                    <OverviewBreakdownBars data={paymentMix} total={ordersForMix} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => openSection("sales")}>
+                      {t("overview.openDetails")}
+                      <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </m.div>
+          ) : null}
+
+          {adsConnected.meta_business || adsConnected.google_ads || snapshot ? (
+            <m.div {...fadeUp} transition={{ duration: 0.35, delay: 0.12 }}>
+              <Card className="bg-card border-border h-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t("overview.performance.title")}</CardTitle>
+                  <CardDescription>{t("overview.performance.description")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {adsConnected.meta_business || adsConnected.google_ads ? (
+                      <>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.kpi.adSpend")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {adTotals.spend != null
+                              ? formatCurrency(
+                                  adTotals.spend,
+                                  performance?.adSpendCurrency || storeCurrency
+                                )
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.performance.roas")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {adTotals.roas != null ? `${adTotals.roas.toFixed(2)}×` : "—"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.pulse.adConversions")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {formatNumber(adTotals.conversions)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.performance.campaigns")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {formatNumber(adTotals.count)}
+                          </p>
+                        </div>
+                      </>
+                    ) : null}
+                    {snapshot ? (
+                      <>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.purchases.costs")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {formatCurrency(snapshot.costs, purchaseCurrency)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-border/50 bg-muted/15 px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {t("overview.detail.margin")}
+                          </p>
+                          <p className="text-base font-semibold tabular-nums">
+                            {marginPct != null ? `${marginPct}%` : "—"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            {formatCurrency(snapshot.resultEstimate, purchaseCurrency)}
+                          </p>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {adsConnected.meta_business || adsConnected.google_ads ? (
+                      <Button type="button" size="sm" variant="outline" onClick={() => openSection("ads")}>
+                        {t("overview.nav.ads")}
+                        <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    ) : null}
+                    {snapshot ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openSection("purchases")}
+                      >
+                        {t("overview.nav.purchases")}
+                        <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            </m.div>
+          ) : null}
+        </div>
       ) : null}
 
       {/* Compact section previews — click through for deep stats */}
@@ -515,6 +873,11 @@ export function OverviewTab({
         onOpen={() => openSection("products")}
         empty={productRows.length === 0}
         emptyText={t("overview.products.empty")}
+        emptyAction={
+          <Button size="sm" onClick={() => onOpenTab("products")}>
+            {t("overview.openProducts")}
+          </Button>
+        }
       >
         <Table>
           <TableHeader>
@@ -555,6 +918,17 @@ export function OverviewTab({
         onOpen={() => openSection("customers")}
         empty={customerRows.length === 0}
         emptyText={t("overview.customers.empty")}
+        emptyAction={
+          shopifyData ? (
+            <Button size="sm" onClick={() => onOpenTab("insights")}>
+              {t("overview.detail.openInsights")}
+            </Button>
+          ) : (
+            <Button size="sm" asChild>
+              <Link to="/connections?session=shopify">{t("overview.customers.connect")}</Link>
+            </Button>
+          )
+        }
       >
         <Table>
           <TableHeader>
@@ -645,6 +1019,17 @@ export function OverviewTab({
         onOpen={() => openSection("sales")}
         empty={orderRows.length === 0}
         emptyText={t("overview.sales.empty")}
+        emptyAction={
+          shopifyData ? (
+            <Button size="sm" onClick={() => onOpenTab("orders")}>
+              {t("overview.openOrders")}
+            </Button>
+          ) : (
+            <Button size="sm" asChild>
+              <Link to="/connections?session=shopify">{t("overview.sales.connect")}</Link>
+            </Button>
+          )
+        }
       >
         <Table>
           <TableHeader>
@@ -754,6 +1139,39 @@ export function OverviewTab({
         onFilterPendingPayments={onFilterPendingPayments}
         onExportOrders={onExportOrders}
       />
+    </div>
+  );
+}
+
+function OverviewBreakdownBars({
+  data,
+  total,
+}: {
+  data: Record<string, number>;
+  total: number;
+}) {
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    return <p className="text-xs text-muted-foreground">—</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {entries.map(([key, count]) => {
+        const pct = shareOfTotal(count, total);
+        return (
+          <div key={key} className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="capitalize text-muted-foreground">{key.replace(/_/g, " ")}</span>
+              <span className="tabular-nums text-foreground">
+                {count} · {pct}%
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-foreground/70" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

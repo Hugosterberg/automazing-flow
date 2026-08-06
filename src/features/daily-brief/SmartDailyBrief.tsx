@@ -301,6 +301,10 @@ export function SmartDailyBrief({
               <Link to="/activity" className="text-primary underline-offset-2 hover:underline">
                 {tNav("nav.activity")}
               </Link>
+              {" · "}
+              <Link to="/handbook" className="text-primary underline-offset-2 hover:underline">
+                {tNav("nav.handbook")}
+              </Link>
             </li>
           </ul>
         </m.div>

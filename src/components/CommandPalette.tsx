@@ -5,6 +5,7 @@ import {
   Bot,
   Briefcase,
   Building2,
+  BookOpen,
   CalendarDays,
   Clock,
   Keyboard,
@@ -334,6 +335,13 @@ export function CommandPalette({ onOpenShortcuts }: CommandPaletteProps) {
               <Keyboard className="mr-2 h-4 w-4 text-muted-foreground" />
               {t("commandPalette.showShortcuts")}
               <CommandShortcut>?</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              value={t("commandPalette.openHandbook")}
+              onSelect={() => goTo("/handbook")}
+            >
+              <BookOpen className="mr-2 h-4 w-4 text-muted-foreground" />
+              {t("commandPalette.openHandbook")}
             </CommandItem>
             <CommandItem
               value={t("commandPalette.showWelcomeTour")}

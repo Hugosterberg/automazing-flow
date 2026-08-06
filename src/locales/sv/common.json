@@ -44,7 +44,8 @@
     "ecommerce": "E-handel",
     "insights": "Insikter",
     "ai-recommendations": "AI",
-    "drive-library": "Drive"
+    "drive-library": "Drive",
+    "handbook": "Handbok"
   },
   "quickNav": {
     "driveLibrary": "Innehållsbibliotek",
@@ -100,7 +101,8 @@
     "ctxConnectionHealth": "Kopplingshälsa",
     "ctxCreateEvent": "Skapa händelse",
     "ctxCompanyProfile": "Företagsprofil",
-    "showWelcomeTour": "Visa välkomstrundturen"
+    "showWelcomeTour": "Visa välkomstrundturen",
+    "openHandbook": "Öppna användarhandboken"
   },
   "notFound": {
     "documentTitle": "Sidan finns inte · Automazing",

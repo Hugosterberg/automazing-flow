@@ -206,6 +206,41 @@
       "purchasesUnpaid_other": "{{count}} obetalda leverantörsfakturor",
       "purchasesConnect": "Koppla Fortnox för inköpskostnader"
     },
+    "pulse": {
+      "heading": "Fler nyckeltal",
+      "subheading": "Klicka för detaljer",
+      "aov": "Snittordervärde",
+      "aovHint": "Senaste 30 dagarna",
+      "fulfillment": "Uppfyllnadsgrad",
+      "fulfillmentHint": "Andel ordrar som är uppfyllda (30d)",
+      "abandoned": "Övergivna korgar",
+      "conversion": "Konverteringsestimat",
+      "conversionHint": "Checkout → order (30d)",
+      "promotions": "Aktiva kampanjer",
+      "promotionsHint": "Shopify-rabatter som gäller nu",
+      "adConversions": "Annonskonverteringar",
+      "adConversionsHint": "Över kopplade annonskonton",
+      "cpo": "Kostnad per order {{value}}",
+      "adAttributedRevenue": "Annonsattribuerad omsättning",
+      "adAttributedOrders_one": "{{count}} attribuerad order",
+      "adAttributedOrders_other": "{{count}} attribuerade ordrar",
+      "margin": "Marginalestimat",
+      "unpaid": "Obetalda leverantörsfakturor",
+      "matchedProductRevenue": "Matchad produktomsättning",
+      "matchedProductSold": "{{count}} sålda enheter",
+      "topCustomerSpend": "Toppkunder har spenderat",
+      "topCustomerOrders": "{{count}} ordrar i listan"
+    },
+    "mix": {
+      "title": "Orderfördelning",
+      "description": "Uppfyllnad och betalning över {{count}} listade ordrar."
+    },
+    "performance": {
+      "title": "Annonser & inköp",
+      "description": "Spend, ROAS och Fortnox-marginal när källorna är kopplade.",
+      "campaigns": "Kampanjer",
+      "roas": "ROAS"
+    },
     "products": {
       "title": "Alla produkter",
       "summary": "{{count}} produkter · {{sold}} sålda · {{revenue}} omsättning (matchad försäljning)",
@@ -220,6 +255,7 @@
       "title": "Kunder",
       "summary": "{{count}} kunder · topp {{listed}} · {{orders}} ordrar · {{spent}} spenderat",
       "empty": "Ingen kunddata ännu — koppla Shopify för att ladda toppkunder.",
+      "connect": "Koppla Shopify",
       "colName": "Kund",
       "colEmail": "E-post",
       "colOrders": "Ordrar",
@@ -244,6 +280,7 @@
       "title": "Försäljning & ordrar",
       "summary": "{{count}} listade · {{sum}} totalt · {{items}} rader · {{revenue30d}} omsättning (30d)",
       "empty": "Inga ordrar i det aktuella fönstret.",
+      "connect": "Koppla Shopify",
       "colOrder": "Order",
       "colCustomer": "Kund",
       "colStatus": "Status",

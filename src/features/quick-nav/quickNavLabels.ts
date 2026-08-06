@@ -13,6 +13,7 @@ function navKeyForQuickNav(key: string): string {
 
 export function quickNavLabel(key: string, t: TFunc): string {
   if (key === "drive-library") return t("quickNav.driveLibrary");
+  if (key === "handbook") return t("nav.handbook");
   return t(`nav.${navKeyForQuickNav(key)}`);
 }
 

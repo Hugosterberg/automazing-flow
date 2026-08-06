@@ -20,11 +20,18 @@
     "help": "Help"
   },
   "features": {
+    "handbook": "User handbook",
+    "handbookDesc": "What each page does, what you can do there, and what still needs setup.",
+    "handbookCta": "Open handbook",
+    "welcomeTour": "Welcome tour",
+    "welcomeTourDesc": "Replay the short walkthrough of Home and the daily brief.",
+    "welcomeTourCta": "Replay tour",
     "notifications": "Notifications",
     "notificationsDesc": "Manage reminders and alerts",
     "appearance": "Appearance",
-    "appearanceDesc": "Theme and visual settings",
+    "appearanceDesc": "Automazing uses a dark workspace by design — light theme is not available yet.",
     "security": "Security",
-    "securityDesc": "Password and two-factor authentication"
+    "securityDesc": "Password and two-factor authentication",
+    "comingSoon": "Coming soon"
   }
 }

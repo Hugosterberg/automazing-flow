@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import {
   Activity as ActivityIcon,
   Building2,
+  BookOpen,
   CalendarDays,
   Film,
   FolderOpen,
@@ -202,6 +203,15 @@ export const QUICK_NAV_CATALOG: QuickNavDestination[] = [
     description: "Drive-assets och skapa-flöde",
     icon: FolderOpen,
     match: (path) => path.startsWith("/content"),
+  },
+  {
+    key: "handbook",
+    to: "/handbook",
+    label: "Användarhandbok",
+    shortLabel: "Handbok",
+    description: "Vad du kan göra i varje del av appen",
+    icon: BookOpen,
+    match: (path) => path.startsWith("/handbook"),
   },
 ];
 

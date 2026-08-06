@@ -520,6 +520,7 @@ export default function TasksPage() {
             title={t("smartEmpty")}
             steps={[t("step1"), t("step2"), t("step3")]}
             tip={t("tip")}
+            extraActions={[{ label: t("handbookCta"), to: "/handbook" }]}
           />
         ) : overdueCount > 0 || dueTodayCount > 0 ? (
           <PageSmartBar

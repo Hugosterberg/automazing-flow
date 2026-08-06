@@ -206,6 +206,41 @@
       "purchasesUnpaid_other": "{{count}} unpaid supplier invoices",
       "purchasesConnect": "Connect Fortnox for purchase costs"
     },
+    "pulse": {
+      "heading": "More numbers",
+      "subheading": "Click a tile to open details",
+      "aov": "Average order value",
+      "aovHint": "Last 30 days",
+      "fulfillment": "Fulfillment rate",
+      "fulfillmentHint": "Share of orders fulfilled (30d)",
+      "abandoned": "Abandoned carts",
+      "conversion": "Conversion estimate",
+      "conversionHint": "Checkout → order (30d)",
+      "promotions": "Active promotions",
+      "promotionsHint": "Shopify discounts live now",
+      "adConversions": "Ad conversions",
+      "adConversionsHint": "Across connected ad accounts",
+      "cpo": "Cost per order {{value}}",
+      "adAttributedRevenue": "Ad-attributed revenue",
+      "adAttributedOrders_one": "{{count}} attributed order",
+      "adAttributedOrders_other": "{{count}} attributed orders",
+      "margin": "Margin estimate",
+      "unpaid": "Unpaid supplier invoices",
+      "matchedProductRevenue": "Matched product revenue",
+      "matchedProductSold": "{{count}} units sold",
+      "topCustomerSpend": "Top customers spent",
+      "topCustomerOrders": "{{count}} orders in list"
+    },
+    "mix": {
+      "title": "Order mix",
+      "description": "Fulfillment and payment split across {{count}} listed orders."
+    },
+    "performance": {
+      "title": "Ads & purchases pulse",
+      "description": "Spend, ROAS and Fortnox margin when those sources are connected.",
+      "campaigns": "Campaigns",
+      "roas": "ROAS"
+    },
     "products": {
       "title": "All products",
       "summary": "{{count}} products · {{sold}} sold · {{revenue}} revenue (matched sales)",
@@ -220,6 +255,7 @@
       "title": "Customers",
       "summary": "{{count}} customers · top {{listed}} · {{orders}} orders · {{spent}} spent",
       "empty": "No customer data yet — connect Shopify to load top customers.",
+      "connect": "Connect Shopify",
       "colName": "Customer",
       "colEmail": "Email",
       "colOrders": "Orders",
@@ -244,6 +280,7 @@
       "title": "Sales & orders",
       "summary": "{{count}} listed · {{sum}} total · {{items}} line items · {{revenue30d}} revenue (30d)",
       "empty": "No orders in the current window.",
+      "connect": "Connect Shopify",
       "colOrder": "Order",
       "colCustomer": "Customer",
       "colStatus": "Status",
