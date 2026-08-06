@@ -761,7 +761,7 @@ export const handbookPages: HandbookPage[] = [
             id: "provider-sync",
             name: "Google / Outlook sync",
             description:
-              "Pull connected calendar events so planning happens in one place when Google Calendar or Outlook Calendar is connected.",
+              "Pull connected calendar events when Google Calendar or Outlook Calendar is connected via Official API (recommended). The Zernio calendar path often returns empty events on current plans — prefer Google/Microsoft official in Connections.",
             status: "ready",
           },
           {
@@ -820,7 +820,7 @@ export const handbookPages: HandbookPage[] = [
             id: "social-inbox",
             name: "Social messaging inbox",
             description:
-              "DM-style threads from connected Instagram, Facebook Messenger and WhatsApp accounts (typically via Zernio).",
+              "DM-style threads from connected Instagram, Facebook Messenger and WhatsApp accounts via Zernio. Requires the Zernio Inbox add-on — without it you get INBOX_REQUIRED and Messages/auto-reply stay empty even if the channel shows as connected.",
             status: "ready",
           },
         ],
@@ -870,7 +870,7 @@ export const handbookPages: HandbookPage[] = [
             id: "reviews-inbox",
             name: "Reviews inbox",
             description:
-              "Aggregate reviews, filter them, draft AI replies and send when the provider allows.",
+              "Aggregate reviews, filter them, draft AI replies and send when the provider allows. Connect Google Reviews via Official Google Business OAuth (not Zernio — reviews endpoints often 404). Tripadvisor needs Content API key + location id. Judge.me replies are copy-paste only (API cannot publish).",
             status: "ready",
           },
         ],

@@ -103,6 +103,20 @@ describe("connection catalog wiring", () => {
     }
   });
 
+  it("defaults calendar and review platforms to Official API (Zernio paths are limited)", () => {
+    for (const platform of [
+      "google_calendar",
+      "outlook_calendar",
+      "google_reviews",
+      "tripadvisor",
+    ] as const) {
+      const config = getConnectConfig(platform);
+      expect(config?.provider, platform).toBe("official");
+      const defaultPath = getConnectionPathOptions(platform).find((o) => o.isDefault);
+      expect(defaultPath?.id, platform).toBe("official");
+    }
+  });
+
   it("splits every MCP provider into exactly one auth bucket", () => {
     const bucketed = [...MCP_OAUTH_PLATFORMS, ...MCP_KEYED_PLATFORMS];
     expect(new Set(bucketed).size).toBe(bucketed.length);

@@ -116,8 +116,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/social-media",
     pageName: "Social Media",
     connectSteps:
-      "Öppna Kopplingar → Instagram → Koppla.",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY. Optional: INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET.",
+      "Öppna Kopplingar → Instagram → Koppla via Zernio. För DM i Meddelanden: aktivera Zernio Inbox-addonet.",
+    serverNeeds:
+      "ZERNIO_API_KEY or LATE_API_KEY + Zernio Inbox add-on for DMs. Optional: INSTAGRAM_CLIENT_ID + INSTAGRAM_CLIENT_SECRET.",
   },
   {
     platform: "facebook",
@@ -125,8 +126,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Öppna Kopplingar → Facebook → Koppla.",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps:
+      "Öppna Kopplingar → Facebook → Koppla via Zernio. För Messenger i Meddelanden: aktivera Zernio Inbox-addonet.",
+    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY + Zernio Inbox add-on for Messenger.",
   },
   {
     platform: "google_business",
@@ -144,8 +146,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["social", "messages"],
     pageHref: "/social-media",
     pageName: "Social Media",
-    connectSteps: "Öppna Kopplingar → WhatsApp Business → Koppla.",
-    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps:
+      "Öppna Kopplingar → WhatsApp Business → Koppla via Zernio. För konversationer i Meddelanden: aktivera Zernio Inbox-addonet.",
+    serverNeeds: "ZERNIO_API_KEY or LATE_API_KEY + Zernio Inbox add-on for chats.",
   },
   {
     platform: "tiktok",
@@ -247,8 +250,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
-    connectSteps: "Öppna Kopplingar → Google Calendar → Koppla.",
-    serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; Zernio path also needs ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps:
+      "Öppna Kopplingar → Google Calendar → Koppla via Google official (standard). Zernio finns som alternativ men synkar ofta inga händelser.",
+    serverNeeds: "GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; optional Zernio path needs ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
     platform: "outlook_calendar",
@@ -256,8 +260,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["calendar"],
     pageHref: "/calendar",
     pageName: "Calendar",
-    connectSteps: "Öppna Kopplingar → Outlook Calendar → Koppla.",
-    serverNeeds: "MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET; Zernio path also needs ZERNIO_API_KEY or LATE_API_KEY.",
+    connectSteps:
+      "Öppna Kopplingar → Outlook Calendar → Koppla via Microsoft official (standard). Zernio finns som alternativ men synkar ofta inga händelser.",
+    serverNeeds: "MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET; optional Zernio path needs ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
     platform: "google_reviews",
@@ -265,9 +270,10 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     areas: ["reviews"],
     pageHref: "/reviews",
     pageName: "Reviews",
-    connectSteps: "Öppna Kopplingar → Google Reviews → Koppla.",
+    connectSteps:
+      "Öppna Kopplingar → Google Reviews → Koppla via Google official (standard). Zernio reviews-endpoints 404:ar ofta — Official Business Profile OAuth är den fungerande vägen.",
     serverNeeds:
-      "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + Business Profile APIs in Google Cloud. Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
+      "Official: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + Business Profile APIs in Google Cloud. Optional Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
     platform: "tripadvisor",
@@ -276,9 +282,9 @@ export const CONNECTION_CATALOG: ConnectionCatalogEntry[] = [
     pageHref: "/reviews",
     pageName: "Reviews",
     connectSteps:
-      "Öppna Kopplingar → Tripadvisor → Koppla.",
+      "Öppna Kopplingar → Tripadvisor → Koppla via Tripadvisor official (Content API-nyckel + location-id). Zernio är reserv.",
     serverNeeds:
-      "Official Content API: TRIPADVISOR_API_KEY + TRIPADVISOR_LOCATION_ID (or per-account values). Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
+      "Official Content API: TRIPADVISOR_API_KEY + TRIPADVISOR_LOCATION_ID (or per-account values). Optional Zernio: ZERNIO_API_KEY or LATE_API_KEY.",
   },
   {
     platform: "judgeme",

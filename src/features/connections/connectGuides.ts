@@ -61,10 +61,13 @@ function zernioGuide(options: {
   what: string;
   result: string;
   extraFirstStep?: ConnectGuideStep;
+  prerequisites?: string[];
   troubleshooting?: ConnectGuide["troubleshooting"];
 }): ConnectGuide {
   return {
-    prerequisites: [`Du är inloggad hos ${options.label} med ett konto som har admin-behörighet.`],
+    prerequisites: options.prerequisites ?? [
+      `Du är inloggad hos ${options.label} med ett konto som har admin-behörighet.`,
+    ],
     steps: [
       ...(options.extraFirstStep ? [options.extraFirstStep] : []),
       { title: "Klicka Koppla här i listan", detail: options.what },
@@ -84,6 +87,14 @@ function zernioGuide(options: {
     ],
   };
 }
+
+const ZERNIO_INBOX_PREREQ =
+  "Zernio Inbox-addonet är aktiverat i Zernio-dashboarden (krävs för DM-läsning och svar).";
+
+const ZERNIO_INBOX_TROUBLESHOOTING = {
+  problem: "”The Zernio Inbox add-on is required…” / INBOX_REQUIRED",
+  fix: "Aktivera Inbox-addonet under ditt Zernio-konto (zernio.com). Utan det syns kanalen under Socialt men Meddelanden och auto-svar fungerar inte.",
+};
 
 /** Filled in as the guides below are constructed — see `guideCallbackPaths`. */
 const callbackPathsInGuides = new Set<string>();
@@ -139,6 +150,10 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
     label: "Instagram",
     what: "Instagram kopplas via Zernio, som sköter Metas inloggning åt dig.",
     result: "Inlägg och statistik dyker upp under Socialt, och DM:en hamnar i Meddelanden.",
+    prerequisites: [
+      "Du är inloggad hos Instagram med ett konto som har admin-behörighet.",
+      ZERNIO_INBOX_PREREQ,
+    ],
     extraFirstStep: {
       title: "Kontrollera att kontot är ett företags- eller skaparkonto",
       detail:
@@ -148,20 +163,37 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
         href: "https://help.instagram.com/502981923235522",
       },
     },
+    troubleshooting: [
+      ZERNIO_INBOX_TROUBLESHOOTING,
+      {
+        problem: "Inloggningsfönstret stängs utan att något kopplas",
+        fix: "Kontot saknar admin-behörighet för sidan. Be ägaren ge dig admin, eller koppla med ägarens konto.",
+      },
+    ],
   }),
   facebook: zernioGuide({
     label: "Facebook",
     what: "Facebook-sidan kopplas via Zernio.",
     result: "Sidans inlägg syns under Socialt och meddelanden i Meddelanden.",
+    prerequisites: [
+      "Du är inloggad hos Facebook med ett konto som har admin-behörighet.",
+      ZERNIO_INBOX_PREREQ,
+    ],
     extraFirstStep: {
       title: "Ta reda på vilken sida du vill koppla",
       detail: "Det är sidan som ska kopplas, inte din personliga profil.",
     },
+    troubleshooting: [ZERNIO_INBOX_TROUBLESHOOTING],
   }),
   whatsapp: zernioGuide({
     label: "WhatsApp Business",
     what: "WhatsApp Business kopplas via Zernio.",
     result: "Konversationer hamnar i Meddelanden. Utskick kräver godkända mallar hos Meta.",
+    prerequisites: [
+      "Du är inloggad hos WhatsApp Business med ett konto som har admin-behörighet.",
+      ZERNIO_INBOX_PREREQ,
+    ],
+    troubleshooting: [ZERNIO_INBOX_TROUBLESHOOTING],
   }),
   tiktok: zernioGuide({
     label: "TikTok",
@@ -229,6 +261,12 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
     callbackPath: "/api/auth/google-calendar/callback",
     scopeNote: "Automazing läser och skapar händelser i den kalender du väljer.",
     result: "Händelserna syns under Kalender.",
+    troubleshooting: [
+      {
+        problem: "Kopplingen lyckas men kalendern är tom",
+        fix: "Använd Google official (standard). Zernio-vägen kopplar kontot men returnerar ofta inga händelser på nuvarande planer.",
+      },
+    ],
   }),
   google_reviews: googleOAuthGuide({
     label: "företagsprofilens omdömen",
@@ -243,6 +281,10 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
       {
         problem: "Konto hittas men inga platser",
         fix: "Platsen är inte claimad eller delad med kontot. Kontrollera i Business Profile Manager.",
+      },
+      {
+        problem: "Kopplad via Zernio men inga omdömen",
+        fix: "Välj Google official istället. Zernios reviews-endpoints svarar 404 på många planer — Official Business Profile OAuth är den fungerande vägen.",
       },
     ],
   }),
@@ -379,8 +421,8 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
           "Öppna platsens sida på Tripadvisor och titta i adressfältet: siffrorna direkt efter -d är location-id (t.ex. …-d304554-…).",
       },
       {
-        title: "Klicka Koppla via Official API och fyll i uppgifterna",
-        detail: "Har du redan sparat nyckeln under Inställningar → API-nycklar räcker det med location-id.",
+        title: "Klicka Koppla (Tripadvisor official) och fyll i uppgifterna",
+        detail: "Har du redan sparat nyckeln under Inställningar → API-nycklar räcker det med location-id. Zernio är ett reservalternativ.",
       },
     ],
     result: "Omdömen, platsinformation och foton syns under Recensioner.",
@@ -388,6 +430,10 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
       {
         problem: "Tripadvisor nekar nyckeln",
         fix: "Content API-nycklar är ofta låsta till vissa domäner eller IP-adresser. Kontrollera begränsningarna i utvecklarportalen.",
+      },
+      {
+        problem: "Kopplad via Zernio men saknar omdömen",
+        fix: "Byt till Tripadvisor official med Content API-nyckel + location-id — det är standardvägen.",
       },
     ],
   },
@@ -446,11 +492,20 @@ const GUIDES: Partial<Record<AccountPlatform, ConnectGuide>> = {
   outlook_calendar: {
     prerequisites: ["Ett Microsoft-konto med kalender."],
     steps: [
-      { title: "Klicka Koppla här i listan" },
+      {
+        title: "Klicka Koppla (Microsoft official)",
+        detail: "Standardvägen. Zernio finns som alternativ men returnerar ofta tom kalender.",
+      },
       { title: "Logga in med Microsoft och godkänn kalenderåtkomst" },
       BACK_IN_APP,
     ],
     result: "Händelserna syns under Kalender.",
+    troubleshooting: [
+      {
+        problem: "Kopplingen lyckas men kalendern är tom",
+        fix: "Använd Microsoft official. Zernio-vägen kopplar kontot men synkar ofta inga händelser.",
+      },
+    ],
   },
   canva: {
     prerequisites: ["Ett Canva-konto. Varumärkesmallar kräver Canva Pro."],

@@ -133,6 +133,8 @@ export function ConnectSession({
   }, [platform, healthyPlatforms, profileKind]);
 
   const valueSurface = platform ? valueSurfaceForPlatform(platform) : null;
+  const needsZernioInbox =
+    platform === "instagram" || platform === "facebook" || platform === "whatsapp";
 
   const persist = useCallback(
     (next: ConnectSessionStep, extra?: Partial<PendingConnectSession>) => {
@@ -511,6 +513,11 @@ export function ConnectSession({
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {t("session.connectHint", { label })}
                 </p>
+                {needsZernioInbox ? (
+                  <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-[11px] leading-snug text-amber-900 dark:text-amber-200">
+                    {t("session.inboxAddonNote")}
+                  </p>
+                ) : null}
                 {dualPath || pathOptions.length > 1 ? (
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-medium text-foreground/80">

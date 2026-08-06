@@ -53,13 +53,15 @@ const NATIVE_CONFIG: Record<NativePlatform, ConnectStartConfig> = {
   gmail: { authPath: "gmail" },
   outlook: { authPath: "outlook" },
 
-  // Calendar (Zernio preferred)
-  google_calendar: { authPath: "google_calendar", provider: "zernio" },
-  outlook_calendar: { authPath: "outlook_calendar", provider: "zernio" },
+  // Calendar — Official API is the working path. Zernio connects but returns
+  // empty events on current tenants (see zernioGenericHandler).
+  google_calendar: { authPath: "google_calendar", provider: "official" },
+  outlook_calendar: { authPath: "outlook_calendar", provider: "official" },
 
-  // Reviews
-  google_reviews: { authPath: "google_reviews" },
-  tripadvisor: { authPath: "tripadvisor" },
+  // Reviews — Official Google Business / Tripadvisor Content API. Zernio
+  // reviews endpoints 404 on current plans (see docs/KOPPLINGAR.md).
+  google_reviews: { authPath: "google_reviews", provider: "official" },
+  tripadvisor: { authPath: "tripadvisor", provider: "official" },
   judgeme: { authPath: "judgeme" },
 
   // Content
@@ -105,20 +107,20 @@ const NATIVE_PATH_OPTIONS: Record<NativePlatform, ConnectionPathOption[]> = {
   gmail: [{ id: "official", label: "Google official", isDefault: true }],
   outlook: [{ id: "official", label: "Microsoft official", isDefault: true }],
   google_calendar: [
-    { id: "zernio", label: "Zernio", isDefault: true },
-    { id: "official", label: "Google official" },
+    { id: "official", label: "Google official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
   ],
   outlook_calendar: [
-    { id: "zernio", label: "Zernio", isDefault: true },
-    { id: "official", label: "Microsoft official" },
+    { id: "official", label: "Microsoft official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
   ],
   google_reviews: [
-    { id: "zernio", label: "Zernio", isDefault: true },
-    { id: "official", label: "Google official" },
+    { id: "official", label: "Google official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
   ],
   tripadvisor: [
-    { id: "zernio", label: "Zernio", isDefault: true },
-    { id: "official", label: "Tripadvisor official" },
+    { id: "official", label: "Tripadvisor official", isDefault: true },
+    { id: "zernio", label: "Zernio" },
   ],
   judgeme: [{ id: "manual", label: "Shop-domän + API-token", isDefault: true }],
   fortnox: [{ id: "official", label: "Fortnox official", isDefault: true }],

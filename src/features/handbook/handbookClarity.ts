@@ -104,10 +104,11 @@ export const pageClarity: Record<string, PageClarity> = {
     purpose: "See meetings, tasks and scheduled posts on one calendar.",
     canDo: [
       "Create local events for the profile",
-      "Sync Google or Outlook calendars",
+      "Sync Google or Outlook calendars via Official API",
       "See tasks, leads and scheduled social posts as overlays",
       "Switch Day / Week / Month views",
     ],
+    tip: "Connect calendars with Google/Microsoft official — the Zernio path often returns no events.",
   },
   messages: {
     purpose: "Answer mail and social DMs in one inbox.",
@@ -118,15 +119,17 @@ export const pageClarity: Record<string, PageClarity> = {
       "Draft AI replies (review before send)",
       "Hand off auto-reply setup to Automations",
     ],
+    tip: "Social DMs need the Zernio Inbox add-on enabled in the Zernio dashboard.",
   },
   reviews: {
     purpose: "Protect reputation — read reviews and answer them well.",
     canDo: [
-      "Inbox reviews from Google, Tripadvisor, Judge.me and related sources",
+      "Inbox reviews from Google (Official Business Profile), Tripadvisor Content API, Judge.me",
       "Draft AI replies and keep them in Drafts until you approve",
       "Inspect place ratings and photos",
       "Request Judge.me reviews when that integration is connected",
     ],
+    tip: "Prefer Official Google Reviews and Tripadvisor Content API — Zernio reviews often 404. Judge.me replies are copy-paste only.",
   },
   tasks: {
     purpose: "Keep operational to-dos clear so nothing important slips.",
@@ -436,7 +439,7 @@ export const featureClarity: Record<string, FeatureClarity> = {
   },
   "provider-sync": {
     youCan: "Pull events from Google Calendar or Outlook Calendar.",
-    needs: "Matching calendar connected.",
+    needs: "Calendar connected via Official API (Google/Microsoft).",
   },
   overlays: {
     youCan: "See tasks, leads and scheduled social posts on the same calendar.",
@@ -454,7 +457,7 @@ export const featureClarity: Record<string, FeatureClarity> = {
   },
   "social-inbox": {
     youCan: "Read and reply to Instagram, Messenger and WhatsApp conversations.",
-    needs: "Those channels connected (often via Zernio).",
+    needs: "Those channels connected via Zernio with the Inbox add-on enabled.",
   },
   reply: {
     youCan: "Send replies through the connected provider from inside the app.",
@@ -467,6 +470,7 @@ export const featureClarity: Record<string, FeatureClarity> = {
   },
   "reviews-inbox": {
     youCan: "Read reviews from connected sources and reply when the provider allows.",
+    needs: "Google Reviews via Official OAuth, Tripadvisor Content API, and/or Judge.me.",
   },
   "review-drafts": {
     youCan: "Park AI/manual review replies in Drafts until you approve them.",

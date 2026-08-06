@@ -67,6 +67,7 @@
     "choosePath": "Choose how to connect",
     "pathDefault": "recommended",
     "connectHint": "You’ll sign in with {{label}} and grant access. We never post or send without your approval.",
+    "inboxAddonNote": "Social DMs need the Zernio Inbox add-on. Without it the channel can connect for posts/stats, but Messages and auto-reply stay blocked.",
     "progressAria": "Connection progress",
     "stepShort": {
       "why": "Why",

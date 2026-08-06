@@ -135,6 +135,7 @@ export function ConnectionCard({
 
   const connectConfig = getConnectConfig(entry.platform);
   const pathOptions = getConnectionPathOptions(entry.platform);
+  const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
   const hasGuide = hasConnectGuide(entry.platform);
   const status = useMemo(() => aggregateStatus(rows), [rows]);
   const displayStatus = manuallyConnected ? "connected" : status;
@@ -145,8 +146,12 @@ export function ConnectionCard({
     params?: Record<string, string | null | undefined>
   ) {
     if (!connectConfig) return;
+    const defaultProvider =
+      defaultPathOption?.id === "zernio" || defaultPathOption?.id === "official"
+        ? defaultPathOption.id
+        : undefined;
     window.location.href = buildConnectUrl(connectConfig.authPath, businessProfileId, {
-      provider: provider ?? connectConfig.provider,
+      provider: provider ?? defaultProvider ?? connectConfig.provider,
       params,
     });
   }
@@ -268,7 +273,6 @@ export function ConnectionCard({
         ? t("card.reconnect")
         : t("card.add");
   const PrimaryIcon = active.length === 0 ? Link2 : RefreshCw;
-  const defaultPathOption = pathOptions.find((option) => option.isDefault) ?? pathOptions[0];
   const extraPathLabels = pathOptions
     .filter((option) => option.label !== defaultPathOption?.label)
     .map((option) => option.label);
@@ -277,6 +281,9 @@ export function ConnectionCard({
   const dualPath =
     entry.platform === "google_ads" ||
     entry.platform === "google_business" ||
+    entry.platform === "google_calendar" ||
+    entry.platform === "outlook_calendar" ||
+    entry.platform === "google_reviews" ||
     entry.platform === "tripadvisor";
   const hasDirectConnect = Boolean(
     connectConfig && (!connectConfig.manual || isMcpPlatform(entry.platform))
@@ -561,6 +568,9 @@ export function ConnectionCard({
               </Button>
             ) : entry.platform === "google_ads" ||
               entry.platform === "google_business" ||
+              entry.platform === "google_calendar" ||
+              entry.platform === "outlook_calendar" ||
+              entry.platform === "google_reviews" ||
               entry.platform === "tripadvisor" ? (
               <>
                 <Button

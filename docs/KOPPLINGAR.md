@@ -27,7 +27,9 @@ Du måste först koppla kanalerna i **Zernio-dashboarden**; appen hämtar sedan 
 - **Instagram utan Zernio** – `INSTAGRAM_CLIENT_ID` / `INSTAGRAM_CLIENT_SECRET` (Meta), om du inte sätter `ZERNIO_API_KEY`.
 - **Shopify (lokal utveckling via tunnel)** – sätt `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` och `SHOPIFY_APP_URL` (publik HTTPS-host, t.ex. tunnel-domän).
 - **Notion** – sätt `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` och `NOTION_APP_URL` (publik HTTPS-host för OAuth callback).
-- **Reviews (Google + Tripadvisor)** – ny flik. Google Reviews kan kopplas via Zernio eller officiell Google Business OAuth (`business.manage`). Tripadvisor går via Zernio, eller officiell API med `TRIPADVISOR_API_KEY` + `TRIPADVISOR_LOCATION_ID`.
+- **Reviews (Google + Tripadvisor)** – Google Reviews: **Official Google Business OAuth** (standard i Kopplingar). Zernio reviews-endpoints (`/reviews` m.fl.) svarar ofta 404. Tripadvisor: **Content API** med `TRIPADVISOR_API_KEY` + `TRIPADVISOR_LOCATION_ID` (standard); Zernio är reserv.
+- **Kalender (Google + Outlook)** – **Official API** är standard. Zernio kan koppla kontot men returnerar ofta tomma händelser.
+- **Social DM (Instagram / Messenger / WhatsApp)** – via Zernio, men kräver **Inbox-addonet** i Zernio-dashboarden. Utan det: `403 INBOX_REQUIRED`.
 
 ## Shopify i lokal utveckling (tunnel)
 

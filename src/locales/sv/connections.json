@@ -67,6 +67,7 @@
     "choosePath": "Välj hur du kopplar",
     "pathDefault": "rekommenderad",
     "connectHint": "Du loggar in hos {{label}} och ger åtkomst. Vi publicerar eller skickar aldrig utan ditt godkännande.",
+    "inboxAddonNote": "Sociala DM:er kräver Zernio Inbox-addonet. Utan det kan kanalen kopplas för inlägg/statistik, men Meddelanden och auto-svar blockeras.",
     "progressAria": "Kopplingsförlopp",
     "stepShort": {
       "why": "Varför",
