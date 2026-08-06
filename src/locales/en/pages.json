@@ -153,7 +153,16 @@
     "connections": "Connections",
     "officialReconnect": "Reconnect via Official API",
     "prevPeriod": "Previous period",
-    "nextPeriod": "Next period"
+    "nextPeriod": "Next period",
+    "viewAria": "Calendar view",
+    "viewDay": "Day",
+    "viewWeek": "Week",
+    "viewMonth": "Month",
+    "sellTitle": "A calendar that gathers the day",
+    "sellDescription": "Connect Google or Outlook so meetings sit beside tasks and lead follow-ups — one view for the whole week.",
+    "sellTrust": "Local events already work; external calendars sync once connected.",
+    "sellPrimary": "Connect calendar",
+    "sellSecondary": "Show Connections"
   },
   "company": {
     "title": "Company",

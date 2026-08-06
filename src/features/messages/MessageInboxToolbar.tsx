@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCheck, Loader2, MoreHorizontal, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import {
   AlertDialog,
@@ -28,12 +29,7 @@ import type { MessageChannelTab } from "./types";
 
 type TabCounts = Record<MessageChannelTab, { total: number; unread: number }>;
 
-const FILTER_OPTIONS: Array<{ value: InboxFilter; label: string; shortcut: string }> = [
-  { value: "queue", label: "Kö", shortcut: "Q" },
-  { value: "open", label: "Öppna", shortcut: "O" },
-  { value: "all", label: "Alla", shortcut: "A" },
-  { value: "handled", label: "Hanterade", shortcut: "" },
-];
+const FILTER_VALUES: InboxFilter[] = ["queue", "open", "all", "handled"];
 
 type MessageInboxToolbarProps = {
   activeTab: MessageChannelTab;
@@ -78,11 +74,17 @@ export function MessageInboxToolbar({
   openTotal,
   isSearching,
 }: MessageInboxToolbarProps) {
+  const { t } = useTranslation("messages");
   const [markAllOpen, setMarkAllOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const primaryFilters = FILTER_OPTIONS.filter((opt) => opt.value === "queue" || opt.value === "open");
-  const secondaryFilters = FILTER_OPTIONS.filter((opt) => opt.value === "all" || opt.value === "handled");
+  const filterOptions = FILTER_VALUES.map((value) => ({
+    value,
+    label: t(`filters.${value}`),
+    shortcut: value === "queue" ? "Q" : value === "open" ? "O" : value === "all" ? "A" : "",
+  }));
+  const primaryFilters = filterOptions.filter((opt) => opt.value === "queue" || opt.value === "open");
+  const secondaryFilters = filterOptions.filter((opt) => opt.value === "all" || opt.value === "handled");
 
   return (
     <div className="shrink-0 border-b border-border/80 bg-card/60 backdrop-blur-md">
@@ -93,7 +95,7 @@ export function MessageInboxToolbar({
             isMobile && "gap-1.5 p-1"
           )}
           role="tablist"
-          aria-label="Kanaler"
+          aria-label={t("filters.channels")}
         >
           {MESSAGE_TABS.map((tab) => {
             const counts = tabCounts[tab.value] || { total: 0, unread: 0 };
@@ -140,10 +142,10 @@ export function MessageInboxToolbar({
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs"
               onClick={onToggleAiSearch}
-              title="AI-mailsökning via MCP"
+              title={t("filters.aiSearchTitle")}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">AI-sök</span>
+              <span className="hidden md:inline">{t("filters.aiSearch")}</span>
             </Button>
           ) : null}
           <Button
@@ -153,7 +155,7 @@ export function MessageInboxToolbar({
             className={cn(isMobile ? "h-10 w-10" : "h-8 w-8 p-0")}
             onClick={onRefresh}
             disabled={loading}
-            aria-label="Uppdatera inkorg"
+            aria-label={t("filters.refresh")}
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -170,7 +172,7 @@ export function MessageInboxToolbar({
           <Input
             ref={searchInputRef}
             type="search"
-            placeholder={isMobile ? "Sök i inkorgen…" : "Sök inkorg…  /"}
+            placeholder={isMobile ? t("filters.searchPlaceholderMobile") : t("filters.searchPlaceholder")}
             value={inboxSearch}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={(e) => {
@@ -194,14 +196,14 @@ export function MessageInboxToolbar({
               type="button"
               onClick={() => onSearchChange("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              aria-label="Rensa sökning"
+              aria-label={t("filters.clearSearch")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
           ) : null}
           {isSearching ? (
             <p className="absolute -bottom-4 left-0 text-[10px] tabular-nums text-muted-foreground">
-              {totalVisible} träff{totalVisible === 1 ? "" : "ar"}
+              {t("filters.hitsCount", { count: totalVisible })}
             </p>
           ) : null}
         </div>
@@ -212,7 +214,7 @@ export function MessageInboxToolbar({
               <div
                 className="grid min-w-0 flex-1 grid-cols-2 gap-1.5 rounded-lg border border-border/60 bg-background/40 p-1"
                 role="group"
-                aria-label="Filtrera inkorg"
+                aria-label={t("filters.filterInbox")}
               >
                 {primaryFilters.map((opt) => (
                   <button
@@ -235,7 +237,7 @@ export function MessageInboxToolbar({
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" size="sm" className="h-10 w-10 shrink-0 p-0" aria-label="Fler filter">
+                  <Button type="button" variant="outline" size="sm" className="h-10 w-10 shrink-0 p-0" aria-label={t("filters.moreFilters")}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -247,7 +249,7 @@ export function MessageInboxToolbar({
                   ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem disabled={markAllDisabled} onSelect={() => setMarkAllOpen(true)}>
-                    Markera alla som hanterade
+                    {t("filters.handleAllMenu")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -257,9 +259,9 @@ export function MessageInboxToolbar({
               <div
                 className="flex min-w-0 max-w-full flex-1 flex-wrap items-center rounded-lg border border-border/60 bg-background/40 p-0.5"
                 role="group"
-                aria-label="Filtrera inkorg"
+                aria-label={t("filters.filterInbox")}
               >
-                {FILTER_OPTIONS.map((opt) => (
+                {filterOptions.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -289,29 +291,28 @@ export function MessageInboxToolbar({
                     size="sm"
                     className="h-8 shrink-0 px-2 text-xs sm:px-3"
                     disabled={markAllDisabled}
-                    aria-label="Markera alla som hanterade"
+                    aria-label={t("filters.handleAllAria")}
                   >
                     <CheckCheck className="h-3.5 w-3.5 sm:mr-1.5" />
-                    <span className="hidden sm:inline">Hantera alla</span>
+                    <span className="hidden sm:inline">{t("filters.handleAll")}</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Markera alla som hanterade?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("filters.handleAllTitle")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {unansweredCount} obesvarade meddelanden i denna kanal markeras som hanterade. Du kan återöppna
-                      enskilda meddelanden i detaljvyn.
+                      {t("filters.handleAllDesc", { count: unansweredCount })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                    <AlertDialogCancel>{t("filters.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => {
                         onMarkAllHandled();
                         setMarkAllOpen(false);
                       }}
                     >
-                      Markera {unansweredCount}
+                      {t("filters.handleAllConfirm", { count: unansweredCount })}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -324,20 +325,20 @@ export function MessageInboxToolbar({
           <AlertDialog open={markAllOpen} onOpenChange={setMarkAllOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Markera alla som hanterade?</AlertDialogTitle>
+                <AlertDialogTitle>{t("filters.handleAllTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {unansweredCount} obesvarade meddelanden i denna kanal markeras som hanterade.
+                  {t("filters.handleAllDesc", { count: unansweredCount })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogCancel>{t("filters.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     onMarkAllHandled();
                     setMarkAllOpen(false);
                   }}
                 >
-                  Markera {unansweredCount}
+                  {t("filters.handleAllConfirm", { count: unansweredCount })}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -346,21 +347,25 @@ export function MessageInboxToolbar({
 
         {!isMobile ? (
         <p className="text-[10px] tabular-nums text-muted-foreground sm:hidden">
-          {loading ? "Laddar…" : `${totalVisible} · ${openTotal} öppna`}
+          {loading ? t("filters.loading") : t("filters.mobileSummary", { visible: totalVisible, open: openTotal })}
         </p>
         ) : null}
 
         {!isMobile ? (
         <p className="ml-auto hidden text-[11px] tabular-nums text-muted-foreground md:block">
-          {loading ? "Laddar…" : isSearching ? `${totalVisible} träffar · ${openTotal} öppna` : `${totalVisible} visade · ${openTotal} öppna`}
+          {loading
+            ? t("filters.loading")
+            : isSearching
+              ? t("filters.hitsOpen", { visible: totalVisible, open: openTotal })
+              : t("filters.shownOpen", { visible: totalVisible, open: openTotal })}
         </p>
         ) : (
         <p className="text-xs text-muted-foreground">
           {loading
-            ? "Laddar inkorg…"
+            ? t("filters.loadingInbox")
             : isSearching
-              ? `${totalVisible} träff${totalVisible === 1 ? "" : "ar"}`
-              : `${openTotal} öppna · tryck ett meddelande för att läsa`}
+              ? t("filters.hitsCount", { count: totalVisible })
+              : t("filters.mobileOpenHint", { open: openTotal })}
         </p>
         )}
       </div>

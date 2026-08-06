@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, Mail, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -48,6 +49,7 @@ type Props = {
  * Draft-before-send — user must confirm before anything is sent.
  */
 export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft }: Props) {
+  const { t } = useTranslation("messages");
   const queueDoc = useProfileDocument<MailReplyQueueItem[]>(MAIL_REPLY_QUEUE_DOC_KEY, []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmItem, setConfirmItem] = useState<MailReplyQueueItem | null>(null);
@@ -69,12 +71,12 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
       setBusyId(id);
       try {
         markStatus(id, "dismissed");
-        toast.success("Utkast borttaget");
+        toast.success(t("mailDrafts.dismissed"));
       } finally {
         setBusyId(null);
       }
     },
-    [markStatus]
+    [markStatus, t]
   );
 
   const sendConfirmed = useCallback(async () => {
@@ -85,23 +87,28 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
     try {
       if (isDemoId(item.id)) {
         markStatus(item.id, "sent");
-        toast.success("Demo — inget skickades på riktigt");
+        toast.success(t("mailDrafts.demoSent"));
         return;
       }
       await sendMailReplyDraft({ item, businessProfileId });
       markStatus(item.id, "sent");
-      toast.success("Svaret skickades");
+      toast.success(t("mailDrafts.sent"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kunde inte skicka mail-svar.");
+      toast.error(err instanceof Error ? err.message : t("mailDrafts.sendFailed"));
     } finally {
       setBusyId(null);
     }
-  }, [businessProfileId, confirmItem, markStatus]);
+  }, [businessProfileId, confirmItem, markStatus, t]);
 
   if (!businessProfileId || queueDoc.isLoading || drafts.length === 0) return null;
 
   const visible = drafts.slice(0, 3);
   const rest = drafts.length - visible.length;
+  const confirmTo =
+    confirmItem?.fromName || confirmItem?.fromEmail || t("mailDrafts.confirmRecipient");
+  const subjectPart = confirmItem?.subject
+    ? t("mailDrafts.confirmSubject", { subject: confirmItem.subject })
+    : "";
 
   return (
     <>
@@ -110,22 +117,18 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
           "rounded-lg border border-sky-500/25 bg-sky-500/5 px-3 py-2.5 sm:px-4",
           className
         )}
-        aria-label="Mail-utkast att granska"
+        aria-label={t("mailDrafts.aria")}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="h-4 w-4 shrink-0 text-sky-700" aria-hidden />
             <div className="min-w-0">
-              <p className="text-sm font-medium">
-                {drafts.length === 1 ? "1 mail-utkast väntar" : `${drafts.length} mail-utkast väntar`}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Automatiska svar — granska och skicka, eller klistra in i svarsfältet.
-              </p>
+              <p className="text-sm font-medium">{t("mailDrafts.title", { count: drafts.length })}</p>
+              <p className="text-xs text-muted-foreground">{t("mailDrafts.subtitle")}</p>
             </div>
           </div>
           <Button asChild type="button" size="sm" variant="ghost" className="h-7 shrink-0 text-xs">
-            <Link to="/automations?tab=messages&focus=mail-reply-auto">Automationer</Link>
+            <Link to="/automations?tab=messages&focus=mail-reply-auto">{t("mailDrafts.automations")}</Link>
           </Button>
         </div>
 
@@ -137,7 +140,7 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="min-w-0 truncate text-xs font-medium">
-                  {entry.fromName || entry.fromEmail || "Okänd"}
+                  {entry.fromName || entry.fromEmail || t("mailDrafts.unknown")}
                   <span className="ml-1.5 font-normal text-muted-foreground">· {entry.subject}</span>
                   {entry.createdAt ? (
                     <span className="ml-1.5 font-normal text-muted-foreground">
@@ -159,7 +162,7 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
                     ) : (
                       <Send className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    Skicka
+                    {t("mailDrafts.send")}
                   </Button>
                   {onUseDraft ? (
                     <Button
@@ -171,7 +174,7 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
                         onUseDraft(entry.draft, { subject: entry.subject, fromName: entry.fromName })
                       }
                     >
-                      Använd utkast
+                      {t("mailDrafts.useDraft")}
                     </Button>
                   ) : null}
                   <Button
@@ -181,7 +184,7 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
                     className="h-7 w-7 p-0 text-muted-foreground"
                     disabled={busyId === entry.id}
                     onClick={() => dismiss(entry.id)}
-                    aria-label="Ta bort utkast"
+                    aria-label={t("mailDrafts.dismissAria")}
                   >
                     {busyId === entry.id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -196,31 +199,21 @@ export function MailReplyDraftsStrip({ businessProfileId, className, onUseDraft 
           ))}
         </ul>
         {rest > 0 ? (
-          <p className="mt-1.5 text-xs text-muted-foreground">+{rest} till i kön</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{t("mailDrafts.moreInQueue", { count: rest })}</p>
         ) : null}
       </section>
 
       <AlertDialog open={Boolean(confirmItem)} onOpenChange={(open) => !open && setConfirmItem(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Skicka mail-svar?</AlertDialogTitle>
+            <AlertDialogTitle>{t("mailDrafts.confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Svaret skickas till{" "}
-              <span className="font-medium text-foreground">
-                {confirmItem?.fromName || confirmItem?.fromEmail || "mottagaren"}
-              </span>
-              {confirmItem?.subject ? (
-                <>
-                  {" "}
-                  angående <span className="font-medium text-foreground">{confirmItem.subject}</span>
-                </>
-              ) : null}
-              . Det går inte att ångra ett skickat mail.
+              {t("mailDrafts.confirmDesc", { to: confirmTo, subjectPart })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void sendConfirmed()}>Skicka svar</AlertDialogAction>
+            <AlertDialogCancel>{t("mailDrafts.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void sendConfirmed()}>{t("mailDrafts.confirmSend")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

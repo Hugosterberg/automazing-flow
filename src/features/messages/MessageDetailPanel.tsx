@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Archive,
@@ -126,6 +127,7 @@ export function MessageDetailPanel({
   onMailAction,
   mailActionBusy = false,
 }: MessageDetailPanelProps) {
+  const { t } = useTranslation("messages");
   const isDesktopWorkspace = useIsDesktopWorkspace();
   const isStackedWorkspace = !isDesktopWorkspace;
   const keyboardInset = useKeyboardInset();
@@ -193,7 +195,7 @@ export function MessageDetailPanel({
   const taskPrefillTitle = (
     message.subject?.trim() ||
     message.snippet?.trim() ||
-    `Svara ${fromName}`
+    t("actions.replyTo", { name: fromName })
   ).slice(0, 120);
   const createTaskHref = `/tasks?new=1&title=${encodeURIComponent(taskPrefillTitle)}`;
 
@@ -201,7 +203,7 @@ export function MessageDetailPanel({
     if (message.kind !== "email" || !onMoveToFolder || accountFolders.length === 0) return null;
     return (
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger disabled={moveBusy}>Flytta till mapp</DropdownMenuSubTrigger>
+        <DropdownMenuSubTrigger disabled={moveBusy}>{t("actions.moveToFolder")}</DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
           {accountFolders.map((folder) => (
             <DropdownMenuItem key={folder.id} onSelect={() => onMoveToFolder(folder.id)}>
@@ -223,11 +225,11 @@ export function MessageDetailPanel({
           onSelect={() => onMailAction?.(isStarred ? "unflag" : "flag")}
         >
           <Star className={cn("mr-2 h-4 w-4", isStarred && "fill-amber-400 text-amber-500")} />
-          {isStarred ? "Ta bort flagga" : "Flagga"}
+          {isStarred ? t("actions.unflag") : t("actions.flag")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={mailActionBusy} onSelect={() => onMailAction?.("archive")}>
           <Archive className="mr-2 h-4 w-4" />
-          Arkivera
+          {t("actions.archive")}
         </DropdownMenuItem>
         {renderMoveSubmenu()}
         <DropdownMenuItem
@@ -236,7 +238,7 @@ export function MessageDetailPanel({
           onSelect={() => setDeleteOpen(true)}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          Radera
+          {t("actions.delete")}
         </DropdownMenuItem>
       </>
     );
@@ -260,7 +262,7 @@ export function MessageDetailPanel({
           onClick={() => onMailAction?.(isStarred ? "unflag" : "flag")}
         >
           <Star className={cn("h-3.5 w-3.5", isStarred && "fill-current")} />
-          {isStarred ? "Flaggad" : "Flagga"}
+          {isStarred ? t("actions.flagged") : t("actions.flag")}
         </Button>
         <Button
           type="button"
@@ -271,12 +273,12 @@ export function MessageDetailPanel({
           onClick={() => onMailAction?.("archive")}
         >
           <Archive className="h-3.5 w-3.5" />
-          Arkivera
+          {t("actions.archive")}
         </Button>
         <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px]" asChild>
           <Link to={createTaskHref}>
             <ListTodo className="h-3.5 w-3.5" />
-            Uppgift
+            {t("actions.task")}
           </Link>
         </Button>
         {onMoveToFolder && accountFolders.length > 0 ? (
@@ -290,7 +292,7 @@ export function MessageDetailPanel({
                 disabled={mailActionBusy || moveBusy}
               >
                 <FolderInput className="h-3.5 w-3.5" />
-                Flytta
+                {t("actions.move")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
@@ -312,7 +314,7 @@ export function MessageDetailPanel({
           onClick={() => setDeleteOpen(true)}
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Radera
+          {t("actions.delete")}
         </Button>
         {mailActionBusy ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
       </div>
@@ -323,19 +325,20 @@ export function MessageDetailPanel({
     <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Radera mailet?</AlertDialogTitle>
+          <AlertDialogTitle>{t("actions.deleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Mailet flyttas till papperskorgen i {message.channel === "gmail" ? "Gmail" : "Outlook"}. Detta kan inte
-            ångras härifrån.
+            {t("actions.deleteDesc", {
+              provider: message.channel === "gmail" ? "Gmail" : "Outlook",
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={() => onMailAction?.("delete")}
           >
-            Radera
+            {t("actions.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -346,16 +349,16 @@ export function MessageDetailPanel({
     const text = (message.body || message.snippet || "").trim();
     void navigator.clipboard
       .writeText(text)
-      .then(() => toast.success("Meddelande kopierat."))
-      .catch(() => toast.error("Kunde inte kopiera."));
+      .then(() => toast.success(t("actions.copied")))
+      .catch(() => toast.error(t("actions.copyFailed")));
   }
 
   function copyEmail() {
     if (!fromEmail) return;
     void navigator.clipboard
       .writeText(fromEmail)
-      .then(() => toast.success("E-postadress kopierad."))
-      .catch(() => toast.error("Kunde inte kopiera."));
+      .then(() => toast.success(t("actions.emailCopied")))
+      .catch(() => toast.error(t("actions.copyFailed")));
   }
 
   function openCompose() {
@@ -460,7 +463,7 @@ export function MessageDetailPanel({
                     className="h-10 w-10 p-0"
                     disabled={!navigation.hasPrev}
                     onClick={navigation.onPrev}
-                    aria-label="Föregående meddelande"
+                    aria-label={t("actions.prev")}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
@@ -474,7 +477,7 @@ export function MessageDetailPanel({
                     className="h-10 w-10 p-0"
                     disabled={!navigation.hasNext}
                     onClick={navigation.onNext}
-                    aria-label="Nästa meddelande"
+                    aria-label={t("actions.next")}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </Button>
@@ -509,14 +512,14 @@ export function MessageDetailPanel({
               {!composeOpen ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="h-11 w-11 p-0" aria-label="Fler åtgärder">
+                    <Button type="button" variant="ghost" size="sm" className="h-11 w-11 p-0" aria-label={t("actions.moreActions")}>
                       <MoreHorizontal className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuItem onSelect={copyBody}>
                       <Copy className="mr-2 h-4 w-4" />
-                      Kopiera meddelande
+                      {t("actions.copyMessage")}
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to={createTaskHref}>
@@ -652,7 +655,7 @@ export function MessageDetailPanel({
                   ref={replyRef}
                   value={replyDraft}
                   onChange={(e) => onReplyDraftChange(e.target.value)}
-                  placeholder="Skriv ditt svar…"
+                  placeholder={t("actions.writeReply")}
                   className="min-h-[64px] max-h-[22dvh] resize-y rounded-xl border-border/70 bg-muted/20 px-3 py-2 text-[13px] leading-snug shadow-none focus-visible:ring-primary/30"
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && replyDraft.trim() && !sendBusy) {
@@ -684,7 +687,7 @@ export function MessageDetailPanel({
                         variant="ghost"
                         size="sm"
                         className="h-9 shrink-0 gap-1 px-2 text-xs text-muted-foreground"
-                        aria-label="Fler"
+                        aria-label={t("actions.moreActions")}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="sr-only">Fler</span>
@@ -706,7 +709,7 @@ export function MessageDetailPanel({
                         />
                       </div>
                       <DropdownMenuItem onSelect={() => setComposeOpen(false)}>
-                        Dölj
+                        {t("actions.hide")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -717,7 +720,7 @@ export function MessageDetailPanel({
                     disabled={sendBusy || !replyDraft.trim()}
                   >
                     {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Skicka
+                    {t("actions.send")}
                   </Button>
                 </div>
               </div>
@@ -736,15 +739,15 @@ export function MessageDetailPanel({
                   {draftBusy ? (
                     <>
                       <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-                      <span className="truncate">AI skriver utkast…</span>
+                      <span className="truncate">{t("actions.aiWriting")}</span>
                     </>
                   ) : hasDraft ? (
                     <>
                       <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="min-w-0 truncate">Utkast klart — granska</span>
+                      <span className="min-w-0 truncate">{t("actions.draftReady")}</span>
                     </>
                   ) : (
-                    <span>Svara…</span>
+                    <span>{t("actions.replyEllipsis")}</span>
                   )}
                 </button>
                 <Button
@@ -757,7 +760,7 @@ export function MessageDetailPanel({
                     if (!hasDraft) onDraftReply();
                   }}
                   disabled={draftBusy}
-                  aria-label={hasDraft ? "Öppna utkast" : "Skapa AI-utkast"}
+                  aria-label={hasDraft ? t("actions.openDraft") : t("actions.createDraft")}
                 >
                   {draftBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
                 </Button>
@@ -768,7 +771,7 @@ export function MessageDetailPanel({
                     size="icon"
                     className="h-11 w-11 shrink-0 rounded-2xl"
                     onClick={onMarkHandled}
-                    aria-label="Markera klar"
+                    aria-label={t("actions.markDone")}
                   >
                     <CheckCheck className="h-5 w-5" />
                   </Button>
@@ -824,7 +827,7 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasPrev}
                       onClick={navigation.onPrev}
-                      aria-label="Föregående meddelande"
+                      aria-label={t("actions.prev")}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -838,7 +841,7 @@ export function MessageDetailPanel({
                       className="h-7 w-7 p-0"
                       disabled={!navigation.hasNext}
                       onClick={navigation.onNext}
-                      aria-label="Nästa meddelande"
+                      aria-label={t("actions.next")}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -846,19 +849,19 @@ export function MessageDetailPanel({
                 ) : null}
                 {message.externalUrl ? (
                   <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-                    <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label="Öppna i plattformen">
+                    <a href={message.externalUrl} target="_blank" rel="noreferrer" aria-label={t("actions.openExternal")}>
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : null}
-                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title="Kopiera meddelande">
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyBody} title={t("actions.copyMessage")}>
                   <Copy className="h-4 w-4" />
-                  <span className="sr-only">Kopiera meddelande</span>
+                  <span className="sr-only">{t("actions.copyMessage")}</span>
                 </Button>
                 {!isHandled ? (
-                  <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onMarkHandled} title="Markera hanterad (H)">
+                  <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onMarkHandled} title={t("actions.markHandled")}>
                     <CheckCheck className="h-4 w-4" />
-                    <span className="sr-only">Markera hanterad</span>
+                    <span className="sr-only">{t("actions.markDone")}</span>
                   </Button>
                 ) : (
                   <div className="flex items-center gap-1">
@@ -867,7 +870,7 @@ export function MessageDetailPanel({
                       className="h-7 gap-1 border-emerald-500/40 px-2 text-[10px] uppercase text-emerald-600"
                     >
                       <CheckCheck className="h-3 w-3" />
-                      Klar
+                      {t("actions.markDone")}
                     </Badge>
                     {onUnmarkHandled ? (
                       <Button
@@ -876,9 +879,9 @@ export function MessageDetailPanel({
                         size="sm"
                         className="h-8 px-2 text-xs text-muted-foreground"
                         onClick={onUnmarkHandled}
-                        title="Flytta tillbaka till öppna"
+                        title={t("actions.reopen")}
                       >
-                        Återöppna
+                        {t("actions.reopenShort")}
                       </Button>
                     ) : null}
                   </div>
@@ -927,7 +930,7 @@ export function MessageDetailPanel({
           <span className="text-[10px] font-medium text-primary">Snabbåtgärder</span>
           <Button type="button" size="sm" variant="secondary" className="h-6 px-2 text-[11px]" onClick={onMarkHandled}>
             <CheckCheck className="mr-1 h-3 w-3" />
-            Klar
+            {t("actions.markDone")}
             <kbd className="ml-1 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">H</kbd>
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onDraftReply} disabled={draftBusy}>
@@ -935,7 +938,7 @@ export function MessageDetailPanel({
             AI
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => replyRef.current?.focus()}>
-            Svara
+            {t("actions.reply")}
             <kbd className="ml-1 hidden rounded border border-border/60 px-1 font-mono text-[9px] opacity-70 lg:inline">R</kbd>
           </Button>
         </div>
@@ -966,9 +969,7 @@ export function MessageDetailPanel({
                   value={replyDraft}
                   onChange={(e) => onReplyDraftChange(e.target.value)}
                   placeholder={
-                    message.kind === "email"
-                      ? "Skriv ditt svar… (AI-utkast laddas automatiskt)"
-                      : "Skriv ett svar…"
+                    message.kind === "email" ? t("actions.writeReplyAi") : t("actions.writeAReply")
                   }
                   className="min-h-[72px] resize-none rounded-lg border-border/70 bg-background/80 text-[13px] leading-snug shadow-inner focus-visible:ring-primary/30 lg:min-h-[64px]"
                   onKeyDown={(e) => {
@@ -985,7 +986,7 @@ export function MessageDetailPanel({
                     ) : (
                       <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    AI-utkast
+                    {t("actions.aiDraft")}
                   </Button>
                   <ReplyTemplatePicker
                     onInsert={onReplyDraftChange}
@@ -1000,7 +1001,7 @@ export function MessageDetailPanel({
                     disabled={sendBusy || !replyDraft.trim()}
                   >
                     {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Skicka
+                    {t("actions.send")}
                   </Button>
                   <span className="hidden text-[10px] text-muted-foreground lg:inline">
                     Ctrl+Enter
@@ -1018,6 +1019,7 @@ export function MessageDetailPanel({
 }
 
 export function MessageDetailPlaceholder() {
+  const { t } = useTranslation("messages");
   const isMobile = useIsMobile();
 
   return (
@@ -1036,12 +1038,10 @@ export function MessageDetailPlaceholder() {
       </m.div>
       <div className="max-w-sm space-y-1.5">
         <p className="font-display text-base font-semibold">
-          {isMobile ? "Tryck ett meddelande" : "Välj ett meddelande"}
+          {isMobile ? t("actions.tapMessage") : t("actions.pickMessage")}
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {isMobile
-            ? "Välj ett meddelande i listan. Läs i full skärm, svara när du är redo."
-            : "Inkorgen stannar kvar till vänster — läs, svara och markera hanterade utan att tappa kontexten."}
+          {isMobile ? t("actions.pickMessageMobile") : t("actions.pickMessageDesktop")}
         </p>
       </div>
       <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
@@ -1055,10 +1055,10 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Klar
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> Arkivera
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> {t("actions.shortcutArchive")}
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> Svara
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> {t("actions.shortcutReply")}
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng

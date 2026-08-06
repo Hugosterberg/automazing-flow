@@ -153,7 +153,16 @@
     "connections": "Kopplingar",
     "officialReconnect": "Koppla om via Official API",
     "prevPeriod": "Föregående period",
-    "nextPeriod": "Nästa period"
+    "nextPeriod": "Nästa period",
+    "viewAria": "Kalendervy",
+    "viewDay": "Dag",
+    "viewWeek": "Vecka",
+    "viewMonth": "Månad",
+    "sellTitle": "En kalender som samlar dagen",
+    "sellDescription": "Koppla Google eller Outlook så syns möten bredvid uppgifter och lead-uppföljningar — en vy för hela veckan.",
+    "sellTrust": "Lokala händelser fungerar redan; externa kalendrar synkas när du kopplat.",
+    "sellPrimary": "Koppla kalender",
+    "sellSecondary": "Visa Kopplingar"
   },
   "company": {
     "title": "Företag",

@@ -480,22 +480,22 @@ export default function CalendarPage() {
       {!hasCalendarConnected ? (
         <ValueSellEmpty
           icon={CalendarDays}
-          title="En kalender som samlar dagen"
-          description="Koppla Google eller Outlook så syns möten bredvid uppgifter och lead-uppföljningar — en vy för hela veckan."
-          trust="Lokala händelser fungerar redan; externa kalendrar synkas när du kopplat."
-          primary={{ label: "Koppla kalender", to: "/connections?wizard=1&q=calendar" }}
-          secondary={{ label: "Visa Kopplingar", to: "/connections?q=calendar" }}
+          title={t("calendar.sellTitle")}
+          description={t("calendar.sellDescription")}
+          trust={t("calendar.sellTrust")}
+          primary={{ label: t("calendar.sellPrimary"), to: "/connections?session=google_calendar" }}
+          secondary={{ label: t("calendar.sellSecondary"), to: "/connections?session=outlook_calendar" }}
         />
       ) : null}
 
       <PageModeTabs
         value={viewMode}
-        aria-label="Kalendervy"
+        aria-label={t("calendar.viewAria")}
         onChange={setViewMode}
         options={[
-          { value: "day", label: "Dag" },
-          { value: "week", label: "Vecka" },
-          { value: "month", label: "Månad" },
+          { value: "day", label: t("calendar.viewDay") },
+          { value: "week", label: t("calendar.viewWeek") },
+          { value: "month", label: t("calendar.viewMonth") },
         ]}
       />
 
