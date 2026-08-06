@@ -6,6 +6,8 @@ export { ScoreBreakdown } from "./ScoreBreakdown";
 export { MarketingCampaigns } from "./MarketingCampaigns";
 export { CampaignFollowUp, type FollowUpCampaign } from "./CampaignFollowUp";
 export { MarketingPerformance } from "./MarketingPerformance";
+export { MetaAdCommentsPanel } from "./MetaAdCommentsPanel";
+export { useMetaAdComments, META_AD_COMMENTS_KEY } from "./useMetaAdComments";
 export { MarketingTrendChart } from "./MarketingTrendChart";
 export { InventoryAdsAlert } from "./InventoryAdsAlert";
 export { MarketingPathsHub } from "./MarketingPathsHub";

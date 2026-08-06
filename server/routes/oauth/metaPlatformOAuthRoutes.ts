@@ -524,7 +524,7 @@ export function registerMetaPlatformOAuthRoutes(
         );
       }
 
-      const [businessesRes, adAccountsRes] = await Promise.allSettled([
+      const [businessesRes, adAccountsRes, pagesRes] = await Promise.allSettled([
         fetch(
           `${graphBase}/me/businesses?fields=id,name,verification_status&limit=25&access_token=${encodeURIComponent(
             accessToken
@@ -533,6 +533,12 @@ export function registerMetaPlatformOAuthRoutes(
         ),
         fetch(
           `${graphBase}/me/adaccounts?fields=id,account_id,name,account_status,currency,timezone_name&limit=25&access_token=${encodeURIComponent(
+            accessToken
+          )}`,
+          { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
+        ),
+        fetch(
+          `${graphBase}/me/accounts?fields=id,name,access_token,tasks&limit=25&access_token=${encodeURIComponent(
             accessToken
           )}`,
           { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) }
@@ -546,6 +552,18 @@ export function registerMetaPlatformOAuthRoutes(
         adAccountsRes.status === "fulfilled"
           ? await adAccountsRes.value.json().catch(() => ({}))
           : {};
+      const pagesBody =
+        pagesRes.status === "fulfilled"
+          ? await pagesRes.value.json().catch(() => ({}))
+          : {};
+      const metaPages = (Array.isArray(pagesBody?.data) ? pagesBody.data : [])
+        .filter((p: { id?: string; access_token?: string }) => p?.id && p?.access_token)
+        .map((p: { id: string; name?: string; access_token: string; tasks?: string[] }) => ({
+          id: String(p.id),
+          name: String(p.name || p.id),
+          accessToken: String(p.access_token),
+          tasks: Array.isArray(p.tasks) ? p.tasks.map(String) : [],
+        }));
       const firstBusiness = Array.isArray(businesses?.data) ? businesses.data[0] : null;
       const firstAdAccount = Array.isArray(adAccounts?.data) ? adAccounts.data[0] : null;
       const displayName = String(
@@ -573,6 +591,7 @@ export function registerMetaPlatformOAuthRoutes(
         metaAdAccountId: firstAdAccount?.id || null,
         metaBusinesses: Array.isArray(businesses?.data) ? businesses.data : [],
         metaAdAccounts: Array.isArray(adAccounts?.data) ? adAccounts.data : [],
+        metaPages,
       });
 
       const profileQuery = profileParam(pending.profileId);

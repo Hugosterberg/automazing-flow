@@ -38,6 +38,7 @@ import {
   CampaignFollowUp,
   MarketingPathsHub,
   MarketingSetupCard,
+  MetaAdCommentsPanel,
   useMarketingCampaigns,
   type FollowUpCampaign,
 } from "@/features/marketing";
@@ -622,6 +623,9 @@ export default function MarketingPage() {
 
       <m.div {...pageFadeUp} transition={{ delay: 0.05 }}>
         <MarketingPerformance />
+      </m.div>
+      <m.div {...pageFadeUp} transition={{ delay: 0.055 }}>
+        <MetaAdCommentsPanel />
       </m.div>
       </>
       ) : null}

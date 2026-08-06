@@ -612,6 +612,13 @@ export const handbookPages: HandbookPage[] = [
               "Live Meta/Google campaign metrics blended with Shopify revenue for ROAS, cost-per-order signals and inventory-vs-ads alerts.",
             status: "beta",
           },
+          {
+            id: "ad-comments",
+            name: "Meta ad comments",
+            description:
+              "Read recent comments on Meta ad posts (Facebook Page posts + Instagram ad media when readable). Reply on Facebook when Page tokens are stored after reconnect.",
+            status: "beta",
+          },
         ],
       },
       {

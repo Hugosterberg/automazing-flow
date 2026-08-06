@@ -2,6 +2,17 @@
 
 _Lightweight ADR log. Newest first. Status: Active / Proposed / Reversed._
 
+## 2026-08-06 — Meta ad comments inbox (Marketing → Paid) — **Active**
+
+Minimal read path for comments on Meta ads: Marketing API ads →
+`effective_object_story_id` / `effective_instagram_media_id` → Graph `/comments`.
+UI: `MetaAdCommentsPanel` on `/marketing?tab=ads`. Facebook replies use stored
+Page tokens (`metaPages` from `/me/accounts` at Official OAuth connect). Default
+`META_BUSINESS` scopes now include `pages_read_engagement` +
+`pages_manage_engagement` — existing connections must reconnect. Instagram
+replies deferred (extra IG comment scopes / App Review). Caps: 12 ads, 8
+comments/post, 40 total. No Business Suite scraping.
+
 ## 2026-08-06 — Ecommerce Overview surfaces denser stats on the page — **Active**
 
 Overview keeps KPI cards, then adds a clickable pulse strip (AOV, fulfillment,

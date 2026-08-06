@@ -3,7 +3,7 @@
 export const IG_AUTH = "https://api.instagram.com/oauth/authorize";
 export const IG_TOKEN = "https://api.instagram.com/oauth/access_token";
 export const META_BUSINESS_DEFAULT_SCOPES =
-  "public_profile email business_management ads_read ads_management pages_show_list";
+  "public_profile email business_management ads_read ads_management pages_show_list pages_read_engagement pages_manage_engagement";
 export const TIKTOK_AUTH = "https://www.tiktok.com/v2/auth/authorize/";
 export const TIKTOK_TOKEN = "https://open.tiktokapis.com/v2/oauth/token/";
 export const X_AUTH = "https://x.com/i/oauth2/authorize";

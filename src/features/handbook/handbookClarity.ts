@@ -405,6 +405,10 @@ export const featureClarity: Record<string, FeatureClarity> = {
     youCan: "Read Meta/Google spend, conversions and ROAS vs Shopify revenue.",
     needs: "Ad accounts + Shopify for full ROAS.",
   },
+  "ad-comments": {
+    youCan: "Read comments on Meta ad posts and reply on Facebook when Page tokens are connected.",
+    needs: "Meta Business Official API reconnect with pages_read_engagement + Page access.",
+  },
   "marketing-ideas": {
     youCan: "Get AI ideas for channels, promos and campaign angles.",
   },
