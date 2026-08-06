@@ -979,10 +979,12 @@ export default function ReviewsPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Info className="h-4 w-4 text-muted-foreground" />
-                Verksamhetsinformation
+                {t("placeTitle")}
               </CardTitle>
               <CardDescription>
-                Hämtat via {placeInfo.source === "zernio" ? "Zernio" : "Official API"}.
+                {t("placeSource", {
+                  source: placeInfo.source === "zernio" ? "Zernio" : "Official API",
+                })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -1059,7 +1061,7 @@ export default function ReviewsPage() {
         </m.div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Ingen verksamhetsinformation ännu. Koppla Google Business / Reviews under Kopplingar.
+            {t("placeEmpty")}
           </p>
         )
       ) : null}
@@ -1112,35 +1114,35 @@ export default function ReviewsPage() {
                 ref={searchInputRef}
                 value={reviewSearch}
                 onChange={(e) => setReviewSearch(e.target.value)}
-                placeholder="Sök recensioner…"
+                placeholder={t("searchPlaceholder")}
                 className={cn(
                   "border-border/60 bg-background/60 pl-8 text-sm shadow-sm",
                   isMobile ? "h-10" : "h-8 text-xs"
                 )}
-                aria-label="Sök recensioner"
+                aria-label={t("searchAria")}
               />
             </div>
             <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
               <Select value={ratingFilter} onValueChange={(v) => setRatingFilter(v as typeof ratingFilter)}>
                 <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[140px]", isMobile ? "h-10" : "h-8 text-xs")}>
-                  <SelectValue placeholder="Alla betyg" />
+                  <SelectValue placeholder={t("allRatings")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alla betyg</SelectItem>
+                  <SelectItem value="all">{t("allRatings")}</SelectItem>
                   {[5, 4, 3, 2, 1].map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      {n} stjärn{n === 1 ? "a" : "or"}
+                      {t("stars", { count: n })}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={replyFilter} onValueChange={(v) => setReplyFilter(v as typeof replyFilter)}>
                 <SelectTrigger className={cn("w-full border-border/60 bg-background/60 text-sm shadow-sm sm:w-[140px]", isMobile ? "h-10" : "h-8 text-xs")}>
-                  <SelectValue placeholder="Alla" />
+                  <SelectValue placeholder={t("filterAll")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alla recensioner (A)</SelectItem>
-                  <SelectItem value="needs_reply">Behöver svar (N)</SelectItem>
+                  <SelectItem value="all">{t("replyFilterAll")}</SelectItem>
+                  <SelectItem value="needs_reply">{t("replyFilterNeeds")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

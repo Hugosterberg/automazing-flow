@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Clock, Inbox, Play, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -24,6 +25,7 @@ export function MessageInboxStats({
   onShowAiReady,
   onStartTriage,
 }: MessageInboxStatsProps) {
+  const { t } = useTranslation("messages");
   const isMobile = useIsMobile();
 
   if (loading) {
@@ -40,7 +42,7 @@ export function MessageInboxStats({
     return (
       <div className="flex items-center gap-2 border-b border-border/40 bg-success/5 px-3 py-2.5 text-xs text-success sm:px-4 sm:py-2">
         <Inbox className="h-3.5 w-3.5 shrink-0" />
-        <span>Inkorgen är tom — bra jobbat.</span>
+        <span>{t("stats.empty")}</span>
       </div>
     );
   }
@@ -50,21 +52,21 @@ export function MessageInboxStats({
       <div className="flex flex-col gap-2.5 border-b border-border/40 bg-gradient-to-r from-primary/[0.04] via-background/50 to-primary/[0.04] px-3 py-3 sm:px-4">
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium text-foreground">
-            {openCount} öppna meddelande{openCount === 1 ? "" : "n"}
+            {t("stats.openCount", { count: openCount })}
             {oldestWait ? (
-              <span className="font-normal text-muted-foreground"> · äldsta väntar {oldestWait}</span>
+              <span className="font-normal text-muted-foreground">
+                {t("stats.oldestWaiting", { wait: oldestWait })}
+              </span>
             ) : null}
           </p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {aiReadyCount > 0
-              ? `${aiReadyCount} har AI-utkast klara — tryck ett meddelande för att läsa och svara.`
-              : "Tryck ett meddelande i listan nedan för att läsa och svara."}
+            {aiReadyCount > 0 ? t("stats.aiReadyHint", { count: aiReadyCount }) : t("stats.tapHint")}
           </p>
         </div>
         {onStartTriage && openCount > 0 ? (
           <Button type="button" className="h-11 w-full gap-2 text-sm glow-sm" onClick={onStartTriage}>
             <Play className="h-4 w-4" />
-            Börja triage
+            {t("stats.startTriage")}
           </Button>
         ) : null}
       </div>
@@ -76,34 +78,34 @@ export function MessageInboxStats({
       <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 lg:gap-1">
         <StatPill
           icon={Zap}
-          label="Öppna"
+          label={t("stats.open")}
           value={String(openCount)}
           highlight={openCount > 0}
           onClick={openCount > 0 ? onShowOpen : undefined}
-          title={openCount > 0 ? "Visa bara öppna meddelanden" : undefined}
+          title={openCount > 0 ? t("stats.openTitle") : undefined}
         />
         <StatPill
           icon={Clock}
-          label="Äldsta väntan"
+          label={t("stats.oldestWait")}
           value={oldestWait ?? "—"}
           highlight={Boolean(oldestWait)}
           urgent={Boolean(oldestWait?.includes("d"))}
           onClick={oldestWait ? onJumpToOldest : undefined}
-          title={oldestWait ? "Hoppa till äldsta obesvarade" : undefined}
+          title={oldestWait ? t("stats.oldestTitle") : undefined}
         />
         <StatPill
           icon={Sparkles}
-          label="AI redo"
+          label={t("stats.aiReady")}
           value={String(aiReadyCount)}
           highlight={aiReadyCount > 0}
           onClick={aiReadyCount > 0 ? onShowAiReady : undefined}
-          title={aiReadyCount > 0 ? "Visa meddelanden med AI-sammanfattning" : undefined}
+          title={aiReadyCount > 0 ? t("stats.aiReadyTitle") : undefined}
         />
       </div>
       {onStartTriage && openCount > 0 ? (
         <Button type="button" size="sm" className="h-8 shrink-0 gap-1.5 text-xs glow-sm" onClick={onStartTriage}>
           <Play className="h-3.5 w-3.5" />
-          Börja triage
+          {t("stats.startTriage")}
         </Button>
       ) : null}
     </div>

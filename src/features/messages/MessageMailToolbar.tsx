@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowUpDown,
   Folder,
@@ -48,17 +49,8 @@ type MailAccount = {
   platform: "gmail" | "outlook";
 };
 
-const VIEW_FILTERS: Array<{ value: MailViewFilter; label: string; short: string; icon?: typeof Star }> = [
-  { value: "all", label: "Alla", short: "Alla" },
-  { value: "unread", label: "Olästa", short: "Ol." },
-  { value: "starred", label: "Flaggade", short: "★", icon: Star },
-];
-
-const SORT_OPTIONS: Array<{ value: MailSortOrder; label: string; hint: string }> = [
-  { value: "triage", label: "Triage", hint: "Öppna först" },
-  { value: "newest", label: "Nyast", hint: "Senaste överst" },
-  { value: "oldest", label: "Äldst", hint: "Äldsta överst" },
-];
+const VIEW_FILTER_VALUES: MailViewFilter[] = ["all", "unread", "starred"];
+const SORT_VALUES: MailSortOrder[] = ["triage", "newest", "oldest"];
 
 const INBOX_VALUE = "__inbox__";
 
@@ -95,12 +87,54 @@ export function MessageMailToolbar({
   disabled,
   onFoldersChange,
 }: Props) {
+  const { t } = useTranslation("messages");
   const [folders, setFolders] = useState<MailFolder[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [createAccountId, setCreateAccountId] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const viewFilters = useMemo(
+    () =>
+      VIEW_FILTER_VALUES.map((value) => ({
+        value,
+        label: t(
+          value === "all" ? "mailBar.viewAll" : value === "unread" ? "mailBar.viewUnread" : "mailBar.viewStarred"
+        ),
+        short: t(
+          value === "all"
+            ? "mailBar.viewAllShort"
+            : value === "unread"
+              ? "mailBar.viewUnreadShort"
+              : "mailBar.viewStarred"
+        ),
+        icon: value === "starred" ? Star : undefined,
+      })),
+    [t]
+  );
+
+  const sortOptions = useMemo(
+    () =>
+      SORT_VALUES.map((value) => ({
+        value,
+        label: t(
+          value === "triage"
+            ? "mailBar.sortTriage"
+            : value === "newest"
+              ? "mailBar.sortNewest"
+              : "mailBar.sortOldest"
+        ),
+        hint: t(
+          value === "triage"
+            ? "mailBar.sortTriageHint"
+            : value === "newest"
+              ? "mailBar.sortNewestHint"
+              : "mailBar.sortOldestHint"
+        ),
+      })),
+    [t]
+  );
 
   const loadFolders = useCallback(async () => {
     if (mailAccounts.length === 0) {
@@ -148,7 +182,7 @@ export function MessageMailToolbar({
     ? folderValue({ accountId: selectedFolder.accountId, id: selectedFolder.folderId })
     : INBOX_VALUE;
 
-  const activeFolderLabel = selectedFolder?.folderName || (includeAllMail ? "Alla mail" : "Inkorg");
+  const activeFolderLabel = selectedFolder?.folderName || (includeAllMail ? t("mailBar.allMail") : t("mailBar.inbox"));
   const activeUnread =
     selectedFolder == null
       ? null
@@ -163,13 +197,13 @@ export function MessageMailToolbar({
     setCreating(true);
     try {
       const folder = await createMailFolder({ accountId, name, businessProfileId });
-      toast.success(`Mappen «${folder.name}» skapades.`);
+      toast.success(t("mailBar.created", { name: folder.name }));
       setCreateOpen(false);
       setNewFolderName("");
       await loadFolders();
       onSelectFolder({ accountId: folder.accountId, folderId: folder.id, folderName: folder.name });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kunde inte skapa mappen.");
+      toast.error(error instanceof Error ? error.message : t("mailBar.createFailed"));
     } finally {
       setCreating(false);
     }
@@ -198,7 +232,7 @@ export function MessageMailToolbar({
         <Select value={folderSelectValue} onValueChange={handleFolderChange} disabled={disabled || loading}>
           <SelectTrigger
             className="h-7 w-auto max-w-[min(52vw,16rem)] gap-1 rounded-md border border-border/60 bg-background/80 px-2 text-[11px] font-medium shadow-none focus:ring-1 focus:ring-primary/25"
-            aria-label="Välj mapp"
+            aria-label={t("mailBar.selectFolder")}
           >
             {loading ? (
               <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
@@ -226,7 +260,7 @@ export function MessageMailToolbar({
                 ) : (
                   <Inbox className="h-3 w-3 text-muted-foreground" />
                 )}
-                {includeAllMail ? "Alla mail" : "Inkorg"}
+                {includeAllMail ? t("mailBar.allMail") : t("mailBar.inbox")}
               </span>
             </SelectItem>
             {folders.map((folder) => (
@@ -254,12 +288,12 @@ export function MessageMailToolbar({
               className="h-6 w-6 shrink-0 p-0 text-muted-foreground"
               disabled={disabled || loading}
               onClick={() => setCreateOpen(true)}
-              aria-label="Skapa mapp"
+              aria-label={t("mailBar.createFolderAria")}
             >
               <FolderPlus className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Ny mapp</TooltipContent>
+          <TooltipContent side="bottom">{t("mailBar.newFolder")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -276,18 +310,18 @@ export function MessageMailToolbar({
                 selectedFolder && "opacity-50"
               )}
               aria-pressed={includeAllMail && !selectedFolder}
-              aria-label="Visa alla mail oavsett mapp"
+              aria-label={t("mailBar.allFoldersAria")}
             >
               <Layers className="h-3 w-3 shrink-0" />
-              <span className="hidden sm:inline">Alla mappar</span>
+              <span className="hidden sm:inline">{t("mailBar.allFolders")}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {selectedFolder
-              ? "Gäller när Inkorg/Alla mail är valt — byt från mappen först"
+              ? t("mailBar.allFoldersLocked")
               : includeAllMail
-                ? "Visar senaste mail från alla mappar/etiketter"
-                : "Visa alla mail, även de som ligger i mappar"}
+                ? t("mailBar.allFoldersOn")
+                : t("mailBar.allFoldersOff")}
           </TooltipContent>
         </Tooltip>
 
@@ -296,9 +330,9 @@ export function MessageMailToolbar({
         <div
           className="flex shrink-0 items-center gap-px"
           role="group"
-          aria-label="Filtrera mail"
+          aria-label={t("mailBar.filterMail")}
         >
-          {VIEW_FILTERS.map((opt) => {
+          {viewFilters.map((opt) => {
             const Icon = opt.icon;
             const active = mailViewFilter === opt.value;
             return (
@@ -336,15 +370,15 @@ export function MessageMailToolbar({
           >
             <SelectTrigger
               className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-[11px] shadow-none focus:ring-0 focus:ring-offset-0"
-              aria-label="Sortera"
+              aria-label={t("mailBar.sort")}
             >
               <ArrowUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
               <span className="hidden sm:inline">
-                {SORT_OPTIONS.find((opt) => opt.value === mailSort)?.label || "Sortera"}
+                {sortOptions.find((opt) => opt.value === mailSort)?.label || t("mailBar.sort")}
               </span>
             </SelectTrigger>
             <SelectContent align="end">
-              {SORT_OPTIONS.map((opt) => (
+              {sortOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value} className="text-xs">
                   <span className="font-medium">{opt.label}</span>
                   <span className="ml-1 text-muted-foreground">· {opt.hint}</span>
@@ -358,15 +392,13 @@ export function MessageMailToolbar({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Skapa mailmapp</DialogTitle>
-            <DialogDescription>
-              Mappen skapas i Gmail (etikett) eller Outlook (under Inkorg) och kan användas för att sortera mail.
-            </DialogDescription>
+            <DialogTitle>{t("mailBar.createTitle")}</DialogTitle>
+            <DialogDescription>{t("mailBar.createDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
             {mailAccounts.length > 1 ? (
               <div className="space-y-1.5">
-                <Label htmlFor="mail-folder-account">Konto</Label>
+                <Label htmlFor="mail-folder-account">{t("mailBar.account")}</Label>
                 <select
                   id="mail-folder-account"
                   value={createAccountId}
@@ -382,12 +414,12 @@ export function MessageMailToolbar({
               </div>
             ) : null}
             <div className="space-y-1.5">
-              <Label htmlFor="mail-folder-name">Mappnamn</Label>
+              <Label htmlFor="mail-folder-name">{t("mailBar.folderName")}</Label>
               <Input
                 id="mail-folder-name"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="t.ex. Fakturor, Leads, Support…"
+                placeholder={t("mailBar.folderPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -399,10 +431,10 @@ export function MessageMailToolbar({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-              Avbryt
+              {t("mailBar.cancel")}
             </Button>
             <Button type="button" onClick={() => void handleCreateFolder()} disabled={creating || !newFolderName.trim()}>
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Skapa mapp"}
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t("mailBar.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

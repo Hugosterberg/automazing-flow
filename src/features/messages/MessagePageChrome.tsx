@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSmartBar } from "@/components/ui/page-smart-bar";
@@ -39,6 +40,7 @@ export function MessagePageChrome({
   onShowToday,
   onUseMailDraft,
 }: Props) {
+  const { t } = useTranslation("messages");
   if (focusedReading) return null;
 
   const hasTriageWork = triageCounts.today + triageCounts.week > 0;
@@ -48,38 +50,30 @@ export function MessagePageChrome({
     <>
       <PageHeader
         icon={MessageSquare}
-        title="Meddelanden"
-        description={
-          isMobile
-            ? "Välj ett meddelande — AI hjälper dig sammanfatta och svara."
-            : "Mail, DM och WhatsApp · J/K bläddra · H Klar · E arkivera · R svara"
-        }
+        title={t("page.title")}
+        description={isMobile ? t("page.descriptionMobile") : t("page.descriptionDesktop")}
       />
 
       {openCount === 0 || triageCounts.today > 0 || triageCounts.week > 0 ? (
         <PageSmartBar
           title={
             hasTriageWork
-              ? "Triage först — svara Idag, parkera Brus."
+              ? t("page.smartTriage")
               : isMobile
-                ? "Inkorgen är ikapp — koppla fler kanaler eller vänta på nya meddelanden."
-                : "Meddelanden är din triage-inkorg — när något dyker upp: läs, svara och markera Klar."
+                ? t("page.smartCaughtUpMobile")
+                : t("page.smartCaughtUpDesktop")
           }
           steps={
             hasTriageWork
               ? undefined
               : isMobile
-                ? ["Välj kanal (Mail, IG, FB, WA)", "Tryck ett meddelande för att läsa", "Skicka svar eller markera klar"]
-                : [
-                    "Välj kanal och triage-hink (Idag / Vecka / FYI / Brus)",
-                    "J/K bläddra · H Klar · E arkivera · R svara",
-                    "AI sammanfattar och skriver utkast — du godkänner innan du skickar",
-                  ]
+                ? [t("page.stepMobile1"), t("page.stepMobile2"), t("page.stepMobile3")]
+                : [t("page.stepDesktop1"), t("page.stepDesktop2"), t("page.stepDesktop3")]
           }
-          tip={hasTriageWork ? undefined : "Öppna meddelanden stannar i kön tills du trycker Klar (H)."}
+          tip={hasTriageWork ? undefined : t("page.tip")}
           liveHintOverride={inboxLiveHint}
           extraActions={
-            triageCounts.today > 0 ? [{ label: "Visa Idag", onClick: onShowToday }] : []
+            triageCounts.today > 0 ? [{ label: t("page.showToday"), onClick: onShowToday }] : []
           }
         />
       ) : null}

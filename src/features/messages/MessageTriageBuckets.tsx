@@ -1,10 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import {
-  TRIAGE_BUCKET_HINTS,
-  TRIAGE_BUCKET_LABELS,
-  TRIAGE_BUCKET_ORDER,
-  type TriageBucket,
-} from "./messageTriage";
+import { TRIAGE_BUCKET_ORDER, type TriageBucket } from "./messageTriage";
 
 type Props = {
   value: TriageBucket | "all";
@@ -14,11 +10,19 @@ type Props = {
 };
 
 /**
- * Compact action-bucket filter for the inbox — Idag / Denna vecka / FYI / Brus.
+ * Compact action-bucket filter for the inbox — Today / This week / FYI / Noise.
  */
 export function MessageTriageBuckets({ value, counts, onChange, className }: Props) {
+  const { t } = useTranslation("messages");
   const total = TRIAGE_BUCKET_ORDER.reduce((sum, b) => sum + counts[b], 0);
   const actionCount = counts.today + counts.week;
+
+  const hintKey: Record<TriageBucket, string> = {
+    today: "triage.hintToday",
+    week: "triage.hintWeek",
+    fyi: "triage.hintFyi",
+    noise: "triage.hintNoise",
+  };
 
   return (
     <div
@@ -27,7 +31,7 @@ export function MessageTriageBuckets({ value, counts, onChange, className }: Pro
         className
       )}
       role="group"
-      aria-label="Triage-hinkar"
+      aria-label={t("triage.aria")}
     >
       <button
         type="button"
@@ -38,9 +42,9 @@ export function MessageTriageBuckets({ value, counts, onChange, className }: Pro
             ? "bg-primary/15 text-primary"
             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
         )}
-        title="Visa alla i nuvarande filter"
+        title={t("triage.allTitle")}
       >
-        Alla
+        {t("triage.all")}
         {total > 0 ? (
           <span className="tabular-nums text-[10px] opacity-80">{total > 99 ? "99+" : total}</span>
         ) : null}
@@ -66,9 +70,9 @@ export function MessageTriageBuckets({ value, counts, onChange, className }: Pro
                   ? "text-destructive/90 hover:bg-destructive/10"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             )}
-            title={TRIAGE_BUCKET_HINTS[bucket]}
+            title={t(hintKey[bucket])}
           >
-            {TRIAGE_BUCKET_LABELS[bucket]}
+            {t(`triage.${bucket}`)}
             {count > 0 ? (
               <span className="tabular-nums text-[10px] opacity-80">{count > 99 ? "99+" : count}</span>
             ) : null}
@@ -77,7 +81,7 @@ export function MessageTriageBuckets({ value, counts, onChange, className }: Pro
       })}
       {actionCount > 0 && value === "all" ? (
         <span className="ml-auto hidden text-[10px] text-muted-foreground sm:inline">
-          {actionCount} att svara
+          {t("triage.toReply", { count: actionCount })}
         </span>
       ) : null}
     </div>

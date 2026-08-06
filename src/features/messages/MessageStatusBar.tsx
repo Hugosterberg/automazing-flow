@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type MessageStatusBarProps = {
@@ -14,6 +15,8 @@ function Kbd({ children }: { children: string }) {
 }
 
 export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarProps) {
+  const { t } = useTranslation("messages");
+
   return (
     <div
       className={cn(
@@ -24,42 +27,43 @@ export function MessageStatusBar({ selectedLabel, className }: MessageStatusBarP
       <span className="truncate">
         {selectedLabel ? (
           <>
-            Vald: <span className="font-medium text-foreground/80">{selectedLabel}</span>
+            {t("statusBar.selected")}
+            <span className="font-medium text-foreground/80">{selectedLabel}</span>
           </>
         ) : (
-          "Välj ett meddelande i listan"
+          t("statusBar.pick")
         )}
       </span>
       <div className="hidden flex-wrap items-center gap-x-2 gap-y-0.5 lg:flex">
         <span className="inline-flex items-center gap-1">
-          <Kbd>J</Kbd>/<Kbd>K</Kbd> Nästa
+          <Kbd>J</Kbd>/<Kbd>K</Kbd> {t("statusBar.next")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>H</Kbd> Klar
+          <Kbd>H</Kbd> {t("statusBar.done")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>E</Kbd> Arkivera
+          <Kbd>E</Kbd> {t("statusBar.archive")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>Shift</Kbd>+<Kbd>J</Kbd>/<Kbd>K</Kbd> Öppna
+          <Kbd>Shift</Kbd>+<Kbd>J</Kbd>/<Kbd>K</Kbd> {t("statusBar.openNav")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>R</Kbd> Svara
+          <Kbd>R</Kbd> {t("statusBar.reply")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>/</Kbd> Sök
+          <Kbd>/</Kbd> {t("statusBar.search")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>N</Kbd> Nästa öppen
+          <Kbd>N</Kbd> {t("statusBar.nextOpen")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>Q</Kbd>/<Kbd>O</Kbd>/<Kbd>A</Kbd> Filter
+          <Kbd>Q</Kbd>/<Kbd>O</Kbd>/<Kbd>A</Kbd> {t("statusBar.filter")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>[</Kbd>/<Kbd>]</Kbd> Kanal
+          <Kbd>[</Kbd>/<Kbd>]</Kbd> {t("statusBar.channel")}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>Ctrl</Kbd>+<Kbd>↵</Kbd> Skicka
+          <Kbd>Ctrl</Kbd>+<Kbd>↵</Kbd> {t("statusBar.send")}
         </span>
       </div>
     </div>

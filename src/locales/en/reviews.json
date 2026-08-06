@@ -17,5 +17,16 @@
   "emptyAutoHintCta": "Enable review automation",
   "emptyAccountDesc": "Connect Google Reviews, Tripadvisor or Judge.me under Connections — reviews sync here automatically.",
   "officialReconnect": "Reconnect via Official API",
-  "noteOfficialHint": "If this account was connected via Zernio, switch to Official API under Connections."
+  "noteOfficialHint": "If this account was connected via Zernio, switch to Official API under Connections.",
+  "placeTitle": "Place information",
+  "placeSource": "Fetched via {{source}}.",
+  "placeEmpty": "No place information yet. Connect Google Business / Reviews under Connections.",
+  "searchPlaceholder": "Search reviews…",
+  "searchAria": "Search reviews",
+  "allRatings": "All ratings",
+  "stars_one": "{{count}} star",
+  "stars_other": "{{count}} stars",
+  "replyFilterAll": "All reviews (A)",
+  "replyFilterNeeds": "Needs reply (N)",
+  "filterAll": "All"
 }

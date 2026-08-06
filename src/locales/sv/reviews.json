@@ -17,5 +17,16 @@
   "emptyAutoHintCta": "Aktivera recensionsautomation",
   "emptyAccountDesc": "Koppla Google Reviews, Tripadvisor eller Judge.me under Kopplingar — sedan synkas omdömen hit automatiskt.",
   "officialReconnect": "Koppla om via Official API",
-  "noteOfficialHint": "Om kontot kopplades via Zernio: byt till Official API under Kopplingar."
+  "noteOfficialHint": "Om kontot kopplades via Zernio: byt till Official API under Kopplingar.",
+  "placeTitle": "Verksamhetsinformation",
+  "placeSource": "Hämtat via {{source}}.",
+  "placeEmpty": "Ingen verksamhetsinformation ännu. Koppla Google Business / Reviews under Kopplingar.",
+  "searchPlaceholder": "Sök recensioner…",
+  "searchAria": "Sök recensioner",
+  "allRatings": "Alla betyg",
+  "stars_one": "{{count}} stjärna",
+  "stars_other": "{{count}} stjärnor",
+  "replyFilterAll": "Alla recensioner (A)",
+  "replyFilterNeeds": "Behöver svar (N)",
+  "filterAll": "Alla"
 }

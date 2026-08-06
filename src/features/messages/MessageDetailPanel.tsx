@@ -52,7 +52,7 @@ import { useIsDesktopWorkspace, useIsMobile, useKeyboardInset } from "@/hooks/us
 import { cn } from "@/lib/utils";
 import { MessageBody } from "./MessageBody";
 import { isHtmlEmailContent } from "./messageBodyHtml";
-import { classifyMessageTriage, TRIAGE_BUCKET_LABELS } from "./messageTriage";
+import { classifyMessageTriage } from "./messageTriage";
 import { MessageThread } from "./MessageThread";
 import { avatarGradient, formatFullMessageDate, formatMessageDate, senderInitial, withFullThreadBody } from "./messagesUi";
 import type { MailFolder, ThreadMessage, UnifiedMessage } from "./types";
@@ -495,7 +495,7 @@ export function MessageDetailPanel({
                   onClick={onMarkHandled}
                 >
                   <CheckCheck className="h-4 w-4" />
-                  {composeOpen ? <span className="sr-only">Klar</span> : <span>Klar</span>}
+                  {composeOpen ? <span className="sr-only">{t("shortcuts.done")}</span> : <span>{t("shortcuts.done")}</span>}
                 </Button>
               ) : (
                 <Badge
@@ -506,7 +506,7 @@ export function MessageDetailPanel({
                   )}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
-                  Klar
+                  {t("shortcuts.done")}
                 </Badge>
               )}
               {!composeOpen ? (
@@ -524,18 +524,18 @@ export function MessageDetailPanel({
                     <DropdownMenuItem asChild>
                       <Link to={createTaskHref}>
                         <ListTodo className="mr-2 h-4 w-4" />
-                        Skapa uppgift
+                        {t("shortcuts.createTask")}
                       </Link>
                     </DropdownMenuItem>
                     {onSnooze && !isHandled ? (
                       <>
                         <DropdownMenuItem onSelect={() => onSnooze("tomorrow")}>
                           <Clock className="mr-2 h-4 w-4" />
-                          Skjut upp till imorgon
+                          {t("shortcuts.snoozeTomorrow")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => onSnooze("week")}>
                           <Clock className="mr-2 h-4 w-4" />
-                          Skjut upp till nästa vecka
+                          {t("shortcuts.snoozeWeek")}
                         </DropdownMenuItem>
                       </>
                     ) : null}
@@ -602,7 +602,7 @@ export function MessageDetailPanel({
                       )}
                       title={triage.reason}
                     >
-                      {TRIAGE_BUCKET_LABELS[triage.bucket]}
+                      {t(`triage.${triage.bucket}`)}
                     </Badge>
                     {fromEmail ? <span className="truncate">{fromEmail}</span> : null}
                   </div>
@@ -899,7 +899,7 @@ export function MessageDetailPanel({
                 )}
                 title={triage.reason}
               >
-                {TRIAGE_BUCKET_LABELS[triage.bucket]}
+                {t(`triage.${triage.bucket}`)}
               </Badge>
               <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[9px] uppercase tracking-wide">
                 {message.kind === "email" ? <Mail className="h-3 w-3" /> : null}
@@ -927,7 +927,7 @@ export function MessageDetailPanel({
 
       {needsAttention && canReply && !replySent ? (
         <div className="flex flex-wrap items-center gap-1.5 border-b border-primary/15 bg-primary/5 px-3 py-1.5 lg:px-3 lg:py-1">
-          <span className="text-[10px] font-medium text-primary">Snabbåtgärder</span>
+          <span className="text-[10px] font-medium text-primary">{t("shortcuts.quickActions")}</span>
           <Button type="button" size="sm" variant="secondary" className="h-6 px-2 text-[11px]" onClick={onMarkHandled}>
             <CheckCheck className="mr-1 h-3 w-3" />
             {t("actions.markDone")}
@@ -1045,14 +1045,16 @@ export function MessageDetailPlaceholder() {
         </p>
       </div>
       <div className="hidden rounded-xl border border-border/60 bg-muted/20 px-5 py-3 text-left lg:block">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genvägar</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("shortcuts.title")}
+        </p>
         <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">J</kbd> /{" "}
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> nästa / föregående
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">K</kbd> {t("shortcuts.nav")}
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> Klar
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">H</kbd> {t("shortcuts.done")}
           </li>
           <li>
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">E</kbd> {t("actions.shortcutArchive")}
@@ -1061,7 +1063,7 @@ export function MessageDetailPlaceholder() {
             <kbd className="rounded border border-border px-1 font-mono text-[10px]">R</kbd> {t("actions.shortcutReply")}
           </li>
           <li>
-            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> stäng
+            <kbd className="rounded border border-border px-1 font-mono text-[10px]">Esc</kbd> {t("shortcuts.close")}
           </li>
         </ul>
       </div>
